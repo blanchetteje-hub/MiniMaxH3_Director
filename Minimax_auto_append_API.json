@@ -386,11 +386,14 @@
   },
   "148": {
     "inputs": {
-      "prompt": "",
       "length": 124,
       "context_frames": 2,
       "pin_last_frame": true,
       "ref_image_size": "match",
+      "prompt": [
+        "118",
+        0
+      ],
       "clip": [
         "77",
         0
