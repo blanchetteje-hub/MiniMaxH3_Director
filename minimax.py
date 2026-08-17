@@ -5,6 +5,7 @@ import json
 import math
 import os
 import subprocess
+import sys
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -31,8 +32,8 @@ COMFY_OUTPUT = r"H:\images\output"
 VIDEO_OUTPUT = r"H:\images\output\video"
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-STITCH_BAT = os.path.join(r"H:\images\output\video", "stitch.bat")
-STITCH_LIST = os.path.join(r"H:\images\output\video", "list.txt")
+STITCH_BAT = os.path.join(VIDEO_OUTPUT, "stitch.bat")
+STITCH_LIST = os.path.join(VIDEO_OUTPUT, "list.txt")
 
 FRAME_RATE = 24
 TRIM_FRAMES_AFTER_FIRST = 2
@@ -54,7 +55,7 @@ COMFY_HISTORY_RETRY_DELAY = 10
 # Keep input comfortably below that so there is room for the model's output.
 LLM_INPUT_TOKEN_BUDGET = 14000
 CHARS_PER_TOKEN_ESTIMATE = 3.5
-TOKEN_RECAP_SIZE = 3500
+TOKEN_RECAP_SIZE = 4000
 
 # Long-run context management:
 # - full source story remains available on every director call
@@ -64,11 +65,28 @@ RECENT_SEGMENTS_MAX = 2
 CONTINUITY_SUMMARY_MAX_CHARS = 1800
 SUMMARY_REBUILD_BATCH_SIZE = 2
 
+# ComfyUI workflow nodes are resolved by their exported display names. Node
+# IDs are regenerated when a workflow is edited or re-exported, while these
+# names remain readable and stable.
+DURATION_NODE_NAME = "Float (duration)"
+PROMPT_NODE_NAME = "Prompt"
+NOISE_NODE_NAME = "RandomNoise"
+SAVE_VIDEO_NODE_NAME = "Save Video"
+RESOLUTION_NODE_NAME = "Resolution Selector"
+IMAGE_BATCH_NODE_NAME = "Image Batch Multi"
+LOAD_VIDEO_NODE_NAME = "Load Video (Path) 🎥🅥🅗🅢"
+REFERENCE_IMAGE_NODE_NAMES = tuple(
+    f"Reference Image {image_number}"
+    for image_number in range(1, 7)
+)
+
 # ============================================================
 # ARGUMENTS
 # ============================================================
 
 def parse_args():
+    """Parse and validate the command-line settings for one generation run."""
+
     parser = argparse.ArgumentParser(
         description="Generate a complete video story using LM Studio + ComfyUI."
     )
@@ -195,43 +213,276 @@ def trim_video_start(input_path, output_path, trim_seconds):
     Re-encodes to keep frame-accurate trimming and preserve A/V sync.
     """
 
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-i", input_path,
-            "-ss", f"{trim_seconds:.6f}",
-            "-c:v", "libx264",
-            "-preset", "medium",
-            "-crf", "18",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            output_path
-        ],
-        check=True
-    )
+    try:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i", input_path,
+                "-ss", f"{trim_seconds:.6f}",
+                "-c:v", "libx264",
+                "-preset", "medium",
+                "-crf", "18",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                output_path
+            ],
+            check=True
+        )
+    except FileNotFoundError as e:
+        raise RuntimeError(
+            "FFmpeg was not found. Install FFmpeg and make sure 'ffmpeg' "
+            "is available on PATH before stitching videos."
+        ) from e
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            f"FFmpeg could not trim video '{input_path}'. "
+            f"The command exited with code {e.returncode}."
+        ) from e
+    except OSError as e:
+        raise RuntimeError(
+            f"Could not start FFmpeg to trim '{input_path}': {e}"
+        ) from e
 
 def load_text_file(path, required=True):
-    if not os.path.exists(path):
+    """Read a UTF-8 text input, optionally returning empty text if absent."""
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
         if required:
             raise FileNotFoundError(
-                f"Required file not found: {path}"
-            )
+                f"Required text file not found: {os.path.abspath(path)}"
+            ) from None
 
         return ""
-
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read().strip()
+    except (OSError, UnicodeError) as e:
+        raise RuntimeError(
+            f"Could not read text file '{os.path.abspath(path)}': {e}"
+        ) from e
 
 
 def load_workflow(path):
-    if not os.path.exists(path):
+    """Load a ComfyUI API workflow and verify its top-level JSON shape."""
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            workflow = json.load(f)
+    except FileNotFoundError:
         raise FileNotFoundError(
-            f"Workflow file not found: {path}"
+            f"Workflow file not found: {os.path.abspath(path)}"
+        ) from None
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Workflow '{os.path.abspath(path)}' is not valid JSON "
+            f"(line {e.lineno}, column {e.colno}): {e.msg}"
+        ) from e
+    except (OSError, UnicodeError) as e:
+        raise RuntimeError(
+            f"Could not read workflow '{os.path.abspath(path)}': {e}"
+        ) from e
+
+    if not isinstance(workflow, dict):
+        raise RuntimeError(
+            f"Workflow '{os.path.abspath(path)}' must contain a JSON "
+            "object at its top level."
         )
 
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return workflow
+
+
+def find_workflow_node(
+    workflow,
+    node_name,
+    workflow_label="workflow",
+    expected_class_type=None
+):
+    """Return ``(node_id, node)`` for one uniquely named ComfyUI node."""
+
+    if not isinstance(workflow, dict):
+        raise RuntimeError(
+            f"The {workflow_label} is not a valid ComfyUI workflow object."
+        )
+
+    matches = []
+
+    for node_id, node in workflow.items():
+        if not isinstance(node, dict):
+            continue
+
+        metadata = node.get("_meta", {})
+
+        if not isinstance(metadata, dict):
+            continue
+
+        if metadata.get("title") == node_name:
+            matches.append((node_id, node))
+
+    if not matches:
+        raise RuntimeError(
+            f"The {workflow_label} is missing the ComfyUI node named "
+            f"'{node_name}'. Open the workflow in ComfyUI, confirm that "
+            "node's title, and export the API workflow again."
+        )
+
+    if len(matches) > 1:
+        raise RuntimeError(
+            f"The {workflow_label} contains {len(matches)} nodes named "
+            f"'{node_name}'. Give the required node a unique title in "
+            "ComfyUI and export the API workflow again."
+        )
+
+    node_id, node = matches[0]
+
+    if (
+        expected_class_type is not None
+        and node.get("class_type") != expected_class_type
+    ):
+        raise RuntimeError(
+            f"ComfyUI node '{node_name}' in the {workflow_label} has type "
+            f"'{node.get('class_type')}', but '{expected_class_type}' is "
+            "required."
+        )
+
+    inputs = node.get("inputs")
+
+    if not isinstance(inputs, dict):
+        raise RuntimeError(
+            f"ComfyUI node '{node_name}' in the {workflow_label} does not "
+            "contain a valid inputs object."
+        )
+
+    return node_id, node
+
+
+def set_node_input(
+    workflow,
+    node_name,
+    input_name,
+    value,
+    workflow_label,
+    expected_class_type=None
+):
+    """Set a named input on a uniquely named ComfyUI node."""
+
+    _, node = find_workflow_node(
+        workflow,
+        node_name,
+        workflow_label=workflow_label,
+        expected_class_type=expected_class_type
+    )
+
+    if input_name not in node["inputs"]:
+        raise RuntimeError(
+            f"ComfyUI node '{node_name}' in the {workflow_label} is missing "
+            f"its '{input_name}' input. Export the API workflow again after "
+            "checking the node configuration."
+        )
+
+    node["inputs"][input_name] = value
+
+
+def validate_workflow(workflow, workflow_label, is_append=False):
+    """Validate the named nodes and connections used by the automation."""
+
+    required_nodes = (
+        (DURATION_NODE_NAME, "PrimitiveFloat"),
+        (PROMPT_NODE_NAME, "DPRandomGenerator"),
+        (NOISE_NODE_NAME, "RandomNoise"),
+        (SAVE_VIDEO_NODE_NAME, "SaveVideo")
+    )
+
+    for node_name, class_type in required_nodes:
+        find_workflow_node(
+            workflow,
+            node_name,
+            workflow_label=workflow_label,
+            expected_class_type=class_type
+        )
+
+    for node_name in REFERENCE_IMAGE_NODE_NAMES:
+        find_workflow_node(
+            workflow,
+            node_name,
+            workflow_label=workflow_label,
+            expected_class_type="LoadImage"
+        )
+
+    if not is_append:
+        find_workflow_node(
+            workflow,
+            RESOLUTION_NODE_NAME,
+            workflow_label=workflow_label,
+            expected_class_type="ResolutionSelector"
+        )
+        return
+
+    _, image_batch_node = find_workflow_node(
+        workflow,
+        IMAGE_BATCH_NODE_NAME,
+        workflow_label=workflow_label,
+        expected_class_type="ImageBatchMulti"
+    )
+
+    find_workflow_node(
+        workflow,
+        LOAD_VIDEO_NODE_NAME,
+        workflow_label=workflow_label,
+        expected_class_type="VHS_LoadVideoPath"
+    )
+
+    # Confirm that each named image is connected to the matching batch slot,
+    # so neither a node ID nor the workflow's JSON order is assumed.
+    for input_name, expected_source_title in zip(
+        (
+            "image_1",
+            "image_2",
+            "image_3",
+            "image_4",
+            "image_5",
+            "image_6"
+        ),
+        REFERENCE_IMAGE_NODE_NAMES
+    ):
+        connection = image_batch_node["inputs"].get(input_name)
+
+        if (
+            not isinstance(connection, list)
+            or len(connection) != 2
+            or connection[1] != 0
+        ):
+            raise RuntimeError(
+                f"ComfyUI node '{IMAGE_BATCH_NODE_NAME}' in the "
+                f"{workflow_label} has an invalid '{input_name}' connection. "
+                "Connect it to output 0 of a Load Image node."
+            )
+
+        source_node = workflow.get(str(connection[0]))
+
+        if not isinstance(source_node, dict):
+            raise RuntimeError(
+                f"ComfyUI node '{IMAGE_BATCH_NODE_NAME}' in the "
+                f"{workflow_label} references a missing source for "
+                f"'{input_name}'."
+            )
+
+        source_metadata = source_node.get("_meta", {})
+        source_title = (
+            source_metadata.get("title")
+            if isinstance(source_metadata, dict)
+            else None
+        )
+
+        if (
+            source_title != expected_source_title
+            or source_node.get("class_type") != "LoadImage"
+        ):
+            raise RuntimeError(
+                f"'{input_name}' on ComfyUI node '{IMAGE_BATCH_NODE_NAME}' "
+                f"in the {workflow_label} must come from a node named "
+                f"'{expected_source_title}'."
+            )
 
 
 def load_beats(path):
@@ -308,6 +559,8 @@ def normalize_completed_beat_ids(beats, completed_beat_ids):
 
 
 def get_next_beat_id(beats, completed_beat_ids):
+    """Return the next required one-based beat ID, or ``None`` if finished."""
+
     completed = normalize_completed_beat_ids(
         beats,
         completed_beat_ids
@@ -389,8 +642,13 @@ def save_beat_progress(
         f"{format_beat_progress(beats, completed)}\n"
     )
 
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+    except (OSError, UnicodeError) as e:
+        raise RuntimeError(
+            f"Could not save beat progress to '{os.path.abspath(path)}': {e}"
+        ) from e
 
 
 def save_continuity_memory(
@@ -414,8 +672,14 @@ def save_continuity_memory(
         f"{summary}\n"
     )
 
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+    except (OSError, UnicodeError) as e:
+        raise RuntimeError(
+            f"Could not save continuity memory to "
+            f"'{os.path.abspath(path)}': {e}"
+        ) from e
 
     if echo:
         print()
@@ -431,6 +695,8 @@ def print_beat_progress_summary(
     beats,
     completed_beat_ids
 ):
+    """Print a concise progress line showing the next unfinished story beat."""
+
     completed = normalize_completed_beat_ids(
         beats,
         completed_beat_ids
@@ -608,6 +874,8 @@ def rebuild_completed_beat_ids(
 # ============================================================
 
 def ask_llm(messages, max_retries=5, retry_delay=5):
+    """Request one structured segment description from LM Studio with retries."""
+
     last_error = None
 
     for attempt in range(1, max_retries + 1):
@@ -634,7 +902,9 @@ def ask_llm(messages, max_retries=5, retry_delay=5):
             requests.RequestException,
             KeyError,
             IndexError,
-            json.JSONDecodeError
+            json.JSONDecodeError,
+            TypeError,
+            ValueError
         ) as e:
             last_error = e
 
@@ -753,7 +1023,10 @@ def ask_summary_llm(
             requests.RequestException,
             KeyError,
             IndexError,
-            ValueError
+            ValueError,
+            TypeError,
+            AttributeError,
+            json.JSONDecodeError
         ) as e:
             last_error = e
 
@@ -791,6 +1064,8 @@ def estimate_text_tokens(text):
 
 
 def estimate_message_tokens(messages):
+    """Estimate total tokens for chat content plus per-message overhead."""
+
     # Add a little overhead per chat message for role / envelope tokens.
     return sum(
         estimate_text_tokens(message.get("content", "")) + 12
@@ -933,6 +1208,30 @@ def build_h3_prompt(llm_result, subject_definitions):
     non_diegetic_music: ...
     """
 
+    required_fields = (
+        "integrated_multimodal_description",
+        "overall_soundscape",
+        "non_diegetic_music"
+    )
+
+    if not isinstance(llm_result, dict):
+        raise RuntimeError(
+            "LM Studio returned an invalid director response; expected a "
+            "JSON object."
+        )
+
+    invalid_fields = [
+        field_name
+        for field_name in required_fields
+        if not isinstance(llm_result.get(field_name), str)
+    ]
+
+    if invalid_fields:
+        raise RuntimeError(
+            "LM Studio's director response is missing required text field(s): "
+            + ", ".join(invalid_fields)
+        )
+
     integrated = strip_field_prefix(
         llm_result["integrated_multimodal_description"],
         "integrated_multimodal_description"
@@ -966,14 +1265,22 @@ def build_h3_prompt(llm_result, subject_definitions):
 # ============================================================
 
 def free_vram():
-    requests.post(
-        f"{COMFY_URL}/free",
-        json={
-            "unload_models": True,
-            "free_memory": True
-        },
-        timeout=60
-    ).raise_for_status()
+    """Ask ComfyUI to release models and VRAM without aborting a good run."""
+
+    try:
+        requests.post(
+            f"{COMFY_URL}/free",
+            json={
+                "unload_models": True,
+                "free_memory": True
+            },
+            timeout=60
+        ).raise_for_status()
+    except requests.RequestException as e:
+        print(
+            "WARNING: ComfyUI could not release VRAM. Generation can "
+            f"continue, but memory usage may remain high: {e}"
+        )
 
 
 def queue_workflow(
@@ -1125,16 +1432,38 @@ def wait_for_completion(
             )
             time.sleep(retry_delay)
 
-def get_video_path(result):
-    try:
-        video = result["outputs"]["87"]["images"][0]
-    except (KeyError, IndexError):
+def get_video_path(result, workflow):
+    """Resolve the named Save Video node output to an existing local file."""
+
+    if not isinstance(result, dict):
         raise RuntimeError(
-            "Could not locate SaveVideo node 87 output:\n"
-            + json.dumps(result.get("outputs", {}), indent=2)
+            "ComfyUI returned an invalid completion result; expected a "
+            "JSON object."
         )
 
-    filename = video["filename"]
+    save_node_id, _ = find_workflow_node(
+        workflow,
+        SAVE_VIDEO_NODE_NAME,
+        workflow_label="queued workflow",
+        expected_class_type="SaveVideo"
+    )
+
+    try:
+        video = result["outputs"][save_node_id]["images"][0]
+        filename = video["filename"]
+    except (KeyError, IndexError, TypeError) as e:
+        raise RuntimeError(
+            f"ComfyUI completed the job, but no video was reported by "
+            f"the node named '{SAVE_VIDEO_NODE_NAME}':\n"
+            + json.dumps(result.get("outputs", {}), indent=2)
+        ) from e
+
+    if not isinstance(video, dict):
+        raise RuntimeError(
+            f"The node named '{SAVE_VIDEO_NODE_NAME}' returned an invalid "
+            "video record."
+        )
+
     subfolder = video.get("subfolder", "")
 
     path = os.path.join(
@@ -1155,24 +1484,50 @@ def get_video_path(result):
 
 
 def get_video_resolution(video_path):
-    result = subprocess.run(
-        [
-            "ffprobe",
-            "-v", "error",
-            "-select_streams", "v:0",
-            "-show_entries", "stream=width,height",
-            "-of", "json",
-            video_path
-        ],
-        capture_output=True,
-        text=True,
-        check=True
-    )
+    """Return a video's width and height using FFprobe."""
 
-    data = json.loads(result.stdout)
-    stream = data["streams"][0]
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=width,height",
+                "-of", "json",
+                video_path
+            ],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+    except FileNotFoundError as e:
+        raise RuntimeError(
+            "FFprobe was not found. Install FFmpeg and make sure 'ffprobe' "
+            "is available on PATH."
+        ) from e
+    except subprocess.CalledProcessError as e:
+        details = (e.stderr or "").strip() or "No error details were returned."
+        raise RuntimeError(
+            f"FFprobe could not inspect '{video_path}' "
+            f"(exit code {e.returncode}): {details}"
+        ) from e
+    except OSError as e:
+        raise RuntimeError(
+            f"Could not start FFprobe for '{video_path}': {e}"
+        ) from e
 
-    return int(stream["width"]), int(stream["height"])
+    try:
+        data = json.loads(result.stdout)
+        stream = data["streams"][0]
+        width = int(stream["width"])
+        height = int(stream["height"])
+    except (json.JSONDecodeError, KeyError, IndexError, TypeError, ValueError) as e:
+        raise RuntimeError(
+            f"FFprobe returned no usable video resolution for "
+            f"'{video_path}'."
+        ) from e
+
+    return width, height
 
 
 # ============================================================
@@ -1186,24 +1541,18 @@ def set_initial_megapixels(workflow, megapixels):
     Append generations do NOT call this function.
     """
 
-    for node_id, node in workflow.items():
-        if node.get("class_type") == "ResolutionSelector":
-            inputs = node.get("inputs", {})
+    set_node_input(
+        workflow,
+        RESOLUTION_NODE_NAME,
+        "megapixels",
+        megapixels,
+        workflow_label="initial workflow",
+        expected_class_type="ResolutionSelector"
+    )
 
-            if "megapixels" in inputs:
-                inputs["megapixels"] = megapixels
-
-                print(
-                    f"Initial megapixels requested: "
-                    f"{megapixels:g} MP "
-                    f"(ResolutionSelector node {node_id})"
-                )
-
-                return
-
-    raise RuntimeError(
-        "Could not find a ResolutionSelector node "
-        "in the initial workflow."
+    print(
+        f"Initial megapixels requested: {megapixels:g} MP "
+        f"(ComfyUI node '{RESOLUTION_NODE_NAME}')"
     )
 
 # ============================================================
@@ -1225,22 +1574,40 @@ def prepare_initial_workflow(
         INITIAL_WORKFLOW_FILE
     )
 
-    # Duration
-    if "72" not in workflow:
-        raise KeyError(
-            "Initial workflow is missing duration node 72."
-        )
+    workflow_label = f"initial workflow '{INITIAL_WORKFLOW_FILE}'"
+    validate_workflow(
+        workflow,
+        workflow_label=workflow_label,
+        is_append=False
+    )
 
-    workflow["72"]["inputs"]["value"] = duration
+    # Duration
+    set_node_input(
+        workflow,
+        DURATION_NODE_NAME,
+        "value",
+        duration,
+        workflow_label=workflow_label,
+        expected_class_type="PrimitiveFloat"
+    )
 
     # Prompt
-    if "118" not in workflow:
-        raise KeyError(
-            "Initial workflow is missing prompt node 118."
-        )
-
-    workflow["118"]["inputs"]["text"] = h3_prompt
-    workflow["81"]["inputs"]["noise_seed"] = BASE_SEED + segment_number - 1
+    set_node_input(
+        workflow,
+        PROMPT_NODE_NAME,
+        "text",
+        h3_prompt,
+        workflow_label=workflow_label,
+        expected_class_type="DPRandomGenerator"
+    )
+    set_node_input(
+        workflow,
+        NOISE_NODE_NAME,
+        "noise_seed",
+        BASE_SEED + segment_number - 1,
+        workflow_label=workflow_label,
+        expected_class_type="RandomNoise"
+    )
 
     # Initial resolution
     set_initial_megapixels(
@@ -1249,13 +1616,13 @@ def prepare_initial_workflow(
     )
 
     # Output name
-    if "87" not in workflow:
-        raise KeyError(
-            "Initial workflow is missing SaveVideo node 87."
-        )
-
-    workflow["87"]["inputs"]["filename_prefix"] = (
-        f"video/segment_{segment_number:04d}"
+    set_node_input(
+        workflow,
+        SAVE_VIDEO_NODE_NAME,
+        "filename_prefix",
+        f"video/segment_{segment_number:04d}",
+        workflow_label=workflow_label,
+        expected_class_type="SaveVideo"
     )
 
     return workflow
@@ -1279,29 +1646,34 @@ def prepare_append_workflow(
         APPEND_WORKFLOW_FILE
     )
 
-    # Duration
-    if "72" not in workflow:
-        raise KeyError(
-            "Append workflow is missing duration node 72."
-        )
+    workflow_label = f"append workflow '{APPEND_WORKFLOW_FILE}'"
+    validate_workflow(
+        workflow,
+        workflow_label=workflow_label,
+        is_append=True
+    )
 
-    workflow["72"]["inputs"]["value"] = duration
+    # Duration
+    set_node_input(
+        workflow,
+        DURATION_NODE_NAME,
+        "value",
+        duration,
+        workflow_label=workflow_label,
+        expected_class_type="PrimitiveFloat"
+    )
 
     # Prompt
-    if "118" not in workflow:
-        raise KeyError(
-            "Append workflow is missing prompt node 118."
-        )
-
-    workflow["118"]["inputs"]["text"] = h3_prompt
+    set_node_input(
+        workflow,
+        PROMPT_NODE_NAME,
+        "text",
+        h3_prompt,
+        workflow_label=workflow_label,
+        expected_class_type="DPRandomGenerator"
+    )
 
     # Previous video
-    if "143" not in workflow:
-        raise KeyError(
-            "Append workflow is missing "
-            "Load Video (Path) node 143."
-        )
-
     previous_video_path = os.path.abspath(
         previous_video_path
     )
@@ -1312,20 +1684,32 @@ def prepare_append_workflow(
             f"{previous_video_path}"
         )
 
-    workflow["143"]["inputs"]["video"] = (
-        previous_video_path
+    set_node_input(
+        workflow,
+        LOAD_VIDEO_NODE_NAME,
+        "video",
+        previous_video_path,
+        workflow_label=workflow_label,
+        expected_class_type="VHS_LoadVideoPath"
     )
 
     # Output name
-    if "87" not in workflow:
-        raise KeyError(
-            "Append workflow is missing SaveVideo node 87."
-        )
-
-    workflow["87"]["inputs"]["filename_prefix"] = (
-        f"video/segment_{segment_number:04d}"
+    set_node_input(
+        workflow,
+        SAVE_VIDEO_NODE_NAME,
+        "filename_prefix",
+        f"video/segment_{segment_number:04d}",
+        workflow_label=workflow_label,
+        expected_class_type="SaveVideo"
     )
-    workflow["81"]["inputs"]["noise_seed"] = BASE_SEED + segment_number - 1
+    set_node_input(
+        workflow,
+        NOISE_NODE_NAME,
+        "noise_seed",
+        BASE_SEED + segment_number - 1,
+        workflow_label=workflow_label,
+        expected_class_type="RandomNoise"
+    )
 
     return workflow
 
@@ -1392,11 +1776,16 @@ def stitch_videos(video_paths):
 
         final_paths_for_stitch.append(trimmed_path)
 
-    with open(STITCH_LIST, "w", encoding="utf-8") as f:
-        for video_path in final_paths_for_stitch:
-            ffmpeg_path = os.path.abspath(video_path).replace("\\", "/")
-            ffmpeg_path = ffmpeg_path.replace("'", "'\\''")
-            f.write(f"file '{ffmpeg_path}'\n")
+    try:
+        with open(STITCH_LIST, "w", encoding="utf-8") as f:
+            for video_path in final_paths_for_stitch:
+                ffmpeg_path = os.path.abspath(video_path).replace("\\", "/")
+                ffmpeg_path = ffmpeg_path.replace("'", "'\\''")
+                f.write(f"file '{ffmpeg_path}'\n")
+    except (OSError, UnicodeError) as e:
+        raise RuntimeError(
+            f"Could not write the FFmpeg stitch list '{STITCH_LIST}': {e}"
+        ) from e
 
     print()
     print("=" * 64)
@@ -1406,11 +1795,26 @@ def stitch_videos(video_paths):
     print(f"Batch file: {STITCH_BAT}")
     print(f"Segments:   {len(final_paths_for_stitch)}")
 
-    subprocess.run(
-        ["cmd", "/c", STITCH_BAT],
-        cwd=SCRIPT_DIR,
-        check=True
-    )
+    try:
+        subprocess.run(
+            ["cmd", "/c", STITCH_BAT],
+            cwd=SCRIPT_DIR,
+            check=True
+        )
+    except FileNotFoundError as e:
+        raise RuntimeError(
+            "Windows command processor 'cmd' was not found, so the stitch "
+            "batch file could not be started."
+        ) from e
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            f"Video stitching failed with exit code {e.returncode}. Check "
+            f"'{STITCH_BAT}' and the generated list '{STITCH_LIST}'."
+        ) from e
+    except OSError as e:
+        raise RuntimeError(
+            f"Could not start the video stitching batch file: {e}"
+        ) from e
 
     print("Stitching complete.")
 
@@ -1420,6 +1824,8 @@ def stitch_videos(video_paths):
 # ============================================================
 
 def get_prompt_text_path(segment_number):
+    """Return the readable prompt-log path for a segment."""
+
     return os.path.join(
         PROMPT_DIR,
         f"segment_{segment_number:04d}.txt"
@@ -1427,6 +1833,8 @@ def get_prompt_text_path(segment_number):
 
 
 def get_prompt_json_path(segment_number):
+    """Return the structured LLM-result log path for a segment."""
+
     return os.path.join(
         PROMPT_DIR,
         f"segment_{segment_number:04d}.json"
@@ -1434,30 +1842,42 @@ def get_prompt_json_path(segment_number):
 
 
 def save_prompt(segment_number, prompt):
-    os.makedirs(PROMPT_DIR, exist_ok=True)
+    """Save the final human-readable MiniMax prompt for resume and review."""
 
-    with open(
-        get_prompt_text_path(segment_number),
-        "w",
-        encoding="utf-8"
-    ) as f:
-        f.write(prompt)
+    path = get_prompt_text_path(segment_number)
+
+    try:
+        os.makedirs(PROMPT_DIR, exist_ok=True)
+
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(prompt)
+    except (OSError, UnicodeError) as e:
+        raise RuntimeError(
+            f"Could not save the prompt for segment {segment_number} to "
+            f"'{path}': {e}"
+        ) from e
 
 
 def save_llm_result(segment_number, llm_result):
-    os.makedirs(PROMPT_DIR, exist_ok=True)
+    """Save the raw structured director response used to resume safely."""
 
-    with open(
-        get_prompt_json_path(segment_number),
-        "w",
-        encoding="utf-8"
-    ) as f:
-        json.dump(
-            llm_result,
-            f,
-            ensure_ascii=False,
-            indent=2
-        )
+    path = get_prompt_json_path(segment_number)
+
+    try:
+        os.makedirs(PROMPT_DIR, exist_ok=True)
+
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(
+                llm_result,
+                f,
+                ensure_ascii=False,
+                indent=2
+            )
+    except (OSError, TypeError, ValueError, UnicodeError) as e:
+        raise RuntimeError(
+            f"Could not save the director response for segment "
+            f"{segment_number} to '{path}': {e}"
+        ) from e
 
 
 def parse_saved_h3_prompt(prompt):
@@ -1515,11 +1935,31 @@ def parse_saved_h3_prompt(prompt):
 
 
 def load_saved_llm_result(segment_number):
+    """Load a segment's JSON result, falling back to its readable prompt."""
+
     json_path = get_prompt_json_path(segment_number)
 
     if os.path.exists(json_path):
-        with open(json_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                result = json.load(f)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(
+                f"Saved director response '{json_path}' is invalid JSON "
+                f"(line {e.lineno}, column {e.colno}): {e.msg}"
+            ) from e
+        except (OSError, UnicodeError) as e:
+            raise RuntimeError(
+                f"Could not read saved director response '{json_path}': {e}"
+            ) from e
+
+        if not isinstance(result, dict):
+            raise RuntimeError(
+                f"Saved director response '{json_path}' must contain a "
+                "JSON object."
+            )
+
+        return result
 
     text_path = get_prompt_text_path(segment_number)
 
@@ -1529,8 +1969,13 @@ def load_saved_llm_result(segment_number):
             f"{text_path}"
         )
 
-    with open(text_path, "r", encoding="utf-8") as f:
-        return parse_saved_h3_prompt(f.read())
+    try:
+        with open(text_path, "r", encoding="utf-8") as f:
+            return parse_saved_h3_prompt(f.read())
+    except (OSError, UnicodeError) as e:
+        raise RuntimeError(
+            f"Could not read saved prompt '{text_path}': {e}"
+        ) from e
 
 
 def find_latest_video_for_prefix(prefix_number):
@@ -1545,24 +1990,36 @@ def find_latest_video_for_prefix(prefix_number):
         f"segment_{prefix_number:04d}*.mp4"
     )
 
-    matches = glob.glob(
-        pattern,
-        recursive=True
-    )
+    try:
+        matches = glob.glob(
+            pattern,
+            recursive=True
+        )
 
-    matches = [
-        os.path.abspath(path)
-        for path in matches
-        if not os.path.basename(path).startswith("trimmed_")
-    ]
+        matches = [
+            os.path.abspath(path)
+            for path in matches
+            if not os.path.basename(path).startswith("trimmed_")
+        ]
+    except OSError as e:
+        raise RuntimeError(
+            f"Could not search ComfyUI output folder '{COMFY_OUTPUT}' for "
+            f"segment {prefix_number}: {e}"
+        ) from e
 
     if not matches:
         return None
 
-    return max(
-        matches,
-        key=os.path.getmtime
-    )
+    try:
+        return max(
+            matches,
+            key=os.path.getmtime
+        )
+    except OSError as e:
+        raise RuntimeError(
+            f"Could not inspect recovered video files for segment "
+            f"{prefix_number}: {e}"
+        ) from e
 
 
 def bootstrap_existing_video_paths(last_completed_segment):
@@ -1606,10 +2063,16 @@ def bootstrap_existing_video_paths(last_completed_segment):
             # This avoids mixing a stale segment_0001 from an older run with
             # otherwise-current files when the interrupted run used the
             # legacy +1 naming bug.
-            score = min(
-                os.path.getmtime(path)
-                for path in paths
-            )
+            try:
+                score = min(
+                    os.path.getmtime(path)
+                    for path in paths
+                )
+            except OSError as e:
+                raise RuntimeError(
+                    "Could not inspect timestamps while rebuilding the "
+                    f"completed video list: {e}"
+                ) from e
 
             candidate_sets.append(
                 (score, label, paths)
@@ -1643,7 +2106,11 @@ def state_matches_run(
     megapixels,
     total_segments
 ):
+    """Return whether checkpoint settings describe the requested run."""
+
     def close_enough(a, b):
+        """Compare persisted numeric settings without trusting their types."""
+
         try:
             return math.isclose(
                 float(a),
@@ -1682,13 +2149,20 @@ def save_generation_state(
     completed_beat_ids=None,
     beats_signature=""
 ):
-    completed_beat_ids = sorted(
-        {
-            int(beat_id)
-            for beat_id in (completed_beat_ids or [])
-            if not isinstance(beat_id, bool)
-        }
-    )
+    """Atomically checkpoint generated videos, continuity, and beat progress."""
+
+    normalized_beat_ids = set()
+
+    for beat_id in completed_beat_ids or []:
+        if isinstance(beat_id, bool):
+            continue
+
+        try:
+            normalized_beat_ids.add(int(beat_id))
+        except (TypeError, ValueError):
+            continue
+
+    completed_beat_ids = sorted(normalized_beat_ids)
 
     state = {
         "segment_length": segment_length,
@@ -1708,18 +2182,23 @@ def save_generation_state(
 
     temp_path = STATE_FILE + ".tmp"
 
-    with open(temp_path, "w", encoding="utf-8") as f:
-        json.dump(
-            state,
-            f,
-            indent=2,
-            ensure_ascii=False
-        )
+    try:
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(
+                state,
+                f,
+                indent=2,
+                ensure_ascii=False
+            )
 
-    os.replace(
-        temp_path,
-        STATE_FILE
-    )
+        os.replace(
+            temp_path,
+            STATE_FILE
+        )
+    except (OSError, TypeError, ValueError, UnicodeError) as e:
+        raise RuntimeError(
+            f"Could not save generation checkpoint '{STATE_FILE}': {e}"
+        ) from e
 
 
 def rebuild_continuity_summary(last_completed_segment):
@@ -1804,8 +2283,25 @@ def load_resume_context(
     state_matches = False
 
     if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            state = json.load(f)
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                state = json.load(f)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(
+                f"Generation checkpoint '{STATE_FILE}' is invalid JSON "
+                f"(line {e.lineno}, column {e.colno}): {e.msg}. Restore a "
+                "valid checkpoint or start a new run."
+            ) from e
+        except (OSError, UnicodeError) as e:
+            raise RuntimeError(
+                f"Could not read generation checkpoint '{STATE_FILE}': {e}"
+            ) from e
+
+        if not isinstance(state, dict):
+            raise RuntimeError(
+                f"Generation checkpoint '{STATE_FILE}' must contain a "
+                "JSON object."
+            )
 
         state_matches = state_matches_run(
             state,
@@ -1974,6 +2470,8 @@ def build_segment_request(
     beats,
     completed_beat_ids
 ):
+    """Build the segment-specific timing and ordered-beat instructions."""
+
     elapsed = (
         segment - 1
     ) * segment_length
@@ -2031,7 +2529,7 @@ def build_segment_request(
             f"OPENING CLOTHING of the STORY. "
             f"For THIS FIRST SEGMENT ONLY, there is no preceding "
             f"video context. "
-            f"Pictures 1 through 4 are subject references only. "
+            f"Pictures 1 through 6 are subject references only. "
             f"Start with the OPENING SCENE of the STORY. "
             f"{beat_focus} "
             f"Pace the required beats naturally so the movie concludes "
@@ -2051,7 +2549,7 @@ def build_segment_request(
         f"to MiniMax as continuation context. "
         f"Continue immediately from that prior video. "
         f"Do not recap the previous ending. "
-        f"Pictures 1 through 4 remain persistent subject "
+        f"Pictures 1 through 6 remain persistent subject "
         f"references only. "
         f"{beat_focus} "
         f"There will be {segments_remaining_after_current} "
@@ -2065,6 +2563,8 @@ def format_recent_segment(
     segment_number,
     llm_result
 ):
+    """Format one saved director result for bounded recent-history context."""
+
     recent_payload = {
         key: value
         for key, value in llm_result.items()
@@ -2086,6 +2586,8 @@ def load_recent_segment_results(
     current_segment,
     max_segments=RECENT_SEGMENTS_MAX
 ):
+    """Load the newest exact segment results used for immediate continuity."""
+
     first_segment = max(
         1,
         current_segment - max_segments
@@ -2154,6 +2656,8 @@ def build_generation_messages(
     selected_recent = []
 
     def make_user_content(recent_items):
+        """Assemble the director's current story, memory, and task context."""
+
         if recent_items:
             recent_text = "\n\n".join(
                 format_recent_segment(
@@ -2284,8 +2788,11 @@ def build_director_rules(
     total_length,
     segment_length,
     total_segments,
-    subject_definitions
+    subject_definitions,
+    beat_spacing
 ):
+    """Build the stable system prompt that governs every director request."""
+
     if subject_definitions:
         subject_context = subject_definitions
     else:
@@ -2314,6 +2821,7 @@ STORY PROGRESSION
 - ROLLING VISUAL/STATE CONTINUITY MEMORY contains older persistent physical state.
 - CURRENT TASK specifies the segment/shot to create now.
 - Pace the unfinished beats so the movie concludes naturally during the final segment.
+- DO NOT rush beats. Try to space beats out at one beat completion every: {beat_spacing} segments."
 
 
 BEAT COMPLETION REPORTING
@@ -2328,7 +2836,6 @@ The JSON output includes completed_beat_ids.
 - If multiple beats finish in one segment, they must be consecutive starting from [NEXT].
 - Never report a later TODO beat while an earlier required beat remains unfinished.
 - completed_beat_ids is metadata for Python only. Do not mention beat IDs or checklist status inside the MiniMax scene description.
-- DO NOT rush beats. Spread the beats across the different segments based on the total segments
 
 
 CONTINUATION
@@ -2344,7 +2851,7 @@ Describe only the new continuation. Do not recap the previous clip.
 
 SUBJECTS
 
-Pictures 1-4 are persistent appearance references only.
+Pictures 1-6 are persistent appearance references only.
 
 {subject_context}
 
@@ -2352,6 +2859,8 @@ When a defined subject appears, use their name and corresponding <Picture N>.
 Preserve persistent clothing, injuries, damage, props, and appearance changes.
 
 Do not output subject_definitions; Python inserts them.
+
+Do not reference <Picture #> or <Subject #> unless defined here.
 
 
 SHOT AND TIMING
@@ -2440,6 +2949,8 @@ Return only the JSON fields required by the response schema.
 # ============================================================
 
 def main():
+    """Run validation, generation, checkpointing, and final video stitching."""
+
     args = parse_args()
 
     segment_length = args.segment_length
@@ -2452,23 +2963,11 @@ def main():
     )
 
     if resume_segment > total_segments:
+        segment_word = "segment" if total_segments == 1 else "segments"
         raise ValueError(
             f"Cannot resume at segment {resume_segment}; "
-            f"this run contains only {total_segments} segments."
+            f"this run contains only {total_segments} {segment_word}."
         )
-
-    print()
-    print("=" * 64)
-    print("H3 AUTOMATED DIRECTOR")
-    print("=" * 64)
-    print(f"Segment length:       {segment_length:g} seconds")
-    print(f"Total story length:   {total_length:g} seconds")
-    print(f"Total segments:       {total_segments}")
-    print(f"Initial megapixels:   {megapixels:g}")
-    print(f"Resume segment:       {resume_segment}")
-    print(f"Initial workflow:     {INITIAL_WORKFLOW_FILE}")
-    print(f"Append workflow:      {APPEND_WORKFLOW_FILE}")
-    print("=" * 64)
 
     # --------------------------------------------------------
     # LOAD INPUT FILES
@@ -2483,9 +2982,25 @@ def main():
         BEATS_FILE
     )
 
+    beat_spacing = math.floor(total_segments / len(beats))
+
     beats_signature = get_beats_signature(
         beats
     )
+
+    print()
+    print("=" * 64)
+    print("H3 AUTOMATED DIRECTOR")
+    print("=" * 64)
+    print(f"Segment length:       {segment_length:g} seconds")
+    print(f"Total story length:   {total_length:g} seconds")
+    print(f"Total segments:       {total_segments}")
+    print(f"Initial megapixels:   {megapixels:g}")
+    print(f"Resume segment:       {resume_segment}")
+    print(f"Initial workflow:     {INITIAL_WORKFLOW_FILE}")
+    print(f"Append workflow:      {APPEND_WORKFLOW_FILE}")
+    print(f"Beat Spacing:         {beat_spacing}")
+    print("=" * 64)
 
     print(
         f"Loaded {len(beats)} required story beat(s) "
@@ -2520,56 +3035,16 @@ def main():
         APPEND_WORKFLOW_FILE
     )
 
-    required_append_nodes = [
-        "72",
-        "81",
-        "87",
-        "118",
-        "114",
-        "116",
-        "120",
-        "137",
-        "139",
-        "140",
-        "142",
-        "143"
-    ]
-
-    missing_append_nodes = [
-        node_id
-        for node_id in required_append_nodes
-        if node_id not in append_test
-    ]
-
-    if missing_append_nodes:
-        raise RuntimeError(
-            "Append workflow is missing required nodes: "
-            + ", ".join(missing_append_nodes)
-        )
-
-    image_batch = append_test["139"]["inputs"]
-
-    expected_subject_inputs = {
-        "image_1": ["114", 0],
-        "image_2": ["116", 0],
-        "image_3": ["120", 0],
-        "image_4": ["137", 0]
-    }
-
-    for input_name, expected_value in expected_subject_inputs.items():
-        actual_value = image_batch.get(input_name)
-
-        if actual_value != expected_value:
-            raise RuntimeError(
-                f"Unexpected append-workflow reference mapping for "
-                f"{input_name}. Expected {expected_value}, "
-                f"found {actual_value}."
-            )
-
-    if append_test["143"].get("class_type") != "VHS_LoadVideoPath":
-        raise RuntimeError(
-            "Append workflow node 143 is not VHS_LoadVideoPath."
-        )
+    validate_workflow(
+        initial_test,
+        workflow_label=f"initial workflow '{INITIAL_WORKFLOW_FILE}'",
+        is_append=False
+    )
+    validate_workflow(
+        append_test,
+        workflow_label=f"append workflow '{APPEND_WORKFLOW_FILE}'",
+        is_append=True
+    )
 
     del initial_test
     del append_test
@@ -2584,7 +3059,8 @@ def main():
         total_length=total_length,
         segment_length=segment_length,
         total_segments=total_segments,
-        subject_definitions=subject_definitions
+        subject_definitions=subject_definitions,
+        beat_spacing=beat_spacing
     )
 
     # --------------------------------------------------------
@@ -2605,7 +3081,13 @@ def main():
             BEAT_PROGRESS_FILE
         ):
             if os.path.exists(reset_path):
-                os.remove(reset_path)
+                try:
+                    os.remove(reset_path)
+                except OSError as e:
+                    raise RuntimeError(
+                        f"Could not reset previous run state "
+                        f"'{reset_path}': {e}"
+                    ) from e
 
     else:
         print()
@@ -2872,7 +3354,8 @@ def main():
         )
 
         video_path = get_video_path(
-            comfy_result
+            comfy_result,
+            workflow
         )
 
         print(
@@ -2966,7 +3449,13 @@ def main():
                     "ComfyUI rendering."
                 )
 
-            continuity_summary = continuity_future.result()
+            try:
+                continuity_summary = continuity_future.result()
+            except Exception as e:
+                raise RuntimeError(
+                    f"The background continuity update for segment "
+                    f"{continuity_target_segment} failed: {e}"
+                ) from e
             continuity_summary_segment = continuity_target_segment
 
             print(
@@ -3056,4 +3545,38 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(
+            "\nGeneration cancelled by the user. Completed segments remain "
+            "available for resume.",
+            file=sys.stderr
+        )
+        raise SystemExit(130) from None
+    except Exception as e:
+        # Keep the default console output approachable. Developers can opt in
+        # to the original traceback while diagnosing an unexpected problem.
+        error_text = str(e).strip() or (
+            f"{type(e).__name__} occurred without additional details."
+        )
+
+        print("\n" + "=" * 64, file=sys.stderr)
+        print("MINIMAX VIDEO GENERATION STOPPED", file=sys.stderr)
+        print("=" * 64, file=sys.stderr)
+        print(f"Error: {error_text}", file=sys.stderr)
+        print(
+            "Any completed segments and checkpoints were left in place. "
+            "Fix the issue above, then use --resume with the next segment.",
+            file=sys.stderr
+        )
+
+        if os.environ.get("MINIMAX_DEBUG"):
+            raise
+
+        print(
+            "For a full technical traceback, set MINIMAX_DEBUG=1 and run "
+            "the same command again.",
+            file=sys.stderr
+        )
+        raise SystemExit(1) from None

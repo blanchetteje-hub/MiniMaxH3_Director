@@ -27,7 +27,7 @@
     },
     "class_type": "VAELoader",
     "_meta": {
-      "title": "Load VAE"
+      "title": "Load Audio VAE"
     }
   },
   "76": {
@@ -36,7 +36,7 @@
     },
     "class_type": "VAELoader",
     "_meta": {
-      "title": "Load VAE"
+      "title": "Load Video VAE"
     }
   },
   "77": {
@@ -81,7 +81,7 @@
         0
       ],
       "conditioning": [
-        "140",
+        "148",
         0
       ]
     },
@@ -92,7 +92,7 @@
   },
   "81": {
     "inputs": {
-      "noise_seed": 273
+      "noise_seed": 277
     },
     "class_type": "RandomNoise",
     "_meta": {
@@ -101,7 +101,7 @@
   },
   "82": {
     "inputs": {
-      "unet_name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+      "unet_name": "minimax_h3_ref2va_pruned_int8_convrot.safetensors",
       "weight_dtype": "default"
     },
     "class_type": "UNETLoader",
@@ -128,7 +128,7 @@
         0
       ],
       "latent_image": [
-        "140",
+        "148",
         1
       ]
     },
@@ -233,26 +233,26 @@
   },
   "114": {
     "inputs": {
-      "image": "Image1.png"
+      "image": "0.png"
     },
     "class_type": "LoadImage",
     "_meta": {
-      "title": "Load Image"
+      "title": "Reference Image 1"
     }
   },
   "116": {
     "inputs": {
-      "image": "Image2.png"
+      "image": "0.png"
     },
     "class_type": "LoadImage",
     "_meta": {
-      "title": "Load Image"
+      "title": "Reference Image 2"
     }
   },
   "118": {
     "inputs": {
       "text": "",
-      "seed": 922,
+      "seed": 1115,
       "autorefresh": "No"
     },
     "class_type": "DPRandomGenerator",
@@ -262,20 +262,20 @@
   },
   "120": {
     "inputs": {
-      "image": "Image3.jpg"
+      "image": "0.png"
     },
     "class_type": "LoadImage",
     "_meta": {
-      "title": "Load Image"
+      "title": "Reference Image 3"
     }
   },
   "137": {
     "inputs": {
-      "image": "Image4.jpg"
+      "image": "0.png"
     },
     "class_type": "LoadImage",
     "_meta": {
-      "title": "Load Image"
+      "title": "Reference Image 4"
     }
   },
   "138": {
@@ -283,7 +283,7 @@
       "shift_video": 12,
       "shift_audio": 6,
       "model": [
-        "90",
+        "149",
         0
       ]
     },
@@ -294,7 +294,7 @@
   },
   "139": {
     "inputs": {
-      "inputcount": 4,
+      "inputcount": 6,
       "Update inputs": null,
       "image_1": [
         "114",
@@ -311,6 +311,14 @@
       "image_4": [
         "137",
         0
+      ],
+      "image_5": [
+        "144",
+        0
+      ],
+      "image_6": [
+        "145",
+        0
       ]
     },
     "class_type": "ImageBatchMulti",
@@ -318,16 +326,68 @@
       "title": "Image Batch Multi"
     }
   },
-  "140": {
+  "142": {
     "inputs": {
-      "prompt": [
-        "118",
+      "vae": [
+        "76",
         0
       ],
-      "length": [
-        "73",
-        1
+      "images": [
+        "143",
+        0
       ],
+      "audio_vae": [
+        "74",
+        0
+      ],
+      "audio": [
+        "143",
+        2
+      ]
+    },
+    "class_type": "MiniMaxH3EncodeAVPatched",
+    "_meta": {
+      "title": "MiniMax H3 Encode AV (Backported)"
+    }
+  },
+  "143": {
+    "inputs": {
+      "video": "H:\\Images\\output\\video\\segment_0001_00001_.mp4",
+      "force_rate": 0,
+      "custom_width": 0,
+      "custom_height": 0,
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1,
+      "format": "None"
+    },
+    "class_type": "VHS_LoadVideoPath",
+    "_meta": {
+      "title": "Load Video (Path) 🎥🅥🅗🅢"
+    }
+  },
+  "144": {
+    "inputs": {
+      "image": "0.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Reference Image 5"
+    }
+  },
+  "145": {
+    "inputs": {
+      "image": "0.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Reference Image 6"
+    }
+  },
+  "148": {
+    "inputs": {
+      "prompt": "",
+      "length": 124,
       "context_frames": 2,
       "pin_last_frame": true,
       "ref_image_size": "match",
@@ -357,44 +417,18 @@
       "title": "MiniMax H3 Video Extend (Backported)"
     }
   },
-  "142": {
+  "149": {
     "inputs": {
-      "vae": [
-        "76",
+      "lora_name": "",
+      "strength_model": 0.5,
+      "model": [
+        "90",
         0
-      ],
-      "images": [
-        "143",
-        0
-      ],
-      "audio_vae": [
-        "74",
-        0
-      ],
-      "audio": [
-        "143",
-        2
       ]
     },
-    "class_type": "MiniMaxH3EncodeAVPatched",
+    "class_type": "LoraLoaderModelOnly",
     "_meta": {
-      "title": "MiniMax H3 Encode AV (Backported)"
-    }
-  },
-  "143": {
-    "inputs": {
-      "video": "",
-      "force_rate": 0,
-      "custom_width": 0,
-      "custom_height": 0,
-      "frame_load_cap": 0,
-      "skip_first_frames": 0,
-      "select_every_nth": 1,
-      "format": "None"
-    },
-    "class_type": "VHS_LoadVideoPath",
-    "_meta": {
-      "title": "Load Video (Path) 🎥🅥🅗🅢"
+      "title": "Load LoRA"
     }
   }
 }

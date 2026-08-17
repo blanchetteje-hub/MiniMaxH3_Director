@@ -1,7 +1,7 @@
 {
   "72": {
     "inputs": {
-      "value": 5
+      "value": 15
     },
     "class_type": "PrimitiveFloat",
     "_meta": {
@@ -27,7 +27,7 @@
     },
     "class_type": "VAELoader",
     "_meta": {
-      "title": "Load VAE"
+      "title": "Load Audio VAE"
     }
   },
   "76": {
@@ -36,7 +36,7 @@
     },
     "class_type": "VAELoader",
     "_meta": {
-      "title": "Load VAE"
+      "title": "Load Video VAE"
     }
   },
   "77": {
@@ -65,7 +65,7 @@
       "steps": 6,
       "denoise": 1,
       "model": [
-        "90",
+        "140",
         0
       ]
     },
@@ -77,7 +77,7 @@
   "80": {
     "inputs": {
       "model": [
-        "90",
+        "140",
         0
       ],
       "conditioning": [
@@ -218,7 +218,7 @@
   },
   "90": {
     "inputs": {
-      "lora_name": "MiniMaxH3\\minimax_h3_ref2v_turbo_4step_v0.1_comfyui.safetensors",
+      "lora_name": "MiniMaxH3\\minimax_h3_turbo_v4_step600_pruned_comfyui.safetensors",
       "strength": 1,
       "low_vram": true,
       "model": [
@@ -231,17 +231,6 @@
       "title": "MiniMax-H3 Turbo LoRA"
     }
   },
-  "94": {
-    "inputs": {
-      "aspect_ratio": "16:9 (Widescreen)",
-      "megapixels": 0.20,
-      "multiple": 64
-    },
-    "class_type": "ResolutionSelector",
-    "_meta": {
-      "title": "Resolution Selector"
-    }
-  },
   "105": {
     "inputs": {
       "prompt": [
@@ -249,11 +238,11 @@
         0
       ],
       "width": [
-        "94",
+        "141",
         0
       ],
       "height": [
-        "94",
+        "141",
         1
       ],
       "length": [
@@ -288,6 +277,14 @@
       "ref_images.ref_image_3": [
         "137",
         0
+      ],
+      "ref_images.ref_image_4": [
+        "138",
+        0
+      ],
+      "ref_images.ref_image_5": [
+        "139",
+        0
       ]
     },
     "class_type": "MiniMaxH3ReferenceToVideo",
@@ -297,20 +294,20 @@
   },
   "114": {
     "inputs": {
-      "image": "Image1.png"
+      "image": "0.png"
     },
     "class_type": "LoadImage",
     "_meta": {
-      "title": "Load Image"
+      "title": "Reference Image 1"
     }
   },
   "116": {
     "inputs": {
-      "image": "image2.png"
+      "image": "0.png"
     },
     "class_type": "LoadImage",
     "_meta": {
-      "title": "Load Image"
+      "title": "Reference Image 2"
     }
   },
   "118": {
@@ -326,20 +323,63 @@
   },
   "120": {
     "inputs": {
-      "image": "Image3.jpg"
+      "image": "0.png"
     },
     "class_type": "LoadImage",
     "_meta": {
-      "title": "Load Image"
+      "title": "Reference Image 3"
     }
   },
   "137": {
     "inputs": {
-      "image": "Image3.jpg"
+      "image": "0.png"
     },
     "class_type": "LoadImage",
     "_meta": {
-      "title": "Load Image"
+      "title": "Reference Image 4"
+    }
+  },
+  "138": {
+    "inputs": {
+      "image": "0.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Reference Image 5"
+    }
+  },
+  "139": {
+    "inputs": {
+      "image": "0.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Reference Image 6"
+    }
+  },
+  "140": {
+    "inputs": {
+      "lora_name": "",
+      "strength_model": 0.5,
+      "model": [
+        "90",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "Load LoRA"
+    }
+  },
+  "141": {
+    "inputs": {
+      "aspect_ratio": "16:9 (Widescreen)",
+      "megapixels": 0.2,
+      "multiple": 64
+    },
+    "class_type": "ResolutionSelector",
+    "_meta": {
+      "title": "Resolution Selector"
     }
   }
 }
