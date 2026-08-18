@@ -99,6 +99,7 @@ PROMPT_DIR = os.path.join(SCRIPT_DIR, "prompts")
 STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
 CONTINUITY_MEMORY_FILE = os.path.join(SCRIPT_DIR, "continuity_memory.txt")
 SUBJECT_STATE_FILE = os.path.join(SCRIPT_DIR, "subject_state.txt")
+SUBJECT_STATE_FORMAT_VERSION = 3
 BEAT_PROGRESS_FILE = os.path.join(SCRIPT_DIR, "beat_progress.txt")
 DIALOGUE_HISTORY_FILE = os.path.join(SCRIPT_DIR, "dialogue_history.json")
 
@@ -786,6 +787,56 @@ def get_next_beat_id(beats, completed_beat_ids):
     return next_id
 
 
+def get_beat_deadline_segment(beat_id, beats, total_segments):
+    """Return the last segment allocated to one ordered beat."""
+
+    if not 1 <= beat_id <= len(beats):
+        raise ValueError(f"Invalid beat ID for pacing deadline: {beat_id}")
+
+    return math.ceil(beat_id * total_segments / len(beats))
+
+
+def get_required_beat_completion(
+    beats,
+    completed_beat_ids,
+    current_segment,
+    total_segments
+):
+    """Return the next beat when its hard completion deadline has arrived."""
+
+    next_beat_id = get_next_beat_id(beats, completed_beat_ids)
+
+    if next_beat_id is None:
+        return None
+
+    deadline_segment = get_beat_deadline_segment(
+        next_beat_id,
+        beats,
+        total_segments
+    )
+
+    if current_segment >= deadline_segment:
+        return next_beat_id
+
+    return None
+
+
+def reports_beat_completion(reported_beat_ids, required_beat_id):
+    """Return whether a director response reports the required beat ID."""
+
+    for raw_beat_id in reported_beat_ids or []:
+        if isinstance(raw_beat_id, bool):
+            continue
+
+        try:
+            if int(raw_beat_id) == required_beat_id:
+                return True
+        except (TypeError, ValueError):
+            continue
+
+    return False
+
+
 def format_beat_progress(beats, completed_beat_ids):
     """
     Build the authoritative checklist shown to the director every segment.
@@ -912,6 +963,7 @@ def save_subject_state(subject_state, through_segment):
         state_text = "(No subject state has been established yet.)"
 
     content = (
+        f"Subject state format version {SUBJECT_STATE_FORMAT_VERSION}\n"
         f"Subject state through segment {through_segment}\n"
         f"{'=' * 48}\n\n"
         f"{state_text}\n"
@@ -943,7 +995,8 @@ def load_subject_state(last_completed_segment):
             ) from e
 
         header_match = re.match(
-            r"Subject state through segment (\d+)\n={48}\n\n(.*)",
+            rf"Subject state format version {SUBJECT_STATE_FORMAT_VERSION}"
+            r"\nSubject state through segment (\d+)\n={48}\n\n(.*)",
             content,
             flags=re.DOTALL
         )
@@ -1428,8 +1481,8 @@ HARD LIMIT:
 - Omit anything that no longer matters.
 
 Keep ONLY persistent continuity information a future segment might need:
-- current location and important environment state
-- relevant characters' current positions and physical conditions
+- current setting and important environment state
+- relevant characters' physical conditions and ongoing interactions
 - persistent injuries, clothing changes, dirt/blood/damage
 - important carried objects or props
 - speaker IDs and established voice facts
@@ -1439,7 +1492,7 @@ Keep ONLY persistent continuity information a future segment might need:
 
 Do NOT track which plot beats are complete or still pending.
 Do NOT preserve ordinary camera staging, completed dialogue, temporary
-expressions, or resolved details.
+expressions, resolved details, or where a subject is placed in the shot.
 Do not describe future story events.
 Do not include general MiniMax instructions.\nReturn ONLY the final continuity bullet list. Do not output analysis, reasoning,\na thinking process, or commentary about these instructions.\n"""
         }
@@ -1477,7 +1530,9 @@ def update_subject_state(previous_state, segment_number, llm_result):
                 "sequential AI-video director. Preserve known state for any "
                 "subject absent from the new segment. Update facts only when "
                 "the completed segment explicitly establishes a change. Do not "
-                "invent facts, future events, plot summaries, or camera notes."
+                "invent facts, future events, plot summaries, camera notes, "
+                "physical pose/condition, or a subject's spatial placement in "
+                "the shot."
             )
         },
         {
@@ -1497,19 +1552,19 @@ Rewrite the complete current subject-state record. Include one clearly named
 block for every known subject, retaining subjects that do not appear in this
 segment. In each block, record only known facts in these categories:
 - Clothing, footwear, accessories, and clothing changes.
-- Exact current location, orientation, and physical position (for example,
-  standing by a doorway, seated in a car, prone on the ground, or supine).
 - Emotional state and immediately relevant intent or relationship state.
-- Injuries, fatigue, cleanliness/wetness, blood, damage, and other physical
-  conditions.
+- Injuries, visible blood, damage, and treatment or bandages.
 - Objects held/worn/carried, props under their control, and restraints.
-- Ongoing action, contact, pose, gaze direction, or movement that must carry
+- Ongoing action, contact, gaze direction, or movement that must carry
   directly into the next clip.
 - Established speaker ID, voice, age/appearance facts, or other identity facts
   needed for continuity.
 
 Use concise bullet points. Omit categories with no known fact, but never erase
-previously known state merely because it is absent from this segment. Maximum
+previously known allowed state merely because it is absent from this segment.
+Remove any prior physical-pose, general-condition, location, orientation, or
+shot-placement facts.
+Maximum
 {SUBJECT_STATE_MAX_CHARS} characters. Return only the subject-state record.
 """
         }
@@ -2943,12 +2998,44 @@ def build_segment_request(
             "naturally without repeating completed beats."
         )
     else:
+        deadline_segment = get_beat_deadline_segment(
+            next_beat_id,
+            beats,
+            total_segments
+        )
+        previous_deadline = (
+            get_beat_deadline_segment(
+                next_beat_id - 1,
+                beats,
+                total_segments
+            )
+            if next_beat_id > 1
+            else 0
+        )
+        allocated_segments = deadline_segment - previous_deadline
+
+        if segment >= deadline_segment:
+            pacing_instruction = (
+                f"PACING DEADLINE: B{next_beat_id:03d} is due no later than "
+                f"segment {deadline_segment}. THIS SEGMENT MUST visibly and "
+                f"fully complete B{next_beat_id:03d}. Return "
+                f"completed_beat_ids: [{next_beat_id}]. Do not defer it again."
+            )
+        else:
+            pacing_instruction = (
+                f"PACING DEADLINE: B{next_beat_id:03d} must be fully completed "
+                f"no later than segment {deadline_segment}. It has "
+                f"{allocated_segments} allocated segment(s). Advance it now; "
+                f"you may complete it early only if the visible event is fully "
+                f"shown, then report it in completed_beat_ids."
+            )
+
         beat_focus = (
             f"The authoritative NEXT required beat is "
             f"B{next_beat_id:03d}: {beats[next_beat_id - 1]} "
             f"There are {unfinished_beats} unfinished beat(s). "
             "Do not skip this beat or substantially enact later TODO beats "
-            "before it is complete. A beat may span multiple segments."
+            f"before it is complete. {pacing_instruction}"
         )
 
     if segment == 1:
@@ -3151,8 +3238,10 @@ AUTHORITATIVE CURRENT SUBJECT STATE
 
 This record states the required starting condition of every known subject at
 the beginning of this segment. Preserve it unless this new segment explicitly
-changes it. Do not change clothing, location, physical position, emotional
-state, injuries, props, identity, or an ongoing action without showing why.
+changes it. Do not change clothing, emotional state, injuries, props, identity,
+or an ongoing action without showing why. Physical pose/condition, location,
+orientation, and placement in the shot are established by the preceding video
+and are intentionally excluded from this record.
 
 {subject_state_text}
 
@@ -3261,7 +3350,7 @@ def build_director_rules(
     segment_length,
     total_segments,
     subject_definitions,
-    beat_spacing
+    megapixels
 ):
     """Build the stable system prompt that governs every director request."""
 
@@ -3269,6 +3358,25 @@ def build_director_rules(
         subject_context = subject_definitions
     else:
         subject_context = "N/A"
+
+    resolution_rules = []
+
+    if megapixels < 0.5:
+        resolution_rules.append(
+            "- Low resolution (under 0.5 MP): use close-up shots. Keep "
+            "subjects large and clear in the frame."
+        )
+
+    if megapixels < 0.4:
+        resolution_rules.append(
+            "- Very low resolution (under 0.4 MP): use little movement. "
+            "Keep the camera still or move it slowly. Use simple actions."
+        )
+
+    resolution_guidance = (
+        "\n".join(resolution_rules)
+        or "- No additional low-resolution guidance."
+    )
 
     return f"""
 You are directing an automatically generated movie from a supplied creative brief
@@ -3279,6 +3387,10 @@ The movie is approximately {total_length:g} seconds long, divided into
 
 Generate exactly ONE MiniMax H3 segment description at a time.
 
+RESOLUTION GUIDANCE
+
+{resolution_guidance}
+
 STORY PROGRESSION
 
 - The AUTHORITATIVE STORY BEAT CHECKLIST controls what has happened and what must happen next.
@@ -3286,7 +3398,8 @@ STORY PROGRESSION
 - [NEXT] is the immediate required plot beat. Continue working on it until it is actually completed.
 - [TODO] beats are future required events. Keep them in the listed order.
 - Do not skip a NEXT beat to reach a later TODO beat.
-- A beat may span multiple video segments. Do not mark it complete merely because it has started.
+- Every beat has a hard completion deadline in CURRENT TASK. Do not extend a beat beyond its allocated deadline.
+- When CURRENT TASK says a beat is due, visibly complete that beat in this segment and report it.
 - The SOURCE STORY / CREATIVE BRIEF supplies characters, setting, dialogue, tone, details, and connective material.
 - If the creative brief conflicts with the ordered checklist, the checklist controls plot order.
 - AUTHORITATIVE CURRENT SUBJECT STATE defines every known subject's starting condition. Preserve it unless this segment visibly changes it.
@@ -3295,7 +3408,6 @@ STORY PROGRESSION
 - ROLLING VISUAL/STATE CONTINUITY MEMORY contains older persistent physical state.
 - CURRENT TASK specifies the segment/shot to create now.
 - Pace the unfinished beats so the movie concludes naturally during the final segment.
-- DO NOT rush beats. Try to space beats out at one beat completion every: {beat_spacing} segments."
 
 
 BEAT COMPLETION REPORTING
@@ -3309,6 +3421,9 @@ The JSON output includes completed_beat_ids.
 - Never report an already-[DONE] beat.
 - If multiple beats finish in one segment, they must be consecutive starting from [NEXT].
 - Never report a later TODO beat while an earlier required beat remains unfinished.
+- Before returning JSON, compare the completed scene description against the checklist. Report EVERY consecutive beat fully shown in THIS segment, not only the beat that was [NEXT] when the request began.
+- Example: if this segment fully shows B003, then B004, then B005, return completed_beat_ids: [3, 4, 5]. Do not return [3] alone.
+- If CURRENT TASK says B### is due this segment, completed_beat_ids MUST include that B### after visibly completing it.
 - completed_beat_ids is metadata for Python only. Do not mention beat IDs or checklist status inside the MiniMax scene description.
 
 
@@ -3331,9 +3446,10 @@ Pictures 1-6 are persistent appearance references only.
 
 When a defined subject appears, use their name and corresponding <Picture N>.
 Preserve persistent clothing, injuries, damage, props, and appearance changes.
-Preserve each subject's exact location, orientation, physical position,
-emotional state, relationships, and ongoing action from AUTHORITATIVE CURRENT
-SUBJECT STATE until the new scene explicitly changes them.
+Preserve each subject's emotional state, relationships, and ongoing action from
+AUTHORITATIVE CURRENT SUBJECT STATE until the new scene explicitly changes
+them. Do not use that record for physical pose/condition, subject location,
+orientation, or placement in the shot.
 
 Do not output subject_definitions; Python inserts them.
 
@@ -3464,7 +3580,7 @@ def main():
         BEATS_FILE
     )
 
-    beat_spacing = math.floor(total_segments / len(beats))
+    target_segments_per_beat = total_segments / len(beats)
 
     beats_signature = get_beats_signature(
         beats
@@ -3481,7 +3597,10 @@ def main():
     print(f"Resume segment:       {resume_segment}")
     print(f"Initial workflow:     {INITIAL_WORKFLOW_FILE}")
     print(f"Append workflow:      {APPEND_WORKFLOW_FILE}")
-    print(f"Beat Spacing:         {beat_spacing}")
+    print(
+        f"Target beat pace:     "
+        f"{target_segments_per_beat:.2f} segment(s)/beat"
+    )
     print("=" * 64)
 
     print(
@@ -3542,7 +3661,7 @@ def main():
         segment_length=segment_length,
         total_segments=total_segments,
         subject_definitions=subject_definitions,
-        beat_spacing=beat_spacing
+        megapixels=megapixels
     )
 
     # --------------------------------------------------------
@@ -3738,6 +3857,19 @@ def main():
             f"{recent_segments_included})"
         )
 
+        required_beat_id = get_required_beat_completion(
+            beats=beats,
+            completed_beat_ids=completed_beat_ids,
+            current_segment=segment,
+            total_segments=total_segments
+        )
+
+        if required_beat_id is not None:
+            print(
+                f"Pacing deadline: B{required_beat_id:03d} must be "
+                f"completed in this segment."
+            )
+
         llm_result = ask_llm(
             messages
         )
@@ -3746,6 +3878,50 @@ def main():
             "completed_beat_ids",
             []
         )
+
+        if (
+            required_beat_id is not None
+            and not reports_beat_completion(
+                reported_beat_ids,
+                required_beat_id
+            )
+        ):
+            print(
+                f"The director did not report required pacing beat "
+                f"B{required_beat_id:03d}; requesting a corrected segment "
+                f"description before rendering."
+            )
+
+            correction_messages = messages + [
+                {
+                    "role": "user",
+                    "content": (
+                        f"PACING CORRECTION: Regenerate the entire JSON "
+                        f"response. This segment is the hard deadline for "
+                        f"B{required_beat_id:03d}. Visibly and fully depict "
+                        f"that beat, then return completed_beat_ids containing "
+                        f"{required_beat_id}. Do not merely add the ID; the "
+                        f"scene description itself must complete the beat."
+                    )
+                }
+            ]
+
+            llm_result = ask_llm(correction_messages)
+            reported_beat_ids = llm_result.get(
+                "completed_beat_ids",
+                []
+            )
+
+            if not reports_beat_completion(
+                reported_beat_ids,
+                required_beat_id
+            ):
+                raise RuntimeError(
+                    f"LM Studio did not satisfy the hard pacing deadline for "
+                    f"B{required_beat_id:03d} after a correction request. "
+                    "No video was rendered; rerun the segment after reviewing "
+                    "the story beat and director prompt."
+                )
 
         print(
             "Director-reported beat completions for this segment: "

@@ -388,16 +388,28 @@ After each completed clip, the script creates two additional records used as
 authoritative context for the next LM Studio request:
 
 - `subject_state.txt` records each known subject's current clothing,
-  location/orientation/body position, emotional and relationship state,
-  injuries or physical condition, held props, ongoing action, and relevant
-  identity or voice facts. A subject absent from a later clip retains their
-  last known state until the story explicitly changes it.
+  emotional and relationship state, injuries/damage, held props, ongoing
+  action, and relevant identity or voice facts. It intentionally excludes
+  physical pose/condition, subject location, orientation, and placement in the
+  shot; the preceding video supplies that continuity. A subject absent from a
+  later clip retains their last known state until the story explicitly changes
+  it.
 - `dialogue_history.json` contains every previously used spoken sentence,
   without speaker labels. The director receives the entire list and is told it
   cannot repeat or closely reword any listed sentence.
 
 The records are written only after a clip renders successfully. On resume, the
 script reconstructs them from completed segment prompt logs whenever needed.
+
+### Beat pacing
+
+Every beat receives a hard completion deadline based on the requested segment
+and beat counts. For example, a 100-segment run with 50 beats schedules B001
+by segment 2, B002 by segment 4, and so on. On a beat's deadline segment, the
+director must visibly complete it and include its ID in `completed_beat_ids`.
+If the first response misses that requirement, the script requests one
+corrected full segment description before sending anything to ComfyUI. A second
+miss stops the run before rendering a clip that would fall further behind.
 
 ## 10. Preflight before the first generation
 
@@ -508,8 +520,9 @@ workflow, preserve these titles or update the matching constants in
 - Each segment is exactly one directed shot.
 - Recent segment descriptions are kept verbatim for immediate continuity.
 - Older descriptions are compacted into rolling continuity memory.
-- Persistent clothing, injuries, damage, props, positions, and active physical
-  interactions are carried forward.
+- Persistent clothing, injuries, damage, props, and active physical
+  interactions are carried forward. Physical pose/condition and subject
+  placement in the shot are established by the preceding video instead.
 - Beat completion is accepted only as a contiguous prefix of `beats.txt`, so a
   model cannot silently skip a required event.
 - A single background LM Studio worker updates old continuity memory while
