@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -17,23 +18,75 @@ import requests
 # CONFIGURATION
 # ============================================================
 
-LM_STUDIO_URL = "http://192.168.0.203:1234"
-COMFY_URL = "http://127.0.0.1:8188"
-
-INITIAL_WORKFLOW_FILE = "Minimax_auto_API.json"
-APPEND_WORKFLOW_FILE = "Minimax_auto_append_API.json"
-
-STORY_FILE = "story.txt"
-BEATS_FILE = "beats.txt"
-SUBJECT_DEFINITIONS_FILE = "subjects.txt"
-
-COMFY_ROOT = r"C:\ComfyUI_windows_portable\ComfyUI"
-COMFY_OUTPUT = r"H:\images\output"
-VIDEO_OUTPUT = r"H:\images\output\video"
-
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-STITCH_BAT = os.path.join(VIDEO_OUTPUT, "stitch.bat")
+
+
+def configured_path(environment_name, default_path):
+    """Return an absolute, expanded path from an environment setting."""
+
+    configured_value = os.environ.get(environment_name, default_path)
+    expanded_value = os.path.expandvars(
+        os.path.expanduser(configured_value)
+    )
+    return os.path.abspath(expanded_value)
+
+
+# URLs and filesystem locations can be customized without editing Python.
+# Windows keeps the original project defaults, while Linux defaults to a
+# conventional ~/ComfyUI installation.
+LM_STUDIO_URL = os.environ.get(
+    "MINIMAX_LM_STUDIO_URL",
+    "http://192.168.0.203:1234"
+).rstrip("/")
+COMFY_URL = os.environ.get(
+    "MINIMAX_COMFY_URL",
+    "http://127.0.0.1:8188"
+).rstrip("/")
+
+if os.name == "nt":
+    DEFAULT_COMFY_ROOT = r"C:\ComfyUI_windows_portable\ComfyUI"
+else:
+    DEFAULT_COMFY_ROOT = os.path.join("~", "ComfyUI")
+
+COMFY_ROOT = configured_path(
+    "MINIMAX_COMFYUI_ROOT",
+    DEFAULT_COMFY_ROOT
+)
+
+if os.name == "nt":
+    # Preserve the original project's separate Windows output drive.
+    DEFAULT_COMFY_OUTPUT = r"H:\images\output"
+else:
+    DEFAULT_COMFY_OUTPUT = os.path.join(COMFY_ROOT, "output")
+
+COMFY_OUTPUT = configured_path(
+    "MINIMAX_COMFYUI_OUTPUT",
+    DEFAULT_COMFY_OUTPUT
+)
+VIDEO_OUTPUT = configured_path(
+    "MINIMAX_VIDEO_OUTPUT",
+    os.path.join(COMFY_OUTPUT, "video")
+)
+
+# Project inputs are resolved beside this script, so launching it from a
+# different working directory behaves identically on Windows and Linux.
+INITIAL_WORKFLOW_FILE = os.path.join(
+    SCRIPT_DIR,
+    "Minimax_auto_API.json"
+)
+APPEND_WORKFLOW_FILE = os.path.join(
+    SCRIPT_DIR,
+    "Minimax_auto_append_API.json"
+)
+STORY_FILE = os.path.join(SCRIPT_DIR, "story.txt")
+BEATS_FILE = os.path.join(SCRIPT_DIR, "beats.txt")
+SUBJECT_DEFINITIONS_FILE = os.path.join(
+    SCRIPT_DIR,
+    "subjects.txt"
+)
+
 STITCH_LIST = os.path.join(VIDEO_OUTPUT, "list.txt")
+FINAL_VIDEO = os.path.join(VIDEO_OUTPUT, "final.mp4")
 
 FRAME_RATE = 24
 TRIM_FRAMES_AFTER_FIRST = 2
@@ -74,17 +127,46 @@ NOISE_NODE_NAME = "RandomNoise"
 SAVE_VIDEO_NODE_NAME = "Save Video"
 RESOLUTION_NODE_NAME = "Resolution Selector"
 IMAGE_BATCH_NODE_NAME = "Image Batch Multi"
+MATH_NODE_NAME = "Math Expression"
+VIDEO_EXTEND_NODE_NAME = "MiniMax H3 Video Extend (Backported)"
+ENCODE_AV_NODE_NAME = "MiniMax H3 Encode AV (Backported)"
 LOAD_VIDEO_NODE_NAME = "Load Video (Path) 🎥🅥🅗🅢"
 REFERENCE_IMAGE_NODE_NAMES = tuple(
     f"Reference Image {image_number}"
     for image_number in range(1, 7)
 )
 
+# ComfyUI stores nested model selections with the host operating system's path
+# separator. Normalizing these fields lets one exported workflow work on both
+# Windows (backslashes) and Linux (forward slashes).
+WORKFLOW_PATH_INPUT_NAMES = {
+    "clip_name",
+    "image",
+    "lora_name",
+    "unet_name",
+    "vae_name"
+}
+
 # ============================================================
 # ARGUMENTS
 # ============================================================
 
-def parse_args():
+def normalize_command_line(arguments):
+    """Accept numeric arguments separated by spaces, commas, or both."""
+
+    normalized = []
+
+    for argument in arguments:
+        # This program has no free-form positional text, so comma splitting is
+        # unambiguous. Accept ``5, 10, .2`` and ``5,10,.2`` as well as the
+        # conventional ``5 10 .2`` form.
+        pieces = argument.split(",")
+        normalized.extend(piece.strip() for piece in pieces if piece.strip())
+
+    return normalized
+
+
+def parse_args(arguments=None):
     """Parse and validate the command-line settings for one generation run."""
 
     parser = argparse.ArgumentParser(
@@ -119,7 +201,12 @@ def parse_args():
         )
     )
 
-    args = parser.parse_args()
+    if arguments is None:
+        arguments = sys.argv[1:]
+
+    args = parser.parse_args(
+        normalize_command_line(arguments)
+    )
 
     if args.segment_length <= 0:
         parser.error("segment_length must be greater than 0.")
@@ -207,6 +294,54 @@ SUMMARY_RESPONSE_FORMAT = {
 # FILE HELPERS
 # ============================================================
 
+def validate_runtime_environment():
+    """Fail early when required local tools or output paths are unavailable."""
+
+    missing_tools = [
+        tool_name
+        for tool_name in ("ffmpeg", "ffprobe")
+        if shutil.which(tool_name) is None
+    ]
+
+    if missing_tools:
+        raise RuntimeError(
+            "Required command-line tool(s) not found on PATH: "
+            + ", ".join(missing_tools)
+            + ". Install FFmpeg, open a new terminal, and try again."
+        )
+
+    if not os.path.isdir(COMFY_OUTPUT):
+        raise FileNotFoundError(
+            f"ComfyUI output folder not found: {COMFY_OUTPUT}\n"
+            "Set MINIMAX_COMFYUI_OUTPUT to the output folder used by your "
+            "ComfyUI installation."
+        )
+
+
+def normalize_workflow_paths(workflow):
+    """Use the current operating system's separator in ComfyUI file inputs."""
+
+    for node in workflow.values():
+        if not isinstance(node, dict):
+            continue
+
+        inputs = node.get("inputs")
+
+        if not isinstance(inputs, dict):
+            continue
+
+        for input_name in WORKFLOW_PATH_INPUT_NAMES:
+            input_value = inputs.get(input_name)
+
+            if isinstance(input_value, str):
+                inputs[input_name] = input_value.replace(
+                    "\\",
+                    os.sep
+                ).replace(
+                    "/",
+                    os.sep
+                )
+
 def trim_video_start(input_path, output_path, trim_seconds):
     """
     Trim the beginning of a video by a precise amount.
@@ -288,6 +423,8 @@ def load_workflow(path):
             f"Workflow '{os.path.abspath(path)}' must contain a JSON "
             "object at its top level."
         )
+
+    normalize_workflow_paths(workflow)
 
     return workflow
 
@@ -383,6 +520,42 @@ def set_node_input(
     node["inputs"][input_name] = value
 
 
+def validate_named_connection(
+    workflow,
+    destination_name,
+    input_name,
+    source_name,
+    output_index,
+    workflow_label
+):
+    """Verify one workflow link using readable node titles, never node IDs."""
+
+    source_id, _ = find_workflow_node(
+        workflow,
+        source_name,
+        workflow_label=workflow_label
+    )
+    _, destination_node = find_workflow_node(
+        workflow,
+        destination_name,
+        workflow_label=workflow_label
+    )
+
+    connection = destination_node["inputs"].get(input_name)
+
+    if (
+        not isinstance(connection, list)
+        or len(connection) != 2
+        or str(connection[0]) != str(source_id)
+        or connection[1] != output_index
+    ):
+        raise RuntimeError(
+            f"'{input_name}' on ComfyUI node '{destination_name}' in the "
+            f"{workflow_label} must connect to output {output_index} of "
+            f"the node named '{source_name}'."
+        )
+
+
 def validate_workflow(workflow, workflow_label, is_append=False):
     """Validate the named nodes and connections used by the automation."""
 
@@ -431,6 +604,39 @@ def validate_workflow(workflow, workflow_label, is_append=False):
         workflow_label=workflow_label,
         expected_class_type="VHS_LoadVideoPath"
     )
+
+    # Validate the critical append chain by title. This catches silently
+    # disconnected duration, prompt, source-video, conditioning, latent, and
+    # output nodes even when ComfyUI regenerates every numeric node ID.
+    required_append_connections = (
+        (MATH_NODE_NAME, "values.a", DURATION_NODE_NAME, 0),
+        (VIDEO_EXTEND_NODE_NAME, "length", MATH_NODE_NAME, 1),
+        (VIDEO_EXTEND_NODE_NAME, "prompt", PROMPT_NODE_NAME, 0),
+        (VIDEO_EXTEND_NODE_NAME, "context_latent", ENCODE_AV_NODE_NAME, 0),
+        (VIDEO_EXTEND_NODE_NAME, "ref_images", IMAGE_BATCH_NODE_NAME, 0),
+        (ENCODE_AV_NODE_NAME, "images", LOAD_VIDEO_NODE_NAME, 0),
+        (ENCODE_AV_NODE_NAME, "audio", LOAD_VIDEO_NODE_NAME, 2),
+        ("Basic Guider", "conditioning", VIDEO_EXTEND_NODE_NAME, 0),
+        ("SamplerCustomAdvanced", "latent_image", VIDEO_EXTEND_NODE_NAME, 1),
+        ("Create Video", "images", "VAE Decode", 0),
+        ("Create Video", "audio", "VAE Decode Audio", 0),
+        (SAVE_VIDEO_NODE_NAME, "video", "Create Video", 0)
+    )
+
+    for (
+        destination_name,
+        input_name,
+        source_name,
+        output_index
+    ) in required_append_connections:
+        validate_named_connection(
+            workflow=workflow,
+            destination_name=destination_name,
+            input_name=input_name,
+            source_name=source_name,
+            output_index=output_index,
+            workflow_label=workflow_label
+        )
 
     # Confirm that each named image is connected to the matching batch slot,
     # so neither a node ID nor the workflow's JSON order is assumed.
@@ -1722,21 +1928,26 @@ def stitch_videos(video_paths):
     """
     Rewrite list.txt with generated videos in exact generation order,
     trimming the first 2 frames from every segment after the first,
-    then execute stitch.bat.
+    then invoke FFmpeg directly on Windows, Linux, or macOS.
 
     Segment 1 is left untouched.
     Segments 2+ are trimmed copies written beside their source files.
+    ``stitch.bat`` remains available as an optional Windows convenience, but
+    the Python program does not depend on it.
     """
-
-    if not os.path.exists(STITCH_BAT):
-        raise FileNotFoundError(
-            f"Stitch batch file not found:\n{STITCH_BAT}"
-        )
 
     if not video_paths:
         raise RuntimeError(
             "No generated video files were available to stitch."
         )
+
+    try:
+        os.makedirs(VIDEO_OUTPUT, exist_ok=True)
+    except OSError as e:
+        raise RuntimeError(
+            f"Could not create the video output folder "
+            f"'{VIDEO_OUTPUT}': {e}"
+        ) from e
 
     final_paths_for_stitch = []
 
@@ -1792,31 +2003,39 @@ def stitch_videos(video_paths):
     print("STITCHING GENERATED SEGMENTS")
     print("=" * 64)
     print(f"List file:  {STITCH_LIST}")
-    print(f"Batch file: {STITCH_BAT}")
+    print(f"Final video: {FINAL_VIDEO}")
     print(f"Segments:   {len(final_paths_for_stitch)}")
 
     try:
         subprocess.run(
-            ["cmd", "/c", STITCH_BAT],
-            cwd=SCRIPT_DIR,
+            [
+                "ffmpeg",
+                "-y",
+                "-f", "concat",
+                "-safe", "0",
+                "-i", STITCH_LIST,
+                "-c", "copy",
+                FINAL_VIDEO
+            ],
+            cwd=VIDEO_OUTPUT,
             check=True
         )
     except FileNotFoundError as e:
         raise RuntimeError(
-            "Windows command processor 'cmd' was not found, so the stitch "
-            "batch file could not be started."
+            "FFmpeg was not found. Install FFmpeg and make sure 'ffmpeg' "
+            "is available on PATH before stitching videos."
         ) from e
     except subprocess.CalledProcessError as e:
         raise RuntimeError(
-            f"Video stitching failed with exit code {e.returncode}. Check "
-            f"'{STITCH_BAT}' and the generated list '{STITCH_LIST}'."
+            f"FFmpeg could not stitch the generated videos (exit code "
+            f"{e.returncode}). Check the generated list '{STITCH_LIST}'."
         ) from e
     except OSError as e:
         raise RuntimeError(
-            f"Could not start the video stitching batch file: {e}"
+            f"Could not start FFmpeg to stitch the generated videos: {e}"
         ) from e
 
-    print("Stitching complete.")
+    print(f"Stitching complete: {FINAL_VIDEO}")
 
 
 # ============================================================
@@ -2952,6 +3171,10 @@ def main():
     """Run validation, generation, checkpointing, and final video stitching."""
 
     args = parse_args()
+
+    # Check inexpensive local prerequisites before requesting an LLM response
+    # or starting a potentially long ComfyUI render.
+    validate_runtime_environment()
 
     segment_length = args.segment_length
     total_length = args.total_length

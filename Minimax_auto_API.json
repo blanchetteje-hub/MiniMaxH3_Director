@@ -218,7 +218,7 @@
   },
   "90": {
     "inputs": {
-      "lora_name": "MiniMaxH3\\minimax_h3_turbo_v4_step600_pruned_comfyui.safetensors",
+      "lora_name": "MiniMaxH3/minimax_h3_turbo_v4_step600_pruned_comfyui.safetensors",
       "strength": 1,
       "low_vram": true,
       "model": [

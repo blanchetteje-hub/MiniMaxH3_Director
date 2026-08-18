@@ -13,9 +13,9 @@ The automation checkpoints every successful segment, tracks completed story
 beats, and maintains compact visual-continuity memory. An interrupted run can
 resume without regenerating completed clips.
 
-> **Platform note:** generation is Python-based, but automatic final stitching
-> currently launches `stitch.bat` through Windows `cmd`. Use Windows for the
-> complete workflow as supplied.
+> **Platform note:** the complete workflow runs on Windows or Linux. Python
+> invokes FFmpeg directly for final stitching. `stitch.bat` is retained only as
+> an optional Windows convenience.
 
 ## What the pipeline does
 
@@ -31,13 +31,13 @@ resume without regenerating completed clips.
 
 You need:
 
-- Windows 10 or 11.
+- Windows 10/11 or a current Linux distribution.
 - A recent NVIDIA GPU and enough system RAM, VRAM, and disk space for the
   MiniMax H3 model. Start at `0.2` megapixels if you are unsure what your GPU
   can handle.
-- [Git](https://git-scm.com/download/win).
+- [Git](https://git-scm.com/downloads).
 - [Python 3.10 or newer](https://www.python.org/downloads/).
-- [ComfyUI 0.30.0 or newer](https://docs.comfy.org/installation/desktop/windows).
+- [ComfyUI 0.30.0 or newer](https://docs.comfy.org/installation/).
 - [LM Studio](https://lmstudio.ai/download).
 - [FFmpeg](https://ffmpeg.org/download.html), including both `ffmpeg` and
   `ffprobe` on `PATH`.
@@ -56,10 +56,10 @@ Complete these once, in order:
 5. Place six reference images in `ComfyUI/input` and update both workflow JSON
    files to use them.
 6. Load an LLM in LM Studio and start its local API server.
-7. Edit the connection and output paths in `minimax.py`.
-8. Copy `stitch.bat` into the configured video output folder.
-9. Create `story.txt`, `beats.txt`, and optionally `subjects.txt`.
-10. Run the preflight commands, then start a short test generation.
+7. Set connection and output-path environment variables if their defaults do
+   not match your system.
+8. Create `story.txt`, `beats.txt`, and optionally `subjects.txt`.
+9. Run the preflight commands, then start a short test generation.
 
 The following sections explain each step.
 
@@ -92,11 +92,28 @@ python -c "import requests; print(requests.__version__)"
 
 Only the `requests` package is required by `minimax.py`.
 
+### Linux
+
+On Debian or Ubuntu, install Python and FFmpeg, then create an isolated Python
+environment:
+
+```bash
+sudo apt update
+sudo apt install python3 python3-venv python3-pip ffmpeg
+cd /path/to/automate_git
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Use your distribution's equivalent package names when necessary.
+
 ## 2. Install and update ComfyUI
 
 Install ComfyUI using the
-[official Windows instructions](https://docs.comfy.org/installation/desktop/windows)
-or use an existing portable installation.
+[official installation instructions](https://docs.comfy.org/installation/) or
+use an existing installation.
 
 MiniMax H3 support is native in ComfyUI 0.30.0 and newer. Update older
 installations before loading these workflows. The supplied workflows use native
@@ -191,6 +208,9 @@ Both LoRAs are required:
   `minimax_h3_turbo_v4_step600_pruned_comfyui.safetensors`.
 - The append workflow selects
   `minimax_h3_ref2v_turbo_4step_v0.1_comfyui.safetensors`.
+Nested model paths use `/` in the checked-in JSON. Python converts those paths
+to the separator expected by the current operating system before submitting a
+workflow, so the same JSON works on Windows and Linux.
 
 Both diffusion models are also required because each workflow uses the model
 family matched to its task:
@@ -278,51 +298,55 @@ Invoke-RestMethod http://127.0.0.1:1234/v1/models
 For remote LM Studio hosts, enable network serving in LM Studio, use the host
 computer's LAN IP, and allow the port through its firewall.
 
-## 7. Configure paths in `minimax.py`
+## 7. Configure URLs and paths
 
-Open the configuration block near the top of `minimax.py` and review:
+Configuration uses environment variables, so you do not need to edit Python.
+Linux defaults to `~/ComfyUI` and `~/ComfyUI/output`. The original Windows
+defaults are retained. Override any value that differs on your computer.
 
-```python
-LM_STUDIO_URL = "http://127.0.0.1:1234"
-COMFY_URL = "http://127.0.0.1:8188"
+Linux (`bash` or `zsh`):
 
-COMFY_OUTPUT = r"C:\ComfyUI_windows_portable\ComfyUI\output"
-VIDEO_OUTPUT = r"C:\ComfyUI_windows_portable\ComfyUI\output\video"
-
-STITCH_BAT = os.path.join(VIDEO_OUTPUT, "stitch.bat")
-STITCH_LIST = os.path.join(VIDEO_OUTPUT, "list.txt")
+```bash
+export MINIMAX_COMFYUI_ROOT="$HOME/ComfyUI"
+export MINIMAX_COMFYUI_OUTPUT="$HOME/ComfyUI/output"
+export MINIMAX_VIDEO_OUTPUT="$HOME/ComfyUI/output/video"
+export MINIMAX_COMFY_URL="http://127.0.0.1:8188"
+export MINIMAX_LM_STUDIO_URL="http://127.0.0.1:1234"
 ```
 
-Use the actual output directory of the ComfyUI instance connected by
-`COMFY_URL`. The script reads completed video filenames relative to
-`COMFY_OUTPUT`; an incorrect value causes a “reported output does not exist”
-error even when ComfyUI rendered successfully.
+Windows PowerShell:
 
-The current source has machine-specific defaults. Replace them before running
-on another computer. `STITCH_BAT` and `STITCH_LIST` must point to the same
-`video` folder used by the Save Video node.
+```powershell
+$env:MINIMAX_COMFYUI_ROOT = "C:\ComfyUI_windows_portable\ComfyUI"
+$env:MINIMAX_COMFYUI_OUTPUT = "H:\images\output"
+$env:MINIMAX_VIDEO_OUTPUT = "H:\images\output\video"
+$env:MINIMAX_COMFY_URL = "http://127.0.0.1:8188"
+$env:MINIMAX_LM_STUDIO_URL = "http://192.168.0.203:1234"
+```
 
-Copy the repository's `stitch.bat` into that video folder. `list.txt` does not
-need to exist beforehand—the Python program creates or replaces it
-automatically at finalization.
+`MINIMAX_COMFYUI_OUTPUT` must be the output directory used by the ComfyUI
+instance at `MINIMAX_COMFY_URL`. ComfyUI and this script must see generated
+files at the same path. For a container or remote server, mount or share that
+directory accordingly.
 
 ## 8. Install and verify FFmpeg
 
-Install [FFmpeg](https://ffmpeg.org/download.html) and add its `bin` directory
-to the Windows `PATH`. Open a new PowerShell window and verify both commands:
+Install [FFmpeg](https://ffmpeg.org/download.html) and make sure its executables
+are on `PATH`. Open a new terminal and verify both commands:
 
 ```powershell
 ffmpeg -version
 ffprobe -version
 ```
 
-`ffprobe` validates each generated clip's resolution. `ffmpeg` trims overlap
-frames and `stitch.bat` concatenates the completed clips.
+`ffprobe` validates each generated clip's resolution. Python calls `ffmpeg` to
+trim overlap frames and concatenate the completed clips. `stitch.bat` is not
+required for normal runs.
 
 ## 9. Prepare the project inputs
 
-Run the program from this repository's directory because its workflow and
-input filenames are relative to the current working directory.
+Project inputs and workflows resolve relative to `minimax.py`, so the program
+can be launched from another working directory.
 
 ### `story.txt` — required
 
@@ -368,7 +392,7 @@ Confirm all of the following:
 - All seven base/LoRA/VAE/text-encoder files selected by the workflows appear in
   ComfyUI.
 - Every reference image exists under `ComfyUI/input`.
-- `COMFY_OUTPUT`, `STITCH_BAT`, and `STITCH_LIST` point to real directories.
+- `MINIMAX_COMFYUI_OUTPUT` points to the real ComfyUI output directory.
 - `story.txt` and `beats.txt` are non-empty.
 
 For the first test, use a short run and low resolution:
@@ -387,6 +411,10 @@ The three main settings are positional arguments:
 ```text
 python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [--resume SEGMENT]
 ```
+
+Separate values with spaces as shown above. For convenience, commas are also
+accepted, including both `python minimax.py 5, 10, .2` and
+`python minimax.py 5,10,.2`.
 
 | Argument | Meaning |
 |---|---|
@@ -446,6 +474,8 @@ workflow JSON and the named nodes it controls:
 - `Image Batch Multi` with those six sources connected in the correct order in
   the append workflow
 - `Load Video (Path) 🎥🅥🅗🅢` in the append workflow
+- The append duration/math, prompt, previous-video encoding, reference-image,
+  conditioning, latent, decoding, and save-video connections
 
 Node types and required input fields are also checked. If you customize a
 workflow, preserve these titles or update the matching constants in
@@ -491,8 +521,9 @@ workflow, preserve these titles or update the matching constants in
 
 ### “ComfyUI reported a video output, but the file does not exist”
 
-`COMFY_OUTPUT` does not match the output directory of the ComfyUI server at
-`COMFY_URL`. Correct the path in `minimax.py` and resume at the failed segment.
+`MINIMAX_COMFYUI_OUTPUT` does not match the output directory of the ComfyUI
+server at `MINIMAX_COMFY_URL`. Correct the environment variable and resume at
+the failed segment.
 
 ### Resume cannot find prior videos
 
@@ -515,15 +546,24 @@ workflow, preserve these titles or update the matching constants in
 ### FFmpeg or stitching errors
 
 - Verify both `ffmpeg` and `ffprobe` are on `PATH`.
-- Confirm `stitch.bat` is in the configured video output folder.
 - Confirm the folder is writable.
 - Delete no `segment_*.mp4` files until finalization finishes.
+
+Python performs stitching directly. On Windows, `stitch.bat` can optionally be
+copied beside the generated `list.txt` and run manually to repeat only the
+final concatenation step.
 
 To show a full Python traceback for an unexpected failure:
 
 ```powershell
 $env:MINIMAX_DEBUG = "1"
 python minimax.py 5 10 0.2
+```
+
+On Linux:
+
+```bash
+MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
 ```
 
 ## Repository files
@@ -536,5 +576,5 @@ python minimax.py 5 10 0.2
 | `story.txt` | Source story or creative brief. |
 | `beats.txt` | Ordered required story events. |
 | `subjects.txt` | Optional subject/reference definitions. |
-| `stitch.bat` | Windows FFmpeg concat helper. |
+| `stitch.bat` | Optional Windows-only FFmpeg concat helper. |
 | `requirements.txt` | Python package requirements. |

@@ -218,7 +218,7 @@
   },
   "90": {
     "inputs": {
-      "lora_name": "MiniMaxH3\\minimax_h3_ref2v_turbo_4step_v0.1_comfyui.safetensors",
+      "lora_name": "MiniMaxH3/minimax_h3_ref2v_turbo_4step_v0.1_comfyui.safetensors",
       "strength": 1,
       "low_vram": true,
       "model": [
@@ -352,7 +352,7 @@
   },
   "143": {
     "inputs": {
-      "video": "H:\\Images\\output\\video\\segment_0001_00001_.mp4",
+      "video": "",
       "force_rate": 0,
       "custom_width": 0,
       "custom_height": 0,
@@ -386,7 +386,10 @@
   },
   "148": {
     "inputs": {
-      "length": 124,
+      "length": [
+        "73",
+        1
+      ],
       "context_frames": 2,
       "pin_last_frame": true,
       "ref_image_size": "match",
