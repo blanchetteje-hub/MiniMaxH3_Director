@@ -10,8 +10,9 @@ The program uses:
   MP4.
 
 The automation checkpoints every successful segment, tracks completed story
-beats, and maintains compact visual-continuity memory. An interrupted run can
-resume without regenerating completed clips.
+beats, maintains compact visual-continuity memory, records per-subject state,
+and prevents reused dialogue. An interrupted run can resume without
+regenerating completed clips.
 
 > **Platform note:** the complete workflow runs on Windows or Linux. Python
 > invokes FFmpeg directly for final stitching. `stitch.bat` is retained only as
@@ -23,7 +24,8 @@ resume without regenerating completed clips.
 2. Requests a structured shot description from an LM Studio model.
 3. Inserts that description into the correct ComfyUI API workflow.
 4. Generates the initial clip or extends the previous clip.
-5. Saves prompt logs, beat progress, continuity memory, and resume state.
+5. Saves prompt logs, beat progress, continuity memory, subject state,
+   dialogue history, and resume state.
 6. Trims two overlap frames from every clip after the first.
 7. Concatenates the clips into `final.mp4`.
 
@@ -380,6 +382,23 @@ Their red backpack is referenced in <Picture 3>.
 Use `<Picture N>` exactly, matching the reference order in both workflows.
 The filename is `subjects.txt`, not `subject_definitions.txt`.
 
+### Continuity safeguards
+
+After each completed clip, the script creates two additional records used as
+authoritative context for the next LM Studio request:
+
+- `subject_state.txt` records each known subject's current clothing,
+  location/orientation/body position, emotional and relationship state,
+  injuries or physical condition, held props, ongoing action, and relevant
+  identity or voice facts. A subject absent from a later clip retains their
+  last known state until the story explicitly changes it.
+- `dialogue_history.json` contains every previously used spoken sentence,
+  without speaker labels. The director receives the entire list and is told it
+  cannot repeat or closely reword any listed sentence.
+
+The records are written only after a clip renders successfully. On resume, the
+script reconstructs them from completed segment prompt logs whenever needed.
+
 ## 10. Preflight before the first generation
 
 Confirm all of the following:
@@ -430,8 +449,8 @@ python minimax.py 5 60 0.5
 ```
 
 This creates 12 segments. Starting a new run with the default resume value of
-`1` resets the prior checkpoint, beat-progress file, and continuity-memory
-file.
+`1` resets the prior checkpoint, beat-progress file, continuity-memory file,
+subject-state file, and dialogue-history file.
 
 ### Example: resume at segment 12
 
@@ -442,7 +461,8 @@ python minimax.py 5 60 0.5 --resume 12
 ```
 
 Resume means segments 1–11 must already exist. The script checks the saved run
-settings, video paths, story-beat signature, prompt logs, and continuity state.
+settings, video paths, story-beat signature, prompt logs, subject state,
+dialogue history, and continuity state.
 If `beats.txt` changed after the checkpoint, restore the original beat list or
 start a new run.
 
@@ -455,6 +475,8 @@ start a new run.
 | `generation_state.json` | Atomic run checkpoint and generated video paths. |
 | `beat_progress.txt` | Readable DONE/NEXT/TODO beat checklist. |
 | `continuity_memory.txt` | Compact persistent visual and physical state. |
+| `subject_state.txt` | Current authoritative state for each known subject. |
+| `dialogue_history.json` | All used spoken sentences; supplied to the LLM as a no-repeat list. |
 | ComfyUI `output/video/segment_*.mp4` | Individual generated clips. |
 | ComfyUI `output/video/trimmed_segment_*.mp4` | Stitch-ready clips after overlap removal. |
 | ComfyUI `output/video/list.txt` | Automatically generated FFmpeg concat list. |

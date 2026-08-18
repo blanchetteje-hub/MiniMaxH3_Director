@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -97,7 +98,9 @@ BASE_SEED = 1
 PROMPT_DIR = os.path.join(SCRIPT_DIR, "prompts")
 STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
 CONTINUITY_MEMORY_FILE = os.path.join(SCRIPT_DIR, "continuity_memory.txt")
+SUBJECT_STATE_FILE = os.path.join(SCRIPT_DIR, "subject_state.txt")
 BEAT_PROGRESS_FILE = os.path.join(SCRIPT_DIR, "beat_progress.txt")
+DIALOGUE_HISTORY_FILE = os.path.join(SCRIPT_DIR, "dialogue_history.json")
 
 COMFY_QUEUE_RETRIES = 10
 COMFY_QUEUE_RETRY_DELAY = 10
@@ -114,8 +117,11 @@ TOKEN_RECAP_SIZE = 4000
 # - full source story remains available on every director call
 # - a compact rolling continuity summary carries long-term state
 # - only the newest few exact segment prompts are included verbatim
+# - every prior spoken dialogue sentence is retained separately and supplied
+#   on every director request, so it cannot be repeated
 RECENT_SEGMENTS_MAX = 2
 CONTINUITY_SUMMARY_MAX_CHARS = 1800
+SUBJECT_STATE_MAX_CHARS = 4000
 SUMMARY_REBUILD_BATCH_SIZE = 2
 
 # ComfyUI workflow nodes are resolved by their exported display names. Node
@@ -897,6 +903,70 @@ def save_continuity_memory(
         print()
 
 
+def save_subject_state(subject_state, through_segment):
+    """Save the authoritative per-subject state for the next clip."""
+
+    state_text = subject_state.strip()
+
+    if not state_text:
+        state_text = "(No subject state has been established yet.)"
+
+    content = (
+        f"Subject state through segment {through_segment}\n"
+        f"{'=' * 48}\n\n"
+        f"{state_text}\n"
+    )
+
+    try:
+        with open(SUBJECT_STATE_FILE, "w", encoding="utf-8") as f:
+            f.write(content)
+    except (OSError, UnicodeError) as e:
+        raise RuntimeError(
+            f"Could not save subject state to "
+            f"'{os.path.abspath(SUBJECT_STATE_FILE)}': {e}"
+        ) from e
+
+
+def load_subject_state(last_completed_segment):
+    """Load matching subject state, or rebuild it from completed prompts."""
+
+    if last_completed_segment < 1:
+        return ""
+
+    if os.path.exists(SUBJECT_STATE_FILE):
+        try:
+            with open(SUBJECT_STATE_FILE, "r", encoding="utf-8") as f:
+                content = f.read()
+        except (OSError, UnicodeError) as e:
+            raise RuntimeError(
+                f"Could not read subject state '{SUBJECT_STATE_FILE}': {e}"
+            ) from e
+
+        header_match = re.match(
+            r"Subject state through segment (\d+)\n={48}\n\n(.*)",
+            content,
+            flags=re.DOTALL
+        )
+
+        if (
+            header_match
+            and int(header_match.group(1)) == last_completed_segment
+        ):
+            return header_match.group(2).strip()
+
+    print("Rebuilding subject state from saved segment prompts...")
+    subject_state = ""
+
+    for segment_number in range(1, last_completed_segment + 1):
+        subject_state = update_subject_state(
+            subject_state,
+            segment_number,
+            load_saved_llm_result(segment_number)
+        )
+
+    return subject_state
+
+
 def print_beat_progress_summary(
     beats,
     completed_beat_ids
@@ -1133,7 +1203,8 @@ def ask_llm(messages, max_retries=5, retry_delay=5):
 def ask_summary_llm(
     messages,
     max_retries=10,
-    retry_delay=2
+    retry_delay=2,
+    max_chars=CONTINUITY_SUMMARY_MAX_CHARS
 ):
     """
     Small LM Studio call used only for continuity memory.
@@ -1208,16 +1279,16 @@ def ask_summary_llm(
 
             # Keep the actual stored memory small regardless of how much the
             # model generated.
-            if len(content) > CONTINUITY_SUMMARY_MAX_CHARS:
+            if len(content) > max_chars:
                 clipped = content[
-                    :CONTINUITY_SUMMARY_MAX_CHARS
+                    :max_chars
                 ]
 
                 last_newline = clipped.rfind("\n")
 
                 if (
                     last_newline
-                    > CONTINUITY_SUMMARY_MAX_CHARS // 2
+                    > max_chars // 2
                 ):
                     clipped = clipped[:last_newline]
 
@@ -1376,6 +1447,77 @@ Do not include general MiniMax instructions.\nReturn ONLY the final continuity b
 
     return ask_summary_llm(
         summary_messages
+    )
+
+
+def update_subject_state(previous_state, segment_number, llm_result):
+    """Update the exhaustive per-subject state record after one clip."""
+
+    if not isinstance(llm_result, dict):
+        raise RuntimeError(
+            "Cannot update subject state from an invalid director response."
+        )
+
+    segment_payload = {
+        key: value
+        for key, value in llm_result.items()
+        if key != "completed_beat_ids"
+    }
+
+    if previous_state:
+        previous_text = previous_state
+    else:
+        previous_text = "No subject state has been stored yet."
+
+    state_messages = [
+        {
+            "role": "system",
+            "content": (
+                "You maintain an exact per-subject continuity record for a "
+                "sequential AI-video director. Preserve known state for any "
+                "subject absent from the new segment. Update facts only when "
+                "the completed segment explicitly establishes a change. Do not "
+                "invent facts, future events, plot summaries, or camera notes."
+            )
+        },
+        {
+            "role": "user",
+            "content": f"""
+PREVIOUS SUBJECT STATE
+
+{previous_text}
+
+
+NEWLY COMPLETED SEGMENT {segment_number}
+
+{json.dumps(segment_payload, ensure_ascii=False, indent=2)}
+
+
+Rewrite the complete current subject-state record. Include one clearly named
+block for every known subject, retaining subjects that do not appear in this
+segment. In each block, record only known facts in these categories:
+- Clothing, footwear, accessories, and clothing changes.
+- Exact current location, orientation, and physical position (for example,
+  standing by a doorway, seated in a car, prone on the ground, or supine).
+- Emotional state and immediately relevant intent or relationship state.
+- Injuries, fatigue, cleanliness/wetness, blood, damage, and other physical
+  conditions.
+- Objects held/worn/carried, props under their control, and restraints.
+- Ongoing action, contact, pose, gaze direction, or movement that must carry
+  directly into the next clip.
+- Established speaker ID, voice, age/appearance facts, or other identity facts
+  needed for continuity.
+
+Use concise bullet points. Omit categories with no known fact, but never erase
+previously known state merely because it is absent from this segment. Maximum
+{SUBJECT_STATE_MAX_CHARS} characters. Return only the subject-state record.
+"""
+        }
+    ]
+
+    return ask_summary_llm(
+        state_messages,
+        max_chars=SUBJECT_STATE_MAX_CHARS
     )
 
 
@@ -2097,6 +2239,80 @@ def save_llm_result(segment_number, llm_result):
             f"Could not save the director response for segment "
             f"{segment_number} to '{path}': {e}"
         ) from e
+
+
+def split_dialogue_sentences(dialogue):
+    """Return the individual spoken sentences from one dialogue tag."""
+
+    normalized_dialogue = " ".join(dialogue.split())
+
+    if not normalized_dialogue:
+        return []
+
+    return [
+        sentence.strip()
+        for sentence in re.findall(
+            r".+?(?:[.!?]+[\"')\]]*(?=\s|$)|$)",
+            normalized_dialogue
+        )
+        if sentence.strip()
+    ]
+
+
+def extract_dialogue_sentences(llm_result):
+    """Extract exact spoken sentences from a structured director response."""
+
+    if not isinstance(llm_result, dict):
+        return []
+
+    description = llm_result.get("integrated_multimodal_description", "")
+
+    if not isinstance(description, str):
+        return []
+
+    dialogue_tags = re.findall(
+        r"<d>(.*?)</d>",
+        description,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+
+    return [
+        sentence
+        for dialogue in dialogue_tags
+        for sentence in split_dialogue_sentences(dialogue)
+    ]
+
+
+def save_dialogue_history(dialogue_sentences):
+    """Atomically save every spoken sentence from completed segments."""
+
+    temp_path = DIALOGUE_HISTORY_FILE + ".tmp"
+    payload = {"sentences": dialogue_sentences}
+
+    try:
+        with open(temp_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+
+        os.replace(temp_path, DIALOGUE_HISTORY_FILE)
+    except (OSError, TypeError, ValueError, UnicodeError) as e:
+        raise RuntimeError(
+            f"Could not save dialogue history '{DIALOGUE_HISTORY_FILE}': {e}"
+        ) from e
+
+
+def rebuild_dialogue_history(last_completed_segment):
+    """Recover all completed spoken dialogue from the saved director results."""
+
+    dialogue_sentences = []
+
+    for segment_number in range(1, last_completed_segment + 1):
+        dialogue_sentences.extend(
+            extract_dialogue_sentences(
+                load_saved_llm_result(segment_number)
+            )
+        )
+
+    return dialogue_sentences
 
 
 def parse_saved_h3_prompt(prompt):
@@ -2834,6 +3050,8 @@ def build_generation_messages(
     beats,
     completed_beat_ids,
     continuity_summary,
+    subject_state,
+    dialogue_history,
     current_segment,
     total_segments,
     segment_length,
@@ -2844,7 +3062,8 @@ def build_generation_messages(
 
     Story progression is anchored by the author's beats.txt checklist.
     Long-term visual/state history is represented by continuity_summary, while
-    only a few recent exact segment prompts are carried verbatim.
+    only a few recent exact segment prompts are carried verbatim. Subject state
+    and every prior spoken sentence are included separately for continuity.
     """
 
     current_request = build_segment_request(
@@ -2862,6 +3081,11 @@ def build_generation_messages(
         memory_text = (
             "No older compact continuity memory exists yet."
         )
+
+    if current_segment > 1 and subject_state:
+        subject_state_text = subject_state
+    else:
+        subject_state_text = "No subject state has been established yet."
 
     beat_progress_text = format_beat_progress(
         beats,
@@ -2888,6 +3112,15 @@ def build_generation_messages(
         else:
             recent_text = "N/A"
 
+        if dialogue_history:
+            dialogue_history_text = json.dumps(
+                dialogue_history,
+                ensure_ascii=False,
+                indent=2
+            )
+        else:
+            dialogue_history_text = "[] (No dialogue has been used yet.)"
+
         return f"""
 AUTHORITATIVE STORY BEAT CHECKLIST
 
@@ -2912,6 +3145,26 @@ SOURCE STORY / CREATIVE BRIEF
 ROLLING VISUAL/STATE CONTINUITY MEMORY THROUGH SEGMENT {max(0, current_segment - RECENT_SEGMENTS_MAX - 1)}
 
 {memory_text}
+
+
+AUTHORITATIVE CURRENT SUBJECT STATE
+
+This record states the required starting condition of every known subject at
+the beginning of this segment. Preserve it unless this new segment explicitly
+changes it. Do not change clothing, location, physical position, emotional
+state, injuries, props, identity, or an ongoing action without showing why.
+
+{subject_state_text}
+
+
+ALL PREVIOUSLY USED DIALOGUE SENTENCES
+
+This is the complete, speaker-agnostic list of every spoken sentence used by
+completed segments. You CANNOT repeat any sentence in this list. Do not reuse
+it with a different speaker, altered delivery, or minor wording changes. If a
+new sentence is not appropriate, write no dialogue.
+
+{dialogue_history_text}
 
 
 RECENT EXACT GENERATED SEGMENT DESCRIPTIONS
@@ -3036,6 +3289,8 @@ STORY PROGRESSION
 - A beat may span multiple video segments. Do not mark it complete merely because it has started.
 - The SOURCE STORY / CREATIVE BRIEF supplies characters, setting, dialogue, tone, details, and connective material.
 - If the creative brief conflicts with the ordered checklist, the checklist controls plot order.
+- AUTHORITATIVE CURRENT SUBJECT STATE defines every known subject's starting condition. Preserve it unless this segment visibly changes it.
+- ALL PREVIOUSLY USED DIALOGUE SENTENCES is the complete no-repeat list for spoken dialogue. You CANNOT repeat any listed sentence.
 - RECENT EXACT GENERATED SEGMENTS are authoritative for immediate continuity.
 - ROLLING VISUAL/STATE CONTINUITY MEMORY contains older persistent physical state.
 - CURRENT TASK specifies the segment/shot to create now.
@@ -3076,6 +3331,9 @@ Pictures 1-6 are persistent appearance references only.
 
 When a defined subject appears, use their name and corresponding <Picture N>.
 Preserve persistent clothing, injuries, damage, props, and appearance changes.
+Preserve each subject's exact location, orientation, physical position,
+emotional state, relationships, and ongoing action from AUTHORITATIVE CURRENT
+SUBJECT STATE until the new scene explicitly changes them.
 
 Do not output subject_definitions; Python inserts them.
 
@@ -3139,6 +3397,7 @@ Character Name (S1) says: <d>[English] Actual spoken words.</d>
 Keep speaker IDs consistent.
 Only spoken words belong inside <d>.
 Never end mid-dialogue.
+Every spoken sentence must be new and must not repeat or closely reword a sentence in ALL PREVIOUSLY USED DIALOGUE SENTENCES.
 
 LIGHTING
 
@@ -3296,12 +3555,16 @@ def main():
         continuity_summary = ""
         continuity_summary_segment = 0
         completed_beat_ids = set()
+        subject_state = ""
+        dialogue_history = []
 
         # Starting a new run intentionally resets persistent run state.
         for reset_path in (
             STATE_FILE,
             CONTINUITY_MEMORY_FILE,
-            BEAT_PROGRESS_FILE
+            SUBJECT_STATE_FILE,
+            BEAT_PROGRESS_FILE,
+            DIALOGUE_HISTORY_FILE
         ):
             if os.path.exists(reset_path):
                 try:
@@ -3337,6 +3600,12 @@ def main():
             0,
             (resume_segment - 1) - RECENT_SEGMENTS_MAX
         )
+        dialogue_history = rebuild_dialogue_history(
+            resume_segment - 1
+        )
+        subject_state = load_subject_state(
+            resume_segment - 1
+        )
 
         print(
             f"Restored {resume_segment - 1} completed segment(s)."
@@ -3349,10 +3618,23 @@ def main():
             f"Continuity memory characters: "
             f"{len(continuity_summary)}"
         )
+        print(
+            f"Recovered dialogue sentences: "
+            f"{len(dialogue_history)}"
+        )
+        print(
+            f"Recovered subject state characters: "
+            f"{len(subject_state)}"
+        )
 
     save_beat_progress(
         beats,
         completed_beat_ids
+    )
+    save_dialogue_history(dialogue_history)
+    save_subject_state(
+        subject_state,
+        resume_segment - 1
     )
 
     save_continuity_memory(
@@ -3372,6 +3654,12 @@ def main():
     print(
         f"Readable continuity memory: {CONTINUITY_MEMORY_FILE}"
     )
+    print(
+        f"Dialogue history: {DIALOGUE_HISTORY_FILE}"
+    )
+    print(
+        f"Subject state: {SUBJECT_STATE_FILE}"
+    )
 
     # --------------------------------------------------------
     # GENERATION LOOP
@@ -3388,10 +3676,15 @@ def main():
         max_workers=1,
         thread_name_prefix="continuity"
     )
+    subject_state_executor = ThreadPoolExecutor(
+        max_workers=1,
+        thread_name_prefix="subject-state"
+    )
 
     while segment <= total_segments:
         continuity_future = None
         continuity_target_segment = None
+        subject_state_future = None
         elapsed = (
             segment - 1
         ) * segment_length
@@ -3430,6 +3723,8 @@ def main():
             beats=beats,
             completed_beat_ids=completed_beat_ids,
             continuity_summary=continuity_summary,
+            subject_state=subject_state,
+            dialogue_history=dialogue_history,
             current_segment=segment,
             total_segments=total_segments,
             segment_length=segment_length,
@@ -3572,6 +3867,17 @@ def main():
                 "all completed segments remain in exact history."
             )
 
+        print(
+            f"Starting background subject-state update with segment "
+            f"{segment} while ComfyUI renders..."
+        )
+        subject_state_future = subject_state_executor.submit(
+            update_subject_state,
+            subject_state,
+            segment,
+            llm_result
+        )
+
         comfy_result = wait_for_completion(
             prompt_id
         )
@@ -3605,6 +3911,36 @@ def main():
         )
 
         previous_video_path = video_path
+
+        if not subject_state_future.done():
+            print(
+                "ComfyUI finished before the subject-state update; "
+                "waiting for current subject state..."
+            )
+
+        try:
+            subject_state = subject_state_future.result()
+        except Exception as e:
+            raise RuntimeError(
+                f"The subject-state update for segment {segment} failed: {e}"
+            ) from e
+
+        save_subject_state(subject_state, segment)
+
+        print(
+            f"Subject state updated through segment {segment} "
+            f"({len(subject_state)} characters)."
+        )
+
+        new_dialogue_sentences = extract_dialogue_sentences(llm_result)
+        dialogue_history.extend(new_dialogue_sentences)
+        save_dialogue_history(dialogue_history)
+
+        print(
+            f"Recorded {len(new_dialogue_sentences)} dialogue sentence(s) "
+            f"for the no-repeat history "
+            f"({len(dialogue_history)} total)."
+        )
 
         # Beat progress advances only after ComfyUI successfully creates the
         # segment. Python enforces strict checklist order and refuses skips.
@@ -3765,6 +4101,7 @@ def main():
         segment += 1
 
     continuity_executor.shutdown(wait=True)
+    subject_state_executor.shutdown(wait=True)
 
 
 if __name__ == "__main__":
