@@ -286,7 +286,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
 
 
 class LiveVisualFormattingRegressionTests(unittest.TestCase):
-    def test_decimal_seconds_opening_timestamp_is_removed(self) -> None:
+    def test_decimal_seconds_opening_timestamp_is_normalized(self) -> None:
         malformed = response(
             "[Shot 2] At 0.00 seconds, several flying saucers cross overhead."
         )
@@ -294,7 +294,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
         description = format_ministral_prompt(malformed, context_for(2))[DESCRIPTION]
 
         self.assertTrue(description.startswith("[Shot 2]"))
-        self.assertNotRegex(description, r"(?i)\bAt\s+0\.00\s+seconds\b")
+        self.assertIn("At 00:00.000 seconds,", description)
 
     def test_markdown_emphasis_is_stripped_from_every_prompt_field(self) -> None:
         malformed = response(
@@ -376,7 +376,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
 class LiveSoundscapeRegressionTests(unittest.TestCase):
     def test_quoted_dialogue_pa_and_diegetic_music_are_removed(self) -> None:
         malformed = response(
-            "[Shot 2] Several saucers fly overhead above the theme park.",
+            "[Shot 2] At 00:01.000, several saucers fly overhead above the theme park.",
             soundscape=(
                 "Crowds gasp and shoes scrape the pavement. "
                 'A voice says, "Please proceed to the nearest exit." '

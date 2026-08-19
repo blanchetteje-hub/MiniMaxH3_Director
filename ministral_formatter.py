@@ -39,6 +39,32 @@ _OPENING_TIME = re.compile(
 _ANY_LOCAL_TIME = re.compile(
     r"(?i)^\s*(?:At\s+)?\d{1,2}:\d{2}(?:\.\d+)?\s*[,;:\-]?\s*"
 )
+_LOCAL_TIME = re.compile(
+    r"(?i)(?<![\w:])(?:at\s+)?(?P<minutes>\d{1,2}):"
+    r"(?P<seconds>\d{2})(?:(?P<separator>[.:])(?P<fraction>\d{1,3}))?"
+    r"(?:\s+seconds?)?\s*[,;:\-]?\s*"
+)
+_ZERO_LOCAL_TIME = re.compile(
+    r"(?i)(?<![\w:])(?:at\s+)?(?:\d{1,2}:00(?:[.:]0{1,3})?|"
+    r"0+\.0{1,3})(?:\s+seconds?)?\s*[,;:\-]?\s*"
+)
+_CONTINUATION_OPENING = re.compile(
+    r"(?is)^\s*(?:At\s+\d{1,2}:\d{2}(?:[.:]\d{1,3})?"
+    r"(?:\s+seconds?)?\s*[,;:\-]?\s*)?"
+    r"Camera\s+continues\s+from\s+the\s+previous\s+shot"
+    r"(?:\s*(?:At\s+\d{1,2}:\d{2}(?:[.:]\d{1,3})?"
+    r"(?:\s+seconds?)?\s*[,;:\-]?))?\s*[,.:;\-]?\s*"
+)
+_TRAILING_PARENTHESIZED_TIME = re.compile(
+    r"(?P<boundary>^|(?<=[.!?])\s+)"
+    r"(?P<transition>Camera\s+(?:cuts\s+to\s+a\s+new\s+shot|"
+    r"continues\s+from\s+the\s+previous\s+shot)\s*[:.,-]?\s*)?"
+    r"(?P<action>[^.!?\n]*?\S)\s*"
+    r"\(\s*(?P<minutes>\d{1,2}):(?P<seconds>\d{2})"
+    r"[.:](?P<milliseconds>\d{1,3})\s*\)"
+    r"(?P<punct>[.!?])",
+    re.IGNORECASE,
+)
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
 
@@ -48,6 +74,23 @@ def _clean_space(value: str) -> str:
     value = re.sub(r" *\n *", "\n", value)
     value = re.sub(r"\n{2,}", " ", value)
     return value.strip()
+
+
+def _format_local_timestamp(match: re.Match[str]) -> str:
+    minutes = int(match.group("minutes"))
+    seconds = int(match.group("seconds"))
+    fraction = (match.group("fraction") or "0").ljust(3, "0")
+    return f"At {minutes:02d}:{seconds:02d}.{fraction}, "
+
+
+def _format_continuation_opening(description: str) -> str:
+    match = _CONTINUATION_OPENING.match(description)
+    if match is None:
+        return description
+    return (
+        "At 00:00.000 seconds, camera continues from the previous shot. "
+        + description[match.end():].lstrip()
+    ).rstrip()
 
 
 def _strip_markdown(value: str) -> str:
@@ -194,24 +237,50 @@ def _repair_fields(result: dict[str, Any], context: Mapping[str, Any]) -> None:
 
 def _repair_shots(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     description = result[DESCRIPTION]
+    number = _segment_number(context)
     # Remove every model-supplied shot marker.  The pipeline produces one shot
     # per segment, so retaining a second marker would create a false cut.
     description = _SHOT.sub("", description)
     description = _ALIGNMENT.sub("", description).strip()
-    description = _ANY_LOCAL_TIME.sub("", description).strip()
-    description = re.sub(
-        r"(?i)^\s*At\s+0+(?:\.0+)?\s*seconds?\s*[,;:\-]?\s*",
-        "",
+    description = _TRAILING_PARENTHESIZED_TIME.sub(
+        lambda match: (
+            f"{match.group('boundary')}{match.group('transition') or ''}"
+            f"at {int(match.group('minutes')):02d}:"
+            f"{match.group('seconds')}:"
+            f"{match.group('milliseconds').ljust(3, '0')} seconds, "
+            f"{match.group('action')}"
+            f"{match.group('punct')}"
+        ),
         description,
     )
-    description = re.sub(
-        r"(?i)\s+(?:At\s+)?\d{1,2}:\d{2}(?:\.\d+)?\s*,?\s*"
-        r"(?:the\s+(?:camera|shot)\s+(?:cuts|changes|switches|transitions)\s+to\s*)?",
-        " ",
-        description,
-    )
+    if number == 1:
+        description = _ANY_LOCAL_TIME.sub("", description).strip()
+        description = re.sub(
+            r"(?i)^\s*At\s+0+(?:\.0+)?\s*seconds?\s*[,;:\-]?\s*",
+            "",
+            description,
+        )
+        description = re.sub(
+            r"(?i)\s+(?:At\s+)?00:00(?:[.:]0{1,3})?"
+            r"(?:\s+seconds?)?\s*,?\s*",
+            " ",
+            description,
+        )
+    else:
+        description = re.sub(
+            r"(?i)^\s*(?:At\s+)?(?:\d{1,2}:00(?:[.:]0{1,3})?|"
+            r"0+\.0{1,3})(?:\s+seconds?)?\s*[,;:\-]?\s*",
+            "At 00:00.000 seconds, ",
+            description,
+        )
+        description = _LOCAL_TIME.sub(_format_local_timestamp, description)
+        description = re.sub(
+            r"(?i)^At 00:00\.000,\s*",
+            "At 00:00.000 seconds, ",
+            description,
+        )
+        description = _format_continuation_opening(description)
     description = _clean_space(description).lstrip(" ,;:-")
-    number = _segment_number(context)
     prefix = f"[Shot {number}]"
 
     if context.get("hard_cut_required"):
@@ -754,13 +823,32 @@ def _validate_shots(result: Mapping[str, Any], context: Mapping[str, Any]) -> li
     shots = _SHOT.findall(text)
     if len(shots) != 1 or not text.startswith(expected):
         issues.append(f"Description must contain exactly one opening {expected} marker.")
-    if re.match(
-        rf"^{re.escape(expected)}\s+(?:(?:At\s+)?(?:00?:)?00(?:\.0+)?|"
-        rf"At\s+0+(?:\.0+)?\s*seconds?)",
+    if _segment_number(context) == 1 and re.match(
+        rf"^{re.escape(expected)}\s+(?:At\s+)?(?:\d{{1,2}}:00(?:[.:]0{{1,3}})?|"
+        rf"0+\.0{{1,3}})(?:\s+seconds?)?",
         text,
         re.I,
     ):
         issues.append("The opening shot must not have a timestamp.")
+    if _segment_number(context) > 1:
+        has_timestamp = False
+        for match in _LOCAL_TIME.finditer(text):
+            has_timestamp = True
+            break
+        if not has_timestamp:
+            issues.append(
+                "Every segment after the first must include at least one "
+                "local timeline timestamp."
+            )
+        if re.match(rf"^{re.escape(expected)}\s+At\s+00:00\.000 seconds, "
+                    r"camera continues from the previous shot\. ", text):
+            pass
+        elif re.match(rf"^{re.escape(expected)}\s+.*camera continues from the "
+                       r"previous shot", text, re.I):
+            issues.append(
+                "A continuation opening must be formatted as 'At 00:00.000 "
+                "seconds, camera continues from the previous shot.'."
+            )
     if re.search(r"(?i)reference pictures align|fully referenced", text):
         issues.append("Reference-image alignment instructions do not apply to this pipeline.")
     if context.get("hard_cut_required") and not text.startswith(

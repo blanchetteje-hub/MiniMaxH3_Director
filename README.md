@@ -394,7 +394,7 @@ The filename is `subjects.txt`, not `subject_definitions.txt`.
 Beginning after prompt 2, the script asks LM Studio for exactly five bullet
 points summarizing the newest two generated prompts. This uses a separate,
 stateless chat-completions message list and is independent of the director's
-Python-first content-correction thread. One background worker runs this request
+Python formatting and validation. One background worker runs this request
 while ComfyUI renders the current clip.
 
 Before the next director request, the script waits for the summary if needed.
@@ -412,12 +412,12 @@ by segment 2, B002 by segment 4, and so on. On a beat's deadline segment, the
 director must visibly complete it and include its ID in `completed_beat_ids`.
 Every response is first normalized and validated by deterministic Python rules.
 Formatting problems that can be repaired without changing story content do not
-cause another LM Studio request. Only unresolved content problems, such as a
-missing required action or dialogue, may trigger a corrected full response,
-with at most two content-correction requests. Each corrected response goes
-through the same local formatter and validator. If it is still invalid, the run
-stops before sending anything to ComfyUI. Network/transport retries are counted
-separately from these content corrections.
+cause another LM Studio request. Unresolved content problems can trigger at most
+two stateless correction requests containing exactly one system turn and one
+user turn. If a
+correction request fails or the corrected result remains invalid, the latest
+best-effort locally formatted prompt continues to ComfyUI instead of stopping
+the run. Network/transport retries remain separate.
 
 ## 10. Preflight before the first generation
 

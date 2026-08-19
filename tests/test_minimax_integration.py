@@ -55,6 +55,75 @@ class FakeResponse:
 
 
 class LmStudioIntegrationTests(unittest.TestCase):
+    def test_next_beat_prompt_demands_immediate_dominant_execution(self):
+        request = minimax.build_segment_request(
+            segment=1,
+            total_segments=8,
+            segment_length=6,
+            total_length=48,
+            beats=BEATS,
+            completed_beat_ids=[]
+        )
+
+        self.assertIn("PRIMARY BEAT EXECUTION - NON-NEGOTIABLE", request)
+        self.assertIn("Begin its visible action in the opening moments", request)
+        self.assertIn("make it the dominant event", request)
+        self.assertIn("devote most of the clip to accomplishing it", request)
+        self.assertIn("Actively attempt to complete B001 in THIS segment", request)
+        self.assertIn("Do not delay merely because time remains", request)
+        self.assertIn("Do not substitute atmosphere", request)
+
+    def test_action_and_dialogue_beats_receive_specific_execution_orders(self):
+        action_request = minimax.build_segment_request(
+            2, 8, 6, 48, BEATS, [1]
+        )
+        dialogue_request = minimax.build_segment_request(
+            3, 8, 6, 48, BEATS, [1, 2]
+        )
+
+        self.assertIn("physical action clearly on screen", action_request)
+        self.assertIn("required audible exchange now", dialogue_request)
+        self.assertIn("implied conversation do not count", dialogue_request)
+
+    def test_beat_deadline_demands_visible_outcome_and_completion_id(self):
+        request = minimax.build_segment_request(
+            segment=2,
+            total_segments=8,
+            segment_length=6,
+            total_length=48,
+            beats=BEATS,
+            completed_beat_ids=[]
+        )
+
+        self.assertIn("has reached its pacing deadline", request)
+        self.assertIn("unmistakable outcome before the shot ends", request)
+        self.assertIn("completed_beat_ids [1]", request)
+
+    def test_low_megapixel_director_guidance_uses_exact_thresholds(self):
+        def rules_for(megapixels):
+            return minimax.build_director_rules(
+                total_length=12,
+                segment_length=6,
+                total_segments=2,
+                subject_definitions=SUBJECTS,
+                megapixels=megapixels,
+                beats_enabled=False
+            )
+
+        at_half = rules_for(0.5)
+        below_half = rules_for(0.49)
+        at_four_tenths = rules_for(0.4)
+        below_four_tenths = rules_for(0.39)
+
+        self.assertNotIn("mostly close-up camera shots", at_half)
+        self.assertNotIn("Avoid a lot of movement", at_half)
+        self.assertIn("mostly close-up camera shots", below_half)
+        self.assertNotIn("Avoid a lot of movement", below_half)
+        self.assertIn("mostly close-up camera shots", at_four_tenths)
+        self.assertNotIn("Avoid a lot of movement", at_four_tenths)
+        self.assertIn("mostly close-up camera shots", below_four_tenths)
+        self.assertIn("Avoid a lot of movement", below_four_tenths)
+
     @mock.patch("minimax.load_text_file")
     def test_blank_or_comment_only_beats_file_disables_beats(self, load_text):
         for contents in ("", "\n  \n", "# no beat tracking\n  # disabled\n"):
@@ -158,6 +227,43 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertEqual(request_json["model"], minimax.LM_STUDIO_MODEL)
         self.assertEqual(request_json["response_format"], minimax.RESPONSE_FORMAT)
 
+    def test_lm_message_normalizer_merges_adjacent_users(self):
+        normalized = minimax.normalize_lm_studio_messages([
+            {"role": "system", "content": "director"},
+            {"role": "user", "content": "original task"},
+            {"role": "user", "content": "correction"}
+        ])
+
+        self.assertEqual(
+            [message["role"] for message in normalized],
+            ["system", "user"]
+        )
+        self.assertIn("original task", normalized[1]["content"])
+        self.assertIn("correction", normalized[1]["content"])
+
+    @mock.patch("minimax.requests.post")
+    def test_ask_llm_normalizes_adjacent_users_before_http_request(self, post):
+        payload = response(
+            "[Shot 1] Live-action, cinematic, Mark and Jill stand together.",
+            []
+        )
+        post.return_value = FakeResponse(json.dumps(payload))
+
+        result = minimax.ask_llm([
+            {"role": "system", "content": "director"},
+            {"role": "user", "content": "original task"},
+            {"role": "user", "content": "correction"}
+        ])
+
+        self.assertEqual(result, payload)
+        outgoing_messages = post.call_args.kwargs["json"]["messages"]
+        self.assertEqual(
+            [message["role"] for message in outgoing_messages],
+            ["system", "user"]
+        )
+        self.assertIn("original task", outgoing_messages[1]["content"])
+        self.assertIn("correction", outgoing_messages[1]["content"])
+
     @mock.patch("minimax.requests.post")
     def test_ask_llm_falls_back_when_structured_output_gets_http_400(self, post):
         rejected = mock.Mock(
@@ -246,34 +352,61 @@ class LmStudioIntegrationTests(unittest.TestCase):
             formatted["integrated_multimodal_description"].startswith("[Shot 1]")
         )
 
-    def test_unresolved_content_uses_at_most_two_corrections(self):
+    def test_unresolved_content_retries_then_uses_best_effort_without_exiting(self):
         missing = response(
             "[Shot 4] Live-action, cinematic, Mark and Jill look at the sky.",
             [4]
         )
         llm_request = mock.Mock(return_value=missing)
 
-        with self.assertRaisesRegex(RuntimeError, "remained invalid"):
-            minimax.request_valid_ministral_prompt(
-                [{"role": "user", "content": "beat four"}],
-                context_for(4),
-                llm_request=llm_request
-            )
+        result = minimax.request_valid_ministral_prompt(
+            [{"role": "user", "content": "beat four"}],
+            context_for(4),
+            llm_request=llm_request
+        )
 
         self.assertEqual(llm_request.call_count, 3)
+        self.assertIn("Jill look at the sky", result[
+            "integrated_multimodal_description"
+        ])
 
-    def test_one_last_resort_correction_can_succeed(self):
+    def test_content_correction_uses_stateless_system_user_roles_and_can_succeed(self):
         missing = response(
             "[Shot 4] Live-action, cinematic, Mark and Jill look at the sky.",
             [4]
         )
         corrected = response(
-            "[Shot 4] Live-action, cinematic, Mark's family run from the "
+            "[Shot 4] At 00:01.000, live-action, cinematic, Mark's family run from the "
             "saucers as beams seize and lift them into the craft until the "
             "completed abduction leaves Mark and Jill beside empty pavement.",
             [4]
         )
         llm_request = mock.Mock(side_effect=[missing, corrected])
+
+        result = minimax.request_valid_ministral_prompt(
+            [
+                {"role": "system", "content": "director"},
+                {"role": "user", "content": "beat four"}
+            ],
+            context_for(4),
+            llm_request=llm_request
+        )
+
+        self.assertEqual(llm_request.call_count, 2)
+        correction_messages = llm_request.call_args_list[1].args[0]
+        self.assertEqual(
+            [message["role"] for message in correction_messages],
+            ["system", "user"]
+        )
+        self.assertIn("PREVIOUS BEST-EFFORT JSON", correction_messages[1]["content"])
+        self.assertEqual(result["completed_beat_ids"], [4])
+
+    def test_failed_correction_request_keeps_existing_prompt(self):
+        missing = response(
+            "[Shot 4] Live-action, cinematic, Mark and Jill look at the sky.",
+            [4]
+        )
+        llm_request = mock.Mock(side_effect=[missing, RuntimeError("LM failed")])
 
         result = minimax.request_valid_ministral_prompt(
             [{"role": "user", "content": "beat four"}],
@@ -282,7 +415,46 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         self.assertEqual(llm_request.call_count, 2)
-        self.assertEqual(result["completed_beat_ids"], [4])
+        self.assertIn("look at the sky", result["integrated_multimodal_description"])
+
+    @mock.patch("minimax.format_ministral_prompt")
+    def test_formatter_exception_uses_raw_best_effort_without_exiting(self, formatter):
+        formatter.side_effect = RuntimeError("local formatter broke")
+        raw = response(
+            "[Shot 1] Raw usable scene description.",
+            []
+        )
+        llm_request = mock.Mock(return_value=raw)
+
+        result = minimax.request_valid_ministral_prompt(
+            [{"role": "user", "content": "one request"}],
+            context_for(1),
+            llm_request=llm_request
+        )
+
+        self.assertEqual(llm_request.call_count, 3)
+        self.assertEqual(
+            result["integrated_multimodal_description"],
+            raw["integrated_multimodal_description"]
+        )
+
+    @mock.patch("minimax.validate_ministral_prompt")
+    def test_validator_exception_uses_formatted_prompt_without_exiting(self, validator):
+        validator.side_effect = RuntimeError("local validator broke")
+        raw = response(
+            "[Shot 1] Live-action, cinematic, Mark and Jill stand together.",
+            []
+        )
+        llm_request = mock.Mock(return_value=raw)
+
+        result = minimax.request_valid_ministral_prompt(
+            [{"role": "user", "content": "one request"}],
+            context_for(1),
+            llm_request=llm_request
+        )
+
+        self.assertEqual(llm_request.call_count, 3)
+        self.assertIn("Mark", result["integrated_multimodal_description"])
 
     def test_context_uses_real_total_segment_deadline(self):
         before_deadline = minimax.build_ministral_context(
@@ -337,6 +509,173 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertEqual(prompt.count("integrated_multimodal_description:"), 1)
         self.assertEqual(prompt.count("overall_soundscape:"), 1)
         self.assertEqual(prompt.count("non_diegetic_music:"), 1)
+
+    def test_hard_cut_injects_each_subjects_latest_clothing_into_h3_prompt(self):
+        prior_records = [
+            {
+                "llm_result": response(
+                    "[Shot 1] <Subject 1> Mark wears a red shirt and blue "
+                    "jeans. <Subject 2> Jill is wearing a yellow dress and "
+                    "white sneakers.",
+                    []
+                )
+            },
+            {
+                "llm_result": response(
+                    "[Shot 2] Mark is wearing a navy jacket and black jeans "
+                    "while Jill continues beside him.",
+                    []
+                )
+            }
+        ]
+        hard_cut_result = response(
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Mark and "
+            "<Subject 2> Jill enter the arcade.",
+            []
+        )
+
+        clothing = minimax.build_hard_cut_clothing_reiteration(
+            SUBJECTS,
+            hard_cut_result,
+            prior_records
+        )
+        prompt = minimax.build_h3_prompt(
+            hard_cut_result,
+            SUBJECTS,
+            clothing
+        )
+
+        integrated = prompt.split(
+            "integrated_multimodal_description: ", 1
+        )[1].split("\n\noverall_soundscape:", 1)[0]
+        self.assertTrue(
+            integrated.startswith("[Shot 3] Camera cuts to a new shot:")
+        )
+        self.assertIn(
+            "<Subject 1> Mark is wearing a navy jacket and black jeans.",
+            integrated
+        )
+        self.assertIn(
+            "<Subject 2> Jill is wearing a yellow dress and white sneakers.",
+            integrated
+        )
+        self.assertEqual(integrated.count("<Subject 1>"), 1)
+        self.assertEqual(integrated.count("<Subject 2>"), 1)
+
+    def test_hard_cut_never_uses_vague_continuity_when_clothing_is_unknown(self):
+        definitions = "<Subject 1> is Connie, referenced in <Picture 1>."
+        result = response(
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Connie enters.",
+            []
+        )
+
+        clothing = minimax.build_hard_cut_clothing_reiteration(
+            definitions,
+            result,
+            []
+        )
+
+        self.assertEqual(
+            clothing,
+            ""
+        )
+
+    def test_hard_cut_extracts_exact_appositive_and_still_in_clothing(self):
+        definitions = (
+            "<Subject 1> is Connie, referenced in <Picture 1>.\n"
+            "<Subject 2> is Frank, referenced in <Picture 2>."
+        )
+        result = response(
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Connie and "
+            "<Subject 2> Frank wait beside the road.",
+            []
+        )
+        prior_records = [{
+            "llm_result": response(
+                "[Shot 2] Connie, a faded green jacket over a white shirt and "
+                "black jeans, stands nearby. Frank remains in a blue polo, "
+                "khaki trousers, and brown shoes while he watches.",
+                []
+            )
+        }]
+
+        clothing = minimax.build_hard_cut_clothing_reiteration(
+            definitions,
+            result,
+            prior_records
+        )
+
+        self.assertIn(
+            "<Subject 1> Connie is wearing a faded green jacket over a white "
+            "shirt and black jeans.",
+            clothing
+        )
+        self.assertIn(
+            "<Subject 2> Frank is wearing a blue polo, khaki trousers, and "
+            "brown shoes.",
+            clothing
+        )
+
+    def test_hard_cut_can_recover_exact_clothing_from_continuity_summary(self):
+        definitions = "<Subject 1> is Connie, referenced in <Picture 1>."
+        result = response(
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Connie enters.",
+            []
+        )
+
+        clothing = minimax.build_hard_cut_clothing_reiteration(
+            definitions,
+            result,
+            [],
+            "- Connie is still in a burgundy coat and black boots."
+        )
+
+        self.assertIn(
+            "<Subject 1> Connie is wearing a burgundy coat and black boots.",
+            clothing
+        )
+
+    def test_hard_cut_prefers_latest_summary_over_older_clothing(self):
+        definitions = "<Subject 1> is Connie, referenced in <Picture 1>."
+        result = response(
+            "[Shot 4] Camera cuts to a new shot: <Subject 1> Connie enters.",
+            []
+        )
+        prior_records = [{
+            "llm_result": response(
+                "[Shot 1] Connie wears a red shirt and blue jeans.",
+                []
+            )
+        }]
+
+        clothing = minimax.build_hard_cut_clothing_reiteration(
+            definitions,
+            result,
+            prior_records,
+            "- Connie is now wearing a burgundy coat and black boots."
+        )
+
+        self.assertIn(
+            "<Subject 1> Connie is wearing a burgundy coat and black boots.",
+            clothing
+        )
+        self.assertNotIn("red shirt", clothing)
+
+    def test_hard_cut_does_not_introduce_absent_defined_subjects(self):
+        result = response(
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Mark, wearing a "
+            "red shirt and blue jeans, enters alone.",
+            []
+        )
+
+        clothing = minimax.build_hard_cut_clothing_reiteration(
+            SUBJECTS,
+            result,
+            []
+        )
+
+        self.assertIn("<Subject 1> Mark", clothing)
+        self.assertNotIn("<Subject 2> Jill", clothing)
 
 
 if __name__ == "__main__":

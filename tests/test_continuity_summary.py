@@ -107,6 +107,10 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(5, len(summary.splitlines()))
         self.assertIsNone(calls[0][1]["response_format"])
         self.assertNotIn("formatter", calls[0][0][0]["content"].lower())
+        self.assertEqual(
+            [message["role"] for message in calls[1][0]],
+            ["system", "user"]
+        )
         self.assertIn("prior response", calls[1][0][-1]["content"].lower())
 
     def test_generation_context_has_summary_and_only_two_exact_results(self):

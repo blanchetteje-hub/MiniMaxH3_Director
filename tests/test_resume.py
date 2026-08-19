@@ -18,6 +18,51 @@ def formatted_result(shot):
 
 
 class ResumeTests(unittest.TestCase):
+    def test_beat_progress_file_is_atomic_and_records_last_segment_delta(self):
+        beats = ["First beat", "Second beat", "Third beat"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "beat_progress.txt")
+            minimax.save_beat_progress(
+                beats,
+                {1, 2},
+                last_segment_number=4,
+                newly_completed_beat_ids=[2],
+                path=path
+            )
+
+            with open(path, "r", encoding="utf-8") as progress_file:
+                progress = progress_file.read()
+
+            self.assertIn("Completed beats: 2/3", progress)
+            self.assertIn("Last rendered segment: 4", progress)
+            self.assertIn(
+                "New beats completed by last rendered segment: "
+                "B002: Second beat",
+                progress
+            )
+            self.assertIn("Next required beat: B003: Third beat", progress)
+            self.assertIn("[DONE] B001: First beat", progress)
+            self.assertIn("[DONE] B002: Second beat", progress)
+            self.assertIn("[NEXT] B003: Third beat", progress)
+            self.assertEqual(
+                [name for name in os.listdir(directory) if name.endswith(".tmp")],
+                []
+            )
+
+    def test_resume_progress_delta_comes_from_checkpoint_cumulative_state(self):
+        beats = ["First beat", "Second beat", "Third beat"]
+        state = {
+            "segments": [
+                {"segment_number": 1, "completed_beat_ids": [1]},
+                {"segment_number": 2, "completed_beat_ids": [1, 2]}
+            ]
+        }
+
+        self.assertEqual(
+            minimax.get_last_checkpoint_beat_update(state, beats),
+            (2, [2])
+        )
+
     def test_parse_args_accepts_one_based_resume_segment(self):
         args = minimax.parse_args(["5", "20", ".5", "--resume", "3"])
         self.assertEqual(args.resume, 3)

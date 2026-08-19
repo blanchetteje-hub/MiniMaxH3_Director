@@ -3,6 +3,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -648,7 +649,13 @@ def format_beat_progress(beats, completed_beat_ids):
     return "\n".join(lines)
 
 
-def save_beat_progress(beats, completed_beat_ids):
+def save_beat_progress(
+    beats,
+    completed_beat_ids,
+    last_segment_number=None,
+    newly_completed_beat_ids=None,
+    path=None
+):
     completed = normalize_completed_beat_ids(beats, completed_beat_ids)
     next_id = get_next_beat_id(beats, completed)
     if next_id is None:
@@ -656,13 +663,137 @@ def save_beat_progress(beats, completed_beat_ids):
     else:
         next_text = f"B{next_id:03d}: {beats[next_id - 1]}"
 
+    newly_completed = sorted({
+        int(beat_id)
+        for beat_id in (newly_completed_beat_ids or [])
+        if not isinstance(beat_id, bool)
+        and str(beat_id).isdigit()
+        and int(beat_id) in completed
+    })
+    if newly_completed:
+        newly_completed_text = ", ".join(
+            f"B{beat_id:03d}: {beats[beat_id - 1]}"
+            for beat_id in newly_completed
+        )
+    else:
+        newly_completed_text = "None"
+    segment_text = (
+        str(last_segment_number)
+        if last_segment_number is not None else "None yet"
+    )
+
     content = (
         f"Completed beats: {len(completed)}/{len(beats)}\n"
+        f"Last rendered segment: {segment_text}\n"
+        f"New beats completed by last rendered segment: "
+        f"{newly_completed_text}\n"
         f"Next required beat: {next_text}\n\n"
         f"{format_beat_progress(beats, completed)}\n"
     )
-    with open(BEAT_PROGRESS_FILE, "w", encoding="utf-8") as f:
-        f.write(content)
+    progress_path = os.path.abspath(path or BEAT_PROGRESS_FILE)
+    progress_directory = os.path.dirname(progress_path)
+    os.makedirs(progress_directory, exist_ok=True)
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix=".beat_progress_",
+        suffix=".tmp",
+        dir=progress_directory,
+        text=True
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary_path, progress_path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+
+
+def get_accepted_reported_beat_ids(
+    beats,
+    completed_beat_ids,
+    reported_beat_ids
+):
+    completed = normalize_completed_beat_ids(beats, completed_beat_ids)
+    reported = set()
+    for raw_id in reported_beat_ids or []:
+        if isinstance(raw_id, bool):
+            continue
+        try:
+            beat_id = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= beat_id <= len(beats):
+            reported.add(beat_id)
+
+    accepted = []
+    next_id = get_next_beat_id(beats, completed)
+    while next_id is not None and next_id in reported:
+        accepted.append(next_id)
+        completed.add(next_id)
+        next_id = get_next_beat_id(beats, completed)
+    return accepted
+
+
+def get_last_checkpoint_beat_update(state, beats):
+    records = state.get("segments", []) if isinstance(state, dict) else []
+    if not records:
+        return None, []
+
+    last_record = records[-1]
+    if not isinstance(last_record, dict):
+        return None, []
+    last_completed = normalize_completed_beat_ids(
+        beats,
+        last_record.get("completed_beat_ids", [])
+    )
+    previous_completed = set()
+    if len(records) > 1 and isinstance(records[-2], dict):
+        previous_completed = normalize_completed_beat_ids(
+            beats,
+            records[-2].get("completed_beat_ids", [])
+        )
+    return last_record.get("segment_number"), sorted(
+        last_completed - previous_completed
+    )
+
+
+def print_minimax_beat_plan(beats, completed_beat_ids, reported_beat_ids):
+    if not beats:
+        return [], None
+
+    accepted = get_accepted_reported_beat_ids(
+        beats,
+        completed_beat_ids,
+        reported_beat_ids
+    )
+    projected_completed = set(
+        normalize_completed_beat_ids(beats, completed_beat_ids)
+    )
+    projected_completed.update(accepted)
+    next_id = get_next_beat_id(beats, projected_completed)
+
+    print()
+    print("=" * 64)
+    print("MINIMAX H3 BEAT PLAN")
+    print("=" * 64)
+    print("Completing in this prompt:")
+    if accepted:
+        for beat_id in accepted:
+            print(f"  B{beat_id:03d}: {beats[beat_id - 1]}")
+    else:
+        current_id = get_next_beat_id(beats, completed_beat_ids)
+        print("  None reported complete by the formatted prompt.")
+        if current_id is not None:
+            print(f"  Still targeting B{current_id:03d}: {beats[current_id - 1]}")
+    print("Next required after this prompt:")
+    if next_id is None:
+        print("  All required beats would be complete.")
+    else:
+        print(f"  B{next_id:03d}: {beats[next_id - 1]}")
+    print("=" * 64)
+    return accepted, next_id
 
 
 def apply_reported_beat_completions(
@@ -684,13 +815,12 @@ def apply_reported_beat_completions(
         if 1 <= beat_id <= len(beats):
             valid_reported.add(beat_id)
 
-    accepted = []
-    next_id = get_next_beat_id(beats, completed)
-
-    while next_id is not None and next_id in valid_reported:
-        completed.add(next_id)
-        accepted.append(next_id)
-        next_id = get_next_beat_id(beats, completed)
+    accepted = get_accepted_reported_beat_ids(
+        beats,
+        completed,
+        valid_reported
+    )
+    completed.update(accepted)
 
     ignored = sorted(
         beat_id
@@ -761,6 +891,38 @@ def raise_for_lm_studio_status(response):
         ) from error
 
 
+def normalize_lm_studio_messages(messages):
+    """Merge adjacent same-role turns before Ministral's strict Jinja template."""
+    normalized = []
+    for message in messages or []:
+        if not isinstance(message, dict):
+            raise TypeError("Each LM Studio message must be a dictionary.")
+        role = str(message.get("role", "")).strip()
+        content = str(message.get("content", ""))
+        if role not in {"system", "user", "assistant"}:
+            raise ValueError(f"Unsupported LM Studio message role: {role!r}")
+        if role == "system" and normalized:
+            raise ValueError("The LM Studio system message must be first.")
+        if normalized and normalized[-1]["role"] == role:
+            normalized[-1]["content"] += "\n\n" + content
+        else:
+            normalized.append({"role": role, "content": content})
+
+    conversation = [
+        message["role"]
+        for message in normalized
+        if message["role"] != "system"
+    ]
+    if any(
+        role != ("user" if index % 2 == 0 else "assistant")
+        for index, role in enumerate(conversation)
+    ):
+        raise ValueError(
+            "LM Studio conversation roles must alternate user and assistant."
+        )
+    return normalized
+
+
 def ask_llm(
     messages,
     max_retries=5,
@@ -768,6 +930,7 @@ def ask_llm(
     response_format=RESPONSE_FORMAT
 ):
     last_error = None
+    messages = normalize_lm_studio_messages(messages)
     for attempt in range(1, max_retries + 1):
         try:
             request_payload = {
@@ -884,11 +1047,13 @@ def build_director_rules(
     resolution_guidance = []
     if megapixels < 0.6:
         resolution_guidance.append(
-            "- Prefer closer framing; keep important subjects large and clear."
+            "- Use mostly close-up camera shots so important subjects remain "
+            "large and clear. Never use wide-angle shots that make subjects too small to see clearly."
         )
     if megapixels < 0.5:
         resolution_guidance.append(
-            "- Keep camera motion and simultaneous action relatively simple."
+            "- Avoid a lot of Subject movement; keep camera motion and simultaneous "
+            "action minimal."
         )
     resolution_text = "\n".join(resolution_guidance) or "- No special guidance."
 
@@ -901,10 +1066,16 @@ def build_director_rules(
 STORY PROGRESSION
 - The AUTHORITATIVE STORY BEAT CHECKLIST controls plot order.
 - [DONE] beats already happened. NEVER repeat them.
-- [NEXT] is the immediate required beat.
+- [NEXT] is the immediate required beat and MUST dominate the next segment.
 - [TODO] beats must happen later, in listed order.
 - Do not skip NEXT to reach a later beat.
 - A beat may span several segments, but CURRENT TASK gives its pacing deadline.
+- Treat that deadline as the latest acceptable completion point, never as
+  permission to postpone action. Begin visible progress immediately and complete
+  NEXT in the current segment whenever its required action fits.
+- Do not spend a segment on atmosphere, reaction shots, travel, setup, or
+  connective action instead of visibly advancing NEXT.
+- Devote most of the segment to concrete on-screen actions that enact NEXT.
 - SOURCE STORY / CREATIVE BRIEF provides tone, setting, dialogue, connective action, and details.
 - RECENT EXACT GENERATED SEGMENTS are authoritative for immediate continuity.
 - Pace all unfinished beats so the movie ends naturally on the final segment.
@@ -944,6 +1115,9 @@ CONTINUATION
 - Later segments continue immediately from the previous generated video.
 - Do not recap the previous clip.
 - Preserve established wardrobe, injuries, props, positions, and ongoing audio when visible/relevant.
+- Whenever a defined subject appears, explicitly state that subject's exact
+  current clothing, including concrete garment types and visible colors. Do not
+  replace wardrobe details with phrases such as `same clothes` or `unchanged outfit`.
 
 SUBJECTS
 Pictures 1-6 are persistent identity/body references only, not wardrobe records.
@@ -962,6 +1136,7 @@ SHOT AND TIMING
   `[Shot N] Camera cuts to a new shot: ...`
 - Shot 1 should explicitly establish its initial framing because there is no previous shot.
 - The opening [Shot N] has no timestamp.
+- All shots after [Shot 1] must progress with appropriate timestamps.
 - Later timestamps use this clip's local timeline, are greater than 00:00.000, and remain before clip duration.
 - Never use cumulative movie timestamps.
 - If Shot N is divisible by 3, it MUST begin with the CUT form.
@@ -971,6 +1146,7 @@ SHOT AND TIMING
   Tilt Up/Down, Pedestal Up/Down, Arc Shot, Tracking Shot, Static Shot,
   Shake Slightly/Strongly, POV, or Roll Clockwise/Counterclockwise.
 - Add `with small/large amplitude` and `at slow/fast speed` only when meaningful.
+- Camera movement is encouraged but not required; do not invent movement for its own sake.
 
 DIALOGUE
 - Never imply speech; write the exact spoken words.
@@ -988,6 +1164,15 @@ DIALOGUE
 
 LIGHTING
 Do not repeatedly restate lighting. Mention it only when established initially or changed by an action.
+
+EXAMPLE FORMATTING
+
+integrated_multimodal_description:
+[Shot 1] Realistic cinematic live-action horror. The camera is a wide shot of the hospital. A nurse, <Subject 1> Amy, is sitting in a chair, working at a desk in a dingy, derelict hospital.
+At 02:00.000 seconds, the camera pans left to reveal a dark hallway. The lighting is dim and flickering, casting eerie shadows on the walls. <Subject 1> Amy (S1) says: <d>[English] I can't believe this place is still open.</d> The sound of distant footsteps echoes through the hallway, followed by a low, ominous hum.
+At 05:00.000 seconds, the camera zooms in on <Subject 1> Amy's face, showing her fear and anxiety. The sound of a door creaking open is heard, followed by a sudden thud as something heavy falls to the ground.
+At 08:00.000 seconds, Amy says (S1): <d>[English] Who's there?</d> The sound of a faint whisper is heard, followed by a loud crash as a chair is thrown across the room. The camera shakes slightly, adding to the tension and fear of the scene.
+
 
 SOUND
 overall_soundscape: Write 1-4 English sentences in one paragraph containing
@@ -1100,14 +1285,16 @@ def request_five_bullet_summary(
     for attempt in range(1, content_attempts + 1):
         messages = list(base_messages)
         if attempt > 1:
-            messages.append({
+            messages[-1] = {
                 "role": "user",
                 "content": (
+                    base_messages[-1]["content"]
+                    + "\n\n"
                     "The prior response was not exactly five bullet lines. "
                     "Return the requested summary with exactly five non-empty "
                     "lines, each beginning with '- ', and no other text."
                 )
-            })
+            }
         summary = llm_request(messages, response_format=None)
         normalized = normalize_five_bullet_summary(summary)
         if normalized is not None:
@@ -1150,16 +1337,44 @@ def build_segment_request(
         if segment >= deadline:
             deadline_text = (
                 f"B{next_beat_id:03d} has reached its pacing deadline and MUST "
-                "be visibly completed in this segment."
+                "be visibly completed in this segment. Show the required action "
+                "and its unmistakable outcome before the shot ends, then report "
+                f"completed_beat_ids [{next_beat_id}]."
             )
         else:
             deadline_text = (
-                f"B{next_beat_id:03d} should be fully completed no later than "
-                f"segment {deadline}."
+                f"Actively attempt to complete B{next_beat_id:03d} in THIS "
+                f"segment; segment {deadline} is only its absolute latest "
+                "completion point. Do not delay merely because time remains."
             )
+        specific_directives = []
+        beat_text = beats[next_beat_id - 1]
+        if re.search(
+            r"(?i)\b(?:talk\w*|conversation|discuss\w*|dialogue|exchange|"
+            r"asks?|says?)\b",
+            beat_text
+        ):
+            specific_directives.append(
+                "Write the required audible exchange now with exact attributed "
+                "dialogue; reactions or implied conversation do not count."
+            )
+        if re.search(
+            r"(?i)\b(?:run|flee|abduct|lift|seize|fight|enter|leave|arrive|"
+            r"appear|fly|drive|fall|open|close|take|give|show)\w*\b",
+            beat_text
+        ):
+            specific_directives.append(
+                "Show the beat's physical action clearly on screen; narration, "
+                "off-screen action, anticipation, or implication do not count."
+            )
+        specific_text = " ".join(specific_directives)
         beat_focus = (
-            f"NEXT beat: B{next_beat_id:03d}: {beats[next_beat_id - 1]} "
-            f"{deadline_text} Do not substantially enact later TODO beats first."
+            f"PRIMARY BEAT EXECUTION - NON-NEGOTIABLE: NEXT beat "
+            f"B{next_beat_id:03d}: {beat_text} Begin its visible action in the "
+            "opening moments, make it the dominant event, and devote most of "
+            f"the clip to accomplishing it. {deadline_text} {specific_text} "
+            "Do not substitute atmosphere, recap, unrelated movement, passive "
+            "observation, or setup. Do not substantially enact later TODO beats first."
         )
 
     if segment == 1:
@@ -1348,29 +1563,73 @@ def build_ministral_context(
     }
 
 
+def build_best_effort_ministral_result(raw_result):
+    if isinstance(raw_result, dict):
+        integrated = raw_result.get("integrated_multimodal_description")
+        soundscape = raw_result.get("overall_soundscape")
+        music = raw_result.get("non_diegetic_music")
+        completed = raw_result.get("completed_beat_ids", [])
+        if not isinstance(integrated, str):
+            integrated = json.dumps(raw_result, ensure_ascii=False)
+        if not isinstance(soundscape, str):
+            soundscape = "N/A"
+        if not isinstance(music, str):
+            music = "N/A"
+        if not isinstance(completed, list):
+            completed = []
+    else:
+        integrated = str(raw_result)
+        soundscape = "N/A"
+        music = "N/A"
+        completed = []
+    return {
+        "integrated_multimodal_description": integrated,
+        "overall_soundscape": soundscape,
+        "non_diegetic_music": music,
+        "completed_beat_ids": completed
+    }
+
+
 def format_correction_request(formatted_result, issues):
     issue_text = "\n".join(
         f"{index}. {issue}"
         for index, issue in enumerate(issues, start=1)
     )
     return f"""
-CONTENT CORRECTION REQUIRED
+Generate a corrected response for the original director task included above.
 
-Python already applied every safe deterministic formatting repair. Regenerate
-the complete JSON response because the remaining problems cannot be fixed
-without changing or inventing scene content.
+Python already applied every deterministic repair it could. Resolve these
+remaining content problems:
 
-UNRESOLVED VIOLATIONS
 {issue_text}
 
-LOCALLY FORMATTED PRIOR RESPONSE
+PREVIOUS BEST-EFFORT JSON
 {json.dumps(formatted_result, ensure_ascii=False, indent=2)}
 
-Return the entire corrected JSON object using the required response schema.
-Preserve valid details and exact dialogue wording unless a listed violation
-explicitly requires new content. Do not merely change completed_beat_ids; the
-scene description itself must visibly satisfy the current beat.
+Return the complete corrected JSON object using the required response schema.
+Preserve valid details and exact dialogue unless a listed problem requires a
+content change. Do not add commentary or Markdown.
 """.strip()
+
+
+def build_stateless_correction_messages(messages, formatted_result, issues):
+    normalized = normalize_lm_studio_messages(messages)
+    system_messages = [
+        message for message in normalized if message["role"] == "system"
+    ]
+    original_content = "\n\n".join(
+        message["content"]
+        for message in normalized
+        if message["role"] != "system"
+    )
+    correction_content = (
+        original_content
+        + "\n\n"
+        + format_correction_request(formatted_result, issues)
+    )
+    return system_messages[:1] + [
+        {"role": "user", "content": correction_content}
+    ]
 
 
 def request_valid_ministral_prompt(
@@ -1382,43 +1641,193 @@ def request_valid_ministral_prompt(
     if llm_request is None:
         llm_request = ask_llm
 
-    last_issues = []
-    request_messages = messages
-    for correction_number in range(max_content_corrections + 1):
-        raw_result = llm_request(request_messages)
+    def format_and_validate(raw_value):
         try:
-            formatted_result = format_ministral_prompt(raw_result, context)
-        except (TypeError, ValueError) as error:
-            formatted_result = {"unparsed_response": str(raw_result)}
-            last_issues = [f"Response could not be parsed locally: {error}"]
-        else:
-            last_issues = validate_ministral_prompt(formatted_result, context)
-        if not last_issues:
-            return formatted_result
+            formatted_value = format_ministral_prompt(raw_value, context)
+        except Exception as error:
+            return (
+                build_best_effort_ministral_result(raw_value),
+                [f"Response could not be parsed locally: {error}"]
+            )
+        try:
+            validation_issues = validate_ministral_prompt(
+                formatted_value,
+                context
+            )
+        except Exception as error:
+            validation_issues = [f"Local prompt validation failed: {error}"]
+        return formatted_value, validation_issues
 
-        if correction_number >= max_content_corrections:
-            break
+    raw_result = llm_request(messages)
+    formatted_result, issues = format_and_validate(raw_result)
+    if not issues:
+        return formatted_result
 
+    for correction_number in range(1, max_content_corrections + 1):
         print(
             "Python formatting left unresolved content issue(s); "
-            f"requesting Ministral correction {correction_number + 1}/"
+            f"requesting Ministral correction {correction_number}/"
             f"{max_content_corrections}."
         )
-        request_messages = messages + [{
-            "role": "user",
-            "content": format_correction_request(formatted_result, last_issues)
-        }]
+        # Use a fresh stateless system/user request. This is accepted by
+        # Ministral's strict Jinja template and cannot contain adjacent users.
+        correction_messages = build_stateless_correction_messages(
+            messages,
+            formatted_result,
+            issues
+        )
+        try:
+            corrected_raw = llm_request(correction_messages)
+        except Exception as error:
+            print(
+                "WARNING: Ministral correction request failed; using the "
+                f"existing best-effort prompt instead: {error}"
+            )
+            return formatted_result
+        formatted_result, issues = format_and_validate(corrected_raw)
+        if not issues:
+            return formatted_result
 
-    details = "\n".join(f"- {issue}" for issue in last_issues)
-    raise RuntimeError(
-        "Ministral prompt remained invalid after Python formatting and "
-        f"{max_content_corrections} content correction request(s):\n{details}"
+    print(
+        "WARNING: Prompt still has unresolved issue(s) after all Ministral "
+        "corrections; using the latest best-effort prompt:"
     )
+    for issue in issues:
+        print(f"  - {issue}")
+    return formatted_result
 
 
 # ============================================================
 # H3 PROMPT
 # ============================================================
+
+_CLOTHING_NOUN = re.compile(
+    r"(?i)\b(?:shirt|t-?shirt|tee|blouse|jacket|coat|dress|skirt|jeans|"
+    r"pants|trousers|shorts|suit|sweater|hoodie|uniform|robe|gown|vest|"
+    r"windbreaker|cardigan|overalls|boots|shoes|sneakers|sandals|hat|"
+    r"cap|scarf|gloves|tie|belt|socks|blazer|jersey|polo|tank\s+top|"
+    r"sweatshirt|pullover|clothes|clothing|outfit)\b"
+)
+_CLOTHING_ACTION = re.compile(
+    r"(?i)(?:,\s*|\s+)(?=<Subject\s+\d+>|(?:and\s+)?(?:he|she|they|who|while|as|then|"
+    r"walks?|stands?|sits?|runs?|looks?|holds?|moves?|turns?|steps?|"
+    r"crosses?|faces?|watches?|reaches?|leans?|gestures?)\b)"
+)
+
+
+def parse_defined_subjects(subject_definitions):
+    subjects = []
+    for match in re.finditer(
+        r"(?i:<Subject\s+(\d+)>\s*(?:is\s+)?)"
+        r"([A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*)",
+        subject_definitions or ""
+    ):
+        subject_number = int(match.group(1))
+        name = match.group(2).strip()
+        if not any(number == subject_number for number, _ in subjects):
+            subjects.append((subject_number, name))
+    return subjects
+
+
+def extract_subject_clothing(subject_name, descriptions):
+    escaped_name = re.escape(subject_name)
+    explicit_pattern = re.compile(
+        rf"(?i)\b{escaped_name}\b(?:\s+\(S\d+\))?\s*,?\s*"
+        r"(?:(?:is|was|remains?)\s+)?(?:still\s+|currently\s+|now\s+)?"
+        r"(?:wearing|wears|dressed\s+in|clad\s+in|has\s+on|sports)\s+"
+        r"([^.!?;]+)"
+    )
+    in_pattern = re.compile(
+        rf"(?i)\b{escaped_name}\b(?:\s+\(S\d+\))?\s*,?\s+"
+        r"(?:(?:is|was|remains?)\s+)?(?:still\s+|currently\s+|now\s+)?in\s+"
+        r"([^.!?;]+)"
+    )
+    possessive_pattern = re.compile(
+        rf"(?i)\b{escaped_name}(?:'s|\u2019s)\s+([^.!?;]+)"
+    )
+    appositive_pattern = re.compile(
+        rf"(?i)\b{escaped_name}\b(?:\s+\(S\d+\))?\s*,\s*"
+        r"([^.!?;]+)"
+    )
+
+    for description in descriptions:
+        text = str(description or "")
+        match = explicit_pattern.search(text)
+        if match is None:
+            candidate = in_pattern.search(text)
+            if candidate is not None and _CLOTHING_NOUN.search(candidate.group(1)):
+                match = candidate
+        if match is None:
+            candidate = possessive_pattern.search(text)
+            if candidate is not None and _CLOTHING_NOUN.search(candidate.group(1)):
+                match = candidate
+        if match is None:
+            candidate = appositive_pattern.search(text)
+            if candidate is not None and _CLOTHING_NOUN.search(candidate.group(1)):
+                match = candidate
+        if match is None:
+            continue
+
+        clothing = _CLOTHING_ACTION.split(match.group(1), maxsplit=1)[0]
+        clothing = re.sub(r"\s+", " ", clothing).strip(" ,:")
+        if clothing and _CLOTHING_NOUN.search(clothing):
+            return clothing[:240].rstrip(" ,:")
+    return None
+
+
+def build_hard_cut_clothing_reiteration(
+    subject_definitions,
+    current_result,
+    prior_segment_records,
+    continuity_summary=""
+):
+    subjects = parse_defined_subjects(subject_definitions)
+    if not subjects:
+        return ""
+
+    current_description = (
+        current_result.get("integrated_multimodal_description", "")
+        if isinstance(current_result, dict) else ""
+    )
+    subjects = [
+        (subject_number, subject_name)
+        for subject_number, subject_name in subjects
+        if re.search(
+            rf"(?i)<Subject\s+{subject_number}>|\b{re.escape(subject_name)}\b",
+            current_description
+        )
+    ]
+    if not subjects:
+        return ""
+
+    descriptions = [continuity_summary or ""]
+    descriptions.append(current_description)
+    descriptions.extend(
+        record.get("llm_result", {}).get(
+            "integrated_multimodal_description", ""
+        )
+        for record in reversed(prior_segment_records or [])
+        if isinstance(record, dict)
+        and isinstance(record.get("llm_result"), dict)
+    )
+    descriptions.append(subject_definitions or "")
+
+    clauses = []
+    for subject_number, subject_name in subjects:
+        clothing = extract_subject_clothing(subject_name, descriptions)
+        if clothing:
+            clauses.append(
+                f"<Subject {subject_number}> {subject_name} is wearing {clothing}."
+            )
+        else:
+            print(
+                "WARNING: Exact hard-cut clothing could not be recovered for "
+                f"<Subject {subject_number}> {subject_name}; omitting the "
+                "wardrobe reminder rather than inventing or using a vague one."
+            )
+    if not clauses:
+        return ""
+    return "Hard-cut wardrobe continuity: " + " ".join(clauses)
 
 def strip_field_prefix(value, field_name):
     value = value.strip()
@@ -1428,7 +1837,11 @@ def strip_field_prefix(value, field_name):
     return value
 
 
-def build_h3_prompt(llm_result, subject_definitions):
+def build_h3_prompt(
+    llm_result,
+    subject_definitions,
+    hard_cut_clothing_reiteration=""
+):
     required = (
         "integrated_multimodal_description",
         "overall_soundscape",
@@ -1442,6 +1855,27 @@ def build_h3_prompt(llm_result, subject_definitions):
         llm_result["integrated_multimodal_description"],
         "integrated_multimodal_description"
     )
+    if hard_cut_clothing_reiteration:
+        subjects = parse_defined_subjects(subject_definitions)
+        for subject_number, _ in subjects:
+            integrated = re.sub(
+                rf"(?i)<Subject\s+{subject_number}>\s*",
+                "",
+                integrated
+            )
+        cut_opening = re.match(
+            r"(?i)(\[Shot\s+\d+\]\s+Camera cuts to a new shot:\s*)",
+            integrated
+        )
+        if cut_opening:
+            integrated = (
+                integrated[:cut_opening.end()]
+                + hard_cut_clothing_reiteration
+                + " "
+                + integrated[cut_opening.end():]
+            )
+        else:
+            integrated = hard_cut_clothing_reiteration + " " + integrated
     soundscape = strip_field_prefix(
         llm_result["overall_soundscape"],
         "overall_soundscape"
@@ -1812,17 +2246,30 @@ def _run_main(summary_executor):
         continuity_summary_pending = restored["continuity_summary_pending"]
 
     if beats:
-        save_beat_progress(beats, completed_beat_ids)
+        last_segment_number, last_new_beat_ids = get_last_checkpoint_beat_update(
+            generation_state,
+            beats
+        )
+        save_beat_progress(
+            beats,
+            completed_beat_ids,
+            last_segment_number=last_segment_number,
+            newly_completed_beat_ids=last_new_beat_ids
+        )
 
     print()
     print("=" * 64)
-    print("H3 AUTOMATED DIRECTOR - SIMPLIFIED")
+    print("H3 AUTOMATED DIRECTOR")
     print("=" * 64)
     print(f"Segment length:       {segment_length:g} seconds")
     print(f"Total story length:   {total_length:g} seconds")
     print(f"Total segments:       {total_segments}")
     print(f"Starting segment:     {resume_segment}")
     print(f"Initial megapixels:   {megapixels:g}")
+    print(
+        "Prompt corrections:   up to "
+        f"{MINISTRAL_CONTENT_CORRECTION_ATTEMPTS}; best effort on failure"
+    )
     if beats:
         print(f"Story beats:          {len(beats)}")
         print(f"Beat progress file:   {BEAT_PROGRESS_FILE}")
@@ -1936,8 +2383,25 @@ def _run_main(summary_executor):
                 summary_pair,
             )
         reported_beat_ids = llm_result.get("completed_beat_ids", [])
-        h3_prompt = build_h3_prompt(llm_result, subject_definitions)
+        hard_cut_clothing = ""
+        if is_hard_cut_segment(segment):
+            hard_cut_clothing = build_hard_cut_clothing_reiteration(
+                subject_definitions,
+                llm_result,
+                generation_state.get("segments", []),
+                continuity_summary
+            )
+        h3_prompt = build_h3_prompt(
+            llm_result,
+            subject_definitions,
+            hard_cut_clothing
+        )
 
+        prompt_completed_beat_ids, _ = print_minimax_beat_plan(
+            beats,
+            completed_beat_ids,
+            reported_beat_ids
+        )
         print()
         print(h3_prompt)
         print()
@@ -1979,7 +2443,12 @@ def _run_main(summary_executor):
                 reported_beat_ids,
                 segment
             )
-            save_beat_progress(beats, completed_beat_ids)
+            save_beat_progress(
+                beats,
+                completed_beat_ids,
+                last_segment_number=segment,
+                newly_completed_beat_ids=prompt_completed_beat_ids
+            )
 
         # Checkpoint the rendered video before waiting for the separate summary
         # so a summary failure never requires rendering this segment again.

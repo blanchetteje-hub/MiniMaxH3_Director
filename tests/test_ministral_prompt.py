@@ -160,6 +160,38 @@ completed_beat_ids: [1]"""
 
 
 class VisualFormattingTests(unittest.TestCase):
+    def test_trailing_parenthesized_timestamp_moves_before_its_action(self) -> None:
+        malformed = result(
+            "integrated_multimodal_description: [Shot 17] Camera cuts to a "
+            "new shot: Jack’s smirk fades into a mischievous grin as he hooks "
+            "both thumbs onto his jeans (00:01.200)."
+        )
+        context = context_for(
+            1,
+            segment_number=17,
+            subject_definitions="",
+            next_beat_id=None,
+            current_beat_text="",
+            later_beat_texts=[],
+            beat_deadline_required=False,
+            hard_cut_required=False,
+        )
+
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted["integrated_multimodal_description"]
+
+        self.assertEqual(
+            description,
+            "[Shot 17] Camera cuts to a new shot: At 00:01.200, "
+            "Jack’s smirk fades into a mischievous grin as he hooks both "
+            "thumbs onto his jeans.",
+        )
+        self.assertNotIn("(00:01.200)", description)
+        self.assertEqual(
+            formatted,
+            format_ministral_prompt(copy.deepcopy(formatted), context),
+        )
+
     def test_required_segment_boundary_uses_exact_hard_cut_opening(self) -> None:
         malformed = result(
             "[Shot 3] Live-action, cinematic, Mark and Jill discuss the saucers. Mark (S1) "
@@ -174,6 +206,73 @@ class VisualFormattingTests(unittest.TestCase):
 
         self.assertTrue(description.startswith("[Shot 3] Camera cuts to a new shot:"))
 
+    def test_later_segment_requires_a_nonzero_local_timestamp(self) -> None:
+        malformed = result(
+            "[Shot 2] Live-action, cinematic, Mark and Jill walk through the park.",
+            completed=[2],
+        )
+
+        formatted = format_ministral_prompt(malformed, context_for(2))
+        issues = validate_ministral_prompt(formatted, context_for(2))
+
+        self.assertTrue(
+            any("after the first" in issue for issue in issues),
+            issues,
+        )
+
+    def test_later_segment_timestamp_satisfies_timestamp_requirement(self) -> None:
+        formatted = format_ministral_prompt(
+            result(
+                "[Shot 2] At 00:01.200, Mark and Jill walk through the park.",
+                completed=[2],
+            ),
+            context_for(2),
+        )
+
+        issues = validate_ministral_prompt(formatted, context_for(2))
+
+        self.assertFalse(
+            any("after the first" in issue for issue in issues),
+            issues,
+        )
+        self.assertIn("At 00:01.200,", formatted["integrated_multimodal_description"])
+
+    def test_continuation_opening_uses_zero_timestamp_and_h3_sentence_form(self) -> None:
+        formatted = format_ministral_prompt(
+            result(
+                "[Shot 2] Camera continues from the previous shot At 00:01.500, "
+                "Mark walks through the park.",
+                completed=[2],
+            ),
+            context_for(
+                2,
+                current_beat_text="Show Mark walking through the park.",
+                next_beat_id=2,
+                beat_deadline_required=False,
+            ),
+        )
+
+        description = formatted["integrated_multimodal_description"]
+        self.assertTrue(
+            description.startswith(
+                "[Shot 2] At 00:00.000 seconds, camera continues from the "
+                "previous shot."
+            )
+        )
+        self.assertNotIn("00:01.500", description)
+        self.assertEqual(
+            validate_ministral_prompt(
+                formatted,
+                context_for(
+                    2,
+                    current_beat_text="Show Mark walking through the park.",
+                    next_beat_id=2,
+                    beat_deadline_required=False,
+                ),
+            ),
+            [],
+        )
+
     def test_shot_number_opening_timestamp_extra_shot_and_alignment_are_cleaned(self) -> None:
         malformed = result(
             "How the reference pictures align with the target video — <Picture 1> aligns "
@@ -187,7 +286,7 @@ class VisualFormattingTests(unittest.TestCase):
 
         self.assertTrue(description.startswith("[Shot 2]"))
         self.assertEqual(re.findall(r"\[Shot\s+\d+\]", description), ["[Shot 2]"])
-        self.assertNotRegex(description, r"(?i)(?:at\s+)?00:00(?:\.0+)?")
+        self.assertIn("At 00:00.000,", description)
         self.assertNotIn("reference pictures align", description.lower())
 
     def test_stacked_camera_labels_become_natural_camera_prose(self) -> None:
@@ -383,7 +482,7 @@ class AudioFormattingTests(unittest.TestCase):
 
     def test_music_is_limited_to_three_sentences(self) -> None:
         malformed = result(
-            "[Shot 2] Live-action, cinematic, flying saucers cross overhead.",
+            "[Shot 2] At 00:01.000, live-action, cinematic, flying saucers cross overhead.",
             music=(
                 "Low strings sustain at a slow tempo. Brass pulses twice. Drums enter at a "
                 "steady rhythm. The instruments fade out. A final cymbal rings."
@@ -397,7 +496,7 @@ class AudioFormattingTests(unittest.TestCase):
 
     def test_na_soundscape_is_rejected_unless_silence_is_allowed(self) -> None:
         prompt = result(
-            "[Shot 2] Live-action, cinematic, flying saucers cross overhead.",
+            "[Shot 2] At 00:01.000, live-action, cinematic, flying saucers cross overhead.",
             soundscape="N/A",
             completed=[2],
         )
@@ -424,7 +523,7 @@ class CompletionMetadataTests(unittest.TestCase):
 
     def test_completion_metadata_is_removed_from_rendered_description(self) -> None:
         malformed = result(
-            "[Shot 2] Live-action, cinematic, flying saucers cross overhead. "
+            "[Shot 2] At 00:01.000, live-action, cinematic, flying saucers cross overhead. "
             "completed_beat_ids: [2]",
             completed=[2],
         )
@@ -474,7 +573,7 @@ class BeatFixtureTests(unittest.TestCase):
 
     def test_b002_malformed_and_valid_fixtures(self) -> None:
         malformed = result(
-            "[Shot 8] 0:00 several flying saucers fly overhead above the park. "
+            "[Shot 8] At 00:01.000, several flying saucers fly overhead above the park. "
             "Camera Motion: Tilt Up. Amplitude: large. Speed: fast.",
             music="N.A.",
             completed=["B002"],
@@ -490,7 +589,7 @@ class BeatFixtureTests(unittest.TestCase):
 
     def test_b003_malformed_dialogue_fixture_preserves_every_spoken_character(self) -> None:
         malformed = result(
-            "[Shot 11] At 00:00.000, Live-action, cinematic, Mark (S2): "
+            "[Shot 11] At 00:01.000, Live-action, cinematic, Mark (S2): "
             "<d>What is happening?!</d> Jill (S1): <d>I don't know—those things aren't planes.</d> "
             "They keep talking and trying to understand the saucers overhead.",
             soundscape=(
@@ -516,7 +615,7 @@ class BeatFixtureTests(unittest.TestCase):
 
     def test_b004_malformed_and_valid_fixtures(self) -> None:
         malformed = result(
-            "[Shot 12] At 0.00 seconds, Live-action, cinematic, Mark's family run away while "
+            "[Shot 12] At 00:01.000, Live-action, cinematic, Mark's family run away while "
             "the flying saucers seize and lift the whole family from the ground, carrying them "
             "into the craft as Mark and Jill watch the now-empty pavement. [Shot 13] The "
             "abduction is visibly complete.",
