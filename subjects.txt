@@ -1,1 +1,2 @@
 <Subject 1> is Mark, a 40-year-old man referenced in <Picture 1>.
+<Subject 2> is Jill, a 35-year-old woman referenced in <Picture 2>.

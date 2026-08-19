@@ -1,0 +1,551 @@
+"""Unit tests for deterministic Ministral-to-MiniMax H3 formatting.
+
+The tests deliberately use only the standard library.  They describe the
+public contract of ``ministral_formatter`` and avoid importing or contacting
+LM Studio, ComfyUI, or any other service.
+"""
+
+from __future__ import annotations
+
+import copy
+import json
+import re
+import unittest
+
+from ministral_formatter import format_ministral_prompt, validate_ministral_prompt
+
+
+CORE_KEYS = (
+    "integrated_multimodal_description",
+    "overall_soundscape",
+    "non_diegetic_music",
+    "completed_beat_ids",
+)
+
+SUBJECT_DEFINITIONS = (
+    "<Subject 1> is Mark, a 40-year-old man referenced in <Picture 1>.\n"
+    "<Subject 2> is Jill, a 35-year-old woman referenced in <Picture 2>."
+)
+
+BEATS = (
+    "Show Mark, Jill, and his family.",
+    "Show flying saucers flying overhead.",
+    "Show Mark and Jill talking and trying to figure out what is happening.",
+    "Show the saucers abducting Mark's family as they run away.",
+)
+
+
+def context_for(beat_number: int, **overrides: object) -> dict:
+    """Build the documented formatter context for one sequential beat."""
+
+    context = {
+        "segment_number": beat_number,
+        "segment_duration": 6.0,
+        "subject_definitions": SUBJECT_DEFINITIONS,
+        "completed_beat_ids": list(range(1, beat_number)),
+        "next_beat_id": beat_number,
+        "current_beat_text": BEATS[beat_number - 1],
+        "later_beat_texts": list(BEATS[beat_number:]),
+        "beat_deadline_required": True,
+        "allow_silence": False,
+        "hard_cut_required": beat_number % 3 == 0,
+    }
+    context.update(overrides)
+    return context
+
+
+def result(
+    description: str,
+    *,
+    soundscape: str = "Theme-park crowds murmur as footsteps cross the pavement.",
+    music: str = "N/A",
+    completed: list[int] | None = None,
+) -> dict:
+    return {
+        "integrated_multimodal_description": description,
+        "overall_soundscape": soundscape,
+        "non_diegetic_music": music,
+        "completed_beat_ids": [] if completed is None else completed,
+    }
+
+
+class FieldAndFixedPointTests(unittest.TestCase):
+    def test_plain_labeled_response_is_parsed_without_markdown(self) -> None:
+        raw = """integrated_multimodal_description: [Shot 1] Live-action, cinematic, Mark, Jill, and Mark's family stand together in a busy theme park.
+
+overall_soundscape: Crowd chatter and footsteps fill the park.
+
+non_diegetic_music: N/A
+
+completed_beat_ids: [1]"""
+
+        formatted = format_ministral_prompt(raw, context_for(1))
+
+        self.assertEqual(tuple(formatted), CORE_KEYS)
+        self.assertEqual(formatted["completed_beat_ids"], [1])
+        self.assertEqual(validate_ministral_prompt(formatted, context_for(1)), [])
+
+    def test_code_fenced_json_and_decorated_duplicate_labels_are_cleaned(self) -> None:
+        raw = {
+            "integrated_multimodal_description": (
+                "**integrated_multimodal_description:** [Shot 1] Live-action, cinematic, "
+                "a medium-wide shot shows Mark, Jill, and Mark's family together at a busy "
+                "theme park."
+            ),
+            "overall_soundscape": (
+                "### overall_soundscape: Crowd chatter and footsteps fill the park."
+            ),
+            "non_diegetic_music": "non_diegetic_music: none",
+            "completed_beat_ids": ["B001"],
+        }
+        fenced = "```json\n" + json.dumps(raw) + "\n```"
+
+        formatted = format_ministral_prompt(fenced, context_for(1))
+
+        self.assertEqual(tuple(formatted), CORE_KEYS)
+        self.assertTrue(formatted["integrated_multimodal_description"].startswith("[Shot 1]"))
+        for value in formatted.values():
+            if isinstance(value, str):
+                self.assertNotIn("```", value)
+                self.assertNotIn("**", value)
+                self.assertNotIn("###", value)
+        self.assertEqual(formatted["non_diegetic_music"], "N/A")
+        self.assertEqual(formatted["completed_beat_ids"], [1])
+
+    def test_valid_prompt_is_idempotent(self) -> None:
+        valid = result(
+            "[Shot 1] Live-action, cinematic, a medium-wide shot shows Mark, Jill, and "
+            "Mark's family enjoying a busy theme park together.",
+            completed=[1],
+        )
+
+        first = format_ministral_prompt(copy.deepcopy(valid), context_for(1))
+        second = format_ministral_prompt(copy.deepcopy(first), context_for(1))
+
+        self.assertEqual(first, second)
+        self.assertEqual(validate_ministral_prompt(first, context_for(1)), [])
+
+    def test_formatter_and_validator_do_not_mutate_their_inputs(self) -> None:
+        original = result(
+            "[Shot 1] At 00:00.000, Live-action, cinematic, Mark, Jill, and Mark's family "
+            "stand together at a theme park.",
+            music="none",
+            completed=["B001"],
+        )
+        context = context_for(1)
+        original_snapshot = copy.deepcopy(original)
+        context_snapshot = copy.deepcopy(context)
+
+        formatted = format_ministral_prompt(original, context)
+        validate_ministral_prompt(formatted, context)
+
+        self.assertEqual(original, original_snapshot)
+        self.assertEqual(context, context_snapshot)
+
+    def test_repair_loop_reaches_a_fixed_point_on_repeated_noise(self) -> None:
+        noisy = result(
+            "**integrated_multimodal_description:** " * 12
+            + "[Shot 1] At 00:00.000, Live-action, cinematic, Mark, Jill, and Mark's family "
+            "stand together in the theme park.",
+            music="NONE.",
+            completed=[1],
+        )
+
+        repaired = format_ministral_prompt(noisy, context_for(1))
+
+        self.assertEqual(
+            repaired,
+            format_ministral_prompt(copy.deepcopy(repaired), context_for(1)),
+        )
+
+
+class VisualFormattingTests(unittest.TestCase):
+    def test_required_segment_boundary_uses_exact_hard_cut_opening(self) -> None:
+        malformed = result(
+            "[Shot 3] Live-action, cinematic, Mark and Jill discuss the saucers. Mark (S1) "
+            "asks: <d>[English] What is happening?</d> Jill (S2) answers: "
+            "<d>[English] I don't know.</d>",
+            completed=[3],
+        )
+
+        description = format_ministral_prompt(malformed, context_for(3))[
+            "integrated_multimodal_description"
+        ]
+
+        self.assertTrue(description.startswith("[Shot 3] Camera cuts to a new shot:"))
+
+    def test_shot_number_opening_timestamp_extra_shot_and_alignment_are_cleaned(self) -> None:
+        malformed = result(
+            "How the reference pictures align with the target video — <Picture 1> aligns "
+            "with 0.00 seconds. [Shot 9] At 00:00.000, live-action saucers fly overhead. "
+            "[Shot 10] At 00:03.000, the saucers continue across the sky.",
+            completed=[2],
+        )
+
+        repaired = format_ministral_prompt(malformed, context_for(2))
+        description = repaired["integrated_multimodal_description"]
+
+        self.assertTrue(description.startswith("[Shot 2]"))
+        self.assertEqual(re.findall(r"\[Shot\s+\d+\]", description), ["[Shot 2]"])
+        self.assertNotRegex(description, r"(?i)(?:at\s+)?00:00(?:\.0+)?")
+        self.assertNotIn("reference pictures align", description.lower())
+
+    def test_stacked_camera_labels_become_natural_camera_prose(self) -> None:
+        malformed = result(
+            "[Shot 2] Live-action, cinematic, several flying saucers cross overhead. "
+            "Camera Motion: Push In. Amplitude: small. Speed: slow.",
+            completed=[2],
+        )
+
+        description = format_ministral_prompt(malformed, context_for(2))[
+            "integrated_multimodal_description"
+        ]
+
+        self.assertRegex(
+            description.lower(),
+            r"camera push(?:es|ing) in with small amplitude at slow speed",
+        )
+        self.assertNotRegex(description.lower(), r"camera motion\s*:|amplitude\s*:|speed\s*:")
+
+    def test_unknown_subject_and_picture_tags_are_removed_but_known_tags_survive(self) -> None:
+        malformed = result(
+            "[Shot 1] Live-action, cinematic, Mark <Subject 1> from <Picture 1> and Jill "
+            "<Subject 2> from <Picture 2> stand with their son <Subject 3> from <Picture 3> "
+            "and the rest of Mark's family.",
+            completed=[1],
+        )
+
+        description = format_ministral_prompt(malformed, context_for(1))[
+            "integrated_multimodal_description"
+        ]
+
+        self.assertIn("<Subject 1>", description)
+        self.assertIn("<Picture 1>", description)
+        self.assertIn("<Subject 2>", description)
+        self.assertIn("<Picture 2>", description)
+        self.assertNotIn("<Subject 3>", description)
+        self.assertNotIn("<Picture 3>", description)
+        self.assertIn("son", description)
+
+    def test_visible_sign_text_is_quoted_without_changing_its_words(self) -> None:
+        malformed = result(
+            "[Shot 1] Live-action, cinematic, Mark and Jill wait with Mark's family beside "
+            "a sign reading ALIEN INVASION while park visitors pass.",
+            completed=[1],
+        )
+
+        description = format_ministral_prompt(malformed, context_for(1))[
+            "integrated_multimodal_description"
+        ]
+
+        self.assertIn('sign reading "ALIEN INVASION"', description)
+
+
+class DialogueFormattingTests(unittest.TestCase):
+    def test_segment_two_wrong_ids_and_joint_id_are_remapped_without_rewording(self) -> None:
+        malformed = result(
+            "[Shot 2] Live-action, cinematic, saucers fly overhead as Mark (S3) tells Jill "
+            "(S4): <d>Those can't be airplanes!</d> Mark and Jill (S3,S4) shout together: "
+            "<d>[English] Get down, now!</d>",
+            completed=[2],
+        )
+
+        description = format_ministral_prompt(malformed, context_for(2))[
+            "integrated_multimodal_description"
+        ]
+
+        self.assertIn("Mark (S1)", description)
+        self.assertIn("Jill (S2)", description)
+        self.assertIn("(S1,S2)", description)
+        self.assertNotRegex(description, r"\(S[34](?:,S[34])?\)")
+        self.assertIn("<d>[English] Those can't be airplanes!</d>", description)
+        self.assertIn("<d>[English] Get down, now!</d>", description)
+
+    def test_segment_three_later_id_drift_is_mapped_by_identity(self) -> None:
+        malformed = result(
+            "[Shot 3] Live-action, cinematic, Mark (S5) asks Jill (S6): "
+            "<d>Where did those saucers come from?</d> Jill (S6) answers Mark (S5): "
+            "<d>They appeared above the rides.</d> Mark and Jill (S5,S6) keep talking.",
+            completed=[3],
+        )
+
+        description = format_ministral_prompt(malformed, context_for(3))[
+            "integrated_multimodal_description"
+        ]
+
+        self.assertNotRegex(description, r"\bS[56]\b")
+        self.assertIn("Mark (S1)", description)
+        self.assertIn("Jill (S2)", description)
+        self.assertIn("(S1,S2)", description)
+        self.assertIn("<d>[English] Where did those saucers come from?</d>", description)
+        self.assertIn("<d>[English] They appeared above the rides.</d>", description)
+
+    def test_mark_and_jill_receive_stable_speaker_ids(self) -> None:
+        malformed = result(
+            "[Shot 3] Live-action, cinematic, Mark (S2) turns to Jill (S1). Mark (S2) says: "
+            "<d>[English] What is happening?</d> Jill (S1) answers: "
+            "<d>[English] I don't know!</d>",
+            completed=[3],
+        )
+
+        description = format_ministral_prompt(malformed, context_for(3))[
+            "integrated_multimodal_description"
+        ]
+
+        self.assertNotIn("Mark (S2)", description)
+        self.assertNotIn("Jill (S1)", description)
+        self.assertIn("Mark (S1)", description)
+        self.assertIn("Jill (S2)", description)
+
+    def test_dialogue_wrappers_and_english_tags_are_repaired_verbatim(self) -> None:
+        malformed = result(
+            "[Shot 3] Live-action, cinematic, Mark (S2): <d>What is happening?!</d> "
+            "Jill (S1): <d>I don't know\u2014look up!</d>",
+            completed=[3],
+        )
+
+        description = format_ministral_prompt(malformed, context_for(3))[
+            "integrated_multimodal_description"
+        ]
+
+        self.assertIn("Mark (S1)", description)
+        self.assertIn("Jill (S2)", description)
+        self.assertIn("<d>[English] What is happening?!</d>", description)
+        self.assertIn("<d>[English] I don't know, look up!</d>", description)
+        self.assertEqual(description.count("What is happening?!"), 1)
+        self.assertEqual(description.count("I don't know, look up!"), 1)
+
+    def test_compound_speaker_id_is_normalized(self) -> None:
+        malformed = result(
+            "[Shot 3] Live-action, cinematic, Mark and Jill (S2, S1) shout together: "
+            "<d>[English] Run!</d> as they try to understand the chaos.",
+            completed=[3],
+        )
+
+        description = format_ministral_prompt(malformed, context_for(3))[
+            "integrated_multimodal_description"
+        ]
+
+        self.assertIn("(S1,S2)", description)
+        self.assertNotIn("(S2, S1)", description)
+
+    def test_voiceover_uses_exact_phrase_and_closed_lips_clause(self) -> None:
+        malformed = result(
+            "[Shot 3] Live-action, cinematic, Mark (S1) narrates: "
+            "<d>I knew something was wrong.</d> while he watches Jill and the sky.",
+            completed=[3],
+        )
+
+        description = format_ministral_prompt(malformed, context_for(3))[
+            "integrated_multimodal_description"
+        ]
+
+        self.assertIn("says in an off-screen voiceover", description)
+        self.assertIn("<d>[English] I knew something was wrong.</d>", description)
+        self.assertRegex(
+            description,
+            r"I knew something was wrong\.</d> while (?:Mark's|his) lips remain completely closed",
+        )
+
+
+class AudioFormattingTests(unittest.TestCase):
+    def test_soundscape_removes_dialogue_music_and_language_suffix(self) -> None:
+        malformed = result(
+            "[Shot 3] Live-action, cinematic, Mark (S1) says: "
+            "<d>[English] What is happening?</d> Jill (S2) says: "
+            "<d>[English] I don't know.</d>",
+            soundscape=(
+                'Crowds murmur. Mark says "What is happening?" Sparse strings play. '
+                "Footsteps scrape the pavement. All language is in English."
+            ),
+            completed=[3],
+        )
+
+        soundscape = format_ministral_prompt(malformed, context_for(3))["overall_soundscape"]
+
+        self.assertIn("Crowds murmur", soundscape)
+        self.assertIn("Footsteps scrape", soundscape)
+        self.assertNotIn("What is happening", soundscape)
+        self.assertNotRegex(soundscape.lower(), r"strings|music|language is in english")
+        sentences = [piece for piece in re.split(r"(?<=[.!?])\s+", soundscape) if piece]
+        self.assertLessEqual(len(sentences), 4)
+
+    def test_music_none_variants_are_canonical_na(self) -> None:
+        for value in ("none", "None.", "n/a", "N.A.", "no non-diegetic music"):
+            with self.subTest(value=value):
+                malformed = result(
+                    "[Shot 2] Live-action, cinematic, flying saucers cross overhead.",
+                    music=value,
+                    completed=[2],
+                )
+                repaired = format_ministral_prompt(malformed, context_for(2))
+                self.assertEqual(repaired["non_diegetic_music"], "N/A")
+
+    def test_music_is_limited_to_three_sentences(self) -> None:
+        malformed = result(
+            "[Shot 2] Live-action, cinematic, flying saucers cross overhead.",
+            music=(
+                "Low strings sustain at a slow tempo. Brass pulses twice. Drums enter at a "
+                "steady rhythm. The instruments fade out. A final cymbal rings."
+            ),
+            completed=[2],
+        )
+
+        music = format_ministral_prompt(malformed, context_for(2))["non_diegetic_music"]
+        sentences = [piece for piece in re.split(r"(?<=[.!?])\s+", music) if piece]
+        self.assertLessEqual(len(sentences), 3)
+
+    def test_na_soundscape_is_rejected_unless_silence_is_allowed(self) -> None:
+        prompt = result(
+            "[Shot 2] Live-action, cinematic, flying saucers cross overhead.",
+            soundscape="N/A",
+            completed=[2],
+        )
+
+        self.assertTrue(validate_ministral_prompt(prompt, context_for(2)))
+        self.assertEqual(
+            validate_ministral_prompt(prompt, context_for(2, allow_silence=True)),
+            [],
+        )
+
+
+class CompletionMetadataTests(unittest.TestCase):
+    def test_completion_ids_are_normalized_to_current_beat_only(self) -> None:
+        malformed = result(
+            "[Shot 3] Live-action, cinematic, Mark (S1) asks Jill (S2): "
+            "<d>[English] What is happening?</d> Jill answers: "
+            "<d>[English] I don't know!</d>",
+            completed=[1, "B003", "3", 4, 99],
+        )
+
+        repaired = format_ministral_prompt(malformed, context_for(3))
+
+        self.assertEqual(repaired["completed_beat_ids"], [3])
+
+    def test_completion_metadata_is_removed_from_rendered_description(self) -> None:
+        malformed = result(
+            "[Shot 2] Live-action, cinematic, flying saucers cross overhead. "
+            "completed_beat_ids: [2]",
+            completed=[2],
+        )
+
+        repaired = format_ministral_prompt(malformed, context_for(2))
+
+        self.assertNotIn(
+            "completed_beat_ids",
+            repaired["integrated_multimodal_description"],
+        )
+        self.assertEqual(repaired["completed_beat_ids"], [2])
+
+    def test_incomplete_current_beat_may_report_no_completion(self) -> None:
+        prompt = result(
+            "[Shot 4] Live-action, cinematic, Mark's family begins running as the saucers "
+            "descend toward them, but they remain on the ground when the shot ends.",
+            completed=[],
+        )
+
+        repaired = format_ministral_prompt(prompt, context_for(4, beat_deadline_required=False))
+
+        self.assertEqual(repaired["completed_beat_ids"], [])
+
+
+class BeatFixtureTests(unittest.TestCase):
+    def assert_valid_after_formatting(self, malformed: dict, beat_number: int) -> dict:
+        formatted = format_ministral_prompt(malformed, context_for(beat_number))
+        self.assertEqual(validate_ministral_prompt(formatted, context_for(beat_number)), [])
+        return formatted
+
+    def test_b001_malformed_and_valid_fixtures(self) -> None:
+        malformed = result(
+            "integrated_multimodal_description: [Shot 7] At 00:00.000, Live-action, "
+            "cinematic, Mark <Subject 1>, Jill <Subject 2>, and Mark's family <Subject 3> "
+            "stand together amid the theme park crowd.",
+            music="none",
+            completed=["B001"],
+        )
+        valid = result(
+            "[Shot 1] Live-action, cinematic, a medium-wide shot shows <Subject 1> Mark, "
+            "<Subject 2> Jill, and Mark's family enjoying the busy theme park together.",
+            completed=[1],
+        )
+
+        self.assert_valid_after_formatting(malformed, 1)
+        self.assertEqual(format_ministral_prompt(valid, context_for(1)), valid)
+
+    def test_b002_malformed_and_valid_fixtures(self) -> None:
+        malformed = result(
+            "[Shot 8] 0:00 several flying saucers fly overhead above the park. "
+            "Camera Motion: Tilt Up. Amplitude: large. Speed: fast.",
+            music="N.A.",
+            completed=["B002"],
+        )
+        valid = result(
+            "[Shot 2] Live-action, cinematic, several flying saucers fly overhead above the "
+            "theme park as the camera tilts up with large amplitude at fast speed.",
+            completed=[2],
+        )
+
+        self.assert_valid_after_formatting(malformed, 2)
+        self.assertEqual(format_ministral_prompt(valid, context_for(2)), valid)
+
+    def test_b003_malformed_dialogue_fixture_preserves_every_spoken_character(self) -> None:
+        malformed = result(
+            "[Shot 11] At 00:00.000, Live-action, cinematic, Mark (S2): "
+            "<d>What is happening?!</d> Jill (S1): <d>I don't know—those things aren't planes.</d> "
+            "They keep talking and trying to understand the saucers overhead.",
+            soundscape=(
+                'Crowds gasp. Mark says "What is happening?!" Footsteps shuffle. '
+                "All language is in English."
+            ),
+            completed=["B003"],
+        )
+        valid = result(
+            "[Shot 3] Camera cuts to a new shot: Live-action, cinematic, <Subject 1> "
+            "Mark turns to <Subject 2> Jill as they try to "
+            "understand the saucers. Mark (S1) asks: <d>[English] What is happening?!</d> "
+            "Jill (S2) answers: <d>[English] I don't know, those things aren't planes.</d>",
+            soundscape="Crowds gasp while footsteps shuffle across the pavement.",
+            completed=[3],
+        )
+
+        formatted = self.assert_valid_after_formatting(malformed, 3)
+        description = formatted["integrated_multimodal_description"]
+        self.assertIn("<d>[English] What is happening?!</d>", description)
+        self.assertIn("<d>[English] I don't know, those things aren't planes.</d>", description)
+        self.assertEqual(format_ministral_prompt(valid, context_for(3)), valid)
+
+    def test_b004_malformed_and_valid_fixtures(self) -> None:
+        malformed = result(
+            "[Shot 12] At 0.00 seconds, Live-action, cinematic, Mark's family run away while "
+            "the flying saucers seize and lift the whole family from the ground, carrying them "
+            "into the craft as Mark and Jill watch the now-empty pavement. [Shot 13] The "
+            "abduction is visibly complete.",
+            soundscape="Running footsteps and frightened gasps give way to an electronic hum.",
+            completed=["B004", 5],
+        )
+        valid = result(
+            "[Shot 4] Live-action, cinematic, Mark's family run from the descending saucers. "
+            "Beams seize and lift them from the ground, carrying the entire family into the "
+            "craft until <Subject 1> Mark and <Subject 2> Jill stand beside empty pavement "
+            "after the completed abduction.",
+            soundscape="Running footsteps and frightened gasps give way to a low electronic hum.",
+            completed=[4],
+        )
+
+        self.assert_valid_after_formatting(malformed, 4)
+        self.assertEqual(format_ministral_prompt(valid, context_for(4)), valid)
+
+    def test_validation_flags_missing_story_content_for_last_resort_requery(self) -> None:
+        content_missing = result(
+            "[Shot 4] Live-action, cinematic, Mark and Jill look at the sky in the theme park.",
+            completed=[4],
+        )
+
+        errors = validate_ministral_prompt(content_missing, context_for(4))
+
+        self.assertTrue(errors)
+        self.assertTrue(all(isinstance(error, str) and error for error in errors))
+
+
+if __name__ == "__main__":
+    unittest.main()

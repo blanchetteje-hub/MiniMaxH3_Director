@@ -10,8 +10,8 @@ The program uses:
   MP4.
 
 The automation checkpoints every successful segment, tracks completed story
-beats, maintains compact visual-continuity memory, records per-subject state,
-and prevents reused dialogue. An interrupted run can resume without
+beats, and keeps LM Studio context bounded to a five-bullet continuity summary
+plus the two newest exact prompts. An interrupted run can resume without
 regenerating completed clips.
 
 > **Platform note:** the complete workflow runs on Windows or Linux. Python
@@ -22,10 +22,11 @@ regenerating completed clips.
 
 1. Reads `story.txt`, `beats.txt`, and optional `subjects.txt`.
 2. Requests a structured shot description from an LM Studio model.
-3. Inserts that description into the correct ComfyUI API workflow.
+3. Normalizes and validates that description locally with deterministic Python
+   rules, then inserts it into the correct ComfyUI API workflow.
 4. Generates the initial clip or extends the previous clip.
-5. Saves prompt logs, beat progress, continuity memory, subject state,
-   dialogue history, and resume state.
+5. Saves beat progress and an atomic resume checkpoint after each successful
+   clip.
 6. Trims two overlap frames from every clip after the first.
 7. Concatenates the clips into `final.mp4`.
 
@@ -283,12 +284,14 @@ The default LM Studio server is commonly available at:
 http://127.0.0.1:1234
 ```
 
-The checked-in `minimax.py` currently points to `http://192.168.0.203:1234`.
-Change `LM_STUDIO_URL` in the configuration block to your own address. If LM
-Studio and this script run on the same computer, use:
+The checked-in `minimax.py` defaults to `http://192.168.0.203:1234`. Override
+`MINIMAX_LM_STUDIO_URL` for a different server. Requests explicitly select
+`ministral-3-14b-instruct-2512-absolute-heresy.i1-q5_k_m_gguf` by default;
+override `MINIMAX_LM_STUDIO_MODEL` when LM Studio exposes a different model ID.
+If LM Studio and this script run on the same computer, use:
 
-```python
-LM_STUDIO_URL = "http://127.0.0.1:1234"
+```powershell
+$env:MINIMAX_LM_STUDIO_URL = "http://127.0.0.1:1234"
 ```
 
 Test the server from PowerShell:
@@ -314,6 +317,7 @@ export MINIMAX_COMFYUI_OUTPUT="$HOME/ComfyUI/output"
 export MINIMAX_VIDEO_OUTPUT="$HOME/ComfyUI/output/video"
 export MINIMAX_COMFY_URL="http://127.0.0.1:8188"
 export MINIMAX_LM_STUDIO_URL="http://127.0.0.1:1234"
+export MINIMAX_LM_STUDIO_MODEL="ministral-3-14b-instruct-2512-absolute-heresy.i1-q5_k_m_gguf"
 ```
 
 Windows PowerShell:
@@ -324,6 +328,7 @@ $env:MINIMAX_COMFYUI_OUTPUT = "H:\images\output"
 $env:MINIMAX_VIDEO_OUTPUT = "H:\images\output\video"
 $env:MINIMAX_COMFY_URL = "http://127.0.0.1:8188"
 $env:MINIMAX_LM_STUDIO_URL = "http://192.168.0.203:1234"
+$env:MINIMAX_LM_STUDIO_MODEL = "ministral-3-14b-instruct-2512-absolute-heresy.i1-q5_k_m_gguf"
 ```
 
 `MINIMAX_COMFYUI_OUTPUT` must be the output directory used by the ComfyUI
@@ -355,7 +360,7 @@ can be launched from another working directory.
 Write the source story or creative brief. It can include setting, characters,
 tone, dialogue, clothing, and desired camera behavior.
 
-### `beats.txt` — required
+### `beats.txt` — optional beat tracking
 
 Write one required story event per non-empty line, in chronological order:
 
@@ -367,7 +372,9 @@ The saucers abduct Mark's family while they flee.
 
 Blank lines and lines beginning with `#` are ignored. The order is
 authoritative, and the director cannot mark a later beat complete before an
-earlier one.
+earlier one. Leave the file blank (or use only comments) to disable the beat
+scheduler. Story generation then follows `story.txt` directly without beat
+deadlines, completion updates, or `beat_progress.txt` writes.
 
 ### `subjects.txt` — optional
 
@@ -384,22 +391,18 @@ The filename is `subjects.txt`, not `subject_definitions.txt`.
 
 ### Continuity safeguards
 
-After each completed clip, the script creates two additional records used as
-authoritative context for the next LM Studio request:
+Beginning after prompt 2, the script asks LM Studio for exactly five bullet
+points summarizing the newest two generated prompts. This uses a separate,
+stateless chat-completions message list and is independent of the director's
+Python-first content-correction thread. One background worker runs this request
+while ComfyUI renders the current clip.
 
-- `subject_state.txt` records each known subject's current clothing,
-  emotional and relationship state, injuries/damage, held props, ongoing
-  action, and relevant identity or voice facts. It intentionally excludes
-  physical pose/condition, subject location, orientation, and placement in the
-  shot; the preceding video supplies that continuity. A subject absent from a
-  later clip retains their last known state until the story explicitly changes
-  it.
-- `dialogue_history.json` contains every previously used spoken sentence,
-  without speaker labels. The director receives the entire list and is told it
-  cannot repeat or closely reword any listed sentence.
-
-The records are written only after a clip renders successfully. On resume, the
-script reconstructs them from completed segment prompt logs whenever needed.
+Before the next director request, the script waits for the summary if needed.
+The director receives that summary and only the newest two exact prompts;
+earlier prompts are never accumulated in its request. The rendered segment is
+checkpointed before waiting for the summary, then the checkpoint is updated
+with the five bullets. If that update is interrupted, resume rebuilds the
+pending summary from the two saved prompt results without rerendering video.
 
 ### Beat pacing
 
@@ -407,9 +410,14 @@ Every beat receives a hard completion deadline based on the requested segment
 and beat counts. For example, a 100-segment run with 50 beats schedules B001
 by segment 2, B002 by segment 4, and so on. On a beat's deadline segment, the
 director must visibly complete it and include its ID in `completed_beat_ids`.
-If the first response misses that requirement, the script requests one
-corrected full segment description before sending anything to ComfyUI. A second
-miss stops the run before rendering a clip that would fall further behind.
+Every response is first normalized and validated by deterministic Python rules.
+Formatting problems that can be repaired without changing story content do not
+cause another LM Studio request. Only unresolved content problems, such as a
+missing required action or dialogue, may trigger a corrected full response,
+with at most two content-correction requests. Each corrected response goes
+through the same local formatter and validator. If it is still invalid, the run
+stops before sending anything to ComfyUI. Network/transport retries are counted
+separately from these content corrections.
 
 ## 10. Preflight before the first generation
 
@@ -424,7 +432,8 @@ Confirm all of the following:
   ComfyUI.
 - Every reference image exists under `ComfyUI/input`.
 - `MINIMAX_COMFYUI_OUTPUT` points to the real ComfyUI output directory.
-- `story.txt` and `beats.txt` are non-empty.
+- `story.txt` is non-empty. `beats.txt` either contains ordered beats or is blank
+  to disable beat tracking.
 
 For the first test, use a short run and low resolution:
 
@@ -461,8 +470,7 @@ python minimax.py 5 60 0.5
 ```
 
 This creates 12 segments. Starting a new run with the default resume value of
-`1` resets the prior checkpoint, beat-progress file, continuity-memory file,
-subject-state file, and dialogue-history file.
+`1` starts a new checkpoint and resets beat progress.
 
 ### Example: resume at segment 12
 
@@ -472,23 +480,20 @@ Use the exact same first three values as the interrupted run:
 python minimax.py 5 60 0.5 --resume 12
 ```
 
-Resume means segments 1–11 must already exist. The script checks the saved run
-settings, video paths, story-beat signature, prompt logs, subject state,
-dialogue history, and continuity state.
-If `beats.txt` changed after the checkpoint, restore the original beat list or
-start a new run.
+Resume means segments 1–11 must already have successful checkpoint records.
+Before contacting LM Studio or ComfyUI, the script checks the saved run
+settings, source-file signature, ordered segment records, formatted director
+results, and every prior video path. It restores beat completion, recent
+director context, and the video chain used for final stitching. If `story.txt`,
+`beats.txt`, or `subjects.txt` changed after the checkpoint, restore the
+original inputs or start a new run.
 
 ## Generated files
 
 | File or folder | Purpose |
 |---|---|
-| `prompts/segment_####.txt` | Human-readable prompt sent to MiniMax H3. |
-| `prompts/segment_####.json` | Structured LM Studio response used for resume. |
-| `generation_state.json` | Atomic run checkpoint and generated video paths. |
+| `generation_state.json` | Atomic checkpoint containing settings, director results, beat state, continuity summary, and video paths. |
 | `beat_progress.txt` | Readable DONE/NEXT/TODO beat checklist. |
-| `continuity_memory.txt` | Compact persistent visual and physical state. |
-| `subject_state.txt` | Current authoritative state for each known subject. |
-| `dialogue_history.json` | All used spoken sentences; supplied to the LLM as a no-repeat list. |
 | ComfyUI `output/video/segment_*.mp4` | Individual generated clips. |
 | ComfyUI `output/video/trimmed_segment_*.mp4` | Stitch-ready clips after overlap removal. |
 | ComfyUI `output/video/list.txt` | Automatically generated FFmpeg concat list. |
@@ -518,14 +523,15 @@ workflow, preserve these titles or update the matching constants in
 ## Continuity and beat tracking
 
 - Each segment is exactly one directed shot.
-- Recent segment descriptions are kept verbatim for immediate continuity.
-- Older descriptions are compacted into rolling continuity memory.
-- Persistent clothing, injuries, damage, props, and active physical
-  interactions are carried forward. Physical pose/condition and subject
-  placement in the shot are established by the preceding video instead.
+- Exactly the newest two generated prompts are kept verbatim for immediate
+  continuity.
+- Starting after prompt 2, a separate LM Studio request refreshes an exact
+  five-bullet summary of that two-prompt window after every new segment.
+- The next director request receives the summary and those two exact prompts,
+  instead of accumulated prompt history.
 - Beat completion is accepted only as a contiguous prefix of `beats.txt`, so a
   model cannot silently skip a required event.
-- A single background LM Studio worker updates old continuity memory while
+- A single background LM Studio worker refreshes the five bullets while
   ComfyUI renders the current segment.
 
 ## Troubleshooting
@@ -566,7 +572,7 @@ the failed segment.
   original run.
 - Do not move or rename completed segment files.
 - Do not change `beats.txt` during a run.
-- Check `generation_state.json` and the segment prompt logs.
+- Check `generation_state.json` for the first missing or moved segment video.
 
 ### Out of VRAM
 
@@ -609,7 +615,7 @@ MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
 | `Minimax_auto_API.json` | Initial reference-to-video API workflow. |
 | `Minimax_auto_append_API.json` | Video-continuation API workflow. |
 | `story.txt` | Source story or creative brief. |
-| `beats.txt` | Ordered required story events. |
+| `beats.txt` | Optional ordered story events; blank disables beat tracking. |
 | `subjects.txt` | Optional subject/reference definitions. |
 | `stitch.bat` | Optional Windows-only FFmpeg concat helper. |
 | `requirements.txt` | Python package requirements. |
