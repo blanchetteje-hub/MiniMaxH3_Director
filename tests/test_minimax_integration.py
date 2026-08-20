@@ -1,4 +1,6 @@
 import json
+import os
+import tempfile
 import unittest
 from unittest import mock
 
@@ -54,7 +56,280 @@ class FakeResponse:
         }
 
 
+class ComfyHistoryResponse:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self.payload
+
+
 class LmStudioIntegrationTests(unittest.TestCase):
+    def test_subject_can_use_multiple_picture_references(self):
+        definitions = (
+            "<Subject 1> is Mark, a man referenced in <Picture 1> and "
+            "<Picture 2>."
+        )
+
+        registry = minimax.parse_subject_registry(definitions)
+        state = minimax.continuity_state_for_registry(definitions)
+
+        self.assertEqual(registry[1]["picture_ids"], [1, 2])
+        self.assertEqual(state["subjects"]["Mark"]["picture_ids"], [1, 2])
+        opening = minimax.format_authoritative_opening_state(state, definitions)
+        self.assertIn("Mark <Picture 1> <Picture 2>", opening)
+
+    def test_picture_reference_can_be_shared_by_multiple_subject_definitions(self):
+        definitions = (
+            "<Subject 1> is Mark, referenced in <Picture 1>.\n"
+            "<Subject 2> is Jill, referenced in <Picture 1>."
+        )
+
+        registry = minimax.parse_subject_registry(definitions)
+
+        self.assertEqual(registry[1]["picture_ids"], [1])
+        self.assertEqual(registry[2]["picture_ids"], [1])
+
+    def test_generation_user_registry_contains_only_subject_mappings(self):
+        messages, _, _ = minimax.build_generation_messages(
+            director_rules=(
+                "SUBJECTS\n"
+                "This system text must not be copied.\n"
+                "SHOT AND TIMING\n"
+                "This section must not be copied."
+            ),
+            story="A story.",
+            beats=[],
+            completed_beat_ids=set(),
+            recent_results=[],
+            current_segment=1,
+            total_segments=1,
+            segment_length=6,
+            total_length=6,
+            subject_definitions=SUBJECTS,
+        )
+
+        user_content = messages[1]["content"]
+        registry_start = user_content.index("SUBJECT REGISTRY")
+        story_start = user_content.index("SOURCE STORY / CREATIVE BRIEF")
+        registry_section = user_content[registry_start:story_start]
+        self.assertIn("canonical_name: Mark", registry_section)
+        self.assertIn("picture_id: 1", registry_section)
+        self.assertNotIn("This system text must not be copied", user_content)
+        self.assertNotIn("SHOT AND TIMING", registry_section)
+
+    def test_story_context_preserves_edges_and_bounds_long_source(self):
+        story = "OPENING " + ("middle " * 3000) + " ENDING"
+
+        context = minimax.build_story_context(story, max_chars=120)
+
+        self.assertLessEqual(len(context), 200)
+        self.assertTrue(context.startswith("CURRENT STORY CONTEXT"))
+        self.assertIn("Other source-story material omitted", context)
+
+    def test_bounded_beat_state_exposes_active_and_five_lookahead(self):
+        beats = [f"Event {number}" for number in range(1, 12)]
+
+        state = minimax.build_bounded_beat_state(beats, {1, 2}, 3, 11)
+
+        self.assertEqual(state["completed_through"], 2)
+        self.assertEqual(state["active_beat"], {"id": 3, "text": "Event 3"})
+        self.assertEqual(
+            [item["id"] for item in state["ordered_lookahead"]],
+            [4, 5, 6, 7, 8, 9, 10, 11],
+        )
+        self.assertEqual(state["beats_remaining"], 9)
+
+    def test_director_beat_contract_requires_b001_in_segment_one_and_forbids_done_beats(self):
+        rules = minimax.build_director_rules(
+            total_length=12,
+            segment_length=6,
+            total_segments=2,
+            subject_definitions=SUBJECTS,
+            megapixels=0.5,
+            beats_enabled=True,
+        )
+        messages, _, _ = minimax.build_generation_messages(
+            director_rules=rules,
+            story="A story.",
+            beats=["Opening event", "Later event"],
+            completed_beat_ids=[],
+            recent_results=[],
+            current_segment=1,
+            total_segments=2,
+            segment_length=6,
+            total_length=12,
+            subject_definitions=SUBJECTS,
+        )
+
+        combined = "\n".join(message["content"] for message in messages)
+        self.assertIn("On Segment 1, the ACTIVE beat must be B001", combined)
+        self.assertIn("Never repeat any beat already completed", combined)
+        self.assertIn("B001: Opening event", combined)
+
+    def test_formatter_context_uses_bounded_later_beats(self):
+        beats = [f"Event {number}" for number in range(1, 12)]
+
+        context = minimax.build_ministral_context(
+            segment_number=3,
+            segment_duration=6.0,
+            total_segments=11,
+            beats=beats,
+            completed_beat_ids={1, 2},
+            subject_definitions=SUBJECTS,
+            story="Story",
+        )
+
+        self.assertEqual(context["current_beat_text"], "Event 3")
+        self.assertEqual(context["later_beat_texts"], [
+            "Event 4", "Event 5", "Event 6", "Event 7", "Event 8",
+            "Event 9", "Event 10", "Event 11",
+        ])
+
+    @mock.patch("minimax.requests.get")
+    def test_wait_for_completion_exposes_execution_error_details(self, get):
+        get.return_value = ComfyHistoryResponse({
+            "prompt-id": {
+                "status": {
+                    "completed": True,
+                    "status_str": "error",
+                    "messages": [[
+                        "execution_error",
+                        {
+                            "node_id": "42",
+                            "exception_type": "OutOfMemoryError",
+                            "exception_message": "CUDA out of memory",
+                            "traceback": "trace line",
+                        },
+                    ]],
+                },
+            }
+        })
+
+        with self.assertRaisesRegex(
+            minimax.ComfyUIExecutionError,
+            "node=42.*OutOfMemoryError.*CUDA out of memory.*trace line",
+        ):
+            minimax.wait_for_completion("prompt-id", retry_delay=0)
+
+        get.assert_called_once()
+
+    def test_wait_for_completion_times_out_before_polling_when_deadline_expired(self):
+        with self.assertRaises(minimax.ComfyUIRenderTimeout):
+            minimax.wait_for_completion(
+                "prompt-id",
+                timeout=0,
+                clock=lambda: 1,
+            )
+
+    @mock.patch("minimax.free_vram")
+    @mock.patch("minimax.get_video_resolution", return_value=(640, 360))
+    @mock.patch("minimax.get_video_path", return_value="segment.mp4")
+    @mock.patch("minimax.wait_for_completion")
+    @mock.patch("minimax.queue_workflow")
+    @mock.patch("minimax.prepare_initial_workflow")
+    def test_render_retry_releases_vram_and_lowers_initial_megapixels(
+        self,
+        prepare,
+        queue,
+        wait,
+        get_path,
+        get_resolution,
+        free_vram,
+    ):
+        prepare.side_effect = lambda duration, megapixels, prompt, segment, steps: {
+            "megapixels": megapixels
+        }
+        queue.side_effect = ["prompt-1", "prompt-2", "prompt-3"]
+        wait.side_effect = [
+            minimax.ComfyUIExecutionError("oom 1"),
+            minimax.ComfyUIRenderTimeout("timeout"),
+            {"status": {"completed": True, "status_str": "success"}},
+        ]
+
+        result = minimax.render_segment_with_retries(
+            1,
+            6.0,
+            0.50,
+            "prompt",
+            None,
+            6,
+        )
+
+        self.assertEqual(
+            [call.args[1] for call in prepare.call_args_list],
+            [0.50, 0.48, 0.46],
+        )
+        self.assertEqual(free_vram.call_count, 2)
+        self.assertEqual(result[1:], ("segment.mp4", 640, 360, 0.46))
+
+    @mock.patch("minimax.free_vram")
+    @mock.patch("minimax.prepare_initial_workflow", return_value={})
+    @mock.patch("minimax.queue_workflow", return_value="prompt-id")
+    @mock.patch(
+        "minimax.wait_for_completion",
+        side_effect=minimax.ComfyUIExecutionError("persistent OOM"),
+    )
+    def test_render_retry_stops_after_ten_retries(
+        self,
+        wait,
+        queue,
+        prepare,
+        free_vram,
+    ):
+        with self.assertRaisesRegex(RuntimeError, "after 10 retries"):
+            minimax.render_segment_with_retries(
+                1,
+                6.0,
+                0.50,
+                "prompt",
+                None,
+                6,
+            )
+
+        self.assertEqual(prepare.call_count, 11)
+        self.assertEqual(free_vram.call_count, 10)
+        self.assertEqual(
+            prepare.call_args_list[-1].args[1],
+            0.30,
+        )
+
+    @mock.patch("minimax.free_vram")
+    @mock.patch("minimax.get_video_resolution", return_value=(640, 360))
+    @mock.patch("minimax.get_video_path", return_value="segment.mp4")
+    @mock.patch("minimax.wait_for_completion")
+    @mock.patch("minimax.queue_workflow", side_effect=["prompt-1", "prompt-2"])
+    @mock.patch("minimax.prepare_append_workflow", return_value={})
+    def test_append_retry_preserves_inherited_resolution(
+        self,
+        prepare,
+        queue,
+        wait,
+        get_path,
+        get_resolution,
+        free_vram,
+    ):
+        wait.side_effect = [
+            minimax.ComfyUIExecutionError("oom"),
+            {"status": {"completed": True, "status_str": "success"}},
+        ]
+
+        result = minimax.render_segment_with_retries(
+            2,
+            6.0,
+            0.50,
+            "prompt",
+            "previous.mp4",
+            6,
+        )
+
+        self.assertEqual(prepare.call_count, 2)
+        self.assertEqual(result[-1], 0.50)
+        self.assertEqual(free_vram.call_count, 1)
+
     def test_next_beat_prompt_demands_immediate_dominant_execution(self):
         request = minimax.build_segment_request(
             segment=1,
@@ -65,8 +340,8 @@ class LmStudioIntegrationTests(unittest.TestCase):
             completed_beat_ids=[]
         )
 
-        self.assertIn("PRIMARY BEAT EXECUTION - NON-NEGOTIABLE", request)
-        self.assertIn("Begin its visible action in the opening moments", request)
+        self.assertIn("PRIMARY BEAT EXECUTION: ACTIVE beat", request)
+        self.assertIn("Begin visibly advancing this beat early", request)
         self.assertIn("make it the dominant event", request)
         self.assertIn("devote most of the clip to accomplishing it", request)
         self.assertIn("Actively attempt to complete B001 in THIS segment", request)
@@ -240,6 +515,47 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
         self.assertIn("original task", normalized[1]["content"])
         self.assertIn("correction", normalized[1]["content"])
+
+    def test_append_prompt_history_appends_complete_message_batches(self):
+        with tempfile.TemporaryDirectory() as directory:
+            history_path = os.path.join(directory, "prompt_history.txt")
+            first_prompt = [{"role": "user", "content": "first prompt"}]
+            second_prompt = [{"role": "user", "content": "second prompt"}]
+
+            minimax.append_prompt_history(
+                first_prompt,
+                history_path,
+                {"purpose": "director", "segment": 1, "attempt": 1},
+            )
+            minimax.append_prompt_history(
+                second_prompt,
+                history_path,
+                {"purpose": "summary", "segment": 2, "attempt": 1},
+            )
+
+            history = open(history_path, "r", encoding="utf-8").read()
+            self.assertEqual(history.count("=" * 72), 2)
+            self.assertIn('"content": "first prompt"', history)
+            self.assertIn('"content": "second prompt"', history)
+            self.assertIn('"purpose": "director"', history)
+            self.assertIn('"purpose": "summary"', history)
+
+    def test_reset_prompt_history_clears_previous_run_before_appending(self):
+        with tempfile.TemporaryDirectory() as directory:
+            history_path = os.path.join(directory, "prompt_history.txt")
+            with open(history_path, "w", encoding="utf-8") as history_file:
+                history_file.write("old run prompt")
+
+            minimax.reset_prompt_history(history_path)
+            minimax.append_prompt_history(
+                [{"role": "user", "content": "new run prompt"}],
+                history_path,
+            )
+
+            with open(history_path, "r", encoding="utf-8") as history_file:
+                history = history_file.read()
+            self.assertNotIn("old run prompt", history)
+            self.assertIn("new run prompt", history)
 
     @mock.patch("minimax.requests.post")
     def test_ask_llm_normalizes_adjacent_users_before_http_request(self, post):
@@ -515,15 +831,18 @@ class LmStudioIntegrationTests(unittest.TestCase):
             {
                 "llm_result": response(
                     "[Shot 1] <Subject 1> Mark wears a red shirt and blue "
-                    "jeans. <Subject 2> Jill is wearing a yellow dress and "
-                    "white sneakers.",
+                        "jeans at the park entrance; his clothes are clean. "
+                        "<Subject 2> Jill is wearing a yellow dress and "
+                        "white sneakers beside the fountain; her dress is dry.",
                     []
                 )
             },
             {
                 "llm_result": response(
-                    "[Shot 2] Mark is wearing a navy jacket and black jeans "
-                    "while Jill continues beside him.",
+                    "[Shot 2] Mark is at the arcade entrance, wearing a navy "
+                    "jacket and black jeans; his jacket is wet while Jill "
+                    "continues beside him in the same location, wearing a "
+                    "yellow dress and white sneakers; her dress is dry.",
                     []
                 )
             }
@@ -545,6 +864,9 @@ class LmStudioIntegrationTests(unittest.TestCase):
             clothing
         )
 
+        subject_text = prompt.split(
+            "subject_definitions: ", 1
+        )[1].split("\n\nintegrated_multimodal_description:", 1)[0]
         integrated = prompt.split(
             "integrated_multimodal_description: ", 1
         )[1].split("\n\noverall_soundscape:", 1)[0]
@@ -552,15 +874,97 @@ class LmStudioIntegrationTests(unittest.TestCase):
             integrated.startswith("[Shot 3] Camera cuts to a new shot:")
         )
         self.assertIn(
-            "<Subject 1> Mark is wearing a navy jacket and black jeans.",
-            integrated
+            "<Subject 1> Mark is at arcade entrance, wearing a navy jacket "
+            "and black jeans, with clothing state: wet",
+            subject_text
         )
         self.assertIn(
-            "<Subject 2> Jill is wearing a yellow dress and white sneakers.",
-            integrated
+            "<Subject 2> Jill is at fountain, wearing a yellow dress and "
+            "white sneakers, with clothing state: dry",
+            subject_text
         )
-        self.assertEqual(integrated.count("<Subject 1>"), 1)
-        self.assertEqual(integrated.count("<Subject 2>"), 1)
+        self.assertIn("<Subject 1> Mark", integrated)
+        self.assertIn("<Subject 2> Jill", integrated)
+
+    def test_structured_hard_cut_continuity_ignores_legacy_summary_text(self):
+        state = minimax.continuity_state_for_registry(SUBJECTS)
+        state["subjects"]["Mark"].update({
+            "position": "left side of the bed",
+            "physical_condition": "alert",
+            "wardrobe": {
+                "upper": "red shirt",
+                "lower": "blue jeans",
+                "footwear": "white sneakers",
+                "other": "N/A",
+            },
+        })
+        current = response(
+            "[Shot 3] Camera cuts to a new shot: Mark and Jill sit together.",
+            [],
+        )
+
+        continuity = minimax.build_hard_cut_subject_continuity_from_state(
+            SUBJECTS,
+            current,
+            state,
+        )
+
+        self.assertIn("left side of the bed", continuity)
+        self.assertIn("red shirt, blue jeans, white sneakers", continuity)
+        self.assertNotIn("doorway", continuity)
+
+    def test_first_prompt_omits_previous_state(self):
+        formatted = response(
+            "[Shot 1] Live-action, cinematic, Mark stands in the theme park.",
+            [],
+        )
+        prompt = minimax.build_h3_prompt(formatted, SUBJECTS)
+
+        self.assertNotIn("Previous state:", prompt)
+
+    def test_segment_one_ignores_any_stale_previous_state_value(self):
+        formatted = response(
+            "[Shot 1] Live-action, cinematic, Mark stands in the theme park.",
+            [],
+        )
+        stale_state = "\n".join(
+            f"- {field}: stale value"
+            for field in minimax.PREVIOUS_STATE_FIELDS
+        )
+        prompt = minimax.build_h3_prompt(
+            formatted,
+            SUBJECTS,
+            previous_state=stale_state,
+            segment_number=1,
+        )
+
+        self.assertNotIn("Previous state:", prompt)
+        self.assertNotIn("stale value", prompt)
+
+    def test_previous_state_precedes_integrated_description(self):
+        formatted = response(
+            "[Shot 2] At 00:01.000, Mark continues through the theme park.",
+            [],
+        )
+        previous_state = "\n".join(
+            f"- {field}: fact {number}"
+            for number, field in enumerate(
+                minimax.PREVIOUS_STATE_FIELDS,
+                start=1,
+            )
+        )
+        prompt = minimax.build_h3_prompt(
+            formatted,
+            SUBJECTS,
+            previous_state=previous_state,
+        )
+
+        marker = "Previous state:\n"
+        self.assertIn(marker, prompt)
+        self.assertLess(
+            prompt.index(marker),
+            prompt.index("integrated_multimodal_description:"),
+        )
 
     def test_hard_cut_never_uses_vague_continuity_when_clothing_is_unknown(self):
         definitions = "<Subject 1> is Connie, referenced in <Picture 1>."
@@ -592,9 +996,10 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
         prior_records = [{
             "llm_result": response(
-                "[Shot 2] Connie, a faded green jacket over a white shirt and "
-                "black jeans, stands nearby. Frank remains in a blue polo, "
-                "khaki trousers, and brown shoes while he watches.",
+                        "[Shot 2] Connie is at the roadside, wearing a faded green "
+                        "jacket over a white shirt and black jeans; her clothes are "
+                        "clean. Frank is beside the road, wearing a blue polo, "
+                        "khaki trousers, and brown shoes; his clothes are dry.",
                 []
             )
         }]
@@ -606,13 +1011,13 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "<Subject 1> Connie is wearing a faded green jacket over a white "
-            "shirt and black jeans.",
+            "<Subject 1> Connie is at roadside, wearing a faded green jacket "
+            "over a white shirt and black jeans, with clothing state: clean",
             clothing
         )
         self.assertIn(
-            "<Subject 2> Frank is wearing a blue polo, khaki trousers, and "
-            "brown shoes.",
+            "<Subject 2> Frank is at road, wearing a blue polo, khaki trousers, "
+            "and brown shoes, with clothing state: dry",
             clothing
         )
 
@@ -627,11 +1032,13 @@ class LmStudioIntegrationTests(unittest.TestCase):
             definitions,
             result,
             [],
-            "- Connie is still in a burgundy coat and black boots."
+            "- Connie is at the arcade entrance, wearing a burgundy coat and "
+            "black boots; her coat is wet."
         )
 
         self.assertIn(
-            "<Subject 1> Connie is wearing a burgundy coat and black boots.",
+            "<Subject 1> Connie is at arcade entrance, wearing a burgundy coat "
+            "and black boots, with clothing state: wet",
             clothing
         )
 
@@ -652,14 +1059,79 @@ class LmStudioIntegrationTests(unittest.TestCase):
             definitions,
             result,
             prior_records,
-            "- Connie is now wearing a burgundy coat and black boots."
+            "- Connie is now at the arcade entrance, wearing a burgundy coat "
+            "and black boots; her coat is wet."
         )
 
         self.assertIn(
-            "<Subject 1> Connie is wearing a burgundy coat and black boots.",
+            "<Subject 1> Connie is at arcade entrance, wearing a burgundy coat "
+            "and black boots, with clothing state: wet",
             clothing
         )
         self.assertNotIn("red shirt", clothing)
+
+    def test_hard_cut_includes_latest_location_clothing_and_state_after_subjects(self):
+        definitions = "<Subject 1> is Connie, referenced in <Picture 1>."
+        result = response(
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Connie enters.",
+            []
+        )
+        continuity = minimax.build_hard_cut_subject_continuity(
+            definitions,
+            result,
+            [],
+            "- Connie is at the arcade entrance, wearing a burgundy coat and "
+            "black boots; the coat is wet and torn."
+        )
+
+        prompt = minimax.build_h3_prompt(result, definitions, continuity)
+        subject_section = prompt.split(
+            "subject_definitions: ", 1
+        )[1].split("\n\nintegrated_multimodal_description:", 1)[0]
+
+        self.assertTrue(subject_section.startswith(definitions))
+        self.assertIn("at arcade entrance", subject_section)
+        self.assertIn("wearing a burgundy coat and black boots", subject_section)
+        self.assertIn("clothing state: wet and torn", subject_section)
+
+    def test_hard_cut_llm_fallback_is_structured_and_filtered(self):
+        definitions = "<Subject 1> is Connie, referenced in <Picture 1>."
+        result = response(
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Connie enters.",
+            []
+        )
+        llm_request = mock.Mock(return_value={
+            "subjects": [{
+                "subject_number": 1,
+                "name": "Connie",
+                "location": "the arcade entrance",
+                "clothing": "a burgundy coat and black boots",
+                "clothing_state": "wet and torn",
+            }, {
+                "subject_number": 2,
+                "name": "Undefined",
+                "location": "the street",
+                "clothing": "a red shirt",
+                "clothing_state": "clean",
+            }]
+        })
+
+        continuity = minimax.build_hard_cut_subject_continuity(
+            definitions,
+            result,
+            [],
+            "",
+            llm_request=llm_request,
+        )
+
+        self.assertIn("Connie", continuity)
+        self.assertIn("arcade entrance", continuity)
+        self.assertNotIn("Undefined", continuity)
+        llm_request.assert_called_once()
+        self.assertEqual(
+            llm_request.call_args.kwargs["response_format"],
+            minimax.SUBJECT_CONTINUITY_RESPONSE_FORMAT,
+        )
 
     def test_hard_cut_does_not_introduce_absent_defined_subjects(self):
         result = response(
@@ -674,8 +1146,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             []
         )
 
-        self.assertIn("<Subject 1> Mark", clothing)
-        self.assertNotIn("<Subject 2> Jill", clothing)
+        self.assertEqual(clothing, "")
 
 
 if __name__ == "__main__":

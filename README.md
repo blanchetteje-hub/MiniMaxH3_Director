@@ -10,8 +10,8 @@ The program uses:
   MP4.
 
 The automation checkpoints every successful segment, tracks completed story
-beats, and keeps LM Studio context bounded to a five-bullet continuity summary
-plus the two newest exact prompts. An interrupted run can resume without
+beats, and keeps LM Studio context bounded to structured continuity state plus
+the two newest exact prompts. An interrupted run can resume without
 regenerating completed clips.
 
 > **Platform note:** the complete workflow runs on Windows or Linux. Python
@@ -381,27 +381,34 @@ deadlines, completion updates, or `beat_progress.txt` writes.
 Describe persistent subjects and map them to the reference-image tags:
 
 ```text
-Mark is a 40-year-old man referenced in <Picture 1>.
-Elena is Mark's wife, referenced in <Picture 2>.
-Their red backpack is referenced in <Picture 3>.
+<Subject 1> is Mark, a 40-year-old man referenced in <Picture 1>.
+<Subject 2> is Elena, Mark's wife, referenced in <Picture 2>.
 ```
 
-Use `<Picture N>` exactly, matching the reference order in both workflows.
+Subject identity, Picture identity, and speaker identity are separate mappings.
+An optional speaker mapping may be declared with `(S1)` on the subject line.
+Picture references establish visual identity/body appearance only; they never
+establish current clothing. Current wardrobe comes from the committed
+continuity state or a successfully rendered wardrobe change.
+
+Generated prose uses `Name <Picture N>` for visual identity and
+`Name <Picture N> (S1) says:` for dialogue. Legacy `<Subject N>` forms are
+accepted while older checkpoints are migrated.
 The filename is `subjects.txt`, not `subject_definitions.txt`.
 
 ### Continuity safeguards
 
-Beginning after prompt 2, the script asks LM Studio for exactly five bullet
-points summarizing the newest two generated prompts. This uses a separate,
+Beginning after prompt 2, the script asks LM Studio for exactly eight labeled
+state fields summarizing the newest two generated prompts. This uses a separate,
 stateless chat-completions message list and is independent of the director's
-Python formatting and validation. One background worker runs this request
-while ComfyUI renders the current clip.
+Python formatting and validation. The summary request runs after the current
+clip has rendered and been checkpointed.
 
 Before the next director request, the script waits for the summary if needed.
 The director receives that summary and only the newest two exact prompts;
 earlier prompts are never accumulated in its request. The rendered segment is
 checkpointed before waiting for the summary, then the checkpoint is updated
-with the five bullets. If that update is interrupted, resume rebuilds the
+with the eight state fields. If that update is interrupted, resume rebuilds the
 pending summary from the two saved prompt results without rerendering video.
 
 ### Beat pacing
@@ -449,7 +456,7 @@ initial clip.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [--resume SEGMENT]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [--resume SEGMENT] [--steps STEPS]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -462,6 +469,7 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `TOTAL_LENGTH` | Target total movie length in seconds; must be greater than zero. |
 | `MEGAPIXELS` | Initial workflow resolution target; must be greater than zero. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
+| `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
 
 ### Example: new 60-second run
 
@@ -481,8 +489,8 @@ python minimax.py 5 60 0.5 --resume 12
 ```
 
 Resume means segments 1–11 must already have successful checkpoint records.
-Before contacting LM Studio or ComfyUI, the script checks the saved run
-settings, source-file signature, ordered segment records, formatted director
+The current command-line settings and source files may differ from the original
+run; resume uses the ordered segment records, formatted director
 results, and every prior video path. It restores beat completion, recent
 director context, and the video chain used for final stitching. If `story.txt`,
 `beats.txt`, or `subjects.txt` changed after the checkpoint, restore the
@@ -492,7 +500,7 @@ original inputs or start a new run.
 
 | File or folder | Purpose |
 |---|---|
-| `generation_state.json` | Atomic checkpoint containing settings, director results, beat state, continuity summary, and video paths. |
+| `generation_state.json` | Atomic checkpoint containing settings, director results, beat state, committed structured continuity state, and video paths. |
 | `beat_progress.txt` | Readable DONE/NEXT/TODO beat checklist. |
 | ComfyUI `output/video/segment_*.mp4` | Individual generated clips. |
 | ComfyUI `output/video/trimmed_segment_*.mp4` | Stitch-ready clips after overlap removal. |
@@ -525,14 +533,49 @@ workflow, preserve these titles or update the matching constants in
 - Each segment is exactly one directed shot.
 - Exactly the newest two generated prompts are kept verbatim for immediate
   continuity.
-- Starting after prompt 2, a separate LM Studio request refreshes an exact
-  five-bullet summary of that two-prompt window after every new segment.
-- The next director request receives the summary and those two exact prompts,
-  instead of accumulated prompt history.
+- A background LM Studio request proposes a structured continuity candidate for
+  the current segment. It becomes authoritative only after ComfyUI successfully
+  renders that segment.
+- The next director request receives `AUTHORITATIVE OPENING STATE` rendered
+  directly from the last committed structured state and the two newest exact
+  prompts, instead of an independently maintained prose summary.
+- Prompt authority is ordered: BEAT STATE controls plot progression;
+  AUTHORITATIVE OPENING STATE controls current physical continuity; SUBJECT
+  REGISTRY controls identity and Picture mappings; recent generated segments
+  are secondary context; and the source story supplies creative intent.
+- The director sees the active beat and a configurable/dynamically bounded
+  lookahead rather than the entire future beat list. Python retains the
+  complete beat list for scheduling, completion validation, and checkpoints.
+- Long source stories use a deterministic `CURRENT STORY CONTEXT` selected
+  around the active beat, nearby lookahead, and registered subjects. When no
+  reliable match exists, a bounded fallback is used without giving the source
+  ending disproportionate authority.
+- New checkpoints include a versioned `continuity_state` envelope alongside
+  independently addressable environment, camera, subject position, pose,
+  wardrobe, condition, props, ongoing action, and audio fields. Older
+  checkpoints without that envelope are migrated automatically during resume.
+- Continuity updates are candidates while a segment renders. They are committed
+  only after the render succeeds; failed renders discard the candidate and keep
+  the last successful segment's opening state.
 - Beat completion is accepted only as a contiguous prefix of `beats.txt`, so a
   model cannot silently skip a required event.
-- A single background LM Studio worker refreshes the five bullets while
-  ComfyUI renders the current segment.
+
+Outgoing LM Studio requests are appended to `prompt_history.txt` as complete
+JSON records. Each record includes a timestamp, model, response-format flag,
+and any request metadata, followed by the exact normalized message batch.
+
+## ComfyUI render retries
+
+Each ComfyUI render attempt has a 15-minute wall-clock timeout. A completed
+ComfyUI execution error or a render that remains pending past the timeout calls
+`/free` to release VRAM and retries the segment, up to 10 retries.
+
+For the initial workflow, each retry lowers the requested resolution by `0.02`
+megapixels, for a maximum total reduction of `0.20` megapixels. The workflow
+is rebuilt for every attempt, including a fresh random seed. Append segments
+retry at the inherited resolution because their workflow has no resolution
+selector. Failed attempts do not update `generation_state.json`; only a
+successful render is checkpointed.
 
 ## Troubleshooting
 
@@ -551,6 +594,14 @@ workflow, preserve these titles or update the matching constants in
 - Open ComfyUI Manager and use its missing-node check.
 - Restart ComfyUI after installing nodes or models.
 
+### ComfyUI runs out of memory or remains pending
+
+The script automatically releases VRAM and retries completed execution errors
+or 15-minute render timeouts. Initial-segment retries reduce the megapixel
+target by `0.02` each time. After 10 retries, the program exits and reports the
+last ComfyUI failure. Append-segment retries keep the previous video's
+resolution.
+
 ### LM Studio connection or JSON errors
 
 - Confirm the model is loaded, not merely downloaded.
@@ -568,10 +619,8 @@ the failed segment.
 
 ### Resume cannot find prior videos
 
-- Use the same segment length, total length, and megapixel value as the
-  original run.
+- Resume settings and source files may differ from the original run.
 - Do not move or rename completed segment files.
-- Do not change `beats.txt` during a run.
 - Check `generation_state.json` for the first missing or moved segment video.
 
 ### Out of VRAM

@@ -182,7 +182,7 @@ class VisualFormattingTests(unittest.TestCase):
 
         self.assertEqual(
             description,
-            "[Shot 17] Camera cuts to a new shot: At 00:01.200, "
+            "[Shot 17] Camera continues from the previous shot.\nAt 00:01.200, "
             "Jack’s smirk fades into a mischievous grin as he hooks both "
             "thumbs onto his jeans.",
         )
@@ -206,7 +206,42 @@ class VisualFormattingTests(unittest.TestCase):
 
         self.assertTrue(description.startswith("[Shot 3] Camera cuts to a new shot:"))
 
-    def test_later_segment_requires_a_nonzero_local_timestamp(self) -> None:
+    def test_non_hard_cut_converts_model_cut_to_continuation(self) -> None:
+        malformed = result(
+            "[Shot 2] Camera cuts to a new shot: Mark walks toward Jill."
+        )
+
+        description = format_ministral_prompt(
+            malformed,
+            context_for(2, hard_cut_required=False),
+        )["integrated_multimodal_description"]
+
+        self.assertTrue(
+            description.startswith(
+                "[Shot 2] Camera continues from the previous shot."
+            )
+        )
+        self.assertNotIn("Camera cuts to a new shot", description)
+
+    def test_hard_cut_removes_conflicting_continuation_opening(self) -> None:
+        malformed = result(
+            "[Shot 3] Camera cuts to a new shot: At 00:00.000, camera continues "
+            "from the previous shot. Mark and Jill face the saucers.",
+            completed=[3],
+        )
+
+        description = format_ministral_prompt(malformed, context_for(3))[
+            "integrated_multimodal_description"
+        ]
+
+        self.assertTrue(
+            description.startswith("[Shot 3] Camera cuts to a new shot:")
+        )
+        self.assertIn("Mark <Picture 1> and Jill <Picture 2>", description)
+        self.assertIn("face the saucers.", description)
+        self.assertNotIn("continues from the previous shot", description.lower())
+
+    def test_later_segment_does_not_require_a_local_timestamp(self) -> None:
         malformed = result(
             "[Shot 2] Live-action, cinematic, Mark and Jill walk through the park.",
             completed=[2],
@@ -215,10 +250,7 @@ class VisualFormattingTests(unittest.TestCase):
         formatted = format_ministral_prompt(malformed, context_for(2))
         issues = validate_ministral_prompt(formatted, context_for(2))
 
-        self.assertTrue(
-            any("after the first" in issue for issue in issues),
-            issues,
-        )
+        self.assertFalse(any("after the first" in issue for issue in issues), issues)
 
     def test_later_segment_timestamp_satisfies_timestamp_requirement(self) -> None:
         formatted = format_ministral_prompt(
@@ -255,8 +287,7 @@ class VisualFormattingTests(unittest.TestCase):
         description = formatted["integrated_multimodal_description"]
         self.assertTrue(
             description.startswith(
-                "[Shot 2] At 00:00.000 seconds, camera continues from the "
-                "previous shot."
+                "[Shot 2] Camera continues from the previous shot."
             )
         )
         self.assertNotIn("00:01.500", description)
@@ -271,6 +302,23 @@ class VisualFormattingTests(unittest.TestCase):
                 ),
             ),
             [],
+        )
+
+    def test_each_later_timestamp_starts_on_its_own_line(self) -> None:
+        formatted = format_ministral_prompt(
+            result(
+                "[Shot 2] At 00:01.000, the camera moves toward the doorway. "
+                "At 00:03.500, the camera cuts to the hallway.",
+                completed=[2],
+            ),
+            context_for(2),
+        )
+
+        description = formatted["integrated_multimodal_description"]
+        self.assertIn(
+            "At 00:01.000, the camera moves toward the doorway.\n"
+            "At 00:03.500, the camera cuts to the hallway.",
+            description,
         )
 
     def test_shot_number_opening_timestamp_extra_shot_and_alignment_are_cleaned(self) -> None:
@@ -318,9 +366,9 @@ class VisualFormattingTests(unittest.TestCase):
             "integrated_multimodal_description"
         ]
 
-        self.assertIn("<Subject 1>", description)
+        self.assertIn("Mark <Picture 1>", description)
         self.assertIn("<Picture 1>", description)
-        self.assertIn("<Subject 2>", description)
+        self.assertIn("Jill <Picture 2>", description)
         self.assertIn("<Picture 2>", description)
         self.assertNotIn("<Subject 3>", description)
         self.assertNotIn("<Picture 3>", description)

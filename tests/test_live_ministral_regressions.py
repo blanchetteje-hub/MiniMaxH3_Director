@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 import unittest
 
+import ministral_formatter as formatter
 from ministral_formatter import format_ministral_prompt, validate_ministral_prompt
 
 
@@ -125,8 +126,53 @@ class LiveDialogueRegressionTests(unittest.TestCase):
 
         description = format_ministral_prompt(malformed, context)[DESCRIPTION]
 
-        self.assertIn("<Subject 1> Jim (S1) says:", description)
+        self.assertIn("Jim <Picture 1> (S1) says:", description)
         self.assertIn("<d>[English] Keep walking.</d>", description)
+
+    def test_missing_dialogue_speaker_id_is_inserted_from_subject_definition(self) -> None:
+        context = context_for(
+            1,
+            subject_definitions=(
+                "<Subject 1> is Jim, referenced in <Picture 1>.\n"
+                "<Subject 2> is Frank, referenced in <Picture 2>."
+            ),
+            current_beat_text="Show Jim speaking to Frank.",
+            next_beat_id=1,
+            beat_deadline_required=False,
+        )
+        malformed = response(
+            "[Shot 1] Jim <Picture 1> says: <d>[English] Keep walking.</d> "
+            "Frank watches him."
+        )
+
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted[DESCRIPTION]
+
+        self.assertIn("Jim <Picture 1> (S1) says:", description)
+        self.assertNotIn("Dialogue block is missing an attributed speaker ID.", " ".join(
+            validate_ministral_prompt(formatted, context)
+        ))
+
+    def test_subject_keeps_multiple_picture_references(self) -> None:
+        context = context_for(
+            1,
+            subject_definitions=(
+                "<Subject 1> is Mark, referenced in <Picture 1> and "
+                "<Picture 2>."
+            ),
+            current_beat_text="Show Mark walking.",
+            next_beat_id=1,
+            beat_deadline_required=False,
+        )
+        formatted = format_ministral_prompt(
+            response(
+                "[Shot 1] Mark <Picture 1> walks down the road."
+            ),
+            context,
+        )
+
+        description = formatted[DESCRIPTION]
+        self.assertIn("Mark <Picture 1> <Picture 2>", description)
 
     def test_delivery_tags_move_outside_dialogue_without_rewriting_words(self) -> None:
         cases = (
@@ -153,6 +199,17 @@ class LiveDialogueRegressionTests(unittest.TestCase):
                 self.assertNotIn(f"<d>[{delivery}]", description)
                 before_dialogue = description[: description.index(block)].lower()
                 self.assertIn(delivery.lower(), before_dialogue)
+
+        def test_subject_maps_do_not_fabricate_mark_or_jill(self):
+            names, subjects, pictures = formatter._subject_maps({
+                "subject_definitions": (
+                    "<Subject 7> is Connie, referenced in <Picture 4>."
+                )
+            })
+
+            self.assertEqual(names, {"Connie": 7})
+            self.assertEqual(subjects, {7})
+            self.assertEqual(pictures, {4})
 
     def test_redundant_period_after_dialogue_close_is_removed(self) -> None:
         spoken_words = "We have to get out of here!"

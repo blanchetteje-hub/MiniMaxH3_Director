@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "config": {
+    "segment_length": 6.0,
+    "total_length": 60.0,
+    "megapixels": 0.5,
+    "total_segments": 10,
+    "source_sha256": "c5bca621475736a1526f87af0a2c998d93565f4e5fc1d16b6e74406c2c1d79cd"
+  },
+  "segments": [
+    {
+      "segment_number": 1,
+      "video_path": "H:\\images\\output\\video\\segment_0001.mp4",
+      "llm_result": {
+        "integrated_multimodal_description": "[Shot 1] Live-action, cinematic, Mark and Jill enjoy the busy theme park with Mark's family. Mark wears a red shirt and blue jeans; Jill wears a yellow dress and white sneakers.",
+        "overall_soundscape": "Crowds murmur as footsteps cross the pavement and rides hum nearby.",
+        "non_diegetic_music": "N/A",
+        "completed_beat_ids": [1]
+      },
+      "completed_beat_ids": [1],
+      "continuity_summary": "",
+      "continuity_summary_pending": false
+    },
+    {
+      "segment_number": 2,
+      "video_path": "H:\\images\\output\\video\\segment_0002.mp4",
+      "llm_result": {
+        "integrated_multimodal_description": "[Shot 2] At 00:01.000, the camera continues as flying saucers cross overhead. Mark remains in a red shirt and blue jeans while Jill remains in a yellow dress and white sneakers.",
+        "overall_soundscape": "Visitors gasp beneath the saucers as wind and distant machinery grow louder.",
+        "non_diegetic_music": "Low electronic pulses at a slow tempo enter beneath the park ambience.",
+        "completed_beat_ids": [2]
+      },
+      "completed_beat_ids": [1, 2],
+      "continuity_summary": "- Mark is in a red shirt and blue jeans.\n- Jill is in a yellow dress and white sneakers.\n- Mark, Jill, and their family remain near the theme park midway.\n- Flying saucers are visible overhead.\n- Crowds react with gasps beneath a growing mechanical hum.",
+      "continuity_summary_pending": false
+    },
+    {
+      "segment_number": 3,
+      "video_path": "H:\\images\\output\\video\\segment_0003.mp4",
+      "llm_result": {
+        "integrated_multimodal_description": "[Shot 3] Camera cuts to a new shot: At 00:00.000 seconds, Mark and Jill stand at the arcade entrance and urgently discuss the saucers. Mark's family begins running toward the food court.",
+        "overall_soundscape": "Running footsteps and frightened shouts mix with the saucers' low mechanical hum.",
+        "non_diegetic_music": "The low electronic pulses quicken slightly and grow louder.",
+        "completed_beat_ids": [3]
+      },
+      "completed_beat_ids": [1, 2, 3],
+      "continuity_summary": "- Mark is at the arcade entrance in a red shirt and blue jeans.\n- Jill is beside Mark at the arcade entrance in a yellow dress and white sneakers.\n- Mark's family is running toward the food court.\n- The saucers remain overhead and the crowd is scattering.\n- Mark and Jill have begun an urgent conversation about the saucers.",
+      "continuity_summary_pending": false
+    },
+    {
+      "segment_number": 4,
+      "video_path": "H:\\images\\output\\video\\segment_0004.mp4",
+      "llm_result": {
+        "integrated_multimodal_description": "[Shot 4] At 00:00.000 seconds, camera continues from the previous shot. Mark remains at the arcade entrance wearing a red shirt and blue jeans; Jill remains beside him wearing a yellow dress and white sneakers as they watch the family flee toward the food court.",
+        "overall_soundscape": "Footsteps pound across the midway while frightened cries and the saucers' mechanical hum continue.",
+        "non_diegetic_music": "The electronic pulses sustain a fast rhythm beneath the escalating scene.",
+        "completed_beat_ids": [4]
+      },
+      "completed_beat_ids": [1, 2, 3, 4],
+      "continuity_summary": "- Location/environment: Mark and Jill are at the arcade entrance in the busy theme park; Mark's family is fleeing toward the food court.\n- Character positions: Mark and Jill stand together at the arcade entrance while their family runs away.\n- Character appearance/physical condition: Mark and Jill are alert and watching the fleeing family.\n- Clothing: Mark wears a red shirt and blue jeans; his clothing is dusty but intact. Jill wears a yellow dress and white sneakers; her clothing is clean and intact.\n- Props/objects: Flying saucers remain overhead above the theme park.\n- Camera/framing: The camera continues from the previous shot, holding Mark and Jill at the arcade entrance.\n- Ongoing physical action: Mark and Jill watch as the family flees toward the food court.\n- Ongoing audio: Running footsteps, frightened cries, and the saucers' mechanical hum continue.",
+      "continuity_summary_pending": false
+    }
+  ],
+  "continuity_summary": "- Location/environment: Mark and Jill are at the arcade entrance in the busy theme park; Mark's family is fleeing toward the food court.\n- Character positions: Mark and Jill stand together at the arcade entrance while their family runs away.\n- Character appearance/physical condition: Mark and Jill are alert and watching the fleeing family.\n- Clothing: Mark wears a red shirt and blue jeans; his clothing is dusty but intact. Jill wears a yellow dress and white sneakers; her clothing is clean and intact.\n- Props/objects: Flying saucers remain overhead above the theme park.\n- Camera/framing: The camera continues from the previous shot, holding Mark and Jill at the arcade entrance.\n- Ongoing physical action: Mark and Jill watch as the family flees toward the food court.\n- Ongoing audio: Running footsteps, frightened cries, and the saucers' mechanical hum continue.",
+  "continuity_summary_pending": false,
+  "beat_progress": {
+    "completed_beat_ids": [1, 2, 3, 4],
+    "last_segment_number": 4,
+    "newly_completed_beat_ids": [4]
+  }
+}

@@ -65,8 +65,12 @@ class WorkflowNameResolutionTests(unittest.TestCase):
 
     def test_initial_preparation_updates_nodes_by_title_after_renumbering(self):
         workflow = renumber_workflow(self.initial)
-        with mock.patch("minimax.load_workflow", return_value=workflow):
-            prepared = minimax.prepare_initial_workflow(6.0, 0.5, "prompt", 4)
+        with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(
+            "minimax.secrets.randbelow", return_value=123456
+        ):
+            prepared = minimax.prepare_initial_workflow(
+                6.0, 0.5, "prompt", 4, steps=12
+            )
 
         _, prompt = minimax.find_workflow_node(
             prepared,
@@ -85,18 +89,25 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         )
         self.assertEqual(prompt["inputs"]["text"], "prompt")
         self.assertEqual(duration["inputs"]["value"], 6.0)
-        self.assertEqual(noise["inputs"]["noise_seed"], 4)
+        self.assertEqual(noise["inputs"]["noise_seed"], 123457)
+        _, scheduler = minimax.find_workflow_node(
+            prepared,
+            minimax.SCHEDULER_NODE_NAME,
+            "prepared initial",
+        )
+        self.assertEqual(scheduler["inputs"]["steps"], 12)
 
     def test_append_preparation_updates_nodes_by_title_after_renumbering(self):
         workflow = renumber_workflow(self.append)
         with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(
             "minimax.os.path.exists", return_value=True
-        ):
+        ), mock.patch("minimax.secrets.randbelow", return_value=654321):
             prepared = minimax.prepare_append_workflow(
                 6.0,
                 "prompt",
                 "previous.mp4",
-                7
+                7,
+                steps=10,
             )
 
         _, video = minimax.find_workflow_node(
@@ -114,6 +125,18 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             save["inputs"]["filename_prefix"],
             "video/segment_0007"
         )
+        _, noise = minimax.find_workflow_node(
+            prepared,
+            minimax.NOISE_NODE_NAME,
+            "prepared append",
+        )
+        self.assertEqual(noise["inputs"]["noise_seed"], 654322)
+        _, scheduler = minimax.find_workflow_node(
+            prepared,
+            minimax.SCHEDULER_NODE_NAME,
+            "prepared append",
+        )
+        self.assertEqual(scheduler["inputs"]["steps"], 10)
 
     def test_history_output_uses_save_video_title_after_renumbering(self):
         workflow = renumber_workflow(self.initial)

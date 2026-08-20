@@ -18,36 +18,37 @@ def formatted_result(shot):
 
 
 class ResumeTests(unittest.TestCase):
-    def test_beat_progress_file_is_atomic_and_records_last_segment_delta(self):
-        beats = ["First beat", "Second beat", "Third beat"]
-        with tempfile.TemporaryDirectory() as directory:
-            path = os.path.join(directory, "beat_progress.txt")
-            minimax.save_beat_progress(
-                beats,
-                {1, 2},
-                last_segment_number=4,
-                newly_completed_beat_ids=[2],
-                path=path
-            )
+    def test_generation_state_contains_migratable_structured_continuity_state(self):
+        state = minimax.new_generation_state(
+            minimax.build_run_config(5, 10, 0.5, 2)
+        )
 
-            with open(path, "r", encoding="utf-8") as progress_file:
-                progress = progress_file.read()
+        self.assertEqual(
+            state["continuity_state"]["version"],
+            minimax.CONTINUITY_STATE_VERSION,
+        )
+        migrated = minimax.migrate_continuity_state({
+            "environment": "hallway",
+            "subjects": {"1": {"position": "left"}},
+        })
+        self.assertEqual(migrated["environment"]["location"], "hallway")
+        self.assertEqual(migrated["subjects"]["1"]["position"], "left")
 
-            self.assertIn("Completed beats: 2/3", progress)
-            self.assertIn("Last rendered segment: 4", progress)
-            self.assertIn(
-                "New beats completed by last rendered segment: "
-                "B002: Second beat",
-                progress
-            )
-            self.assertIn("Next required beat: B003: Third beat", progress)
-            self.assertIn("[DONE] B001: First beat", progress)
-            self.assertIn("[DONE] B002: Second beat", progress)
-            self.assertIn("[NEXT] B003: Third beat", progress)
-            self.assertEqual(
-                [name for name in os.listdir(directory) if name.endswith(".tmp")],
-                []
-            )
+    def test_beat_progress_is_kept_in_generation_state(self):
+        config = minimax.build_run_config(5, 20, 0.5, 4)
+        state = minimax.new_generation_state(config)
+        state["beat_progress"] = {
+            "completed_beat_ids": [1, 2],
+            "last_segment_number": 4,
+            "newly_completed_beat_ids": [2],
+        }
+
+        self.assertEqual(
+            state["beat_progress"]["completed_beat_ids"],
+            [1, 2],
+        )
+        self.assertEqual(state["beat_progress"]["last_segment_number"], 4)
+        self.assertEqual(state["beat_progress"]["newly_completed_beat_ids"], [2])
 
     def test_resume_progress_delta_comes_from_checkpoint_cumulative_state(self):
         beats = ["First beat", "Second beat", "Third beat"]
@@ -66,6 +67,15 @@ class ResumeTests(unittest.TestCase):
     def test_parse_args_accepts_one_based_resume_segment(self):
         args = minimax.parse_args(["5", "20", ".5", "--resume", "3"])
         self.assertEqual(args.resume, 3)
+        self.assertEqual(args.steps, 6)
+
+    def test_parse_args_accepts_custom_steps(self):
+        args = minimax.parse_args(["5", "20", ".5", "--steps", "12"])
+        self.assertEqual(args.steps, 12)
+
+    def test_parse_args_rejects_nonpositive_steps(self):
+        with self.assertRaises(SystemExit):
+            minimax.parse_args(["5", "20", ".5", "--steps", "0"])
 
     def test_parse_args_rejects_nonpositive_resume_segment(self):
         with self.assertRaises(SystemExit):
@@ -82,6 +92,14 @@ class ResumeTests(unittest.TestCase):
                 5, 20, 0.5, 4, "A road story", ["Walk", "Talk"], ""
             )
             state = minimax.new_generation_state(config)
+            self.assertEqual(
+                state["beat_progress"],
+                {
+                    "completed_beat_ids": [],
+                    "last_segment_number": None,
+                    "newly_completed_beat_ids": [],
+                },
+            )
             paths = []
             for segment in (1, 2):
                 path = os.path.join(directory, f"segment_{segment:04d}.mp4")
@@ -172,17 +190,64 @@ class ResumeTests(unittest.TestCase):
                 [1, 2],
             )
 
-    def test_resume_rejects_changed_settings_or_source_material(self):
+    def test_resume_rejects_changed_settings_and_source_material(self):
         with tempfile.TemporaryDirectory() as directory:
             checkpoint = os.path.join(directory, "generation_state.json")
-            original = minimax.build_run_config(5, 20, 0.5, 4, "story A")
+            original = minimax.build_run_config(
+                5,
+                20,
+                0.5,
+                4,
+                "story A",
+                ["old beat"],
+                "old subjects",
+            )
+            state = minimax.new_generation_state(original)
+            path = os.path.join(directory, "segment_0001.mp4")
+            with open(path, "wb") as video_file:
+                video_file.write(b"video")
+            minimax.record_completed_segment(
+                state,
+                1,
+                path,
+                formatted_result(1),
+                [1],
+                "summary 1",
+            )
             minimax.save_generation_state(
-                minimax.new_generation_state(original), checkpoint
+                state,
+                checkpoint,
             )
 
-            changed = minimax.build_run_config(5, 20, 0.5, 4, "story B")
-            with self.assertRaisesRegex(RuntimeError, "settings or source inputs"):
-                minimax.restore_generation_state(2, changed, [], checkpoint)
+            changed = minimax.build_run_config(
+                7,
+                63,
+                0.2,
+                9,
+                "story B",
+                ["new beat 1", "new beat 2"],
+                "new subjects",
+            )
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "segment_length, total_length, megapixels, total_segments, source_sha256",
+            ):
+                minimax.restore_generation_state(
+                    2,
+                    changed,
+                    ["new beat 1", "new beat 2"],
+                    checkpoint,
+                )
+
+    def test_resume_rejects_checkpoint_without_run_config(self):
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = os.path.join(directory, "generation_state.json")
+            state = {"version": 1, "segments": []}
+            minimax.save_generation_state(state, checkpoint)
+            config = minimax.build_run_config(5, 10, 0.5, 2)
+
+            with self.assertRaisesRegex(RuntimeError, "no valid run configuration"):
+                minimax.restore_generation_state(1, config, [], checkpoint)
 
     def test_resume_rejects_missing_prior_video_or_director_result(self):
         with tempfile.TemporaryDirectory() as directory:

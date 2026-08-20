@@ -17,6 +17,112 @@ def segment_result(number):
 
 
 class ContinuitySummaryTests(unittest.TestCase):
+    SUBJECTS = (
+        "<Subject 1> is Connie, referenced in <Picture 1>.\n"
+        "<Subject 2> is Beth, referenced in <Picture 2>."
+    )
+
+    def test_structured_state_has_independent_subject_fields(self):
+        state = minimax.continuity_state_for_registry(self.SUBJECTS)
+
+        connie = state["subjects"]["Connie"]
+        self.assertEqual(connie["picture_id"], 1)
+        self.assertIn("position", connie)
+        self.assertEqual(
+            set(connie["wardrobe"]),
+            {"upper", "lower", "footwear", "other"},
+        )
+        self.assertIsInstance(connie["held_props"], list)
+        self.assertIsInstance(state["environment"], dict)
+
+    def test_opening_state_prompt_is_rendered_from_structured_state(self):
+        state = minimax.continuity_state_for_registry(self.SUBJECTS)
+        state["environment"]["location"] = "bedroom"
+        state["subjects"]["Connie"]["wardrobe"]["upper"] = "green sweater"
+
+        opening = minimax.format_authoritative_opening_state(
+            state,
+            self.SUBJECTS,
+        )
+
+        self.assertIn("AUTHORITATIVE OPENING STATE", opening)
+        self.assertIn("final observable state", opening)
+        self.assertIn("location: bedroom", opening)
+        self.assertIn("wardrobe_upper: green sweater", opening)
+
+    def test_legacy_empty_state_rebuilds_subjects_from_definitions(self):
+        definitions = (
+            "<Subject 1> is Mark, a 40-year-old man referenced in <Picture 1>.\n"
+            "<Subject 2> is Jill, a 35-year-old woman referenced in <Picture 2>."
+        )
+
+        opening = minimax.format_authoritative_opening_state(
+            minimax.new_continuity_state(),
+            definitions,
+        )
+
+        self.assertIn("- Mark <Picture 1>", opening)
+        self.assertIn("- Jill <Picture 2>", opening)
+
+    def test_structured_candidate_preserves_wardrobe_when_not_changed(self):
+        committed = minimax.continuity_state_for_registry(self.SUBJECTS)
+        committed["subjects"]["Connie"]["wardrobe"]["upper"] = "green sweater"
+
+        candidate = minimax.normalize_structured_continuity_state(
+            {
+                "version": 1,
+                "environment": {"location": "bedroom"},
+                "subjects": {"Connie": {"position": "left side"}},
+            },
+            self.SUBJECTS,
+            committed,
+        )
+
+        self.assertEqual(
+            candidate["subjects"]["Connie"]["wardrobe"]["upper"],
+            "green sweater",
+        )
+        self.assertEqual(candidate["subjects"]["Connie"]["position"], "left side")
+
+    def test_structured_candidate_preserves_all_known_subject_state_on_na(self):
+        committed = minimax.continuity_state_for_registry(self.SUBJECTS)
+        committed_subject = committed["subjects"]["Connie"]
+        committed_subject["position"] = "beside the bed"
+        committed_subject["wardrobe"] = {
+            "upper": "green sweater",
+            "lower": "black jeans",
+            "footwear": "white sneakers",
+            "other": "silver necklace",
+        }
+        committed_subject["physical_condition"] = "muddy and alert"
+        committed_subject["held_props"] = ["flashlight"]
+
+        candidate = minimax.normalize_structured_continuity_state(
+            {
+                "subjects": {
+                    "Connie": {
+                        "position": "N/A",
+                        "wardrobe": {
+                            "upper": "N/A",
+                            "lower": "N/A",
+                            "footwear": "",
+                            "other": "N/A",
+                        },
+                        "physical_condition": "N/A",
+                        "held_props": [],
+                    }
+                }
+            },
+            self.SUBJECTS,
+            committed,
+        )
+
+        result = candidate["subjects"]["Connie"]
+        self.assertEqual(result["position"], "beside the bed")
+        self.assertEqual(result["wardrobe"], committed_subject["wardrobe"])
+        self.assertEqual(result["physical_condition"], "muddy and alert")
+        self.assertEqual(result["held_props"], ["flashlight"])
+
     def test_summary_worker_is_closed_when_generation_raises(self):
         worker = Mock()
         worker.__enter__ = Mock(return_value=worker)
@@ -78,9 +184,58 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertNotIn("completed_beat_ids", combined)
         self.assertEqual(["system", "user"], [m["role"] for m in messages])
 
-    def test_summary_requires_two_results(self):
-        with self.assertRaisesRegex(ValueError, "exactly two"):
-            minimax.build_summary_messages([(1, segment_result(1))])
+    def test_summary_requires_at_least_one_result(self):
+        with self.assertRaisesRegex(ValueError, "at least one"):
+            minimax.build_summary_messages([])
+
+    def test_first_segment_can_produce_previous_state(self):
+        messages = minimax.build_summary_messages([(1, segment_result(1))])
+        combined = "\n".join(message["content"] for message in messages)
+        self.assertIn("EXACT RECENT SEGMENT 1", combined)
+        self.assertNotIn("EXACT RECENT SEGMENT 2", combined)
+
+    def test_summary_subject_speaker_ids_are_normalized_to_subject_tags(self):
+        summary = (
+            "- Location/environment: The room is quiet.\n"
+            "- Character positions: Mark (S1) stands beside Jill (S2).\n"
+            "- Character appearance/physical condition: Mark (S1) is alert.\n"
+            "- Clothing: Mark (S1) wears a red shirt.\n"
+            "- Props/objects: Jill (S2) holds a notebook.\n"
+            "- Camera/framing: A medium shot frames Mark (S1) and Jill (S2).\n"
+            "- Ongoing physical action: Mark (S1) watches Jill (S2).\n"
+            "- Ongoing audio: Footsteps continue."
+        )
+
+        normalized = minimax.normalize_summary_subject_references(
+            summary,
+            "<Subject 1> is Mark, referenced in <Picture 1>.\n"
+            "<Subject 2> is Jill, referenced in <Picture 2>.",
+        )
+
+        self.assertIn("<Subject 1> Mark", normalized)
+        self.assertIn("<Subject 2> Jill", normalized)
+        self.assertNotRegex(normalized, r"\(S[12]\)")
+
+    def test_previous_state_em_dash_is_replaced_with_comma(self):
+        summary = (
+            "- Location/environment: Hallway by the doorway.\n"
+            "- Character positions: and <Subject 3> Terri—are clustered near the doorway.\n"
+            "- Character appearance/physical condition: Terri is tense.\n"
+            "- Clothing: Terri wears a dark coat.\n"
+            "- Props/objects: A flashlight rests on the floor.\n"
+            "- Camera/framing: Medium shot from chest height.\n"
+            "- Ongoing physical action: They hold position.\n"
+            "- Ongoing audio: Footsteps echo."
+        )
+
+        normalized = minimax.normalize_previous_state(summary)
+
+        self.assertIsNotNone(normalized)
+        self.assertIn(
+            "- Character positions: and <Subject 3> Terri, are clustered near the doorway.",
+            normalized,
+        )
+        self.assertNotIn("—", normalized)
 
     def test_numbered_summary_is_normalized_to_exactly_five_bullets(self):
         raw = "\n".join(f"{number}. fact {number}" for number in range(1, 6))
@@ -95,8 +250,14 @@ class ContinuitySummaryTests(unittest.TestCase):
         def fake_llm(messages, **kwargs):
             calls.append((messages, kwargs))
             if len(calls) == 1:
-                return "- only one bullet"
-            return "\n".join(f"- fact {number}" for number in range(1, 6))
+                return "Location/environment: only one field"
+            return "\n".join(
+                f"{field}: fact {number}"
+                for number, field in enumerate(
+                    minimax.PREVIOUS_STATE_FIELDS,
+                    start=1,
+                )
+            )
 
         summary = minimax.request_five_bullet_summary(
             [(1, segment_result(1)), (2, segment_result(2))],
@@ -104,7 +265,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
 
         self.assertEqual(2, len(calls))
-        self.assertEqual(5, len(summary.splitlines()))
+        self.assertEqual(8, len(summary.splitlines()))
         self.assertIsNone(calls[0][1]["response_format"])
         self.assertNotIn("formatter", calls[0][0][0]["content"].lower())
         self.assertEqual(
@@ -114,7 +275,13 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertIn("prior response", calls[1][0][-1]["content"].lower())
 
     def test_generation_context_has_summary_and_only_two_exact_results(self):
-        summary = "\n".join(f"- continuity fact {n}" for n in range(1, 6))
+        summary = "\n".join(
+            f"- {field}: continuity fact {number}"
+            for number, field in enumerate(
+                minimax.PREVIOUS_STATE_FIELDS,
+                start=1,
+            )
+        )
         messages, _, recent_count = minimax.build_generation_messages(
             director_rules="DIRECTOR",
             story="SOURCE STORY",
@@ -147,7 +314,7 @@ class ContinuitySummaryTests(unittest.TestCase):
             calls.append(messages)
             return "not a five-bullet summary"
 
-        with self.assertRaisesRegex(RuntimeError, "exact five-bullet"):
+        with self.assertRaisesRegex(RuntimeError, "eight-field"):
             minimax.request_five_bullet_summary(
                 [(1, segment_result(1)), (2, segment_result(2))],
                 llm_request=fake_llm,

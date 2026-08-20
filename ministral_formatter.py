@@ -55,6 +55,10 @@ _CONTINUATION_OPENING = re.compile(
     r"(?:\s*(?:At\s+\d{1,2}:\d{2}(?:[.:]\d{1,3})?"
     r"(?:\s+seconds?)?\s*[,;:\-]?))?\s*[,.:;\-]?\s*"
 )
+_CONFLICTING_CONTINUATION = re.compile(
+    r"(?is)^\s*(?:At\s+00:00\.000(?:\s+seconds?)?\s*[,;:\-]?\s*)?"
+    r"camera\s+continues\s+from\s+the\s+previous\s+shot\s*[.!]?\s*"
+)
 _TRAILING_PARENTHESIZED_TIME = re.compile(
     r"(?P<boundary>^|(?<=[.!?])\s+)"
     r"(?P<transition>Camera\s+(?:cuts\s+to\s+a\s+new\s+shot|"
@@ -80,7 +84,8 @@ def _format_local_timestamp(match: re.Match[str]) -> str:
     minutes = int(match.group("minutes"))
     seconds = int(match.group("seconds"))
     fraction = (match.group("fraction") or "0").ljust(3, "0")
-    return f"At {minutes:02d}:{seconds:02d}.{fraction}, "
+    prefix = "\n" if match.start() > 0 else ""
+    return f"{prefix}At {minutes:02d}:{seconds:02d}.{fraction}, "
 
 
 def _format_continuation_opening(description: str) -> str:
@@ -88,7 +93,7 @@ def _format_continuation_opening(description: str) -> str:
     if match is None:
         return description
     return (
-        "At 00:00.000 seconds, camera continues from the previous shot. "
+        "Camera continues from the previous shot. "
         + description[match.end():].lstrip()
     ).rstrip()
 
@@ -198,28 +203,96 @@ def _next_beat_id(context: Mapping[str, Any]) -> int | None:
         return None
 
 
-def _subject_maps(context: Mapping[str, Any]) -> tuple[dict[str, int], set[int], set[int]]:
+def _subject_records(context: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     definitions = str(context.get("subject_definitions", "") or "")
-    names: dict[str, int] = {}
-    subjects = {int(number) for number in re.findall(r"<Subject\s+(\d+)>", definitions, re.I)}
-    pictures = {int(number) for number in re.findall(r"<Picture\s+(\d+)>", definitions, re.I)}
+    records: dict[str, dict[str, Any]] = {}
     for match in re.finditer(
-        r"<Subject\s+(\d+)>\s*(?:is\s+)?([A-Z][\w'’-]*)", definitions
+        r"(?im)^\s*<Subject\s+(?P<subject>\d+)>\s*(?:is\s+)?"
+        r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)\s*,\s*"
+        r".*?(?P<pictures>(?:<Picture\s+\d+>\s*(?:,?\s*(?:and\s+)?)*?)+)"
+        r"(?:.*?\(?S(?P<speaker>\d+)\)?)?\s*\.?\s*$",
+        definitions,
     ):
-        names[match.group(2)] = int(match.group(1))
-
+        name = match.group("name").strip()
+        picture_ids = [
+            int(value) for value in re.findall(
+                r"(?i)<Picture\s+(\d+)>",
+                match.group("pictures"),
+            )
+        ]
+        records[name] = {
+            "subject_id": int(match.group("subject")),
+            "picture_ids": picture_ids,
+            "picture_id": picture_ids[0],
+            "speaker_id": (
+                f"S{match.group('speaker')}"
+                if match.group("speaker") else None
+            ),
+        }
+        if records[name]["speaker_id"] is None:
+            records[name]["speaker_id"] = f"S{records[name]['subject_id']}"
     known = context.get("known_subjects")
     if isinstance(known, Mapping):
         for key, value in known.items():
             if isinstance(key, str) and str(value).isdigit():
-                names[key] = int(value)
-            elif str(key).isdigit() and isinstance(value, str):
-                names[value] = int(key)
-    # These identities are part of the pipeline contract and remain stable even
-    # when a shortened context omits definitions.
-    names.setdefault("Mark", 1)
-    names.setdefault("Jill", 2)
+                records.setdefault(key, {
+                    "subject_id": int(value),
+                    "picture_id": None,
+                    "speaker_id": None,
+                })
+    return records
+
+
+def _subject_maps(context: Mapping[str, Any]) -> tuple[dict[str, int], set[int], set[int]]:
+    records = _subject_records(context)
+    names = {
+        name: record["subject_id"]
+        for name, record in records.items()
+    }
+    subjects = {
+        record["subject_id"] for record in records.values()
+        if record["subject_id"] is not None
+    }
+    pictures = {
+        picture
+        for record in records.values()
+        for picture in record.get("picture_ids", [record["picture_id"]])
+        if record["picture_id"] is not None
+    }
     return names, subjects, pictures
+
+
+def normalize_summary_subject_references(
+    summary: str,
+    subject_definitions: str,
+) -> str:
+    """Use stable Subject tags instead of speaker IDs in continuity summaries."""
+    if not isinstance(summary, str):
+        return summary
+
+    definitions = str(subject_definitions or "")
+    subjects = []
+    for match in re.finditer(
+        r"(?i)<Subject\s+(\d+)>\s*(?:is\s+)?"
+        r"([A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*)",
+        definitions,
+    ):
+        subjects.append((int(match.group(1)), match.group(2).strip()))
+
+    normalized = summary
+    for number, name in sorted(subjects, key=lambda item: -len(item[1])):
+        escaped_name = re.escape(name)
+        normalized = re.sub(
+            rf"(?i)\b{escaped_name}\b\s*\(S\d+\)",
+            f"<Subject {number}> {name}",
+            normalized,
+        )
+        normalized = re.sub(
+            rf"(?i)\(S\d+\)\s*\b{escaped_name}\b",
+            f"<Subject {number}> {name}",
+            normalized,
+        )
+    return normalized
 
 
 def _repair_fields(result: dict[str, Any], context: Mapping[str, Any]) -> None:
@@ -281,6 +354,11 @@ def _repair_shots(result: dict[str, Any], context: Mapping[str, Any]) -> None:
         )
         description = _format_continuation_opening(description)
     description = _clean_space(description).lstrip(" ,;:-")
+    description = re.sub(
+        r"(?i)(?<!\])\s+(?=At\s+\d{2}:\d{2}\.\d{3}(?:\s+seconds?)?,)",
+        "\n",
+        description,
+    )
     prefix = f"[Shot {number}]"
 
     if context.get("hard_cut_required"):
@@ -290,7 +368,22 @@ def _repair_shots(result: dict[str, Any], context: Mapping[str, Any]) -> None:
             "",
             description,
         )
+        description = _CONFLICTING_CONTINUATION.sub("", description)
         description = f"Camera cuts to a new shot: {description.lstrip()}"
+    elif number > 1:
+        description = re.sub(
+            r"(?i)^Camera\s+cuts\s+to\s+a\s+new\s+shot\s*[:.,-]?\s*",
+            "Camera continues from the previous shot. ",
+            description,
+        )
+        if not re.match(
+            r"(?i)^Camera\s+continues\s+from\s+the\s+previous\s+shot\b",
+            description,
+        ):
+            description = (
+                "Camera continues from the previous shot. "
+                + description.lstrip()
+            )
     result[DESCRIPTION] = f"{prefix} {description}".strip()
 
 
@@ -375,6 +468,7 @@ def _repair_camera(result: dict[str, Any], context: Mapping[str, Any]) -> None:
 
 def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     names, subjects, pictures = _subject_maps(context)
+    subject_pictures = _subject_picture_map(context)
 
     def subject(match: re.Match[str]) -> str:
         return match.group(0) if int(match.group(1)) in subjects else ""
@@ -388,27 +482,53 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
         result[DESCRIPTION],
         flags=re.I,
     )
-    text = re.sub(r"<Subject\s+(\d+)>", subject, text, flags=re.I)
+    text = re.sub(
+        r"<Subject\s+(\d+)>",
+        lambda match: (
+            " ".join(
+                f"<Picture {picture}>"
+                for picture in subject_pictures[int(match.group(1))]
+            )
+            if int(match.group(1)) in subjects
+            and int(match.group(1)) in subject_pictures
+            else ""
+        ),
+        text,
+        flags=re.I,
+    )
     text = re.sub(r"<Picture\s+(\d+)>", picture, text, flags=re.I)
 
     # A defined identity reference belongs on its first named appearance.  Do
     # not make tags up for unnamed relatives, and do not duplicate a tag the
     # model already supplied elsewhere in the prompt.
     for name, number in sorted(names.items(), key=lambda item: -len(item[0])):
-        if number not in subjects or re.search(
-            rf"<Subject\s+{number}>", text, re.I
+        picture_ids = subject_pictures.get(number, [])
+        if number not in subjects or not picture_ids or any(
+            re.search(rf"<Picture\s+{picture}>", text, re.I)
+            for picture in picture_ids
         ):
             continue
+        picture_text = " ".join(
+            f"<Picture {picture}>" for picture in picture_ids
+        )
         id_first = re.compile(
-            rf"(\(S\d+(?:\s*,\s*S\d+)*\)\s*\b{re.escape(name)}\b)",
+            rf"(?P<ids>\(S\d+(?:\s*,\s*S\d+)*\))\s*"
+            rf"(?P<name>\b{re.escape(name)}\b)",
             re.I,
         )
         if id_first.search(text):
-            text = id_first.sub(rf"<Subject {number}> \1", text, count=1)
+            text = id_first.sub(
+                lambda match: (
+                    f"{match.group('name')} {picture_text} "
+                    f"{match.group('ids')}"
+                ),
+                text,
+                count=1,
+            )
         else:
             text = re.sub(
                 rf"\b({re.escape(name)}(?:\s*\(S\d+\))?)(?=\s|[,.;:]|$)",
-                rf"<Subject {number}> \1",
+                rf"\1 {picture_text}",
                 text,
                 count=1,
                 flags=re.I,
@@ -504,6 +624,47 @@ def _move_dialogue_delivery_cues(text: str) -> str:
 def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     text = result[DESCRIPTION]
     names, subjects, _ = _subject_maps(context)
+    records = _subject_records(context)
+
+    for name, record in sorted(records.items(), key=lambda item: -len(item[0])):
+        speaker_id = record.get("speaker_id")
+        if not speaker_id:
+            continue
+        text = re.sub(
+            rf"\b({re.escape(name)})\b\s*(<Picture\s+\d+>)?\s*"
+            rf"\(S\d+\)",
+            lambda match, speaker=speaker_id: (
+                f"{match.group(1)} "
+                f"{match.group(2) + ' ' if match.group(2) else ''}"
+                f"({speaker})"
+            ),
+            text,
+            flags=re.I,
+        )
+        text = re.sub(
+            rf"\b({re.escape(name)})\b\s*(<Picture\s+\d+>)?\s+"
+            rf"(?P<verb>says|asks|answers|replies|shouts|whispers|yells|"
+            rf"tells|exclaims|narrates)\s*:",
+            lambda match, speaker=speaker_id: (
+                f"{match.group(1)} "
+                f"{match.group(2) + ' ' if match.group(2) else ''}"
+                f"({speaker}) {match.group('verb')}:"
+            ),
+            text,
+            flags=re.I,
+        )
+        text = re.sub(
+            rf"\b({re.escape(name)})\b\s*(<Picture\s+\d+>)?\s+"
+            rf"(?P<verb>says|asks|answers|replies|shouts|whispers|yells|"
+            rf"tells|exclaims|narrates)\s+(?=<d>)",
+            lambda match, speaker=speaker_id: (
+                f"{match.group(1)} "
+                f"{match.group(2) + ' ' if match.group(2) else ''}"
+                f"({speaker}) {match.group('verb')} "
+            ),
+            text,
+            flags=re.I,
+        )
 
     # Learn drifted numeric IDs from identity-attached occurrences before
     # replacing them.  This lets a later compound (S5,S6) become (S1,S2).
@@ -636,7 +797,8 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
         text,
     )
     voiceover = re.compile(
-        r"(?P<speaker>\b(?P<name>[A-Z][\w'’-]*)\s+\(S\d+\)\s+"
+        r"(?P<speaker>\b(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)\s+"
+        r"(?:<Picture\s+\d+>\s+)?\(S\d+\)\s+"
         r"says in an off-screen voiceover:\s*<d>.*?</d>)"
         r"(?!\s+while\s+(?:his|her|their|[A-Z][\w'’-]*'s)\s+lips\s+remain\s+completely\s+closed)",
         re.I | re.S,
@@ -644,8 +806,7 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
 
     def close_lips(match: re.Match[str]) -> str:
         name = match.group("name")
-        pronoun = "her" if name.lower() == "jill" else "his"
-        return f"{match.group('speaker')} while {pronoun} lips remain completely closed"
+        return f"{match.group('speaker')} while {name}'s lips remain completely closed"
 
     text = voiceover.sub(close_lips, text)
     text = re.sub(r"([.!?])</d>\s*[.!?,;:]+", r"\1</d>", text)
@@ -655,7 +816,7 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
 def _repair_non_speaking_ids(
     result: dict[str, Any], context: Mapping[str, Any]
 ) -> None:
-    """Use Subject tags, not speaker IDs, in purely visual sentences."""
+    """Use Picture tags, not speaker IDs, in purely visual sentences."""
 
     names, subjects, _ = _subject_maps(context)
     canonical_names = {name.casefold(): (name, number) for name, number in names.items()}
@@ -669,7 +830,11 @@ def _repair_non_speaking_ids(
             return f"{tag}{written_name}".strip()
         canonical_name, number = known
         if number in subjects:
-            return f"<Subject {number}> {canonical_name}"
+            pictures = _subject_picture_map(context).get(number, [])
+            if pictures:
+                return f"{canonical_name} " + " ".join(
+                    f"<Picture {picture}>" for picture in pictures
+                )
         return canonical_name
 
     repaired = []
@@ -686,6 +851,116 @@ def _repair_non_speaking_ids(
     result[DESCRIPTION] = _clean_space(" ".join(repaired))
 
 
+def _subject_picture_map(context: Mapping[str, Any]) -> dict[int, int]:
+    definitions = str(context.get("subject_definitions", "") or "")
+    result = {}
+    for match in re.finditer(
+        r"(?im)^\s*<Subject\s+(\d+)>.*$",
+        definitions,
+    ):
+        pictures = [
+            int(picture) for picture in re.findall(
+                r"(?i)<Picture\s+(\d+)>", match.group(0)
+            )
+        ]
+        if pictures:
+            result[int(match.group(1))] = pictures
+    return result
+
+
+def _repair_canonical_picture_tags(
+    result: dict[str, Any], context: Mapping[str, Any]
+) -> None:
+    """Ensure H3 scene prose contains no legacy Subject identity tags."""
+    subject_pictures = _subject_picture_map(context)
+    names, _, _ = _subject_maps(context)
+    records = _subject_records(context)
+
+    def replace_subject(match: re.Match[str]) -> str:
+        pictures = subject_pictures.get(int(match.group(1)), [])
+        return " ".join(f"<Picture {picture}>" for picture in pictures)
+
+    text = re.sub(
+        r"<Subject\s+(\d+)>",
+        replace_subject,
+        result[DESCRIPTION],
+        flags=re.I,
+    )
+    for pictures in subject_pictures.values():
+        for picture in pictures:
+            text = re.sub(
+                rf"<Picture\s+{picture}>\s+(?P<name>[A-Z][\w'’-]*)",
+                lambda match, picture=picture: (
+                    f"{match.group('name')} <Picture {picture}>"
+                ),
+                text,
+                flags=re.I,
+            )
+    for name, record in sorted(records.items(), key=lambda item: -len(item[0])):
+        pictures = record.get("picture_ids", [])
+        if not pictures:
+            continue
+        picture_text = " ".join(f"<Picture {picture}>" for picture in pictures)
+        text = re.sub(
+            rf"\b({re.escape(name)})\b(?:\s+<Picture\s+\d+>)*",
+            f"\\1 {picture_text}",
+            text,
+            count=1,
+            flags=re.I,
+        )
+    text = re.sub(
+        r"\b(?P<name>[A-Z][\w'’-]*)\s*(?P<ids>\(S\d+(?:\s*,\s*S\d+)*\))\s*"
+        r"(?P<picture><Picture\s+\d+>)",
+        r"\g<name> \g<picture> \g<ids>",
+        text,
+        flags=re.I,
+    )
+    text = re.sub(
+        r"\b(?P<name>[A-Z][\w'’-]*)\s*(?P<ids>\(S\d+(?:\s*,\s*S\d+)*\))\s*"
+        r"(?P<verb>says|asks|answers|replies|shouts|whispers|yells|tells|"
+        r"exclaims|narrates)\s*(?P<picture><Picture\s+\d+>)?",
+        lambda match: (
+            f"{match.group('name')} "
+            f"{match.group('picture') + ' ' if match.group('picture') else ''}"
+            f"{match.group('ids')} {match.group('verb')}"
+        ),
+        text,
+        flags=re.I,
+    )
+    text = re.sub(
+        r"(?P<name>\b[A-Z][\w'’-]*)\s+(?P<picture><Picture\s+\d+>)\s+"
+        r"from\s+(?P=picture)",
+        r"\g<name> \g<picture> from",
+        text,
+        flags=re.I,
+    )
+    for subject_id, picture_ids in subject_pictures.items():
+        name = next(
+            (candidate for candidate, number in names.items() if number == subject_id),
+            None,
+        )
+        if not name:
+            continue
+        for picture_id in picture_ids:
+            text = re.sub(
+                rf"\s*<Picture\s+{picture_id}>",
+                "",
+                text,
+                flags=re.I,
+            )
+        picture_text = " ".join(
+            f"<Picture {picture_id}>" for picture_id in picture_ids
+        )
+        text = re.sub(
+            rf"\b({re.escape(name)})\b",
+            rf"\1 {picture_text}",
+            text,
+            count=1,
+            flags=re.I,
+        )
+    result[DESCRIPTION] = _clean_space(text)
+
+
 def _validate_non_speaking_ids(
     result: Mapping[str, Any], context: Mapping[str, Any]
 ) -> list[str]:
@@ -699,7 +974,7 @@ def _validate_non_speaking_ids(
         ):
             return [
                 "A non-speaking person uses a speaker ID; use the defined "
-                "<Subject N> identity tag instead."
+                "Name <Picture N> identity form instead."
             ]
     return []
 
@@ -793,7 +1068,11 @@ def _repair_completions(result: dict[str, Any], context: Mapping[str, Any]) -> N
     parsed = {_parse_beat_id(value) for value in raw}
     parsed.discard(None)
     current = _next_beat_id(context)
-    result[COMPLETIONS] = [current] if current is not None and current in parsed else []
+    accepted = []
+    while current is not None and current in parsed:
+        accepted.append(current)
+        current += 1
+    result[COMPLETIONS] = accepted
     result[DESCRIPTION] = re.sub(
         r"(?i)\s*completed_beat_ids\s*:\s*\[[^\]]*\]\s*", " ", result[DESCRIPTION]
     ).strip()
@@ -831,23 +1110,22 @@ def _validate_shots(result: Mapping[str, Any], context: Mapping[str, Any]) -> li
     ):
         issues.append("The opening shot must not have a timestamp.")
     if _segment_number(context) > 1:
-        has_timestamp = False
-        for match in _LOCAL_TIME.finditer(text):
-            has_timestamp = True
-            break
-        if not has_timestamp:
+        if re.match(
+            rf"^{re.escape(expected)}\s+At\s+00:00\.000 seconds, "
+            r"camera continues from the previous shot",
+            text,
+            re.I,
+        ):
             issues.append(
-                "Every segment after the first must include at least one "
-                "local timeline timestamp."
+                "The continuation opening must not contain a timestamp."
             )
-        if re.match(rf"^{re.escape(expected)}\s+At\s+00:00\.000 seconds, "
-                    r"camera continues from the previous shot\. ", text):
-            pass
-        elif re.match(rf"^{re.escape(expected)}\s+.*camera continues from the "
-                       r"previous shot", text, re.I):
+        if not context.get("hard_cut_required") and re.match(
+            rf"^{re.escape(expected)}\s+Camera\s+cuts\s+to\s+a\s+new\s+shot:",
+            text,
+            re.I,
+        ):
             issues.append(
-                "A continuation opening must be formatted as 'At 00:00.000 "
-                "seconds, camera continues from the previous shot.'."
+                "Only hard-cut segments may begin with a cut opening."
             )
     if re.search(r"(?i)reference pictures align|fully referenced", text):
         issues.append("Reference-image alignment instructions do not apply to this pipeline.")
@@ -856,6 +1134,17 @@ def _validate_shots(result: Mapping[str, Any], context: Mapping[str, Any]) -> li
     ):
         issues.append("This segment requires the exact hard-cut opening form.")
     return issues
+
+
+def _repair_timestamp_line_breaks(
+    result: dict[str, Any], context: Mapping[str, Any]
+) -> None:
+    del context
+    result[DESCRIPTION] = re.sub(
+        r"(?i)(?<!\])\s+(?=At\s+\d{2}:\d{2}\.\d{3}(?:\s+seconds?)?,)",
+        "\n",
+        result[DESCRIPTION],
+    )
 
 
 def _validate_camera(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
@@ -887,6 +1176,7 @@ def _validate_subject_tags(result: Mapping[str, Any], context: Mapping[str, Any]
 def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
     text = str(result.get(DESCRIPTION, ""))
     names, _, _ = _subject_maps(context)
+    records = _subject_records(context)
     issues = []
     if text.lower().count("<d>") != text.lower().count("</d>"):
         issues.append("Dialogue tags are unbalanced.")
@@ -895,19 +1185,25 @@ def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) ->
             issues.append("Every dialogue block must begin with [English].")
         if re.match(r"\s*\[English\]\s*\[[^\]]+\]", block, re.I):
             issues.append("Non-language delivery cues must appear outside <d> dialogue text.")
-    for name, canonical in names.items():
-        if re.search(rf"\b{re.escape(name)}\b\s*\(S(?!{canonical}\b)\d+\)", text, re.I):
-            issues.append(f"{name} must consistently use speaker ID (S{canonical}).")
+    for name, record in records.items():
+        speaker_id = record.get("speaker_id")
+        if speaker_id and re.search(
+            rf"\b{re.escape(name)}\b\s*(?:<Picture\s+\d+>\s*)?"
+            rf"\(S(?!{re.escape(speaker_id[1:])}\b)\d+\)",
+            text,
+            re.I,
+        ):
+            issues.append(f"{name} must consistently use speaker ID ({speaker_id}).")
     for match in re.finditer(r"says in an off-screen voiceover:\s*<d>.*?</d>", text, re.I | re.S):
         after = text[match.end():match.end() + 100]
         if not re.match(
-            r"\s+while\s+(?:his|her|their|[A-Z][\w'’-]*'s)\s+lips remain completely closed",
+            r"\s+while\s+(?:his|her|their|[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*'s)\s+lips remain completely closed",
             after,
             re.I,
         ):
             issues.append("Every voiceover must state that the on-screen character's lips remain closed.")
     for clause in re.finditer(
-        r"while\s+(?:his|her|their|[A-Z][\w'â€™-]*'s)\s+lips\s+remain\s+completely\s+closed",
+        r"while\s+(?:his|her|their|[A-Z][\w'â€™-]*(?:\s+[A-Z][\w'â€™-]*)*'s)\s+lips\s+remain\s+completely\s+closed",
         text,
         re.I,
     ):
@@ -1017,12 +1313,7 @@ def _validate_music(result: Mapping[str, Any], context: Mapping[str, Any]) -> li
         r"(?i)\b(?:ominous|tense|sad|happy|hopeful|dramatic|emotional|scary|mysterious)\b",
         value,
     )
-    concrete = re.search(
-        r"(?i)\b(?:piano|strings?|cello|violin|brass|drums?|percussion|guitar|"
-        r"synth|electronic|notes?|tempo|rhythm|pulse|chord|volume)\b",
-        value,
-    )
-    if abstract and not concrete:
+    if abstract:
         issues.append("Music uses abstract mood language without concrete musical details.")
     return issues
 
@@ -1032,119 +1323,21 @@ def _validate_completions(result: Mapping[str, Any], context: Mapping[str, Any])
     if not isinstance(values, list) or any(not isinstance(value, int) for value in values):
         return ["completed_beat_ids must contain only integer metadata IDs."]
     current = _next_beat_id(context)
-    if any(value != current for value in values):
-        return ["Only the current NEXT beat may be reported complete."]
+    if values:
+        if current is None or values[0] != current:
+            return ["Completed beats must begin with the current NEXT beat."]
+        expected = list(range(current, current + len(values)))
+        if values != expected:
+            return ["Completed beat IDs must be a consecutive sequence."]
     if re.search(r"(?i)completed_beat_ids|\bB\d{3}\b", str(result.get(DESCRIPTION, ""))):
         return ["Beat completion IDs must not appear in rendered prompt text."]
     return []
 
 
-def _semantic_requirements(beat_text: str) -> list[tuple[str, tuple[str, ...]]]:
-    lower = beat_text.lower()
-    requirements: list[tuple[str, tuple[str, ...]]] = []
-    if "mark" in lower:
-        requirements.append(("Mark", (r"\bMark\b",)))
-    if "jill" in lower:
-        requirements.append(("Jill", (r"\bJill\b",)))
-    if "family" in lower:
-        requirements.append(("Mark's family", (r"\bfamil(?:y|ies)\b",)))
-    if "saucer" in lower:
-        requirements.append(("flying saucers", (r"\bsaucers?\b",)))
-    if "overhead" in lower:
-        requirements.append(("overhead flight", (r"\boverhead\b", r"\bacross the sky\b")))
-    if "run away" in lower:
-        requirements.append(("the family running away", (r"\brun(?:s|ning)?\b", r"\bflee(?:s|ing)?\b")))
-    if "abduct" in lower:
-        requirements.append(("visible abduction action", (r"\babduct", r"\bseiz", r"\blift", r"\bcarry")))
-        requirements.append(("a completed abduction outcome", (
-            r"\binto the (?:craft|saucer|ship)\b", r"\bempty (?:ground|pavement|space)\b",
-            r"\babduction (?:is |was )?(?:visibly )?complete", r"\bcarrying .*? into\b",
-        )))
-    return requirements
-
-
 def _validate_semantics(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
-    current = _next_beat_id(context)
-    completed = result.get(COMPLETIONS, [])
-    require_completion = bool(context.get("beat_deadline_required")) or (
-        current is not None and current in completed
-    )
-
     description = str(result.get(DESCRIPTION, ""))
-    beat_text = str(context.get("current_beat_text", "") or "")
     issues = []
-    if require_completion:
-        for label, alternatives in _semantic_requirements(beat_text):
-            if not any(re.search(pattern, description, re.I | re.S) for pattern in alternatives):
-                beat = f"B{current:03d}" if current is not None else "current beat"
-                issues.append(f"{beat} is missing required visible content: {label}.")
-
-        if "talk" in beat_text.lower():
-            def attributed(name: str, speaker: int) -> bool:
-                return bool(re.search(
-                    rf"(?:<Subject\s+\d+>\s*)?\b{re.escape(name)}\b\s*"
-                    rf"\(S{speaker}\)[^<>.!?]{{0,160}}"
-                    rf"(?:says|asks|answers|replies|shouts|whispers|yells|tells|exclaims)"
-                    rf"[^<>.!?]{{0,100}}:\s*<d>.*?</d>",
-                    description,
-                    re.I | re.S,
-                ))
-
-            if not attributed("Mark", 1) or not attributed("Jill", 2):
-                beat = f"B{current:03d}" if current is not None else "current beat"
-                issues.append(
-                    f"{beat} requires a Mark/Jill exchange with one attributed Mark (S1) "
-                    "dialogue block and one attributed Jill (S2) dialogue block."
-                )
-
-        if current is not None and current not in completed:
-            issues.append(f"B{current:03d} reached its deadline but was not reported complete.")
-
-        visible_action = re.search(r"\b(?:run away|flee|abduct|lift|seize)\b", beat_text, re.I)
-        if visible_action and re.search(
-            r"\b(?:Mark|Jill|the family|Mark's family)\b[^.!?]{0,60}"
-            r"\b(?:unseen|off[- ]screen|not visible|out of view)\b",
-            description,
-            re.I,
-        ):
-            issues.append("Required beat action cannot be completed by subjects described as unseen.")
-
-    recent_raw = context.get("recent_descriptions", []) or []
-    if isinstance(recent_raw, str):
-        recent_raw = [recent_raw]
-    recent = " ".join(
-        str(item.get(DESCRIPTION, "")) if isinstance(item, Mapping) else str(item)
-        for item in recent_raw
-    )
-    if re.search(r"\b(?:son|child|children)\b", recent, re.I):
-        composition = re.search(
-            r"\b(?:family|Mark's family)\s+(?:consists of|is made up of|includes only)\s+"
-            r"(?P<members>[^.!?]+)",
-            description,
-            re.I,
-        )
-        alone = re.search(r"\b(?:only|just)\s+Mark\s+and\s+Jill\b|\bMark and Jill are alone\b", description, re.I)
-        if alone or (
-            composition
-            and not re.search(r"\b(?:son|child|children)\b", composition.group("members"), re.I)
-        ):
-            issues.append(
-                "Family composition contradicts the recently established son or child."
-            )
-
-    # Flag only unmistakable enactment of a later beat; shared nouns alone are
-    # not sufficient evidence of progression leakage.
-    later = " ".join(str(item) for item in context.get("later_beat_texts", []) or []).lower()
-    if "abduct" in later and re.search(r"\b(?:abduct\w*|seizes? .* family|lifts? .* family)\b", description, re.I):
-        issues.append("Description prematurely enacts the later abduction beat.")
-    if "talk" in later and len(re.findall(r"<d>.*?</d>", description, re.I | re.S)) >= 2:
-        issues.append("Description prematurely enacts the later Mark/Jill conversation beat.")
-    if (
-        "saucer" in later
-        and not re.search(r"\b(?:saucers?|talk\w*|figure out|what is happening)\b", beat_text, re.I)
-        and re.search(r"\bsaucers?\b", description, re.I)
-    ):
-        issues.append("Description prematurely introduces the later flying-saucer beat.")
+    del context
     return issues
 
 
@@ -1172,6 +1365,16 @@ RULE_REGISTRY = (
     PromptRule("soundscape", _repair_soundscape, _validate_soundscape),
     PromptRule("music", _repair_music, _validate_music),
     PromptRule("completions", _repair_completions, _validate_completions),
+    PromptRule(
+        "timestamp_line_breaks",
+        _repair_timestamp_line_breaks,
+        lambda result, context: [],
+    ),
+    PromptRule(
+        "canonical_picture_tags",
+        _repair_canonical_picture_tags,
+        lambda result, context: [],
+    ),
 )
 
 
