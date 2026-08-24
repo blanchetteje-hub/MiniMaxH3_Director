@@ -153,6 +153,37 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             validate_ministral_prompt(formatted, context)
         ))
 
+    def test_speech_verbs_keep_spaces_before_adverbs(self) -> None:
+        context = context_for(
+            1,
+            subject_definitions=(
+                "<Subject 1> is Beth, referenced in <Picture 1>."
+            ),
+            current_beat_text="Show Beth speaking.",
+            next_beat_id=1,
+            beat_deadline_required=False,
+        )
+
+        for malformed, expected in (
+            (
+                "[Shot 1] Beth (S2) saysagain, louder and more emphatic."
+                " She turns toward the crowd.",
+                "Beth <Picture 1> says again, louder and more emphatic.",
+            ),
+            (
+                "[Shot 1] Beth (S2) saysfirmly while focusing on the road.",
+                "Beth <Picture 1> says firmly while focusing on the road.",
+            ),
+        ):
+            with self.subTest(malformed=malformed):
+                description = format_ministral_prompt(
+                    response(malformed),
+                    context,
+                )[DESCRIPTION]
+                self.assertIn(expected, description)
+                self.assertNotIn("saysagain", description.lower())
+                self.assertNotIn("saysfirmly", description.lower())
+
     def test_subject_keeps_multiple_picture_references(self) -> None:
         context = context_for(
             1,

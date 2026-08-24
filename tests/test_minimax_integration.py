@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from unittest import mock
 
+import requests
+
 import minimax
 
 
@@ -121,6 +123,46 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertNotIn("This system text must not be copied", user_content)
         self.assertNotIn("SHOT AND TIMING", registry_section)
 
+    def test_first_frame_instructions_are_added_only_to_segment_one(self):
+        result = response("[Shot 1] Mark stands in a room.", [])
+        opening = minimax.build_h3_prompt(
+            result,
+            SUBJECTS,
+            segment_number=1,
+            ff=True,
+        )
+        later = minimax.build_h3_prompt(
+            result,
+            SUBJECTS,
+            segment_number=2,
+            ff=True,
+        )
+
+        self.assertIn(
+            "<Picture 1> is the opening-frame reference for the target video.",
+            opening,
+        )
+        self.assertIn(
+            "At 00:00.000, the target video should begin by reproducing <Picture 1> "
+            "as closely as possible. Preserve the same camera position, framing, "
+            "composition, subject pose, facial expression, clothing, lighting, "
+            "environment, object positions, and spatial relationships shown in "
+            "<Picture 1>.",
+            opening,
+        )
+        integrated_line = opening.split(
+            "integrated_multimodal_description: ",
+            1,
+        )[1].splitlines()[0]
+        self.assertEqual(
+            integrated_line,
+            "[Shot 1] At 00:00.000, begin with the composition established by "
+            "<Picture 1>. The opening frame should visually match <Picture 1> "
+            "as closely as possible.",
+        )
+        self.assertNotIn("\n[Shot 1]", opening)
+        self.assertNotIn("opening-frame reference", later)
+
     def test_story_context_preserves_edges_and_bounds_long_source(self):
         story = "OPENING " + ("middle " * 3000) + " ENDING"
 
@@ -168,6 +210,8 @@ class LmStudioIntegrationTests(unittest.TestCase):
         combined = "\n".join(message["content"] for message in messages)
         self.assertIn("On Segment 1, the ACTIVE beat must be B001", combined)
         self.assertIn("Never repeat any beat already completed", combined)
+        self.assertIn("one substantial new exchange or", combined)
+        self.assertIn("persistent visible physical alteration", combined)
         self.assertIn("B001: Opening event", combined)
 
     def test_formatter_context_uses_bounded_later_beats(self):
@@ -224,6 +268,29 @@ class LmStudioIntegrationTests(unittest.TestCase):
                 timeout=0,
                 clock=lambda: 1,
             )
+
+    @mock.patch("minimax.requests.post")
+    def test_queue_workflow_refreshes_client_id_after_three_guid_failures(self, post):
+        response = mock.Mock()
+        response.status_code = 200
+        response.raise_for_status.return_value = None
+        response.json.return_value = {"prompt_id": "reborn-prompt-id"}
+
+        post.side_effect = [
+            requests.ConnectionError("ComfyUI cannot connect using GUID old-guid"),
+            requests.ConnectionError("ComfyUI cannot connect using GUID old-guid"),
+            requests.ConnectionError("ComfyUI cannot connect using GUID old-guid"),
+            response,
+        ]
+
+        prompt_id = minimax.queue_workflow({"workflow": "test"}, max_retries=4, retry_delay=0)
+
+        self.assertEqual(prompt_id, "reborn-prompt-id")
+        self.assertEqual(post.call_count, 4)
+        submitted_guids = [call.kwargs["json"]["client_id"] for call in post.call_args_list]
+        self.assertEqual(len(set(submitted_guids)), 2)
+        self.assertEqual(submitted_guids[:3], [submitted_guids[0]] * 3)
+        self.assertNotEqual(submitted_guids[0], submitted_guids[3])
 
     @mock.patch("minimax.free_vram")
     @mock.patch("minimax.get_video_resolution", return_value=(640, 360))
@@ -342,10 +409,11 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
         self.assertIn("PRIMARY BEAT EXECUTION: ACTIVE beat", request)
         self.assertIn("Begin visibly advancing this beat early", request)
-        self.assertIn("make it the dominant event", request)
-        self.assertIn("devote most of the clip to accomplishing it", request)
+        self.assertIn("make it the primary story event", request)
+        self.assertIn("Devote enough of the clip to clearly enact its required observable events", request)
         self.assertIn("Actively attempt to complete B001 in THIS segment", request)
-        self.assertIn("Do not delay merely because time remains", request)
+        self.assertIn("Segment 2 is only its absolute latest completion point", request)
+        self.assertIn("If all required observable events fit naturally within this segment", request)
         self.assertIn("Do not substitute atmosphere", request)
 
     def test_action_and_dialogue_beats_receive_specific_execution_orders(self):
@@ -525,7 +593,13 @@ class LmStudioIntegrationTests(unittest.TestCase):
             minimax.append_prompt_history(
                 first_prompt,
                 history_path,
-                {"purpose": "director", "segment": 1, "attempt": 1},
+                {
+                    "run_id": "run-123",
+                    "source_sha256": "source-abc",
+                    "purpose": "director",
+                    "segment": 1,
+                    "attempt": 1,
+                },
             )
             minimax.append_prompt_history(
                 second_prompt,
@@ -539,6 +613,8 @@ class LmStudioIntegrationTests(unittest.TestCase):
             self.assertIn('"content": "second prompt"', history)
             self.assertIn('"purpose": "director"', history)
             self.assertIn('"purpose": "summary"', history)
+            self.assertIn('"run_id": "run-123"', history)
+            self.assertIn('"source_sha256": "source-abc"', history)
 
     def test_reset_prompt_history_clears_previous_run_before_appending(self):
         with tempfile.TemporaryDirectory() as directory:

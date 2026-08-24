@@ -160,6 +160,26 @@ completed_beat_ids: [1]"""
 
 
 class VisualFormattingTests(unittest.TestCase):
+    def test_multi_word_subject_gets_registered_picture_tag_once(self) -> None:
+        context = context_for(
+            2,
+            subject_definitions=(
+                "<Subject 1> is Mary Jane Watson, referenced in <Picture 4>."
+            ),
+        )
+        malformed = result(
+            "[Shot 2] Camera continues from the previous shot. Mary Jane Watson "
+            "charges forward while an unnamed stranger watches.",
+            completed=[2],
+        )
+
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted["integrated_multimodal_description"]
+
+        self.assertIn("Mary Jane Watson <Picture 4> charges forward", description)
+        self.assertEqual(description.count("<Picture 4>"), 1)
+        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+
     def test_trailing_parenthesized_timestamp_moves_before_its_action(self) -> None:
         malformed = result(
             "integrated_multimodal_description: [Shot 17] Camera cuts to a "
@@ -557,6 +577,20 @@ class AudioFormattingTests(unittest.TestCase):
 
 
 class CompletionMetadataTests(unittest.TestCase):
+    def test_segment_one_requires_b001_completion_report(self) -> None:
+        prompt = result(
+            "[Shot 1] Live-action, cinematic, Mark and Jill stand together in "
+            "the theme park.",
+            completed=[],
+        )
+
+        formatted = format_ministral_prompt(prompt, context_for(1))
+
+        self.assertTrue(any(
+            issue.startswith("Segment 1 must complete and report active beat B001")
+            for issue in validate_ministral_prompt(formatted, context_for(1))
+        ))
+
     def test_completion_ids_are_normalized_to_current_beat_only(self) -> None:
         malformed = result(
             "[Shot 3] Live-action, cinematic, Mark (S1) asks Jill (S2): "

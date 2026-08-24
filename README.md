@@ -456,7 +456,7 @@ initial clip.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [--resume SEGMENT] [--steps STEPS]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -470,6 +470,7 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `MEGAPIXELS` | Initial workflow resolution target; must be greater than zero. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
 | `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
+| `ff` or `--ff` | Add opening-frame instructions for `<Picture 1>` when generating segment 1; defaults to disabled. |
 
 ### Example: new 60-second run
 

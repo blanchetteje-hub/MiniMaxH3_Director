@@ -63,6 +63,40 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             is_append=True
         )
 
+    def test_append_validation_allows_any_number_of_reference_images(self):
+        workflow = copy.deepcopy(self.append)
+        reference_node_ids = {
+            node_id
+            for node_id, node in workflow.items()
+            if node.get("_meta", {}).get("title", "").startswith(
+                "Reference Image "
+            )
+        }
+        for node_id in reference_node_ids:
+            del workflow[node_id]
+
+        _, image_batch = minimax.find_workflow_node(
+            workflow,
+            minimax.IMAGE_BATCH_NODE_NAME,
+            "workflow without reference images",
+            "ImageBatchMulti",
+        )
+        image_batch["inputs"] = {
+            key: value
+            for key, value in image_batch["inputs"].items()
+            if not (
+                isinstance(value, list)
+                and len(value) == 2
+                and str(value[0]) in reference_node_ids
+            )
+        }
+
+        minimax.validate_workflow(
+            workflow,
+            "append workflow without reference images",
+            is_append=True,
+        )
+
     def test_initial_preparation_updates_nodes_by_title_after_renumbering(self):
         workflow = renumber_workflow(self.initial)
         with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(

@@ -73,6 +73,16 @@ class ResumeTests(unittest.TestCase):
         args = minimax.parse_args(["5", "20", ".5", "--steps", "12"])
         self.assertEqual(args.steps, 12)
 
+    def test_parse_args_accepts_first_frame_argument(self):
+        args = minimax.parse_args(["5", "20", ".5", "ff"])
+        self.assertTrue(args.ff)
+
+        args = minimax.parse_args(["5", "20", ".5", "--ff"])
+        self.assertTrue(args.ff)
+
+        args = minimax.parse_args(["5", "20", ".5"])
+        self.assertFalse(args.ff)
+
     def test_parse_args_rejects_nonpositive_steps(self):
         with self.assertRaises(SystemExit):
             minimax.parse_args(["5", "20", ".5", "--steps", "0"])
@@ -228,26 +238,27 @@ class ResumeTests(unittest.TestCase):
                 ["new beat 1", "new beat 2"],
                 "new subjects",
             )
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "segment_length, total_length, megapixels, total_segments, source_sha256",
-            ):
-                minimax.restore_generation_state(
-                    2,
-                    changed,
-                    ["new beat 1", "new beat 2"],
-                    checkpoint,
-                )
+            restored = minimax.restore_generation_state(
+                2,
+                changed,
+                ["new beat 1", "new beat 2"],
+                checkpoint,
+            )
 
-    def test_resume_rejects_checkpoint_without_run_config(self):
+            self.assertEqual(restored["video_paths"], [path])
+            self.assertEqual(restored["previous_video_path"], path)
+
+    def test_resume_allows_checkpoint_without_run_config(self):
         with tempfile.TemporaryDirectory() as directory:
             checkpoint = os.path.join(directory, "generation_state.json")
             state = {"version": 1, "segments": []}
             minimax.save_generation_state(state, checkpoint)
             config = minimax.build_run_config(5, 10, 0.5, 2)
 
-            with self.assertRaisesRegex(RuntimeError, "no valid run configuration"):
-                minimax.restore_generation_state(1, config, [], checkpoint)
+            restored = minimax.restore_generation_state(1, config, [], checkpoint)
+
+            self.assertEqual(restored["video_paths"], [])
+            self.assertIsNone(restored["previous_video_path"])
 
     def test_resume_rejects_missing_prior_video_or_director_result(self):
         with tempfile.TemporaryDirectory() as directory:

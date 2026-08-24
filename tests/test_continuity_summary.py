@@ -28,6 +28,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         connie = state["subjects"]["Connie"]
         self.assertEqual(connie["picture_id"], 1)
         self.assertIn("position", connie)
+        self.assertEqual(connie["body_state"], "N/A")
         self.assertEqual(
             set(connie["wardrobe"]),
             {"upper", "lower", "footwear", "other"},
@@ -39,6 +40,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         state = minimax.continuity_state_for_registry(self.SUBJECTS)
         state["environment"]["location"] = "bedroom"
         state["subjects"]["Connie"]["wardrobe"]["upper"] = "green sweater"
+        state["subjects"]["Connie"]["body_state"] = "left horn missing"
 
         opening = minimax.format_authoritative_opening_state(
             state,
@@ -49,6 +51,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertIn("final observable state", opening)
         self.assertIn("location: bedroom", opening)
         self.assertIn("wardrobe_upper: green sweater", opening)
+        self.assertIn("body_state: left horn missing", opening)
 
     def test_legacy_empty_state_rebuilds_subjects_from_definitions(self):
         definitions = (
@@ -95,6 +98,7 @@ class ContinuitySummaryTests(unittest.TestCase):
             "other": "silver necklace",
         }
         committed_subject["physical_condition"] = "muddy and alert"
+        committed_subject["body_state"] = "left horn missing"
         committed_subject["held_props"] = ["flashlight"]
 
         candidate = minimax.normalize_structured_continuity_state(
@@ -109,7 +113,7 @@ class ContinuitySummaryTests(unittest.TestCase):
                             "other": "N/A",
                         },
                         "physical_condition": "N/A",
-                        "held_props": [],
+                        "body_state": "N/A",
                     }
                 }
             },
@@ -121,6 +125,191 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(result["position"], "beside the bed")
         self.assertEqual(result["wardrobe"], committed_subject["wardrobe"])
         self.assertEqual(result["physical_condition"], "muddy and alert")
+        self.assertEqual(result["body_state"], "left horn missing")
+        self.assertEqual(result["held_props"], ["flashlight"])
+
+    def test_structured_state_rebuilds_name_keys_from_numeric_subject_ids(self):
+        committed = minimax.new_continuity_state()
+        committed["subjects"] = {
+            "1": {
+                "position": "left side of the room",
+                "pose_action": "standing near the door",
+                "wardrobe": {
+                    "upper": "green sweater",
+                    "lower": "black pants",
+                    "footwear": "white sneakers",
+                    "other": "silver necklace",
+                },
+                "physical_condition": "alert",
+                "body_state": "left horn missing",
+                "held_props": ["flashlight"],
+            },
+            "2": {
+                "position": "right side of the room",
+                "pose_action": "holding a map",
+                "wardrobe": {
+                    "upper": "blue jacket",
+                    "lower": "khaki trousers",
+                    "footwear": "brown boots",
+                    "other": "watch",
+                },
+                "physical_condition": "calm",
+                "body_state": "uninjured",
+                "held_props": ["map"],
+            },
+        }
+
+        state = minimax.continuity_state_for_registry(self.SUBJECTS, committed)
+
+        self.assertEqual(state["subjects"]["Connie"]["position"], "left side of the room")
+        self.assertEqual(state["subjects"]["Beth"]["wardrobe"]["upper"], "blue jacket")
+        self.assertEqual(state["subjects"]["Connie"]["body_state"], "left horn missing")
+        self.assertEqual(state["subjects"]["Connie"]["held_props"], ["flashlight"])
+
+    def test_structured_candidate_fills_unknown_body_state(self):
+        committed = minimax.continuity_state_for_registry(self.SUBJECTS)
+
+        candidate = minimax.normalize_structured_continuity_state(
+            {"subjects": {"Connie": {"body_state": "left horn missing"}}},
+            self.SUBJECTS,
+            committed,
+        )
+
+        self.assertEqual(
+            candidate["subjects"]["Connie"]["body_state"],
+            "left horn missing",
+        )
+
+    def test_structured_candidate_replaces_explicit_final_frame_state(self):
+        committed = minimax.continuity_state_for_registry(self.SUBJECTS)
+        committed["camera"] = "wide shot of the ridge"
+        committed["subjects"]["Connie"]["position"] = "atop the ridge"
+        committed["subjects"]["Connie"]["pose_action"] = "running"
+        committed["subjects"]["Connie"]["physical_condition"] = "bleeding"
+
+        candidate = minimax.normalize_structured_continuity_state(
+            {
+                "camera": "medium shot beside Gogol",
+                "subjects": {
+                    "Connie": {
+                        "position": "beside Gogol",
+                        "pose_action": "standing still",
+                        "physical_condition": "N/A",
+                    }
+                },
+            },
+            self.SUBJECTS,
+            committed,
+        )
+
+        connie = candidate["subjects"]["Connie"]
+        self.assertEqual(candidate["camera"], "medium shot beside Gogol")
+        self.assertEqual(connie["position"], "beside Gogol")
+        self.assertEqual(connie["pose_action"], "standing still")
+        self.assertEqual(connie["physical_condition"], "bleeding")
+
+    def test_explicit_held_props_lists_replace_only_the_matching_subject(self):
+        committed = minimax.continuity_state_for_registry(self.SUBJECTS)
+        committed["subjects"]["Connie"]["held_props"] = ["flashlight"]
+        committed["subjects"]["Beth"]["held_props"] = ["map"]
+
+        candidate = minimax.normalize_structured_continuity_state(
+            {
+                "subjects": {
+                    "Connie": {"held_props": []},
+                    "Beth": {"held_props": ["silver sword"]},
+                }
+            },
+            self.SUBJECTS,
+            committed,
+        )
+
+        self.assertEqual(candidate["subjects"]["Connie"]["held_props"], [])
+        self.assertEqual(
+            candidate["subjects"]["Beth"]["held_props"],
+            ["silver sword"],
+        )
+
+    def test_registry_identity_fields_override_candidate_values(self):
+        candidate = minimax.normalize_structured_continuity_state(
+            {
+                "subjects": {
+                    "Connie": {
+                        "subject_id": 99,
+                        "picture_ids": [99],
+                        "picture_id": 99,
+                        "speaker_id": "S99",
+                    }
+                }
+            },
+            self.SUBJECTS,
+        )
+
+        connie = candidate["subjects"]["Connie"]
+        self.assertEqual(connie["subject_id"], 1)
+        self.assertEqual(connie["picture_ids"], [1])
+        self.assertEqual(connie["picture_id"], 1)
+        self.assertIsNone(connie["speaker_id"])
+
+    def test_numeric_subject_id_candidates_preserve_existing_state_when_values_are_na(self):
+        committed = minimax.continuity_state_for_registry(self.SUBJECTS)
+        committed["subjects"]["Connie"]["position"] = "beside the bed"
+        committed["subjects"]["Connie"]["wardrobe"]["upper"] = "green sweater"
+        committed["subjects"]["Connie"]["physical_condition"] = "alert"
+        committed["subjects"]["Connie"]["held_props"] = ["flashlight"]
+
+        candidate = minimax.normalize_structured_continuity_state(
+            {
+                "subjects": {
+                    "1": {
+                        "position": "N/A",
+                        "pose_action": "N/A",
+                        "wardrobe": {
+                            "upper": "N/A",
+                            "lower": "N/A",
+                            "footwear": "N/A",
+                            "other": "N/A",
+                        },
+                        "physical_condition": "N/A",
+                    }
+                }
+            },
+            self.SUBJECTS,
+            committed,
+        )
+
+        result = candidate["subjects"]["Connie"]
+        self.assertEqual(result["position"], "beside the bed")
+        self.assertEqual(result["wardrobe"]["upper"], "green sweater")
+        self.assertEqual(result["physical_condition"], "alert")
+        self.assertEqual(result["held_props"], ["flashlight"])
+
+    def test_na_with_implied_note_only_fills_unknown_continuity_fields(self):
+        committed = minimax.continuity_state_for_registry(self.SUBJECTS)
+        committed["subjects"]["Connie"]["position"] = "beside the bed"
+        committed["subjects"]["Connie"]["wardrobe"]["upper"] = "N/A"
+        committed["subjects"]["Connie"]["physical_condition"] = "N/A"
+        committed["subjects"]["Connie"]["held_props"] = []
+
+        candidate = minimax.normalize_structured_continuity_state(
+            {
+                "subjects": {
+                    "Connie": {
+                        "position": "N/A (implied near the doorway)",
+                        "wardrobe": {"upper": "N/A (implied red shirt)"},
+                        "physical_condition": "N/A (implied startled)",
+                        "held_props": ["N/A (implied flashlight)"],
+                    }
+                }
+            },
+            self.SUBJECTS,
+            committed,
+        )
+
+        result = candidate["subjects"]["Connie"]
+        self.assertEqual(result["position"], "beside the bed")
+        self.assertEqual(result["wardrobe"]["upper"], "red shirt")
+        self.assertEqual(result["physical_condition"], "startled")
         self.assertEqual(result["held_props"], ["flashlight"])
 
     def test_summary_worker_is_closed_when_generation_raises(self):

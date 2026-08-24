@@ -102,7 +102,7 @@ CHARS_PER_TOKEN_ESTIMATE = 3.5
 STORY_CONTEXT_MAX_CHARS = 12000
 DEFAULT_BEAT_LOOKAHEAD = 8
 RECENT_SEGMENTS_MAX = 2
-MINISTRAL_CONTENT_CORRECTION_ATTEMPTS = 2
+MINISTRAL_CONTENT_CORRECTION_ATTEMPTS = 1
 SUMMARY_CONTENT_ATTEMPTS = 2
 
 # These titles are intentionally used instead of numeric ComfyUI node IDs.
@@ -163,11 +163,25 @@ def parse_args(arguments=None):
         metavar="STEPS",
         help="set the BasicScheduler step count (default: 6)"
     )
+    parser.add_argument(
+        "ff",
+        nargs="?",
+        choices=("ff",),
+        default=False,
+        help="add first-frame instructions to segment 1"
+    )
+    parser.add_argument(
+        "--ff",
+        dest="first_frame",
+        action="store_true",
+        help="add first-frame instructions to segment 1"
+    )
 
     if arguments is None:
         arguments = sys.argv[1:]
 
     args = parser.parse_args(normalize_command_line(arguments))
+    args.ff = args.ff == "ff" or args.first_frame
 
     if args.segment_length <= 0:
         parser.error("segment_length must be greater than 0.")
@@ -377,6 +391,7 @@ def new_subject_continuity_record(subject):
             "footwear": "N/A",
             "other": "N/A",
         },
+        "body_state": "N/A",
         "physical_condition": "N/A",
         "held_props": [],
     }
@@ -386,6 +401,24 @@ def continuity_state_for_registry(subject_definitions, state=None):
     """Return structured state with registry identities and independent fields."""
     current = migrate_continuity_state(state) if state else new_continuity_state()
     registry = parse_subject_registry(subject_definitions)
+    if isinstance(current.get("subjects"), dict):
+        normalized_subjects = {}
+        for key, record in current["subjects"].items():
+            if not isinstance(record, dict):
+                continue
+            name = str(key)
+            if isinstance(key, str) and key.isdigit() and registry:
+                subject_id = int(key)
+                name = next(
+                    (
+                        subject["name"]
+                        for subject_id_key, subject in registry.items()
+                        if subject_id_key == subject_id
+                    ),
+                    name,
+                )
+            normalized_subjects[name] = record
+        current["subjects"] = normalized_subjects
     if not registry and isinstance(current.get("subjects"), dict):
         registry = {
             int(record.get("subject_id", index)): {
@@ -414,9 +447,17 @@ def continuity_state_for_registry(subject_definitions, state=None):
     subjects = {}
     for subject_id, subject in registry.items():
         existing = current.get("subjects", {}).get(subject["name"], {})
-        record = new_subject_continuity_record(subject)
+        record = new_subject_continuity_record({
+            **subject,
+            "subject_id": subject_id,
+        })
         if isinstance(existing, dict):
-            for field in ("position", "pose_action", "physical_condition"):
+            for field in (
+                "position",
+                "pose_action",
+                "body_state",
+                "physical_condition",
+            ):
                 if isinstance(existing.get(field), str):
                     record[field] = existing[field]
             if isinstance(existing.get("held_props"), list):
@@ -454,7 +495,22 @@ def migrate_continuity_state(state):
             migrated[field] = value.strip()
     subjects = state.get("subjects")
     if isinstance(subjects, dict):
-        migrated["subjects"] = subjects
+        normalized_subjects = {}
+        for key, record in subjects.items():
+            if not isinstance(record, dict):
+                continue
+            if isinstance(key, str) and key.isdigit():
+                subject_id = int(key)
+                if subject_id in parse_subject_registry(
+                    state.get("subject_definitions", "")
+                ):
+                    name = parse_subject_registry(
+                        state.get("subject_definitions", "")
+                    )[subject_id]["name"]
+                    normalized_subjects[name] = record
+                    continue
+            normalized_subjects[str(key)] = record
+        migrated["subjects"] = normalized_subjects
     return migrated
 
 
@@ -509,6 +565,7 @@ def format_authoritative_opening_state(state, subject_definitions=""):
             f"  wardrobe_lower: {record['wardrobe']['lower']}",
             f"  wardrobe_footwear: {record['wardrobe']['footwear']}",
             f"  wardrobe_other: {record['wardrobe']['other']}",
+            f"  body_state: {record['body_state']}",
             f"  physical_condition: {record['physical_condition']}",
             f"  held_props: {json.dumps(record['held_props'], ensure_ascii=False)}",
         ])
@@ -603,21 +660,6 @@ def restore_generation_state(
     if state.get("version") != 1:
         raise RuntimeError(
             "Generation checkpoint version is unsupported; start at segment 1."
-        )
-    checkpoint_config = state.get("config")
-    if not isinstance(checkpoint_config, dict):
-        raise RuntimeError(
-            "Cannot resume because the generation checkpoint has no valid "
-            "run configuration."
-        )
-    changed_config = [
-        field for field in run_config
-        if checkpoint_config.get(field) != run_config.get(field)
-    ]
-    if changed_config:
-        raise RuntimeError(
-            "Cannot resume because the checkpoint configuration does not match "
-            "this run for: " + ", ".join(changed_config) + "."
         )
     records = state.get("segments")
     if not isinstance(records, list):
@@ -847,9 +889,6 @@ def validate_workflow(workflow, workflow_label, is_append=False):
     for name, class_type in required:
         find_workflow_node(workflow, name, workflow_label, class_type)
 
-    for name in REFERENCE_IMAGE_NODE_NAMES:
-        find_workflow_node(workflow, name, workflow_label, "LoadImage")
-
     if not is_append:
         find_workflow_node(
             workflow,
@@ -893,20 +932,6 @@ def validate_workflow(workflow, workflow_label, is_append=False):
             *args,
             workflow_label=workflow_label
         )
-
-    for index, expected_source_title in enumerate(
-        REFERENCE_IMAGE_NODE_NAMES,
-        start=1
-    ):
-        validate_named_connection(
-            workflow,
-            IMAGE_BATCH_NODE_NAME,
-            f"image_{index}",
-            expected_source_title,
-            0,
-            workflow_label
-        )
-
 
 # ============================================================
 # BEATS
@@ -1456,12 +1481,12 @@ def build_director_rules(
     subject_context = subject_definitions or "N/A"
 
     resolution_guidance = []
-    if megapixels < 0.5:
+    if megapixels <= 0.4:
         resolution_guidance.append(
             "- Use mostly close-up camera shots so important subjects remain "
             "large and clear. Never use wide-angle shots that make subjects too small to see clearly."
         )
-    if megapixels < 0.4:
+    if megapixels <= 0.3:
         resolution_guidance.append(
             "- Avoid a lot of Subject movement; keep camera motion and simultaneous "
             "action minimal."
@@ -1483,15 +1508,20 @@ AUTHORITY ORDER
 A lower-priority source must never override a higher-priority source.
 
 BEAT EXECUTION CONTRACT
-- On [Shot 1], the ACTIVE beat must be B001 and must be completed in the opening segment.
+- On Segment 1, the ACTIVE beat must be B001 and must be completed in the opening segment.
 - Never repeat any beat already completed through `completed_through`; DONE beats are finished and must not be reenacted.
 - Begin visibly advancing the ACTIVE beat early in the segment.
 - A beat is complete only when every observable event it requires has visibly occurred.
 - Beginning, anticipating, implying, mentioning, or reacting to a beat does not complete it.
+- If the ACTIVE beat says to continue an already established action, the beat is
+    complete once THIS segment visibly depicts one substantial new exchange or
+    continuation satisfying that beat. The overall action does not need to end.
 - Do not substantially enact ordered lookahead beats before the ACTIVE beat completes.
+- Do not invent irreversible physical changes unless the ACTIVE beat requires
+  them. Do not sever or remove body parts, permanently destroy equipment,
+  introduce major lasting injuries, kill a character, or permanently alter
+  wardrobe merely to make an action scene more dramatic.
 - `completed_beat_ids` contains only newly completed consecutive beats beginning with ACTIVE.
-- Return [] if no beat fully completes. Never mention beat IDs in the scene description.
-- Python determines long-term beat state; do not infer completion from older context.
 """.strip()
     else:
         role_description = "from a supplied creative brief"
@@ -1521,9 +1551,13 @@ CONTINUATION
 - Later segments continue immediately from the previous generated video.
 - Do not recap the previous clip.
 - Preserve established wardrobe, injuries, props, positions, and ongoing audio when visible/relevant.
-- Whenever a defined subject appears, explicitly state that subject's exact
-  current clothing, including concrete garment types and visible colors. Do not
-  replace wardrobe details with phrases such as `same clothes` or `unchanged outfit`.
+- When an action or story beat changes a subject's wardrobe, explicitly describe
+    the visible change and resulting concrete garments and colors. The resulting
+    outfit becomes that subject's current wardrobe and replaces contradictory
+    earlier wardrobe descriptions.
+- When a subject has a persistent visible physical alteration such as a severed
+    horn, missing limb, major wound, damaged equipment, or decapitation, explicitly
+    preserve that alteration whenever the affected body area is visible.
 
 SUBJECTS
 Pictures 1-6 are persistent identity/body references only, not wardrobe records.
@@ -1785,14 +1819,45 @@ def build_structured_continuity_messages(
             "role": "system",
             "content": (
                 "You are a continuity state updater. Return only one JSON object "
-                "with fields version, environment, camera, subjects, "
-                "ongoing_action, and ongoing_audio. The newest generated prompt "
-                "is authoritative for changes. Preserve committed wardrobe and "
-                "physical state unless the newest prompt visibly changes them. "
-                "Picture references establish identity/body appearance only and "
-                "never provide wardrobe. Keep picture_id, speaker_id, and name "
-                "as separate mappings. Use N/A for unknown strings and [] for "
-                "unknown props. Do not invent visual facts."
+                "with fields version, environment, camera, subjects, ongoing_action, "
+                "and ongoing_audio.\n\n"
+                "Create an authoritative FINAL-FRAME continuity snapshot. The "
+                "returned state describes the physical world at the END of the newest "
+                "generated segment, not an accumulation of historical facts.\n\n"
+                "For every field:\n"
+                "- Replace an old value when the newest segment explicitly changes it.\n"
+                "- When the newest segment contradicts an old value, use the newest "
+                "final post-action value and remove the old state.\n"
+                "- Preserve committed state only when the newest segment neither "
+                "changes nor contradicts it. Never preserve mutually exclusive history.\n\n"
+                "Camera, position, and pose_action are current end-of-segment state. "
+                "Use the latest explicitly established framing, position, or pose near "
+                "the end of the newest segment; do not return camera as N/A merely "
+                "because it did not move.\n\n"
+                "environment.persistent_state contains visible surroundings likely to "
+                "remain: terrain, weather, damage, structures, smoke, debris, or "
+                "persistent lighting. Do not put transient action, emotion, or mood there.\n\n"
+                "body_state records persistent structural anatomy or body configuration: "
+                "horns, wings, tails, limbs, head/body attachment, and missing or severed "
+                "parts. Record explicitly visible structural features even when intact. "
+                "Example: committed: two horns intact; newest: left horn is severed; "
+                "updated body_state: left horn missing; right horn intact. Later, when "
+                "the remaining horn is severed: updated body_state: both horns missing. "
+                "Never retain contradictory history such as horns glowing after both horns "
+                "are severed. Do not put structural anatomy in wardrobe.\n\n"
+                "physical_condition is actual bodily status only: injury, wounds, bleeding, "
+                "burns, exhaustion, unconsciousness, death, contamination, or similar. "
+                "Do not use confidence, dominance, alertness, anger, determination, "
+                "readiness, personality, or dramatic description; use N/A when no actual "
+                "physical condition needs tracking.\n\n"
+                "held_props is exact final possession. Preserve committed held_props when "
+                "the newest segment does not establish a change. Use [] only when the "
+                "final state explicitly establishes no tracked props are held.\n\n"
+                "When wardrobe changes, replace affected wardrobe fields with resulting "
+                "concrete garments and colors, preserving that result until another visible "
+                "change. Picture references establish identity/body appearance only and "
+                "never restore wardrobe. SUBJECT REGISTRY owns immutable subject_id, name, "
+                "picture_ids, picture_id, and speaker_id; never erase or modify them."
             ),
         },
         {
@@ -1818,52 +1883,142 @@ def normalize_structured_continuity_state(
     if not isinstance(candidate, dict):
         return None
     state = continuity_state_for_registry(subject_definitions, committed_state)
+    registry = parse_subject_registry(subject_definitions)
+    id_to_name = {
+        str(subject_id): subject["name"]
+        for subject_id, subject in registry.items()
+    }
+
+    def is_unknown_value(value):
+        if isinstance(value, str):
+            cleaned = sanitize_previous_state_value(value).strip()
+            return cleaned == "" or cleaned.upper() == "N/A"
+        if isinstance(value, (list, tuple, set)):
+            if not value:
+                return True
+            return all(
+                is_unknown_value(str(item))
+                for item in value
+            )
+        return False
+
+    def extract_implied_value(value):
+        if not isinstance(value, str):
+            return None
+        cleaned = sanitize_previous_state_value(value).strip()
+        if not cleaned:
+            return None
+        if cleaned.upper() == "N/A":
+            return None
+        match = re.match(
+            r"(?i)^N/A\s*(?:\(|\[|:|-)?\s*(?:implied|inferred|assumed|likely|possibly)?\s*(.+?)\s*(?:\)|\]|:|-)?$",
+            cleaned,
+        )
+        if match:
+            inferred = match.group(1).strip(" .;:,-")
+            if inferred and inferred.upper() != "N/A":
+                return inferred
+        if cleaned.upper().startswith("N/A"):
+            tail = cleaned[3:].strip(" :;-()[]")
+            if tail and tail.upper() != "N/A":
+                return tail
+        return None
 
     def concrete_value(value):
         if not isinstance(value, str):
             return None
-        value = sanitize_previous_state_value(value)
-        return value if value and value.upper() != "N/A" else None
+        cleaned = sanitize_previous_state_value(value)
+        if not cleaned or cleaned.upper() == "N/A":
+            return None
+        implied = extract_implied_value(cleaned)
+        if implied is not None:
+            return implied
+        return cleaned
+
+    def resolve_subject_name(raw_name):
+        if raw_name in state["subjects"]:
+            return raw_name
+        if isinstance(raw_name, str) and raw_name.isdigit():
+            mapped = id_to_name.get(raw_name)
+            if mapped and mapped in state["subjects"]:
+                return mapped
+        return None
+
+    def update_value(target, key, candidate_value, is_implied=False):
+        if candidate_value is None:
+            return
+        if not is_implied or is_unknown_value(target.get(key)):
+            target[key] = candidate_value
 
     for field in ("camera", "ongoing_action", "ongoing_audio"):
         if isinstance(candidate.get(field), str):
             value = concrete_value(candidate[field])
             if value is not None:
-                state[field] = value
+                update_value(
+                    state,
+                    field,
+                    value,
+                    extract_implied_value(candidate[field]) is not None,
+                )
     environment = candidate.get("environment")
     if isinstance(environment, dict):
         for field in ("location", "persistent_state"):
             if isinstance(environment.get(field), str):
                 value = concrete_value(environment[field])
                 if value is not None:
-                    state["environment"][field] = value
+                    update_value(
+                        state["environment"],
+                        field,
+                        value,
+                        extract_implied_value(environment[field]) is not None,
+                    )
     candidate_subjects = candidate.get("subjects")
     if isinstance(candidate_subjects, dict):
-        for name, record in candidate_subjects.items():
-            if name not in state["subjects"] or not isinstance(record, dict):
+        for raw_name, record in candidate_subjects.items():
+            name = resolve_subject_name(raw_name)
+            if name is None or not isinstance(record, dict):
                 continue
             target = state["subjects"][name]
-            for field in ("position", "pose_action", "physical_condition"):
+            for field in (
+                "position",
+                "pose_action",
+                "body_state",
+                "physical_condition",
+            ):
                 if isinstance(record.get(field), str):
                     value = concrete_value(record[field])
                     if value is not None:
-                        target[field] = value
+                        update_value(
+                            target,
+                            field,
+                            value,
+                            extract_implied_value(record[field]) is not None,
+                        )
             wardrobe = record.get("wardrobe")
             if isinstance(wardrobe, dict):
                 for garment in target["wardrobe"]:
                     if isinstance(wardrobe.get(garment), str):
                         value = concrete_value(wardrobe[garment])
                         if value is not None:
-                            target["wardrobe"][garment] = value
+                            update_value(
+                                target["wardrobe"],
+                                garment,
+                                value,
+                                extract_implied_value(wardrobe[garment]) is not None,
+                            )
             if isinstance(record.get("held_props"), list):
-                props = [
-                    str(prop).strip()
-                    for prop in record["held_props"]
-                    if str(prop).strip()
-                    and str(prop).strip().upper() != "N/A"
-                ]
-                if props:
-                    target["held_props"] = props
+                props = []
+                for prop in record["held_props"]:
+                    if not isinstance(prop, str):
+                        prop = str(prop)
+                    cleaned = sanitize_previous_state_value(prop).strip()
+                    inferred = extract_implied_value(cleaned)
+                    if inferred is not None:
+                        props.append(inferred)
+                        continue
+                    if cleaned and cleaned.upper() != "N/A":
+                        props.append(cleaned)
+                target["held_props"] = props
     state["version"] = CONTINUITY_STATE_VERSION
     return state
 
@@ -2786,6 +2941,7 @@ def build_h3_prompt(
     hard_cut_clothing_reiteration="",
     previous_state="",
     segment_number=None,
+    ff=False,
 ):
     required = (
         "integrated_multimodal_description",
@@ -2809,7 +2965,31 @@ def build_h3_prompt(
         "non_diegetic_music"
     )
 
+    if ff and segment_number == 1:
+        integrated = re.sub(
+            r"^\s*\[\s*Shot\s+1\s*\]\s*",
+            "",
+            integrated,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+        integrated = (
+            "[Shot 1] At 00:00.000, begin with the composition established by "
+            "<Picture 1>. The opening frame should visually match <Picture 1> "
+            "as closely as possible."
+            + (f"\n{integrated}" if integrated else "")
+        )
+
     subject_text = subject_definitions.strip() or "N/A"
+    if ff and segment_number == 1:
+        subject_text += (
+            "\n\n<Picture 1> is the opening-frame reference for the target video.\n\n"
+            "At 00:00.000, the target video should begin by reproducing <Picture 1> "
+            "as closely as possible. Preserve the same camera position, framing, "
+            "composition, subject pose, facial expression, clothing, lighting, "
+            "environment, object positions, and spatial relationships shown in "
+            "<Picture 1>."
+        )
     previous_state_text = (
         None
         if segment_number == 1
@@ -2858,6 +3038,19 @@ class ComfyUIRenderTimeout(RuntimeError):
     """A ComfyUI prompt remained pending past its render deadline."""
 
 
+def _is_guid_connection_error(error):
+    text = str(error).lower()
+    if not any(token in text for token in ("guid", "client_id", "client id")):
+        return False
+    return any(token in text for token in (
+        "connect",
+        "connection",
+        "unable",
+        "failed",
+        "refused",
+    ))
+
+
 def queue_workflow(
     workflow,
     max_retries=COMFY_QUEUE_RETRIES,
@@ -2865,6 +3058,7 @@ def queue_workflow(
 ):
     last_error = None
     client_id = str(uuid.uuid4())
+    guid_attempts = 0
 
     for attempt in range(1, max_retries + 1):
         try:
@@ -2890,9 +3084,26 @@ def queue_workflow(
             ValueError
         ) as e:
             last_error = e
-            print(
-                f"ComfyUI queue failed (attempt {attempt}/{max_retries}): {e}"
-            )
+            if _is_guid_connection_error(e):
+                guid_attempts += 1
+                if guid_attempts >= 3:
+                    previous_client_id = client_id
+                    client_id = str(uuid.uuid4())
+                    print(
+                        f"ComfyUI connection failed for GUID "
+                        f"{previous_client_id}; re-submitting prompt "
+                        f"with a new client ID {client_id}."
+                    )
+                    guid_attempts = 0
+                else:
+                    print(
+                        f"ComfyUI queue failed for GUID {client_id} "
+                        f"({guid_attempts}/3): {e}"
+                    )
+            else:
+                print(
+                    f"ComfyUI queue failed (attempt {attempt}/{max_retries}): {e}"
+                )
             if attempt < max_retries:
                 time.sleep(retry_delay)
 
@@ -3043,7 +3254,7 @@ def render_segment_with_retries(
             else requested_megapixels
         )
         if retry_number:
-            free_vram()
+            #free_vram()
             if segment == 1:
                 print(
                     f"Retrying ComfyUI render ({retry_number}/"
@@ -3272,6 +3483,7 @@ def stitch_videos(video_paths):
 def _run_main(summary_executor):
     args = parse_args()
     validate_runtime_environment()
+    run_id = str(uuid.uuid4())
 
     segment_length = args.segment_length
     total_length = args.total_length
@@ -3428,6 +3640,8 @@ def _run_main(summary_executor):
             messages,
             ministral_context,
             history_metadata={
+                "run_id": run_id,
+                "source_sha256": run_config["source_sha256"],
                 "purpose": "director",
                 "segment": segment,
                 "attempt": 1,
@@ -3460,6 +3674,7 @@ def _run_main(summary_executor):
                 if segment > 1 else ""
             ),
             segment,
+            ff=args.ff,
         )
         candidate_future = summary_executor.submit(
             request_structured_continuity_state,
@@ -3467,6 +3682,8 @@ def _run_main(summary_executor):
             continuity_state,
             subject_definitions,
             history_metadata={
+                "run_id": run_id,
+                "source_sha256": run_config["source_sha256"],
                 "purpose": "continuity_candidate",
                 "segment": segment,
                 "attempt": 1,
@@ -3575,10 +3792,10 @@ def _run_main(summary_executor):
         seconds = int(elapsed_seconds % 60)
         print(f"Cumulative runtime: {hours:02d}:{minutes:02d}:{seconds:02d}")
 
-        if segment % 5 == 0:
-            free_vram()
+        #if segment % 5 == 0:
+        #    free_vram()
 
-    free_vram()
+    #free_vram()
 
     if beats:
         remaining = [

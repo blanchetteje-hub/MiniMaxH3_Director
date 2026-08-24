@@ -745,6 +745,16 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
                 flags=re.I,
             )
 
+    # A speech verb that has been concatenated to its adverb or following word
+    # (for example, "saysagain" or "saysfirmly") should still read as two
+    # words, while punctuation forms like "says:" remain unchanged.
+    text = re.sub(
+        r"(?i)\b(says|asks|answers|replies|shouts|whispers|yells|tells|exclaims|narrates)"
+        r"(?=[a-z])",
+        r"\1 ",
+        text,
+    )
+
     # Add a stable ID when a known character directly introduces dialogue.
     attribution = r"says|asks|answers|replies|shouts|whispers|yells|tells|exclaims|narrates"
     for name, canonical in names.items():
@@ -1159,7 +1169,8 @@ def _validate_camera(result: Mapping[str, Any], context: Mapping[str, Any]) -> l
 
 
 def _validate_subject_tags(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
-    _, subjects, pictures = _subject_maps(context)
+    names, subjects, pictures = _subject_maps(context)
+    subject_pictures = _subject_picture_map(context)
     text = str(result.get(DESCRIPTION, ""))
     issues = []
     for raw in re.findall(r"<Subject\s+(\d+)>", text, re.I):
@@ -1170,6 +1181,21 @@ def _validate_subject_tags(result: Mapping[str, Any], context: Mapping[str, Any]
             issues.append(f"Undefined <Picture {int(raw)}> tag remains.")
     if re.search(r"\(\s*Subject\s+\d+\s*\)", text, re.I):
         issues.append("Parenthetical Subject annotations must be removed.")
+    for name, subject_id in names.items():
+        if not re.search(rf"\b{re.escape(name)}\b", text, re.I):
+            continue
+        picture_ids = subject_pictures.get(subject_id, [])
+        picture_text = r"\s+".join(
+            rf"<Picture\s+{picture}>" for picture in picture_ids
+        )
+        if picture_text and not re.search(
+            rf"\b{re.escape(name)}\b\s+{picture_text}",
+            text,
+            re.I,
+        ):
+            issues.append(
+                f"{name} must use its registered Picture reference."
+            )
     return issues
 
 
@@ -1329,6 +1355,16 @@ def _validate_completions(result: Mapping[str, Any], context: Mapping[str, Any])
         expected = list(range(current, current + len(values)))
         if values != expected:
             return ["Completed beat IDs must be a consecutive sequence."]
+    if (
+        _segment_number(context) == 1
+        and current == 1
+        and context.get("current_beat_text")
+        and 1 not in values
+    ):
+        return [
+            "Segment 1 must complete and report active beat B001; depict it "
+            "before marking it complete."
+        ]
     if re.search(r"(?i)completed_beat_ids|\bB\d{3}\b", str(result.get(DESCRIPTION, ""))):
         return ["Beat completion IDs must not appear in rendered prompt text."]
     return []
