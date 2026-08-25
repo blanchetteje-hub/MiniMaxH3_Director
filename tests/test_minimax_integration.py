@@ -570,6 +570,85 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertEqual(request_json["model"], minimax.LM_STUDIO_MODEL)
         self.assertEqual(request_json["response_format"], minimax.RESPONSE_FORMAT)
 
+    @mock.patch("minimax.generate_random_llm_seed", return_value=8675309)
+    @mock.patch("minimax.requests.post")
+    def test_every_llm_transport_payload_includes_random_seed(
+        self,
+        post,
+        random_seed,
+    ):
+        payload = response(
+            "[Shot 1] Live-action, cinematic, Mark and Jill stand together.",
+            [],
+        )
+        post.return_value = FakeResponse(json.dumps(payload))
+
+        self.assertEqual(
+            minimax.ask_llm([], response_format=None),
+            payload,
+        )
+
+        self.assertEqual(post.call_args.kwargs["json"]["seed"], 8675309)
+        random_seed.assert_called_once_with()
+
+    @mock.patch("minimax.generate_random_llm_seed", return_value=42)
+    @mock.patch("minimax.requests.post")
+    def test_llm_transport_forwards_creativity_sampling_parameters(
+        self,
+        post,
+        _random_seed,
+    ):
+        payload = response(
+            "[Shot 1] Live-action, cinematic, Mark and Jill stand together.",
+            [],
+        )
+        post.return_value = FakeResponse(json.dumps(payload))
+
+        minimax.ask_llm(
+            [],
+            response_format=None,
+            **minimax.BEAT_LLM_SAMPLING_PARAMETERS,
+        )
+
+        request_json = post.call_args.kwargs["json"]
+        for name, value in minimax.BEAT_LLM_SAMPLING_PARAMETERS.items():
+            self.assertEqual(request_json[name], value)
+
+    @mock.patch(
+        "minimax.generate_random_llm_seed",
+        side_effect=[101, 202],
+    )
+    @mock.patch("minimax.requests.post")
+    def test_llm_transport_retry_gets_a_new_random_seed(
+        self,
+        post,
+        random_seed,
+    ):
+        payload = response(
+            "[Shot 1] Live-action, cinematic, Mark and Jill stand together.",
+            [],
+        )
+        post.side_effect = [
+            minimax.requests.ConnectionError("temporary failure"),
+            FakeResponse(json.dumps(payload)),
+        ]
+
+        self.assertEqual(
+            minimax.ask_llm(
+                [],
+                max_retries=2,
+                retry_delay=0,
+                response_format=None,
+            ),
+            payload,
+        )
+
+        self.assertEqual(
+            [call.kwargs["json"]["seed"] for call in post.call_args_list],
+            [101, 202],
+        )
+        self.assertEqual(random_seed.call_count, 2)
+
     def test_lm_message_normalizer_merges_adjacent_users(self):
         normalized = minimax.normalize_lm_studio_messages([
             {"role": "system", "content": "director"},
@@ -685,6 +764,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             fallback_payload["messages"],
             first_payload["messages"]
         )
+        self.assertEqual(fallback_payload["seed"], first_payload["seed"])
 
     @mock.patch("minimax.requests.post")
     def test_ask_llm_reports_lm_studio_http_error_body(self, post):

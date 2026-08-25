@@ -268,7 +268,37 @@ will reject the workflow. For real identity continuity:
 Numeric ComfyUI node IDs may change when you export. That is safe: the Python
 program finds automation-controlled nodes by title, not by node number.
 
+Each line in `beats.txt` may end with a beat-specific LoRA option:
+
+```text
+The portal opens --lora my_style.safetensors:0.8
+```
+
+The option is removed before beat text is sent to the LLM. It applies while
+that beat is active. After the beat is completed, the next beat's LoRA is used;
+beats without an option use `default.safetensors` at strength `0.01`.
+NOTE: You must have a default.safetensors LoRA in the default directory, it doesn't matter
+what it is as it will be as strength 0.01
+
+To automatically generate beats while applying one LoRA to every generated beat,
+put only a file-level directive in `beats.txt` (comments and blank lines are also
+allowed):
+
+```text
+--lora minimax_h3_lighting.safetensors
+```
+
+The directive is metadata, not a story beat. The program treats the file as empty,
+generates the required number of beats, and appends the directive to every saved
+beat. An explicit file-level LoRA without a strength uses strength `1.0`; a custom
+strength can be specified with `--lora filename.safetensors:0.8`.
+
 ## 6. Set up LM Studio
+
+Every LM Studio chat-completions request includes a randomly generated positive
+31-bit `seed`. Transport retries receive a new seed, while the structured-output
+fallback for the same attempt keeps that attempt's seed. The seed is also stored
+in `prompt_history.txt` metadata so a request can be reproduced.
 
 1. Install and open [LM Studio](https://lmstudio.ai/).
 2. Download and load an instruction-following model.
@@ -360,6 +390,19 @@ can be launched from another working directory.
 Write the source story or creative brief. It can include setting, characters,
 tone, dialogue, clothing, and desired camera behavior.
 
+An optional `beat_instructions` directive supplies extra instructions verbatim
+when LM Studio generates beats. Put it on its own line; it is removed from the
+narrative before normal story generation:
+
+```text
+beat_instructions: [Make the midpoint a surprising silent reveal.]
+```
+
+When this directive is present, a separate compliance-edit request audits the
+candidate beats before they are saved. Python also verifies common explicit
+constraints such as exact phrase placement/count, prohibited words, required
+phrases, and an exact final sentence; failed checks trigger another correction.
+
 ### `beats.txt` — optional beat tracking
 
 Write one required story event per non-empty line, in chronological order:
@@ -372,9 +415,20 @@ The saucers abduct Mark's family while they flee.
 
 Blank lines and lines beginning with `#` are ignored. The order is
 authoritative, and the director cannot mark a later beat complete before an
-earlier one. Leave the file blank (or use only comments) to disable the beat
-scheduler. Story generation then follows `story.txt` directly without beat
-deadlines, completion updates, or `beat_progress.txt` writes.
+earlier one. If the file is blank or contains only comments, the program first
+asks LM Studio to create exactly one creative, non-repeating, forward-moving
+beat per requested video segment. The final generated beat must conclude the
+story. Every generated beat is restricted to exactly one complete sentence.
+Python validates the sentence limit, exact count, and uniqueness; prints the
+accepted beats as a numbered list; saves them to `beats.txt`; and then continues
+through normal startup.
+
+Beat generation uses a higher-creativity sampling profile than continuity and
+formatting requests: `temperature=0.9`, `top_p=0.95`,
+`presence_penalty=0.55`, `frequency_penalty=0.3`, and
+`repeat_penalty=1.08`. The prompt also requires the model to consider multiple
+distinct arcs and avoid generic filler, stock obstacles, and predictable plot
+progression. Other LLM calls retain their conservative sampling defaults.
 
 ### `subjects.txt` — optional
 
@@ -390,6 +444,19 @@ An optional speaker mapping may be declared with `(S1)` on the subject line.
 Picture references establish visual identity/body appearance only; they never
 establish current clothing. Current wardrobe comes from the committed
 continuity state or a successfully rendered wardrobe change.
+
+When `beats.txt` is generated automatically, parsed subjects are sent to LM
+Studio as the main characters. Canonical names and available descriptive
+clauses (for example, `Mark is a 40-year-old man`) are included in both the
+initial beat request and its compliance review. A subject with no description
+is still included by name. Picture and speaker metadata are omitted.
+
+Every non-comment line in a non-empty `subjects.txt` must parse as exactly one
+unique subject definition. Startup stops with the line number and expected
+format if any definition is malformed, so beat generation cannot silently omit
+a main character. Immediately before each beat-generation or compliance-review
+request, the program also verifies that the complete formatted subject list is
+present in the LLM prompt.
 
 Generated prose uses `Name <Picture N>` for visual identity and
 `Name <Picture N> (S1) says:` for dialogue. Legacy `<Subject N>` forms are
@@ -439,8 +506,10 @@ Confirm all of the following:
   ComfyUI.
 - Every reference image exists under `ComfyUI/input`.
 - `MINIMAX_COMFYUI_OUTPUT` points to the real ComfyUI output directory.
+- `MINIMAX_COMFYUI_INPUT` points to the real ComfyUI input directory when it
+  is not `ComfyUI/input`.
 - `story.txt` is non-empty. `beats.txt` either contains ordered beats or is blank
-  to disable beat tracking.
+  so LM Studio can generate one beat per segment before startup continues.
 
 For the first test, use a short run and low resolution:
 
@@ -665,7 +734,7 @@ MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
 | `Minimax_auto_API.json` | Initial reference-to-video API workflow. |
 | `Minimax_auto_append_API.json` | Video-continuation API workflow. |
 | `story.txt` | Source story or creative brief. |
-| `beats.txt` | Optional ordered story events; blank disables beat tracking. |
+| `beats.txt` | Ordered story events; blank triggers automatic beat generation. |
 | `subjects.txt` | Optional subject/reference definitions. |
 | `stitch.bat` | Optional Windows-only FFmpeg concat helper. |
 | `requirements.txt` | Python package requirements. |

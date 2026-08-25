@@ -54,6 +54,78 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             is_append=False
         )
 
+    def test_picture_sentence_assigns_subject_number_from_picture_number(self):
+        definitions = (
+            "Picture 1 (from Shot 1) is Amy and aligns with the "
+            "0.00-second mark of the target video."
+        )
+
+        self.assertEqual(
+            minimax.parse_subject_registry(definitions),
+            {
+                1: {
+                    "name": "Amy",
+                    "picture_ids": [1],
+                    "picture_id": 1,
+                    "speaker_id": "S1",
+                }
+            },
+        )
+        self.assertEqual(
+            minimax.parse_defined_subjects(definitions),
+            [(1, "Amy")],
+        )
+
+    def test_short_picture_sentence_assigns_subject_number_from_picture_number(self):
+        definitions = "Picture 1 (from Shot 1) is Amy."
+
+        self.assertEqual(
+            minimax.parse_subject_registry(definitions),
+            {
+                1: {
+                    "name": "Amy",
+                    "picture_ids": [1],
+                    "picture_id": 1,
+                    "speaker_id": "S1",
+                }
+            },
+        )
+        self.assertEqual(
+            minimax.parse_defined_subjects(definitions),
+            [(1, "Amy")],
+        )
+
+    def test_angle_bracket_picture_sentence_assigns_subject_and_speaker(self):
+        definitions = "<Picture 1> is Amy."
+
+        self.assertEqual(
+            minimax.parse_subject_registry(definitions),
+            {
+                1: {
+                    "name": "Amy",
+                    "picture_ids": [1],
+                    "picture_id": 1,
+                    "speaker_id": "S1",
+                }
+            },
+        )
+        self.assertEqual(
+            minimax.parse_defined_subjects(definitions),
+            [(1, "Amy")],
+        )
+
+    def test_explicit_subject_definition_remains_authoritative(self):
+        definitions = (
+            "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+            "Picture 2 (from Shot 2) is Bob and aligns with the "
+            "0.00-second mark of the target video."
+        )
+
+        registry = minimax.parse_subject_registry(definitions)
+
+        self.assertEqual(registry[1]["name"], "Amy")
+        self.assertEqual(registry[2]["name"], "Bob")
+
     def test_append_validation_is_independent_of_exported_node_ids(self):
         workflow = renumber_workflow(self.append)
 
@@ -97,13 +169,77 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             is_append=True,
         )
 
+    def test_reference_images_match_and_are_verified_in_both_workflows(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            image_name = "opening.png"
+            open(os.path.join(temp_dir, image_name), "wb").close()
+            initial = copy.deepcopy(self.initial)
+            append = copy.deepcopy(self.append)
+            for workflow in (initial, append):
+                for image_number in range(1, 7):
+                    _, node = minimax.find_workflow_node(
+                        workflow,
+                        f"Reference Image {image_number}",
+                        "test workflow",
+                        "LoadImage",
+                    )
+                    node["inputs"]["image"] = image_name
+
+            with mock.patch("builtins.print") as print_mock:
+                minimax.verify_reference_images(initial, append, temp_dir)
+
+            self.assertEqual(print_mock.call_count, 6)
+            print_mock.assert_any_call("Image opening.png verified.")
+
+    def test_reference_image_mapping_must_match_between_workflows(self):
+        initial = copy.deepcopy(self.initial)
+        append = copy.deepcopy(self.append)
+        _, node = minimax.find_workflow_node(
+            append,
+            "Reference Image 1",
+            "append workflow",
+            "LoadImage",
+        )
+        node["inputs"]["image"] = "different.png"
+
+        with mock.patch("builtins.print") as print_mock:
+            minimax.verify_reference_images(initial, append, tempfile.gettempdir())
+        print_mock.assert_any_call(
+            "WARNING: Reference Image 1 differs between workflows: "
+            "'0.png' vs 'different.png'."
+        )
+
+    def test_unconnected_reference_image_slot_is_skipped(self):
+        initial = copy.deepcopy(self.initial)
+        append = copy.deepcopy(self.append)
+        _, initial_target = minimax.find_workflow_node(
+            initial,
+            "MiniMax H3 Reference to Video",
+            "initial workflow",
+        )
+        del initial_target["inputs"]["ref_images.ref_image_3"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            open(os.path.join(temp_dir, "0.png"), "wb").close()
+            with mock.patch("builtins.print") as print_mock:
+                minimax.verify_reference_images(initial, append, temp_dir)
+
+        print_mock.assert_any_call("Image 0.png verified.")
+        self.assertFalse(
+            any(
+                "ref_images.ref_image_3" in call.args[0]
+                for call in print_mock.call_args_list
+            )
+        )
+
     def test_initial_preparation_updates_nodes_by_title_after_renumbering(self):
         workflow = renumber_workflow(self.initial)
         with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(
             "minimax.secrets.randbelow", return_value=123456
         ):
             prepared = minimax.prepare_initial_workflow(
-                6.0, 0.5, "prompt", 4, steps=12
+                6.0, 0.5, "prompt", 4, steps=12,
+                lora_override=("beat.safetensors", 0.42),
             )
 
         _, prompt = minimax.find_workflow_node(
@@ -124,6 +260,13 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         self.assertEqual(prompt["inputs"]["text"], "prompt")
         self.assertEqual(duration["inputs"]["value"], 6.0)
         self.assertEqual(noise["inputs"]["noise_seed"], 123457)
+        _, lora = minimax.find_workflow_node(
+            prepared,
+            minimax.LORA_NODE_NAME,
+            "prepared initial",
+        )
+        self.assertEqual(lora["inputs"]["lora_name"], "beat.safetensors")
+        self.assertEqual(lora["inputs"]["strength_model"], 0.42)
         _, scheduler = minimax.find_workflow_node(
             prepared,
             minimax.SCHEDULER_NODE_NAME,

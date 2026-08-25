@@ -75,6 +75,12 @@ _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 def _clean_space(value: str) -> str:
     value = value.replace("\r\n", "\n").replace("\r", "\n")
     value = re.sub(r"[ \t]+", " ", value)
+    value = re.sub(
+        r"\b(?P<word>[\w]+)\s+(?P<suffix>['’](?:s|d|m|re|ve|ll|t))\b",
+        r"\g<word>\g<suffix>",
+        value,
+        flags=re.I,
+    )
     value = re.sub(r" *\n *", "\n", value)
     value = re.sub(r"\n{2,}", " ", value)
     return value.strip()
@@ -231,6 +237,22 @@ def _subject_records(context: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
         }
         if records[name]["speaker_id"] is None:
             records[name]["speaker_id"] = f"S{records[name]['subject_id']}"
+    for match in re.finditer(
+        r"(?im)^\s*(?:<\s*)?Picture\s+(?P<picture>\d+)\s*(?:>\s*)?"
+        r"(?:\(from\s+Shot\s+\d+\)\s+)?is\s+"
+        r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)"
+        r"(?:\s+and\s+aligns\s+with\s+the\s+\d+(?:\.\d+)?-second\s+"
+        r"mark\s+of\s+the\s+target\s+video)?\.\s*$",
+        definitions,
+    ):
+        name = match.group("name").strip()
+        subject_id = int(match.group("picture"))
+        records.setdefault(name, {
+            "subject_id": subject_id,
+            "picture_ids": [subject_id],
+            "picture_id": subject_id,
+            "speaker_id": f"S{subject_id}",
+        })
     known = context.get("known_subjects")
     if isinstance(known, Mapping):
         for key, value in known.items():
@@ -278,6 +300,18 @@ def normalize_summary_subject_references(
         definitions,
     ):
         subjects.append((int(match.group(1)), match.group(2).strip()))
+    for match in re.finditer(
+        r"(?im)^\s*(?:<\s*)?Picture\s+(\d+)\s*(?:>\s*)?"
+        r"(?:\(from\s+Shot\s+\d+\)\s+)?is\s+"
+        r"([A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*)"
+        r"(?:\s+and\s+aligns\s+with\s+the\s+\d+(?:\.\d+)?-second\s+"
+        r"mark\s+of\s+the\s+target\s+video)?\.\s*$",
+        definitions,
+    ):
+        subject_id = int(match.group(1))
+        name = match.group(2).strip()
+        if not any(existing_id == subject_id for existing_id, _ in subjects):
+            subjects.append((subject_id, name))
 
     normalized = summary
     for number, name in sorted(subjects, key=lambda item: -len(item[1])):
@@ -875,6 +909,16 @@ def _subject_picture_map(context: Mapping[str, Any]) -> dict[int, int]:
         ]
         if pictures:
             result[int(match.group(1))] = pictures
+    for match in re.finditer(
+        r"(?im)^\s*(?:<\s*)?Picture\s+(\d+)\s*(?:>\s*)?"
+        r"(?:\(from\s+Shot\s+\d+\)\s+)?is\s+"
+        r"([A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*)"
+        r"(?:\s+and\s+aligns\s+with\s+the\s+\d+(?:\.\d+)?-second\s+"
+        r"mark\s+of\s+the\s+target\s+video)?\.\s*$",
+        definitions,
+    ):
+        picture = int(match.group(1))
+        result.setdefault(picture, [picture])
     return result
 
 
@@ -1150,11 +1194,34 @@ def _repair_timestamp_line_breaks(
     result: dict[str, Any], context: Mapping[str, Any]
 ) -> None:
     del context
-    result[DESCRIPTION] = re.sub(
+    description = re.sub(
         r"(?i)(?<!\])\s+(?=At\s+\d{2}:\d{2}\.\d{3}(?:\s+seconds?)?,)",
         "\n",
         result[DESCRIPTION],
     )
+    # Remove timestamp-only fragments that contain no event text.
+    description = re.sub(
+        r"(?im)^\s*At\s+\d{2}:\d{2}\.\d{3}(?:\s+seconds?)?,\s*"
+        r"(?:and|then)?\s*(?:[.,;:!?])?\s*$\n?",
+        "",
+        description,
+    )
+    description = re.sub(
+        r"(?i)\b(?:and|then)\s*\n(?=At\s+\d{2}:\d{2}\.\d{3}(?:\s+seconds?)?,)",
+        "",
+        description,
+    )
+    description = re.sub(
+        r"(?i)At\s+\d{2}:\d{2}\.\d{3}(?:\s+seconds?)?,\s*(?:and|then)\b",
+        "",
+        description,
+    )
+    description = re.sub(
+        r"(?i)At\s+\d{2}:\d{2}\.\d{3}(?:\s+seconds?)?,\s*[.,;:!?](?=\s|$)",
+        "",
+        description,
+    )
+    result[DESCRIPTION] = description.strip()
 
 
 def _validate_camera(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:

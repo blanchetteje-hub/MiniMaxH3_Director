@@ -180,6 +180,43 @@ class VisualFormattingTests(unittest.TestCase):
         self.assertEqual(description.count("<Picture 4>"), 1)
         self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
+    def test_picture_only_definition_infers_subject_and_speaker(self) -> None:
+        context = context_for(
+            1,
+            subject_definitions="<Picture 1> is Amy.",
+        )
+        malformed = result(
+            "[Shot 1] Amy says: <d>[English] We need to move now.</d>",
+            completed=[1],
+        )
+
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted["integrated_multimodal_description"]
+
+        self.assertIn("Amy <Picture 1> (S1) says:", description)
+        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+
+    def test_stripped_unknown_picture_does_not_leave_spaced_apostrophe(self) -> None:
+        malformed = result(
+            "[Shot 1] Live-action, cinematic, a close framing highlights "
+            "Amy <Picture 1>'s expression while she watches the door."
+        )
+        context = context_for(
+            1,
+            subject_definitions="",
+            next_beat_id=None,
+            current_beat_text="",
+            later_beat_texts=[],
+            beat_deadline_required=False,
+            hard_cut_required=False,
+        )
+
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted["integrated_multimodal_description"]
+
+        self.assertIn("Amy's expression", description)
+        self.assertNotIn("Amy 's", description)
+
     def test_trailing_parenthesized_timestamp_moves_before_its_action(self) -> None:
         malformed = result(
             "integrated_multimodal_description: [Shot 17] Camera cuts to a "
@@ -288,6 +325,22 @@ class VisualFormattingTests(unittest.TestCase):
             issues,
         )
         self.assertIn("At 00:01.200,", formatted["integrated_multimodal_description"])
+
+    def test_orphan_timestamp_fragments_are_removed(self) -> None:
+        malformed = result(
+            "[Shot 2] Camera continues from the previous shot At 00:05.200, and "
+            "At 00:06.800, . Mark runs forward.",
+            completed=[2],
+        )
+
+        description = format_ministral_prompt(
+            malformed,
+            context_for(2),
+        )["integrated_multimodal_description"]
+
+        self.assertNotIn("At 00:05.200, and", description)
+        self.assertNotIn("At 00:06.800, .", description)
+        self.assertIn("Mark <Picture 1> runs forward.", description)
 
     def test_continuation_opening_uses_zero_timestamp_and_h3_sentence_form(self) -> None:
         formatted = format_ministral_prompt(

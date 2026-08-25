@@ -91,6 +91,61 @@ class ResumeTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             minimax.parse_args(["5", "20", ".5", "--resume", "0"])
 
+    def test_beat_lora_suffix_is_parsed_and_removed_from_text(self):
+        beat = minimax.parse_beat_definition(
+            "Show the opening --lora style.safetensors:0.35"
+        )
+
+        self.assertEqual(str(beat), "Show the opening")
+        self.assertEqual(beat.lora_override, ("style.safetensors", 0.35))
+        self.assertNotIn("--lora", str(beat))
+
+    def test_beat_lora_without_strength_uses_full_strength(self):
+        beat = minimax.parse_beat_definition(
+            "Show the opening --lora lighting.safetensors"
+        )
+
+        self.assertEqual(str(beat), "Show the opening")
+        self.assertEqual(beat.lora_override, ("lighting.safetensors", 1.0))
+
+    def test_file_level_lora_is_metadata_and_applies_to_existing_beats(self):
+        beats, directive = minimax.parse_beats_content(
+            "--lora lighting.safetensors\nOpening event\nClosing event\n"
+        )
+
+        self.assertEqual(
+            [str(beat) for beat in beats],
+            ["Opening event", "Closing event"],
+        )
+        self.assertEqual(directive, "--lora lighting.safetensors")
+        self.assertEqual(
+            [beat.lora_override for beat in beats],
+            [("lighting.safetensors", 1.0), ("lighting.safetensors", 1.0)],
+        )
+
+    def test_only_one_file_level_lora_is_allowed(self):
+        with self.assertRaisesRegex(ValueError, "only one"):
+            minimax.parse_beats_content(
+                "--lora first.safetensors\n--lora second.safetensors\n"
+            )
+
+    def test_beat_without_lora_uses_default_fallback(self):
+        beats = [
+            minimax.parse_beat_definition(
+                "First beat --lora first.safetensors:0.8"
+            ),
+            minimax.parse_beat_definition("Second beat"),
+        ]
+
+        self.assertEqual(
+            minimax.beat_lora_override(beats, 1),
+            ("first.safetensors", 0.8),
+        )
+        self.assertEqual(
+            minimax.beat_lora_override(beats, 2),
+            ("default.safetensors", 0.01),
+        )
+
     def test_resume_generates_only_requested_and_later_segments(self):
         self.assertEqual(list(minimax.get_segments_to_generate(3, 5)), [3, 4, 5])
         with self.assertRaisesRegex(ValueError, "exceeds"):

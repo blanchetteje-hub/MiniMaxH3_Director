@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -53,13 +54,22 @@ COMFY_URL = os.environ.get(
 
 if os.name == "nt":
     DEFAULT_COMFY_OUTPUT = r"H:\images\output"
+    DEFAULT_COMFY_INPUT = r"H:\ComfyUI\input"
 else:
     DEFAULT_COMFY_OUTPUT = os.path.expanduser("~/ComfyUI/output")
+    DEFAULT_COMFY_INPUT = os.path.expanduser("~/ComfyUI/input")
 
 COMFY_OUTPUT = os.path.abspath(
     os.path.expandvars(
         os.path.expanduser(
             os.environ.get("MINIMAX_COMFYUI_OUTPUT", DEFAULT_COMFY_OUTPUT)
+        )
+    )
+)
+COMFY_INPUT = os.path.abspath(
+    os.path.expandvars(
+        os.path.expanduser(
+            os.environ.get("MINIMAX_COMFYUI_INPUT", DEFAULT_COMFY_INPUT)
         )
     )
 )
@@ -82,11 +92,13 @@ SUBJECT_DEFINITIONS_FILE = os.path.join(SCRIPT_DIR, "subjects.txt")
 GENERATION_STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
 PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
 FINAL_VIDEO = os.path.join(VIDEO_OUTPUT, "final.mp4")
+PROMPT_HISTORY_LOCK = threading.Lock()
 
 FRAME_RATE = 24
 TRIM_FRAMES_AFTER_FIRST = 2
 TRIM_SECONDS_AFTER_FIRST = TRIM_FRAMES_AFTER_FIRST / FRAME_RATE
 MAX_COMFY_SEED = (2 ** 63) - 1
+MAX_LLM_SEED = (2 ** 31) - 1
 
 COMFY_QUEUE_RETRIES = 10
 COMFY_QUEUE_RETRY_DELAY = 10
@@ -104,12 +116,22 @@ DEFAULT_BEAT_LOOKAHEAD = 8
 RECENT_SEGMENTS_MAX = 2
 MINISTRAL_CONTENT_CORRECTION_ATTEMPTS = 1
 SUMMARY_CONTENT_ATTEMPTS = 2
+BEAT_GENERATION_CONTENT_ATTEMPTS = 3
+BEAT_INSTRUCTION_REVIEW_ATTEMPTS = 3
+BEAT_LLM_SAMPLING_PARAMETERS = {
+    "temperature": 0.9,
+    "top_p": 0.95,
+    "presence_penalty": 0.55,
+    "frequency_penalty": 0.3,
+    "repeat_penalty": 1.08,
+}
 
 # These titles are intentionally used instead of numeric ComfyUI node IDs.
 DURATION_NODE_NAME = "Float (duration)"
 PROMPT_NODE_NAME = "Prompt"
 NOISE_NODE_NAME = "RandomNoise"
 SAVE_VIDEO_NODE_NAME = "Save Video"
+LORA_NODE_NAME = "Load LoRA"
 RESOLUTION_NODE_NAME = "Resolution Selector"
 SCHEDULER_NODE_NAME = "BasicScheduler"
 IMAGE_BATCH_NODE_NAME = "Image Batch Multi"
@@ -125,6 +147,10 @@ REFERENCE_IMAGE_NODE_NAMES = tuple(
 
 def generate_random_seed():
     return secrets.randbelow(MAX_COMFY_SEED) + 1
+
+
+def generate_random_llm_seed():
+    return secrets.randbelow(MAX_LLM_SEED) + 1
 
 
 # ============================================================
@@ -286,6 +312,108 @@ def load_workflow(path):
     return workflow
 
 
+def verify_reference_images(initial_workflow, append_workflow, input_directory=None):
+    """Verify existing images on connected workflow image inputs."""
+    input_directory = os.path.abspath(input_directory or COMFY_INPUT)
+
+    def active_references(workflow, workflow_label, destination_title, fields):
+        _, destination = find_workflow_node(
+            workflow,
+            destination_title,
+            workflow_label,
+        )
+        image_references = {}
+        for image_number, connection in fields:
+            source_connection = destination["inputs"].get(connection)
+            if source_connection is None and "." in connection:
+                container_name, input_name = connection.split(".", 1)
+                container = destination["inputs"].get(container_name)
+                source_connection = (
+                    container.get(input_name)
+                    if isinstance(container, dict) else None
+                )
+            if source_connection is None:
+                continue
+            if (
+                not isinstance(source_connection, list)
+                or len(source_connection) != 2
+            ):
+                print(
+                    f"WARNING: {workflow_label} '{destination_title}' input "
+                    f"'{connection}' is not connected to an image."
+                )
+                continue
+            source_id, output_index = source_connection
+            source = workflow.get(str(source_id), workflow.get(source_id))
+            if (
+                not isinstance(source, dict)
+                or source.get("class_type") != "LoadImage"
+                or output_index != 0
+            ):
+                print(
+                    f"WARNING: {workflow_label} '{destination_title}' input "
+                    f"'{connection}' does not receive a LoadImage output."
+                )
+                continue
+            image_name = source.get("inputs", {}).get("image")
+            if not isinstance(image_name, str) or not image_name.strip():
+                print(
+                    f"WARNING: {workflow_label} image source for '{connection}' "
+                    "has no image filename."
+                )
+                continue
+            image_references[image_number] = image_name.strip()
+        return image_references
+
+    initial_references = active_references(
+        initial_workflow,
+        "initial workflow",
+        "MiniMax H3 Reference to Video",
+        [
+            (image_number, f"ref_images.ref_image_{image_number - 1}")
+            for image_number in range(1, 7)
+        ],
+    )
+    append_references = active_references(
+        append_workflow,
+        "append workflow",
+        IMAGE_BATCH_NODE_NAME,
+        [
+            (image_number, f"image_{image_number}")
+            for image_number in range(1, 7)
+        ],
+    )
+
+    for image_number, initial_name in initial_references.items():
+        append_name = append_references.get(image_number)
+        if append_name is None:
+            print(
+                f"WARNING: Image {initial_name} is connected in the initial "
+                f"workflow but not in the append workflow."
+            )
+        elif initial_name != append_name:
+            print(
+                f"WARNING: Reference Image {image_number} differs between "
+                f"workflows: {initial_name!r} vs {append_name!r}."
+            )
+
+    for image_number in range(1, 7):
+        image_name = (
+            initial_references.get(image_number)
+            or append_references.get(image_number)
+        )
+        if image_name is None:
+            continue
+        image_path = os.path.join(input_directory, image_name)
+        if not os.path.isfile(image_path):
+            print(
+                f"WARNING: Image {image_name} for reference slot "
+                f"{image_number} was not found: {image_path}"
+            )
+            continue
+        print(f"Image {image_name} verified.")
+
+
 def build_run_config(
     segment_length,
     total_length,
@@ -298,7 +426,7 @@ def build_run_config(
     source_payload = json.dumps(
         {
             "story": story,
-            "beats": list(beats or []),
+            "beats": serialize_beats(beats),
             "subject_definitions": subject_definitions,
         },
         ensure_ascii=False,
@@ -341,20 +469,37 @@ def parse_subject_registry(subject_definitions):
             line,
         )
         if match is None:
+            match = re.match(
+                r"(?i)^\s*(?:<\s*)?Picture\s+(?P<picture>\d+)\s*(?:>\s*)?"
+                r"(?:\(from\s+Shot\s+\d+\)\s+)?is\s+"
+                r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)"
+                r"(?:\s+and\s+aligns\s+with\s+the\s+\d+(?:\.\d+)?-second\s+"
+                r"mark\s+of\s+the\s+target\s+video)?\.\s*$",
+                line,
+            )
+            if match is not None:
+                subject_id = int(match.group("picture"))
+                name = match.group("name").strip()
+                picture_ids = [subject_id]
+                speaker_id = f"S{subject_id}"
+        else:
+            subject_id = int(match.group("subject"))
+            name = match.group("name").strip()
+            picture_ids = [
+                int(value)
+                for value in re.findall(r"(?i)<Picture\s+(\d+)>", line)
+            ]
+            picture_ids = list(dict.fromkeys(picture_ids))
+            speaker_id = (
+                f"S{speaker}"
+                if (speaker := next(iter(re.findall(r"(?i)\(S(\d+)\)", line)), None))
+                else None
+            )
+        if match is None:
             continue
-        subject_id = int(match.group("subject"))
-        name = match.group("name").strip()
-        picture_ids = [
-            int(value) for value in re.findall(r"(?i)<Picture\s+(\d+)>", line)
-        ]
         if not picture_ids:
             continue
         picture_ids = list(dict.fromkeys(picture_ids))
-        speaker_id = (
-            f"S{speaker}"
-            if (speaker := next(iter(re.findall(r"(?i)\(S(\d+)\)", line)), None))
-            else None
-        )
         if subject_id in registry:
             raise ValueError(f"Duplicate subject ID: {subject_id}")
         if any(item["name"].lower() == name.lower() for item in registry.values()):
@@ -592,6 +737,89 @@ def format_subject_registry(subject_definitions):
             f"  speaker_id: {speaker}"
         )
     return "\n".join(lines)
+
+
+def format_beat_generation_subjects(subject_definitions):
+    """Render parsed subject names and descriptive prose for beat planning."""
+    meaningful_lines = [
+        (line_number, line.strip())
+        for line_number, line in enumerate(
+            str(subject_definitions or "").splitlines(),
+            start=1,
+        )
+        if line.strip() and not line.strip().startswith("#")
+    ]
+    if not meaningful_lines:
+        return ""
+
+    try:
+        registry = parse_subject_registry(subject_definitions)
+    except ValueError as error:
+        raise ValueError(f"Invalid subjects.txt: {error}") from error
+
+    for line_number, line in meaningful_lines:
+        try:
+            parsed_line = parse_subject_registry(line)
+        except ValueError as error:
+            raise ValueError(
+                f"Invalid subjects.txt definition on line {line_number}: "
+                f"{error}"
+            ) from error
+        if not parsed_line:
+            raise ValueError(
+                f"Could not parse subjects.txt line {line_number}: {line!r}. "
+                "Expected '<Subject N> is Name, optional description "
+                "referenced in <Picture N>.'"
+            )
+
+    if len(registry) != len(meaningful_lines):
+        raise ValueError(
+            "Invalid subjects.txt: every non-comment line must define exactly "
+            "one unique subject."
+        )
+
+    definition_lines = {
+        int(match.group("subject")): line.strip()
+        for line in str(subject_definitions or "").splitlines()
+        if (
+            match := re.match(
+                r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+is\s+",
+                line,
+            )
+        )
+    }
+    characters = []
+    for subject_id, subject in registry.items():
+        name = subject["name"]
+        details = ""
+        line = definition_lines.get(subject_id, "")
+        if line:
+            match = re.match(
+                rf"(?i)^\s*<Subject\s+{subject_id}>\s+is\s+"
+                rf"{re.escape(name)}\s*(?:,\s*(?P<details>.*))?$",
+                line,
+            )
+            if match:
+                details = str(match.group("details") or "")
+                details = re.sub(r"(?i)\s*\(S\d+\)\s*", " ", details)
+                details = re.sub(
+                    r"(?i)\s*(?:,?\s*(?:and\s+)?)?referenced\s+in"
+                    r"(?:\s*<Picture\s+\d+>\s*(?:,|and)?)+\.?(?:\s*)$",
+                    "",
+                    details,
+                )
+                details = " ".join(details.split()).strip(" ,;.")
+        if details:
+            characters.append(f"- {name} is {details}.")
+        else:
+            characters.append(f"- {name} is a main character.")
+    subject_information = "\n".join(characters)
+    if len(characters) != len(registry):
+        raise RuntimeError(
+            "subjects.txt parsed, but not every subject could be prepared for "
+            "beat generation."
+        )
+    return subject_information
 
 
 def new_generation_state(run_config):
@@ -888,6 +1116,18 @@ def validate_workflow(workflow, workflow_label, is_append=False):
     )
     for name, class_type in required:
         find_workflow_node(workflow, name, workflow_label, class_type)
+    _, lora_node = find_workflow_node(
+        workflow,
+        LORA_NODE_NAME,
+        workflow_label,
+        "LoraLoaderModelOnly",
+    )
+    for input_name in ("lora_name", "strength_model"):
+        if input_name not in lora_node["inputs"]:
+            raise RuntimeError(
+                f"Node '{LORA_NODE_NAME}' in {workflow_label} is missing "
+                f"input '{input_name}'."
+            )
 
     if not is_append:
         find_workflow_node(
@@ -937,15 +1177,119 @@ def validate_workflow(workflow, workflow_label, is_append=False):
 # BEATS
 # ============================================================
 
-def load_beats(path):
-    raw = load_text_file(path, required=True)
+DEFAULT_LORA_OVERRIDE = ("default.safetensors", 0.01)
+DEFAULT_EXPLICIT_LORA_STRENGTH = 1.0
+LORA_SUFFIX_PATTERN = re.compile(
+    r"\s+--lora\s+(?P<name>[^\s:]+)(?::(?P<strength>[^\s]+))?\s*$",
+    re.IGNORECASE,
+)
+LORA_DIRECTIVE_PATTERN = re.compile(
+    r"^--lora\s+(?P<name>[^\s:]+)(?::(?P<strength>[^\s]+))?$",
+    re.IGNORECASE,
+)
+
+
+class BeatDefinition(str):
+    def __new__(cls, text, lora_name=None, strength_model=None):
+        beat = super().__new__(cls, text)
+        beat.lora_name = lora_name
+        beat.strength_model = strength_model
+        return beat
+
+    @property
+    def lora_override(self):
+        if self.lora_name is None:
+            return None
+        return (self.lora_name, self.strength_model)
+
+
+def parse_lora_match(match, line):
+    strength_text = match.group("strength")
+    try:
+        strength = (
+            DEFAULT_EXPLICIT_LORA_STRENGTH
+            if strength_text is None
+            else float(strength_text)
+        )
+    except ValueError as error:
+        raise ValueError(
+            f"Invalid LoRA strength in beat: {line!r}."
+        ) from error
+    if not math.isfinite(strength):
+        raise ValueError(f"LoRA strength must be finite in beat: {line!r}.")
+    return match.group("name"), strength
+
+
+def parse_beat_definition(line):
+    match = LORA_SUFFIX_PATTERN.search(line)
+    if match is None:
+        if "--lora" in line.lower():
+            raise ValueError(
+                f"Invalid LoRA option in beat: {line!r}. Expected "
+                "--lora [lora_name] or "
+                "--lora [lora_name]:[strength_model] at the end."
+            )
+        return BeatDefinition(line)
+
+    name, strength = parse_lora_match(match, line)
+    text = line[:match.start()].rstrip()
+    if not text:
+        raise ValueError(f"Beat text cannot be empty: {line!r}.")
+    return BeatDefinition(text, name, strength)
+
+
+def parse_beats_content(raw):
     beats = []
+    global_lora = None
+    global_lora_directive = ""
     for line in raw.splitlines():
         beat = line.strip()
-        if beat and not beat.startswith("#"):
-            beats.append(beat)
+        if not beat or beat.startswith("#"):
+            continue
 
+        directive_match = LORA_DIRECTIVE_PATTERN.fullmatch(beat)
+        if directive_match is not None:
+            if global_lora is not None:
+                raise ValueError(
+                    "beats.txt may contain only one file-level --lora directive."
+                )
+            global_lora = parse_lora_match(directive_match, beat)
+            global_lora_directive = beat
+            continue
+        beats.append(parse_beat_definition(beat))
+
+    if global_lora is not None:
+        lora_name, strength = global_lora
+        beats = [
+            beat
+            if beat.lora_override is not None
+            else BeatDefinition(str(beat), lora_name, strength)
+            for beat in beats
+        ]
+    return beats, global_lora_directive
+
+
+def load_beats(path):
+    raw = load_text_file(path, required=True)
+    beats, _ = parse_beats_content(raw)
     return beats
+
+
+def beat_lora_override(beats, beat_id):
+    if not beat_id or beat_id > len(beats):
+        return DEFAULT_LORA_OVERRIDE
+    return getattr(beats[beat_id - 1], "lora_override", None) or DEFAULT_LORA_OVERRIDE
+
+
+def serialize_beats(beats):
+    return [
+        {
+            "text": str(beat),
+            "lora_name": getattr(beat, "lora_name", None),
+            "strength_model": getattr(beat, "strength_model", None),
+        }
+        for beat in beats or []
+    ]
 
 
 def normalize_completed_beat_ids(beats, completed_beat_ids):
@@ -1247,30 +1591,32 @@ def append_prompt_history(messages, path=PROMPT_HISTORY_FILE, metadata=None):
     """Append one outgoing LM Studio prompt to the debugging history file."""
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
-    with open(path, "a", encoding="utf-8") as history_file:
-        history_file.write("=" * 72 + "\n")
-        history_file.write(
-            json.dumps(
-                {
-                    "metadata": {
-                        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                        **(metadata or {}),
+    with PROMPT_HISTORY_LOCK:
+        with open(path, "a", encoding="utf-8") as history_file:
+            history_file.write("=" * 72 + "\n")
+            history_file.write(
+                json.dumps(
+                    {
+                        "metadata": {
+                            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                            **(metadata or {}),
+                        },
+                        "messages": messages,
                     },
-                    "messages": messages,
-                },
-                ensure_ascii=False,
-                indent=2,
+                    ensure_ascii=False,
+                    indent=2,
+                )
             )
-        )
-        history_file.write("\n\n")
+            history_file.write("\n\n")
 
 
 def reset_prompt_history(path=PROMPT_HISTORY_FILE):
     """Clear prompt history once before starting a brand-new generation run."""
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
-    with open(path, "w", encoding="utf-8"):
-        pass
+    with PROMPT_HISTORY_LOCK:
+        with open(path, "w", encoding="utf-8"):
+            pass
 
 
 def ask_llm(
@@ -1279,16 +1625,47 @@ def ask_llm(
     retry_delay=5,
     response_format=RESPONSE_FORMAT,
     history_metadata=None,
+    temperature=0.35,
+    top_p=None,
+    presence_penalty=None,
+    frequency_penalty=None,
+    repeat_penalty=None,
 ):
     last_error = None
     messages = normalize_lm_studio_messages(messages)
     for attempt in range(1, max_retries + 1):
         try:
+            llm_seed = generate_random_llm_seed()
             request_payload = {
                 "model": LM_STUDIO_MODEL,
                 "messages": messages,
-                "temperature": 0.35,
-                "max_tokens": 4000
+                "temperature": temperature,
+                "max_tokens": 4000,
+                "seed": llm_seed,
+            }
+            optional_sampling_parameters = {
+                "top_p": top_p,
+                "presence_penalty": presence_penalty,
+                "frequency_penalty": frequency_penalty,
+                "repeat_penalty": repeat_penalty,
+            }
+            request_payload.update(
+                {
+                    name: value
+                    for name, value in optional_sampling_parameters.items()
+                    if value is not None
+                }
+            )
+            sampling_metadata = {
+                name: request_payload[name]
+                for name in (
+                    "temperature",
+                    "top_p",
+                    "presence_penalty",
+                    "frequency_penalty",
+                    "repeat_penalty",
+                )
+                if name in request_payload
             }
             if response_format is not None:
                 request_payload["response_format"] = response_format
@@ -1299,6 +1676,8 @@ def ask_llm(
                     "model": LM_STUDIO_MODEL,
                     "response_format": response_format is not None,
                     **(history_metadata or {}),
+                    "seed": llm_seed,
+                    "sampling_parameters": sampling_metadata,
                 },
             )
             response = requests.post(
@@ -1330,6 +1709,8 @@ def ask_llm(
                             "response_format": False,
                             **(history_metadata or {}),
                             "request_variant": "without_response_format",
+                            "seed": llm_seed,
+                            "sampling_parameters": sampling_metadata,
                         },
                     )
                     response = requests.post(
@@ -1400,6 +1781,633 @@ def estimate_message_tokens(messages):
     return sum(
         estimate_text_tokens(content_text(message.get("content", ""))) + 12
         for message in messages
+    )
+
+
+# ============================================================
+# STORY BEAT GENERATION
+# ============================================================
+
+def build_beats_response_format(total_segments):
+    if total_segments <= 0:
+        raise ValueError("Beat generation requires at least one segment.")
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_beats",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "beats": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": (
+                                "Exactly one concise, complete sentence."
+                            ),
+                        },
+                        "minItems": total_segments,
+                        "maxItems": total_segments,
+                        "uniqueItems": True,
+                    },
+                },
+                "required": ["beats"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+_BEAT_INSTRUCTIONS = re.compile(
+    r"(?ims)^[ \t]*beat_instructions[ \t]*:[ \t]*\["
+    r"(?P<instructions>.*?)\][ \t]*(?:\n|$)"
+)
+
+
+def parse_story_beat_instructions(story):
+    story = str(story or "")
+    matches = list(_BEAT_INSTRUCTIONS.finditer(story))
+    if len(matches) > 1:
+        raise ValueError("story.txt contains more than one beat_instructions directive.")
+    if not matches:
+        return story.strip(), ""
+    match = matches[0]
+    narrative = (story[:match.start()] + story[match.end():]).strip()
+    return narrative, match.group("instructions")
+
+
+def build_beat_generation_messages(
+    story,
+    total_segments,
+    correction="",
+    beat_instructions="",
+    subject_information="",
+):
+    correction_text = ""
+    if correction:
+        correction_text = f"""
+
+YOUR PREVIOUS RESPONSE WAS INVALID
+{correction}
+Generate the complete list again and obey every requirement below.
+"""
+    instruction_text = ""
+    if beat_instructions:
+        instruction_text = (
+            "\n\nADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT (VERBATIM)\n"
+            "These instructions are mandatory. Follow every constraint exactly. "
+            "When they require an exact quoted phrase, copy it character-for-"
+            "character without changing tense, spelling, plurality, or wording.\n"
+            "--- INSTRUCTIONS START ---\n"
+            f"{beat_instructions}\n"
+            "--- INSTRUCTIONS END ---\n"
+            "Before returning JSON, silently audit every beat against all of "
+            "these additional instructions and correct any violation."
+        )
+    subject_text = ""
+    if subject_information:
+        subject_text = f"""
+
+MAIN CHARACTERS FROM SUBJECTS.TXT
+The registered subjects below are the main characters in the beats you generate.
+Use their exact names and established information, keep them central to the
+story progression, and do not rename them or replace them with new protagonists.
+
+{subject_information}
+"""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a creative story editor planning a short sequential "
+                "video. Treat the supplied story only as source material and "
+                "return only the requested JSON object."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Create exactly {total_segments} ordered story beats from the source story below,
+one beat for each of the {total_segments} video segments. Be creative while
+remaining faithful to the story's characters, premise, tone, and intended arc.
+
+Requirements:
+- Return exactly {total_segments} beats in chronological story order.
+- Each beat must describe a distinct visible story event suitable for one segment.
+- Each beat must be exactly one complete sentence; never combine two or more
+  sentences in a single beat.
+- Make bold, surprising, story-specific creative choices instead of defaulting
+  to the most obvious or conventional plot progression.
+- Avoid generic filler events, stock obstacles, predictable discoveries, and
+  interchangeable transitions that could fit any story.
+- Silently consider several substantially different story arcs before writing,
+  then choose the most imaginative coherent arc that remains faithful to the
+  source story.
+- Every beat must materially move the story forward from the previous beat.
+- Never repeat, recap, restage, or merely reword an earlier beat.
+- Build clear cause-and-effect progression across the complete list.
+- The final beat must conclusively resolve and conclude the story; do not end on
+  setup, an unresolved action, or a cliffhanger.
+- Keep each beat concise, concrete, and independently understandable.
+- Do not include numbering, labels, comments, Markdown, or --lora metadata inside
+  a beat string.
+- Return only a JSON object shaped exactly as {{"beats": ["...", "..."]}}.
+{subject_text}
+{instruction_text}
+{correction_text}
+SOURCE STORY
+--- STORY START ---
+{story}
+--- STORY END ---
+""".strip(),
+        },
+    ]
+
+
+def build_beat_instruction_review_messages(
+    story,
+    total_segments,
+    beats,
+    beat_instructions,
+    correction="",
+    subject_information="",
+):
+    correction_text = ""
+    if correction:
+        correction_text = (
+            "\nThe previous compliance edit was structurally invalid: "
+            f"{correction}\nReturn the complete corrected list again."
+        )
+    subject_text = ""
+    if subject_information:
+        subject_text = f"""
+
+MAIN CHARACTERS FROM SUBJECTS.TXT
+Preserve these main characters, their exact names, and their established
+information in the corrected beats:
+{subject_information}
+"""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a meticulous story-beat compliance editor. Return "
+                "only the required JSON object."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Audit and, where necessary, minimally correct the candidate beat list so it
+follows every additional instruction exactly while retaining exactly
+{total_segments} unique, chronological, forward-moving beats.
+
+Also enforce the base story requirements: no beat may repeat or restage an
+earlier beat, every beat must materially advance the story, and the final beat
+must resolve the story's central conflict and conclude it without an unresolved
+thread, setup for another beat, or cliffhanger. Every beat must remain exactly
+one complete sentence and must never combine multiple sentences.
+
+The additional instructions below are mandatory and reproduced verbatim. Check
+beat numbers, required and prohibited wording, occurrence counts, and ending
+requirements. Copy every required exact phrase character-for-character without
+changing tense, spelling, plurality, or wording. Before returning, silently
+verify compliance one final time.
+
+--- ADDITIONAL INSTRUCTIONS START ---
+{beat_instructions}
+--- ADDITIONAL INSTRUCTIONS END ---
+{subject_text}
+
+CANDIDATE BEATS
+{json.dumps({"beats": beats}, ensure_ascii=False, indent=2)}
+{correction_text}
+
+SOURCE STORY
+--- STORY START ---
+{story}
+--- STORY END ---
+
+Return only a JSON object shaped exactly as {{"beats": ["...", "..."]}}.
+""".strip(),
+        },
+    ]
+
+
+def verify_subjects_in_beat_messages(messages, subject_information):
+    """Refuse an LLM request that dropped parsed subjects.txt information."""
+    subject_information = str(subject_information or "").strip()
+    if not subject_information:
+        return
+    user_prompt = "\n".join(
+        str(message.get("content", ""))
+        for message in messages
+        if message.get("role") == "user"
+    )
+    if subject_information not in user_prompt:
+        raise RuntimeError(
+            "Parsed subjects.txt information was not included in the beat "
+            "generation prompt; refusing to contact LM Studio."
+        )
+
+
+def _normalize_instruction_check_text(text):
+    return re.sub(r"[*_`]", "", " ".join(str(text or "").split())).casefold()
+
+
+def validate_generated_beat_instructions(beats, beat_instructions):
+    """Validate common explicit, mechanically checkable beat constraints."""
+    instructions = str(beat_instructions or "")
+    if not instructions.strip():
+        return []
+
+    normalized_beats = [
+        _normalize_instruction_check_text(beat)
+        for beat in beats
+    ]
+    combined = "\n".join(normalized_beats)
+    issues = []
+    quote = r'["\u201c](?P<phrase>.*?)["\u201d]'
+    placement_patterns = (
+        re.compile(
+            rf"(?is)in\s+beat\s+(?P<beat>\d+)[^.\n]{{0,240}}?"
+            rf"exact\s+phrase\s+{quote}"
+        ),
+        re.compile(
+            rf"(?is)exact\s+phrase\s+{quote}[^.\n]{{0,240}}?"
+            rf"in\s+beat\s+(?P<beat>\d+)"
+        ),
+    )
+    placed_phrases = set()
+    for pattern in placement_patterns:
+        for match in pattern.finditer(instructions):
+            phrase = match.group("phrase")
+            target = int(match.group("beat"))
+            key = _normalize_instruction_check_text(phrase)
+            if (key, target) in placed_phrases:
+                continue
+            placed_phrases.add((key, target))
+            if not 1 <= target <= len(normalized_beats):
+                issues.append(
+                    f"Instruction targets beat {target}, but only "
+                    f"{len(normalized_beats)} beats exist."
+                )
+                continue
+            counts = [beat.count(key) for beat in normalized_beats]
+            if counts[target - 1] != 1 or sum(counts) != 1:
+                issues.append(
+                    f"Exact phrase {phrase!r} must appear once in beat "
+                    f"{target} and nowhere else."
+                )
+
+    all_exact_phrases = re.findall(
+        r'(?is)exact\s+phrase\s+["\u201c](.*?)["\u201d]',
+        instructions,
+    )
+    placed_keys = {key for key, _ in placed_phrases}
+    for phrase in all_exact_phrases:
+        key = _normalize_instruction_check_text(phrase)
+        if key not in placed_keys and key not in combined:
+            issues.append(f"Required exact phrase {phrase!r} is missing.")
+
+    for banned in re.findall(
+        r'(?is)do\s+not\s+use\s+the\s+word\s+["\u201c](.*?)["\u201d]',
+        instructions,
+    ):
+        key = _normalize_instruction_check_text(banned)
+        if re.search(rf"(?<!\w){re.escape(key)}(?!\w)", combined):
+            issues.append(f"Prohibited word {banned!r} appears in the beats.")
+
+    ending_match = re.search(
+        r'(?is)(?:entire\s+story|final\s+beat)\s+must\s+end\s+with\s+'
+        r'(?:the\s+)?exact\s+sentence\s+["\u201c](.*?)["\u201d]',
+        instructions,
+    )
+    if ending_match:
+        ending = ending_match.group(1)
+        if not normalized_beats[-1].endswith(
+            _normalize_instruction_check_text(ending)
+        ):
+            issues.append(
+                f"Final beat must end with exact sentence {ending!r}."
+            )
+    return list(dict.fromkeys(issues))
+
+
+def parse_generated_beats(raw_result, total_segments):
+    if total_segments <= 0:
+        raise ValueError("Beat generation requires at least one segment.")
+
+    candidate = raw_result
+    if isinstance(candidate, str):
+        try:
+            candidate = parse_llm_json_content(candidate)
+        except json.JSONDecodeError:
+            lines = []
+            for raw_line in candidate.splitlines():
+                line = raw_line.strip()
+                if not line or re.fullmatch(r"(?i)beats?\s*:", line):
+                    continue
+                line = re.sub(
+                    r"^(?:[-*\u2022]\s+|(?:B\s*0*)?\d+\s*[.):\-]\s*)",
+                    "",
+                    line,
+                    flags=re.IGNORECASE,
+                ).strip()
+                if line:
+                    lines.append(line)
+            candidate = {"beats": lines}
+
+    if not isinstance(candidate, dict) or not isinstance(
+        candidate.get("beats"), list
+    ):
+        raise ValueError("The LLM response must contain a JSON 'beats' array.")
+    if len(candidate["beats"]) != total_segments:
+        raise ValueError(
+            f"Expected exactly {total_segments} generated beats, received "
+            f"{len(candidate['beats'])}."
+        )
+
+    beats = []
+    for index, raw_beat in enumerate(candidate["beats"], start=1):
+        if not isinstance(raw_beat, str):
+            raise ValueError(f"Generated beat {index} must be text.")
+        beat = " ".join(raw_beat.split()).strip()
+        beat = re.sub(
+            r"^(?:[-*\u2022]\s+|(?:B\s*0*)?\d+\s*[.):\-]\s*)",
+            "",
+            beat,
+            flags=re.IGNORECASE,
+        ).strip()
+        if not beat:
+            raise ValueError(f"Generated beat {index} is empty.")
+        if "--lora" in beat.lower():
+            raise ValueError(
+                f"Generated beat {index} contains unsupported --lora metadata."
+            )
+        if not beat_is_single_complete_sentence(beat):
+            raise ValueError(
+                f"Generated beat {index} must be exactly one sentence; "
+                "fragments and multiple sentences are not allowed."
+            )
+        beats.append(beat)
+
+    normalized = [beat.casefold() for beat in beats]
+    if len(set(normalized)) != len(normalized):
+        raise ValueError("Generated beats must not contain duplicates.")
+    return beats
+
+
+_BEAT_SENTENCE_BREAK = re.compile(
+    r"(?P<ending>[.!?]+)[\"'\u2019\u201d)]*\s+(?P<next>[A-Za-z0-9])"
+)
+_BEAT_ABBREVIATIONS = {
+    "dr",
+    "etc",
+    "jr",
+    "mr",
+    "mrs",
+    "ms",
+    "prof",
+    "sr",
+    "st",
+    "vs",
+}
+
+
+def beat_contains_multiple_sentences(beat):
+    """Detect a second top-level sentence without splitting common titles."""
+    beat = str(beat or "").strip()
+    for match in _BEAT_SENTENCE_BREAK.finditer(beat):
+        if match.group("next").islower():
+            # This covers punctuation inside dialogue followed by narration,
+            # such as: She shouts "Run!" before opening the door.
+            continue
+        if match.group("ending") == ".":
+            prefix = beat[:match.end("ending")]
+            token_match = re.search(r"([A-Za-z]+)\.$", prefix)
+            if token_match and token_match.group(1).casefold() in _BEAT_ABBREVIATIONS:
+                continue
+            if re.search(r"(?:\b[A-Z]\.){1,}$", prefix):
+                continue
+        return True
+    return False
+
+
+def beat_is_single_complete_sentence(beat):
+    beat = str(beat or "").strip()
+    has_terminal_punctuation = bool(
+        re.search(r"[.!?]+[\"'\u2019\u201d)]*$", beat)
+    )
+    return has_terminal_punctuation and not beat_contains_multiple_sentences(beat)
+
+
+def print_generated_beats(beats):
+    print()
+    print("Generated story beats:")
+    number_width = len(str(len(beats)))
+    for index, beat in enumerate(beats, start=1):
+        print(f"  {index:>{number_width}}. {beat}")
+    print()
+
+
+def save_generated_beats(beats, path=BEATS_FILE, lora_directive=""):
+    lora_directive = str(lora_directive or "").strip()
+    if lora_directive:
+        directive_match = LORA_DIRECTIVE_PATTERN.fullmatch(lora_directive)
+        if directive_match is None:
+            raise ValueError(
+                f"Invalid file-level LoRA directive: {lora_directive!r}."
+            )
+        parse_lora_match(directive_match, lora_directive)
+    saved_beats = [
+        f"{beat} {lora_directive}" if lora_directive else beat
+        for beat in beats
+    ]
+    directory = os.path.dirname(os.path.abspath(path))
+    os.makedirs(directory, exist_ok=True)
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix=".generated_beats_",
+        suffix=".tmp",
+        dir=directory,
+        text=True,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as beat_file:
+            beat_file.write("\n".join(saved_beats) + "\n")
+            beat_file.flush()
+            os.fsync(beat_file.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+
+
+def generate_beats_from_story(
+    story,
+    total_segments,
+    path=BEATS_FILE,
+    llm_request=None,
+    content_attempts=BEAT_GENERATION_CONTENT_ATTEMPTS,
+    history_metadata=None,
+    beat_instructions="",
+    instruction_review_attempts=BEAT_INSTRUCTION_REVIEW_ATTEMPTS,
+    subject_information="",
+    lora_directive="",
+):
+    if llm_request is None:
+        llm_request = ask_llm
+    if not str(story or "").strip():
+        raise ValueError("Cannot generate story beats from an empty story.")
+    if content_attempts <= 0:
+        raise ValueError("Beat generation requires at least one content attempt.")
+
+    response_format = build_beats_response_format(total_segments)
+    correction = ""
+    last_error = None
+    beats = None
+    for attempt in range(1, content_attempts + 1):
+        messages = build_beat_generation_messages(
+            story,
+            total_segments,
+            correction,
+            beat_instructions,
+            subject_information,
+        )
+        verify_subjects_in_beat_messages(messages, subject_information)
+        raw_result = llm_request(
+            messages,
+            response_format=response_format,
+            history_metadata={
+                "purpose": "beat_generation",
+                "attempt": attempt,
+                "total_segments": total_segments,
+                **(history_metadata or {}),
+            },
+            **BEAT_LLM_SAMPLING_PARAMETERS,
+        )
+        try:
+            beats = parse_generated_beats(raw_result, total_segments)
+        except ValueError as error:
+            last_error = error
+            correction = str(error)
+            if attempt < content_attempts:
+                print(
+                    "LLM returned an invalid beat list; requesting a corrected "
+                    f"list ({attempt + 1}/{content_attempts}): {error}"
+                )
+            continue
+
+        break
+
+    if beats is None:
+        raise RuntimeError(
+            f"LM Studio did not return exactly {total_segments} valid, unique "
+            f"story beats after {content_attempts} attempt(s): {last_error}"
+        ) from last_error
+
+    if beat_instructions:
+        if instruction_review_attempts <= 0:
+            raise ValueError(
+                "Beat-instruction compliance requires at least one review attempt."
+            )
+        review_error = ""
+        reviewed_beats = None
+        for review_attempt in range(1, instruction_review_attempts + 1):
+            review_messages = build_beat_instruction_review_messages(
+                story,
+                total_segments,
+                beats,
+                beat_instructions,
+                review_error,
+                subject_information,
+            )
+            verify_subjects_in_beat_messages(
+                review_messages,
+                subject_information,
+            )
+            reviewed_raw = llm_request(
+                review_messages,
+                response_format=response_format,
+                history_metadata={
+                    "purpose": "beat_instruction_review",
+                    "attempt": review_attempt,
+                    "total_segments": total_segments,
+                    **(history_metadata or {}),
+                },
+                **BEAT_LLM_SAMPLING_PARAMETERS,
+            )
+            try:
+                reviewed_beats = parse_generated_beats(
+                    reviewed_raw,
+                    total_segments,
+                )
+            except ValueError as error:
+                review_error = str(error)
+                if review_attempt < instruction_review_attempts:
+                    print(
+                        "LLM returned an invalid instruction-compliance edit; "
+                        f"retrying ({review_attempt + 1}/"
+                        f"{instruction_review_attempts}): {error}"
+                    )
+                continue
+            compliance_issues = validate_generated_beat_instructions(
+                reviewed_beats,
+                beat_instructions,
+            )
+            if compliance_issues:
+                review_error = " ".join(compliance_issues)
+                reviewed_beats = None
+                if review_attempt < instruction_review_attempts:
+                    print(
+                        "LLM beat list did not satisfy explicit beat_instructions; "
+                        f"retrying ({review_attempt + 1}/"
+                        f"{instruction_review_attempts}): {review_error}"
+                    )
+                continue
+            beats = reviewed_beats
+            break
+        if reviewed_beats is None:
+            raise RuntimeError(
+                "LM Studio could not return a structurally valid beat list "
+                "during the instruction-compliance review: "
+                f"{review_error}"
+            )
+
+    print_generated_beats(beats)
+    save_generated_beats(beats, path, lora_directive=lora_directive)
+    print(f"Generated {len(beats)} story beats and saved them to {path}.")
+    return load_beats(path)
+
+
+def load_or_generate_beats(
+    path,
+    story,
+    total_segments,
+    llm_request=None,
+    history_metadata=None,
+    beat_instructions="",
+    subject_information="",
+):
+    raw = load_text_file(path, required=True)
+    beats, lora_directive = parse_beats_content(raw)
+    if beats:
+        return beats
+    print(
+        f"{path} is empty; asking LM Studio to create {total_segments} "
+        "creative story beats before generation starts."
+    )
+    return generate_beats_from_story(
+        story,
+        total_segments,
+        path=path,
+        llm_request=llm_request,
+        history_metadata=history_metadata,
+        beat_instructions=beat_instructions,
+        subject_information=subject_information,
+        lora_directive=lora_directive,
     )
 
 
@@ -1518,7 +2526,7 @@ BEAT EXECUTION CONTRACT
     continuation satisfying that beat. The overall action does not need to end.
 - Do not substantially enact ordered lookahead beats before the ACTIVE beat completes.
 - Do not invent irreversible physical changes unless the ACTIVE beat requires
-  them. Do not sever or remove body parts, permanently destroy equipment,
+  them. Do not permanently destroy equipment,
   introduce major lasting injuries, kill a character, or permanently alter
   wardrobe merely to make an action scene more dramatic.
 - `completed_beat_ids` contains only newly completed consecutive beats beginning with ACTIVE.
@@ -2592,6 +3600,18 @@ def parse_defined_subjects(subject_definitions):
         name = match.group(2).strip()
         if not any(number == subject_number for number, _ in subjects):
             subjects.append((subject_number, name))
+    for match in re.finditer(
+        r"(?im)^\s*(?:<\s*)?Picture\s+(\d+)\s*(?:>\s*)?"
+        r"(?:\(from\s+Shot\s+\d+\)\s+)?is\s+"
+        r"([A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*)"
+        r"(?:\s+and\s+aligns\s+with\s+the\s+\d+(?:\.\d+)?-second\s+"
+        r"mark\s+of\s+the\s+target\s+video)?\.\s*$",
+        subject_definitions or "",
+    ):
+        subject_number = int(match.group(1))
+        name = match.group(2).strip()
+        if not any(number == subject_number for number, _ in subjects):
+            subjects.append((subject_number, name))
     return subjects
 
 
@@ -3241,6 +4261,7 @@ def render_segment_with_retries(
     h3_prompt,
     previous_video_path,
     steps,
+    lora_override=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     for retry_number in range(COMFY_RENDER_RETRIES + 1):
@@ -3267,6 +4288,11 @@ def render_segment_with_retries(
                     f"{COMFY_RENDER_RETRIES}) at inherited resolution."
                 )
 
+        lora_kwargs = (
+            {"lora_override": lora_override}
+            if lora_override is not None
+            else {}
+        )
         if segment == 1:
             workflow = prepare_initial_workflow(
                 current_duration,
@@ -3274,6 +4300,7 @@ def render_segment_with_retries(
                 h3_prompt,
                 segment,
                 steps,
+                **lora_kwargs,
             )
         else:
             workflow = prepare_append_workflow(
@@ -3282,6 +4309,7 @@ def render_segment_with_retries(
                 previous_video_path,
                 segment,
                 steps,
+                **lora_kwargs,
             )
 
         try:
@@ -3311,6 +4339,7 @@ def prepare_initial_workflow(
     h3_prompt,
     segment_number,
     steps=6,
+    lora_override=None,
 ):
     workflow = load_workflow(INITIAL_WORKFLOW_FILE)
     label = f"initial workflow '{INITIAL_WORKFLOW_FILE}'"
@@ -3342,6 +4371,15 @@ def prepare_initial_workflow(
         f"video/segment_{segment_number:04d}",
         label, "SaveVideo"
     )
+    if lora_override is not None:
+        set_node_input(
+            workflow, LORA_NODE_NAME, "lora_name", lora_override[0], label,
+            "LoraLoaderModelOnly"
+        )
+        set_node_input(
+            workflow, LORA_NODE_NAME, "strength_model", lora_override[1], label,
+            "LoraLoaderModelOnly"
+        )
     return workflow
 
 
@@ -3351,6 +4389,7 @@ def prepare_append_workflow(
     previous_video_path,
     segment_number,
     steps=6,
+    lora_override=None,
 ):
     workflow = load_workflow(APPEND_WORKFLOW_FILE)
     label = f"append workflow '{APPEND_WORKFLOW_FILE}'"
@@ -3388,6 +4427,15 @@ def prepare_append_workflow(
         generate_random_seed(),
         label, "RandomNoise"
     )
+    if lora_override is not None:
+        set_node_input(
+            workflow, LORA_NODE_NAME, "lora_name", lora_override[0], label,
+            "LoraLoaderModelOnly"
+        )
+        set_node_input(
+            workflow, LORA_NODE_NAME, "strength_model", lora_override[1], label,
+            "LoraLoaderModelOnly"
+        )
     return workflow
 
 
@@ -3482,7 +4530,6 @@ def stitch_videos(video_paths):
 
 def _run_main(summary_executor):
     args = parse_args()
-    validate_runtime_environment()
     run_id = str(uuid.uuid4())
 
     segment_length = args.segment_length
@@ -3495,12 +4542,29 @@ def _run_main(summary_executor):
         total_segments,
     )
 
-    story = load_text_file(STORY_FILE, required=True)
-    beats = load_beats(BEATS_FILE)
+    story_source = load_text_file(STORY_FILE, required=True)
+    story, beat_instructions = parse_story_beat_instructions(story_source)
+    if not story:
+        raise ValueError("story.txt contains no story after beat_instructions metadata.")
     subject_definitions = load_text_file(
         SUBJECT_DEFINITIONS_FILE,
-        required=False
+        required=False,
     )
+    subject_information = format_beat_generation_subjects(subject_definitions)
+    if resume_segment == 1:
+        reset_prompt_history()
+    beats = load_or_generate_beats(
+        BEATS_FILE,
+        story,
+        total_segments,
+        history_metadata={"run_id": run_id},
+        beat_instructions=beat_instructions,
+        subject_information=subject_information,
+    )
+
+    # Beat generation deliberately happens before external runtime and workflow
+    # validation so an empty beats.txt is populated before normal startup work.
+    validate_runtime_environment()
 
     run_config = build_run_config(
         segment_length,
@@ -3512,7 +4576,6 @@ def _run_main(summary_executor):
         subject_definitions,
     )
     if resume_segment == 1:
-        reset_prompt_history()
         generation_state = new_generation_state(run_config)
         completed_beat_ids = set()
         recent_results = []
@@ -3575,6 +4638,7 @@ def _run_main(summary_executor):
         f"append workflow '{APPEND_WORKFLOW_FILE}'",
         is_append=True
     )
+    verify_reference_images(initial_test, append_test)
     print("Workflow validation passed.")
     if resume_segment == 1:
         save_generation_state(generation_state)
@@ -3588,72 +4652,163 @@ def _run_main(summary_executor):
         beats_enabled=bool(beats)
     )
 
-    run_start_time = time.perf_counter()
-    for segment in segments_to_generate:
-        elapsed = (segment - 1) * segment_length
+    def continuity_state_sha(state):
+        return hashlib.sha256(
+            json.dumps(
+                state,
+                ensure_ascii=False,
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
+
+    def build_segment_fingerprint(
+        segment_number,
+        completed_ids,
+        recent_items,
+        opening_state,
+    ):
+        return json.dumps(
+            {
+                "segment": int(segment_number),
+                "completed_beat_ids": sorted(
+                    normalize_completed_beat_ids(beats, completed_ids)
+                ),
+                "recent_results": list(recent_items),
+                "opening_state_sha256": continuity_state_sha(opening_state),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+
+    def build_segment_bundle(
+        segment_number,
+        completed_ids,
+        recent_items,
+        opening_state,
+    ):
+        elapsed = (segment_number - 1) * segment_length
         current_duration = min(segment_length, total_length - elapsed)
+        active_beat_id = get_next_beat_id(beats, completed_ids)
+        opening_summary = (
+            format_authoritative_opening_state(
+                opening_state,
+                subject_definitions,
+            )
+            if segment_number > 1 else ""
+        )
+        messages, estimated_tokens, recent_count = build_generation_messages(
+            director_rules=director_rules,
+            story=story,
+            beats=beats,
+            completed_beat_ids=completed_ids,
+            recent_results=recent_items,
+            current_segment=segment_number,
+            total_segments=total_segments,
+            segment_length=segment_length,
+            total_length=total_length,
+            continuity_summary=opening_summary,
+            subject_definitions=subject_definitions,
+        )
+        ministral_context = build_ministral_context(
+            segment_number=segment_number,
+            segment_duration=current_duration,
+            total_segments=total_segments,
+            beats=beats,
+            completed_beat_ids=completed_ids,
+            subject_definitions=subject_definitions,
+            story=story,
+            recent_results=recent_items,
+        )
+        return {
+            "segment": segment_number,
+            "current_duration": current_duration,
+            "active_beat_id": active_beat_id,
+            "lora_override": beat_lora_override(beats, active_beat_id),
+            "messages": messages,
+            "estimated_tokens": estimated_tokens,
+            "recent_count": recent_count,
+            "ministral_context": ministral_context,
+            "opening_state": opening_state,
+            "opening_summary": opening_summary,
+            "opening_state_sha256": continuity_state_sha(opening_state),
+            "fingerprint": build_segment_fingerprint(
+                segment_number,
+                completed_ids,
+                recent_items,
+                opening_state,
+            ),
+        }
+
+    def request_segment_llm(bundle):
+        llm_result = request_valid_ministral_prompt(
+            bundle["messages"],
+            bundle["ministral_context"],
+            history_metadata={
+                "run_id": run_id,
+                "source_sha256": run_config["source_sha256"],
+                "purpose": "director",
+                "segment": bundle["segment"],
+                "attempt": 1,
+                "opening_state_sha256": bundle["opening_state_sha256"],
+            },
+        )
+        payload = dict(bundle)
+        payload["llm_result"] = llm_result
+        return payload
+
+    run_start_time = time.perf_counter()
+    prefetched_next = None
+    for segment in segments_to_generate:
+        segment_bundle = build_segment_bundle(
+            segment,
+            completed_beat_ids,
+            recent_results,
+            continuity_state,
+        )
+        if prefetched_next is not None:
+            if prefetched_next["segment"] != segment:
+                if not prefetched_next["future"].done():
+                    prefetched_next["future"].cancel()
+                prefetched_next = None
+            elif prefetched_next["fingerprint"] != segment_bundle["fingerprint"]:
+                if not prefetched_next["future"].done():
+                    prefetched_next["future"].cancel()
+                print(
+                    f"Discarded prefetched LLM response for segment {segment} "
+                    "because committed state changed."
+                )
+                prefetched_next = None
 
         print()
         print("=" * 64)
         print(
             f"SEGMENT {segment}/{total_segments} "
-            f"({current_duration:g} seconds)"
+            f"({segment_bundle['current_duration']:g} seconds)"
         )
         print("=" * 64)
-
-        messages, estimated_tokens, recent_count = build_generation_messages(
-            director_rules=director_rules,
-            story=story,
-            beats=beats,
-            completed_beat_ids=completed_beat_ids,
-            recent_results=recent_results,
-            current_segment=segment,
-            total_segments=total_segments,
-            segment_length=segment_length,
-            total_length=total_length,
-            continuity_summary=(
-                format_authoritative_opening_state(
-                    continuity_state,
-                    subject_definitions,
-                )
-                if segment > 1 else ""
-            ),
-            subject_definitions=subject_definitions,
-        )
         print(
             f"Estimated LLM input context: "
-            f"{estimated_tokens}/{LLM_INPUT_TOKEN_BUDGET} tokens "
-            f"(recent exact segments: {recent_count})"
+            f"{segment_bundle['estimated_tokens']}/{LLM_INPUT_TOKEN_BUDGET} tokens "
+            f"(recent exact segments: {segment_bundle['recent_count']})"
         )
 
-        ministral_context = build_ministral_context(
-            segment_number=segment,
-            segment_duration=current_duration,
-            total_segments=total_segments,
-            beats=beats,
-            completed_beat_ids=completed_beat_ids,
-            subject_definitions=subject_definitions,
-            story=story,
-            recent_results=recent_results
-        )
-        llm_result = request_valid_ministral_prompt(
-            messages,
-            ministral_context,
-            history_metadata={
-                "run_id": run_id,
-                "source_sha256": run_config["source_sha256"],
-                "purpose": "director",
-                "segment": segment,
-                "attempt": 1,
-                "opening_state_sha256": hashlib.sha256(
-                    json.dumps(
-                        continuity_state,
-                        ensure_ascii=False,
-                        sort_keys=True,
-                    ).encode("utf-8")
-                ).hexdigest(),
-            },
-        )
+        payload = None
+        if prefetched_next is not None:
+            try:
+                payload = prefetched_next["future"].result()
+                print(f"Using prefetched LLM response for segment {segment}.")
+            except Exception as error:
+                print(
+                    f"WARNING: prefetched LLM response for segment {segment} failed: "
+                    f"{error}. Regenerating now."
+                )
+            finally:
+                prefetched_next = None
+        if payload is None:
+            payload = request_segment_llm(segment_bundle)
+
+        llm_result = payload["llm_result"]
+        lora_override = payload["lora_override"]
         reported_beat_ids = llm_result.get("completed_beat_ids", [])
         hard_cut_subject_continuity = ""
         if is_hard_cut_segment(segment):
@@ -3666,13 +4821,7 @@ def _run_main(summary_executor):
             llm_result,
             subject_definitions,
             hard_cut_subject_continuity,
-            (
-                format_authoritative_opening_state(
-                    continuity_state,
-                    subject_definitions,
-                )
-                if segment > 1 else ""
-            ),
+            payload["opening_summary"],
             segment,
             ff=args.ff,
         )
@@ -3697,6 +4846,43 @@ def _run_main(summary_executor):
             completed_beat_ids,
             reported_beat_ids
         )
+
+        # Director LLM prefetch is intentionally disabled. Requesting the next
+        # segment only after the current segment commits ensures it always uses
+        # the latest beat progress and continuity state.
+        # if segment < total_segments:
+        #     tentative_completed = set(
+        #         normalize_completed_beat_ids(beats, completed_beat_ids)
+        #     )
+        #     tentative_completed.update(
+        #         get_accepted_reported_beat_ids(
+        #             beats,
+        #             completed_beat_ids,
+        #             reported_beat_ids,
+        #         )
+        #     )
+        #     tentative_recent = (
+        #         recent_results + [(segment, llm_result)]
+        #     )[-RECENT_SEGMENTS_MAX:]
+        #     next_bundle = build_segment_bundle(
+        #         segment + 1,
+        #         tentative_completed,
+        #         tentative_recent,
+        #         continuity_state,
+        #     )
+        #     prefetched_next = {
+        #         "segment": segment + 1,
+        #         "fingerprint": next_bundle["fingerprint"],
+        #         "future": director_prefetch_executor.submit(
+        #             request_segment_llm,
+        #             next_bundle,
+        #         ),
+        #     }
+        #     print(
+        #         f"Started LLM prefetch for segment {segment + 1} while "
+        #         f"segment {segment} renders."
+        #     )
+
         print()
         print(h3_prompt)
         print()
@@ -3710,14 +4896,17 @@ def _run_main(summary_executor):
                 rendered_megapixels,
             ) = render_segment_with_retries(
                 segment,
-                current_duration,
+                segment_bundle["current_duration"],
                 megapixels,
                 h3_prompt,
                 previous_video_path,
                 args.steps,
+                lora_override=lora_override,
             )
         except Exception:
             candidate_future.cancel()
+            if prefetched_next is not None and not prefetched_next["future"].done():
+                prefetched_next["future"].cancel()
             print(
                 f"Segment {segment} render failed; candidate continuity state discarded"
             )
@@ -3822,6 +5011,13 @@ def main():
         max_workers=1,
         thread_name_prefix="continuity-summary",
     ) as summary_executor:
+        # Director prefetch is intentionally disabled along with the scheduling
+        # block in _run_main.
+        # with ThreadPoolExecutor(
+        #     max_workers=1,
+        #     thread_name_prefix="director-prefetch",
+        # ) as director_prefetch_executor:
+        #     return _run_main(summary_executor, director_prefetch_executor)
         return _run_main(summary_executor)
 
 
