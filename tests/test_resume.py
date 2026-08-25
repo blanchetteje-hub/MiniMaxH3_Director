@@ -8,7 +8,7 @@ import minimax
 
 def formatted_result(shot):
     return {
-        "integrated_multimodal_description": (
+        "detailed_description": (
             f"[Shot {shot}] Live-action, cinematic, two friends keep walking."
         ),
         "overall_soundscape": "Footsteps and a light breeze.",
@@ -73,6 +73,61 @@ class ResumeTests(unittest.TestCase):
         args = minimax.parse_args(["5", "20", ".5", "--steps", "12"])
         self.assertEqual(args.steps, 12)
 
+    def test_parse_args_defaults_to_ministral_model(self):
+        args = minimax.parse_args(["5", "20", ".5"])
+
+        self.assertEqual(args.model, "ministral")
+
+    def test_parse_args_accepts_qwen_model(self):
+        args = minimax.parse_args(["5", "20", ".5", "--model", "qwen"])
+
+        self.assertEqual(args.model, "qwen")
+
+    def test_parse_args_accepts_qwen_equals_syntax(self):
+        args = minimax.parse_args(["5", "20", ".5", "--model=qwen"])
+
+        self.assertEqual(args.model, "qwen")
+
+    def test_parse_args_rejects_unknown_model(self):
+        with self.assertRaises(SystemExit):
+            minimax.parse_args(["5", "20", ".5", "--model", "unknown"])
+
+    def test_get_formatter_selects_ministral_formatter(self):
+        formatter = minimax.get_formatter("ministral")
+
+        self.assertIs(type(formatter), minimax.MinistralFormatter)
+
+    def test_get_formatter_selects_qwen_formatter(self):
+        formatter = minimax.get_formatter("qwen")
+
+        self.assertIs(type(formatter), minimax.QwenFormatter)
+
+    def test_parse_args_accepts_unlimited_ordered_global_loras(self):
+        args = minimax.parse_args([
+            "5", "20", ".5",
+            "--lora", "style.safetensors:0.8",
+            "--lora", "motion.safetensors:-0.25",
+            "--lora", "detail.safetensors:1.2",
+        ])
+
+        self.assertEqual(args.lora, [
+            ("style.safetensors", 0.8),
+            ("motion.safetensors", -0.25),
+            ("detail.safetensors", 1.2),
+        ])
+
+    def test_parse_args_requires_name_and_finite_strength_for_every_lora(self):
+        for invalid in (
+            "style.safetensors",
+            ":0.5",
+            "style.safetensors:",
+            "style.safetensors:not-a-number",
+            "style.safetensors:nan",
+            "style.safetensors:inf",
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(SystemExit):
+                minimax.parse_args(["5", "20", ".5", "--lora", invalid])
+
     def test_parse_args_accepts_first_frame_argument(self):
         args = minimax.parse_args(["5", "20", ".5", "ff"])
         self.assertTrue(args.ff)
@@ -100,24 +155,35 @@ class ResumeTests(unittest.TestCase):
         self.assertEqual(beat.lora_override, ("style.safetensors", 0.35))
         self.assertNotIn("--lora", str(beat))
 
-    def test_beat_lora_without_strength_uses_full_strength(self):
+    def test_beat_accepts_unlimited_loras_and_removes_them_from_text(self):
         beat = minimax.parse_beat_definition(
-            "Show the opening --lora lighting.safetensors"
+            "Show the opening --lora lighting.safetensors:0.6 "
+            "--lora motion.safetensors:1.25 --lora detail.safetensors:-0.1"
         )
 
         self.assertEqual(str(beat), "Show the opening")
-        self.assertEqual(beat.lora_override, ("lighting.safetensors", 1.0))
+        self.assertEqual(beat.loras, (
+            ("lighting.safetensors", 0.6),
+            ("motion.safetensors", 1.25),
+            ("detail.safetensors", -0.1),
+        ))
+
+    def test_beat_lora_requires_explicit_strength(self):
+        with self.assertRaisesRegex(ValueError, "expected"):
+            minimax.parse_beat_definition(
+                "Show the opening --lora lighting.safetensors"
+            )
 
     def test_file_level_lora_is_metadata_and_applies_to_existing_beats(self):
         beats, directive = minimax.parse_beats_content(
-            "--lora lighting.safetensors\nOpening event\nClosing event\n"
+            "--lora lighting.safetensors:1.0\nOpening event\nClosing event\n"
         )
 
         self.assertEqual(
             [str(beat) for beat in beats],
             ["Opening event", "Closing event"],
         )
-        self.assertEqual(directive, "--lora lighting.safetensors")
+        self.assertEqual(directive, "--lora lighting.safetensors:1.0")
         self.assertEqual(
             [beat.lora_override for beat in beats],
             [("lighting.safetensors", 1.0), ("lighting.safetensors", 1.0)],
@@ -126,10 +192,10 @@ class ResumeTests(unittest.TestCase):
     def test_only_one_file_level_lora_is_allowed(self):
         with self.assertRaisesRegex(ValueError, "only one"):
             minimax.parse_beats_content(
-                "--lora first.safetensors\n--lora second.safetensors\n"
+                "--lora first.safetensors:1\n--lora second.safetensors:1\n"
             )
 
-    def test_beat_without_lora_uses_default_fallback(self):
+    def test_global_loras_are_added_before_beat_loras_without_a_default(self):
         beats = [
             minimax.parse_beat_definition(
                 "First beat --lora first.safetensors:0.8"
@@ -138,13 +204,31 @@ class ResumeTests(unittest.TestCase):
         ]
 
         self.assertEqual(
-            minimax.beat_lora_override(beats, 1),
-            ("first.safetensors", 0.8),
+            minimax.beat_loras(
+                beats, 1, [("global.safetensors", 0.4)]
+            ),
+            [("global.safetensors", 0.4), ("first.safetensors", 0.8)],
         )
         self.assertEqual(
-            minimax.beat_lora_override(beats, 2),
-            ("default.safetensors", 0.01),
+            minimax.beat_loras(beats, 2),
+            [],
         )
+        self.assertEqual(
+            minimax.beat_loras([], None, [("global.safetensors", 0.4)]),
+            [("global.safetensors", 0.4)],
+        )
+
+    def test_global_loras_participate_in_resume_fingerprint(self):
+        first = minimax.build_run_config(
+            5, 20, 0.5, 4,
+            global_loras=[("one.safetensors", 0.5), ("two.safetensors", 1.0)],
+        )
+        reordered = minimax.build_run_config(
+            5, 20, 0.5, 4,
+            global_loras=[("two.safetensors", 1.0), ("one.safetensors", 0.5)],
+        )
+
+        self.assertNotEqual(first["source_sha256"], reordered["source_sha256"])
 
     def test_resume_generates_only_requested_and_later_segments(self):
         self.assertEqual(list(minimax.get_segments_to_generate(3, 5)), [3, 4, 5])
@@ -302,6 +386,28 @@ class ResumeTests(unittest.TestCase):
 
             self.assertEqual(restored["video_paths"], [path])
             self.assertEqual(restored["previous_video_path"], path)
+
+    def test_generated_subject_lines_do_not_change_source_fingerprint(self):
+        original_subjects = (
+            "<Subject 1> is Amy, referenced in <Picture 1>."
+        )
+        expanded_subjects = (
+            original_subjects
+            + "\n<Subject 2> is spider-alien, created in generated "
+            "video segment 3 and continued from <Video 1>."
+        )
+
+        original = minimax.build_run_config(
+            5, 20, 0.5, 4, "story", ["beat"], original_subjects
+        )
+        expanded = minimax.build_run_config(
+            5, 20, 0.5, 4, "story", ["beat"], expanded_subjects
+        )
+
+        self.assertEqual(
+            original["source_sha256"],
+            expanded["source_sha256"],
+        )
 
     def test_resume_allows_checkpoint_without_run_config(self):
         with tempfile.TemporaryDirectory() as directory:

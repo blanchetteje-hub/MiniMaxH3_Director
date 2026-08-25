@@ -14,8 +14,11 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
+from formatter_base import BaseFormatter
 
-DESCRIPTION = "integrated_multimodal_description"
+
+DESCRIPTION = "detailed_description"
+LEGACY_DESCRIPTION = "integrated_multimodal_description"
 SOUNDSCAPE = "overall_soundscape"
 MUSIC = "non_diegetic_music"
 COMPLETIONS = "completed_beat_ids"
@@ -24,7 +27,7 @@ MAX_FORMAT_PASSES = 8
 
 _LABEL = re.compile(
     r"(?im)^\s*(?:#{1,6}\s*)?(?:\*\*)?"
-    r"(integrated_multimodal_description|overall_soundscape|"
+    r"(detailed_description|integrated_multimodal_description|overall_soundscape|"
     r"non_diegetic_music|completed_beat_ids)\s*:\s*(?:\*\*)?"
 )
 _SHOT = re.compile(r"\[\s*Shot\s+\d+\s*\]", re.IGNORECASE)
@@ -151,6 +154,8 @@ def _parse_labeled_text(text: str) -> dict[str, Any]:
     parsed: dict[str, Any] = {}
     for index, match in enumerate(matches):
         field = match.group(1).lower()
+        if field == LEGACY_DESCRIPTION:
+            field = DESCRIPTION
         end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
         value = text[match.end():end].strip()
         if field == COMPLETIONS:
@@ -178,6 +183,9 @@ def _coerce_result(llm_result: Any) -> dict[str, Any]:
             result = decoded
     else:
         raise TypeError("Ministral response must be a mapping or text.")
+
+    if DESCRIPTION not in result and LEGACY_DESCRIPTION in result:
+        result[DESCRIPTION] = result[LEGACY_DESCRIPTION]
 
     # Some models put the entire labeled prompt in the description field.
     description = result.get(DESCRIPTION)
@@ -212,6 +220,21 @@ def _next_beat_id(context: Mapping[str, Any]) -> int | None:
 def _subject_records(context: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     definitions = str(context.get("subject_definitions", "") or "")
     records: dict[str, dict[str, Any]] = {}
+    for match in re.finditer(
+        r"(?im)^\s*<Subject\s+(?P<subject>\d+)>\s*(?:is\s+)?"
+        r"(?P<name>[A-Z][\w'â€™-]*(?:\s+[A-Z][\w'â€™-]*)*)\s*,\s*"
+        r".*?\b(?:created|established)\s+(?:by\s+<Video\s+1>|"
+        r"in\s+generated\s+"
+        r"video\s+segment\s+\d+).*?\.?\s*$",
+        definitions,
+    ):
+        name = match.group("name").strip()
+        records[name] = {
+            "subject_id": int(match.group("subject")),
+            "picture_ids": [],
+            "picture_id": None,
+            "speaker_id": None,
+        }
     for match in re.finditer(
         r"(?im)^\s*<Subject\s+(?P<subject>\d+)>\s*(?:is\s+)?"
         r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)\s*,\s*"
@@ -1517,7 +1540,26 @@ def validate_ministral_prompt(
     return list(dict.fromkeys(issues))
 
 
+class MinistralFormatter(BaseFormatter):
+    """Adapter exposing the Ministral repair pipeline through the shared API."""
+
+    def format_prompt(
+        self,
+        llm_result: Any,
+        context: Mapping[str, Any] | None,
+    ) -> dict[str, Any]:
+        return format_ministral_prompt(llm_result, context)
+
+    def validate_prompt(
+        self,
+        result: Mapping[str, Any],
+        context: Mapping[str, Any] | None,
+    ) -> list[str]:
+        return validate_ministral_prompt(result, context)
+
+
 __all__ = [
+    "MinistralFormatter",
     "RULE_REGISTRY",
     "format_ministral_prompt",
     "validate_ministral_prompt",

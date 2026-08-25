@@ -14,7 +14,7 @@ import ministral_formatter as formatter
 from ministral_formatter import format_ministral_prompt, validate_ministral_prompt
 
 
-DESCRIPTION = "integrated_multimodal_description"
+DESCRIPTION = "detailed_description"
 SOUNDSCAPE = "overall_soundscape"
 MUSIC = "non_diegetic_music"
 COMPLETIONS = "completed_beat_ids"

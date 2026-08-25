@@ -6,7 +6,7 @@ import minimax
 
 def segment_result(number):
     return {
-        "integrated_multimodal_description": (
+        "detailed_description": (
             f"[Shot {number}] Camera continues from the previous shot. "
             f"Mark stands beside numbered prop {number}."
         ),
@@ -47,11 +47,17 @@ class ContinuitySummaryTests(unittest.TestCase):
             self.SUBJECTS,
         )
 
-        self.assertIn("AUTHORITATIVE OPENING STATE", opening)
-        self.assertIn("final observable state", opening)
-        self.assertIn("location: bedroom", opening)
-        self.assertIn("wardrobe_upper: green sweater", opening)
-        self.assertIn("body_state: left horn missing", opening)
+        self.assertTrue(opening.startswith("<Video 1>"))
+        self.assertIn("summary:", opening)
+        self.assertIn("retention_analysis:", opening)
+        self.assertIn("final observable state of <Video 1>", opening)
+        self.assertIn("its bedroom, lighting, spatial layout", opening)
+        self.assertIn("wearing green sweater", opening)
+        self.assertIn("Body state: left horn missing", opening)
+        self.assertIn("<Subject 1>: fully_preserved", opening)
+        self.assertIn("<Video 1>: fully_preserved", opening)
+        self.assertNotIn("wardrobe_upper:", opening)
+        self.assertNotIn("N/A", opening)
 
     def test_legacy_empty_state_rebuilds_subjects_from_definitions(self):
         definitions = (
@@ -64,8 +70,102 @@ class ContinuitySummaryTests(unittest.TestCase):
             definitions,
         )
 
-        self.assertIn("- Mark <Picture 1>", opening)
-        self.assertIn("- Jill <Picture 2>", opening)
+        self.assertIn(
+            "<Subject 1>: fully_preserved - Preserve Mark's identity "
+            "from <Picture 1>.",
+            opening,
+        )
+        self.assertIn(
+            "<Subject 2>: fully_preserved - Preserve Jill's identity "
+            "from <Picture 2>.",
+            opening,
+        )
+
+    def test_opening_state_preserves_video_only_subjects(self):
+        state = minimax.continuity_state_for_registry(self.SUBJECTS)
+        state["environment"]["location"] = "sterile alien chamber"
+        state["subjects"]["spider-alien"] = {
+            "subject_id": 3,
+            "name": "spider-alien",
+            "picture_ids": [],
+            "picture_id": None,
+            "speaker_id": None,
+            "position": "above Connie",
+            "pose_action": "moving with unnatural speed",
+            "wardrobe": {
+                "upper": "N/A",
+                "lower": "N/A",
+                "footwear": "N/A",
+                "other": "N/A",
+            },
+            "body_state": "segmented body, eight legs, and mandibles",
+            "physical_condition": "N/A",
+            "held_props": [],
+        }
+
+        opening = minimax.format_authoritative_opening_state(
+            state,
+            self.SUBJECTS,
+        )
+
+        self.assertIn(
+            "<Subject 3> spider-alien continues from <Video 1>",
+            opening,
+        )
+        self.assertIn(
+            "<Subject 3>: fully_preserved - Preserve spider-alien's "
+            "established appearance from <Video 1>.",
+            opening,
+        )
+        self.assertIn(
+            "Body state: segmented body, eight legs, and mandibles",
+            opening,
+        )
+
+    def test_continuity_candidate_records_new_subject_creation_segment(self):
+        candidate = minimax.normalize_structured_continuity_state(
+            {
+                "subjects": {
+                    "spider-alien": {
+                        "subject_id": 3,
+                        "name": "spider-alien",
+                        "position": "above Connie",
+                        "pose_action": "crawling forward",
+                        "body_state": "segmented body and eight legs",
+                    }
+                }
+            },
+            self.SUBJECTS,
+            origin_segment=2,
+        )
+
+        created = candidate["subjects"]["spider-alien"]
+        self.assertEqual(created["subject_id"], 3)
+        self.assertEqual(created["picture_ids"], [])
+        self.assertEqual(created["origin_segment"], 2)
+
+        preserved = minimax.normalize_structured_continuity_state(
+            {
+                "subjects": {
+                    "spider-alien": {
+                        "subject_id": 99,
+                        "origin_segment": 99,
+                        "position": "beside Connie",
+                    }
+                }
+            },
+            self.SUBJECTS,
+            candidate,
+            origin_segment=3,
+        )
+        self.assertEqual(
+            preserved["subjects"]["spider-alien"]["subject_id"],
+            3,
+        )
+        self.assertEqual(
+            preserved["subjects"]["spider-alien"]["origin_segment"],
+            2,
+        )
 
     def test_structured_candidate_preserves_wardrobe_when_not_changed(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)

@@ -268,30 +268,35 @@ will reject the workflow. For real identity continuity:
 Numeric ComfyUI node IDs may change when you export. That is safe: the Python
 program finds automation-controlled nodes by title, not by node number.
 
-Each line in `beats.txt` may end with a beat-specific LoRA option:
+Each line in `beats.txt` may end with any number of beat-specific LoRA options:
 
 ```text
-The portal opens --lora my_style.safetensors:0.8
+The portal opens --lora my_style.safetensors:0.8 --lora portal_glow.safetensors:0.45
 ```
 
-The option is removed before beat text is sent to the LLM. It applies while
-that beat is active. After the beat is completed, the next beat's LoRA is used;
-beats without an option use `default.safetensors` at strength `0.01`.
-NOTE: You must have a default.safetensors LoRA in the default directory, it doesn't matter
-what it is as it will be as strength 0.01
+The options are removed before beat text is sent to the LLM and apply while
+that beat is active. Every option requires the exact
+`[lora_name]:[strength]` form. There is no fallback LoRA and
+`default.safetensors` is not required.
+
+Repeat `--lora [lora_name]:[strength]` on the command line to apply any number
+of global LoRAs to every beat. Beat-specific LoRAs are appended after the
+global LoRAs in the order written; duplicate names are preserved. For each
+segment, the program removes the workflow's blank placeholder when the merged
+list is empty, reuses it for the first LoRA, and adds/chains as many additional
+`LoraLoaderModelOnly` nodes as needed in both API workflows.
 
 To automatically generate beats while applying one LoRA to every generated beat,
 put only a file-level directive in `beats.txt` (comments and blank lines are also
 allowed):
 
 ```text
---lora minimax_h3_lighting.safetensors
+--lora minimax_h3_lighting.safetensors:1.0
 ```
 
 The directive is metadata, not a story beat. The program treats the file as empty,
 generates the required number of beats, and appends the directive to every saved
-beat. An explicit file-level LoRA without a strength uses strength `1.0`; a custom
-strength can be specified with `--lora filename.safetensors:0.8`.
+beat. This legacy file-level metadata form also requires an explicit strength.
 
 ## 6. Set up LM Studio
 
@@ -315,9 +320,8 @@ http://127.0.0.1:1234
 ```
 
 The checked-in `minimax.py` defaults to `http://192.168.0.203:1234`. Override
-`MINIMAX_LM_STUDIO_URL` for a different server. Requests explicitly select
-`ministral-3-14b-instruct-2512-absolute-heresy.i1-q5_k_m_gguf` by default;
-override `MINIMAX_LM_STUDIO_MODEL` when LM Studio exposes a different model ID.
+`MINIMAX_LM_STUDIO_URL` for a different server. The script does not send a
+model name to LM Studio; it uses whichever chat model the user has loaded.
 If LM Studio and this script run on the same computer, use:
 
 ```powershell
@@ -347,7 +351,6 @@ export MINIMAX_COMFYUI_OUTPUT="$HOME/ComfyUI/output"
 export MINIMAX_VIDEO_OUTPUT="$HOME/ComfyUI/output/video"
 export MINIMAX_COMFY_URL="http://127.0.0.1:8188"
 export MINIMAX_LM_STUDIO_URL="http://127.0.0.1:1234"
-export MINIMAX_LM_STUDIO_MODEL="ministral-3-14b-instruct-2512-absolute-heresy.i1-q5_k_m_gguf"
 ```
 
 Windows PowerShell:
@@ -358,7 +361,6 @@ $env:MINIMAX_COMFYUI_OUTPUT = "H:\images\output"
 $env:MINIMAX_VIDEO_OUTPUT = "H:\images\output\video"
 $env:MINIMAX_COMFY_URL = "http://127.0.0.1:8188"
 $env:MINIMAX_LM_STUDIO_URL = "http://192.168.0.203:1234"
-$env:MINIMAX_LM_STUDIO_MODEL = "ministral-3-14b-instruct-2512-absolute-heresy.i1-q5_k_m_gguf"
 ```
 
 `MINIMAX_COMFYUI_OUTPUT` must be the output directory used by the ComfyUI
@@ -445,6 +447,22 @@ Picture references establish visual identity/body appearance only; they never
 establish current clothing. Current wardrobe comes from the committed
 continuity state or a successfully rendered wardrobe change.
 
+If a rendered segment introduces a persistent subject that has no Picture
+reference, the continuity updater assigns the next stable `<Subject N>` ID.
+Only after that segment renders successfully, Python appends an entry like this
+to the existing file:
+
+```text
+<Subject 3> is spider-alien, created in generated video segment 2 and continued from <Video 1>.
+```
+
+The same `origin_segment` is stored in `generation_state.json`. Later segments
+reuse the ID and origin, include the entry under `subject_definitions`, and use
+the immediately preceding `<Video 1>` as that subject's visual reference. No
+Picture tag is invented for a video-created subject. These program-generated
+lines are excluded from the user-source fingerprint, so appending them does not
+invalidate `--resume` for the active run.
+
 When `beats.txt` is generated automatically, parsed subjects are sent to LM
 Studio as the main characters. Canonical names and available descriptive
 clauses (for example, `Mark is a 40-year-old man`) are included in both the
@@ -525,7 +543,7 @@ initial clip.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--model {ministral,qwen}] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -539,7 +557,16 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `MEGAPIXELS` | Initial workflow resolution target; must be greater than zero. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
 | `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
+| `--model {ministral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `ministral`. |
+| `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |
 | `ff` or `--ff` | Add opening-frame instructions for `<Picture 1>` when generating segment 1; defaults to disabled. |
+
+For example, this applies two global LoRAs to every segment; any LoRAs declared
+on the active beat are added after them:
+
+```powershell
+python minimax.py 5 60 0.5 --lora style.safetensors:0.7 --lora motion.safetensors:0.35
+```
 
 ### Example: new 60-second run
 
@@ -606,9 +633,12 @@ workflow, preserve these titles or update the matching constants in
 - A background LM Studio request proposes a structured continuity candidate for
   the current segment. It becomes authoritative only after ComfyUI successfully
   renders that segment.
-- The next director request receives `AUTHORITATIVE OPENING STATE` rendered
+- The next director request receives an authoritative opening state rendered
   directly from the last committed structured state and the two newest exact
-  prompts, instead of an independently maintained prose summary.
+  prompts, instead of an independently maintained prose summary. The outgoing
+  MiniMax H3 prompt expresses it as a `<Video 1>` continuation block with
+  `summary` and `retention_analysis` sections. It omits internal field labels
+  and unknown `N/A` values.
 - Prompt authority is ordered: BEAT STATE controls plot progression;
   AUTHORITATIVE OPENING STATE controls current physical continuity; SUBJECT
   REGISTRY controls identity and Picture mappings; recent generated segments
@@ -622,7 +652,8 @@ workflow, preserve these titles or update the matching constants in
   ending disproportionate authority.
 - New checkpoints include a versioned `continuity_state` envelope alongside
   independently addressable environment, camera, subject position, pose,
-  wardrobe, condition, props, ongoing action, and audio fields. Older
+  wardrobe, condition, props, ongoing action, audio, video-only subject ID, and
+  subject-origin fields. Older
   checkpoints without that envelope are migrated automatically during resume.
 - Continuity updates are candidates while a segment renders. They are committed
   only after the render succeeds; failed renders discard the candidate and keep
@@ -631,7 +662,7 @@ workflow, preserve these titles or update the matching constants in
   model cannot silently skip a required event.
 
 Outgoing LM Studio requests are appended to `prompt_history.txt` as complete
-JSON records. Each record includes a timestamp, model, response-format flag,
+JSON records. Each record includes a timestamp, response-format flag,
 and any request metadata, followed by the exact normalized message batch.
 
 ## ComfyUI render retries

@@ -126,6 +126,94 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         self.assertEqual(registry[1]["name"], "Amy")
         self.assertEqual(registry[2]["name"], "Bob")
 
+    def test_video_created_subject_definition_has_no_picture_mapping(self):
+        definitions = (
+            "<Subject 3> is spider-alien, created in generated video "
+            "segment 2 and continued from <Video 1>."
+        )
+
+        registry = minimax.parse_subject_registry(definitions)
+
+        self.assertEqual(registry[3]["name"], "spider-alien")
+        self.assertEqual(registry[3]["picture_ids"], [])
+        self.assertIsNone(registry[3]["picture_id"])
+        self.assertEqual(registry[3]["origin_segment"], 2)
+        self.assertEqual(
+            minimax.parse_defined_subjects(definitions),
+            [(3, "spider-alien")],
+        )
+
+    def test_new_video_subject_is_appended_once_with_creation_segment(self):
+        definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
+        state = minimax.continuity_state_for_registry(definitions)
+        state["subjects"]["spider-alien"] = {
+            "subject_id": 2,
+            "name": "spider-alien",
+            "picture_ids": [],
+            "picture_id": None,
+            "speaker_id": None,
+            "origin_segment": 4,
+            "position": "above Amy",
+            "pose_action": "moving",
+            "wardrobe": {
+                "upper": "N/A",
+                "lower": "N/A",
+                "footwear": "N/A",
+                "other": "N/A",
+            },
+            "body_state": "segmented body and eight legs",
+            "physical_condition": "N/A",
+            "held_props": [],
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "subjects.txt")
+            updated, added = minimax.append_video_subject_definitions(
+                definitions,
+                state,
+                origin_segment=4,
+                path=path,
+            )
+            updated_again, added_again = minimax.append_video_subject_definitions(
+                updated,
+                state,
+                origin_segment=5,
+                path=path,
+            )
+
+            with open(path, "r", encoding="utf-8") as file:
+                persisted = file.read()
+
+        expected = (
+            "<Subject 2> is spider-alien, created in generated video "
+            "segment 4 and continued from <Video 1>."
+        )
+        self.assertEqual(added, [expected])
+        self.assertIn(expected, persisted)
+        self.assertEqual(updated_again, updated)
+        self.assertEqual(added_again, [])
+        self.assertEqual(persisted.count("<Subject 2>"), 1)
+
+        continuation = minimax.format_authoritative_opening_state(
+            state,
+            updated,
+        )
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 5] Camera continues from the previous shot. "
+                    "The spider-alien moves above Amy."
+                ),
+                "overall_soundscape": "Metal machinery hums.",
+                "non_diegetic_music": "N/A",
+            },
+            updated,
+            previous_state=continuation,
+            segment_number=5,
+        )
+        self.assertLess(prompt.index(expected), prompt.index("<Video 1>"))
+        self.assertIn("<Subject 2>: fully_preserved", prompt)
+
     def test_append_validation_is_independent_of_exported_node_ids(self):
         workflow = renumber_workflow(self.append)
 
@@ -273,6 +361,64 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             "prepared initial",
         )
         self.assertEqual(scheduler["inputs"]["steps"], 12)
+
+    def test_zero_loras_remove_placeholder_and_bypass_it_in_both_workflows(self):
+        cases = (
+            (self.initial, "79"),
+            (self.append, "138"),
+        )
+        for template, consumer_id in cases:
+            with self.subTest(consumer=consumer_id):
+                workflow = copy.deepcopy(template)
+                minimax.configure_lora_chain(workflow, [], "test workflow")
+
+                self.assertFalse(any(
+                    node.get("class_type") == "LoraLoaderModelOnly"
+                    for node in workflow.values()
+                ))
+                self.assertEqual(workflow[consumer_id]["inputs"]["model"], ["90", 0])
+        self.assertEqual(self.initial["140"]["inputs"]["lora_name"], "")
+        self.assertEqual(self.append["149"]["inputs"]["lora_name"], "")
+
+    def test_unlimited_loras_are_chained_in_order_in_both_workflows(self):
+        specs = [
+            ("global-one.safetensors", 0.4),
+            ("global-two.safetensors", 0.8),
+            ("beat-one.safetensors", -0.2),
+            ("beat-two.safetensors", 1.25),
+        ]
+        cases = (
+            (self.initial, "79"),
+            (self.append, "138"),
+        )
+        for template, consumer_id in cases:
+            with self.subTest(consumer=consumer_id):
+                workflow = copy.deepcopy(template)
+                minimax.configure_lora_chain(workflow, specs, "test workflow")
+                loaders = {
+                    node_id: node
+                    for node_id, node in workflow.items()
+                    if node.get("class_type") == "LoraLoaderModelOnly"
+                }
+                self.assertEqual(len(loaders), len(specs))
+
+                reversed_chain = []
+                current_id = workflow[consumer_id]["inputs"]["model"][0]
+                while current_id in loaders:
+                    loader = loaders[current_id]
+                    reversed_chain.append((
+                        loader["inputs"]["lora_name"],
+                        loader["inputs"]["strength_model"],
+                    ))
+                    current_id = loader["inputs"]["model"][0]
+                self.assertEqual(current_id, "90")
+                self.assertEqual(list(reversed(reversed_chain)), specs)
+
+                if consumer_id == "79":
+                    self.assertEqual(
+                        workflow["80"]["inputs"]["model"],
+                        workflow["79"]["inputs"]["model"],
+                    )
 
     def test_append_preparation_updates_nodes_by_title_after_renumbering(self):
         workflow = renumber_workflow(self.append)

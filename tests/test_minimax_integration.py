@@ -38,7 +38,7 @@ def context_for(beat_number):
 
 def response(description, completed):
     return {
-        "integrated_multimodal_description": description,
+        "detailed_description": description,
         "overall_soundscape": "Crowds murmur while footsteps cross the pavement.",
         "non_diegetic_music": "N/A",
         "completed_beat_ids": completed
@@ -82,7 +82,10 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertEqual(registry[1]["picture_ids"], [1, 2])
         self.assertEqual(state["subjects"]["Mark"]["picture_ids"], [1, 2])
         opening = minimax.format_authoritative_opening_state(state, definitions)
-        self.assertIn("Mark <Picture 1> <Picture 2>", opening)
+        self.assertIn(
+            "Preserve Mark's identity from <Picture 1> and <Picture 2>",
+            opening,
+        )
 
     def test_picture_reference_can_be_shared_by_multiple_subject_definitions(self):
         definitions = (
@@ -151,7 +154,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             opening,
         )
         integrated_line = opening.split(
-            "integrated_multimodal_description: ",
+            "detailed_description: ",
             1,
         )[1].splitlines()[0]
         self.assertEqual(
@@ -556,7 +559,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
     @mock.patch("minimax.requests.post")
-    def test_ask_llm_selects_configured_ministral_model(self, post):
+    def test_ask_llm_uses_the_model_loaded_by_the_user(self, post):
         payload = response(
             "[Shot 1] Live-action, cinematic, Mark, Jill, and Mark's family "
             "stand together in a busy theme park.",
@@ -567,7 +570,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertEqual(minimax.ask_llm([]), payload)
 
         request_json = post.call_args.kwargs["json"]
-        self.assertEqual(request_json["model"], minimax.LM_STUDIO_MODEL)
+        self.assertNotIn("model", request_json)
         self.assertEqual(request_json["response_format"], minimax.RESPONSE_FORMAT)
 
     @mock.patch("minimax.generate_random_llm_seed", return_value=8675309)
@@ -786,7 +789,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
     @mock.patch("minimax.requests.post")
     def test_plain_labeled_response_reaches_python_formatter_without_retry(self, post):
         labeled = (
-            "integrated_multimodal_description: [Shot 1] Live-action, "
+            "detailed_description: [Shot 1] Live-action, "
             "cinematic, Mark, Jill, and Mark's family stand together in a "
             "busy theme park.\n\n"
             "overall_soundscape: Crowds murmur while footsteps cross the pavement.\n\n"
@@ -801,12 +804,12 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertEqual(post.call_count, 1)
         self.assertEqual(formatted["completed_beat_ids"], [1])
         self.assertTrue(
-            formatted["integrated_multimodal_description"].startswith("[Shot 1]")
+            formatted["detailed_description"].startswith("[Shot 1]")
         )
 
     def test_python_repair_does_not_make_an_extra_llm_call(self):
         malformed = response(
-            "**integrated_multimodal_description:** [Shot 9] At 00:00.000, "
+            "**detailed_description:** [Shot 9] At 00:00.000, "
             "Live-action, cinematic, Mark, Jill, and Mark's family stand "
             "together in a busy theme park.",
             ["B001"]
@@ -821,7 +824,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
         self.assertEqual(llm_request.call_count, 1)
         self.assertTrue(
-            formatted["integrated_multimodal_description"].startswith("[Shot 1]")
+            formatted["detailed_description"].startswith("[Shot 1]")
         )
 
     def test_unresolved_content_retries_then_uses_best_effort_without_exiting(self):
@@ -839,7 +842,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
         self.assertEqual(llm_request.call_count, 3)
         self.assertIn("Jill look at the sky", result[
-            "integrated_multimodal_description"
+            "detailed_description"
         ])
 
     def test_content_correction_uses_stateless_system_user_roles_and_can_succeed(self):
@@ -887,7 +890,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         self.assertEqual(llm_request.call_count, 2)
-        self.assertIn("look at the sky", result["integrated_multimodal_description"])
+        self.assertIn("look at the sky", result["detailed_description"])
 
     @mock.patch("minimax.format_ministral_prompt")
     def test_formatter_exception_uses_raw_best_effort_without_exiting(self, formatter):
@@ -906,8 +909,8 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
         self.assertEqual(llm_request.call_count, 3)
         self.assertEqual(
-            result["integrated_multimodal_description"],
-            raw["integrated_multimodal_description"]
+            result["detailed_description"],
+            raw["detailed_description"]
         )
 
     @mock.patch("minimax.validate_ministral_prompt")
@@ -926,7 +929,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         self.assertEqual(llm_request.call_count, 3)
-        self.assertIn("Mark", result["integrated_multimodal_description"])
+        self.assertIn("Mark", result["detailed_description"])
 
     def test_context_uses_real_total_segment_deadline(self):
         before_deadline = minimax.build_ministral_context(
@@ -978,7 +981,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertTrue(prompt.startswith("subject_definitions:"))
         self.assertNotIn("All language is in English", prompt)
         self.assertNotIn("completed_beat_ids", prompt)
-        self.assertEqual(prompt.count("integrated_multimodal_description:"), 1)
+        self.assertEqual(prompt.count("detailed_description:"), 1)
         self.assertEqual(prompt.count("overall_soundscape:"), 1)
         self.assertEqual(prompt.count("non_diegetic_music:"), 1)
 
@@ -1022,9 +1025,9 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
         subject_text = prompt.split(
             "subject_definitions: ", 1
-        )[1].split("\n\nintegrated_multimodal_description:", 1)[0]
+        )[1].split("\n\ndetailed_description:", 1)[0]
         integrated = prompt.split(
-            "integrated_multimodal_description: ", 1
+            "detailed_description: ", 1
         )[1].split("\n\noverall_soundscape:", 1)[0]
         self.assertTrue(
             integrated.startswith("[Shot 3] Camera cuts to a new shot:")
@@ -1097,7 +1100,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertNotIn("Previous state:", prompt)
         self.assertNotIn("stale value", prompt)
 
-    def test_previous_state_precedes_integrated_description(self):
+    def test_previous_state_precedes_detailed_description(self):
         formatted = response(
             "[Shot 2] At 00:01.000, Mark continues through the theme park.",
             [],
@@ -1119,7 +1122,37 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertIn(marker, prompt)
         self.assertLess(
             prompt.index(marker),
-            prompt.index("integrated_multimodal_description:"),
+            prompt.index("detailed_description:"),
+        )
+
+    def test_reference_continuation_block_precedes_detailed_description(self):
+        formatted = {
+            "detailed_description": (
+                "[Shot 2] Camera continues from the previous shot. Mark waits."
+            ),
+            "overall_soundscape": "Quiet room tone.",
+            "non_diegetic_music": "N/A",
+            "completed_beat_ids": [],
+        }
+        state = minimax.continuity_state_for_registry(SUBJECTS)
+        state["environment"]["location"] = "theme park midway"
+        continuation = minimax.format_authoritative_opening_state(
+            state,
+            SUBJECTS,
+        )
+
+        prompt = minimax.build_h3_prompt(
+            formatted,
+            SUBJECTS,
+            previous_state=continuation,
+            segment_number=2,
+        )
+
+        self.assertIn("<Video 1> is the immediately preceding", prompt)
+        self.assertIn("retention_analysis:", prompt)
+        self.assertLess(
+            prompt.index("<Video 1> is the immediately preceding"),
+            prompt.index("detailed_description:"),
         )
 
     def test_hard_cut_never_uses_vague_continuity_when_clothing_is_unknown(self):
@@ -1243,7 +1276,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         prompt = minimax.build_h3_prompt(result, definitions, continuity)
         subject_section = prompt.split(
             "subject_definitions: ", 1
-        )[1].split("\n\nintegrated_multimodal_description:", 1)[0]
+        )[1].split("\n\ndetailed_description:", 1)[0]
 
         self.assertTrue(subject_section.startswith(definitions))
         self.assertIn("at arcade entrance", subject_section)

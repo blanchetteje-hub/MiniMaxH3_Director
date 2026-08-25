@@ -344,7 +344,7 @@ class BeatGenerationTests(unittest.TestCase):
             "A mechanic discovers a message inside an antique radio.",
             "She follows its warning and prevents the station fire.",
         ]
-        directive = "--lora minimax_h3_lighting.safetensors"
+        directive = "--lora minimax_h3_lighting.safetensors:1.0"
         llm_request = mock.Mock(return_value={"beats": generated})
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, "beats.txt")

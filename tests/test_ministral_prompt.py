@@ -16,7 +16,7 @@ from ministral_formatter import format_ministral_prompt, validate_ministral_prom
 
 
 CORE_KEYS = (
-    "integrated_multimodal_description",
+    "detailed_description",
     "overall_soundscape",
     "non_diegetic_music",
     "completed_beat_ids",
@@ -62,7 +62,7 @@ def result(
     completed: list[int] | None = None,
 ) -> dict:
     return {
-        "integrated_multimodal_description": description,
+        "detailed_description": description,
         "overall_soundscape": soundscape,
         "non_diegetic_music": music,
         "completed_beat_ids": [] if completed is None else completed,
@@ -70,8 +70,24 @@ def result(
 
 
 class FieldAndFixedPointTests(unittest.TestCase):
+    def test_legacy_description_field_is_migrated_to_detailed_description(self) -> None:
+        raw = {
+            "integrated_multimodal_description": (
+                "[Shot 1] Live-action, cinematic, Mark, Jill, and Mark's "
+                "family stand together in a busy theme park."
+            ),
+            "overall_soundscape": "Crowd chatter fills the park.",
+            "non_diegetic_music": "N/A",
+            "completed_beat_ids": [1],
+        }
+
+        formatted = format_ministral_prompt(raw, context_for(1))
+
+        self.assertIn("detailed_description", formatted)
+        self.assertNotIn("integrated_multimodal_description", formatted)
+
     def test_plain_labeled_response_is_parsed_without_markdown(self) -> None:
-        raw = """integrated_multimodal_description: [Shot 1] Live-action, cinematic, Mark, Jill, and Mark's family stand together in a busy theme park.
+        raw = """detailed_description: [Shot 1] Live-action, cinematic, Mark, Jill, and Mark's family stand together in a busy theme park.
 
 overall_soundscape: Crowd chatter and footsteps fill the park.
 
@@ -87,8 +103,8 @@ completed_beat_ids: [1]"""
 
     def test_code_fenced_json_and_decorated_duplicate_labels_are_cleaned(self) -> None:
         raw = {
-            "integrated_multimodal_description": (
-                "**integrated_multimodal_description:** [Shot 1] Live-action, cinematic, "
+            "detailed_description": (
+                "**detailed_description:** [Shot 1] Live-action, cinematic, "
                 "a medium-wide shot shows Mark, Jill, and Mark's family together at a busy "
                 "theme park."
             ),
@@ -103,7 +119,7 @@ completed_beat_ids: [1]"""
         formatted = format_ministral_prompt(fenced, context_for(1))
 
         self.assertEqual(tuple(formatted), CORE_KEYS)
-        self.assertTrue(formatted["integrated_multimodal_description"].startswith("[Shot 1]"))
+        self.assertTrue(formatted["detailed_description"].startswith("[Shot 1]"))
         for value in formatted.values():
             if isinstance(value, str):
                 self.assertNotIn("```", value)
@@ -144,7 +160,7 @@ completed_beat_ids: [1]"""
 
     def test_repair_loop_reaches_a_fixed_point_on_repeated_noise(self) -> None:
         noisy = result(
-            "**integrated_multimodal_description:** " * 12
+            "**detailed_description:** " * 12
             + "[Shot 1] At 00:00.000, Live-action, cinematic, Mark, Jill, and Mark's family "
             "stand together in the theme park.",
             music="NONE.",
@@ -174,7 +190,7 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
         formatted = format_ministral_prompt(malformed, context)
-        description = formatted["integrated_multimodal_description"]
+        description = formatted["detailed_description"]
 
         self.assertIn("Mary Jane Watson <Picture 4> charges forward", description)
         self.assertEqual(description.count("<Picture 4>"), 1)
@@ -191,7 +207,7 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
         formatted = format_ministral_prompt(malformed, context)
-        description = formatted["integrated_multimodal_description"]
+        description = formatted["detailed_description"]
 
         self.assertIn("Amy <Picture 1> (S1) says:", description)
         self.assertEqual(validate_ministral_prompt(formatted, context), [])
@@ -212,14 +228,14 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
         formatted = format_ministral_prompt(malformed, context)
-        description = formatted["integrated_multimodal_description"]
+        description = formatted["detailed_description"]
 
         self.assertIn("Amy's expression", description)
         self.assertNotIn("Amy 's", description)
 
     def test_trailing_parenthesized_timestamp_moves_before_its_action(self) -> None:
         malformed = result(
-            "integrated_multimodal_description: [Shot 17] Camera cuts to a "
+            "detailed_description: [Shot 17] Camera cuts to a "
             "new shot: Jack’s smirk fades into a mischievous grin as he hooks "
             "both thumbs onto his jeans (00:01.200)."
         )
@@ -235,7 +251,7 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
         formatted = format_ministral_prompt(malformed, context)
-        description = formatted["integrated_multimodal_description"]
+        description = formatted["detailed_description"]
 
         self.assertEqual(
             description,
@@ -258,7 +274,7 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
         description = format_ministral_prompt(malformed, context_for(3))[
-            "integrated_multimodal_description"
+            "detailed_description"
         ]
 
         self.assertTrue(description.startswith("[Shot 3] Camera cuts to a new shot:"))
@@ -271,7 +287,7 @@ class VisualFormattingTests(unittest.TestCase):
         description = format_ministral_prompt(
             malformed,
             context_for(2, hard_cut_required=False),
-        )["integrated_multimodal_description"]
+        )["detailed_description"]
 
         self.assertTrue(
             description.startswith(
@@ -288,7 +304,7 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
         description = format_ministral_prompt(malformed, context_for(3))[
-            "integrated_multimodal_description"
+            "detailed_description"
         ]
 
         self.assertTrue(
@@ -324,7 +340,7 @@ class VisualFormattingTests(unittest.TestCase):
             any("after the first" in issue for issue in issues),
             issues,
         )
-        self.assertIn("At 00:01.200,", formatted["integrated_multimodal_description"])
+        self.assertIn("At 00:01.200,", formatted["detailed_description"])
 
     def test_orphan_timestamp_fragments_are_removed(self) -> None:
         malformed = result(
@@ -336,7 +352,7 @@ class VisualFormattingTests(unittest.TestCase):
         description = format_ministral_prompt(
             malformed,
             context_for(2),
-        )["integrated_multimodal_description"]
+        )["detailed_description"]
 
         self.assertNotIn("At 00:05.200, and", description)
         self.assertNotIn("At 00:06.800, .", description)
@@ -357,7 +373,7 @@ class VisualFormattingTests(unittest.TestCase):
             ),
         )
 
-        description = formatted["integrated_multimodal_description"]
+        description = formatted["detailed_description"]
         self.assertTrue(
             description.startswith(
                 "[Shot 2] Camera continues from the previous shot."
@@ -387,7 +403,7 @@ class VisualFormattingTests(unittest.TestCase):
             context_for(2),
         )
 
-        description = formatted["integrated_multimodal_description"]
+        description = formatted["detailed_description"]
         self.assertIn(
             "At 00:01.000, the camera moves toward the doorway.\n"
             "At 00:03.500, the camera cuts to the hallway.",
@@ -403,7 +419,7 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
         repaired = format_ministral_prompt(malformed, context_for(2))
-        description = repaired["integrated_multimodal_description"]
+        description = repaired["detailed_description"]
 
         self.assertTrue(description.startswith("[Shot 2]"))
         self.assertEqual(re.findall(r"\[Shot\s+\d+\]", description), ["[Shot 2]"])
@@ -418,7 +434,7 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
         description = format_ministral_prompt(malformed, context_for(2))[
-            "integrated_multimodal_description"
+            "detailed_description"
         ]
 
         self.assertRegex(
@@ -436,7 +452,7 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
         description = format_ministral_prompt(malformed, context_for(1))[
-            "integrated_multimodal_description"
+            "detailed_description"
         ]
 
         self.assertIn("Mark <Picture 1>", description)
@@ -455,7 +471,7 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
         description = format_ministral_prompt(malformed, context_for(1))[
-            "integrated_multimodal_description"
+            "detailed_description"
         ]
 
         self.assertIn('sign reading "ALIEN INVASION"', description)
@@ -471,7 +487,7 @@ class DialogueFormattingTests(unittest.TestCase):
         )
 
         description = format_ministral_prompt(malformed, context_for(2))[
-            "integrated_multimodal_description"
+            "detailed_description"
         ]
 
         self.assertIn("Mark (S1)", description)
@@ -490,7 +506,7 @@ class DialogueFormattingTests(unittest.TestCase):
         )
 
         description = format_ministral_prompt(malformed, context_for(3))[
-            "integrated_multimodal_description"
+            "detailed_description"
         ]
 
         self.assertNotRegex(description, r"\bS[56]\b")
@@ -509,7 +525,7 @@ class DialogueFormattingTests(unittest.TestCase):
         )
 
         description = format_ministral_prompt(malformed, context_for(3))[
-            "integrated_multimodal_description"
+            "detailed_description"
         ]
 
         self.assertNotIn("Mark (S2)", description)
@@ -525,7 +541,7 @@ class DialogueFormattingTests(unittest.TestCase):
         )
 
         description = format_ministral_prompt(malformed, context_for(3))[
-            "integrated_multimodal_description"
+            "detailed_description"
         ]
 
         self.assertIn("Mark (S1)", description)
@@ -543,7 +559,7 @@ class DialogueFormattingTests(unittest.TestCase):
         )
 
         description = format_ministral_prompt(malformed, context_for(3))[
-            "integrated_multimodal_description"
+            "detailed_description"
         ]
 
         self.assertIn("(S1,S2)", description)
@@ -557,7 +573,7 @@ class DialogueFormattingTests(unittest.TestCase):
         )
 
         description = format_ministral_prompt(malformed, context_for(3))[
-            "integrated_multimodal_description"
+            "detailed_description"
         ]
 
         self.assertIn("says in an off-screen voiceover", description)
@@ -667,7 +683,7 @@ class CompletionMetadataTests(unittest.TestCase):
 
         self.assertNotIn(
             "completed_beat_ids",
-            repaired["integrated_multimodal_description"],
+            repaired["detailed_description"],
         )
         self.assertEqual(repaired["completed_beat_ids"], [2])
 
@@ -691,7 +707,7 @@ class BeatFixtureTests(unittest.TestCase):
 
     def test_b001_malformed_and_valid_fixtures(self) -> None:
         malformed = result(
-            "integrated_multimodal_description: [Shot 7] At 00:00.000, Live-action, "
+            "detailed_description: [Shot 7] At 00:00.000, Live-action, "
             "cinematic, Mark <Subject 1>, Jill <Subject 2>, and Mark's family <Subject 3> "
             "stand together amid the theme park crowd.",
             music="none",
@@ -743,7 +759,7 @@ class BeatFixtureTests(unittest.TestCase):
         )
 
         formatted = self.assert_valid_after_formatting(malformed, 3)
-        description = formatted["integrated_multimodal_description"]
+        description = formatted["detailed_description"]
         self.assertIn("<d>[English] What is happening?!</d>", description)
         self.assertIn("<d>[English] I don't know, those things aren't planes.</d>", description)
         self.assertEqual(format_ministral_prompt(valid, context_for(3)), valid)

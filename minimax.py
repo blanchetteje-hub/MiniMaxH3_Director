@@ -9,6 +9,7 @@ PREVIOUS_STATE_FIELDS = (
     "Ongoing audio",
 )
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -27,10 +28,44 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 
 from ministral_formatter import (
-    format_ministral_prompt,
+    MinistralFormatter,
     normalize_summary_subject_references,
-    validate_ministral_prompt,
 )
+from qwen_formatter import QwenFormatter
+
+
+FORMATTER_CLASSES = {
+    "ministral": MinistralFormatter,
+    "qwen": QwenFormatter,
+}
+ACTIVE_FORMATTER = MinistralFormatter()
+
+
+def get_formatter(model):
+    """Return the requested response formatter."""
+
+    try:
+        formatter_class = FORMATTER_CLASSES[str(model).strip().lower()]
+    except KeyError as error:
+        supported = ", ".join(FORMATTER_CLASSES)
+        raise ValueError(
+            f"Unsupported formatter model {model!r}; choose one of: {supported}."
+        ) from error
+    return formatter_class()
+
+
+def configure_formatter(model):
+    """Select the formatter used by the existing generation pipeline."""
+
+    global ACTIVE_FORMATTER, format_ministral_prompt, validate_ministral_prompt
+    ACTIVE_FORMATTER = get_formatter(model)
+    # Keep these established names as compatibility seams for callers/tests.
+    format_ministral_prompt = ACTIVE_FORMATTER.format_prompt
+    validate_ministral_prompt = ACTIVE_FORMATTER.validate_prompt
+    return ACTIVE_FORMATTER
+
+
+configure_formatter("ministral")
 
 
 # ============================================================
@@ -43,10 +78,6 @@ LM_STUDIO_URL = os.environ.get(
     "MINIMAX_LM_STUDIO_URL",
     "http://192.168.0.203:1234"
 ).rstrip("/")
-LM_STUDIO_MODEL = os.environ.get(
-    "MINIMAX_LM_STUDIO_MODEL",
-    "ministral-3-14b-instruct-2512-absolute-heresy.i1-q5_k_m_gguf"
-).strip()
 COMFY_URL = os.environ.get(
     "MINIMAX_COMFY_URL",
     "http://127.0.0.1:8188"
@@ -107,7 +138,7 @@ COMFY_HISTORY_RETRY_DELAY = 10
 COMFY_RENDER_TIMEOUT = 15 * 60
 COMFY_RENDER_RETRIES = 10
 COMFY_RETRY_MEGAPIXEL_STEP = 0.02
-CONTINUITY_STATE_VERSION = 1
+CONTINUITY_STATE_VERSION = 3
 
 LLM_INPUT_TOKEN_BUDGET = 14000
 CHARS_PER_TOKEN_ESTIMATE = 3.5
@@ -125,6 +156,16 @@ BEAT_LLM_SAMPLING_PARAMETERS = {
     "frequency_penalty": 0.3,
     "repeat_penalty": 1.08,
 }
+
+# Continuity safety rails. These are deliberately conservative: when the
+# text-only continuity updater is uncertain, preserving the last committed
+# state is safer than inventing a new irreversible body configuration.
+SEMANTIC_SEGMENT_AUDIT = os.environ.get(
+    "MINIMAX_SEMANTIC_SEGMENT_AUDIT", "1"
+).strip().lower() not in {"0", "false", "no", "off"}
+CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
+    "MINIMAX_CONTINUITY_STRICT", "1"
+).strip().lower() not in {"0", "false", "no", "off"}
 
 # These titles are intentionally used instead of numeric ComfyUI node IDs.
 DURATION_NODE_NAME = "Float (duration)"
@@ -190,6 +231,23 @@ def parse_args(arguments=None):
         help="set the BasicScheduler step count (default: 6)"
     )
     parser.add_argument(
+        "--model",
+        choices=tuple(FORMATTER_CLASSES),
+        default="ministral",
+        help="select the response formatter (default: ministral)",
+    )
+    parser.add_argument(
+        "--lora",
+        action="append",
+        default=[],
+        type=parse_lora_spec,
+        metavar="LORA_NAME:STRENGTH",
+        help=(
+            "apply this LoRA to every beat; repeat --lora to apply multiple "
+            "LoRAs in order"
+        ),
+    )
+    parser.add_argument(
         "ff",
         nargs="?",
         choices=("ff",),
@@ -244,7 +302,7 @@ RESPONSE_FORMAT = {
         "schema": {
             "type": "object",
             "properties": {
-                "integrated_multimodal_description": {"type": "string"},
+                "detailed_description": {"type": "string"},
                 "overall_soundscape": {"type": "string"},
                 "non_diegetic_music": {"type": "string"},
                 "completed_beat_ids": {
@@ -253,7 +311,7 @@ RESPONSE_FORMAT = {
                 }
             },
             "required": [
-                "integrated_multimodal_description",
+                "detailed_description",
                 "overall_soundscape",
                 "non_diegetic_music",
                 "completed_beat_ids"
@@ -422,12 +480,26 @@ def build_run_config(
     story="",
     beats=None,
     subject_definitions="",
+    global_loras=None,
 ):
+    # Auto-discovered video subjects are durable continuity metadata, not a
+    # user edit to the creative source. Excluding those appended lines keeps a
+    # resumable run's source fingerprint stable as its registry grows.
+    source_subject_definitions = "\n".join(
+        line
+        for line in str(subject_definitions or "").splitlines()
+        if not re.search(
+            r"(?i)\b(?:created|established)\s+in\s+generated\s+video\s+"
+            r"segment\s+\d+",
+            line,
+        )
+    )
     source_payload = json.dumps(
         {
             "story": story,
             "beats": serialize_beats(beats),
-            "subject_definitions": subject_definitions,
+            "global_loras": [list(lora) for lora in (global_loras or ())],
+            "subject_definitions": source_subject_definitions,
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -463,6 +535,7 @@ def parse_subject_registry(subject_definitions):
         if line.strip() and not line.strip().startswith("#")
     ]
     for line in raw_lines:
+        video_origin = False
         match = re.match(
             r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+is\s+"
             r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*?)\s*,\s+",
@@ -490,6 +563,12 @@ def parse_subject_registry(subject_definitions):
                 for value in re.findall(r"(?i)<Picture\s+(\d+)>", line)
             ]
             picture_ids = list(dict.fromkeys(picture_ids))
+            video_origin = bool(re.search(
+                r"(?i)\b(?:created|established)\s+(?:by\s+<Video\s+1>|"
+                r"in\s+generated\s+"
+                r"video\s+segment\s+\d+)",
+                line,
+            ))
             speaker_id = (
                 f"S{speaker}"
                 if (speaker := next(iter(re.findall(r"(?i)\(S(\d+)\)", line)), None))
@@ -497,7 +576,7 @@ def parse_subject_registry(subject_definitions):
             )
         if match is None:
             continue
-        if not picture_ids:
+        if not picture_ids and not video_origin:
             continue
         picture_ids = list(dict.fromkeys(picture_ids))
         if subject_id in registry:
@@ -508,12 +587,20 @@ def parse_subject_registry(subject_definitions):
             item.get("speaker_id") == speaker_id for item in registry.values()
         ):
             raise ValueError(f"Duplicate speaker ID: {speaker_id}")
-        registry[subject_id] = {
+        registry_record = {
             "name": name,
             "picture_ids": picture_ids,
-            "picture_id": picture_ids[0],
+            "picture_id": picture_ids[0] if picture_ids else None,
             "speaker_id": speaker_id,
         }
+        origin_match = re.search(
+            r"(?i)\b(?:created|established)\s+in\s+generated\s+video\s+"
+            r"segment\s+(\d+)",
+            line,
+        )
+        if origin_match:
+            registry_record["origin_segment"] = int(origin_match.group(1))
+        registry[subject_id] = registry_record
     #if len(registry) != len(raw_lines):
     #    raise ValueError(
     #        "Every subject definition must declare one <Subject N> and "
@@ -523,11 +610,21 @@ def parse_subject_registry(subject_definitions):
 
 
 def new_subject_continuity_record(subject):
+    picture_ids = [
+        int(picture_id)
+        for picture_id in subject.get("picture_ids", [])
+        if picture_id is not None
+    ]
+    picture_id = subject.get("picture_id")
+    if picture_id is None and picture_ids:
+        picture_id = picture_ids[0]
     return {
         "subject_id": subject.get("subject_id"),
-        "picture_ids": list(subject.get("picture_ids", [subject["picture_id"]])),
-        "picture_id": subject["picture_id"],
+        "name": subject.get("name"),
+        "picture_ids": picture_ids,
+        "picture_id": picture_id,
         "speaker_id": subject.get("speaker_id"),
+        "origin_segment": subject.get("origin_segment"),
         "position": "N/A",
         "pose_action": "N/A",
         "wardrobe": {
@@ -536,6 +633,10 @@ def new_subject_continuity_record(subject):
             "footwear": "N/A",
             "other": "N/A",
         },
+        # Persistent structural relationships belong here instead of being
+        # mixed into transient pose/action prose. Examples: "fused to Jenny
+        # at the waistline", "head attached", "left hand detached".
+        "topology": "N/A",
         "body_state": "N/A",
         "physical_condition": "N/A",
         "held_props": [],
@@ -543,7 +644,7 @@ def new_subject_continuity_record(subject):
 
 
 def continuity_state_for_registry(subject_definitions, state=None):
-    """Return structured state with registry identities and independent fields."""
+    """Return state with registered identities plus stable video-only subjects."""
     current = migrate_continuity_state(state) if state else new_continuity_state()
     registry = parse_subject_registry(subject_definitions)
     if isinstance(current.get("subjects"), dict):
@@ -554,14 +655,23 @@ def continuity_state_for_registry(subject_definitions, state=None):
             name = str(key)
             if isinstance(key, str) and key.isdigit() and registry:
                 subject_id = int(key)
-                name = next(
+                registered_name = next(
                     (
                         subject["name"]
                         for subject_id_key, subject in registry.items()
                         if subject_id_key == subject_id
                     ),
-                    name,
+                    None,
                 )
+                name = (
+                    registered_name
+                    or str(record.get("name", "")).strip()
+                    or name
+                )
+            elif isinstance(key, str) and key.isdigit():
+                record_name = str(record.get("name", "")).strip()
+                if record_name:
+                    name = record_name
             normalized_subjects[name] = record
         current["subjects"] = normalized_subjects
     if not registry and isinstance(current.get("subjects"), dict):
@@ -585,35 +695,162 @@ def continuity_state_for_registry(subject_definitions, state=None):
         raise RuntimeError(
             "Subject definitions were present but could not be parsed; "
             "refusing to render an empty AUTHORITATIVE OPENING STATE. "
-            "Expected one definition per line in this format: "
+            "Expected one definition per line, for example: "
             "<Subject 1> is Mark, a 40-year-old man referenced in "
-            "<Picture 1>. Optional speaker mapping: (S1)."
+            "<Picture 1>. Video-only subjects use: <Subject 2> is creature, "
+            "created in generated video segment 1 and continued from "
+            "<Video 1>."
         )
+    def copy_continuity_fields(record, existing):
+        if not isinstance(existing, dict):
+            return
+        for field in (
+            "position",
+            "pose_action",
+            "topology",
+            "body_state",
+            "physical_condition",
+        ):
+            if isinstance(existing.get(field), str):
+                record[field] = existing[field]
+        if isinstance(existing.get("held_props"), list):
+            record["held_props"] = list(existing["held_props"])
+        if isinstance(existing.get("wardrobe"), dict):
+            for garment in record["wardrobe"]:
+                if isinstance(existing["wardrobe"].get(garment), str):
+                    record["wardrobe"][garment] = existing["wardrobe"][garment]
+
     subjects = {}
+    used_subject_ids = set()
     for subject_id, subject in registry.items():
         existing = current.get("subjects", {}).get(subject["name"], {})
         record = new_subject_continuity_record({
             **subject,
             "subject_id": subject_id,
         })
-        if isinstance(existing, dict):
-            for field in (
-                "position",
-                "pose_action",
-                "body_state",
-                "physical_condition",
-            ):
-                if isinstance(existing.get(field), str):
-                    record[field] = existing[field]
-            if isinstance(existing.get("held_props"), list):
-                record["held_props"] = list(existing["held_props"])
-            if isinstance(existing.get("wardrobe"), dict):
-                for garment in record["wardrobe"]:
-                    if isinstance(existing["wardrobe"].get(garment), str):
-                        record["wardrobe"][garment] = existing["wardrobe"][garment]
+        copy_continuity_fields(record, existing)
         subjects[subject["name"]] = record
+        used_subject_ids.add(subject_id)
+
+    # A continuing video can establish an important subject that has no Picture
+    # reference (a creature, vehicle, or newly introduced person). Preserve these
+    # records instead of rebuilding the state exclusively from the Picture registry.
+    next_subject_id = max(used_subject_ids, default=0) + 1
+    for name, existing in current.get("subjects", {}).items():
+        if name in subjects or not isinstance(existing, dict):
+            continue
+        raw_subject_id = existing.get("subject_id")
+        try:
+            subject_id = int(raw_subject_id)
+        except (TypeError, ValueError):
+            subject_id = None
+        if subject_id is None or subject_id <= 0 or subject_id in used_subject_ids:
+            while next_subject_id in used_subject_ids:
+                next_subject_id += 1
+            subject_id = next_subject_id
+            next_subject_id += 1
+        picture_ids = [
+            int(value)
+            for value in existing.get("picture_ids", [])
+            if isinstance(value, int) or str(value).isdigit()
+        ]
+        record = new_subject_continuity_record({
+            "subject_id": subject_id,
+            "name": name,
+            "picture_ids": picture_ids,
+            "picture_id": picture_ids[0] if picture_ids else None,
+            "speaker_id": existing.get("speaker_id"),
+            "origin_segment": existing.get("origin_segment"),
+        })
+        copy_continuity_fields(record, existing)
+        subjects[name] = record
+        used_subject_ids.add(subject_id)
     current["subjects"] = subjects
+    current["version"] = CONTINUITY_STATE_VERSION
     return current
+
+
+_CONTINUITY_TIMESTAMP_RE = re.compile(
+    r"(?i)(?:\bat\s+)?\b\d{1,2}:\d{2}(?:\.\d{1,3})?\b"
+)
+
+# Terms that imply an irreversible or topology-changing state. A continuity
+# candidate is not allowed to introduce one of these changes unless the newest
+# segment description explicitly contains evidence for the same anatomical
+# region. This blocks common state hallucinations such as a limb becoming
+# detached merely because a different body part was described as detached.
+_STRUCTURAL_CHANGE_STEMS = (
+    "detach", "sever", "amputat", "decapitat", "fuse", "fusion", "attach",
+    "merge", "split", "ruptur", "hatch", "birth", "emerg", "melt",
+    "transform", "disintegrat", "crush", "break", "broken", "missing",
+    "remove", "tear", "torn", "suspend", "upside-down", "upside down",
+)
+_ANATOMY_PHRASES = (
+    "lower body", "upper body", "head", "face", "neck", "throat", "chest",
+    "sternum", "ribcage", "rib cage", "abdomen", "belly", "belly button",
+    "waist", "waistline", "torso", "spine", "back", "shoulder", "arm",
+    "wrist", "hand", "finger", "breast", "leg", "knee", "foot", "hair",
+    "mouth", "jaw", "mandible", "wing", "horn", "tail", "limb",
+)
+
+
+def _scrub_snapshot_text(value, field_name=""):
+    """Return snapshot-safe prose; historical timestamped actions are discarded."""
+    if not isinstance(value, str):
+        return value
+    cleaned = sanitize_previous_state_value(value).strip()
+    if not cleaned:
+        return "N/A"
+
+    # pose_action / ongoing_action must describe what is true at the final
+    # frame, not replay a timeline from the prior clip. If the updater returns
+    # timestamps in these fields, treat that as historical narration and reject
+    # it rather than carrying it into the next opening prompt.
+    if field_name in {"pose_action", "ongoing_action"} and _CONTINUITY_TIMESTAMP_RE.search(cleaned):
+        return "N/A"
+
+    cleaned = re.sub(r"\s*\(\s*at\s+\d{1,2}:\d{2}(?:\.\d{1,3})?\s*\)", "", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s+at\s+\d{1,2}:\d{2}(?:\.\d{1,3})?", "", cleaned, flags=re.I)
+    cleaned = _CONTINUITY_TIMESTAMP_RE.sub("", cleaned)
+    cleaned = re.sub(r"\s*;\s*;\s*", "; ", cleaned)
+    cleaned = re.sub(r"\s+,\s*,\s*", ", ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,;:-")
+    return cleaned or "N/A"
+
+
+def _scrub_continuity_subject_record(record):
+    if not isinstance(record, dict):
+        return record
+    for field in (
+        "position", "pose_action", "topology", "body_state", "physical_condition"
+    ):
+        if field in record:
+            record[field] = _scrub_snapshot_text(record.get(field), field)
+    wardrobe = record.get("wardrobe")
+    if isinstance(wardrobe, dict):
+        for garment in ("upper", "lower", "footwear", "other"):
+            if garment in wardrobe:
+                wardrobe[garment] = _scrub_snapshot_text(wardrobe.get(garment), f"wardrobe.{garment}")
+    return record
+
+
+def scrub_continuity_state(state):
+    """Remove historical timeline fragments from a stored final-frame state."""
+    if not isinstance(state, dict):
+        return state
+    for field in ("camera", "ongoing_action", "ongoing_audio"):
+        if field in state:
+            state[field] = _scrub_snapshot_text(state.get(field), field)
+    environment = state.get("environment")
+    if isinstance(environment, dict):
+        for field in ("location", "persistent_state"):
+            if field in environment:
+                environment[field] = _scrub_snapshot_text(environment.get(field), f"environment.{field}")
+    subjects = state.get("subjects")
+    if isinstance(subjects, dict):
+        for record in subjects.values():
+            _scrub_continuity_subject_record(record)
+    return state
 
 
 def migrate_continuity_state(state):
@@ -655,69 +892,225 @@ def migrate_continuity_state(state):
                     normalized_subjects[name] = record
                     continue
             normalized_subjects[str(key)] = record
+        # Backfill newly introduced structured fields without discarding
+        # legacy checkpoints.
+        for record in normalized_subjects.values():
+            if isinstance(record, dict):
+                record.setdefault("topology", "N/A")
         migrated["subjects"] = normalized_subjects
-    return migrated
+    return scrub_continuity_state(migrated)
+
+
+def _known_continuity_value(value):
+    if not isinstance(value, str):
+        return None
+    value = sanitize_previous_state_value(value).strip()
+    return None if not value or value.upper() == "N/A" else value
+
+
+def _english_join(items):
+    items = [str(item).strip() for item in items if str(item).strip()]
+    if not items:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return ", ".join(items[:-1]) + f", and {items[-1]}"
+
+
+def _subject_wardrobe(record):
+    wardrobe = record.get("wardrobe", {})
+    if not isinstance(wardrobe, dict):
+        return []
+    return [
+        value
+        for field in ("upper", "lower", "footwear", "other")
+        if (value := _known_continuity_value(wardrobe.get(field)))
+    ]
+
+
+def _subject_picture_tags(record):
+    return [
+        f"<Picture {picture_id}>"
+        for picture_id in record.get("picture_ids", [])
+        if picture_id is not None
+    ]
+
+
+def _subject_opening_sentence(subject_id, name, record, summary=False):
+    tag = f"<Subject {subject_id}>"
+    position = _known_continuity_value(record.get("position"))
+    pose_action = _known_continuity_value(record.get("pose_action"))
+    wardrobe = _subject_wardrobe(record)
+    topology = _known_continuity_value(record.get("topology"))
+    body_state = _known_continuity_value(record.get("body_state"))
+    physical_condition = _known_continuity_value(
+        record.get("physical_condition")
+    )
+    held_props = [
+        str(prop).strip()
+        for prop in record.get("held_props", [])
+        if str(prop).strip() and str(prop).strip().upper() != "N/A"
+    ]
+
+    if summary:
+        if record.get("picture_ids"):
+            sentence = f"{tag} {name}"
+        else:
+            sentence = f"{tag} {name} continues from <Video 1>"
+        # Keep the Ref2VA summary intentionally compact. The concrete opening
+        # state is written once in retention_analysis below; repeating pose and
+        # wardrobe here caused competing versions of the same state to reach H3.
+        if position:
+            sentence += f" remains {position}" if record.get("picture_ids") else f" and remains {position}"
+        return sentence.rstrip(".; ") + "."
+
+    facts = []
+    if position:
+        facts.append(f"At the opening, {name} remains {position}")
+    if wardrobe:
+        wardrobe_text = f"wearing {_english_join(wardrobe)}"
+        if facts:
+            facts[-1] += f", {wardrobe_text}"
+        else:
+            facts.append(f"At the opening, {name} is {wardrobe_text}")
+    if pose_action:
+        facts.append(f"Opening pose/action: {pose_action}")
+    if topology:
+        facts.append(f"Topology: {topology}")
+    if body_state:
+        facts.append(f"Body state: {body_state}")
+    if physical_condition:
+        facts.append(f"Physical condition: {physical_condition}")
+    if held_props:
+        facts.append(f"Held props: {_english_join(held_props)}")
+    return ". ".join(fact.rstrip(". ") for fact in facts) + ("." if facts else "")
+
+
+def _ordered_continuity_subjects(state):
+    subjects = []
+    for fallback_id, (name, record) in enumerate(
+        state.get("subjects", {}).items(),
+        start=1,
+    ):
+        if not isinstance(record, dict):
+            continue
+        try:
+            subject_id = int(record.get("subject_id", fallback_id))
+        except (TypeError, ValueError):
+            subject_id = fallback_id
+        subjects.append((subject_id, name, record))
+    return sorted(subjects, key=lambda item: (item[0], item[1].lower()))
 
 
 def format_authoritative_opening_state(state, subject_definitions=""):
-    """Render the committed structured state for the next director request."""
+    """Render MiniMax H3 video-continuation and reference-retention guidance."""
     state = continuity_state_for_registry(subject_definitions, state)
-    lines = [
-        "AUTHORITATIVE OPENING STATE",
-        "",
-        "This is the final observable state of the preceding successfully "
-        "rendered video and therefore the physical starting state of this segment.",
-        "Preserve every listed condition until an action in THIS segment visibly changes it.",
-        "",
-        "environment:",
-        f"- location: {state['environment']['location']}",
-        f"- persistent_state: {state['environment']['persistent_state']}",
-        f"camera: {state['camera']}",
-        "subjects:",
-    ]
-    registry = parse_subject_registry(subject_definitions)
-    if not registry:
-        registry = {
-            int(record.get("subject_id", index)): {
-                "name": name,
-                "picture_id": record.get("picture_id"),
-                "speaker_id": record.get("speaker_id"),
-            }
-            for index, (name, record) in enumerate(
-                state.get("subjects", {}).items(),
-                start=1,
-            )
-            if isinstance(record, dict) and record.get("picture_id") is not None
-        }
-    if not registry:
+    subjects = _ordered_continuity_subjects(state)
+    if not subjects:
         raise RuntimeError(
-            "Cannot render AUTHORITATIVE OPENING STATE: no subject registry "
-            "was available."
+            "Cannot render authoritative continuation guidance: no subjects "
+            "were available."
         )
-    for subject_id, subject in registry.items():
-        record = state["subjects"][subject["name"]]
-        lines.extend([
-            f"- {subject['name']} " + " ".join(
-                f"<Picture {picture}>"
-                for picture in subject.get(
-                    "picture_ids",
-                    [subject["picture_id"]],
-                )
-            ),
-            f"  position: {record['position']}",
-            f"  pose_action: {record['pose_action']}",
-            f"  wardrobe_upper: {record['wardrobe']['upper']}",
-            f"  wardrobe_lower: {record['wardrobe']['lower']}",
-            f"  wardrobe_footwear: {record['wardrobe']['footwear']}",
-            f"  wardrobe_other: {record['wardrobe']['other']}",
-            f"  body_state: {record['body_state']}",
-            f"  physical_condition: {record['physical_condition']}",
-            f"  held_props: {json.dumps(record['held_props'], ensure_ascii=False)}",
-        ])
-    lines.extend([
-        f"ongoing_action: {state['ongoing_action']}",
-        f"ongoing_audio: {state['ongoing_audio']}",
-    ])
+
+    location = _known_continuity_value(state["environment"].get("location"))
+    location_text = location or "environment"
+    lines = [
+        "<Video 1> is the immediately preceding successfully rendered video "
+        "and provides the authoritative continuation starting point. Preserve "
+        f"its {location_text}, lighting, spatial layout, subject positions, "
+        "wardrobe condition, physical states, props, and environmental "
+        "continuity until an action in this target video visibly changes them.",
+        "",
+        "summary:",
+        "",
+    ]
+
+    summary_sentences = [
+        "[video continuation + reference generation] The target video continues "
+        "directly from the final observable state of <Video 1>."
+    ]
+    summary_sentences.extend(
+        _subject_opening_sentence(subject_id, name, record, summary=True)
+        for subject_id, name, record in subjects
+    )
+
+    picture_numbers = []
+    picture_subject_names = []
+    for _, name, record in subjects:
+        record_pictures = [
+            int(value)
+            for value in record.get("picture_ids", [])
+            if isinstance(value, int) or str(value).isdigit()
+        ]
+        if record_pictures:
+            picture_numbers.extend(record_pictures)
+            picture_subject_names.append(name)
+    picture_numbers = list(dict.fromkeys(picture_numbers))
+    picture_subject_names = list(dict.fromkeys(picture_subject_names))
+    if picture_numbers:
+        picture_label = (
+            f"Picture {picture_numbers[0]}"
+            if len(picture_numbers) == 1
+            else f"Pictures {_english_join(picture_numbers)}"
+        )
+        identity_label = (
+            f"{picture_subject_names[0]}'s identity"
+            if len(picture_subject_names) == 1
+            else _english_join(
+                f"{name}'s" for name in picture_subject_names
+            ) + " identities"
+        )
+        picture_verb = "preserves" if len(picture_numbers) == 1 else "preserve"
+        summary_sentences.append(
+            f"{picture_label} {picture_verb} {identity_label} without overriding "
+            "the physical continuation established by <Video 1>."
+        )
+    lines.append(" ".join(summary_sentences))
+    lines.extend(["", "retention_analysis:", ""])
+
+    for subject_id, name, record in subjects:
+        picture_tags = _subject_picture_tags(record)
+        if picture_tags:
+            source = (
+                f"Preserve {name}'s identity from {_english_join(picture_tags)}."
+            )
+        else:
+            source = (
+                f"Preserve {name}'s established appearance from <Video 1>."
+            )
+        details = _subject_opening_sentence(subject_id, name, record)
+        line = f"<Subject {subject_id}>: fully_preserved - {source}"
+        if details:
+            line += f" {details}"
+        lines.extend([line, ""])
+
+    video_details = []
+    persistent_state = _known_continuity_value(
+        state["environment"].get("persistent_state")
+    )
+    camera = _known_continuity_value(state.get("camera"))
+    ongoing_action = _known_continuity_value(state.get("ongoing_action"))
+    ongoing_audio = _known_continuity_value(state.get("ongoing_audio"))
+    if persistent_state:
+        video_details.append(persistent_state)
+    if camera:
+        video_details.append(f"camera/framing: {camera}")
+    if ongoing_action:
+        video_details.append(f"ongoing action: {ongoing_action}")
+    if ongoing_audio:
+        video_details.append(f"ongoing audio: {ongoing_audio}")
+    subject_names = _english_join(name for _, name, _ in subjects)
+    video_line = (
+        f"<Video 1>: fully_preserved - Preserve the {location_text}, lighting, "
+        f"spatial layout, positions of {subject_names}, wardrobe condition, "
+        "physical states, props, and immediate physical continuity from the "
+        "final frame of the preceding video."
+    )
+    if video_details:
+        video_line += f" Also preserve {_english_join(video_details)}."
+    lines.append(video_line)
     return "\n".join(lines)
 
 
@@ -734,9 +1127,84 @@ def format_subject_registry(subject_definitions):
             f"- canonical_name: {subject['name']}\n"
             f"  subject_id: {subject_id}\n"
             f"  picture_ids: {json.dumps(subject.get('picture_ids', [subject['picture_id']]))}\n"
+            f"  continuation_source: "
+            f"{'Picture reference(s)' if subject.get('picture_ids') else '<Video 1>'}\n"
             f"  speaker_id: {speaker}"
         )
     return "\n".join(lines)
+
+
+def append_video_subject_definitions(
+    subject_definitions,
+    continuity_state,
+    origin_segment,
+    path=SUBJECT_DEFINITIONS_FILE,
+):
+    """Persist newly created video-only subjects and return updated definitions."""
+    existing_text = str(subject_definitions or "").strip()
+    registry = parse_subject_registry(existing_text)
+    known_ids = set(registry)
+    known_names = {
+        subject["name"].lower() for subject in registry.values()
+    }
+    state = continuity_state_for_registry(existing_text, continuity_state)
+    appended_lines = []
+
+    for subject_id, name, record in _ordered_continuity_subjects(state):
+        if record.get("picture_ids"):
+            continue
+        if subject_id in known_ids or name.lower() in known_names:
+            continue
+        if not re.fullmatch(
+            r"(?i)[A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*",
+            name,
+        ):
+            print(
+                "WARNING: Cannot append video-created subject with invalid "
+                f"canonical name {name!r}; use words, spaces, apostrophes, "
+                "or hyphens only."
+            )
+            continue
+        try:
+            created_in_segment = int(
+                record.get("origin_segment") or origin_segment
+            )
+        except (TypeError, ValueError):
+            created_in_segment = int(origin_segment)
+        record["origin_segment"] = created_in_segment
+        appended_lines.append(
+            f"<Subject {subject_id}> is {name}, created in generated "
+            f"video segment {created_in_segment} and continued from <Video 1>."
+        )
+        known_ids.add(subject_id)
+        known_names.add(name.lower())
+
+    if not appended_lines:
+        return existing_text, []
+
+    updated_text = "\n".join(
+        part for part in (existing_text, "\n".join(appended_lines)) if part
+    )
+    directory = os.path.dirname(os.path.abspath(path))
+    os.makedirs(directory, exist_ok=True)
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix="subjects_",
+        suffix=".tmp",
+        dir=directory,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as file:
+            file.write(updated_text + "\n")
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temporary_path, path)
+    except Exception:
+        try:
+            os.unlink(temporary_path)
+        except FileNotFoundError:
+            pass
+        raise
+    return updated_text, appended_lines
 
 
 def format_beat_generation_subjects(subject_definitions):
@@ -769,7 +1237,8 @@ def format_beat_generation_subjects(subject_definitions):
             raise ValueError(
                 f"Could not parse subjects.txt line {line_number}: {line!r}. "
                 "Expected '<Subject N> is Name, optional description "
-                "referenced in <Picture N>.'"
+                "referenced in <Picture N>.' or a generated video subject "
+                "entry written by this program."
             )
 
     if len(registry) != len(meaningful_lines):
@@ -1173,69 +1642,188 @@ def validate_workflow(workflow, workflow_label, is_append=False):
             workflow_label=workflow_label
         )
 
+
+def normalize_lora_list(loras):
+    normalized = []
+    for lora in loras or ():
+        if not isinstance(lora, (list, tuple)) or len(lora) != 2:
+            raise ValueError(
+                f"Invalid LoRA {lora!r}; expected (lora_name, strength)."
+            )
+        name = str(lora[0]).strip()
+        if not name or re.search(r"[\s:]", name):
+            raise ValueError(f"Invalid LoRA name: {lora[0]!r}.")
+        try:
+            strength = float(lora[1])
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"Invalid LoRA strength: {lora[1]!r}.") from error
+        if not math.isfinite(strength):
+            raise ValueError(f"LoRA strength must be finite: {lora[1]!r}.")
+        normalized.append((name, strength))
+    return normalized
+
+
+def configure_lora_chain(workflow, loras, workflow_label):
+    """Replace the workflow's placeholder with an exact ordered LoRA chain."""
+    loras = normalize_lora_list(loras)
+    placeholder_id, placeholder = find_workflow_node(
+        workflow,
+        LORA_NODE_NAME,
+        workflow_label,
+        "LoraLoaderModelOnly",
+    )
+    source_connection = placeholder.get("inputs", {}).get("model")
+    if (
+        not isinstance(source_connection, list)
+        or len(source_connection) != 2
+        or source_connection[1] != 0
+        or str(source_connection[0]) not in {str(node_id) for node_id in workflow}
+    ):
+        raise RuntimeError(
+            f"Node '{LORA_NODE_NAME}' in {workflow_label} must have a model "
+            "input connected to output 0 of its upstream model node."
+        )
+
+    consumers = []
+    for node_id, node in workflow.items():
+        if str(node_id) == str(placeholder_id):
+            continue
+        for input_name, value in node.get("inputs", {}).items():
+            if (
+                isinstance(value, list)
+                and len(value) == 2
+                and str(value[0]) == str(placeholder_id)
+                and value[1] == 0
+            ):
+                consumers.append((node, input_name))
+    if not consumers:
+        raise RuntimeError(
+            f"Node '{LORA_NODE_NAME}' in {workflow_label} has no model consumers."
+        )
+
+    if not loras:
+        for consumer, input_name in consumers:
+            consumer["inputs"][input_name] = copy.deepcopy(source_connection)
+        del workflow[placeholder_id]
+        return workflow
+
+    placeholder_template = copy.deepcopy(placeholder)
+    placeholder["inputs"]["lora_name"] = loras[0][0]
+    placeholder["inputs"]["strength_model"] = loras[0][1]
+    last_lora_id = str(placeholder_id)
+    numeric_ids = []
+    for node_id in workflow:
+        try:
+            numeric_ids.append(int(node_id))
+        except (TypeError, ValueError):
+            continue
+    if not numeric_ids:
+        raise RuntimeError(f"{workflow_label} contains no numeric ComfyUI node IDs.")
+    next_node_id = max(numeric_ids) + 1
+
+    for lora_number, (lora_name, strength) in enumerate(loras[1:], start=2):
+        while str(next_node_id) in workflow:
+            next_node_id += 1
+        node_id = str(next_node_id)
+        next_node_id += 1
+        node = copy.deepcopy(placeholder_template)
+        node["inputs"]["model"] = [last_lora_id, 0]
+        node["inputs"]["lora_name"] = lora_name
+        node["inputs"]["strength_model"] = strength
+        node.setdefault("_meta", {})["title"] = f"{LORA_NODE_NAME} {lora_number}"
+        workflow[node_id] = node
+        last_lora_id = node_id
+
+    for consumer, input_name in consumers:
+        consumer["inputs"][input_name] = [last_lora_id, 0]
+    return workflow
+
+
 # ============================================================
 # BEATS
 # ============================================================
 
-DEFAULT_LORA_OVERRIDE = ("default.safetensors", 0.01)
-DEFAULT_EXPLICIT_LORA_STRENGTH = 1.0
+LORA_SPEC_PATTERN = re.compile(
+    r"(?P<name>[^\s:]+):(?P<strength>[^\s:]+)",
+    re.IGNORECASE,
+)
 LORA_SUFFIX_PATTERN = re.compile(
-    r"\s+--lora\s+(?P<name>[^\s:]+)(?::(?P<strength>[^\s]+))?\s*$",
+    r"\s+--lora\s+(?P<spec>[^\s]+)",
     re.IGNORECASE,
 )
 LORA_DIRECTIVE_PATTERN = re.compile(
-    r"^--lora\s+(?P<name>[^\s:]+)(?::(?P<strength>[^\s]+))?$",
+    r"^--lora\s+(?P<spec>[^\s]+)$",
     re.IGNORECASE,
 )
 
 
 class BeatDefinition(str):
-    def __new__(cls, text, lora_name=None, strength_model=None):
+    def __new__(cls, text, loras=None):
         beat = super().__new__(cls, text)
-        beat.lora_name = lora_name
-        beat.strength_model = strength_model
+        beat.loras = tuple(loras or ())
+        # Retain the old scalar attributes for callers that inspect beats made
+        # with exactly one LoRA. New code should use ``beat.loras``.
+        beat.lora_name = beat.loras[0][0] if len(beat.loras) == 1 else None
+        beat.strength_model = beat.loras[0][1] if len(beat.loras) == 1 else None
         return beat
 
     @property
     def lora_override(self):
-        if self.lora_name is None:
+        if len(self.loras) != 1:
             return None
-        return (self.lora_name, self.strength_model)
+        return self.loras[0]
 
 
-def parse_lora_match(match, line):
-    strength_text = match.group("strength")
-    try:
-        strength = (
-            DEFAULT_EXPLICIT_LORA_STRENGTH
-            if strength_text is None
-            else float(strength_text)
+def parse_lora_spec(raw_spec):
+    spec = str(raw_spec or "").strip()
+    match = LORA_SPEC_PATTERN.fullmatch(spec)
+    if match is None:
+        raise argparse.ArgumentTypeError(
+            f"Invalid LoRA {raw_spec!r}; expected [lora_name]:[strength]."
         )
+    try:
+        strength = float(match.group("strength"))
     except ValueError as error:
-        raise ValueError(
-            f"Invalid LoRA strength in beat: {line!r}."
+        raise argparse.ArgumentTypeError(
+            f"Invalid LoRA strength in {raw_spec!r}."
         ) from error
     if not math.isfinite(strength):
-        raise ValueError(f"LoRA strength must be finite in beat: {line!r}.")
+        raise argparse.ArgumentTypeError(
+            f"LoRA strength must be finite in {raw_spec!r}."
+        )
     return match.group("name"), strength
 
 
 def parse_beat_definition(line):
-    match = LORA_SUFFIX_PATTERN.search(line)
-    if match is None:
+    first_match = LORA_SUFFIX_PATTERN.search(line)
+    if first_match is None:
         if "--lora" in line.lower():
             raise ValueError(
                 f"Invalid LoRA option in beat: {line!r}. Expected "
-                "--lora [lora_name] or "
-                "--lora [lora_name]:[strength_model] at the end."
+                "one or more --lora [lora_name]:[strength] options at the end."
             )
         return BeatDefinition(line)
 
-    name, strength = parse_lora_match(match, line)
-    text = line[:match.start()].rstrip()
+    text = line[:first_match.start()].rstrip()
     if not text:
         raise ValueError(f"Beat text cannot be empty: {line!r}.")
-    return BeatDefinition(text, name, strength)
+    loras = []
+    position = first_match.start()
+    while position < len(line):
+        if not line[position:].strip():
+            break
+        match = LORA_SUFFIX_PATTERN.match(line, position)
+        if match is None:
+            raise ValueError(
+                f"Invalid LoRA option in beat: {line!r}. Expected "
+                "one or more --lora [lora_name]:[strength] options at the end."
+            )
+        try:
+            loras.append(parse_lora_spec(match.group("spec")))
+        except argparse.ArgumentTypeError as error:
+            raise ValueError(f"Invalid LoRA option in beat: {line!r}. {error}") from error
+        position = match.end()
+    return BeatDefinition(text, loras)
 
 
 def parse_beats_content(raw):
@@ -1253,17 +1841,19 @@ def parse_beats_content(raw):
                 raise ValueError(
                     "beats.txt may contain only one file-level --lora directive."
                 )
-            global_lora = parse_lora_match(directive_match, beat)
+            try:
+                global_lora = parse_lora_spec(directive_match.group("spec"))
+            except argparse.ArgumentTypeError as error:
+                raise ValueError(
+                    f"Invalid file-level LoRA directive: {beat!r}. {error}"
+                ) from error
             global_lora_directive = beat
             continue
         beats.append(parse_beat_definition(beat))
 
     if global_lora is not None:
-        lora_name, strength = global_lora
         beats = [
-            beat
-            if beat.lora_override is not None
-            else BeatDefinition(str(beat), lora_name, strength)
+            BeatDefinition(str(beat), (global_lora, *beat.loras))
             for beat in beats
         ]
     return beats, global_lora_directive
@@ -1275,18 +1865,23 @@ def load_beats(path):
     return beats
 
 
-def beat_lora_override(beats, beat_id):
-    if not beat_id or beat_id > len(beats):
-        return DEFAULT_LORA_OVERRIDE
-    return getattr(beats[beat_id - 1], "lora_override", None) or DEFAULT_LORA_OVERRIDE
+def beat_loras(beats, beat_id, global_loras=()):
+    merged = list(global_loras or ())
+    try:
+        beat_id = int(beat_id)
+    except (TypeError, ValueError):
+        return merged
+    if beat_id <= 0 or beat_id > len(beats):
+        return merged
+    merged.extend(getattr(beats[beat_id - 1], "loras", ()))
+    return merged
 
 
 def serialize_beats(beats):
     return [
         {
             "text": str(beat),
-            "lora_name": getattr(beat, "lora_name", None),
-            "strength_model": getattr(beat, "strength_model", None),
+            "loras": [list(lora) for lora in getattr(beat, "loras", ())],
         }
         for beat in beats or []
     ]
@@ -1637,7 +2232,6 @@ def ask_llm(
         try:
             llm_seed = generate_random_llm_seed()
             request_payload = {
-                "model": LM_STUDIO_MODEL,
                 "messages": messages,
                 "temperature": temperature,
                 "max_tokens": 4000,
@@ -1673,7 +2267,6 @@ def ask_llm(
             append_prompt_history(
                 messages,
                 metadata={
-                    "model": LM_STUDIO_MODEL,
                     "response_format": response_format is not None,
                     **(history_metadata or {}),
                     "seed": llm_seed,
@@ -1705,7 +2298,6 @@ def ask_llm(
                     append_prompt_history(
                         fallback_payload["messages"],
                         metadata={
-                            "model": LM_STUDIO_MODEL,
                             "response_format": False,
                             **(history_metadata or {}),
                             "request_variant": "without_response_format",
@@ -2221,7 +2813,12 @@ def save_generated_beats(beats, path=BEATS_FILE, lora_directive=""):
             raise ValueError(
                 f"Invalid file-level LoRA directive: {lora_directive!r}."
             )
-        parse_lora_match(directive_match, lora_directive)
+        try:
+            parse_lora_spec(directive_match.group("spec"))
+        except argparse.ArgumentTypeError as error:
+            raise ValueError(
+                f"Invalid file-level LoRA directive: {lora_directive!r}."
+            ) from error
     saved_beats = [
         f"{beat} {lora_directive}" if lora_directive else beat
         for beat in beats
@@ -2524,11 +3121,17 @@ BEAT EXECUTION CONTRACT
 - If the ACTIVE beat says to continue an already established action, the beat is
     complete once THIS segment visibly depicts one substantial new exchange or
     continuation satisfying that beat. The overall action does not need to end.
-- Do not substantially enact ordered lookahead beats before the ACTIVE beat completes.
-- Do not invent irreversible physical changes unless the ACTIVE beat requires
-  them. Do not permanently destroy equipment,
-  introduce major lasting injuries, kill a character, or permanently alter
-  wardrobe merely to make an action scene more dramatic.
+- Do not enact, preview, or create the distinctive event, creature, object,
+  injury, transformation, or outcome of any ordered lookahead beat in this
+  segment. Later-beat entities must not appear early merely as embellishment.
+- Do not invent irreversible physical changes unless the ACTIVE beat explicitly
+  requires them. Do not permanently destroy equipment, detach body parts, fuse
+  subjects, create births/hatchings, introduce major lasting injuries, kill a
+  character, or permanently alter wardrobe merely to make an action scene more
+  dramatic.
+- A structural body/topology change exists only if THIS segment visibly performs
+  that change. Never jump directly to a detached, fused, suspended, missing, or
+  transformed state without showing the action that caused it.
 - `completed_beat_ids` contains only newly completed consecutive beats beginning with ACTIVE.
 """.strip()
     else:
@@ -2570,10 +3173,14 @@ CONTINUATION
 SUBJECTS
 Pictures 1-6 are persistent identity/body references only, not wardrobe records.
 Written story/continuity overrides clothing visible in reference pictures.
+Subjects established by generated video have no Picture mapping. Preserve their
+registered names and stable <Subject N> IDs from <Video 1>; never invent a Picture
+tag for them.
 
 {subject_context}
 
 Use the registered form `Character Name <Picture N>` for defined subjects.
+For a registered video-only subject, use its canonical name without a Picture tag.
 Do not invent Picture tags for undefined people or objects.
 Python inserts subject_definitions separately; do not output subject_definitions.
 
@@ -2587,12 +3194,15 @@ SHOT AND TIMING
 - Later timestamps use this clip's local timeline, are greater than 00:00.000, and remain before clip duration.
 - Never use cumulative movie timestamps.
 - If Shot N is divisible by 3, it MUST begin with the CUT form.
-- On every later segment that is not divisible by 3, it MUST begin with the
-    continuation form; do not choose a cut naturally on those segments.
+- On other later segments, use the continuation form ONLY when the opening
+    composition can genuinely follow the previous final frame without an
+    unexplained camera teleport, subject relocation, or reset. If the desired
+    framing requires a materially different viewpoint, use the CUT form instead.
 - On a required CUT segment, do not write any continuation opening or sentence
     such as `camera continues from the previous shot`; the shot must begin only
     with the cut form.
-- Otherwise continue or cut naturally.
+- A continuation opening must preserve the previous final camera/framing and
+    subject layout until an explicit camera or subject movement changes them.
 - Write camera motion as natural English within the shot, never as stacked labels.
 - Use only Zoom In/Out, Push In/Pull Out, Pan Left/Right, Truck Left/Right,
   Tilt Up/Down, Pedestal Up/Down, Arc Shot, Tracking Shot, Static Shot,
@@ -2619,7 +3229,7 @@ Do not repeatedly restate lighting. Mention it only when established initially o
 
 EXAMPLE FORMATTING
 
-integrated_multimodal_description:
+detailed_description:
 [Shot 1] Realistic cinematic live-action horror. The camera is a wide shot of the hospital. A nurse, Amy <Picture 1>, is sitting in a chair, working at a desk in a dingy, derelict hospital.
 At 00:02.000, the camera pans left to reveal a dark hallway. The lighting is dim and flickering, casting eerie shadows on the walls. Amy <Picture 1> (S1) says: <d>[English] I can't believe this place is still open.</d> The sound of distant footsteps echoes through the hallway, followed by a low, ominous hum.
 At 00:05.000, the camera zooms in on Amy <Picture 1>'s face, showing her fear and anxiety. The sound of a door creaking open is heard, followed by a sudden thud as something heavy falls to the ground.
@@ -2643,12 +3253,29 @@ subject_definitions.
 """.strip()
 
 
+def get_detailed_description(llm_result, default=""):
+    """Read the renamed description field while accepting old checkpoints."""
+    if not isinstance(llm_result, dict):
+        return default
+    value = llm_result.get("detailed_description")
+    if value is None:
+        value = llm_result.get("integrated_multimodal_description", default)
+    return value
+
+
 def format_recent_segment(segment_number, llm_result):
     payload = {
         key: value
         for key, value in llm_result.items()
         if key != "completed_beat_ids"
     }
+    if "detailed_description" not in payload:
+        legacy_description = payload.pop(
+            "integrated_multimodal_description",
+            None,
+        )
+        if legacy_description is not None:
+            payload["detailed_description"] = legacy_description
     result = (
         f"--- EXACT RECENT SEGMENT {segment_number} ---\n"
         + json.dumps(payload, ensure_ascii=False, indent=2)
@@ -2806,10 +3433,30 @@ def request_five_bullet_summary(
     )
 
 
+def extract_final_timeline_excerpt(description):
+    """Return the last explicitly timed beat plus trailing untimed prose."""
+    text = str(description or "").strip()
+    if not text:
+        return "N/A"
+    matches = list(_CONTINUITY_TIMESTAMP_RE.finditer(text))
+    if not matches:
+        # Without timestamps, the final two sentences are the best bounded proxy.
+        sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
+        return " ".join(sentences[-2:]) if sentences else text
+    start = matches[-1].start()
+    # Back up to the sentence boundary so the final timed action remains readable.
+    boundary = max(text.rfind(".", 0, start), text.rfind("\n", 0, start))
+    if boundary >= 0:
+        start = boundary + 1
+    return text[start:].strip() or text
+
+
 def build_structured_continuity_messages(
     recent_results,
     committed_state,
     subject_definitions,
+    active_beat_text="",
+    future_beat_texts=None,
 ):
     registry = parse_subject_registry(subject_definitions)
     registry_text = json.dumps(registry, ensure_ascii=False, indent=2)
@@ -2822,13 +3469,30 @@ def build_structured_continuity_messages(
         format_recent_segment(number, result)
         for number, result in list(recent_results)[-RECENT_SEGMENTS_MAX:]
     )
+    newest_description = ""
+    if recent_results:
+        newest_description = str(
+            get_detailed_description(list(recent_results)[-1][1], "") or ""
+        )
+    final_moment_excerpt = extract_final_timeline_excerpt(newest_description)
+    future_beat_texts = [
+        str(item).strip() for item in (future_beat_texts or []) if str(item).strip()
+    ]
+    beat_scope_text = (
+        f"ACTIVE BEAT: {str(active_beat_text or 'N/A').strip()}\n"
+        "FUTURE BEATS (must not create persistent state yet):\n"
+        + ("\n".join(f"- {item}" for item in future_beat_texts) or "- N/A")
+    )
     return [
         {
             "role": "system",
             "content": (
                 "You are a continuity state updater. Return only one JSON object "
                 "with fields version, environment, camera, subjects, ongoing_action, "
-                "and ongoing_audio.\n\n"
+                "and ongoing_audio. Each subject record uses subject_id, name, "
+                "picture_ids, picture_id, speaker_id, origin_segment, position, "
+                "pose_action, topology, wardrobe, body_state, physical_condition, "
+                "and held_props.\n\n"
                 "Create an authoritative FINAL-FRAME continuity snapshot. The "
                 "returned state describes the physical world at the END of the newest "
                 "generated segment, not an accumulation of historical facts.\n\n"
@@ -2839,12 +3503,24 @@ def build_structured_continuity_messages(
                 "- Preserve committed state only when the newest segment neither "
                 "changes nor contradicts it. Never preserve mutually exclusive history.\n\n"
                 "Camera, position, and pose_action are current end-of-segment state. "
-                "Use the latest explicitly established framing, position, or pose near "
+                "The FINAL-MOMENT EXCERPT is highest authority for these fields. Use the "
+                "latest explicitly established framing, position, or pose near "
                 "the end of the newest segment; do not return camera as N/A merely "
-                "because it did not move.\n\n"
+                "because it did not move. NEVER put timestamps or a sequence of earlier "
+                "actions into pose_action or ongoing_action. Convert an earlier action "
+                "to its final static result only when that result is explicitly shown; "
+                "otherwise preserve the committed value or use N/A.\n\n"
                 "environment.persistent_state contains visible surroundings likely to "
                 "remain: terrain, weather, damage, structures, smoke, debris, or "
                 "persistent lighting. Do not put transient action, emotion, or mood there.\n\n"
+                "topology records persistent structural connections between body parts "
+                "or subjects, such as fused-to, attached-to, detached-from, or suspended-"
+                "by relationships and the exact anatomical location of that connection. "
+                "A topology change may be recorded ONLY when the newest segment explicitly "
+                "shows the action that creates that exact change. Never infer a detached "
+                "lower body because a detached face is mentioned, and never move a fusion "
+                "from waistline to sternum unless the newest segment visibly performs that "
+                "new fusion.\n\n"
                 "body_state records persistent structural anatomy or body configuration: "
                 "horns, wings, tails, limbs, head/body attachment, and missing or severed "
                 "parts. Record explicitly visible structural features even when intact. "
@@ -2861,6 +3537,17 @@ def build_structured_continuity_messages(
                 "held_props is exact final possession. Preserve committed held_props when "
                 "the newest segment does not establish a change. Use [] only when the "
                 "final state explicitly establishes no tracked props are held.\n\n"
+                "Track every visually persistent subject needed to continue the final "
+                "frame, including creatures, people, vehicles, or other independently "
+                "moving subjects introduced by the generated video without a Picture "
+                "reference. A new video-only subject may be added only if it is visibly "
+                "introduced in the newest segment itself and is not merely an event/entity "
+                "reserved for a FUTURE BEAT. Add each such video-only subject under a concise stable name, "
+                "assign the next unused positive subject_id, set picture_ids to [], "
+                "picture_id to null, set origin_segment to the newest generated segment "
+                "number, and describe its established visible appearance in body_state. "
+                "Preserve an existing video-only subject, subject_id, and origin_segment "
+                "across updates; do not create a duplicate under a synonym.\n\n"
                 "When wardrobe changes, replace affected wardrobe fields with resulting "
                 "concrete garments and colors, preserving that result until another visible "
                 "change. Picture references establish identity/body appearance only and "
@@ -2875,26 +3562,92 @@ def build_structured_continuity_messages(
                 f"{registry_text}\n\n"
                 "COMMITTED STATE:\n"
                 f"{state_text}\n\n"
+                "BEAT SCOPE:\n"
+                f"{beat_scope_text}\n\n"
+                "FINAL-MOMENT EXCERPT (highest authority for final pose/position/camera):\n"
+                f"{final_moment_excerpt}\n\n"
                 "LATEST GENERATED PROMPTS:\n"
                 f"{exact_prompts}\n\n"
-                "Return the complete updated structured state."
+                "Return the complete updated structured state. Do not promote a future-beat "
+                "event or entity into current continuity state."
             ),
         },
     ]
+
+
+def _contains_structural_change(text):
+    lowered = str(text or "").casefold()
+    return any(stem in lowered for stem in _STRUCTURAL_CHANGE_STEMS)
+
+
+def _candidate_anatomy_terms(text):
+    lowered = str(text or "").casefold()
+    return [term for term in _ANATOMY_PHRASES if term in lowered]
+
+
+def _structural_change_has_evidence(subject_name, candidate_value, description):
+    """Require the same structural action and body region in the newest prompt."""
+    candidate = str(candidate_value or "").casefold()
+    source = str(description or "").casefold()
+    if not _contains_structural_change(candidate):
+        return True
+
+    # Require at least one structural-change stem from the candidate itself.
+    candidate_stems = [stem for stem in _STRUCTURAL_CHANGE_STEMS if stem in candidate]
+    if candidate_stems and not any(stem in source for stem in candidate_stems):
+        return False
+
+    anatomy_terms = _candidate_anatomy_terms(candidate)
+    # Require every anatomical region named by the candidate structural state.
+    # This prevents evidence about a detached face from licensing an invented
+    # detached lower body, or a chest fusion from silently moving to the waist.
+    if anatomy_terms and not all(term in source for term in anatomy_terms):
+        return False
+
+    # If the subject is named in the source, insist that the structural evidence
+    # occurs reasonably near either the subject name or a possessive reference.
+    name = str(subject_name or "").strip().casefold()
+    if name and name in source and candidate_stems:
+        evidence_positions = []
+        for stem in candidate_stems:
+            evidence_positions.extend(match.start() for match in re.finditer(re.escape(stem), source))
+        name_positions = [match.start() for match in re.finditer(re.escape(name), source)]
+        if evidence_positions and name_positions:
+            if not any(abs(evidence - subject_pos) <= 260 for evidence in evidence_positions for subject_pos in name_positions):
+                return False
+    return True
+
+
+def _future_subject_name_is_reserved(name, active_beat_text, future_beat_texts):
+    """Block durable subjects whose distinctive name belongs only to lookahead."""
+    tokens = [
+        token.casefold()
+        for token in re.findall(r"[A-Za-z][A-Za-z'-]{3,}", str(name or ""))
+        if token.casefold() not in {"alien", "creature", "spider", "woman", "man", "girl", "boy"}
+    ]
+    if not tokens:
+        return False
+    active = str(active_beat_text or "").casefold()
+    future = "\n".join(str(item or "") for item in (future_beat_texts or [])).casefold()
+    return any(token in future and token not in active for token in tokens)
 
 
 def normalize_structured_continuity_state(
     candidate,
     subject_definitions,
     committed_state=None,
+    origin_segment=None,
+    newest_description="",
+    active_beat_text="",
+    future_beat_texts=None,
 ):
     if not isinstance(candidate, dict):
         return None
     state = continuity_state_for_registry(subject_definitions, committed_state)
-    registry = parse_subject_registry(subject_definitions)
     id_to_name = {
-        str(subject_id): subject["name"]
-        for subject_id, subject in registry.items()
+        str(record.get("subject_id")): name
+        for name, record in state["subjects"].items()
+        if record.get("subject_id") is not None
     }
 
     def is_unknown_value(value):
@@ -2932,10 +3685,22 @@ def normalize_structured_continuity_state(
                 return tail
         return None
 
-    def concrete_value(value):
+    def concrete_value(value, field_name=""):
         if not isinstance(value, str):
             return None
-        cleaned = sanitize_previous_state_value(value)
+        raw = sanitize_previous_state_value(value).strip()
+        if not raw or raw.upper() == "N/A":
+            return None
+        # A final-frame snapshot must never contain local-timeline history.
+        # Reject timestamped action fields outright instead of replaying them
+        # as the next segment's opening action.
+        if field_name in {"pose_action", "ongoing_action"} and _CONTINUITY_TIMESTAMP_RE.search(raw):
+            print(
+                f"WARNING: Ignoring historical timestamped continuity field "
+                f"{field_name}: {raw!r}"
+            )
+            return None
+        cleaned = _scrub_snapshot_text(raw, field_name)
         if not cleaned or cleaned.upper() == "N/A":
             return None
         implied = extract_implied_value(cleaned)
@@ -2960,7 +3725,7 @@ def normalize_structured_continuity_state(
 
     for field in ("camera", "ongoing_action", "ongoing_audio"):
         if isinstance(candidate.get(field), str):
-            value = concrete_value(candidate[field])
+            value = concrete_value(candidate[field], field)
             if value is not None:
                 update_value(
                     state,
@@ -2972,7 +3737,7 @@ def normalize_structured_continuity_state(
     if isinstance(environment, dict):
         for field in ("location", "persistent_state"):
             if isinstance(environment.get(field), str):
-                value = concrete_value(environment[field])
+                value = concrete_value(environment[field], f"environment.{field}")
                 if value is not None:
                     update_value(
                         state["environment"],
@@ -2983,30 +3748,108 @@ def normalize_structured_continuity_state(
     candidate_subjects = candidate.get("subjects")
     if isinstance(candidate_subjects, dict):
         for raw_name, record in candidate_subjects.items():
-            name = resolve_subject_name(raw_name)
-            if name is None or not isinstance(record, dict):
+            if not isinstance(record, dict):
                 continue
+            name = resolve_subject_name(raw_name)
+            if name is None:
+                proposed_name = str(record.get("name", raw_name)).strip()
+                if not proposed_name or proposed_name.isdigit():
+                    continue
+                existing_name = next(
+                    (
+                        current_name
+                        for current_name in state["subjects"]
+                        if current_name.lower() == proposed_name.lower()
+                    ),
+                    None,
+                )
+                if existing_name is not None:
+                    name = existing_name
+                else:
+                    # A durable video-only subject must actually be visible in
+                    # this segment. Do not let the state updater manufacture a
+                    # subject from a future beat or from its own extrapolation.
+                    if proposed_name.casefold() not in str(newest_description or "").casefold():
+                        print(
+                            "WARNING: Ignoring unevidenced video-only subject "
+                            f"{proposed_name!r}; its name does not appear in the newest segment."
+                        )
+                        continue
+                    if _future_subject_name_is_reserved(
+                        proposed_name, active_beat_text, future_beat_texts
+                    ):
+                        print(
+                            "WARNING: Ignoring premature future-beat subject "
+                            f"{proposed_name!r}."
+                        )
+                        continue
+                    used_ids = {
+                        int(current.get("subject_id"))
+                        for current in state["subjects"].values()
+                        if str(current.get("subject_id", "")).isdigit()
+                    }
+                    try:
+                        proposed_id = int(record.get("subject_id"))
+                    except (TypeError, ValueError):
+                        proposed_id = None
+                    if (
+                        proposed_id is None
+                        or proposed_id <= 0
+                        or proposed_id in used_ids
+                    ):
+                        proposed_id = max(used_ids, default=0) + 1
+                    try:
+                        created_in_segment = int(
+                            record.get("origin_segment", origin_segment)
+                        )
+                    except (TypeError, ValueError):
+                        created_in_segment = origin_segment
+                    name = proposed_name
+                    state["subjects"][name] = new_subject_continuity_record({
+                        "subject_id": proposed_id,
+                        "name": name,
+                        "picture_ids": [],
+                        "picture_id": None,
+                        "speaker_id": None,
+                        "origin_segment": created_in_segment,
+                    })
+                    id_to_name[str(proposed_id)] = name
             target = state["subjects"][name]
             for field in (
                 "position",
                 "pose_action",
+                "topology",
                 "body_state",
                 "physical_condition",
             ):
                 if isinstance(record.get(field), str):
-                    value = concrete_value(record[field])
-                    if value is not None:
-                        update_value(
-                            target,
-                            field,
-                            value,
-                            extract_implied_value(record[field]) is not None,
+                    value = concrete_value(record[field], field)
+                    if value is None:
+                        continue
+                    if (
+                        CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES
+                        and field in {"topology", "body_state"}
+                        and value != target.get(field)
+                        and not _structural_change_has_evidence(
+                            name, value, newest_description
                         )
+                    ):
+                        print(
+                            "WARNING: Ignoring unevidenced structural continuity "
+                            f"change for {name} ({field}): {value!r}"
+                        )
+                        continue
+                    update_value(
+                        target,
+                        field,
+                        value,
+                        extract_implied_value(record[field]) is not None,
+                    )
             wardrobe = record.get("wardrobe")
             if isinstance(wardrobe, dict):
                 for garment in target["wardrobe"]:
                     if isinstance(wardrobe.get(garment), str):
-                        value = concrete_value(wardrobe[garment])
+                        value = concrete_value(wardrobe[garment], f"wardrobe.{garment}")
                         if value is not None:
                             update_value(
                                 target["wardrobe"],
@@ -3026,9 +3869,24 @@ def normalize_structured_continuity_state(
                         continue
                     if cleaned and cleaned.upper() != "N/A":
                         props.append(cleaned)
-                target["held_props"] = props
+                if props:
+                    target["held_props"] = props
+                elif not target.get("held_props"):
+                    target["held_props"] = []
+                else:
+                    release_pattern = re.compile(
+                        rf"(?is)\b{re.escape(name)}\b.{{0,180}}\b"
+                        r"(?:drops?|releases?|lets? go|sets? down|puts? down|throws?)\b"
+                    )
+                    if release_pattern.search(str(newest_description or "")):
+                        target["held_props"] = []
+                    else:
+                        print(
+                            f"WARNING: Preserving {name}'s held props because "
+                            "the newest segment does not explicitly release them."
+                        )
     state["version"] = CONTINUITY_STATE_VERSION
-    return state
+    return scrub_continuity_state(state)
 
 
 def request_structured_continuity_state(
@@ -3037,6 +3895,8 @@ def request_structured_continuity_state(
     subject_definitions,
     llm_request=None,
     history_metadata=None,
+    active_beat_text="",
+    future_beat_texts=None,
 ):
     if llm_request is None:
         llm_request = ask_llm
@@ -3044,6 +3904,8 @@ def request_structured_continuity_state(
         recent_results,
         committed_state,
         subject_definitions,
+        active_beat_text=active_beat_text,
+        future_beat_texts=future_beat_texts,
     )
     candidate = llm_request(
         messages,
@@ -3055,10 +3917,26 @@ def request_structured_continuity_state(
             candidate = json.loads(candidate)
         except json.JSONDecodeError:
             return None
+    origin_segment = max(
+        (
+            int(segment_number)
+            for segment_number, _ in recent_results
+            if str(segment_number).isdigit()
+        ),
+        default=None,
+    )
+    newest_description = ""
+    if recent_results:
+        newest_result = list(recent_results)[-1][1]
+        newest_description = str(get_detailed_description(newest_result, "") or "")
     return normalize_structured_continuity_state(
         candidate,
         subject_definitions,
         committed_state,
+        origin_segment=origin_segment,
+        newest_description=newest_description,
+        active_beat_text=active_beat_text,
+        future_beat_texts=future_beat_texts,
     )
 
 
@@ -3350,7 +4228,8 @@ def build_ministral_context(
     completed_beat_ids,
     subject_definitions,
     story,
-    recent_results=None
+    recent_results=None,
+    opening_state="",
 ):
     completed = normalize_completed_beat_ids(beats, completed_beat_ids)
     beat_state = build_bounded_beat_state(
@@ -3381,8 +4260,9 @@ def build_ministral_context(
         "beat_deadline_required": deadline_required,
         "allow_silence": story_requests_complete_silence(story),
         "hard_cut_required": is_hard_cut_segment(segment_number),
+        "opening_state": str(opening_state or ""),
         "recent_descriptions": [
-            str(result.get("integrated_multimodal_description", ""))
+            str(get_detailed_description(result))
             for _, result in (recent_results or [])
             if isinstance(result, dict)
         ]
@@ -3391,7 +4271,7 @@ def build_ministral_context(
 
 def build_best_effort_ministral_result(raw_result):
     if isinstance(raw_result, dict):
-        integrated = raw_result.get("integrated_multimodal_description")
+        integrated = get_detailed_description(raw_result, None)
         soundscape = raw_result.get("overall_soundscape")
         music = raw_result.get("non_diegetic_music")
         completed = raw_result.get("completed_beat_ids", [])
@@ -3409,7 +4289,7 @@ def build_best_effort_ministral_result(raw_result):
         music = "N/A"
         completed = []
     return {
-        "integrated_multimodal_description": integrated,
+        "detailed_description": integrated,
         "overall_soundscape": soundscape,
         "non_diegetic_music": music,
         "completed_beat_ids": completed
@@ -3458,6 +4338,176 @@ def build_stateless_correction_messages(messages, formatted_result, issues):
     ]
 
 
+SEGMENT_SEMANTIC_AUDIT_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "segment_semantic_audit",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "active_beat_satisfied": {"type": "boolean"},
+                "future_beat_leakage": {"type": "boolean"},
+                "opening_state_conflict": {"type": "boolean"},
+                "unrequired_irreversible_change": {"type": "boolean"},
+                "issues": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "maxItems": 8,
+                },
+            },
+            "required": [
+                "active_beat_satisfied",
+                "future_beat_leakage",
+                "opening_state_conflict",
+                "unrequired_irreversible_change",
+                "issues",
+            ],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
+def request_segment_semantic_audit(
+    formatted_result,
+    context,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Audit plot scope and physical continuity before a prompt reaches H3."""
+    if not SEMANTIC_SEGMENT_AUDIT:
+        return None
+    if llm_request is None:
+        llm_request = ask_llm
+
+    active_id = context.get("next_beat_id")
+    active_text = context.get("current_beat_text") or "N/A"
+    future_beats = context.get("later_beat_texts") or []
+    opening_state = context.get("opening_state") or "N/A"
+    description = str(get_detailed_description(formatted_result, "") or "")
+    completed = formatted_result.get("completed_beat_ids", [])
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a strict semantic continuity auditor for one generated "
+                "video prompt. Judge only what the candidate description explicitly "
+                "shows. Do not rewrite it. Return only the requested JSON.\n\n"
+                "active_beat_satisfied is true only when every observable event in "
+                "the ACTIVE BEAT is explicitly performed and its required result is "
+                "visible in this candidate.\n"
+                "future_beat_leakage is true if the candidate visibly performs, "
+                "creates, births, hatches, reveals, transforms into, destroys, or "
+                "otherwise materially enacts a distinctive event/entity reserved for "
+                "any FUTURE BEAT. Mere neutral setup that does not enact that event is "
+                "not leakage.\n"
+                "opening_state_conflict is true if the candidate begins from a body "
+                "configuration, attachment, position, wardrobe state, or physical "
+                "condition incompatible with the AUTHORITATIVE OPENING STATE without "
+                "first visibly performing the change. A camera cut may change framing "
+                "but cannot teleport subjects or rewrite anatomy.\n"
+                "unrequired_irreversible_change is true if the candidate invents a "
+                "persistent fusion, detachment, amputation, birth/hatching, death, "
+                "major transformation, or similarly irreversible state that the ACTIVE "
+                "BEAT does not require.\n"
+                "Be literal and conservative. A different anatomical region is not "
+                "evidence for the requested one."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"ACTIVE BEAT ID: {active_id or 'N/A'}\n"
+                f"ACTIVE BEAT: {active_text}\n\n"
+                "FUTURE BEATS:\n"
+                + ("\n".join(f"- {beat}" for beat in future_beats) or "- N/A")
+                + "\n\nAUTHORITATIVE OPENING STATE:\n"
+                + opening_state
+                + "\n\nCANDIDATE DETAILED DESCRIPTION:\n"
+                + description
+                + "\n\nCANDIDATE COMPLETED BEAT IDS:\n"
+                + json.dumps(completed)
+            ),
+        },
+    ]
+    try:
+        metadata = dict(history_metadata or {})
+        metadata["purpose"] = "segment_semantic_audit"
+        raw = llm_request(
+            messages,
+            response_format=SEGMENT_SEMANTIC_AUDIT_RESPONSE_FORMAT,
+            history_metadata=metadata,
+            temperature=0.1,
+        )
+        if isinstance(raw, str):
+            raw = parse_llm_json_content(raw)
+        if not isinstance(raw, dict):
+            raise ValueError("semantic audit returned non-object content")
+        return raw
+    except Exception as error:
+        print(f"WARNING: Semantic segment audit failed; continuing without it: {error}")
+        return None
+
+
+def semantic_audit_issues(audit, formatted_result, context):
+    if not isinstance(audit, dict):
+        return []
+    issues = []
+    active_id = context.get("next_beat_id")
+    reported = set()
+    for raw_id in formatted_result.get("completed_beat_ids", []) or []:
+        try:
+            reported.add(int(raw_id))
+        except (TypeError, ValueError):
+            pass
+
+    if audit.get("future_beat_leakage"):
+        issues.append(
+            "The candidate substantially enacts a distinctive future beat. Remove "
+            "the future-beat event/entity and keep this segment scoped to the ACTIVE beat."
+        )
+    if audit.get("opening_state_conflict"):
+        issues.append(
+            "The candidate contradicts the AUTHORITATIVE OPENING STATE without visibly "
+            "performing the physical transition. Begin from the committed final state."
+        )
+    if audit.get("unrequired_irreversible_change"):
+        issues.append(
+            "The candidate invents an irreversible physical/topology change not required "
+            "by the ACTIVE beat. Remove that change."
+        )
+    if active_id is not None and (
+        active_id in reported or context.get("beat_deadline_required")
+    ) and not audit.get("active_beat_satisfied", False):
+        issues.append(
+            f"B{int(active_id):03d} is reported/required complete, but the candidate does "
+            "not explicitly perform every observable event in that beat."
+        )
+    for detail in audit.get("issues", []) or []:
+        detail = str(detail).strip()
+        if detail and detail not in issues:
+            issues.append(detail)
+    return issues
+
+
+def strip_unverified_beat_completion(formatted_result, audit, context):
+    """Never advance beat state when the semantic auditor says it was not shown."""
+    if not isinstance(audit, dict) or audit.get("active_beat_satisfied", True):
+        return formatted_result
+    active_id = context.get("next_beat_id")
+    if active_id is None:
+        return formatted_result
+    result = dict(formatted_result)
+    result["completed_beat_ids"] = [
+        raw_id
+        for raw_id in result.get("completed_beat_ids", []) or []
+        if str(raw_id) != str(active_id)
+    ]
+    return result
+
+
 def request_valid_ministral_prompt(
     messages,
     context,
@@ -3467,6 +4517,8 @@ def request_valid_ministral_prompt(
 ):
     if llm_request is None:
         llm_request = ask_llm
+
+    last_audit = None
 
     def format_and_validate(raw_value):
         try:
@@ -3485,23 +4537,42 @@ def request_valid_ministral_prompt(
             validation_issues = [f"Local prompt validation failed: {error}"]
         return formatted_value, validation_issues
 
+    def add_semantic_issues(formatted_value, validation_issues, attempt_label):
+        nonlocal last_audit
+        if validation_issues or not SEMANTIC_SEGMENT_AUDIT:
+            return validation_issues
+        audit_metadata = dict(history_metadata or {})
+        audit_metadata["audit_attempt"] = attempt_label
+        last_audit = request_segment_semantic_audit(
+            formatted_value,
+            context,
+            llm_request=llm_request,
+            history_metadata=audit_metadata,
+        )
+        return validation_issues + semantic_audit_issues(
+            last_audit,
+            formatted_value,
+            context,
+        )
+
     request_kwargs = (
         {"history_metadata": history_metadata}
         if history_metadata else {}
     )
     raw_result = llm_request(messages, **request_kwargs)
     formatted_result, issues = format_and_validate(raw_result)
+    issues = add_semantic_issues(formatted_result, issues, "initial")
     if not issues:
-        return formatted_result
+        return strip_unverified_beat_completion(
+            formatted_result, last_audit, context
+        )
 
     for correction_number in range(1, max_content_corrections + 1):
         print(
-            "Python formatting left unresolved content issue(s); "
+            "Python/semantic validation left unresolved content issue(s); "
             f"requesting Ministral correction {correction_number}/"
             f"{max_content_corrections}."
         )
-        # Use a fresh stateless system/user request. This is accepted by
-        # Ministral's strict Jinja template and cannot contain adjacent users.
         correction_messages = build_stateless_correction_messages(
             messages,
             formatted_result,
@@ -3521,10 +4592,19 @@ def request_valid_ministral_prompt(
                 "WARNING: Ministral correction request failed; using the "
                 f"existing best-effort prompt instead: {error}"
             )
-            return formatted_result
+            return strip_unverified_beat_completion(
+                formatted_result, last_audit, context
+            )
         formatted_result, issues = format_and_validate(corrected_raw)
+        issues = add_semantic_issues(
+            formatted_result,
+            issues,
+            f"correction_{correction_number}",
+        )
         if not issues:
-            return formatted_result
+            return strip_unverified_beat_completion(
+                formatted_result, last_audit, context
+            )
 
     print(
         "WARNING: Prompt still has unresolved issue(s) after all Ministral "
@@ -3532,7 +4612,9 @@ def request_valid_ministral_prompt(
     )
     for issue in issues:
         print(f"  - {issue}")
-    return formatted_result
+    return strip_unverified_beat_completion(
+        formatted_result, last_audit, context
+    )
 
 
 # ============================================================
@@ -3594,7 +4676,8 @@ def parse_defined_subjects(subject_definitions):
     for match in re.finditer(
         r"(?i:<Subject\s+(\d+)>\s*(?:is\s+)?)"
         r"([A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*)",
-        subject_definitions or ""
+        subject_definitions or "",
+        flags=re.IGNORECASE,
     ):
         subject_number = int(match.group(1))
         name = match.group(2).strip()
@@ -3794,10 +4877,7 @@ def build_hard_cut_subject_continuity(
     if not subjects:
         return ""
 
-    current_description = (
-        current_result.get("integrated_multimodal_description", "")
-        if isinstance(current_result, dict) else ""
-    )
+    current_description = get_detailed_description(current_result)
     subjects = [
         (subject_number, subject_name)
         for subject_number, subject_name in subjects
@@ -3811,9 +4891,7 @@ def build_hard_cut_subject_continuity(
 
     descriptions = [continuity_summary or ""]
     descriptions.extend(
-        record.get("llm_result", {}).get(
-            "integrated_multimodal_description", ""
-        )
+        get_detailed_description(record.get("llm_result", {}))
         for record in reversed(prior_segment_records or [])
         if isinstance(record, dict)
         and isinstance(record.get("llm_result"), dict)
@@ -3891,10 +4969,7 @@ def build_hard_cut_subject_continuity_from_state(
 ):
     """Build hard-cut reminders only from the last committed structured state."""
     registry = parse_subject_registry(subject_definitions)
-    current_description = (
-        current_result.get("integrated_multimodal_description", "")
-        if isinstance(current_result, dict) else ""
-    )
+    current_description = get_detailed_description(current_result)
     state = continuity_state_for_registry(subject_definitions, continuity_state)
     clauses = []
     for subject_id, subject in registry.items():
@@ -3963,18 +5038,18 @@ def build_h3_prompt(
     segment_number=None,
     ff=False,
 ):
-    required = (
-        "integrated_multimodal_description",
-        "overall_soundscape",
-        "non_diegetic_music"
-    )
-    for field in required:
+    description = get_detailed_description(llm_result, None)
+    if not isinstance(description, str):
+        raise RuntimeError(
+            "LLM response is missing text field 'detailed_description'."
+        )
+    for field in ("overall_soundscape", "non_diegetic_music"):
         if not isinstance(llm_result.get(field), str):
             raise RuntimeError(f"LLM response is missing text field '{field}'.")
 
     integrated = strip_field_prefix(
-        llm_result["integrated_multimodal_description"],
-        "integrated_multimodal_description"
+        description,
+        "detailed_description"
     )
     soundscape = strip_field_prefix(
         llm_result["overall_soundscape"],
@@ -4010,17 +5085,31 @@ def build_h3_prompt(
             "environment, object positions, and spatial relationships shown in "
             "<Picture 1>."
         )
+    is_reference_continuation = (
+        isinstance(previous_state, str)
+        and previous_state.lstrip().startswith("<Video 1>")
+        and "retention_analysis:" in previous_state
+    )
     previous_state_text = (
         None
         if segment_number == 1
         else (
             previous_state
             if isinstance(previous_state, str)
-            and previous_state.lstrip().startswith("AUTHORITATIVE OPENING STATE")
+            and (
+                previous_state.lstrip().startswith(
+                    "AUTHORITATIVE OPENING STATE"
+                )
+                or is_reference_continuation
+            )
             else normalize_previous_state(previous_state)
         )
     )
-    if hard_cut_clothing_reiteration and previous_state_text is not None:
+    if (
+        hard_cut_clothing_reiteration
+        and previous_state_text is not None
+        and not is_reference_continuation
+    ):
         previous_state_text += "\n" + hard_cut_clothing_reiteration
     previous_state_section = (
         f"{previous_state_text}\n\n"
@@ -4029,7 +5118,7 @@ def build_h3_prompt(
     return (
         f"subject_definitions: {subject_text}\n\n"
         + previous_state_section
-        + f"integrated_multimodal_description: {integrated}\n\n"
+        + f"detailed_description: {integrated}\n\n"
         + f"overall_soundscape: {soundscape}\n\n"
         + f"non_diegetic_music: {music}"
     )
@@ -4261,9 +5350,15 @@ def render_segment_with_retries(
     h3_prompt,
     previous_video_path,
     steps,
+    loras=None,
     lora_override=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
+    if lora_override is not None:
+        if loras:
+            raise ValueError("Pass loras or lora_override, not both.")
+        loras = [lora_override]
+    loras = normalize_lora_list(loras)
     for retry_number in range(COMFY_RENDER_RETRIES + 1):
         current_megapixels = (
             max(
@@ -4288,11 +5383,7 @@ def render_segment_with_retries(
                     f"{COMFY_RENDER_RETRIES}) at inherited resolution."
                 )
 
-        lora_kwargs = (
-            {"lora_override": lora_override}
-            if lora_override is not None
-            else {}
-        )
+        lora_kwargs = {"loras": loras} if loras else {}
         if segment == 1:
             workflow = prepare_initial_workflow(
                 current_duration,
@@ -4339,8 +5430,13 @@ def prepare_initial_workflow(
     h3_prompt,
     segment_number,
     steps=6,
+    loras=None,
     lora_override=None,
 ):
+    if lora_override is not None:
+        if loras:
+            raise ValueError("Pass loras or lora_override, not both.")
+        loras = [lora_override]
     workflow = load_workflow(INITIAL_WORKFLOW_FILE)
     label = f"initial workflow '{INITIAL_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=False)
@@ -4371,15 +5467,7 @@ def prepare_initial_workflow(
         f"video/segment_{segment_number:04d}",
         label, "SaveVideo"
     )
-    if lora_override is not None:
-        set_node_input(
-            workflow, LORA_NODE_NAME, "lora_name", lora_override[0], label,
-            "LoraLoaderModelOnly"
-        )
-        set_node_input(
-            workflow, LORA_NODE_NAME, "strength_model", lora_override[1], label,
-            "LoraLoaderModelOnly"
-        )
+    configure_lora_chain(workflow, loras, label)
     return workflow
 
 
@@ -4389,8 +5477,13 @@ def prepare_append_workflow(
     previous_video_path,
     segment_number,
     steps=6,
+    loras=None,
     lora_override=None,
 ):
+    if lora_override is not None:
+        if loras:
+            raise ValueError("Pass loras or lora_override, not both.")
+        loras = [lora_override]
     workflow = load_workflow(APPEND_WORKFLOW_FILE)
     label = f"append workflow '{APPEND_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=True)
@@ -4427,15 +5520,7 @@ def prepare_append_workflow(
         generate_random_seed(),
         label, "RandomNoise"
     )
-    if lora_override is not None:
-        set_node_input(
-            workflow, LORA_NODE_NAME, "lora_name", lora_override[0], label,
-            "LoraLoaderModelOnly"
-        )
-        set_node_input(
-            workflow, LORA_NODE_NAME, "strength_model", lora_override[1], label,
-            "LoraLoaderModelOnly"
-        )
+    configure_lora_chain(workflow, loras, label)
     return workflow
 
 
@@ -4530,6 +5615,8 @@ def stitch_videos(video_paths):
 
 def _run_main(summary_executor):
     args = parse_args()
+    configure_formatter(getattr(args, "model", "ministral"))
+    global_loras = normalize_lora_list(getattr(args, "lora", ()))
     run_id = str(uuid.uuid4())
 
     segment_length = args.segment_length
@@ -4574,6 +5661,7 @@ def _run_main(summary_executor):
         story,
         beats,
         subject_definitions,
+        global_loras,
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
@@ -4612,6 +5700,8 @@ def _run_main(summary_executor):
     print(f"Starting segment:     {resume_segment}")
     print(f"Initial megapixels:   {megapixels:g}")
     print(f"Steps:                {args.steps}")
+    print(f"Formatter:            {getattr(args, 'model', 'ministral')}")
+    print(f"Global LoRAs:         {len(global_loras)}")
     print(
         "Prompt corrections:   up to "
         f"{MINISTRAL_CONTENT_CORRECTION_ATTEMPTS}; best effort on failure"
@@ -4718,12 +5808,13 @@ def _run_main(summary_executor):
             subject_definitions=subject_definitions,
             story=story,
             recent_results=recent_items,
+            opening_state=opening_summary,
         )
         return {
             "segment": segment_number,
             "current_duration": current_duration,
             "active_beat_id": active_beat_id,
-            "lora_override": beat_lora_override(beats, active_beat_id),
+            "loras": beat_loras(beats, active_beat_id, global_loras),
             "messages": messages,
             "estimated_tokens": estimated_tokens,
             "recent_count": recent_count,
@@ -4808,7 +5899,7 @@ def _run_main(summary_executor):
             payload = request_segment_llm(segment_bundle)
 
         llm_result = payload["llm_result"]
-        lora_override = payload["lora_override"]
+        loras = payload["loras"]
         reported_beat_ids = llm_result.get("completed_beat_ids", [])
         hard_cut_subject_continuity = ""
         if is_hard_cut_segment(segment):
@@ -4837,6 +5928,12 @@ def _run_main(summary_executor):
                 "segment": segment,
                 "attempt": 1,
             },
+            active_beat_text=segment_bundle["ministral_context"].get(
+                "current_beat_text", ""
+            ),
+            future_beat_texts=segment_bundle["ministral_context"].get(
+                "later_beat_texts", []
+            ),
         )
         candidate_state = None
         print(f"Candidate continuity state requested for segment {segment}.")
@@ -4901,7 +5998,7 @@ def _run_main(summary_executor):
                 h3_prompt,
                 previous_video_path,
                 args.steps,
-                lora_override=lora_override,
+                loras=loras,
             )
         except Exception:
             candidate_future.cancel()
@@ -4928,6 +6025,29 @@ def _run_main(summary_executor):
             subject_definitions,
             candidate_state,
         )
+        subject_definitions, appended_subject_lines = (
+            append_video_subject_definitions(
+                subject_definitions,
+                candidate_state,
+                segment,
+            )
+        )
+        if appended_subject_lines:
+            candidate_state = continuity_state_for_registry(
+                subject_definitions,
+                candidate_state,
+            )
+            director_rules = build_director_rules(
+                total_length,
+                segment_length,
+                total_segments,
+                subject_definitions,
+                megapixels,
+                beats_enabled=bool(beats),
+            )
+            print("Appended video-created subject definition(s) to subjects.txt:")
+            for definition in appended_subject_lines:
+                print(f"  {definition}")
         print(
             f"Created: {video_path}\n"
             f"Resolution: {width} x {height} "
