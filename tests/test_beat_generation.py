@@ -297,6 +297,94 @@ class BeatGenerationTests(unittest.TestCase):
         ]
         self.assertEqual((beat_array["minItems"], beat_array["maxItems"]), (3, 3))
 
+    def test_more_than_twenty_beats_are_generated_in_batches(self):
+        calls = []
+
+        def llm_request(messages, **kwargs):
+            metadata = kwargs["history_metadata"]
+            calls.append((messages, kwargs))
+            return {
+                "beats": [
+                    f"Global event {number} visibly advances the story."
+                    for number in range(
+                        metadata["batch_start"],
+                        metadata["batch_end"] + 1,
+                    )
+                ]
+            }
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "beats.txt")
+            beats = minimax.generate_beats_from_story(
+                "A long journey unfolds across many connected events.",
+                25,
+                path=path,
+                llm_request=llm_request,
+            )
+
+        self.assertEqual(len(beats), 25)
+        self.assertEqual(
+            [
+                (
+                    call[1]["history_metadata"]["batch_start"],
+                    call[1]["history_metadata"]["batch_end"],
+                    call[1]["response_format"]["json_schema"]["schema"]
+                    ["properties"]["beats"]["maxItems"],
+                )
+                for call in calls
+            ],
+            [(1, 20, 20), (21, 25, 5)],
+        )
+        second_prompt = calls[1][0][1]["content"]
+        self.assertIn("global beat positions\n21 through 25", second_prompt)
+        self.assertIn("PREVIOUSLY GENERATED BEATS", second_prompt)
+        self.assertIn("B001: Global event 1", second_prompt)
+        self.assertIn("B020: Global event 20", second_prompt)
+
+    def test_batched_instruction_review_never_requests_over_twenty_beats(self):
+        calls = []
+
+        def llm_request(messages, **kwargs):
+            metadata = kwargs["history_metadata"]
+            calls.append((messages, kwargs))
+            return {
+                "beats": [
+                    f"Global event {number} visibly advances the story."
+                    for number in range(
+                        metadata["batch_start"],
+                        metadata["batch_end"] + 1,
+                    )
+                ]
+            }
+
+        with tempfile.TemporaryDirectory() as directory:
+            minimax.generate_beats_from_story(
+                "A long journey unfolds across many connected events.",
+                25,
+                path=os.path.join(directory, "beats.txt"),
+                llm_request=llm_request,
+                beat_instructions="Keep the complete progression coherent.",
+            )
+
+        self.assertEqual(
+            [call[1]["history_metadata"]["purpose"] for call in calls],
+            [
+                "beat_generation",
+                "beat_generation",
+                "beat_instruction_review",
+                "beat_instruction_review",
+            ],
+        )
+        requested_sizes = [
+            call[1]["response_format"]["json_schema"]["schema"]
+            ["properties"]["beats"]["maxItems"]
+            for call in calls
+        ]
+        self.assertEqual(requested_sizes, [20, 5, 20, 5])
+        review_prompt = calls[3][0][1]["content"]
+        self.assertIn("global beats 21 through 25", review_prompt)
+        self.assertIn("COMPLETE PLAN CONTEXT OUTSIDE THIS BATCH", review_prompt)
+
     def test_nonempty_beats_file_is_preserved_without_an_llm_request(self):
         llm_request = mock.Mock()
         with tempfile.TemporaryDirectory() as directory:

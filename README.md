@@ -379,7 +379,7 @@ ffprobe -version
 ```
 
 `ffprobe` validates each generated clip's resolution. Python calls `ffmpeg` to
-trim overlap frames and concatenate the completed clips. `stitch.bat` is not
+concatenate the completed clips without trimming them. `stitch.bat` is not
 required for normal runs.
 
 ## 9. Prepare the project inputs
@@ -449,19 +449,20 @@ continuity state or a successfully rendered wardrobe change.
 
 If a rendered segment introduces a persistent subject that has no Picture
 reference, the continuity updater assigns the next stable `<Subject N>` ID.
-Only after that segment renders successfully, Python appends an entry like this
-to the existing file:
+Only after that segment renders successfully, Python registers an internal
+definition like this:
 
 ```text
 <Subject 3> is spider-alien, created in generated video segment 2 and continued from <Video 1>.
 ```
 
-The same `origin_segment` is stored in `generation_state.json`. Later segments
-reuse the ID and origin, include the entry under `subject_definitions`, and use
-the immediately preceding `<Video 1>` as that subject's visual reference. No
-Picture tag is invented for a video-created subject. These program-generated
-lines are excluded from the user-source fingerprint, so appending them does not
-invalidate `--resume` for the active run.
+The internal definition list and the same `origin_segment` are stored in
+`generation_state.json`; `subjects.txt` is never modified. Later segments reuse
+the ID and origin, combine the internal entry with the file-backed definitions
+under `subject_definitions`, and use the immediately preceding `<Video 1>` as
+that subject's visual reference. No Picture tag is invented for a video-created
+subject. Internal definitions are excluded from the user-source fingerprint, so
+registering them does not invalidate `--resume` for the active run.
 
 When `beats.txt` is generated automatically, parsed subjects are sent to LM
 Studio as the main characters. Canonical names and available descriptive
@@ -543,7 +544,7 @@ initial clip.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--model {ministral,qwen}] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--context-frames FRAMES] [--model {ministral,qwen}] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -557,6 +558,7 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `MEGAPIXELS` | Initial workflow resolution target; must be greater than zero. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
 | `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
+| `--context-frames FRAMES` | Latent frames retained by `MiniMaxH3VideoExtendPatched`; defaults to `8` and supports values such as `2`, `4`, `8`, or `12`. |
 | `--model {ministral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `ministral`. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |
 | `ff` or `--ff` | Add opening-frame instructions for `<Picture 1>` when generating segment 1; defaults to disabled. |
@@ -597,10 +599,9 @@ original inputs or start a new run.
 
 | File or folder | Purpose |
 |---|---|
-| `generation_state.json` | Atomic checkpoint containing settings, director results, beat state, committed structured continuity state, and video paths. |
+| `generation_state.json` | Atomic checkpoint containing settings, director results, beat state, committed structured continuity state, internal video-created subject definitions, and video paths. |
 | `beat_progress.txt` | Readable DONE/NEXT/TODO beat checklist. |
 | ComfyUI `output/video/segment_*.mp4` | Individual generated clips. |
-| ComfyUI `output/video/trimmed_segment_*.mp4` | Stitch-ready clips after overlap removal. |
 | ComfyUI `output/video/list.txt` | Automatically generated FFmpeg concat list. |
 | ComfyUI `output/video/final.mp4` | Final concatenated movie. |
 
@@ -730,9 +731,6 @@ the failed segment.
 - Shorten the segment length.
 - Enable `low_vram` on the MiniMax-H3 Turbo LoRA node.
 - Close other GPU-heavy applications.
-- The script asks ComfyUI to free VRAM every five segments and after the final
-  segment, but that cannot compensate for a single workflow that exceeds GPU
-  capacity.
 
 ### FFmpeg or stitching errors
 

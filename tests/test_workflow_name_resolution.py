@@ -125,6 +125,8 @@ class WorkflowNameResolutionTests(unittest.TestCase):
 
         self.assertEqual(registry[1]["name"], "Amy")
         self.assertEqual(registry[2]["name"], "Bob")
+        self.assertEqual(registry[1]["speaker_id"], "S1")
+        self.assertEqual(registry[2]["speaker_id"], "S2")
 
     def test_video_created_subject_definition_has_no_picture_mapping(self):
         definitions = (
@@ -137,13 +139,14 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         self.assertEqual(registry[3]["name"], "spider-alien")
         self.assertEqual(registry[3]["picture_ids"], [])
         self.assertIsNone(registry[3]["picture_id"])
+        self.assertEqual(registry[3]["speaker_id"], "S3")
         self.assertEqual(registry[3]["origin_segment"], 2)
         self.assertEqual(
             minimax.parse_defined_subjects(definitions),
             [(3, "spider-alien")],
         )
 
-    def test_new_video_subject_is_appended_once_with_creation_segment(self):
+    def test_new_video_subject_is_registered_internally_once(self):
         definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
         state = minimax.continuity_state_for_registry(definitions)
         state["subjects"]["spider-alien"] = {
@@ -166,33 +169,32 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             "held_props": [],
         }
 
-        with tempfile.TemporaryDirectory() as directory:
-            path = os.path.join(directory, "subjects.txt")
-            updated, added = minimax.append_video_subject_definitions(
+        additional, added = minimax.collect_additional_subject_definitions(
+            definitions,
+            [],
+            state,
+            origin_segment=4,
+        )
+        updated = minimax.combine_subject_definitions(definitions, additional)
+        additional_again, added_again = (
+            minimax.collect_additional_subject_definitions(
                 definitions,
-                state,
-                origin_segment=4,
-                path=path,
-            )
-            updated_again, added_again = minimax.append_video_subject_definitions(
-                updated,
+                additional,
                 state,
                 origin_segment=5,
-                path=path,
             )
-
-            with open(path, "r", encoding="utf-8") as file:
-                persisted = file.read()
+        )
 
         expected = (
             "<Subject 2> is spider-alien, created in generated video "
             "segment 4 and continued from <Video 1>."
         )
         self.assertEqual(added, [expected])
-        self.assertIn(expected, persisted)
-        self.assertEqual(updated_again, updated)
+        self.assertEqual(additional, [expected])
+        self.assertIn(expected, updated)
+        self.assertEqual(additional_again, additional)
         self.assertEqual(added_again, [])
-        self.assertEqual(persisted.count("<Subject 2>"), 1)
+        self.assertEqual(updated.count("<Subject 2>"), 1)
 
         continuation = minimax.format_authoritative_opening_state(
             state,
@@ -222,6 +224,17 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             "renumbered append workflow",
             is_append=True
         )
+
+    def test_append_workflow_defaults_to_twenty_two_context_frames_and_pins_last(self):
+        _, extender = minimax.find_workflow_node(
+            self.append,
+            minimax.VIDEO_EXTEND_NODE_NAME,
+            "append workflow",
+            "MiniMaxH3VideoExtendPatched",
+        )
+
+        self.assertEqual(extender["inputs"]["context_frames"], 22)
+        self.assertIs(extender["inputs"]["pin_last_frame"], True)
 
     def test_append_validation_allows_any_number_of_reference_images(self):
         workflow = copy.deepcopy(self.append)
@@ -422,6 +435,14 @@ class WorkflowNameResolutionTests(unittest.TestCase):
 
     def test_append_preparation_updates_nodes_by_title_after_renumbering(self):
         workflow = renumber_workflow(self.append)
+        _, extender = minimax.find_workflow_node(
+            workflow,
+            minimax.VIDEO_EXTEND_NODE_NAME,
+            "renumbered append",
+            "MiniMaxH3VideoExtendPatched",
+        )
+        extender["inputs"]["context_frames"] = 2
+        extender["inputs"]["pin_last_frame"] = False
         with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(
             "minimax.os.path.exists", return_value=True
         ), mock.patch("minimax.secrets.randbelow", return_value=654321):
@@ -431,6 +452,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
                 "previous.mp4",
                 7,
                 steps=10,
+                context_frames=12,
             )
 
         _, video = minimax.find_workflow_node(
@@ -460,6 +482,14 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             "prepared append",
         )
         self.assertEqual(scheduler["inputs"]["steps"], 10)
+        _, extender = minimax.find_workflow_node(
+            prepared,
+            minimax.VIDEO_EXTEND_NODE_NAME,
+            "prepared append",
+            "MiniMaxH3VideoExtendPatched",
+        )
+        self.assertEqual(extender["inputs"]["context_frames"], 12)
+        self.assertIs(extender["inputs"]["pin_last_frame"], True)
 
     def test_history_output_uses_save_video_title_after_renumbering(self):
         workflow = renumber_workflow(self.initial)

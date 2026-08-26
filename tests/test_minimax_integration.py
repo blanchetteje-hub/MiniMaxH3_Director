@@ -122,7 +122,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         story_start = user_content.index("SOURCE STORY / CREATIVE BRIEF")
         registry_section = user_content[registry_start:story_start]
         self.assertIn("canonical_name: Mark", registry_section)
-        self.assertIn("picture_id: 1", registry_section)
+        self.assertIn("picture_ids: [1]", registry_section)
         self.assertNotIn("This system text must not be copied", user_content)
         self.assertNotIn("SHOT AND TIMING", registry_section)
 
@@ -214,9 +214,32 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertIn("On Segment 1, the ACTIVE beat must be B001", combined)
         self.assertIn("Never repeat any beat already completed", combined)
         self.assertIn("one substantial new exchange or", combined)
-        self.assertIn("persistent visible physical alteration", combined)
+        self.assertIn("persistent visible alteration", combined)
         self.assertIn("B001: Opening event", combined)
 
+    def test_director_forbids_ids_and_identity_tags_on_unregistered_roles(self):
+        rules = minimax.build_director_rules(
+            total_length=12,
+            segment_length=6,
+            total_segments=2,
+            subject_definitions=SUBJECTS,
+            megapixels=0.5,
+            beats_enabled=True,
+        )
+
+        self.assertIn(
+            "Speaker IDs belong only to registered subjects and only when they speak",
+            rules,
+        )
+        self.assertIn(
+            "Never assign a speaker ID, Subject tag, or Picture tag to an "
+            "unregistered role",
+            rules,
+        )
+        self.assertIn(
+            "Never put speaker IDs on non-speaking people in purely visual prose",
+            rules,
+        )
     def test_formatter_context_uses_bounded_later_beats(self):
         beats = [f"Event {number}" for number in range(1, 12)]
 
@@ -333,7 +356,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             [call.args[1] for call in prepare.call_args_list],
             [0.50, 0.48, 0.46],
         )
-        self.assertEqual(free_vram.call_count, 2)
+        self.assertEqual(free_vram.call_count, 0)
         self.assertEqual(result[1:], ("segment.mp4", 640, 360, 0.46))
 
     @mock.patch("minimax.free_vram")
@@ -361,7 +384,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             )
 
         self.assertEqual(prepare.call_count, 11)
-        self.assertEqual(free_vram.call_count, 10)
+        self.assertEqual(free_vram.call_count, 0)
         self.assertEqual(
             prepare.call_args_list[-1].args[1],
             0.30,
@@ -398,7 +421,40 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
         self.assertEqual(prepare.call_count, 2)
         self.assertEqual(result[-1], 0.50)
-        self.assertEqual(free_vram.call_count, 1)
+        self.assertEqual(free_vram.call_count, 0)
+
+    @mock.patch("minimax.get_video_resolution", return_value=(640, 360))
+    @mock.patch("minimax.get_video_path", return_value="segment.mp4")
+    @mock.patch(
+        "minimax.wait_for_completion",
+        return_value={"status": {"completed": True, "status_str": "success"}},
+    )
+    @mock.patch("minimax.queue_workflow", return_value="prompt-id")
+    @mock.patch("minimax.prepare_append_workflow", return_value={})
+    def test_append_render_forwards_configured_context_frames(
+        self,
+        prepare,
+        queue,
+        wait,
+        get_path,
+        get_resolution,
+    ):
+        del queue, wait, get_path, get_resolution
+        for context_frames in (2, 4, 8, 12):
+            minimax.render_segment_with_retries(
+                2,
+                6.0,
+                0.50,
+                "prompt",
+                "previous.mp4",
+                6,
+                context_frames=context_frames,
+            )
+
+        self.assertEqual(
+            [call.kwargs["context_frames"] for call in prepare.call_args_list],
+            [2, 4, 8, 12],
+        )
 
     def test_next_beat_prompt_demands_immediate_dominant_execution(self):
         request = minimax.build_segment_request(
@@ -427,9 +483,9 @@ class LmStudioIntegrationTests(unittest.TestCase):
             3, 8, 6, 48, BEATS, [1, 2]
         )
 
-        self.assertIn("physical action clearly on screen", action_request)
-        self.assertIn("required audible exchange now", dialogue_request)
-        self.assertIn("implied conversation do not count", dialogue_request)
+        self.assertIn("show that action clearly on screen", action_request)
+        self.assertIn("primary story event", dialogue_request)
+        self.assertIn("Narration, off-screen action", dialogue_request)
 
     def test_beat_deadline_demands_visible_outcome_and_completion_id(self):
         request = minimax.build_segment_request(
@@ -443,7 +499,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
         self.assertIn("has reached its pacing deadline", request)
         self.assertIn("unmistakable outcome before the shot ends", request)
-        self.assertIn("completed_beat_ids [1]", request)
+        self.assertIn("Report this beat in completed_beat_ids", request)
 
     def test_low_megapixel_director_guidance_uses_exact_thresholds(self):
         def rules_for(megapixels):
@@ -463,12 +519,12 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
         self.assertNotIn("mostly close-up camera shots", at_half)
         self.assertNotIn("Avoid a lot of movement", at_half)
-        self.assertIn("mostly close-up camera shots", below_half)
+        self.assertNotIn("mostly close-up camera shots", below_half)
         self.assertNotIn("Avoid a lot of movement", below_half)
         self.assertIn("mostly close-up camera shots", at_four_tenths)
         self.assertNotIn("Avoid a lot of movement", at_four_tenths)
         self.assertIn("mostly close-up camera shots", below_four_tenths)
-        self.assertIn("Avoid a lot of movement", below_four_tenths)
+        self.assertNotIn("Avoid a lot of movement", below_four_tenths)
 
     @mock.patch("minimax.load_text_file")
     def test_blank_or_comment_only_beats_file_disables_beats(self, load_text):
@@ -814,7 +870,10 @@ class LmStudioIntegrationTests(unittest.TestCase):
             "together in a busy theme park.",
             ["B001"]
         )
-        llm_request = mock.Mock(return_value=malformed)
+        llm_request = mock.Mock(side_effect=[
+            malformed,
+            {"active_beat_satisfied": True, "issues": []},
+        ])
 
         formatted = minimax.request_valid_ministral_prompt(
             [{"role": "user", "content": "beat one"}],
@@ -822,7 +881,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             llm_request=llm_request
         )
 
-        self.assertEqual(llm_request.call_count, 1)
+        self.assertEqual(llm_request.call_count, 2)
         self.assertTrue(
             formatted["detailed_description"].startswith("[Shot 1]")
         )
@@ -840,8 +899,8 @@ class LmStudioIntegrationTests(unittest.TestCase):
             llm_request=llm_request
         )
 
-        self.assertEqual(llm_request.call_count, 3)
-        self.assertIn("Jill look at the sky", result[
+        self.assertEqual(llm_request.call_count, 4)
+        self.assertIn("look at the sky", result[
             "detailed_description"
         ])
 
@@ -856,7 +915,12 @@ class LmStudioIntegrationTests(unittest.TestCase):
             "completed abduction leaves Mark and Jill beside empty pavement.",
             [4]
         )
-        llm_request = mock.Mock(side_effect=[missing, corrected])
+        llm_request = mock.Mock(side_effect=[
+            missing,
+            {"active_beat_satisfied": False, "issues": []},
+            corrected,
+            {"active_beat_satisfied": True, "issues": []},
+        ])
 
         result = minimax.request_valid_ministral_prompt(
             [
@@ -867,8 +931,8 @@ class LmStudioIntegrationTests(unittest.TestCase):
             llm_request=llm_request
         )
 
-        self.assertEqual(llm_request.call_count, 2)
-        correction_messages = llm_request.call_args_list[1].args[0]
+        self.assertEqual(llm_request.call_count, 4)
+        correction_messages = llm_request.call_args_list[2].args[0]
         self.assertEqual(
             [message["role"] for message in correction_messages],
             ["system", "user"]
@@ -907,7 +971,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             llm_request=llm_request
         )
 
-        self.assertEqual(llm_request.call_count, 3)
+        self.assertEqual(llm_request.call_count, 2)
         self.assertEqual(
             result["detailed_description"],
             raw["detailed_description"]
@@ -928,7 +992,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             llm_request=llm_request
         )
 
-        self.assertEqual(llm_request.call_count, 3)
+        self.assertEqual(llm_request.call_count, 2)
         self.assertIn("Mark", result["detailed_description"])
 
     def test_context_uses_real_total_segment_deadline(self):
@@ -963,11 +1027,20 @@ class LmStudioIntegrationTests(unittest.TestCase):
             []
         )
 
-        issues = minimax.validate_ministral_prompt(leaked, context)
+        formatted = minimax.format_ministral_prompt(leaked, context)
+        issues = minimax.semantic_audit_issues(
+            {
+                "active_beat_satisfied": True,
+                "future_beat_leakage": True,
+                "issues": [],
+            },
+            formatted,
+            context,
+        )
 
-        self.assertIn(
-            "Description prematurely introduces the later flying-saucer beat.",
-            issues
+        self.assertTrue(
+            any("future beat" in issue for issue in issues),
+            issues,
         )
 
     def test_serializer_has_no_language_suffix_or_completion_metadata(self):
@@ -1033,14 +1106,14 @@ class LmStudioIntegrationTests(unittest.TestCase):
             integrated.startswith("[Shot 3] Camera cuts to a new shot:")
         )
         self.assertIn(
-            "<Subject 1> Mark is at arcade entrance, wearing a navy jacket "
+            "Mark <Picture 1> is at arcade entrance, wearing a navy jacket "
             "and black jeans, with clothing state: wet",
-            subject_text
+            clothing
         )
         self.assertIn(
-            "<Subject 2> Jill is at fountain, wearing a yellow dress and "
+            "Jill <Picture 2> is at fountain, wearing a yellow dress and "
             "white sneakers, with clothing state: dry",
-            subject_text
+            clothing
         )
         self.assertIn("<Subject 1> Mark", integrated)
         self.assertIn("<Subject 2> Jill", integrated)
@@ -1118,7 +1191,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             previous_state=previous_state,
         )
 
-        marker = "Previous state:\n"
+        marker = "- Location/environment: fact 1\n"
         self.assertIn(marker, prompt)
         self.assertLess(
             prompt.index(marker),
@@ -1200,12 +1273,12 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "<Subject 1> Connie is at roadside, wearing a faded green jacket "
+            "Connie <Picture 1> is at roadside, wearing a faded green jacket "
             "over a white shirt and black jeans, with clothing state: clean",
             clothing
         )
         self.assertIn(
-            "<Subject 2> Frank is at road, wearing a blue polo, khaki trousers, "
+            "Frank <Picture 2> is at road, wearing a blue polo, khaki trousers, "
             "and brown shoes, with clothing state: dry",
             clothing
         )
@@ -1226,7 +1299,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "<Subject 1> Connie is at arcade entrance, wearing a burgundy coat "
+            "Connie <Picture 1> is at arcade entrance, wearing a burgundy coat "
             "and black boots, with clothing state: wet",
             clothing
         )
@@ -1253,7 +1326,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "<Subject 1> Connie is at arcade entrance, wearing a burgundy coat "
+            "Connie <Picture 1> is at arcade entrance, wearing a burgundy coat "
             "and black boots, with clothing state: wet",
             clothing
         )
@@ -1279,9 +1352,9 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )[1].split("\n\ndetailed_description:", 1)[0]
 
         self.assertTrue(subject_section.startswith(definitions))
-        self.assertIn("at arcade entrance", subject_section)
-        self.assertIn("wearing a burgundy coat and black boots", subject_section)
-        self.assertIn("clothing state: wet and torn", subject_section)
+        self.assertIn("at arcade entrance", continuity)
+        self.assertIn("wearing a burgundy coat and black boots", continuity)
+        self.assertIn("clothing state: wet and torn", continuity)
 
     def test_hard_cut_llm_fallback_is_structured_and_filtered(self):
         definitions = "<Subject 1> is Connie, referenced in <Picture 1>."

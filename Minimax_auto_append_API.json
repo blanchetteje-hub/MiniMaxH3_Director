@@ -390,7 +390,7 @@
         "73",
         1
       ],
-      "context_frames": 2,
+      "context_frames": 22,
       "pin_last_frame": true,
       "ref_image_size": "match",
       "prompt": [

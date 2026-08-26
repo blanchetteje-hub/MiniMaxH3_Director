@@ -33,6 +33,46 @@ class ResumeTests(unittest.TestCase):
         })
         self.assertEqual(migrated["environment"]["location"], "hallway")
         self.assertEqual(migrated["subjects"]["1"]["position"], "left")
+        self.assertEqual(state["additional_subject_definitions"], [])
+
+    def test_internal_subject_definitions_are_restored_from_segment_checkpoint(self):
+        definition = (
+            "<Subject 2> is spider-alien, created in generated video "
+            "segment 1 and continued from <Video 1>."
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            video_path = os.path.join(directory, "segment_0001.mp4")
+            with open(video_path, "wb") as video_file:
+                video_file.write(b"video")
+            checkpoint = os.path.join(directory, "generation_state.json")
+            config = minimax.build_run_config(5, 10, 0.5, 2)
+            state = minimax.new_generation_state(config)
+            minimax.record_completed_segment(
+                state,
+                1,
+                video_path,
+                formatted_result(1),
+                [],
+                additional_subject_definitions=[definition],
+            )
+            minimax.save_generation_state(state, checkpoint)
+
+            restored = minimax.restore_generation_state(
+                2,
+                config,
+                [],
+                checkpoint,
+            )
+
+        self.assertEqual(restored["additional_subject_definitions"], [definition])
+        self.assertEqual(
+            restored["state"]["additional_subject_definitions"],
+            [definition],
+        )
+        self.assertEqual(
+            restored["state"]["segments"][0]["additional_subject_definitions"],
+            [definition],
+        )
 
     def test_beat_progress_is_kept_in_generation_state(self):
         config = minimax.build_run_config(5, 20, 0.5, 4)
@@ -72,6 +112,23 @@ class ResumeTests(unittest.TestCase):
     def test_parse_args_accepts_custom_steps(self):
         args = minimax.parse_args(["5", "20", ".5", "--steps", "12"])
         self.assertEqual(args.steps, 12)
+
+    def test_parse_args_defaults_extension_context_to_twenty_two_frames(self):
+        args = minimax.parse_args(["5", "20", ".5"])
+
+        self.assertEqual(args.context_frames, 22)
+
+    def test_parse_args_accepts_common_extension_context_sizes(self):
+        for context_frames in (2, 4, 8, 12):
+            with self.subTest(context_frames=context_frames):
+                args = minimax.parse_args([
+                    "5",
+                    "20",
+                    ".5",
+                    f"--context-frames={context_frames}",
+                ])
+
+                self.assertEqual(args.context_frames, context_frames)
 
     def test_parse_args_defaults_to_ministral_model(self):
         args = minimax.parse_args(["5", "20", ".5"])
@@ -141,6 +198,12 @@ class ResumeTests(unittest.TestCase):
     def test_parse_args_rejects_nonpositive_steps(self):
         with self.assertRaises(SystemExit):
             minimax.parse_args(["5", "20", ".5", "--steps", "0"])
+
+    def test_parse_args_rejects_nonpositive_context_frames(self):
+        with self.assertRaises(SystemExit):
+            minimax.parse_args([
+                "5", "20", ".5", "--context-frames", "0"
+            ])
 
     def test_parse_args_rejects_nonpositive_resume_segment(self):
         with self.assertRaises(SystemExit):
@@ -273,7 +336,7 @@ class ResumeTests(unittest.TestCase):
             self.assertEqual(restored["video_paths"], paths)
             self.assertEqual(restored["previous_video_path"], paths[-1])
             self.assertEqual(
-                [number for number, _ in restored["recent_results"]], [1, 2]
+                [number for number, _ in restored["recent_results"]], [2]
             )
             self.assertEqual(restored["completed_beat_ids"], {1, 2})
             self.assertEqual(
@@ -336,7 +399,7 @@ class ResumeTests(unittest.TestCase):
             self.assertTrue(restored["continuity_summary_pending"])
             self.assertEqual(
                 [number for number, _ in restored["recent_results"]],
-                [1, 2],
+                [2],
             )
 
     def test_resume_rejects_changed_settings_and_source_material(self):

@@ -125,9 +125,7 @@ PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
 FINAL_VIDEO = os.path.join(VIDEO_OUTPUT, "final.mp4")
 PROMPT_HISTORY_LOCK = threading.Lock()
 
-FRAME_RATE = 24
-TRIM_FRAMES_AFTER_FIRST = 2
-TRIM_SECONDS_AFTER_FIRST = TRIM_FRAMES_AFTER_FIRST / FRAME_RATE
+DEFAULT_CONTEXT_FRAMES = 22
 MAX_COMFY_SEED = (2 ** 63) - 1
 MAX_LLM_SEED = (2 ** 31) - 1
 
@@ -140,11 +138,19 @@ COMFY_RENDER_RETRIES = 10
 COMFY_RETRY_MEGAPIXEL_STEP = 0.02
 CONTINUITY_STATE_VERSION = 3
 
+PERSISTENT_SUBJECT_LIST_FIELDS = (
+    "attached_objects",
+    "injuries",
+    "substances",
+    "spatial_relationships",
+    "persistent_effects",
+)
+
 LLM_INPUT_TOKEN_BUDGET = 14000
 CHARS_PER_TOKEN_ESTIMATE = 3.5
 STORY_CONTEXT_MAX_CHARS = 12000
 DEFAULT_BEAT_LOOKAHEAD = 8
-RECENT_SEGMENTS_MAX = 2
+RECENT_SEGMENTS_MAX = 1
 MINISTRAL_CONTENT_CORRECTION_ATTEMPTS = 1
 SUMMARY_CONTENT_ATTEMPTS = 2
 BEAT_GENERATION_CONTENT_ATTEMPTS = 3
@@ -231,6 +237,16 @@ def parse_args(arguments=None):
         help="set the BasicScheduler step count (default: 6)"
     )
     parser.add_argument(
+        "--context-frames",
+        type=int,
+        default=DEFAULT_CONTEXT_FRAMES,
+        metavar="FRAMES",
+        help=(
+            "set latent context frames for video extension "
+            f"(default: {DEFAULT_CONTEXT_FRAMES})"
+        ),
+    )
+    parser.add_argument(
         "--model",
         choices=tuple(FORMATTER_CLASSES),
         default="ministral",
@@ -277,6 +293,8 @@ def parse_args(arguments=None):
         parser.error("--resume must be a one-based segment number.")
     if args.steps <= 0:
         parser.error("--steps must be greater than zero.")
+    if args.context_frames <= 0:
+        parser.error("--context-frames must be greater than zero.")
 
     return args
 
@@ -572,7 +590,7 @@ def parse_subject_registry(subject_definitions):
             speaker_id = (
                 f"S{speaker}"
                 if (speaker := next(iter(re.findall(r"(?i)\(S(\d+)\)", line)), None))
-                else None
+                else f"S{subject_id}"
             )
         if match is None:
             continue
@@ -634,11 +652,16 @@ def new_subject_continuity_record(subject):
             "other": "N/A",
         },
         # Persistent structural relationships belong here instead of being
-        # mixed into transient pose/action prose. Examples: "fused to Jenny
-        # at the waistline", "head attached", "left hand detached".
+        # mixed into transient pose/action prose. Examples include a cable
+        # connected to a rear port or an accessory removed from a costume.
         "topology": "N/A",
         "body_state": "N/A",
         "physical_condition": "N/A",
+        "attached_objects": [],
+        "injuries": [],
+        "substances": [],
+        "spatial_relationships": [],
+        "persistent_effects": [],
         "held_props": [],
     }
 
@@ -715,6 +738,9 @@ def continuity_state_for_registry(subject_definitions, state=None):
                 record[field] = existing[field]
         if isinstance(existing.get("held_props"), list):
             record["held_props"] = list(existing["held_props"])
+        for field in PERSISTENT_SUBJECT_LIST_FIELDS:
+            if isinstance(existing.get(field), list):
+                record[field] = list(existing[field])
         if isinstance(existing.get("wardrobe"), dict):
             for garment in record["wardrobe"]:
                 if isinstance(existing["wardrobe"].get(garment), str):
@@ -774,23 +800,31 @@ _CONTINUITY_TIMESTAMP_RE = re.compile(
     r"(?i)(?:\bat\s+)?\b\d{1,2}:\d{2}(?:\.\d{1,3})?\b"
 )
 
-# Terms that imply an irreversible or topology-changing state. A continuity
-# candidate is not allowed to introduce one of these changes unless the newest
-# segment description explicitly contains evidence for the same anatomical
-# region. This blocks common state hallucinations such as a limb becoming
-# detached merely because a different body part was described as detached.
-_STRUCTURAL_CHANGE_STEMS = (
-    "detach", "sever", "amputat", "decapitat", "fuse", "fusion", "attach",
-    "merge", "split", "ruptur", "hatch", "birth", "emerg", "melt",
-    "transform", "disintegrat", "crush", "break", "broken", "missing",
-    "remove", "tear", "torn", "suspend", "upside-down", "upside down",
+# Structural continuity candidates must be grounded in the newest description.
+# Evidence is matched from the candidate's own distinctive words, with a neutral
+# region vocabulary preventing evidence about one region from being borrowed for
+# another. This supports arbitrary user-supplied material without embedding
+# genre-specific or graphic examples in this source file.
+_STRUCTURAL_EVIDENCE_STOPWORDS = frozenset({
+    "about", "after", "again", "against", "already", "around", "because",
+    "before", "being", "between", "current", "during", "final", "frame",
+    "front", "into", "near", "newest", "other", "remains", "state", "still",
+    "subject", "their", "there", "these", "they", "this", "through", "under",
+    "visible", "where", "which", "while", "with",
+})
+
+_STRUCTURAL_REGION_PHRASES = (
+    "lower body", "upper body",
+    "head", "face", "neck", "chest", "abdomen", "waist", "torso", "spine",
+    "back", "shoulder", "arm", "wrist", "hand", "finger",
+    "leg", "knee", "foot", "hair", "mouth", "jaw",
+    "wing", "horn", "tail", "limb",
+    "antenna", "panel", "port", "cable", "component", "assembly", "accessory",
 )
-_ANATOMY_PHRASES = (
-    "lower body", "upper body", "head", "face", "neck", "throat", "chest",
-    "sternum", "ribcage", "rib cage", "abdomen", "belly", "belly button",
-    "waist", "waistline", "torso", "spine", "back", "shoulder", "arm",
-    "wrist", "hand", "finger", "breast", "leg", "knee", "foot", "hair",
-    "mouth", "jaw", "mandible", "wing", "horn", "tail", "limb",
+
+_STRUCTURAL_REGION_QUALIFIERS = (
+    "left", "right", "upper", "lower", "front", "rear", "top", "bottom",
+    "inner", "outer",
 )
 
 
@@ -814,8 +848,82 @@ def _scrub_snapshot_text(value, field_name=""):
     cleaned = _CONTINUITY_TIMESTAMP_RE.sub("", cleaned)
     cleaned = re.sub(r"\s*;\s*;\s*", "; ", cleaned)
     cleaned = re.sub(r"\s+,\s*,\s*", ", ", cleaned)
+    cleaned = re.sub(r"\(\s*[–—-]\s*\)", "", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,;:-")
     return cleaned or "N/A"
+
+
+def _continuity_item_text(item, field_name=""):
+    """Convert one continuity-list item to concise natural-language text.
+
+    Older checkpoints and unconstrained LLM responses may contain dictionaries
+    inside fields that are supposed to be arrays of strings. Never stringify
+    those dictionaries: doing so leaks Python/JSON syntax into H3 prompts.
+    Instead, keep only their human-readable semantic values.
+    """
+    if isinstance(item, str):
+        cleaned = _scrub_snapshot_text(item, field_name)
+        return None if cleaned == "N/A" else cleaned
+    if not isinstance(item, dict):
+        return None
+
+    def scalar(key):
+        value = item.get(key)
+        if isinstance(value, (str, int, float)) and not isinstance(value, bool):
+            text = str(value).strip()
+            if text and text.upper() != "N/A" and text not in {"-", "–", "—"}:
+                return text.replace("_", " ")
+        return None
+
+    # held_props commonly arrives as {"item": "...", "duration": "..."}.
+    if field_name == "held_props":
+        text = scalar("item") or scalar("description")
+        return _scrub_snapshot_text(text, field_name) if text else None
+
+    description = scalar("description")
+    location = scalar("location")
+    relation = scalar("relation")
+    subject = scalar("subject") or scalar("environment")
+    label = (
+        scalar("type")
+        or scalar("material")
+        or (None if scalar("effect_type") in {"visual", "auditory", "mechanical"}
+            else scalar("effect_type"))
+        or scalar("item")
+    )
+    source = scalar("source")
+    severity = scalar("severity")
+
+    parts = []
+    if subject and relation:
+        parts.append(f"{subject}: {relation}")
+    elif relation:
+        parts.append(relation)
+    elif label:
+        parts.append(label)
+    if location:
+        if not parts:
+            connector = ""
+        elif location.casefold().startswith((
+            "held by ", "held in ", "inside ", "on ", "in ", "between ",
+            "beneath ", "under ", "above ", "across ", "around ",
+        )):
+            connector = " "
+        else:
+            connector = " at "
+        parts.append(f"{connector}{location}")
+    if description and description.casefold() not in " ".join(parts).casefold():
+        parts.append((", " if parts else "") + description)
+    if source and source.casefold() not in " ".join(parts).casefold():
+        parts.append((", from " if parts else "from ") + source)
+    if severity and severity.casefold() not in " ".join(parts).casefold():
+        parts.append((", " if parts else "") + severity)
+
+    text = "".join(parts).strip(" ,;:-")
+    if not text:
+        return None
+    cleaned = _scrub_snapshot_text(text, field_name)
+    return None if cleaned == "N/A" else cleaned
 
 
 def _scrub_continuity_subject_record(record):
@@ -831,6 +939,13 @@ def _scrub_continuity_subject_record(record):
         for garment in ("upper", "lower", "footwear", "other"):
             if garment in wardrobe:
                 wardrobe[garment] = _scrub_snapshot_text(wardrobe.get(garment), f"wardrobe.{garment}")
+    for field in (*PERSISTENT_SUBJECT_LIST_FIELDS, "held_props"):
+        if isinstance(record.get(field), list):
+            record[field] = list(dict.fromkeys(
+                cleaned
+                for item in record[field]
+                if (cleaned := _continuity_item_text(item, field))
+            ))
     return record
 
 
@@ -897,6 +1012,8 @@ def migrate_continuity_state(state):
         for record in normalized_subjects.values():
             if isinstance(record, dict):
                 record.setdefault("topology", "N/A")
+                for field in PERSISTENT_SUBJECT_LIST_FIELDS:
+                    record.setdefault(field, [])
         migrated["subjects"] = normalized_subjects
     return scrub_continuity_state(migrated)
 
@@ -949,10 +1066,18 @@ def _subject_opening_sentence(subject_id, name, record, summary=False):
         record.get("physical_condition")
     )
     held_props = [
-        str(prop).strip()
+        cleaned
         for prop in record.get("held_props", [])
-        if str(prop).strip() and str(prop).strip().upper() != "N/A"
+        if (cleaned := _continuity_item_text(prop, "held_props"))
     ]
+    persistent_lists = {
+        field: [
+            cleaned
+            for item in record.get(field, [])
+            if (cleaned := _continuity_item_text(item, field))
+        ]
+        for field in PERSISTENT_SUBJECT_LIST_FIELDS
+    }
 
     if summary:
         if record.get("picture_ids"):
@@ -985,6 +1110,28 @@ def _subject_opening_sentence(subject_id, name, record, summary=False):
         facts.append(f"Physical condition: {physical_condition}")
     if held_props:
         facts.append(f"Held props: {_english_join(held_props)}")
+    if persistent_lists["attached_objects"]:
+        facts.append(
+            "Attached objects: "
+            + _english_join(persistent_lists["attached_objects"])
+        )
+    if persistent_lists["injuries"]:
+        facts.append("Injuries: " + _english_join(persistent_lists["injuries"]))
+    if persistent_lists["substances"]:
+        facts.append(
+            "Persistent substances: "
+            + _english_join(persistent_lists["substances"])
+        )
+    if persistent_lists["spatial_relationships"]:
+        facts.append(
+            "Physical relationships: "
+            + _english_join(persistent_lists["spatial_relationships"])
+        )
+    if persistent_lists["persistent_effects"]:
+        facts.append(
+            "Persistent effects: "
+            + _english_join(persistent_lists["persistent_effects"])
+        )
     return ". ".join(fact.rstrip(". ") for fact in facts) + ("." if facts else "")
 
 
@@ -1003,6 +1150,122 @@ def _ordered_continuity_subjects(state):
         subjects.append((subject_id, name, record))
     return sorted(subjects, key=lambda item: (item[0], item[1].lower()))
 
+
+_EXPLICIT_REMOVAL_RE = re.compile(
+    r"(?i)\b(?:remove[sd]?|removing|"
+    r"pull(?:s|ed|ing)?(?:\s+\S+){0,8}?\s+out|"
+    r"unfasten(?:s|ed|ing)?|release[sd]?|releasing|"
+    r"drop(?:s|ped|ping)?|wipe[sd]?\s+(?:off|away)|wash(?:es|ed|ing)?\s+(?:off|away)|"
+    r"clean(?:s|ed|ing)?\s+(?:off|away)|dissipat(?:es|ed|ing)|fade[sd]?\s+away)\b"
+)
+
+
+def _subject_description_identity(subject_id, name, record):
+    pictures = _subject_picture_tags(record)
+    if pictures:
+        return f"{name} {' '.join(pictures)}"
+    return f"<Subject {subject_id}> {name}"
+
+
+def _description_mentions_subject(description, subject_id, name, record):
+    patterns = [
+        rf"(?i)<Subject\s+{subject_id}>",
+        rf"(?i)\b{re.escape(name)}\b",
+    ]
+    patterns.extend(
+        rf"(?i)<Picture\s+{picture_id}>"
+        for picture_id in record.get("picture_ids", [])
+    )
+    return any(re.search(pattern, description) for pattern in patterns)
+
+
+def _persistent_subject_facts(record):
+    facts = []
+    for field in ("topology", "body_state", "physical_condition"):
+        value = _known_continuity_value(record.get(field))
+        if value:
+            facts.append(value)
+    for field in PERSISTENT_SUBJECT_LIST_FIELDS:
+        facts.extend(
+            str(item).strip()
+            for item in record.get(field, [])
+            if str(item).strip() and str(item).strip().upper() != "N/A"
+        )
+    held_props = [
+        str(item).strip()
+        for item in record.get("held_props", [])
+        if str(item).strip() and str(item).strip().upper() != "N/A"
+    ]
+    if held_props:
+        facts.append(f"holding {_english_join(held_props)}")
+    wardrobe = _subject_wardrobe(record)
+    if wardrobe:
+        facts.append(f"wearing {_english_join(wardrobe)}")
+    position = _known_continuity_value(record.get("position"))
+    if position:
+        facts.append(f"remaining {position}")
+    pose = _known_continuity_value(record.get("pose_action"))
+    if pose:
+        facts.append(f"maintaining {pose}")
+    return list(dict.fromkeys(facts))
+
+
+def _related_persistent_subjects(subjects, directly_relevant):
+    relevant_names = {
+        name.casefold() for _, name, _ in directly_relevant
+    }
+    related = []
+    for item in subjects:
+        if item in directly_relevant:
+            continue
+        _, _, record = item
+        relationships = " ".join(
+            str(value)
+            for field in (
+                "topology",
+                "body_state",
+                "physical_condition",
+                *PERSISTENT_SUBJECT_LIST_FIELDS,
+            )
+            for value in (
+                record.get(field, [])
+                if isinstance(record.get(field), list)
+                else [record.get(field, "")]
+            )
+        ).casefold()
+        if any(name in relationships for name in relevant_names):
+            related.append(item)
+    return related
+
+
+_STRUCTURED_CONTINUITY_FRAGMENT_RE = re.compile(
+    r"(?is)\{[^{}]{0,1200}(?:['\"](?:type|location|description|subject|relation|"
+    r"effect_type|material|item|duration|severity)['\"]\s*:)[^{}]{0,1200}\}"
+)
+
+
+def inject_persistent_state_into_description(
+    detailed_description,
+    continuity_state,
+    subject_definitions="",
+    segment_number=None,
+):
+    """Keep the legacy call seam without dumping state into H3 scene prose.
+
+    The append workflow now carries a much larger trailing video context window,
+    while the director receives the committed continuity snapshot separately.
+    Automatically prepending every stored fact made descriptions repetitive and
+    could leak structured state into the prompt. Off-camera state therefore stays
+    in the continuity store and is reintroduced by the director only when it is
+    actually visible/relevant on re-entry.
+    """
+    del continuity_state, subject_definitions, segment_number
+    description = str(detailed_description or "")
+    description = _STRUCTURED_CONTINUITY_FRAGMENT_RE.sub("", description)
+    description = re.sub(r"\s+,", ",", description)
+    description = re.sub(r",\s*,+", ", ", description)
+    description = re.sub(r"\s+", " ", description).strip(" ,")
+    return description
 
 def format_authoritative_opening_state(state, subject_definitions=""):
     """Render MiniMax H3 video-continuation and reference-retention guidance."""
@@ -1134,14 +1397,28 @@ def format_subject_registry(subject_definitions):
     return "\n".join(lines)
 
 
-def append_video_subject_definitions(
+def combine_subject_definitions(subject_definitions, additional_definitions):
+    """Combine immutable subjects.txt content with run-local subjects."""
+    parts = [str(subject_definitions or "").strip()]
+    parts.extend(
+        str(definition).strip()
+        for definition in additional_definitions or []
+        if str(definition).strip()
+    )
+    return "\n".join(part for part in parts if part)
+
+
+def collect_additional_subject_definitions(
     subject_definitions,
+    additional_definitions,
     continuity_state,
     origin_segment,
-    path=SUBJECT_DEFINITIONS_FILE,
 ):
-    """Persist newly created video-only subjects and return updated definitions."""
-    existing_text = str(subject_definitions or "").strip()
+    """Collect newly created subjects in memory without editing subjects.txt."""
+    existing_text = combine_subject_definitions(
+        subject_definitions,
+        additional_definitions,
+    )
     registry = parse_subject_registry(existing_text)
     known_ids = set(registry)
     known_names = {
@@ -1179,32 +1456,7 @@ def append_video_subject_definitions(
         known_ids.add(subject_id)
         known_names.add(name.lower())
 
-    if not appended_lines:
-        return existing_text, []
-
-    updated_text = "\n".join(
-        part for part in (existing_text, "\n".join(appended_lines)) if part
-    )
-    directory = os.path.dirname(os.path.abspath(path))
-    os.makedirs(directory, exist_ok=True)
-    descriptor, temporary_path = tempfile.mkstemp(
-        prefix="subjects_",
-        suffix=".tmp",
-        dir=directory,
-    )
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as file:
-            file.write(updated_text + "\n")
-            file.flush()
-            os.fsync(file.fileno())
-        os.replace(temporary_path, path)
-    except Exception:
-        try:
-            os.unlink(temporary_path)
-        except FileNotFoundError:
-            pass
-        raise
-    return updated_text, appended_lines
+    return list(additional_definitions or []) + appended_lines, appended_lines
 
 
 def format_beat_generation_subjects(subject_definitions):
@@ -1299,6 +1551,7 @@ def new_generation_state(run_config):
         "continuity_summary": "",
         "continuity_state": new_continuity_state(),
         "continuity_summary_pending": False,
+        "additional_subject_definitions": [],
         "beat_progress": {
             "completed_beat_ids": [],
             "last_segment_number": None,
@@ -1431,10 +1684,17 @@ def restore_generation_state(
                 state.get("continuity_state"),
             )
         )
+        state["additional_subject_definitions"] = list(
+            restored_records[-1].get(
+                "additional_subject_definitions",
+                state.get("additional_subject_definitions", []),
+            )
+        )
     else:
         state["continuity_summary"] = ""
         state["continuity_state"] = new_continuity_state()
         state["continuity_summary_pending"] = False
+        state["additional_subject_definitions"] = []
     return {
         "state": state,
         "video_paths": video_paths,
@@ -1448,6 +1708,9 @@ def restore_generation_state(
         "continuity_summary_pending": state.get(
             "continuity_summary_pending", False
         ),
+        "additional_subject_definitions": list(
+            state.get("additional_subject_definitions", [])
+        ),
     }
 
 
@@ -1460,10 +1723,15 @@ def record_completed_segment(
     continuity_summary="",
     continuity_state=None,
     continuity_summary_pending=False,
+    additional_subject_definitions=None,
 ):
     records = state.setdefault("segments", [])
     if continuity_state is None:
         continuity_state = state.get("continuity_state")
+    if additional_subject_definitions is None:
+        additional_subject_definitions = state.get(
+            "additional_subject_definitions", []
+        )
     expected_segment = len(records) + 1
     if segment_number != expected_segment:
         raise RuntimeError(
@@ -1478,6 +1746,7 @@ def record_completed_segment(
         "continuity_summary": continuity_summary,
         "continuity_state": migrate_continuity_state(continuity_state),
         "continuity_summary_pending": bool(continuity_summary_pending),
+        "additional_subject_definitions": list(additional_subject_definitions),
     }
     records.append(record)
     state["beat_progress"] = {
@@ -1489,6 +1758,9 @@ def record_completed_segment(
     state["continuity_state"] = migrate_continuity_state(continuity_state)
     state["continuity_summary_pending"] = bool(
         continuity_summary_pending
+    )
+    state["additional_subject_definitions"] = list(
+        additional_subject_definitions
     )
     return record
 
@@ -2436,7 +2708,14 @@ def build_beat_generation_messages(
     correction="",
     beat_instructions="",
     subject_information="",
+    batch_start=None,
+    batch_end=None,
+    previous_beats=None,
 ):
+    batch_start = 1 if batch_start is None else int(batch_start)
+    batch_end = total_segments if batch_end is None else int(batch_end)
+    batch_size = batch_end - batch_start + 1
+    previous_beats = list(previous_beats or [])
     correction_text = ""
     if correction:
         correction_text = f"""
@@ -2481,12 +2760,12 @@ story progression, and do not rename them or replace them with new protagonists.
         {
             "role": "user",
             "content": f"""
-Create exactly {total_segments} ordered story beats from the source story below,
-one beat for each of the {total_segments} video segments. Be creative while
+Create exactly {batch_size} ordered story beats for global beat positions
+{batch_start} through {batch_end} of a {total_segments}-segment video, one beat for each of the {total_segments} video segments across the complete plan. Be creative while
 remaining faithful to the story's characters, premise, tone, and intended arc.
 
 Requirements:
-- Return exactly {total_segments} beats in chronological story order.
+- Return exactly {batch_size} beats in chronological story order.
 - Each beat must describe a distinct visible story event suitable for one segment.
 - Each beat must be exactly one complete sentence; never combine two or more
   sentences in a single beat.
@@ -2509,6 +2788,7 @@ Requirements:
 {subject_text}
 {instruction_text}
 {correction_text}
+{("PREVIOUSLY GENERATED BEATS\n" + chr(10).join(f"B{number:03d}: {beat}" for number, beat in enumerate(previous_beats, start=1))) if previous_beats else ""}
 SOURCE STORY
 --- STORY START ---
 {story}
@@ -2525,7 +2805,14 @@ def build_beat_instruction_review_messages(
     beat_instructions,
     correction="",
     subject_information="",
+    batch_start=None,
+    batch_end=None,
+    complete_beats=None,
 ):
+    batch_start = 1 if batch_start is None else int(batch_start)
+    batch_end = total_segments if batch_end is None else int(batch_end)
+    batch_size = batch_end - batch_start + 1
+    complete_beats = list(complete_beats or beats)
     correction_text = ""
     if correction:
         correction_text = (
@@ -2552,9 +2839,9 @@ information in the corrected beats:
         {
             "role": "user",
             "content": f"""
-Audit and, where necessary, minimally correct the candidate beat list so it
-follows every additional instruction exactly while retaining exactly
-{total_segments} unique, chronological, forward-moving beats.
+Audit and, where necessary, minimally correct global beats {batch_start} through {batch_end}
+so they follow every additional instruction exactly while retaining
+exactly {batch_size} unique, chronological, forward-moving beats.
 
 Also enforce the base story requirements: no beat may repeat or restage an
 earlier beat, every beat must materially advance the story, and the final beat
@@ -2575,6 +2862,7 @@ verify compliance one final time.
 
 CANDIDATE BEATS
 {json.dumps({"beats": beats}, ensure_ascii=False, indent=2)}
+{("COMPLETE PLAN CONTEXT OUTSIDE THIS BATCH\n" + chr(10).join(f"B{number:03d}: {beat}" for number, beat in enumerate(complete_beats, start=1) if number < batch_start or number > batch_end)) if len(complete_beats) > len(beats) else ""}
 {correction_text}
 
 SOURCE STORY
@@ -2861,117 +3149,152 @@ def generate_beats_from_story(
     if content_attempts <= 0:
         raise ValueError("Beat generation requires at least one content attempt.")
 
-    response_format = build_beats_response_format(total_segments)
-    correction = ""
-    last_error = None
-    beats = None
-    for attempt in range(1, content_attempts + 1):
-        messages = build_beat_generation_messages(
-            story,
-            total_segments,
-            correction,
-            beat_instructions,
-            subject_information,
-        )
-        verify_subjects_in_beat_messages(messages, subject_information)
-        raw_result = llm_request(
-            messages,
-            response_format=response_format,
-            history_metadata={
-                "purpose": "beat_generation",
-                "attempt": attempt,
-                "total_segments": total_segments,
-                **(history_metadata or {}),
-            },
-            **BEAT_LLM_SAMPLING_PARAMETERS,
-        )
-        try:
-            beats = parse_generated_beats(raw_result, total_segments)
-        except ValueError as error:
-            last_error = error
-            correction = str(error)
-            if attempt < content_attempts:
-                print(
-                    "LLM returned an invalid beat list; requesting a corrected "
-                    f"list ({attempt + 1}/{content_attempts}): {error}"
+    batch_ranges = [
+        (start, min(start + 19, total_segments))
+        for start in range(1, total_segments + 1, 20)
+    ]
+    beats = []
+    for batch_start, batch_end in batch_ranges:
+        batch_size = batch_end - batch_start + 1
+        response_format = build_beats_response_format(batch_size)
+        correction = ""
+        last_error = None
+        batch_beats = None
+        for attempt in range(1, content_attempts + 1):
+            messages = build_beat_generation_messages(
+                story,
+                total_segments,
+                correction,
+                beat_instructions,
+                subject_information,
+                batch_start=batch_start,
+                batch_end=batch_end,
+                previous_beats=beats,
+            )
+            verify_subjects_in_beat_messages(messages, subject_information)
+            raw_result = llm_request(
+                messages,
+                response_format=response_format,
+                history_metadata={
+                    "purpose": "beat_generation",
+                    "attempt": attempt,
+                    "total_segments": total_segments,
+                    "batch_start": batch_start,
+                    "batch_end": batch_end,
+                    **(history_metadata or {}),
+                },
+                **BEAT_LLM_SAMPLING_PARAMETERS,
+            )
+            try:
+                batch_beats = parse_generated_beats(raw_result, batch_size)
+                duplicate = next(
+                    (
+                        beat for beat in batch_beats
+                        if " ".join(beat.split()).casefold() in {
+                            " ".join(previous.split()).casefold()
+                            for previous in beats
+                        }
+                    ),
+                    None,
                 )
-            continue
-
-        break
-
-    if beats is None:
-        raise RuntimeError(
-            f"LM Studio did not return exactly {total_segments} valid, unique "
-            f"story beats after {content_attempts} attempt(s): {last_error}"
-        ) from last_error
+                if duplicate:
+                    raise ValueError(
+                        "Generated batch repeats an earlier beat: "
+                        f"{duplicate!r}."
+                    )
+            except ValueError as error:
+                last_error = error
+                correction = str(error)
+                batch_beats = None
+                if attempt < content_attempts:
+                    print(
+                        "LLM returned an invalid beat list; requesting a corrected "
+                        f"list ({attempt + 1}/{content_attempts}): {error}"
+                    )
+                continue
+            break
+        if batch_beats is None:
+            raise RuntimeError(
+                f"LM Studio did not return exactly {batch_size} valid, unique "
+                f"story beats for positions {batch_start}-{batch_end} after "
+                f"{content_attempts} attempt(s): {last_error}"
+            ) from last_error
+        beats.extend(batch_beats)
 
     if beat_instructions:
         if instruction_review_attempts <= 0:
             raise ValueError(
                 "Beat-instruction compliance requires at least one review attempt."
             )
-        review_error = ""
-        reviewed_beats = None
-        for review_attempt in range(1, instruction_review_attempts + 1):
-            review_messages = build_beat_instruction_review_messages(
-                story,
-                total_segments,
-                beats,
-                beat_instructions,
-                review_error,
-                subject_information,
-            )
-            verify_subjects_in_beat_messages(
-                review_messages,
-                subject_information,
-            )
-            reviewed_raw = llm_request(
-                review_messages,
-                response_format=response_format,
-                history_metadata={
-                    "purpose": "beat_instruction_review",
-                    "attempt": review_attempt,
-                    "total_segments": total_segments,
-                    **(history_metadata or {}),
-                },
-                **BEAT_LLM_SAMPLING_PARAMETERS,
-            )
-            try:
-                reviewed_beats = parse_generated_beats(
-                    reviewed_raw,
+        original_beats = list(beats)
+        reviewed_beats = []
+        for batch_start, batch_end in batch_ranges:
+            batch_size = batch_end - batch_start + 1
+            response_format = build_beats_response_format(batch_size)
+            candidate_batch = original_beats[batch_start - 1:batch_end]
+            review_error = ""
+            reviewed_batch = None
+            for review_attempt in range(1, instruction_review_attempts + 1):
+                review_messages = build_beat_instruction_review_messages(
+                    story,
                     total_segments,
+                    candidate_batch,
+                    beat_instructions,
+                    review_error,
+                    subject_information,
+                    batch_start=batch_start,
+                    batch_end=batch_end,
+                    complete_beats=original_beats,
                 )
-            except ValueError as error:
-                review_error = str(error)
-                if review_attempt < instruction_review_attempts:
-                    print(
-                        "LLM returned an invalid instruction-compliance edit; "
-                        f"retrying ({review_attempt + 1}/"
-                        f"{instruction_review_attempts}): {error}"
+                verify_subjects_in_beat_messages(
+                    review_messages,
+                    subject_information,
+                )
+                reviewed_raw = llm_request(
+                    review_messages,
+                    response_format=response_format,
+                    history_metadata={
+                        "purpose": "beat_instruction_review",
+                        "attempt": review_attempt,
+                        "total_segments": total_segments,
+                        "batch_start": batch_start,
+                        "batch_end": batch_end,
+                        **(history_metadata or {}),
+                    },
+                    **BEAT_LLM_SAMPLING_PARAMETERS,
+                )
+                try:
+                    reviewed_batch = parse_generated_beats(
+                        reviewed_raw,
+                        batch_size,
                     )
-                continue
-            compliance_issues = validate_generated_beat_instructions(
-                reviewed_beats,
-                beat_instructions,
-            )
-            if compliance_issues:
-                review_error = " ".join(compliance_issues)
-                reviewed_beats = None
-                if review_attempt < instruction_review_attempts:
-                    print(
-                        "LLM beat list did not satisfy explicit beat_instructions; "
-                        f"retrying ({review_attempt + 1}/"
-                        f"{instruction_review_attempts}): {review_error}"
-                    )
-                continue
-            beats = reviewed_beats
-            break
-        if reviewed_beats is None:
+                except ValueError as error:
+                    review_error = str(error)
+                    if review_attempt < instruction_review_attempts:
+                        print(
+                            "LLM returned an invalid instruction-compliance edit; "
+                            f"retrying ({review_attempt + 1}/"
+                            f"{instruction_review_attempts}): {error}"
+                        )
+                    continue
+                break
+            if reviewed_batch is None:
+                raise RuntimeError(
+                    "LM Studio could not return a structurally valid beat list "
+                    "during the instruction-compliance review: "
+                    f"{review_error}"
+                )
+            reviewed_beats.extend(reviewed_batch)
+        compliance_issues = validate_generated_beat_instructions(
+            reviewed_beats,
+            beat_instructions,
+        )
+        if compliance_issues:
             raise RuntimeError(
-                "LM Studio could not return a structurally valid beat list "
-                "during the instruction-compliance review: "
-                f"{review_error}"
+                "LM Studio beat list did not satisfy explicit beat_instructions: "
+                + " ".join(compliance_issues)
             )
+        beats = reviewed_beats
 
     print_generated_beats(beats)
     save_generated_beats(beats, path, lora_directive=lora_directive)
@@ -3072,7 +3395,15 @@ def build_story_context(
 # ============================================================
 
 def is_hard_cut_segment(segment_number):
-    return segment_number > 0 and segment_number % 3 == 0
+    """Return whether Python must force a shot reset.
+
+    With video extension carrying a substantial trailing context window, periodic
+    forced cuts are counterproductive: they encourage H3 to re-compose subjects
+    and can discard persistent details. Cuts are now story/camera decisions made
+    inside the single continuation shot rather than an every-N-segments reset.
+    """
+    del segment_number
+    return False
 
 
 def build_director_rules(
@@ -3081,7 +3412,8 @@ def build_director_rules(
     total_segments,
     subject_definitions,
     megapixels,
-    beats_enabled=True
+    beats_enabled=True,
+    context_frames=DEFAULT_CONTEXT_FRAMES,
 ):
     subject_context = subject_definitions or "N/A"
 
@@ -3121,16 +3453,15 @@ BEAT EXECUTION CONTRACT
 - If the ACTIVE beat says to continue an already established action, the beat is
     complete once THIS segment visibly depicts one substantial new exchange or
     continuation satisfying that beat. The overall action does not need to end.
-- Do not enact, preview, or create the distinctive event, creature, object,
-  injury, transformation, or outcome of any ordered lookahead beat in this
+- Do not enact, preview, or create the distinctive event, entity, object,
+  transformation, persistent condition, or outcome of any ordered lookahead beat in this
   segment. Later-beat entities must not appear early merely as embellishment.
 - Do not invent irreversible physical changes unless the ACTIVE beat explicitly
-  requires them. Do not permanently destroy equipment, detach body parts, fuse
-  subjects, create births/hatchings, introduce major lasting injuries, kill a
-  character, or permanently alter wardrobe merely to make an action scene more
-  dramatic.
-- A structural body/topology change exists only if THIS segment visibly performs
-  that change. Never jump directly to a detached, fused, suspended, missing, or
+  requires them. Do not permanently alter a subject's form, merge subjects,
+  introduce a new entity, remove a character from the story, destroy important
+  equipment, or permanently alter wardrobe merely to make a scene more dramatic.
+- A structural or topology change exists only if THIS segment visibly performs
+  that change. Never jump directly to a connected, separated, suspended, missing, or
   transformed state without showing the action that caused it.
 - `completed_beat_ids` contains only newly completed consecutive beats beginning with ACTIVE.
 """.strip()
@@ -3160,49 +3491,51 @@ RESOLUTION GUIDANCE
 CONTINUATION
 - Segment 1 establishes the opening normally.
 - Later segments continue immediately from the previous generated video.
-- Do not recap the previous clip.
-- Preserve established wardrobe, injuries, props, positions, and ongoing audio when visible/relevant.
+- The append workflow carries {context_frames} trailing latent context frames and pins the previous final frame. Treat that video context as the primary source for immediate visual continuity.
+- AUTHORITATIVE OPENING STATE is a snapshot of facts that are ALREADY TRUE at frame 0, not a list of actions to perform again. Never re-enact the cause of an existing state. If an accessory is already removed, do not remove it again; if a device is already attached, do not attach it again unless the ACTIVE beat explicitly changes it.
+- Do not recap, replay, restage, or embellish the previous clip's completed events. Start after them and perform new action for the ACTIVE beat.
+- Preserve established wardrobe, physical conditions, props, positions, and ongoing audio when visible/relevant.
+- A subject going off-camera, being cropped out, or leaving the current framing does NOT erase that subject's state. Keep its committed physical state unchanged off-camera. When it later returns to view, describe only the persistent facts that are then visible/relevant; do not narrate off-camera subjects merely to keep them alive in memory.
+- Do not copy continuity-memory JSON, Python dictionaries, field names, braces, or key/value syntax into detailed_description. Render any needed state as ordinary cinematic English.
 - When an action or story beat changes a subject's wardrobe, explicitly describe
     the visible change and resulting concrete garments and colors. The resulting
     outfit becomes that subject's current wardrobe and replaces contradictory
     earlier wardrobe descriptions.
-- When a subject has a persistent visible physical alteration such as a severed
-    horn, missing limb, major wound, damaged equipment, or decapitation, explicitly
-    preserve that alteration whenever the affected body area is visible.
+- When a subject has a persistent visible alteration such as a folded antenna,
+    missing accessory, torn garment, or damaged equipment, explicitly preserve
+    that alteration whenever the affected area is visible.
 
 SUBJECTS
-Pictures 1-6 are persistent identity/body references only, not wardrobe records.
-Written story/continuity overrides clothing visible in reference pictures.
-Subjects established by generated video have no Picture mapping. Preserve their
-registered names and stable <Subject N> IDs from <Video 1>; never invent a Picture
-tag for them.
+Reference pictures are source assets for registered <Subject N> identities/body
+appearance; they are NOT current-scene or background anchors unless the task
+explicitly says a Picture is a first frame, last frame, keyframe, or composition
+anchor. Written story/continuity overrides clothing visible in reference pictures.
+Subjects established by generated video keep their stable <Subject N> IDs from
+<Video 1> and have no Picture mapping.
 
 {subject_context}
 
-Use the registered form `Character Name <Picture N>` for defined subjects.
-For a registered video-only subject, use its canonical name without a Picture tag.
-Do not invent Picture tags for undefined people or objects.
+In detailed_description, identify registered visible content with its stable
+`<Subject N>` label, e.g. `<Subject 1> Terri`. For dialogue use
+`<Subject 1> Terri (S1) says: <d>[English] ...</d>`. Do NOT write `<Picture N>`
+next to a character merely to preserve identity; the Picture source is already
+bound inside subject_definitions. Use a `<Picture N>` in scene prose only when
+that picture itself is explicitly serving as a frame/keyframe/composition anchor.
+Do not invent Subject or Picture labels.
+Speaker IDs belong only to registered subjects and only when they speak.
+Never assign a speaker ID, Subject tag, or Picture tag to an unregistered role.
+Never put speaker IDs on non-speaking people in purely visual prose.
 Python inserts subject_definitions separately; do not output subject_definitions.
 
 SHOT AND TIMING
 - Each segment contains exactly one shot: Segment N = [Shot N].
 - Shot 1 begins with `[Shot 1]` followed by style, framing, and initial composition.
-- Segments after Shot 1 begin with either `[Shot N] Camera continues from the previous shot...`
-    or `[Shot N] Camera cuts to a new shot: ...`.
+- Segments after Shot 1 begin with either `[Shot N] Camera continues from the previous shot...` and if the camera shots changes, such as to a different subject, describe a camera movement, not a hard cut.
 - The opening [Shot N] has no timestamp.
 - Optional later event timestamps within the same shot use this clip's local timeline.
 - Later timestamps use this clip's local timeline, are greater than 00:00.000, and remain before clip duration.
 - Never use cumulative movie timestamps.
-- If Shot N is divisible by 3, it MUST begin with the CUT form.
-- On other later segments, use the continuation form ONLY when the opening
-    composition can genuinely follow the previous final frame without an
-    unexplained camera teleport, subject relocation, or reset. If the desired
-    framing requires a materially different viewpoint, use the CUT form instead.
-- On a required CUT segment, do not write any continuation opening or sentence
-    such as `camera continues from the previous shot`; the shot must begin only
-    with the cut form.
-- A continuation opening must preserve the previous final camera/framing and
-    subject layout until an explicit camera or subject movement changes them.
+- Try to avoid camera cuts and prefer smooth transitions between shots.
 - Write camera motion as natural English within the shot, never as stacked labels.
 - Use only Zoom In/Out, Push In/Pull Out, Pan Left/Right, Truck Left/Right,
   Tilt Up/Down, Pedestal Up/Down, Arc Shot, Tracking Shot, Static Shot,
@@ -3212,7 +3545,7 @@ SHOT AND TIMING
 
 DIALOGUE
 - Never imply speech; write the exact spoken words.
-- Format: Character Name <Picture N> (S1) says: <d>[English] Actual spoken words.</d>
+- Format: <Subject N> Character Name (S1) says: <d>[English] Actual spoken words.</d>
 - Use the registered speaker ID consistently when a defined subject speaks.
 - Keep speaker IDs consistent with RECENT EXACT GENERATED SEGMENTS.
 - Never use pronouns as the speaker name in the dialogue tag.
@@ -3230,10 +3563,10 @@ Do not repeatedly restate lighting. Mention it only when established initially o
 EXAMPLE FORMATTING
 
 detailed_description:
-[Shot 1] Realistic cinematic live-action horror. The camera is a wide shot of the hospital. A nurse, Amy <Picture 1>, is sitting in a chair, working at a desk in a dingy, derelict hospital.
-At 00:02.000, the camera pans left to reveal a dark hallway. The lighting is dim and flickering, casting eerie shadows on the walls. Amy <Picture 1> (S1) says: <d>[English] I can't believe this place is still open.</d> The sound of distant footsteps echoes through the hallway, followed by a low, ominous hum.
-At 00:05.000, the camera zooms in on Amy <Picture 1>'s face, showing her fear and anxiety. The sound of a door creaking open is heard, followed by a sudden thud as something heavy falls to the ground.
-At 00:08.000, Amy <Picture 1> (S1) says: <d>[English] Who's there?</d> The sound of a faint whisper is heard, followed by a loud crash as a chair is thrown across the room. The camera shakes slightly, adding to the tension and fear of the scene.
+[Shot 1] Realistic cinematic live action. The camera holds a wide shot of a public observatory. An engineer, <Subject 1> Amy, sits at a desk reviewing a star chart beside the main telescope.
+At 00:02.000, the camera pans left to reveal the telescope dome opening as daylight reflects across the instruments. <Subject 1> Amy (S1) says: <d>[English] The alignment is almost complete.</d> Soft motors turn beneath the steady room ambience.
+At 00:05.000, the camera pushes in toward <Subject 1> Amy as she compares the chart with the telescope display and adjusts a silver control dial.
+At 00:08.000, <Subject 1> Amy (S1) says: <d>[English] We are ready to begin.</d> The camera arcs around the desk to include both Amy and the aligned telescope in the final composition.
 
 
 SOUND
@@ -3492,10 +3825,19 @@ def build_structured_continuity_messages(
                 "and ongoing_audio. Each subject record uses subject_id, name, "
                 "picture_ids, picture_id, speaker_id, origin_segment, position, "
                 "pose_action, topology, wardrobe, body_state, physical_condition, "
-                "and held_props.\n\n"
+                "attached_objects, injuries, substances, spatial_relationships, "
+                "persistent_effects, and held_props. The five persistent-state "
+                "collection fields and held_props must always be JSON arrays of "
+                "short plain-English STRINGS, never dictionaries/objects, tuples, "
+                "key/value syntax, or serialized Python. Example: use "
+                "`\"silver sensor bands secured at both wrists\"`, not "
+                "`{\"type\": \"sensor bands\", ...}`.\n\n"
                 "Create an authoritative FINAL-FRAME continuity snapshot. The "
                 "returned state describes the physical world at the END of the newest "
-                "generated segment, not an accumulation of historical facts.\n\n"
+                "generated segment, not an accumulation of historical facts and not a "
+                "list of actions to replay. If an accessory is already removed at the "
+                "final frame, record the resulting state; do not preserve the earlier "
+                "removal action as something that should happen again.\n\n"
                 "For every field:\n"
                 "- Replace an old value when the newest segment explicitly changes it.\n"
                 "- When the newest segment contradicts an old value, use the newest "
@@ -3513,33 +3855,45 @@ def build_structured_continuity_messages(
                 "environment.persistent_state contains visible surroundings likely to "
                 "remain: terrain, weather, damage, structures, smoke, debris, or "
                 "persistent lighting. Do not put transient action, emotion, or mood there.\n\n"
-                "topology records persistent structural connections between body parts "
-                "or subjects, such as fused-to, attached-to, detached-from, or suspended-"
-                "by relationships and the exact anatomical location of that connection. "
+                "topology records persistent structural connections between components, "
+                "props, or subjects, such as connected-to, attached-to, separated-from, "
+                "or suspended-by relationships and the exact location of that connection. "
                 "A topology change may be recorded ONLY when the newest segment explicitly "
-                "shows the action that creates that exact change. Never infer a detached "
-                "lower body because a detached face is mentioned, and never move a fusion "
-                "from waistline to sternum unless the newest segment visibly performs that "
-                "new fusion.\n\n"
-                "body_state records persistent structural anatomy or body configuration: "
-                "horns, wings, tails, limbs, head/body attachment, and missing or severed "
-                "parts. Record explicitly visible structural features even when intact. "
-                "Example: committed: two horns intact; newest: left horn is severed; "
-                "updated body_state: left horn missing; right horn intact. Later, when "
-                "the remaining horn is severed: updated body_state: both horns missing. "
-                "Never retain contradictory history such as horns glowing after both horns "
-                "are severed. Do not put structural anatomy in wardrobe.\n\n"
-                "physical_condition is actual bodily status only: injury, wounds, bleeding, "
-                "burns, exhaustion, unconsciousness, death, contamination, or similar. "
+                "shows the action that creates that exact change. Never infer that a base "
+                "assembly disconnected because a side panel was removed, and never move a "
+                "cable connection from a rear port to a front port unless the newest segment "
+                "visibly performs that reconnection.\n\n"
+                "body_state records persistent visible structure or configuration, including "
+                "components, appendages, attachments, and missing or repositioned features. "
+                "Record explicitly visible structural features even when unchanged. Example: "
+                "committed: two antennae raised; newest: left antenna folds down; updated "
+                "body_state: left antenna folded, right antenna raised. Later, when the right "
+                "antenna folds down, update the state to both antennae folded. Never retain "
+                "contradictory earlier configurations. Do not put structural configuration "
+                "in wardrobe.\n\n"
+                "physical_condition is observable status only: exhaustion, dirt, wetness, "
+                "heat exposure, contamination, visible wear, or similar conditions. "
                 "Do not use confidence, dominance, alertness, anger, determination, "
                 "readiness, personality, or dramatic description; use N/A when no actual "
                 "physical condition needs tracking.\n\n"
                 "held_props is exact final possession. Preserve committed held_props when "
                 "the newest segment does not establish a change. Use [] only when the "
                 "final state explicitly establishes no tracked props are held.\n\n"
+                "attached_objects records devices, wearable sensors, cables, accessories, "
+                "prosthetics, or machinery physically attached to a subject. injuries "
+                "records visible physical-condition details, surface marks, and clothing "
+                "damage. substances records persistent dust, mud, water, paint, or other material "
+                "covering a subject. spatial_relationships records durable physical "
+                "relationships between subjects and props. persistent_effects records "
+                "continuing visible effects. Preserve every committed item unless the "
+                "newest segment explicitly shows its removal or change. A camera cut, "
+                "tighter crop, or unrelated new action never removes an item. New devices "
+                "and injuries are additive unless the newest segment explicitly replaces "
+                "or removes an existing item.\n\n"
                 "Track every visually persistent subject needed to continue the final "
-                "frame, including creatures, people, vehicles, or other independently "
-                "moving subjects introduced by the generated video without a Picture "
+                "frame, including people, animals, vehicles, attached devices, machinery, "
+                "significant props, or persistent visual "
+                "effects introduced by the generated video without a Picture "
                 "reference. A new video-only subject may be added only if it is visibly "
                 "introduced in the newest segment itself and is not merely an event/entity "
                 "reserved for a FUTURE BEAT. Add each such video-only subject under a concise stable name, "
@@ -3575,42 +3929,60 @@ def build_structured_continuity_messages(
     ]
 
 
-def _contains_structural_change(text):
-    lowered = str(text or "").casefold()
-    return any(stem in lowered for stem in _STRUCTURAL_CHANGE_STEMS)
-
-
-def _candidate_anatomy_terms(text):
-    lowered = str(text or "").casefold()
-    return [term for term in _ANATOMY_PHRASES if term in lowered]
+def _contains_structural_phrase(text, phrase):
+    """Match a neutral region or qualifier without partial-word collisions."""
+    return re.search(rf"(?<![a-z]){re.escape(phrase)}(?![a-z])", text) is not None
 
 
 def _structural_change_has_evidence(subject_name, candidate_value, description):
-    """Require the same structural action and body region in the newest prompt."""
+    """Require matching region-specific details in the newest prompt."""
     candidate = str(candidate_value or "").casefold()
     source = str(description or "").casefold()
-    if not _contains_structural_change(candidate):
+
+    candidate_regions = {
+        phrase
+        for phrase in _STRUCTURAL_REGION_PHRASES
+        if _contains_structural_phrase(candidate, phrase)
+    }
+    if candidate_regions and not all(
+        _contains_structural_phrase(source, phrase)
+        for phrase in candidate_regions
+    ):
+        return False
+
+    candidate_qualifiers = {
+        qualifier
+        for qualifier in _STRUCTURAL_REGION_QUALIFIERS
+        if _contains_structural_phrase(candidate, qualifier)
+    }
+    if candidate_regions and not all(
+        _contains_structural_phrase(source, qualifier)
+        for qualifier in candidate_qualifiers
+    ):
+        return False
+
+    candidate_terms = {
+        token
+        for token in re.findall(r"[a-z][a-z'-]{3,}", candidate)
+        if token not in _STRUCTURAL_EVIDENCE_STOPWORDS
+    }
+    if not candidate_terms:
         return True
-
-    # Require at least one structural-change stem from the candidate itself.
-    candidate_stems = [stem for stem in _STRUCTURAL_CHANGE_STEMS if stem in candidate]
-    if candidate_stems and not any(stem in source for stem in candidate_stems):
+    source_terms = set(re.findall(r"[a-z][a-z'-]{3,}", source))
+    shared_terms = candidate_terms & source_terms
+    required_matches = 1 if len(candidate_terms) == 1 else 2
+    if len(shared_terms) < required_matches:
         return False
 
-    anatomy_terms = _candidate_anatomy_terms(candidate)
-    # Require every anatomical region named by the candidate structural state.
-    # This prevents evidence about a detached face from licensing an invented
-    # detached lower body, or a chest fusion from silently moving to the waist.
-    if anatomy_terms and not all(term in source for term in anatomy_terms):
-        return False
-
-    # If the subject is named in the source, insist that the structural evidence
-    # occurs reasonably near either the subject name or a possessive reference.
+    # If the subject is named, keep the evidence close enough to that identity
+    # to avoid borrowing an unrelated change elsewhere in the same description.
     name = str(subject_name or "").strip().casefold()
-    if name and name in source and candidate_stems:
+    if name and name in source:
         evidence_positions = []
-        for stem in candidate_stems:
-            evidence_positions.extend(match.start() for match in re.finditer(re.escape(stem), source))
+        for term in shared_terms:
+            evidence_positions.extend(
+                match.start() for match in re.finditer(rf"\b{re.escape(term)}\b", source)
+            )
         name_positions = [match.start() for match in re.finditer(re.escape(name), source)]
         if evidence_positions and name_positions:
             if not any(abs(evidence - subject_pos) <= 260 for evidence in evidence_positions for subject_pos in name_positions):
@@ -3766,15 +4138,6 @@ def normalize_structured_continuity_state(
                 if existing_name is not None:
                     name = existing_name
                 else:
-                    # A durable video-only subject must actually be visible in
-                    # this segment. Do not let the state updater manufacture a
-                    # subject from a future beat or from its own extrapolation.
-                    if proposed_name.casefold() not in str(newest_description or "").casefold():
-                        print(
-                            "WARNING: Ignoring unevidenced video-only subject "
-                            f"{proposed_name!r}; its name does not appear in the newest segment."
-                        )
-                        continue
                     if _future_subject_name_is_reserved(
                         proposed_name, active_beat_text, future_beat_texts
                     ):
@@ -3829,6 +4192,7 @@ def normalize_structured_continuity_state(
                     if (
                         CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES
                         and field in {"topology", "body_state"}
+                        and not is_unknown_value(target.get(field))
                         and value != target.get(field)
                         and not _structural_change_has_evidence(
                             name, value, newest_description
@@ -3857,18 +4221,54 @@ def normalize_structured_continuity_state(
                                 value,
                                 extract_implied_value(wardrobe[garment]) is not None,
                             )
+            for field in PERSISTENT_SUBJECT_LIST_FIELDS:
+                proposed_items = record.get(field)
+                if not isinstance(proposed_items, list):
+                    continue
+                cleaned_items = []
+                for item in proposed_items:
+                    cleaned = _continuity_item_text(item, field)
+                    if not cleaned:
+                        continue
+                    inferred = extract_implied_value(cleaned)
+                    cleaned_items.append(inferred if inferred is not None else cleaned)
+                cleaned_items = list(dict.fromkeys(cleaned_items))
+                existing_items = [
+                    cleaned
+                    for item in target.get(field, [])
+                    if (cleaned := _continuity_item_text(item, field))
+                ]
+                removal_text = str(newest_description or "")
+                removal_is_explicit = bool(
+                    _EXPLICIT_REMOVAL_RE.search(removal_text)
+                    and re.search(rf"(?i)\b{re.escape(name)}\b", removal_text)
+                    and (
+                        not existing_items
+                        or any(
+                            any(
+                                len(token) >= 4 and token.casefold() in removal_text.casefold()
+                                for token in re.findall(r"[A-Za-z][A-Za-z'-]+", item)
+                            )
+                            for item in existing_items
+                        )
+                    )
+                )
+                if removal_is_explicit:
+                    target[field] = cleaned_items
+                elif cleaned_items:
+                    # New apparatus/effects are additive. A partial model snapshot
+                    # must not silently erase committed physical state.
+                    target[field] = list(dict.fromkeys(existing_items + cleaned_items))
+                elif not existing_items:
+                    target[field] = []
             if isinstance(record.get("held_props"), list):
                 props = []
                 for prop in record["held_props"]:
-                    if not isinstance(prop, str):
-                        prop = str(prop)
-                    cleaned = sanitize_previous_state_value(prop).strip()
-                    inferred = extract_implied_value(cleaned)
-                    if inferred is not None:
-                        props.append(inferred)
+                    cleaned = _continuity_item_text(prop, "held_props")
+                    if not cleaned:
                         continue
-                    if cleaned and cleaned.upper() != "N/A":
-                        props.append(cleaned)
+                    inferred = extract_implied_value(cleaned)
+                    props.append(inferred if inferred is not None else cleaned)
                 if props:
                     target["held_props"] = props
                 elif not target.get("held_props"):
@@ -4039,15 +4439,20 @@ def build_segment_request(
     else:
         continuation = (
             "The complete preceding generated video is supplied directly to "
-            "MiniMax as continuation context. Continue immediately from its "
-            "established ending state and do not replay or recap that ending."
+            "MiniMax as continuation context. Continue immediately AFTER its "
+            "established ending state. Every fact in AUTHORITATIVE OPENING STATE "
+            "is already accomplished at frame 0: preserve the result, but never "
+            "repeat the action that created it. Do not replay, recap, restage, or "
+            "escalate the previous ending unless the ACTIVE beat explicitly "
+            "requires a new change."
         )
 
     return (
         f"Create segment {segment} of {total_segments}. This is [Shot {segment}]. "
         f"The new clip is {current_duration:g} seconds long and its local timeline "
-        f"begins at 00:00.000. {continuation} Pictures 1 through 6 are Ref2V "
-        f"subject identity references only. {beat_focus}"
+        f"begins at 00:00.000. {continuation} Reference pictures define registered "
+        f"<Subject N> identities only; use Subject labels in scene prose rather "
+        f"than Picture labels unless a Picture is an explicit frame anchor. {beat_focus}"
     )
 
 
@@ -4163,12 +4568,14 @@ There is no prior physical state to preserve.
 --- STORY END ---
 
 
-RECENT GENERATED SEGMENT — SECONDARY CONTEXT ONLY
+RECENT GENERATED SEGMENT — HISTORICAL, DO NOT REPLAY
 
-This material may help with immediate dialogue and cinematic flow.
-RECENT GENERATED SEGMENT is secondary context only.
-If it conflicts with AUTHORITATIVE OPENING STATE, always use AUTHORITATIVE
-OPENING STATE. It must not override BEAT STATE or SUBJECT REGISTRY.
+This is already-rendered history. Use it only for immediate dialogue/camera flow
+and to understand how the current final state was reached. Do NOT copy, repeat,
+restage, or continue an already completed action merely because it appears here.
+AUTHORITATIVE OPENING STATE contains the resulting frame-0 state and BEAT STATE
+contains the only plot event(s) to advance now. If sources conflict, use those
+higher-priority sections.
 
 {recent_text}
 
@@ -4399,20 +4806,23 @@ def request_segment_semantic_audit(
                 "the ACTIVE BEAT is explicitly performed and its required result is "
                 "visible in this candidate.\n"
                 "future_beat_leakage is true if the candidate visibly performs, "
-                "creates, births, hatches, reveals, transforms into, destroys, or "
+                "introduces, creates, reveals, transforms, removes, or "
                 "otherwise materially enacts a distinctive event/entity reserved for "
                 "any FUTURE BEAT. Mere neutral setup that does not enact that event is "
                 "not leakage.\n"
                 "opening_state_conflict is true if the candidate begins from a body "
                 "configuration, attachment, position, wardrobe state, or physical "
                 "condition incompatible with the AUTHORITATIVE OPENING STATE without "
-                "first visibly performing the change. A camera cut may change framing "
-                "but cannot teleport subjects or rewrite anatomy.\n"
+                "first visibly performing the change. It is ALSO a conflict to replay "
+                "the causal event of an irreversible state that is already true at "
+                "frame 0 (for example, removing an accessory that the opening state "
+                "already records as absent). A camera cut may change framing but cannot "
+                "teleport subjects or rewrite established structure.\n"
                 "unrequired_irreversible_change is true if the candidate invents a "
-                "persistent fusion, detachment, amputation, birth/hatching, death, "
-                "major transformation, or similarly irreversible state that the ACTIVE "
+                "persistent merge, separation, removal, introduction, major "
+                "transformation, or similarly irreversible state that the ACTIVE "
                 "BEAT does not require.\n"
-                "Be literal and conservative. A different anatomical region is not "
+                "Be literal and conservative. A different component or region is not "
                 "evidence for the requested one."
             ),
         },
@@ -4775,7 +5185,7 @@ def extract_subject_location(subject_name, descriptions):
 
 _CLOTHING_STATE = re.compile(
     r"(?i)\b(?:unchanged|changed|clean|dirty|wet|soaked|damp|dry|torn|"
-    r"ripped|stained|muddy|dusty|bloody|bloodied|blood-stained|damaged|"
+    r"ripped|stained|muddy|dusty|paint-stained|water-stained|damaged|"
     r"tattered|intact|disheveled|dishevelled)\b"
 )
 
@@ -5352,6 +5762,7 @@ def render_segment_with_retries(
     steps,
     loras=None,
     lora_override=None,
+    context_frames=DEFAULT_CONTEXT_FRAMES,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     if lora_override is not None:
@@ -5401,6 +5812,7 @@ def render_segment_with_retries(
                 segment,
                 steps,
                 **lora_kwargs,
+                context_frames=context_frames,
             )
 
         try:
@@ -5479,6 +5891,7 @@ def prepare_append_workflow(
     steps=6,
     loras=None,
     lora_override=None,
+    context_frames=DEFAULT_CONTEXT_FRAMES,
 ):
     if lora_override is not None:
         if loras:
@@ -5520,6 +5933,16 @@ def prepare_append_workflow(
         generate_random_seed(),
         label, "RandomNoise"
     )
+    set_node_input(
+        workflow, VIDEO_EXTEND_NODE_NAME, "context_frames",
+        context_frames,
+        label, "MiniMaxH3VideoExtendPatched"
+    )
+    set_node_input(
+        workflow, VIDEO_EXTEND_NODE_NAME, "pin_last_frame",
+        True,
+        label, "MiniMaxH3VideoExtendPatched"
+    )
     configure_lora_chain(workflow, loras, label)
     return workflow
 
@@ -5528,50 +5951,12 @@ def prepare_append_workflow(
 # STITCHING
 # ============================================================
 
-def trim_video_start(input_path, output_path, trim_seconds):
-    subprocess.run(
-        [
-            "ffmpeg", "-y",
-            "-i", input_path,
-            "-ss", f"{trim_seconds:.6f}",
-            "-c:v", "libx264",
-            "-preset", "medium",
-            "-crf", "18",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            output_path
-        ],
-        check=True
-    )
-
-
 def stitch_videos(video_paths):
     if not video_paths:
         raise RuntimeError("No generated videos are available to stitch.")
 
     os.makedirs(VIDEO_OUTPUT, exist_ok=True)
-    stitch_paths = []
-
-    for index, video_path in enumerate(video_paths):
-        video_path = os.path.abspath(video_path)
-        if index == 0:
-            stitch_paths.append(video_path)
-            continue
-
-        trimmed_path = os.path.join(
-            os.path.dirname(video_path),
-            f"trimmed_{os.path.basename(video_path)}"
-        )
-        print(
-            f"Trimming first {TRIM_FRAMES_AFTER_FIRST} frames from "
-            f"segment {index + 1}."
-        )
-        trim_video_start(
-            video_path,
-            trimmed_path,
-            TRIM_SECONDS_AFTER_FIRST
-        )
-        stitch_paths.append(trimmed_path)
+    stitch_paths = [os.path.abspath(path) for path in video_paths]
 
     list_path = None
     try:
@@ -5633,10 +6018,11 @@ def _run_main(summary_executor):
     story, beat_instructions = parse_story_beat_instructions(story_source)
     if not story:
         raise ValueError("story.txt contains no story after beat_instructions metadata.")
-    subject_definitions = load_text_file(
+    base_subject_definitions = load_text_file(
         SUBJECT_DEFINITIONS_FILE,
         required=False,
     )
+    subject_definitions = base_subject_definitions
     subject_information = format_beat_generation_subjects(subject_definitions)
     if resume_segment == 1:
         reset_prompt_history()
@@ -5665,6 +6051,7 @@ def _run_main(summary_executor):
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
+        additional_subject_definitions = []
         completed_beat_ids = set()
         recent_results = []
         generated_video_paths = []
@@ -5679,6 +6066,13 @@ def _run_main(summary_executor):
             beats,
         )
         generation_state = restored["state"]
+        additional_subject_definitions = restored[
+            "additional_subject_definitions"
+        ]
+        subject_definitions = combine_subject_definitions(
+            base_subject_definitions,
+            additional_subject_definitions,
+        )
         completed_beat_ids = restored["completed_beat_ids"]
         recent_results = restored["recent_results"]
         generated_video_paths = restored["video_paths"]
@@ -5700,6 +6094,10 @@ def _run_main(summary_executor):
     print(f"Starting segment:     {resume_segment}")
     print(f"Initial megapixels:   {megapixels:g}")
     print(f"Steps:                {args.steps}")
+    print(
+        "Extension context:    "
+        f"{getattr(args, 'context_frames', DEFAULT_CONTEXT_FRAMES)} frames"
+    )
     print(f"Formatter:            {getattr(args, 'model', 'ministral')}")
     print(f"Global LoRAs:         {len(global_loras)}")
     print(
@@ -5739,7 +6137,8 @@ def _run_main(summary_executor):
         total_segments,
         subject_definitions,
         megapixels,
-        beats_enabled=bool(beats)
+        beats_enabled=bool(beats),
+        context_frames=getattr(args, "context_frames", DEFAULT_CONTEXT_FRAMES),
     )
 
     def continuity_state_sha(state):
@@ -5898,7 +6297,16 @@ def _run_main(summary_executor):
         if payload is None:
             payload = request_segment_llm(segment_bundle)
 
-        llm_result = payload["llm_result"]
+        llm_result = dict(payload["llm_result"])
+        llm_result["detailed_description"] = (
+            inject_persistent_state_into_description(
+                get_detailed_description(llm_result, ""),
+                continuity_state,
+                subject_definitions,
+                segment,
+            )
+        )
+        payload["llm_result"] = llm_result
         loras = payload["loras"]
         reported_beat_ids = llm_result.get("completed_beat_ids", [])
         hard_cut_subject_continuity = ""
@@ -5999,6 +6407,11 @@ def _run_main(summary_executor):
                 previous_video_path,
                 args.steps,
                 loras=loras,
+                context_frames=getattr(
+                    args,
+                    "context_frames",
+                    DEFAULT_CONTEXT_FRAMES,
+                ),
             )
         except Exception:
             candidate_future.cancel()
@@ -6025,14 +6438,19 @@ def _run_main(summary_executor):
             subject_definitions,
             candidate_state,
         )
-        subject_definitions, appended_subject_lines = (
-            append_video_subject_definitions(
-                subject_definitions,
+        additional_subject_definitions, appended_subject_lines = (
+            collect_additional_subject_definitions(
+                base_subject_definitions,
+                additional_subject_definitions,
                 candidate_state,
                 segment,
             )
         )
         if appended_subject_lines:
+            subject_definitions = combine_subject_definitions(
+                base_subject_definitions,
+                additional_subject_definitions,
+            )
             candidate_state = continuity_state_for_registry(
                 subject_definitions,
                 candidate_state,
@@ -6044,8 +6462,9 @@ def _run_main(summary_executor):
                 subject_definitions,
                 megapixels,
                 beats_enabled=bool(beats),
+                context_frames=getattr(args, "context_frames", DEFAULT_CONTEXT_FRAMES),
             )
-            print("Appended video-created subject definition(s) to subjects.txt:")
+            print("Registered video-created subject definition(s) internally:")
             for definition in appended_subject_lines:
                 print(f"  {definition}")
         print(
@@ -6084,6 +6503,7 @@ def _run_main(summary_executor):
             "",
             continuity_state=candidate_state,
             continuity_summary_pending=False,
+            additional_subject_definitions=additional_subject_definitions,
         )
         if beats:
             generation_state["beat_progress"] = {

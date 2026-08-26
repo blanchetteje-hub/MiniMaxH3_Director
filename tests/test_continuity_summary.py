@@ -137,6 +137,9 @@ class ContinuitySummaryTests(unittest.TestCase):
             },
             self.SUBJECTS,
             origin_segment=2,
+            newest_description=(
+                "A spider-alien crawls into view above Connie."
+            ),
         )
 
         created = candidate["subjects"]["spider-alien"]
@@ -157,6 +160,9 @@ class ContinuitySummaryTests(unittest.TestCase):
             self.SUBJECTS,
             candidate,
             origin_segment=3,
+            newest_description=(
+                "The spider-alien remains beside Connie."
+            ),
         )
         self.assertEqual(
             preserved["subjects"]["spider-alien"]["subject_id"],
@@ -166,6 +172,88 @@ class ContinuitySummaryTests(unittest.TestCase):
             preserved["subjects"]["spider-alien"]["origin_segment"],
             2,
         )
+
+    def test_new_video_subject_does_not_require_name_evidence_in_prose(self):
+        record = {
+            "subject_id": 3,
+            "name": "Baby Alpha",
+            "position": "in Terri's arms",
+            "body_state": "newborn infant",
+        }
+
+        for description in (
+            "Terri cradles the baby in her arms.",
+            "Terri cradles the newborn in her arms.",
+            "Terri cradles the infant in her arms.",
+            "Terri cradles the newly arrived figure in her arms.",
+        ):
+            with self.subTest(description=description):
+                candidate = minimax.normalize_structured_continuity_state(
+                    {"subjects": {"Baby Alpha": record}},
+                    self.SUBJECTS,
+                    origin_segment=2,
+                    newest_description=description,
+                    active_beat_text="Terri welcomes Baby Alpha.",
+                )
+
+                self.assertIn("Baby Alpha", candidate["subjects"])
+                self.assertEqual(
+                    candidate["subjects"]["Baby Alpha"]["origin_segment"],
+                    2,
+                )
+                additional, added = (
+                    minimax.collect_additional_subject_definitions(
+                        self.SUBJECTS,
+                        [],
+                        candidate,
+                        2,
+                    )
+                )
+                expected = (
+                    "<Subject 3> is Baby Alpha, created in generated "
+                    "video segment 2 and continued from <Video 1>."
+                )
+                self.assertEqual(added, [expected])
+                self.assertEqual(additional, [expected])
+
+    def test_new_video_subject_is_accepted_without_current_name_evidence(self):
+        candidate = minimax.normalize_structured_continuity_state(
+            {
+                "subjects": {
+                    "Baby Alpha": {
+                        "subject_id": 3,
+                        "name": "Baby Alpha",
+                        "body_state": "newborn infant",
+                    }
+                }
+            },
+            self.SUBJECTS,
+            origin_segment=2,
+            newest_description="Connie stands alone in the empty room.",
+            active_beat_text="Connie waits.",
+        )
+
+        self.assertIn("Baby Alpha", candidate["subjects"])
+
+    def test_future_only_named_subject_is_still_rejected(self):
+        candidate = minimax.normalize_structured_continuity_state(
+            {
+                "subjects": {
+                    "Baby Alpha": {
+                        "subject_id": 3,
+                        "name": "Baby Alpha",
+                        "body_state": "newly visible subject",
+                    }
+                }
+            },
+            self.SUBJECTS,
+            origin_segment=2,
+            newest_description="Connie stands alone in the empty room.",
+            active_beat_text="Connie waits.",
+            future_beat_texts=["Baby Alpha arrives in the nursery."],
+        )
+
+        self.assertNotIn("Baby Alpha", candidate["subjects"])
 
     def test_structured_candidate_preserves_wardrobe_when_not_changed(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
@@ -273,11 +361,35 @@ class ContinuitySummaryTests(unittest.TestCase):
             {"subjects": {"Connie": {"body_state": "left horn missing"}}},
             self.SUBJECTS,
             committed,
+            newest_description="Connie's left horn is visibly missing.",
         )
 
         self.assertEqual(
             candidate["subjects"]["Connie"]["body_state"],
             "left horn missing",
+        )
+
+    def test_structural_evidence_requires_the_same_neutral_region(self):
+        self.assertTrue(
+            minimax._structural_change_has_evidence(
+                "Connie",
+                "left arm remains raised",
+                "Connie's left arm remains raised in the final frame.",
+            )
+        )
+        self.assertFalse(
+            minimax._structural_change_has_evidence(
+                "Connie",
+                "left arm remains raised",
+                "Connie's left leg remains raised in the final frame.",
+            )
+        )
+        self.assertFalse(
+            minimax._structural_change_has_evidence(
+                "Connie",
+                "cable connected to front port",
+                "Connie connects the cable to the rear port.",
+            )
         )
 
     def test_structured_candidate_replaces_explicit_final_frame_state(self):
@@ -322,6 +434,9 @@ class ContinuitySummaryTests(unittest.TestCase):
             },
             self.SUBJECTS,
             committed,
+            newest_description=(
+                "Connie releases the flashlight while Beth holds a silver sword."
+            ),
         )
 
         self.assertEqual(candidate["subjects"]["Connie"]["held_props"], [])
@@ -349,7 +464,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(connie["subject_id"], 1)
         self.assertEqual(connie["picture_ids"], [1])
         self.assertEqual(connie["picture_id"], 1)
-        self.assertIsNone(connie["speaker_id"])
+        self.assertEqual(connie["speaker_id"], "S1")
 
     def test_numeric_subject_id_candidates_preserve_existing_state_when_values_are_na(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
@@ -459,7 +574,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
         self.assertNotIn("response_format", payload)
 
-    def test_summary_thread_contains_only_the_last_two_exact_results(self):
+    def test_summary_thread_contains_only_the_newest_exact_result(self):
         messages = minimax.build_summary_messages([
             (1, segment_result(1)),
             (2, segment_result(2)),
@@ -468,7 +583,7 @@ class ContinuitySummaryTests(unittest.TestCase):
 
         combined = "\n".join(message["content"] for message in messages)
         self.assertNotIn("numbered prop 1", combined)
-        self.assertIn("numbered prop 2", combined)
+        self.assertNotIn("numbered prop 2", combined)
         self.assertIn("numbered prop 3", combined)
         self.assertNotIn("completed_beat_ids", combined)
         self.assertEqual(["system", "user"], [m["role"] for m in messages])
@@ -563,7 +678,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
         self.assertIn("prior response", calls[1][0][-1]["content"].lower())
 
-    def test_generation_context_has_summary_and_only_two_exact_results(self):
+    def test_generation_context_has_summary_and_only_newest_exact_result(self):
         summary = "\n".join(
             f"- {field}: continuity fact {number}"
             for number, field in enumerate(
@@ -589,10 +704,10 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
 
         user_content = messages[1]["content"]
-        self.assertEqual(2, recent_count)
+        self.assertEqual(1, recent_count)
         self.assertIn(summary, user_content)
         self.assertNotIn("numbered prop 1", user_content)
-        self.assertIn("numbered prop 2", user_content)
+        self.assertNotIn("numbered prop 2", user_content)
         self.assertIn("numbered prop 3", user_content)
         self.assertIn("SOURCE STORY", user_content)
 

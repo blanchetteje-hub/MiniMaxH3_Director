@@ -490,8 +490,8 @@ class DialogueFormattingTests(unittest.TestCase):
             "detailed_description"
         ]
 
-        self.assertIn("Mark (S1)", description)
-        self.assertIn("Jill (S2)", description)
+        self.assertIn("Mark <Picture 1> (S1)", description)
+        self.assertIn("Jill <Picture 2> (S2)", description)
         self.assertIn("(S1,S2)", description)
         self.assertNotRegex(description, r"\(S[34](?:,S[34])?\)")
         self.assertIn("<d>[English] Those can't be airplanes!</d>", description)
@@ -510,8 +510,8 @@ class DialogueFormattingTests(unittest.TestCase):
         ]
 
         self.assertNotRegex(description, r"\bS[56]\b")
-        self.assertIn("Mark (S1)", description)
-        self.assertIn("Jill (S2)", description)
+        self.assertIn("Mark <Picture 1> (S1)", description)
+        self.assertIn("Jill <Picture 2> (S2)", description)
         self.assertIn("(S1,S2)", description)
         self.assertIn("<d>[English] Where did those saucers come from?</d>", description)
         self.assertIn("<d>[English] They appeared above the rides.</d>", description)
@@ -544,8 +544,8 @@ class DialogueFormattingTests(unittest.TestCase):
             "detailed_description"
         ]
 
-        self.assertIn("Mark (S1)", description)
-        self.assertIn("Jill (S2)", description)
+        self.assertIn("Mark <Picture 1> (S1)", description)
+        self.assertIn("Jill <Picture 2> (S2)", description)
         self.assertIn("<d>[English] What is happening?!</d>", description)
         self.assertIn("<d>[English] I don't know, look up!</d>", description)
         self.assertEqual(description.count("What is happening?!"), 1)
@@ -660,7 +660,7 @@ class CompletionMetadataTests(unittest.TestCase):
             for issue in validate_ministral_prompt(formatted, context_for(1))
         ))
 
-    def test_completion_ids_are_normalized_to_current_beat_only(self) -> None:
+    def test_completion_ids_are_normalized_to_consecutive_beats(self) -> None:
         malformed = result(
             "[Shot 3] Live-action, cinematic, Mark (S1) asks Jill (S2): "
             "<d>[English] What is happening?</d> Jill answers: "
@@ -670,7 +670,7 @@ class CompletionMetadataTests(unittest.TestCase):
 
         repaired = format_ministral_prompt(malformed, context_for(3))
 
-        self.assertEqual(repaired["completed_beat_ids"], [3])
+        self.assertEqual(repaired["completed_beat_ids"], [3, 4])
 
     def test_completion_metadata_is_removed_from_rendered_description(self) -> None:
         malformed = result(
@@ -714,8 +714,8 @@ class BeatFixtureTests(unittest.TestCase):
             completed=["B001"],
         )
         valid = result(
-            "[Shot 1] Live-action, cinematic, a medium-wide shot shows <Subject 1> Mark, "
-            "<Subject 2> Jill, and Mark's family enjoying the busy theme park together.",
+            "[Shot 1] Live-action, cinematic, a medium-wide shot shows Mark <Picture 1>, "
+            "Jill <Picture 2>, and Mark's family enjoying the busy theme park together.",
             completed=[1],
         )
 
@@ -730,7 +730,8 @@ class BeatFixtureTests(unittest.TestCase):
             completed=["B002"],
         )
         valid = result(
-            "[Shot 2] Live-action, cinematic, several flying saucers fly overhead above the "
+            "[Shot 2] Camera continues from the previous shot. Live-action, cinematic, "
+            "several flying saucers fly overhead above the "
             "theme park as the camera tilts up with large amplitude at fast speed.",
             completed=[2],
         )
@@ -750,8 +751,8 @@ class BeatFixtureTests(unittest.TestCase):
             completed=["B003"],
         )
         valid = result(
-            "[Shot 3] Camera cuts to a new shot: Live-action, cinematic, <Subject 1> "
-            "Mark turns to <Subject 2> Jill as they try to "
+            "[Shot 3] Camera cuts to a new shot: Live-action, cinematic, "
+            "Mark <Picture 1> turns to Jill <Picture 2> as they try to "
             "understand the saucers. Mark (S1) asks: <d>[English] What is happening?!</d> "
             "Jill (S2) answers: <d>[English] I don't know, those things aren't planes.</d>",
             soundscape="Crowds gasp while footsteps shuffle across the pavement.",
@@ -774,9 +775,10 @@ class BeatFixtureTests(unittest.TestCase):
             completed=["B004", 5],
         )
         valid = result(
-            "[Shot 4] Live-action, cinematic, Mark's family run from the descending saucers. "
+            "[Shot 4] Camera continues from the previous shot. Live-action, cinematic, "
+            "Mark <Picture 1>'s family run from the descending saucers. "
             "Beams seize and lift them from the ground, carrying the entire family into the "
-            "craft until <Subject 1> Mark and <Subject 2> Jill stand beside empty pavement "
+            "craft until Mark and Jill <Picture 2> stand beside empty pavement "
             "after the completed abduction.",
             soundscape="Running footsteps and frightened gasps give way to a low electronic hum.",
             completed=[4],

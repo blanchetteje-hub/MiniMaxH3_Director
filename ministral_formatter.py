@@ -54,7 +54,7 @@ _ZERO_LOCAL_TIME = re.compile(
 _CONTINUATION_OPENING = re.compile(
     r"(?is)^\s*(?:At\s+\d{1,2}:\d{2}(?:[.:]\d{1,3})?"
     r"(?:\s+seconds?)?\s*[,;:\-]?\s*)?"
-    r"Camera\s+continues\s+from\s+the\s+previous\s+shot"
+    r"Camera\s+continues\s+(?:seamlessly\s+)?from\s+the\s+previous\s+shot"
     r"(?:\s*(?:At\s+\d{1,2}:\d{2}(?:[.:]\d{1,3})?"
     r"(?:\s+seconds?)?\s*[,;:\-]?))?\s*[,.:;\-]?\s*"
 )
@@ -101,9 +101,13 @@ def _format_continuation_opening(description: str) -> str:
     match = _CONTINUATION_OPENING.match(description)
     if match is None:
         return description
+    remainder = description[match.end():].lstrip()
+    if re.match(r"^['\u2019]s\b", remainder, re.I):
+        return (
+            "Camera continues from the previous shot" + remainder
+        ).rstrip()
     return (
-        "Camera continues from the previous shot. "
-        + description[match.end():].lstrip()
+        "Camera continues from the previous shot. " + remainder
     ).rstrip()
 
 
@@ -233,7 +237,7 @@ def _subject_records(context: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
             "subject_id": int(match.group("subject")),
             "picture_ids": [],
             "picture_id": None,
-            "speaker_id": None,
+            "speaker_id": f"S{match.group('subject')}",
         }
     for match in re.finditer(
         r"(?im)^\s*<Subject\s+(?P<subject>\d+)>\s*(?:is\s+)?"
@@ -283,7 +287,7 @@ def _subject_records(context: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
                 records.setdefault(key, {
                     "subject_id": int(value),
                     "picture_id": None,
-                    "speaker_id": None,
+                    "speaker_id": f"S{int(value)}",
                 })
     return records
 
@@ -526,9 +530,24 @@ def _repair_camera(result: dict[str, Any], context: Mapping[str, Any]) -> None:
 def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     names, subjects, pictures = _subject_maps(context)
     subject_pictures = _subject_picture_map(context)
+    subject_names = {
+        record["subject_id"]: name
+        for name, record in _subject_records(context).items()
+        if record.get("subject_id") is not None
+    }
 
     def subject(match: re.Match[str]) -> str:
-        return match.group(0) if int(match.group(1)) in subjects else ""
+        subject_id = int(match.group(1))
+        possessive = match.group("possessive") or ""
+        name = subject_names.get(subject_id)
+        if possessive:
+            return f"{name}{possessive}" if name else match.group(0)
+        picture_ids = subject_pictures.get(subject_id, [])
+        if picture_ids:
+            return " ".join(
+                f"<Picture {picture}>" for picture in picture_ids
+            )
+        return name or ""
 
     def picture(match: re.Match[str]) -> str:
         return match.group(0) if int(match.group(1)) in pictures else ""
@@ -540,16 +559,22 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
         flags=re.I,
     )
     text = re.sub(
-        r"<Subject\s+(\d+)>",
+        r"<Subject\s+(\d+)>\s+from\s+<Picture\s+(\d+)>",
         lambda match: (
             " ".join(
                 f"<Picture {picture}>"
-                for picture in subject_pictures[int(match.group(1))]
+                for picture in subject_pictures.get(int(match.group(1)), [])
             )
-            if int(match.group(1)) in subjects
-            and int(match.group(1)) in subject_pictures
+            if int(match.group(2))
+            in subject_pictures.get(int(match.group(1)), [])
             else ""
         ),
+        text,
+        flags=re.I,
+    )
+    text = re.sub(
+        r"<Subject\s+(\d+)>(?:\s*(?P<possessive>['\u2019]s))?",
+        subject,
         text,
         flags=re.I,
     )
@@ -590,6 +615,12 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
                 count=1,
                 flags=re.I,
             )
+    text = re.sub(
+        r"(?i)(Camera continues from the previous shot\.)\s+['\u2019]s\s+"
+        r"final frame\s+with\s+",
+        r"\1 The camera resumes from that final frame with ",
+        text,
+    )
     result[DESCRIPTION] = _clean_space(text)
 
 
@@ -679,7 +710,18 @@ def _move_dialogue_delivery_cues(text: str) -> str:
 
 
 def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None:
-    text = result[DESCRIPTION]
+    # An empty model-generated speaker placeholder blocks the normal
+    # ``Name says`` attribution matcher. Remove it before assigning IDs.
+    text = re.sub(r"\s*\(\s*\)\s*(?=:)", "", result[DESCRIPTION])
+    text = re.sub(r"\s*\(\s*\)\s*", " ", text)
+    text = re.sub(
+        r"\(\s*[,;:]?\s*(S\d+(?:\s*,\s*S\d+)*)\s*[,;:]?\s*\)",
+        lambda match: "(" + ",".join(
+            re.findall(r"S\d+", match.group(1), re.I)
+        ) + ")",
+        text,
+        flags=re.I,
+    )
     names, subjects, _ = _subject_maps(context)
     records = _subject_records(context)
 
@@ -816,9 +858,16 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
     attribution = r"says|asks|answers|replies|shouts|whispers|yells|tells|exclaims|narrates"
     for name, canonical in names.items():
         text = re.sub(
-            rf"\b({re.escape(name)})\b(?!\s*\(S\d+\))\s+"
-            rf"({attribution})(?=[^<]{{0,100}}<d>)",
-            lambda match, number=canonical: f"{match.group(1)} (S{number}) {match.group(2)}",
+            rf"\b(?P<name>{re.escape(name)})\b"
+            rf"(?P<picture>\s*<Picture\s+\d+>)?"
+            rf"(?!\s*\(S\d+\))\s+"
+            rf"(?P<verb>{attribution})"
+            rf"(?=(?:[^<.!?]|<Picture\s+\d+>){{0,160}}<d>)",
+            lambda match, number=canonical: (
+                f"{match.group('name')}"
+                f"{match.group('picture') or ''} (S{number}) "
+                f"{match.group('verb')}"
+            ),
             text,
             flags=re.I,
         )
@@ -826,7 +875,7 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
     # A bare colon before a dialogue block is a missing speech verb.
     text = re.sub(
         r"\b([A-Z][\w'’-]*(?:\s+and\s+[A-Z][\w'’-]*)?\s+"
-        r"\(S\d+(?:,S\d+)*\))\s*:\s*(?=<d>)",
+        r"(?:<Picture\s+\d+>\s+)?\(S\d+(?:,S\d+)*\))\s*:\s*(?=<d>)",
         r"\1 says: ",
         text,
     )
@@ -834,7 +883,8 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
     # the colon.  Do not turn that target into a second speaker.
     text = re.sub(
         r"\b(says|asks|answers|replies|shouts|whispers|yells|tells|exclaims)\b"
-        r"(?P<target>[^<>.!?]{0,100}\(S\d+\))\s+says\s*:",
+        r"(?P<target>(?:[^<>.!?]|<Picture\s+\d+>){0,100}\(S\d+\))"
+        r"\s+says\s*:",
         lambda match: f"{match.group(1)}{match.group('target')}:",
         text,
         flags=re.I,
@@ -914,6 +964,14 @@ def _repair_non_speaking_ids(
                 remove_id,
                 piece,
             )
+            # Speaker IDs have meaning only for attributed spoken dialogue.
+            # Strip IDs attached to roles or other prose that is purely visual.
+            piece = re.sub(
+                r"\s*\(\s*S\d+(?:\s*,\s*S\d+)*\s*\)",
+                "",
+                piece,
+                flags=re.I,
+            )
         repaired.append(piece)
     result[DESCRIPTION] = _clean_space(" ".join(repaired))
 
@@ -952,13 +1010,25 @@ def _repair_canonical_picture_tags(
     subject_pictures = _subject_picture_map(context)
     names, _, _ = _subject_maps(context)
     records = _subject_records(context)
+    subject_names = {
+        record["subject_id"]: name
+        for name, record in records.items()
+        if record.get("subject_id") is not None
+    }
 
     def replace_subject(match: re.Match[str]) -> str:
-        pictures = subject_pictures.get(int(match.group(1)), [])
-        return " ".join(f"<Picture {picture}>" for picture in pictures)
+        subject_id = int(match.group(1))
+        possessive = match.group("possessive") or ""
+        name = subject_names.get(subject_id)
+        if possessive:
+            return f"{name}{possessive}" if name else match.group(0)
+        pictures = subject_pictures.get(subject_id, [])
+        if pictures:
+            return " ".join(f"<Picture {picture}>" for picture in pictures)
+        return name or ""
 
     text = re.sub(
-        r"<Subject\s+(\d+)>",
+        r"<Subject\s+(\d+)>(?:\s*(?P<possessive>['\u2019]s))?",
         replace_subject,
         result[DESCRIPTION],
         flags=re.I,
@@ -1020,6 +1090,20 @@ def _repair_canonical_picture_tags(
             continue
         for picture_id in picture_ids:
             text = re.sub(
+                rf"\b{re.escape(name)}\s+<Picture\s+{picture_id}>\s*"
+                r"(?P<possessive>['\u2019]s)",
+                lambda match, name=name: f"{name}{match.group('possessive')}",
+                text,
+                flags=re.I,
+            )
+            text = re.sub(
+                rf"<Picture\s+{picture_id}>\s*"
+                r"(?P<possessive>['\u2019]s)",
+                lambda match, name=name: f"{name}{match.group('possessive')}",
+                text,
+                flags=re.I,
+            )
+            text = re.sub(
                 rf"\s*<Picture\s+{picture_id}>",
                 "",
                 text,
@@ -1046,12 +1130,21 @@ def _validate_non_speaking_ids(
         if "<d>" in piece.lower():
             continue
         if re.search(
+            r"\(\s*S\d+(?:\s*,\s*S\d+)*\s*\)",
+            piece,
+            re.I,
+        ):
+            return [
+                "Speaker IDs may appear only in sentences containing "
+                "attributed dialogue."
+            ]
+        if re.search(
             r"\b[A-Z][\w'’-]*\s*\(\s*S\d+(?:\s*,\s*S\d+)*\s*\)",
             piece,
         ):
             return [
-                "A non-speaking person uses a speaker ID; use the defined "
-                "Name <Picture N> identity form instead."
+                "Speaker IDs may appear only in sentences containing "
+                "attributed dialogue."
             ]
     return []
 
@@ -1271,6 +1364,10 @@ def _validate_subject_tags(result: Mapping[str, Any], context: Mapping[str, Any]
             issues.append(f"Undefined <Picture {int(raw)}> tag remains.")
     if re.search(r"\(\s*Subject\s+\d+\s*\)", text, re.I):
         issues.append("Parenthetical Subject annotations must be removed.")
+    if re.search(r"(?:^|\]\s+|[.!?]\s+)['\u2019]s\b", text, re.I):
+        issues.append(
+            "Description contains an orphaned possessive with no subject."
+        )
     for name, subject_id in names.items():
         if not re.search(rf"\b{re.escape(name)}\b", text, re.I):
             continue

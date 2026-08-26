@@ -74,13 +74,14 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         for annotation in ("(Subject 1)", "(subject 9)"):
             with self.subTest(annotation=annotation):
                 malformed = response(
-                    f"[Shot 1] <Subject 1> Connie {annotation} walks down the road."
+                    f"[Shot 1] <Subject 1> Connie {annotation} walks down the road.",
+                    completed=[1],
                 )
 
                 formatted = format_ministral_prompt(malformed, context)
                 description = formatted[DESCRIPTION]
 
-                self.assertIn("<Subject 1> Connie", description)
+                self.assertIn("Connie <Picture 1>", description)
                 self.assertNotRegex(description, r"(?i)\(\s*Subject\s+\d+\s*\)")
                 self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
@@ -97,7 +98,8 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
         malformed = response(
             "[Shot 1] On the road are two men—Jim (S2) and Frank (S1)—walking "
-            "down the road."
+            "down the road.",
+            completed=[1],
         )
 
         formatted = format_ministral_prompt(malformed, context)
@@ -105,8 +107,8 @@ class LiveDialogueRegressionTests(unittest.TestCase):
 
         self.assertNotIn("—", description)
         self.assertNotRegex(description, r"\(S\d+\)")
-        self.assertIn("<Subject 1> Jim", description)
-        self.assertIn("<Subject 2> Frank", description)
+        self.assertIn("Jim <Picture 1>", description)
+        self.assertIn("Frank <Picture 2>", description)
         self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
     def test_actual_jim_dialogue_keeps_canonical_speaker_id(self) -> None:
@@ -152,6 +154,83 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         self.assertNotIn("Dialogue block is missing an attributed speaker ID.", " ".join(
             validate_ministral_prompt(formatted, context)
         ))
+
+    def test_empty_speaker_placeholders_are_repaired(self) -> None:
+        context = context_for(
+            1,
+            subject_definitions=(
+                "<Subject 1> is Connie, referenced in <Picture 1>.\n"
+                "<Subject 2> is Beth, referenced in <Picture 2>."
+            ),
+            known_subjects={"Connie": 1, "Beth": 2},
+            current_beat_text="Show Connie speaking softly to Beth.",
+            next_beat_id=1,
+            beat_deadline_required=False,
+        )
+        malformed = response(
+            "[Shot 1] Connie ( ) says in a softer voice directed at "
+            "Beth ( ): <d>[English] Alright.</d>",
+            completed=[1],
+        )
+
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted[DESCRIPTION]
+
+        self.assertIn(
+            "Connie <Picture 1> (S1) says in a softer voice directed at "
+            "Beth <Picture 2>: <d>[English] Alright.</d>",
+            description,
+        )
+        self.assertNotRegex(description, r"\(\s*\)")
+        self.assertNotIn("Beth <Picture 2> (S2)", description)
+        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+
+    def test_speaker_ids_are_removed_from_purely_visual_roles(self) -> None:
+        context = context_for(1, next_beat_id=None, current_beat_text="")
+        malformed = response(
+            "[Shot 1] The father (S3) is dressed in a dark green sweater and "
+            "khaki pants; the mother (S4) wears a floral dress."
+        )
+
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted[DESCRIPTION]
+
+        self.assertIn(
+            "The father is dressed in a dark green sweater and khaki pants; "
+            "the mother wears a floral dress.",
+            description,
+        )
+        self.assertNotRegex(description, r"\(\s*S\d+")
+        self.assertNotRegex(description, r"<(?:Subject|Picture)\s+[34]>")
+        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+
+    def test_leading_comma_in_speaker_id_is_removed(self) -> None:
+        context = context_for(
+            1,
+            subject_definitions=(
+                "<Subject 1> is Connie, referenced in <Picture 1>."
+            ),
+            known_subjects={"Connie": 1},
+            current_beat_text="Show Connie replying immediately.",
+            next_beat_id=1,
+            beat_deadline_required=False,
+        )
+        malformed = response(
+            "[Shot 1] Connie (, S1) replies immediately: "
+            "<d>[English] I will! We’re gonna have so much fun!</d>",
+            completed=[1],
+        )
+
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted[DESCRIPTION]
+
+        self.assertIn(
+            "Connie <Picture 1> (S1) replies immediately: "
+            "<d>[English] I will! We’re gonna have so much fun!</d>",
+            description,
+        )
+        self.assertNotIn("(, S1)", description)
+        self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
     def test_speech_verbs_keep_spaces_before_adverbs(self) -> None:
         context = context_for(
@@ -296,8 +375,8 @@ class LiveDialogueRegressionTests(unittest.TestCase):
 
         description = format_ministral_prompt(malformed, context_for(3))[DESCRIPTION]
 
-        self.assertRegex(description, r"Mark(?: <Subject 1>)? \(S1\)")
-        self.assertRegex(description, r"Jill(?: <Subject 2>)? \(S2\)")
+        self.assertRegex(description, r"Mark(?: <Picture 1>)? \(S1\)")
+        self.assertRegex(description, r"Jill(?: <Picture 2>)? \(S2\)")
         self.assertRegex(
             description,
             r"(?:<Subject 1> )?Mark and (?:<Subject 2> )?Jill \(S1,S2\)",
@@ -366,14 +445,99 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         formatted = format_ministral_prompt(malformed, context)
         issues = validate_ministral_prompt(formatted, context)
 
-        self.assertTrue(issues)
-        self.assertTrue(
-            any(re.search(r"(?i)(Mark/Jill|exchange|talk|attributed)", issue) for issue in issues),
+        self.assertEqual(
             issues,
+            [],
+            "Beat-specific character participation is checked by the semantic audit.",
         )
 
 
 class LiveVisualFormattingRegressionTests(unittest.TestCase):
+    def test_possessive_identity_tag_does_not_leave_an_orphaned_apostrophe(self) -> None:
+        context = context_for(
+            2,
+            subject_definitions=(
+                "<Subject 1> is Terri, referenced in <Picture 1>."
+            ),
+            known_subjects={"Terri": 1},
+            current_beat_text="Show Terri lying prone in the pod.",
+        )
+        suffix = (
+            "\u2019s final frame with a slow push-in toward Terri\u2019s torso "
+            "as she lies prone in the pod, her hand still hovering near her cheek."
+        )
+
+        for identity_tag in ("<Subject 1>", "<Picture 1>"):
+            with self.subTest(identity_tag=identity_tag):
+                formatted = format_ministral_prompt(
+                    response(
+                        "[Shot 2] Camera continues from the previous shot. "
+                        + identity_tag
+                        + suffix
+                    ),
+                    context,
+                )
+                description = formatted[DESCRIPTION]
+
+                self.assertRegex(
+                    description,
+                    r"Camera continues from the previous shot\. "
+                    r"Terri(?: <Picture 1>)?\u2019s final frame",
+                )
+                self.assertNotRegex(
+                    description,
+                    r"(?:^|\]\s+|[.!?]\s+)['\u2019]s\b",
+                )
+
+        formatted = format_ministral_prompt(
+            response(
+                "[Shot 2] Camera continues seamlessly from the previous shot"
+                + suffix
+            ),
+            context,
+        )
+        self.assertIn(
+            "Camera continues from the previous shot\u2019s final frame with "
+            "a slow push-in toward Terri",
+            formatted[DESCRIPTION],
+        )
+        self.assertNotIn("previous shot. \u2019s", formatted[DESCRIPTION])
+
+        video_only_context = dict(context)
+        video_only_context["subject_definitions"] = (
+            "<Subject 3> is Terri, created in generated video segment 1 "
+            "and continued from <Video 1>."
+        )
+        video_only_context["known_subjects"] = {"Terri": 3}
+        formatted = format_ministral_prompt(
+            response(
+                "[Shot 2] Camera continues from the previous shot. "
+                "<Subject 3>" + suffix
+            ),
+            video_only_context,
+        )
+        self.assertIn(
+            "Camera continues from the previous shot. Terri\u2019s final frame",
+            formatted[DESCRIPTION],
+        )
+
+        formatted = format_ministral_prompt(
+            response(
+                "[Shot 2] Camera continues from the previous shot. "
+                + suffix
+            ),
+            context,
+        )
+        self.assertIn(
+            "Camera continues from the previous shot\u2019s final frame with "
+            "a slow push-in toward Terri",
+            formatted[DESCRIPTION],
+        )
+        self.assertNotRegex(
+            formatted[DESCRIPTION],
+            r"(?:^|\]\s+|[.!?]\s+)['\u2019]s\b",
+        )
+
     def test_decimal_seconds_opening_timestamp_is_normalized(self) -> None:
         malformed = response(
             "[Shot 2] At 0.00 seconds, several flying saucers cross overhead."
@@ -382,7 +546,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
         description = format_ministral_prompt(malformed, context_for(2))[DESCRIPTION]
 
         self.assertTrue(description.startswith("[Shot 2]"))
-        self.assertIn("At 00:00.000 seconds,", description)
+        self.assertIn("At 00:00.000,", description)
 
     def test_markdown_emphasis_is_stripped_from_every_prompt_field(self) -> None:
         malformed = response(
@@ -411,8 +575,8 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
         cases = (
             (
                 "Arc Shot around Mark and Jill as they stare upward.",
-                    r"(?i)camera moves in an arc around (?:<Subject 1> )?Mark and "
-                    r"(?:<Subject 2> )?Jill",
+                    r"(?i)camera moves in an arc around Mark(?: <Picture 1>)? and "
+                    r"Jill(?: <Picture 2>)?",
                 r"(?i)\bArc Shot\b",
             ),
             (
@@ -531,10 +695,10 @@ class LiveBeatFourSemanticRegressionTests(unittest.TestCase):
         formatted = format_ministral_prompt(malformed, self._b4_context())
         issues = validate_ministral_prompt(formatted, self._b4_context())
 
-        self.assertTrue(issues, "An unseen/off-screen abduction must require an LLM correction.")
-        self.assertTrue(
-            any(re.search(r"(?i)(visible|unseen|off-screen|family)", issue) for issue in issues),
+        self.assertEqual(
             issues,
+            [],
+            "Story-level visibility is handled by the separate semantic audit.",
         )
 
     def test_frozen_family_does_not_satisfy_running_away_requirement(self) -> None:
@@ -548,10 +712,10 @@ class LiveBeatFourSemanticRegressionTests(unittest.TestCase):
         formatted = format_ministral_prompt(malformed, self._b4_context())
         issues = validate_ministral_prompt(formatted, self._b4_context())
 
-        self.assertTrue(issues, "A frozen family must not count as visibly running away.")
-        self.assertTrue(
-            any(re.search(r"(?i)(run|flee|frozen|motionless)", issue) for issue in issues),
+        self.assertEqual(
             issues,
+            [],
+            "Story-level action compliance is handled by the semantic audit.",
         )
 
 
