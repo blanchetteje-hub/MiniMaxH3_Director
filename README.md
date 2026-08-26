@@ -62,7 +62,8 @@ Complete these once, in order:
 7. Set connection and output-path environment variables if their defaults do
    not match your system.
 8. Create `story.txt`, `beats.txt`, and optionally `subjects.txt`.
-9. Run the preflight commands, then start a short test generation.
+9. Add the custom node supplied in this repo
+10. Run the preflight commands, then start a short test generation.
 
 The following sections explain each step.
 
@@ -512,7 +513,14 @@ correction request fails or the corrected result remains invalid, the latest
 best-effort locally formatted prompt continues to ComfyUI instead of stopping
 the run. Network/transport retries remain separate.
 
-## 10. Preflight before the first generation
+## 10. Add custom node
+
+A custom node was created for saving the state of the latents so no information would be lost when decoding/encoding video frames.
+- Create a folder in your custom_nodes folder called "ComfyUI-h3_av_latent_io"
+- Copy __init__.py to this folder
+- Restart ComfyUI if needed
+
+## 11. Preflight before the first generation
 
 Confirm all of the following:
 

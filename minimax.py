@@ -115,6 +115,10 @@ VIDEO_OUTPUT = os.path.abspath(
     )
 )
 
+H3_LATENT_SAVE_NODE_NAME = "H3 AV Save Latent"
+H3_LATENT_LOAD_NODE_NAME = "H3 AV Load Latent"
+H3_LATENT_FILENAME_PREFIX = "h3_context/segment"
+
 INITIAL_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_API.json")
 APPEND_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_append_API.json")
 STORY_FILE = os.path.join(SCRIPT_DIR, "story.txt")
@@ -544,6 +548,14 @@ def new_continuity_state():
         "subjects": {},
     }
 
+
+def get_h3_latent_path(segment_number):
+    return os.path.abspath(
+        os.path.join(
+            COMFY_OUTPUT,
+            f"{H3_LATENT_FILENAME_PREFIX}_{segment_number:05d}.safetensors",
+        )
+    )
 
 def parse_subject_registry(subject_definitions):
     """Parse independent name, Picture, and speaker mappings."""
@@ -1637,6 +1649,13 @@ def restore_generation_state(
             raise RuntimeError(
                 "Generation checkpoint segment records are missing or out of order."
             )
+        latent_path = get_h3_latent_path(expected_segment)
+
+        if not os.path.isfile(latent_path):
+            raise RuntimeError(
+                f"Cannot resume: H3 AV latent for segment "
+                f"{expected_segment} is missing: {latent_path}"
+            )
         video_path = record.get("video_path")
         if not isinstance(video_path, str) or not os.path.isfile(video_path):
             raise RuntimeError(
@@ -1698,6 +1717,7 @@ def restore_generation_state(
     return {
         "state": state,
         "video_paths": video_paths,
+        "latent_path": latent_path,
         "previous_video_path": video_paths[-1] if video_paths else None,
         "recent_results": recent_results[-RECENT_SEGMENTS_MAX:],
         "completed_beat_ids": completed_beat_ids,
@@ -1893,18 +1913,79 @@ def validate_workflow(workflow, workflow_label, is_append=False):
     )
 
     required_connections = (
-        (MATH_NODE_NAME, "values.a", DURATION_NODE_NAME, 0),
-        (VIDEO_EXTEND_NODE_NAME, "length", MATH_NODE_NAME, 1),
-        (VIDEO_EXTEND_NODE_NAME, "prompt", PROMPT_NODE_NAME, 0),
-        (VIDEO_EXTEND_NODE_NAME, "context_latent", ENCODE_AV_NODE_NAME, 0),
-        (VIDEO_EXTEND_NODE_NAME, "ref_images", IMAGE_BATCH_NODE_NAME, 0),
-        (ENCODE_AV_NODE_NAME, "images", LOAD_VIDEO_NODE_NAME, 0),
-        (ENCODE_AV_NODE_NAME, "audio", LOAD_VIDEO_NODE_NAME, 2),
-        ("Basic Guider", "conditioning", VIDEO_EXTEND_NODE_NAME, 0),
-        ("SamplerCustomAdvanced", "latent_image", VIDEO_EXTEND_NODE_NAME, 1),
-        ("Create Video", "images", "VAE Decode", 0),
-        ("Create Video", "audio", "VAE Decode Audio", 0),
-        (SAVE_VIDEO_NODE_NAME, "video", "Create Video", 0)
+        (
+            MATH_NODE_NAME,
+            "values.a",
+            DURATION_NODE_NAME,
+            0,
+        ),
+        (
+            VIDEO_EXTEND_NODE_NAME,
+            "length",
+            MATH_NODE_NAME,
+            1,
+        ),
+        (
+            VIDEO_EXTEND_NODE_NAME,
+            "prompt",
+            PROMPT_NODE_NAME,
+            0,
+        ),
+
+        # NEW: direct previous sampler AV latent
+        (
+            VIDEO_EXTEND_NODE_NAME,
+            "context_latent",
+            H3_LATENT_LOAD_NODE_NAME,
+            0,
+        ),
+
+        (
+            VIDEO_EXTEND_NODE_NAME,
+            "ref_images",
+            IMAGE_BATCH_NODE_NAME,
+            0,
+        ),
+
+        (
+            "Basic Guider",
+            "conditioning",
+            VIDEO_EXTEND_NODE_NAME,
+            0,
+        ),
+        (
+            "SamplerCustomAdvanced",
+            "latent_image",
+            VIDEO_EXTEND_NODE_NAME,
+            1,
+        ),
+
+        # NEW: persist this segment's pristine AV latent
+        (
+            H3_LATENT_SAVE_NODE_NAME,
+            "latent",
+            "SamplerCustomAdvanced",
+            0,
+        ),
+
+        (
+            "Create Video",
+            "images",
+            "VAE Decode",
+            0,
+        ),
+        (
+            "Create Video",
+            "audio",
+            "VAE Decode Audio",
+            0,
+        ),
+        (
+            SAVE_VIDEO_NODE_NAME,
+            "video",
+            "Create Video",
+            0,
+        ),
     )
 
     for args in required_connections:
@@ -5854,6 +5935,24 @@ def prepare_initial_workflow(
     validate_workflow(workflow, label, is_append=False)
 
     set_node_input(
+        workflow,
+        H3_LATENT_SAVE_NODE_NAME,
+        "filename_prefix",
+        H3_LATENT_FILENAME_PREFIX,
+        label,
+        "MiniMaxH3AVSaveLatentForExtend",
+    )
+
+    set_node_input(
+        workflow,
+        H3_LATENT_SAVE_NODE_NAME,
+        "clip_index",
+        segment_number,
+        label,
+        "MiniMaxH3AVSaveLatentForExtend",
+    )
+
+    set_node_input(
         workflow, DURATION_NODE_NAME, "value", duration,
         label, "PrimitiveFloat"
     )
@@ -5919,9 +6018,39 @@ def prepare_append_workflow(
         label, "BasicScheduler"
     )
     set_node_input(
-        workflow, LOAD_VIDEO_NODE_NAME, "video",
-        os.path.abspath(previous_video_path),
-        label, "VHS_LoadVideoPath"
+        workflow,
+        H3_LATENT_LOAD_NODE_NAME,
+        "filename_prefix",
+        H3_LATENT_FILENAME_PREFIX,
+        label,
+        "MiniMaxH3AVLoadLatentForExtend",
+    )
+
+    set_node_input(
+        workflow,
+        H3_LATENT_LOAD_NODE_NAME,
+        "clip_index",
+        segment_number - 1,
+        label,
+        "MiniMaxH3AVLoadLatentForExtend",
+    )
+
+    set_node_input(
+        workflow,
+        H3_LATENT_SAVE_NODE_NAME,
+        "filename_prefix",
+        H3_LATENT_FILENAME_PREFIX,
+        label,
+        "MiniMaxH3AVSaveLatentForExtend",
+    )
+
+    set_node_input(
+        workflow,
+        H3_LATENT_SAVE_NODE_NAME,
+        "clip_index",
+        segment_number,
+        label,
+        "MiniMaxH3AVSaveLatentForExtend",
     )
     set_node_input(
         workflow, SAVE_VIDEO_NODE_NAME, "filename_prefix",
@@ -6056,6 +6185,7 @@ def _run_main(summary_executor):
         recent_results = []
         generated_video_paths = []
         previous_video_path = None
+        latent_path = None
         continuity_summary = ""
         continuity_state = continuity_state_for_registry(subject_definitions)
         continuity_summary_pending = False
@@ -6075,6 +6205,7 @@ def _run_main(summary_executor):
         )
         completed_beat_ids = restored["completed_beat_ids"]
         recent_results = restored["recent_results"]
+        latent_path = restored["latent_path"]
         generated_video_paths = restored["video_paths"]
         previous_video_path = restored["previous_video_path"]
         continuity_summary = restored["continuity_summary"]
