@@ -129,7 +129,7 @@ PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
 FINAL_VIDEO = os.path.join(VIDEO_OUTPUT, "final.mp4")
 PROMPT_HISTORY_LOCK = threading.Lock()
 
-DEFAULT_CONTEXT_FRAMES = 22
+DEFAULT_CONTEXT_FRAMES = 7
 MAX_COMFY_SEED = (2 ** 63) - 1
 MAX_LLM_SEED = (2 ** 31) - 1
 
