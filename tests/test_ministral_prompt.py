@@ -176,6 +176,28 @@ completed_beat_ids: [1]"""
 
 
 class VisualFormattingTests(unittest.TestCase):
+    def test_duplicate_registered_picture_ids_are_emitted_once(self) -> None:
+        context = context_for(
+            1,
+            subject_definitions=(
+                "<Subject 2> is Ben, referenced in <Picture 2>, "
+                "<Picture 2>, and <Picture 2>."
+            ),
+            next_beat_id=None,
+            current_beat_text="",
+            later_beat_texts=[],
+            beat_deadline_required=False,
+        )
+        malformed = result(
+            "[Shot 1] A close-up shows Ben doing something.",
+        )
+
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted["detailed_description"]
+
+        self.assertEqual(description.count("<Picture 2>"), 1)
+        self.assertIn("Ben <Picture 2> doing something.", description)
+
     def test_multi_word_subject_gets_registered_picture_tag_once(self) -> None:
         context = context_for(
             2,

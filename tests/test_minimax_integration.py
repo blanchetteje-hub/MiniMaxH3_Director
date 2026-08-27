@@ -166,6 +166,19 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertNotIn("\n[Shot 1]", opening)
         self.assertNotIn("opening-frame reference", later)
 
+    def test_h3_prompt_collapses_adjacent_duplicate_picture_tags(self):
+        result = response(
+            "[Shot 1] A close-up shows Ben <Picture 2> <Picture 2> "
+            "<Picture 2> doing something.",
+            [],
+        )
+
+        prompt = minimax.build_h3_prompt(result, SUBJECTS)
+        description = prompt.split("detailed_description: ", 1)[1].splitlines()[0]
+
+        self.assertEqual(description.count("<Picture 2>"), 1)
+        self.assertIn("Ben <Picture 2> doing something.", description)
+
     def test_story_context_preserves_edges_and_bounds_long_source(self):
         story = "OPENING " + ("middle " * 3000) + " ENDING"
 
@@ -423,6 +436,42 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertEqual(result[-1], 0.50)
         self.assertEqual(free_vram.call_count, 0)
 
+    def test_render_start_signal_is_set_before_waiting_for_video(self):
+        render_started = minimax.threading.Event()
+
+        def assert_started_before_wait(prompt_id):
+            self.assertEqual(prompt_id, "prompt-id")
+            self.assertTrue(render_started.is_set())
+            return {"status": {"completed": True, "status_str": "success"}}
+
+        with mock.patch(
+            "minimax.prepare_initial_workflow",
+            return_value={},
+        ), mock.patch(
+            "minimax.queue_workflow",
+            return_value="prompt-id",
+        ), mock.patch(
+            "minimax.wait_for_completion",
+            side_effect=assert_started_before_wait,
+        ), mock.patch(
+            "minimax.get_video_path",
+            return_value="segment.mp4",
+        ), mock.patch(
+            "minimax.get_video_resolution",
+            return_value=(640, 360),
+        ):
+            minimax.render_segment_with_retries(
+                1,
+                6.0,
+                0.50,
+                "prompt",
+                None,
+                6,
+                render_started_event=render_started,
+            )
+
+        self.assertTrue(render_started.is_set())
+
     @mock.patch("minimax.get_video_resolution", return_value=(640, 360))
     @mock.patch("minimax.get_video_path", return_value="segment.mp4")
     @mock.patch(
@@ -500,6 +549,28 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertIn("has reached its pacing deadline", request)
         self.assertIn("unmistakable outcome before the shot ends", request)
         self.assertIn("Report this beat in completed_beat_ids", request)
+
+    def test_unconfirmed_beat_is_not_advanced(self):
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "did not confirm Beat 2 complete",
+        ):
+            minimax.apply_reported_beat_completions(
+                BEATS,
+                {1},
+                [],
+                2,
+            )
+
+        self.assertEqual(
+            minimax.apply_reported_beat_completions(
+                BEATS,
+                {1},
+                [2],
+                2,
+            ),
+            {1, 2},
+        )
 
     def test_low_megapixel_director_guidance_uses_exact_thresholds(self):
         def rules_for(megapixels):

@@ -97,19 +97,28 @@ def _format_local_timestamp(match: re.Match[str]) -> str:
     return f"{prefix}At {minutes:02d}:{seconds:02d}.{fraction}, "
 
 
+
 def _format_continuation_opening(description: str) -> str:
+    """Remove the obsolete generic continuation phrase from an opening.
+
+    Physical camera continuity must be expressed by the actual camera movement
+    chosen for the active beat.  The formatter must never inject or preserve
+    the generic phrase "Camera continues from the previous shot" because that
+    phrase encourages a static composition and contradicts the director rules.
+    """
     match = _CONTINUATION_OPENING.match(description)
     if match is None:
         return description
-    remainder = description[match.end():].lstrip()
+    remainder = description[match.end():].lstrip(" ,;:-")
     if re.match(r"^['\u2019]s\b", remainder, re.I):
-        return (
-            "Camera continues from the previous shot" + remainder
-        ).rstrip()
-    return (
-        "Camera continues from the previous shot. " + remainder
-    ).rstrip()
-
+        remainder = re.sub(
+            r"^['\u2019]s\s+final\s+frame\s+with\s+",
+            "The camera resumes from the previous final frame with ",
+            remainder,
+            count=1,
+            flags=re.I,
+        )
+    return remainder.rstrip()
 
 def _strip_markdown(value: str) -> str:
     """Remove presentation-only Markdown emphasis without touching field names."""
@@ -226,7 +235,7 @@ def _subject_records(context: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     records: dict[str, dict[str, Any]] = {}
     for match in re.finditer(
         r"(?im)^\s*<Subject\s+(?P<subject>\d+)>\s*(?:is\s+)?"
-        r"(?P<name>[A-Z][\w'â€™-]*(?:\s+[A-Z][\w'â€™-]*)*)\s*,\s*"
+        r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)\s*,\s*"
         r".*?\b(?:created|established)\s+(?:by\s+<Video\s+1>|"
         r"in\s+generated\s+"
         r"video\s+segment\s+\d+).*?\.?\s*$",
@@ -247,12 +256,12 @@ def _subject_records(context: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
         definitions,
     ):
         name = match.group("name").strip()
-        picture_ids = [
+        picture_ids = list(dict.fromkeys(
             int(value) for value in re.findall(
                 r"(?i)<Picture\s+(\d+)>",
                 match.group("pictures"),
             )
-        ]
+        ))
         records[name] = {
             "subject_id": int(match.group("subject")),
             "picture_ids": picture_ids,
@@ -369,10 +378,11 @@ def _repair_fields(result: dict[str, Any], context: Mapping[str, Any]) -> None:
         result[field] = _replace_unsupported_dashes(result[field])
 
 
+
 def _repair_shots(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     description = result[DESCRIPTION]
     number = _segment_number(context)
-    # Remove every model-supplied shot marker.  The pipeline produces one shot
+    # Remove every model-supplied shot marker. The pipeline produces one shot
     # per segment, so retaining a second marker would create a false cut.
     description = _SHOT.sub("", description)
     description = _ALIGNMENT.sub("", description).strip()
@@ -413,6 +423,9 @@ def _repair_shots(result: dict[str, Any], context: Mapping[str, Any]) -> None:
             "At 00:00.000 seconds, ",
             description,
         )
+        # Strip the obsolete generic continuation phrase.  A non-cut segment
+        # must describe the physical camera movement itself; the formatter does
+        # not invent a movement that the director failed to author.
         description = _format_continuation_opening(description)
     description = _clean_space(description).lstrip(" ,;:-")
     description = re.sub(
@@ -431,46 +444,10 @@ def _repair_shots(result: dict[str, Any], context: Mapping[str, Any]) -> None:
         )
         description = _CONFLICTING_CONTINUATION.sub("", description)
         description = f"Camera cuts to a new shot: {description.lstrip()}"
-    elif number > 1:
-        description = re.sub(
-            r"(?i)^Camera\s+cuts\s+to\s+a\s+new\s+shot\s*[:.,-]?\s*",
-            "Camera continues from the previous shot. ",
-            description,
-        )
-        if not re.match(
-            r"(?i)^Camera\s+continues\s+from\s+the\s+previous\s+shot\b",
-            description,
-        ):
-            description = (
-                "Camera continues from the previous shot. "
-                + description.lstrip()
-            )
+    # For non-cut segments, do not insert "Camera continues..." and do not
+    # silently rewrite a model-authored cut as continuity.  Validation will
+    # reject an unauthorized cut so the caller can request a genuine rewrite.
     result[DESCRIPTION] = f"{prefix} {description}".strip()
-
-
-_CAMERA_VERBS = {
-    "zoom in": "zooms in",
-    "zoom out": "zooms out",
-    "push in": "pushes in",
-    "pull out": "pulls out",
-    "pan left": "pans left",
-    "pan right": "pans right",
-    "truck left": "trucks left",
-    "truck right": "trucks right",
-    "tilt up": "tilts up",
-    "tilt down": "tilts down",
-    "pedestal up": "pedestals up",
-    "pedestal down": "pedestals down",
-    "arc shot": "moves in an arc",
-    "tracking shot": "uses a tracking shot",
-    "static shot": "holds a static shot",
-    "shake slightly": "shakes slightly",
-    "shake strongly": "shakes strongly",
-    "roll clockwise": "rolls clockwise",
-    "roll counterclockwise": "rolls counterclockwise",
-    "pov": "holds the subject's point of view",
-}
-
 
 def _camera_label_replacement(match: re.Match[str]) -> str:
     motion = _clean_space(match.group("motion")).lower().rstrip(".")
@@ -527,30 +504,27 @@ def _repair_camera(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     result[DESCRIPTION] = _clean_space(description)
 
 
+
 def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> None:
+    """Canonicalize ordinary character identity references to <Subject N>.
+
+    Picture tags are source-asset references and remain valid when the prose
+    explicitly uses the picture itself as a frame/keyframe/composition anchor.
+    They are not injected next to character names for routine identity recall.
+    """
     names, subjects, pictures = _subject_maps(context)
     subject_pictures = _subject_picture_map(context)
+    records = _subject_records(context)
     subject_names = {
         record["subject_id"]: name
-        for name, record in _subject_records(context).items()
+        for name, record in records.items()
         if record.get("subject_id") is not None
     }
-
-    def subject(match: re.Match[str]) -> str:
-        subject_id = int(match.group(1))
-        possessive = match.group("possessive") or ""
-        name = subject_names.get(subject_id)
-        if possessive:
-            return f"{name}{possessive}" if name else match.group(0)
-        picture_ids = subject_pictures.get(subject_id, [])
-        if picture_ids:
-            return " ".join(
-                f"<Picture {picture}>" for picture in picture_ids
-            )
-        return name or ""
-
-    def picture(match: re.Match[str]) -> str:
-        return match.group(0) if int(match.group(1)) in pictures else ""
+    picture_to_subject = {
+        picture_id: subject_id
+        for subject_id, picture_ids in subject_pictures.items()
+        for picture_id in picture_ids
+    }
 
     text = re.sub(
         r"\s*\(\s*Subject\s+\d+\s*\)",
@@ -558,71 +532,88 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
         result[DESCRIPTION],
         flags=re.I,
     )
+
+    # Remove undefined tags without inventing an identity.
+    text = re.sub(
+        r"<Subject\s+(\d+)>",
+        lambda match: match.group(0) if int(match.group(1)) in subjects else "",
+        text,
+        flags=re.I,
+    )
+    text = re.sub(
+        r"<Picture\s+(\d+)>",
+        lambda match: match.group(0) if int(match.group(1)) in pictures else "",
+        text,
+        flags=re.I,
+    )
+
+    # Legacy "<Subject N> from <Picture N>" identity syntax becomes the
+    # stable Subject identity used by ordinary scene prose.
     text = re.sub(
         r"<Subject\s+(\d+)>\s+from\s+<Picture\s+(\d+)>",
         lambda match: (
-            " ".join(
-                f"<Picture {picture}>"
-                for picture in subject_pictures.get(int(match.group(1)), [])
-            )
-            if int(match.group(2))
-            in subject_pictures.get(int(match.group(1)), [])
-            else ""
-        ),
+            f"<Subject {int(match.group(1))}> "
+            f"{subject_names.get(int(match.group(1)), '')}"
+        ).strip()
+        if picture_to_subject.get(int(match.group(2))) == int(match.group(1))
+        else match.group(0),
         text,
         flags=re.I,
     )
-    text = re.sub(
-        r"<Subject\s+(\d+)>(?:\s*(?P<possessive>['\u2019]s))?",
-        subject,
-        text,
-        flags=re.I,
-    )
-    text = re.sub(r"<Picture\s+(\d+)>", picture, text, flags=re.I)
 
-    # A defined identity reference belongs on its first named appearance.  Do
-    # not make tags up for unnamed relatives, and do not duplicate a tag the
-    # model already supplied elsewhere in the prompt.
-    for name, number in sorted(names.items(), key=lambda item: -len(item[0])):
-        picture_ids = subject_pictures.get(number, [])
-        if number not in subjects or not picture_ids or any(
-            re.search(rf"<Picture\s+{picture}>", text, re.I)
-            for picture in picture_ids
-        ):
-            continue
-        picture_text = " ".join(
-            f"<Picture {picture}>" for picture in picture_ids
-        )
-        id_first = re.compile(
-            rf"(?P<ids>\(S\d+(?:\s*,\s*S\d+)*\))\s*"
-            rf"(?P<name>\b{re.escape(name)}\b)",
-            re.I,
-        )
-        if id_first.search(text):
-            text = id_first.sub(
-                lambda match: (
-                    f"{match.group('name')} {picture_text} "
-                    f"{match.group('ids')}"
-                ),
-                text,
-                count=1,
-            )
-        else:
+    # Convert legacy character-adjacent Picture identity tags while leaving
+    # standalone Picture anchors untouched.
+    for name, subject_id in sorted(names.items(), key=lambda item: -len(item[0])):
+        for picture_id in subject_pictures.get(subject_id, []):
             text = re.sub(
-                rf"\b({re.escape(name)}(?:\s*\(S\d+\))?)(?=\s|[,.;:]|$)",
-                rf"\1 {picture_text}",
+                rf"\b{re.escape(name)}\b\s*<Picture\s+{picture_id}>",
+                f"<Subject {subject_id}> {name}",
                 text,
-                count=1,
                 flags=re.I,
             )
-    text = re.sub(
-        r"(?i)(Camera continues from the previous shot\.)\s+['\u2019]s\s+"
-        r"final frame\s+with\s+",
-        r"\1 The camera resumes from that final frame with ",
-        text,
-    )
-    result[DESCRIPTION] = _clean_space(text)
+            text = re.sub(
+                rf"<Picture\s+{picture_id}>\s*\b{re.escape(name)}\b",
+                f"<Subject {subject_id}> {name}",
+                text,
+                flags=re.I,
+            )
 
+    # Canonicalize an existing Subject tag with its registered name.
+    for subject_id, name in subject_names.items():
+        text = re.sub(
+            rf"<Subject\s+{subject_id}>\s*(?:{re.escape(name)}\b)?",
+            f"<Subject {subject_id}> {name}",
+            text,
+            flags=re.I,
+        )
+        text = re.sub(
+            rf"<Subject\s+{subject_id}>\s+{re.escape(name)}\s+"
+            rf"<Subject\s+{subject_id}>\s+{re.escape(name)}",
+            f"<Subject {subject_id}> {name}",
+            text,
+            flags=re.I,
+        )
+
+    # Ensure the first ordinary named appearance of every registered subject is
+    # tagged.  Do not add Picture tags; subject_definitions already binds them.
+    for name, subject_id in sorted(names.items(), key=lambda item: -len(item[0])):
+        if subject_id not in subjects or not re.search(rf"\b{re.escape(name)}\b", text, re.I):
+            continue
+        if re.search(
+            rf"<Subject\s+{subject_id}>\s+{re.escape(name)}\b",
+            text,
+            re.I,
+        ):
+            continue
+        text = re.sub(
+            rf"\b{re.escape(name)}\b",
+            f"<Subject {subject_id}> {name}",
+            text,
+            count=1,
+            flags=re.I,
+        )
+
+    result[DESCRIPTION] = _clean_space(text)
 
 def _canonicalize_compound_ids(text: str, id_map: Mapping[int, int]) -> str:
     def replace(match: re.Match[str]) -> str:
@@ -730,7 +721,7 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
         if not speaker_id:
             continue
         text = re.sub(
-            rf"\b({re.escape(name)})\b\s*(<Picture\s+\d+>)?\s*"
+            rf"\b({re.escape(name)})\b\s*(<Subject\s+\d+>\s*)?\s*"
             rf"\(S\d+\)",
             lambda match, speaker=speaker_id: (
                 f"{match.group(1)} "
@@ -930,42 +921,37 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
     result[DESCRIPTION] = _clean_space(text)
 
 
+
 def _repair_non_speaking_ids(
     result: dict[str, Any], context: Mapping[str, Any]
 ) -> None:
-    """Use Picture tags, not speaker IDs, in purely visual sentences."""
+    """Remove speaker IDs from visual prose while preserving Subject identity."""
 
     names, subjects, _ = _subject_maps(context)
     canonical_names = {name.casefold(): (name, number) for name, number in names.items()}
     pieces = re.split(r"(?<=[.!?])\s+", result[DESCRIPTION])
 
     def remove_id(match: re.Match[str]) -> str:
-        tag = match.group("tag") or ""
         written_name = match.group("name")
         known = canonical_names.get(written_name.casefold())
         if known is None:
-            return f"{tag}{written_name}".strip()
+            return written_name
         canonical_name, number = known
         if number in subjects:
-            pictures = _subject_picture_map(context).get(number, [])
-            if pictures:
-                return f"{canonical_name} " + " ".join(
-                    f"<Picture {picture}>" for picture in pictures
-                )
+            return f"<Subject {number}> {canonical_name}"
         return canonical_name
 
     repaired = []
     for piece in pieces:
         if "<d>" not in piece.lower():
             piece = re.sub(
-                r"(?P<tag><Subject\s+\d+>\s*)?"
-                r"(?P<name>[A-Z][\w'’-]*)\s*"
+                r"(?:<Subject\s+\d+>\s*)?"
+                r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)\s*"
                 r"\(\s*S\d+(?:\s*,\s*S\d+)*\s*\)",
                 remove_id,
                 piece,
             )
             # Speaker IDs have meaning only for attributed spoken dialogue.
-            # Strip IDs attached to roles or other prose that is purely visual.
             piece = re.sub(
                 r"\s*\(\s*S\d+(?:\s*,\s*S\d+)*\s*\)",
                 "",
@@ -976,18 +962,18 @@ def _repair_non_speaking_ids(
     result[DESCRIPTION] = _clean_space(" ".join(repaired))
 
 
-def _subject_picture_map(context: Mapping[str, Any]) -> dict[int, int]:
+def _subject_picture_map(context: Mapping[str, Any]) -> dict[int, list[int]]:
     definitions = str(context.get("subject_definitions", "") or "")
-    result = {}
+    result: dict[int, list[int]] = {}
     for match in re.finditer(
         r"(?im)^\s*<Subject\s+(\d+)>.*$",
         definitions,
     ):
-        pictures = [
+        pictures = list(dict.fromkeys(
             int(picture) for picture in re.findall(
                 r"(?i)<Picture\s+(\d+)>", match.group(0)
             )
-        ]
+        ))
         if pictures:
             result[int(match.group(1))] = pictures
     for match in re.finditer(
@@ -1003,122 +989,78 @@ def _subject_picture_map(context: Mapping[str, Any]) -> dict[int, int]:
     return result
 
 
-def _repair_canonical_picture_tags(
+def _repair_canonical_subject_tags(
     result: dict[str, Any], context: Mapping[str, Any]
 ) -> None:
-    """Ensure H3 scene prose contains no legacy Subject identity tags."""
-    subject_pictures = _subject_picture_map(context)
-    names, _, _ = _subject_maps(context)
+    """Final-pass normalization for stable <Subject N> scene references.
+
+    Standalone <Picture N> references are preserved because they may be explicit
+    frame/keyframe/composition anchors. Character-adjacent Picture tags are
+    treated as legacy identity syntax and converted to the registered Subject.
+    Every ordinary use of a registered canonical name is tagged as <Subject N>.
+    """
     records = _subject_records(context)
-    subject_names = {
-        record["subject_id"]: name
-        for name, record in records.items()
-        if record.get("subject_id") is not None
-    }
+    subject_pictures = _subject_picture_map(context)
+    text = result[DESCRIPTION]
 
-    def replace_subject(match: re.Match[str]) -> str:
-        subject_id = int(match.group(1))
-        possessive = match.group("possessive") or ""
-        name = subject_names.get(subject_id)
-        if possessive:
-            return f"{name}{possessive}" if name else match.group(0)
-        pictures = subject_pictures.get(subject_id, [])
-        if pictures:
-            return " ".join(f"<Picture {picture}>" for picture in pictures)
-        return name or ""
-
-    text = re.sub(
-        r"<Subject\s+(\d+)>(?:\s*(?P<possessive>['\u2019]s))?",
-        replace_subject,
-        result[DESCRIPTION],
-        flags=re.I,
-    )
-    for pictures in subject_pictures.values():
-        for picture in pictures:
-            text = re.sub(
-                rf"<Picture\s+{picture}>\s+(?P<name>[A-Z][\w'’-]*)",
-                lambda match, picture=picture: (
-                    f"{match.group('name')} <Picture {picture}>"
-                ),
-                text,
-                flags=re.I,
-            )
     for name, record in sorted(records.items(), key=lambda item: -len(item[0])):
-        pictures = record.get("picture_ids", [])
-        if not pictures:
+        subject_id = record.get("subject_id")
+        if subject_id is None:
             continue
-        picture_text = " ".join(f"<Picture {picture}>" for picture in pictures)
+
+        # Convert legacy character-adjacent Picture identity tags. Standalone
+        # Picture anchors such as "composition established by <Picture 1>" are
+        # deliberately untouched.
+        for picture_id in subject_pictures.get(subject_id, []):
+            text = re.sub(
+                rf"\b{re.escape(name)}\b\s*<Picture\s+{picture_id}>",
+                name,
+                text,
+                flags=re.I,
+            )
+            text = re.sub(
+                rf"<Picture\s+{picture_id}>\s*\b{re.escape(name)}\b",
+                name,
+                text,
+                flags=re.I,
+            )
+
+        # Normalize any existing Subject tag/name pair first.
         text = re.sub(
-            rf"\b({re.escape(name)})\b(?:\s+<Picture\s+\d+>)*",
-            f"\\1 {picture_text}",
+            rf"<Subject\s+{subject_id}>\s*(?:{re.escape(name)}\b)?",
+            f"<Subject {subject_id}> {name}",
             text,
-            count=1,
             flags=re.I,
         )
-    text = re.sub(
-        r"\b(?P<name>[A-Z][\w'’-]*)\s*(?P<ids>\(S\d+(?:\s*,\s*S\d+)*\))\s*"
-        r"(?P<picture><Picture\s+\d+>)",
-        r"\g<name> \g<picture> \g<ids>",
-        text,
-        flags=re.I,
-    )
-    text = re.sub(
-        r"\b(?P<name>[A-Z][\w'’-]*)\s*(?P<ids>\(S\d+(?:\s*,\s*S\d+)*\))\s*"
-        r"(?P<verb>says|asks|answers|replies|shouts|whispers|yells|tells|"
-        r"exclaims|narrates)\s*(?P<picture><Picture\s+\d+>)?",
-        lambda match: (
-            f"{match.group('name')} "
-            f"{match.group('picture') + ' ' if match.group('picture') else ''}"
-            f"{match.group('ids')} {match.group('verb')}"
-        ),
-        text,
-        flags=re.I,
-    )
-    text = re.sub(
-        r"(?P<name>\b[A-Z][\w'’-]*)\s+(?P<picture><Picture\s+\d+>)\s+"
-        r"from\s+(?P=picture)",
-        r"\g<name> \g<picture> from",
-        text,
-        flags=re.I,
-    )
-    for subject_id, picture_ids in subject_pictures.items():
-        name = next(
-            (candidate for candidate, number in names.items() if number == subject_id),
-            None,
-        )
-        if not name:
-            continue
-        for picture_id in picture_ids:
-            text = re.sub(
-                rf"\b{re.escape(name)}\s+<Picture\s+{picture_id}>\s*"
-                r"(?P<possessive>['\u2019]s)",
-                lambda match, name=name: f"{name}{match.group('possessive')}",
-                text,
-                flags=re.I,
-            )
-            text = re.sub(
-                rf"<Picture\s+{picture_id}>\s*"
-                r"(?P<possessive>['\u2019]s)",
-                lambda match, name=name: f"{name}{match.group('possessive')}",
-                text,
-                flags=re.I,
-            )
-            text = re.sub(
-                rf"\s*<Picture\s+{picture_id}>",
-                "",
-                text,
-                flags=re.I,
-            )
-        picture_text = " ".join(
-            f"<Picture {picture_id}>" for picture_id in picture_ids
-        )
         text = re.sub(
-            rf"\b({re.escape(name)})\b",
-            rf"\1 {picture_text}",
+            rf"(?:<Subject\s+{subject_id}>\s+{re.escape(name)}\s*){{2,}}",
+            f"<Subject {subject_id}> {name} ",
             text,
-            count=1,
             flags=re.I,
         )
+
+        # Tag every ordinary canonical-name reference, including dialogue
+        # attributions. Do not duplicate a Subject tag already immediately
+        # before the name.
+        pattern = re.compile(rf"\b{re.escape(name)}\b", re.I)
+
+        def tag_name(match: re.Match[str], *, sid=subject_id, canonical=name) -> str:
+            prefix = text[max(0, match.start() - 64):match.start()]
+            if re.search(rf"<Subject\s+{sid}>\s*$", prefix, re.I):
+                return canonical
+            return f"<Subject {sid}> {canonical}"
+
+        text = pattern.sub(tag_name, text)
+
+        # Collapse any duplicates introduced by malformed input or earlier
+        # repair passes.
+        text = re.sub(
+            rf"(?:<Subject\s+{subject_id}>\s+{re.escape(name)}\s*){{2,}}",
+            f"<Subject {subject_id}> {name} ",
+            text,
+            flags=re.I,
+        )
+
     result[DESCRIPTION] = _clean_space(text)
 
 
@@ -1231,22 +1173,21 @@ def _parse_beat_id(raw: Any) -> int | None:
     return int(match.group(1)) if match else None
 
 
+
 def _repair_completions(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     raw = result.get(COMPLETIONS, [])
     if not isinstance(raw, (list, tuple, set)):
         raw = [raw]
     parsed = {_parse_beat_id(value) for value in raw}
     parsed.discard(None)
+
     current = _next_beat_id(context)
-    accepted = []
-    while current is not None and current in parsed:
-        accepted.append(current)
-        current += 1
-    result[COMPLETIONS] = accepted
+    segment = _segment_number(context)
+    expected = segment if current is not None else None
+    result[COMPLETIONS] = [expected] if expected is not None and expected in parsed else []
     result[DESCRIPTION] = re.sub(
         r"(?i)\s*completed_beat_ids\s*:\s*\[[^\]]*\]\s*", " ", result[DESCRIPTION]
     ).strip()
-
 
 def _validate_fields(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
     del context
@@ -1265,38 +1206,45 @@ def _validate_fields(result: Mapping[str, Any], context: Mapping[str, Any]) -> l
     return issues
 
 
+
 def _validate_shots(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
     text = str(result.get(DESCRIPTION, ""))
-    expected = f"[Shot {_segment_number(context)}]"
+    number = _segment_number(context)
+    expected = f"[Shot {number}]"
     issues = []
     shots = _SHOT.findall(text)
     if len(shots) != 1 or not text.startswith(expected):
         issues.append(f"Description must contain exactly one opening {expected} marker.")
-    if _segment_number(context) == 1 and re.match(
+    if number == 1 and re.match(
         rf"^{re.escape(expected)}\s+(?:At\s+)?(?:\d{{1,2}}:00(?:[.:]0{{1,3}})?|"
         rf"0+\.0{{1,3}})(?:\s+seconds?)?",
         text,
         re.I,
     ):
         issues.append("The opening shot must not have a timestamp.")
-    if _segment_number(context) > 1:
+    if number > 1:
         if re.match(
-            rf"^{re.escape(expected)}\s+At\s+00:00\.000 seconds, "
-            r"camera continues from the previous shot",
+            rf"^{re.escape(expected)}\s+At\s+00:00\.000 seconds,",
+            text,
+            re.I,
+        ):
+            issues.append("The continuation opening must not contain a timestamp.")
+        if re.match(
+            rf"^{re.escape(expected)}\s+Camera\s+continues\s+"
+            r"(?:seamlessly\s+)?from\s+the\s+previous\s+shot\b",
             text,
             re.I,
         ):
             issues.append(
-                "The continuation opening must not contain a timestamp."
+                "Do not use the generic continuation phrase; describe the actual "
+                "physical camera movement into the new composition."
             )
         if not context.get("hard_cut_required") and re.match(
             rf"^{re.escape(expected)}\s+Camera\s+cuts\s+to\s+a\s+new\s+shot:",
             text,
             re.I,
         ):
-            issues.append(
-                "Only hard-cut segments may begin with a cut opening."
-            )
+            issues.append("Only scheduled hard-cut segments may begin with a camera cut.")
     if re.search(r"(?i)reference pictures align|fully referenced", text):
         issues.append("Reference-image alignment instructions do not apply to this pipeline.")
     if context.get("hard_cut_required") and not text.startswith(
@@ -1304,7 +1252,6 @@ def _validate_shots(result: Mapping[str, Any], context: Mapping[str, Any]) -> li
     ):
         issues.append("This segment requires the exact hard-cut opening form.")
     return issues
-
 
 def _repair_timestamp_line_breaks(
     result: dict[str, Any], context: Mapping[str, Any]
@@ -1340,15 +1287,40 @@ def _repair_timestamp_line_breaks(
     result[DESCRIPTION] = description.strip()
 
 
+
 def _validate_camera(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
-    del context
+    text = str(result.get(DESCRIPTION, ""))
+    issues = []
     if re.search(
         r"(?i)\b(?:camera motion|amplitude|speed|arc shot|static medium close[- ]up|"
         r"tilt down)\s*:",
-        str(result.get(DESCRIPTION, "")),
+        text,
     ):
-        return ["Camera motion remains as stacked labels instead of natural prose."]
-    return []
+        issues.append("Camera motion remains as stacked labels instead of natural prose.")
+
+    number = _segment_number(context)
+    hard_cut = bool(context.get("hard_cut_required"))
+    if number > 1 and not hard_cut:
+        if re.search(
+            r"(?i)\b(?:camera\s+cuts?|hard\s+cut|jump\s+cut|cutaway)\b",
+            text,
+        ):
+            issues.append("This segment must reach its new composition without a camera cut.")
+        movement = re.search(
+            r"(?i)\b(?:the\s+camera\s+)?(?:"
+            r"zooms?\s+(?:in|out)|push(?:es)?\s+in|pull(?:s)?\s+out|"
+            r"pans?\s+(?:left|right)|trucks?\s+(?:left|right)|"
+            r"tilts?\s+(?:up|down)|pedestals?\s+(?:up|down)|"
+            r"moves?\s+in\s+an\s+arc|tracks?|uses?\s+a\s+tracking\s+shot|"
+            r"rolls?\s+(?:clockwise|counterclockwise))\b",
+            text,
+        )
+        if not movement:
+            issues.append(
+                "A non-cut continuation segment must explicitly describe visible "
+                "continuous camera movement into a materially different composition."
+            )
+    return issues
 
 
 def _validate_subject_tags(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
@@ -1365,26 +1337,32 @@ def _validate_subject_tags(result: Mapping[str, Any], context: Mapping[str, Any]
     if re.search(r"\(\s*Subject\s+\d+\s*\)", text, re.I):
         issues.append("Parenthetical Subject annotations must be removed.")
     if re.search(r"(?:^|\]\s+|[.!?]\s+)['\u2019]s\b", text, re.I):
-        issues.append(
-            "Description contains an orphaned possessive with no subject."
-        )
+        issues.append("Description contains an orphaned possessive with no subject.")
+
     for name, subject_id in names.items():
         if not re.search(rf"\b{re.escape(name)}\b", text, re.I):
             continue
-        picture_ids = subject_pictures.get(subject_id, [])
-        picture_text = r"\s+".join(
-            rf"<Picture\s+{picture}>" for picture in picture_ids
-        )
-        if picture_text and not re.search(
-            rf"\b{re.escape(name)}\b\s+{picture_text}",
+        if not re.search(
+            rf"<Subject\s+{subject_id}>\s+{re.escape(name)}\b",
             text,
             re.I,
         ):
             issues.append(
-                f"{name} must use its registered Picture reference."
+                f"{name} must use the stable <Subject {subject_id}> identity tag "
+                "in ordinary scene prose."
             )
+        for picture_id in subject_pictures.get(subject_id, []):
+            if re.search(
+                rf"(?:\b{re.escape(name)}\b\s*<Picture\s+{picture_id}>|"
+                rf"<Picture\s+{picture_id}>\s*\b{re.escape(name)}\b)",
+                text,
+                re.I,
+            ):
+                issues.append(
+                    f"Do not use <Picture {picture_id}> as an ordinary identity tag "
+                    f"next to {name}; use <Subject {subject_id}> instead."
+                )
     return issues
-
 
 def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
     text = str(result.get(DESCRIPTION, ""))
@@ -1416,7 +1394,7 @@ def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) ->
         ):
             issues.append("Every voiceover must state that the on-screen character's lips remain closed.")
     for clause in re.finditer(
-        r"while\s+(?:his|her|their|[A-Z][\w'â€™-]*(?:\s+[A-Z][\w'â€™-]*)*'s)\s+lips\s+remain\s+completely\s+closed",
+        r"while\s+(?:his|her|their|[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*'s)\s+lips\s+remain\s+completely\s+closed",
         text,
         re.I,
     ):
@@ -1451,7 +1429,7 @@ def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) ->
         )
         if not attributed:
             direct = re.search(
-                r"\b(?:the\s+)?[A-Za-z][\w'â€™-]*(?:\s+[A-Za-z][\w'â€™-]*){0,3}\s+"
+                r"\b(?:the\s+)?[A-Za-z][\w'’-]*(?:\s+[A-Za-z][\w'’-]*){0,3}\s+"
                 r"(?:says|asks|answers|replies|shouts|whispers|yells|tells|exclaims)"
                 r"[^<>.!?]{0,100}:?\s*$",
                 sentence,
@@ -1531,31 +1509,35 @@ def _validate_music(result: Mapping[str, Any], context: Mapping[str, Any]) -> li
     return issues
 
 
+
 def _validate_completions(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
     values = result.get(COMPLETIONS)
     if not isinstance(values, list) or any(not isinstance(value, int) for value in values):
         return ["completed_beat_ids must contain only integer metadata IDs."]
+
     current = _next_beat_id(context)
-    if values:
-        if current is None or values[0] != current:
-            return ["Completed beats must begin with the current NEXT beat."]
-        expected = list(range(current, current + len(values)))
-        if values != expected:
-            return ["Completed beat IDs must be a consecutive sequence."]
-    if (
-        _segment_number(context) == 1
-        and current == 1
-        and context.get("current_beat_text")
-        and 1 not in values
+    if current is None:
+        if values:
+            return ["completed_beat_ids must be empty when beat tracking is disabled or complete."]
+    else:
+        expected = _segment_number(context)
+        if current != expected:
+            return [
+                f"Beat context mismatch: Segment {expected} must use Beat {expected}, "
+                f"but the formatter context supplied Beat {current}."
+            ]
+        if values != [expected]:
+            return [
+                f"Segment {expected} must report exactly one completed beat ID: "
+                f"[{expected}]."
+            ]
+
+    if re.search(
+        r"(?i)completed_beat_ids|\bB\s*0*\d+\b",
+        str(result.get(DESCRIPTION, "")),
     ):
-        return [
-            "Segment 1 must complete and report active beat B001; depict it "
-            "before marking it complete."
-        ]
-    if re.search(r"(?i)completed_beat_ids|\bB\d{3}\b", str(result.get(DESCRIPTION, ""))):
         return ["Beat completion IDs must not appear in rendered prompt text."]
     return []
-
 
 def _validate_semantics(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
     description = str(result.get(DESCRIPTION, ""))
@@ -1594,8 +1576,8 @@ RULE_REGISTRY = (
         lambda result, context: [],
     ),
     PromptRule(
-        "canonical_picture_tags",
-        _repair_canonical_picture_tags,
+        "canonical_subject_tags",
+        _repair_canonical_subject_tags,
         lambda result, context: [],
     ),
 )

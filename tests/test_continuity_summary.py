@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import minimax
 
@@ -129,6 +129,7 @@ class ContinuitySummaryTests(unittest.TestCase):
                     "spider-alien": {
                         "subject_id": 3,
                         "name": "spider-alien",
+                        "entity_kind": "animate",
                         "position": "above Connie",
                         "pose_action": "crawling forward",
                         "body_state": "segmented body and eight legs",
@@ -177,6 +178,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         record = {
             "subject_id": 3,
             "name": "Baby Alpha",
+            "entity_kind": "animate",
             "position": "in Terri's arms",
             "body_state": "newborn infant",
         }
@@ -223,6 +225,7 @@ class ContinuitySummaryTests(unittest.TestCase):
                     "Baby Alpha": {
                         "subject_id": 3,
                         "name": "Baby Alpha",
+                        "entity_kind": "animate",
                         "body_state": "newborn infant",
                     }
                 }
@@ -242,6 +245,7 @@ class ContinuitySummaryTests(unittest.TestCase):
                     "Baby Alpha": {
                         "subject_id": 3,
                         "name": "Baby Alpha",
+                        "entity_kind": "animate",
                         "body_state": "newly visible subject",
                     }
                 }
@@ -254,6 +258,44 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
 
         self.assertNotIn("Baby Alpha", candidate["subjects"])
+
+    def test_new_inanimate_objects_are_not_created_as_subjects(self):
+        for entity_kind in ("inanimate", ""):
+            with self.subTest(entity_kind=entity_kind or "missing"):
+                candidate = minimax.normalize_structured_continuity_state(
+                    {
+                        "subjects": {
+                            "Red Bicycle": {
+                                "subject_id": 3,
+                                "name": "Red Bicycle",
+                                **(
+                                    {"entity_kind": entity_kind}
+                                    if entity_kind else {}
+                                ),
+                                "position": "beside Connie",
+                                "body_state": "red frame and silver handlebars",
+                            }
+                        }
+                    },
+                    self.SUBJECTS,
+                    origin_segment=2,
+                    newest_description=(
+                        "Connie leaves a red bicycle beside the doorway."
+                    ),
+                )
+
+                self.assertNotIn("Red Bicycle", candidate["subjects"])
+
+    def test_continuity_prompt_forbids_inanimate_object_subjects(self):
+        messages = minimax.build_structured_continuity_messages(
+            [(1, segment_result(1))],
+            minimax.continuity_state_for_registry(self.SUBJECTS),
+            self.SUBJECTS,
+        )
+
+        system_prompt = messages[0]["content"]
+        self.assertIn("entity_kind`: `animate", system_prompt)
+        self.assertIn("Never create a Subject for an inanimate object", system_prompt)
 
     def test_structured_candidate_preserves_wardrobe_when_not_changed(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
@@ -527,20 +569,44 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(result["physical_condition"], "startled")
         self.assertEqual(result["held_props"], ["flashlight"])
 
-    def test_summary_worker_is_closed_when_generation_raises(self):
-        worker = Mock()
-        worker.__enter__ = Mock(return_value=worker)
-        worker.__exit__ = Mock(return_value=False)
-        with patch("minimax.ThreadPoolExecutor", return_value=worker) as factory:
+    def test_background_workers_are_closed_when_generation_raises(self):
+        summary_worker = Mock()
+        summary_worker.__enter__ = Mock(return_value=summary_worker)
+        summary_worker.__exit__ = Mock(return_value=False)
+        director_worker = Mock()
+        director_worker.__enter__ = Mock(return_value=director_worker)
+        director_worker.__exit__ = Mock(return_value=False)
+        render_worker = Mock()
+        render_worker.__enter__ = Mock(return_value=render_worker)
+        render_worker.__exit__ = Mock(return_value=False)
+        with patch(
+            "minimax.ThreadPoolExecutor",
+            side_effect=[summary_worker, director_worker, render_worker],
+        ) as factory:
             with patch("minimax._run_main", side_effect=RuntimeError("boom")):
                 with self.assertRaisesRegex(RuntimeError, "boom"):
                     minimax.main()
 
-        factory.assert_called_once_with(
-            max_workers=1,
-            thread_name_prefix="continuity-summary",
+        self.assertEqual(
+            factory.call_args_list,
+            [
+                call(
+                    max_workers=1,
+                    thread_name_prefix="continuity-summary",
+                ),
+                call(
+                    max_workers=1,
+                    thread_name_prefix="director-prefetch",
+                ),
+                call(
+                    max_workers=1,
+                    thread_name_prefix="comfyui-render",
+                ),
+            ],
         )
-        worker.__exit__.assert_called_once()
+        summary_worker.__exit__.assert_called_once()
+        director_worker.__exit__.assert_called_once()
+        render_worker.__exit__.assert_called_once()
 
     @patch("minimax.requests.post")
     def test_plain_text_summary_uses_chat_completions_without_schema(

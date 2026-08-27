@@ -129,6 +129,9 @@ PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
 FINAL_VIDEO = os.path.join(VIDEO_OUTPUT, "final.mp4")
 PROMPT_HISTORY_LOCK = threading.Lock()
 
+FRAME_RATE = 24
+TRIM_FRAMES_AFTER_FIRST = 2
+TRIM_SECONDS_AFTER_FIRST = TRIM_FRAMES_AFTER_FIRST / FRAME_RATE
 DEFAULT_CONTEXT_FRAMES = 7
 MAX_COMFY_SEED = (2 ** 63) - 1
 MAX_LLM_SEED = (2 ** 31) - 1
@@ -1279,8 +1282,12 @@ def inject_persistent_state_into_description(
     description = re.sub(r"\s+", " ", description).strip(" ,")
     return description
 
-def format_authoritative_opening_state(state, subject_definitions=""):
-    """Render MiniMax H3 video-continuation and reference-retention guidance."""
+def format_authoritative_opening_state(
+    state,
+    subject_definitions="",
+    include_camera=True,
+):
+    """Render continuation/reference guidance, optionally including camera state."""
     state = continuity_state_for_registry(subject_definitions, state)
     subjects = _ordered_continuity_subjects(state)
     if not subjects:
@@ -1370,7 +1377,7 @@ def format_authoritative_opening_state(state, subject_definitions=""):
     ongoing_audio = _known_continuity_value(state.get("ongoing_audio"))
     if persistent_state:
         video_details.append(persistent_state)
-    if camera:
+    if include_camera and camera:
         video_details.append(f"camera/framing: {camera}")
     if ongoing_action:
         video_details.append(f"ongoing action: {ongoing_action}")
@@ -2277,7 +2284,7 @@ def format_beat_progress(beats, completed_beat_ids):
             status = "NEXT"
         else:
             status = "TODO"
-        lines.append(f"[{status}] B{beat_id:03d}: {beat_text}")
+        lines.append(f"[{status}] Beat {beat_id}: {beat_text}")
     return "\n".join(lines)
 
 
@@ -2288,9 +2295,8 @@ def build_bounded_beat_state(
     total_segments=None,
     lookahead=DEFAULT_BEAT_LOOKAHEAD,
 ):
-    """Return only the beat window needed by the director for this segment."""
+    """Return the one-beat-per-segment window needed by the director."""
     completed = normalize_completed_beat_ids(beats, completed_beat_ids)
-    next_id = get_next_beat_id(beats, completed)
     state = {
         "completed_through": len(completed) or None,
         "active_beat": None,
@@ -2299,26 +2305,27 @@ def build_bounded_beat_state(
         "beats_remaining": max(0, len(beats) - len(completed)),
         "active_deadline_segment": None,
     }
-    if next_id is None:
+    if not beats:
+        return state
+    if segment_number is None:
+        active_id = get_next_beat_id(beats, completed)
+    else:
+        active_id = int(segment_number)
+    if active_id is None or active_id < 1 or active_id > len(beats):
         return state
 
     state["active_beat"] = {
-        "id": next_id,
-        "text": beats[next_id - 1],
+        "id": active_id,
+        "text": beats[active_id - 1],
     }
     state["ordered_lookahead"] = [
         {"id": beat_id, "text": beats[beat_id - 1]}
         for beat_id in range(
-            next_id + 1,
-            min(len(beats), next_id + lookahead) + 1,
+            active_id + 1,
+            min(len(beats), active_id + lookahead) + 1,
         )
     ]
-    if total_segments is not None and segment_number is not None:
-        state["active_deadline_segment"] = get_beat_deadline_segment(
-            next_id,
-            beats,
-            total_segments,
-        )
+    state["active_deadline_segment"] = active_id
     return state
 
 
@@ -2328,6 +2335,9 @@ def get_accepted_reported_beat_ids(
     reported_beat_ids
 ):
     completed = normalize_completed_beat_ids(beats, completed_beat_ids)
+    next_id = get_next_beat_id(beats, completed)
+    if next_id is None:
+        return []
     reported = set()
     for raw_id in reported_beat_ids or []:
         if isinstance(raw_id, bool):
@@ -2338,14 +2348,7 @@ def get_accepted_reported_beat_ids(
             continue
         if 1 <= beat_id <= len(beats):
             reported.add(beat_id)
-
-    accepted = []
-    next_id = get_next_beat_id(beats, completed)
-    while next_id is not None and next_id in reported:
-        accepted.append(next_id)
-        completed.add(next_id)
-        next_id = get_next_beat_id(beats, completed)
-    return accepted
+    return [next_id] if next_id in reported else []
 
 
 def get_last_checkpoint_beat_update(state, beats):
@@ -2390,20 +2393,20 @@ def print_minimax_beat_plan(beats, completed_beat_ids, reported_beat_ids):
     print("=" * 64)
     print("MINIMAX H3 BEAT PLAN")
     print("=" * 64)
-    print("Completing in this prompt:")
+    print("Beat assigned to this prompt:")
     if accepted:
         for beat_id in accepted:
-            print(f"  B{beat_id:03d}: {beats[beat_id - 1]}")
+            print(f"  Beat {beat_id}: {beats[beat_id - 1]}")
     else:
         current_id = get_next_beat_id(beats, completed_beat_ids)
         print("  None reported complete by the formatted prompt.")
         if current_id is not None:
-            print(f"  Still targeting B{current_id:03d}: {beats[current_id - 1]}")
+            print(f"  Still targeting Beat {current_id}: {beats[current_id - 1]}")
     print("Next required after this prompt:")
     if next_id is None:
         print("  All required beats would be complete.")
     else:
-        print(f"  B{next_id:03d}: {beats[next_id - 1]}")
+        print(f"  Beat {next_id}: {beats[next_id - 1]}")
     print("=" * 64)
     return accepted, next_id
 
@@ -2414,51 +2417,56 @@ def apply_reported_beat_completions(
     reported_beat_ids,
     segment_number
 ):
+    """Apply the active beat only when the returned director result reports it."""
     completed = normalize_completed_beat_ids(beats, completed_beat_ids)
-    valid_reported = set()
+    if not beats:
+        return completed
+    expected_id = int(segment_number)
+    if not 1 <= expected_id <= len(beats):
+        raise RuntimeError(
+            f"Segment {segment_number} has no corresponding beat; "
+            f"the run has {len(beats)} beats."
+        )
 
+    reported = set()
     for raw_id in reported_beat_ids or []:
         if isinstance(raw_id, bool):
             continue
         try:
-            beat_id = int(raw_id)
+            reported.add(int(raw_id))
         except (TypeError, ValueError):
             continue
-        if 1 <= beat_id <= len(beats):
-            valid_reported.add(beat_id)
-
-    accepted = get_accepted_reported_beat_ids(
-        beats,
-        completed,
-        valid_reported
+    unexpected = sorted(
+        beat_id for beat_id in reported
+        if 1 <= beat_id <= len(beats) and beat_id != expected_id
     )
-    completed.update(accepted)
-
-    ignored = sorted(
-        beat_id
-        for beat_id in valid_reported
-        if beat_id not in completed
-    )
-
-    if accepted:
+    if unexpected:
         print(
-            f"Segment {segment_number} completed beat(s): "
-            + ", ".join(f"B{x:03d}" for x in accepted)
+            "WARNING: Ignoring beat completion claim(s) not belonging to this "
+            f"segment: {', '.join(str(x) for x in unexpected)}"
         )
-    else:
-        print(f"Segment {segment_number} completed no new required beats.")
-
-    if ignored:
-        print(
-            "WARNING: Ignored out-of-order beat completion claim(s): "
-            + ", ".join(f"B{x:03d}" for x in ignored)
+    if expected_id not in reported:
+        raise RuntimeError(
+            f"Director did not confirm Beat {expected_id} complete for Segment "
+            f"{segment_number}; the prompt must be queried again before rendering."
         )
 
+    required_prior = set(range(1, expected_id))
+    if completed != required_prior:
+        raise RuntimeError(
+            f"Beat progress is incompatible with Segment {segment_number}: "
+            f"expected completed beats {sorted(required_prior)}, got "
+            f"{sorted(completed)}. Start a fresh run or resume from a checkpoint "
+            "created under the one-beat-per-segment contract."
+        )
+    completed.add(expected_id)
+    print(f"Segment {segment_number} completed Beat {expected_id}.")
     return normalize_completed_beat_ids(beats, completed)
 
 
 def get_beat_deadline_segment(beat_id, beats, total_segments):
-    return max(1, math.ceil(beat_id * total_segments / len(beats)))
+    del beats, total_segments
+    return max(1, int(beat_id))
 
 
 # ============================================================
@@ -2869,7 +2877,7 @@ Requirements:
 {subject_text}
 {instruction_text}
 {correction_text}
-{("PREVIOUSLY GENERATED BEATS\n" + chr(10).join(f"B{number:03d}: {beat}" for number, beat in enumerate(previous_beats, start=1))) if previous_beats else ""}
+{("PREVIOUSLY GENERATED BEATS\n" + chr(10).join(f"Beat {number}: {beat}" for number, beat in enumerate(previous_beats, start=1))) if previous_beats else ""}
 SOURCE STORY
 --- STORY START ---
 {story}
@@ -2943,7 +2951,7 @@ verify compliance one final time.
 
 CANDIDATE BEATS
 {json.dumps({"beats": beats}, ensure_ascii=False, indent=2)}
-{("COMPLETE PLAN CONTEXT OUTSIDE THIS BATCH\n" + chr(10).join(f"B{number:03d}: {beat}" for number, beat in enumerate(complete_beats, start=1) if number < batch_start or number > batch_end)) if len(complete_beats) > len(beats) else ""}
+{("COMPLETE PLAN CONTEXT OUTSIDE THIS BATCH\n" + chr(10).join(f"Beat {number}: {beat}" for number, beat in enumerate(complete_beats, start=1) if number < batch_start or number > batch_end)) if len(complete_beats) > len(beats) else ""}
 {correction_text}
 
 SOURCE STORY
@@ -3476,15 +3484,8 @@ def build_story_context(
 # ============================================================
 
 def is_hard_cut_segment(segment_number):
-    """Return whether Python must force a shot reset.
-
-    With video extension carrying a substantial trailing context window, periodic
-    forced cuts are counterproductive: they encourage H3 to re-compose subjects
-    and can discard persistent details. Cuts are now story/camera decisions made
-    inside the single continuation shot rather than an every-N-segments reset.
-    """
-    del segment_number
-    return False
+    """Return whether this segment must begin with a deliberate camera cut."""
+    return int(segment_number) > 1 and int(segment_number) % 5 == 0
 
 
 def build_director_rules(
@@ -3492,24 +3493,73 @@ def build_director_rules(
     segment_length,
     total_segments,
     subject_definitions,
-    megapixels,
+    segment_number,
     beats_enabled=True,
     context_frames=DEFAULT_CONTEXT_FRAMES,
 ):
     subject_context = subject_definitions or "N/A"
 
-    resolution_guidance = []
-    if megapixels <= 0.4:
-        resolution_guidance.append(
-            "- Use mostly close-up camera shots so important subjects remain "
-            "large and clear. Never use wide-angle shots that make subjects too small to see clearly."
+    camera_change_required = segment_number > 1
+    camera_cut_required = is_hard_cut_segment(segment_number)
+
+    if segment_number == 1:
+        camera_policy = (
+            "IMPORTANT: Establish the initial camera composition that best depicts "
+            "the ACTIVE beat."
         )
-    if megapixels <= 0.3:
-        resolution_guidance.append(
-            "- Avoid a lot of Subject movement; keep camera motion and simultaneous "
-            "action minimal."
+        camera_change_rules = ""
+        camera_transition_rules = ""
+        static_camera_rule = (
+            "- Static Shot is allowed only when it is clearly the best way to depict "
+            "the ACTIVE beat."
         )
-    resolution_text = "\n".join(resolution_guidance) or "- No special guidance."
+    else:
+        camera_policy = (
+            "IMPORTANT: A meaningful camera-composition change from the previous "
+            "segment is REQUIRED."
+        )
+        camera_change_rules = """
+MEANINGFUL CAMERA CHANGE
+
+- Do not preserve substantially the same framing, viewing angle, camera distance,
+  camera height, subject emphasis, and screen composition as the previous segment.
+- The new shot must materially change one or more of: camera angle around the action,
+  camera-to-subject distance, camera height, primary framed subject,
+  foreground/background relationship, subject placement within the frame, or the
+  direction from which the action is viewed.
+- Slight drift, stabilization, minor shake, or a tiny zoom while retaining
+  essentially the same composition does NOT count as a meaningful camera change.
+""".strip()
+        if camera_cut_required:
+            camera_transition_rules = """
+CAMERA CUT
+
+- Begin this segment with a deliberate camera cut to a substantially different
+  camera setup from the previous segment.
+- The new setup must change at least TWO of: viewing angle, shot scale, camera
+  height, primary framed subject, or side/direction from which the action is viewed.
+- A cut to effectively the same composition does not satisfy this requirement.
+""".strip()
+            static_camera_rule = (
+                "- After the required cut, Static Shot is acceptable only if the new "
+                "opening composition is already substantially different from the "
+                "previous segment and clearly serves the ACTIVE beat."
+            )
+        else:
+            camera_transition_rules = """
+CONTINUOUS CAMERA TRANSITION
+
+- Do not use a camera cut. Describe the actual visible camera movement that carries
+  the viewer from the inherited opening composition into the new composition.
+- Do NOT merely write "Camera continues from the previous shot."
+- The continuity must be expressed through the physical camera movement itself.
+- Prefer Pan, Truck, Arc Shot, Tracking Shot, Pedestal, or substantial Push/Pull
+  when a meaningful change in composition is required.
+""".strip()
+            static_camera_rule = (
+                "- Static Shot is not allowed in this segment because a continuous "
+                "camera transition to a new composition is required."
+            )
 
     if beats_enabled:
         role_description = (
@@ -3526,25 +3576,23 @@ AUTHORITY ORDER
 A lower-priority source must never override a higher-priority source.
 
 BEAT EXECUTION CONTRACT
-- On Segment 1, the ACTIVE beat must be B001 and must be completed in the opening segment.
-- Never repeat any beat already completed through `completed_through`; DONE beats are finished and must not be reenacted.
-- Begin visibly advancing the ACTIVE beat early in the segment.
+- Exactly one ordered beat belongs to each segment: Segment N executes Beat N.
+- The ACTIVE beat ID must equal the current segment number.
+- Segment 1 executes Beat 1; Segment 2 executes Beat 2; continue this one-to-one mapping through the final segment.
+- The ACTIVE beat is the only beat that may be newly enacted in this segment.
+- Begin visibly advancing the ACTIVE beat early and complete it within this same segment.
+- Never carry the ACTIVE beat forward into a later segment.
+- Never repeat any beat already completed through `completed_through`; completed beats are historical facts and must not be reenacted.
 - A beat is complete only when every observable event it requires has visibly occurred.
-- Beginning, anticipating, implying, mentioning, or reacting to a beat does not complete it.
-- If the ACTIVE beat says to continue an already established action, the beat is
-    complete once THIS segment visibly depicts one substantial new exchange or
-    continuation satisfying that beat. The overall action does not need to end.
-- Do not enact, preview, or create the distinctive event, entity, object,
-  transformation, persistent condition, or outcome of any ordered lookahead beat in this
-  segment. Later-beat entities must not appear early merely as embellishment.
-- Do not invent irreversible physical changes unless the ACTIVE beat explicitly
-  requires them. Do not permanently alter a subject's form, merge subjects,
-  introduce a new entity, remove a character from the story, destroy important
-  equipment, or permanently alter wardrobe merely to make a scene more dramatic.
-- A structural or topology change exists only if THIS segment visibly performs
-  that change. Never jump directly to a connected, separated, suspended, missing, or
-  transformed state without showing the action that caused it.
-- `completed_beat_ids` contains only newly completed consecutive beats beginning with ACTIVE.
+- Beginning, anticipating, implying, mentioning, preparing for, or reacting to a beat does not complete it unless that reaction itself is explicitly required.
+- If the ACTIVE beat continues an already established action, this segment must visibly depict one substantial new exchange, escalation, movement, or continuation satisfying the beat. The larger ongoing action need not end unless the beat explicitly requires it.
+- Do not enact, preview, partially perform, or establish the distinctive event, entity, object, transformation, persistent condition, or outcome of any later ordered beat.
+- Lookahead beats exist only to prevent future events from occurring early; they are not additional actions for the current segment.
+- Do not invent irreversible physical changes unless the ACTIVE beat explicitly requires them. Do not permanently alter a subject's form, merge subjects, introduce a new persistent entity, remove a character from the story, destroy important equipment, permanently alter wardrobe, or create a lasting physical condition merely for drama.
+- A structural, topology, attachment, separation, removal, transformation, or destruction state exists only if a completed beat has visibly caused it.
+- If the ACTIVE beat requires such a state change, this segment must visibly perform the causal action. Never jump directly to the resulting altered state without depicting the event that causes it.
+- Opening-state facts inherited from earlier segments are already accomplished. Preserve their consequences, but do not reenact the actions that originally caused them.
+- `completed_beat_ids` must contain exactly the integer ID of the ACTIVE beat when it is visibly completed, and no other beat IDs.
 """.strip()
     else:
         role_description = "from a supplied creative brief"
@@ -3563,9 +3611,6 @@ You are directing an automatically generated movie {role_description}.
 The movie is approximately {total_length:g} seconds long, divided into
 {total_segments} sequential segments of approximately {segment_length:g} seconds.
 Generate exactly ONE MiniMax H3 segment description at a time.
-
-RESOLUTION GUIDANCE
-{resolution_text}
 
 {beat_rules}
 
@@ -3608,21 +3653,55 @@ Never assign a speaker ID, Subject tag, or Picture tag to an unregistered role.
 Never put speaker IDs on non-speaking people in purely visual prose.
 Python inserts subject_definitions separately; do not output subject_definitions.
 
-SHOT AND TIMING
+SHOT AND CAMERA CONTRACT
+
 - Each segment contains exactly one shot: Segment N = [Shot N].
-- Shot 1 begins with `[Shot 1]` followed by style, framing, and initial composition.
-- Segments after Shot 1 begin with either `[Shot N] Camera continues from the previous shot...` and if the camera shots changes, such as to a different subject, describe a camera movement, not a hard cut.
-- The opening [Shot N] has no timestamp.
-- Optional later event timestamps within the same shot use this clip's local timeline.
-- Later timestamps use this clip's local timeline, are greater than 00:00.000, and remain before clip duration.
-- Never use cumulative movie timestamps.
-- Try to avoid camera cuts and prefer smooth transitions between shots.
-- Write camera motion as natural English within the shot, never as stacked labels.
-- Use only Zoom In/Out, Push In/Pull Out, Pan Left/Right, Truck Left/Right,
+- The ACTIVE beat determines what visual information the audience must see.
+- Choose the framing, shot scale, camera angle, camera height, primary subject,
+  and camera movement that best depict the ACTIVE beat.
+
+CAMERA PRIORITY
+1. The shot must clearly depict every visible event required to complete the ACTIVE beat.
+2. Preserve subject identity, physical continuity, spatial continuity, and established state.
+3. Among camera setups that clearly communicate the ACTIVE beat, prefer the setup that
+   best satisfies the required composition change without weakening beat readability.
+
+{camera_policy}
+
+{camera_change_rules}
+
+BEAT-DRIVEN FRAMING
+
+- Select the shot according to what the ACTIVE beat needs the audience to see.
+- If the beat depends on a small facial, bodily, or object detail, use framing
+  close enough for that detail to be clearly visible.
+- If the beat depends on multiple subjects, spatial relationships, large movement,
+  environmental action, or scale, use framing wide enough to show those relationships.
+- If the beat shifts attention to another subject, recompose so that subject becomes
+  the visual focus.
+- Never choose an inappropriate shot merely to create camera variety.
+
+{camera_transition_rules}
+
+ALLOWED CAMERA TERMINOLOGY
+
+- Use only: Zoom In/Out, Push In/Pull Out, Pan Left/Right, Truck Left/Right,
   Tilt Up/Down, Pedestal Up/Down, Arc Shot, Tracking Shot, Static Shot,
   Shake Slightly/Strongly, POV, or Roll Clockwise/Counterclockwise.
-- Add `with small/large amplitude` and `at slow/fast speed` only when meaningful.
-- Camera movement is encouraged but not required; do not invent movement for its own sake.
+- Write camera motion as natural English within the shot, never as stacked labels.
+
+STATIC CAMERA
+
+{static_camera_rule}
+
+TIMING
+
+- Shot 1 begins with `[Shot 1]` followed by style, framing, and initial composition.
+- Every later segment begins with `[Shot N]`.
+- The opening [Shot N] has no timestamp.
+- Optional later event timestamps use this clip's local timeline.
+- Later timestamps must be greater than 00:00.000 and remain before clip duration.
+- Never use cumulative movie timestamps.
 
 DIALOGUE
 - Never imply speech; write the exact spoken words.
@@ -3971,13 +4050,18 @@ def build_structured_continuity_messages(
                 "tighter crop, or unrelated new action never removes an item. New devices "
                 "and injuries are additive unless the newest segment explicitly replaces "
                 "or removes an existing item.\n\n"
-                "Track every visually persistent subject needed to continue the final "
-                "frame, including people, animals, vehicles, attached devices, machinery, "
-                "significant props, or persistent visual "
-                "effects introduced by the generated video without a Picture "
-                "reference. A new video-only subject may be added only if it is visibly "
-                "introduced in the newest segment itself and is not merely an event/entity "
-                "reserved for a FUTURE BEAT. Add each such video-only subject under a concise stable name, "
+                "A new video-only subject may represent only an animate entity: a person, "
+                "animal, creature, or independently acting character. Never create "
+                "a Subject for an inanimate object, including a prop, vehicle, device, "
+                "machine, structure, environmental feature, substance, or visual effect. "
+                "Track those things in the appropriate environment, held_props, "
+                "attached_objects, substances, spatial_relationships, or persistent_effects "
+                "fields instead. Every proposed new video-only subject must include "
+                "`entity_kind`: `animate`; use `entity_kind`: `inanimate` for an object so "
+                "the local validator can reject it. A new animate video-only subject may be "
+                "added only if it is visibly introduced in the newest segment itself and is "
+                "not merely an event/entity reserved for a FUTURE BEAT. Add each such "
+                "video-only subject under a concise stable name, "
                 "assign the next unused positive subject_id, set picture_ids to [], "
                 "picture_id to null, set origin_segment to the newest generated segment "
                 "number, and describe its established visible appearance in body_state. "
@@ -4083,6 +4167,13 @@ def _future_subject_name_is_reserved(name, active_beat_text, future_beat_texts):
     active = str(active_beat_text or "").casefold()
     future = "\n".join(str(item or "") for item in (future_beat_texts or [])).casefold()
     return any(token in future and token not in active for token in tokens)
+
+
+def _new_subject_is_animate(record):
+    """Accept new durable Subjects only with an explicit animate classification."""
+    if not isinstance(record, dict):
+        return False
+    return str(record.get("entity_kind", "")).strip().casefold() == "animate"
 
 
 def normalize_structured_continuity_state(
@@ -4219,6 +4310,13 @@ def normalize_structured_continuity_state(
                 if existing_name is not None:
                     name = existing_name
                 else:
+                    if not _new_subject_is_animate(record):
+                        print(
+                            "WARNING: Ignoring inanimate or unclassified video-only "
+                            f"subject {proposed_name!r}; new Subjects require "
+                            "entity_kind='animate'."
+                        )
+                        continue
                     if _future_subject_name_is_reserved(
                         proposed_name, active_beat_text, future_beat_texts
                     ):
@@ -4431,47 +4529,20 @@ def build_segment_request(
 ):
     elapsed = (segment - 1) * segment_length
     current_duration = min(segment_length, total_length - elapsed)
-    next_beat_id = get_next_beat_id(beats, completed_beat_ids)
 
     if not beats:
         beat_focus = (
             "Beat tracking is disabled. Develop the source story naturally "
             "and return completed_beat_ids as an empty array."
         )
-
-    elif next_beat_id is None:
-        beat_focus = (
-            "All required beats are complete. Use the remaining runtime to "
-            "resolve the story naturally without repeating completed events."
-        )
-
     else:
-        beat_text = beats[next_beat_id - 1]
-        deadline = get_beat_deadline_segment(
-            next_beat_id,
-            beats,
-            total_segments
-        )
-
-        if segment >= deadline:
-            deadline_text = (
-                f"B{next_beat_id:03d} has reached its pacing deadline and MUST "
-                "be visibly completed in this segment. Show every observable "
-                "action required by the beat and its unmistakable outcome before "
-                "the shot ends. Report this beat in completed_beat_ids only if "
-                "the generated description actually shows all of those required "
-                "events occurring."
+        if len(beats) != total_segments:
+            raise RuntimeError(
+                f"One-beat-per-segment requires exactly {total_segments} beats, "
+                f"but {len(beats)} are loaded."
             )
-        else:
-            deadline_text = (
-                f"Actively attempt to complete B{next_beat_id:03d} in THIS "
-                f"segment. Segment {deadline} is only its absolute latest "
-                "completion point, not a reason to postpone it. If all required "
-                "observable events fit naturally within this segment, complete "
-                "the beat now. Report it in completed_beat_ids only if the "
-                "generated description actually shows the beat fully occurring."
-            )
-
+        beat_id = int(segment)
+        beat_text = beats[beat_id - 1]
         specific_directives = []
 
         if re.search(
@@ -4499,17 +4570,16 @@ def build_segment_request(
             )
 
         specific_text = " ".join(specific_directives)
-
         beat_focus = (
-            f"PRIMARY BEAT EXECUTION: ACTIVE beat "
-            f"B{next_beat_id:03d}: {beat_text} "
-            "Begin visibly advancing this beat early in the segment and make it "
-            "the primary story event. Devote enough of the clip to clearly enact "
-            f"its required observable events. {deadline_text} "
-            f"{specific_text} "
-            "Do not substitute atmosphere, recap, unrelated movement, passive "
-            "observation, or setup for actual beat progress. Do not substantially "
-            "enact later ordered beats before this beat has visibly completed."
+            f"PRIMARY BEAT EXECUTION: ACTIVE Beat {beat_id}: {beat_text} "
+            f"Segment {segment} must visibly perform and complete Beat {beat_id} "
+            "within this clip; it may not be deferred to another segment. Begin "
+            "advancing it early and devote enough of the clip to clearly enact every "
+            "required observable event and its required outcome. Report exactly "
+            f"completed_beat_ids: [{beat_id}] only when the description visibly shows "
+            f"Beat {beat_id} complete. {specific_text} Do not substitute atmosphere, "
+            "recap, unrelated movement, passive observation, or setup for actual beat "
+            "progress. Do not enact any distinctive later beat event early."
         )
 
     if segment == 1:
@@ -4519,13 +4589,13 @@ def build_segment_request(
         )
     else:
         continuation = (
-            "The complete preceding generated video is supplied directly to "
-            "MiniMax as continuation context. Continue immediately AFTER its "
-            "established ending state. Every fact in AUTHORITATIVE OPENING STATE "
-            "is already accomplished at frame 0: preserve the result, but never "
+            "MiniMax receives the trailing H3 AV latent continuation context from "
+            "the preceding segment, pinned to its final frame. Continue immediately "
+            "AFTER that established ending state. Every fact in AUTHORITATIVE OPENING "
+            "STATE is already accomplished at frame 0: preserve the result, but never "
             "repeat the action that created it. Do not replay, recap, restage, or "
-            "escalate the previous ending unless the ACTIVE beat explicitly "
-            "requires a new change."
+            "escalate the previous ending unless the ACTIVE beat explicitly requires "
+            "a new change."
         )
 
     return (
@@ -4563,13 +4633,13 @@ def build_generation_messages(
             completed_through = beat_state["completed_through"] or 0
             beat_section = (
                 "BEAT STATE\n\n"
-                f"completed_through: B{completed_through:03d}\n"
+                f"completed_through: {completed_through}\n"
                 "active_beat:\n"
-                f"B{beat_state['active_beat']['id']:03d}: "
+                f"Beat {beat_state['active_beat']['id']}: "
                 f"{beat_state['active_beat']['text']}\n"
                 "ordered_lookahead:\n"
                 + "\n".join(
-                    f"B{item['id']:03d}: {item['text']}"
+                    f"Beat {item['id']}: {item['text']}"
                     for item in beat_state["ordered_lookahead"]
                 )
                 +
@@ -4973,7 +5043,7 @@ def semantic_audit_issues(audit, formatted_result, context):
         active_id in reported or context.get("beat_deadline_required")
     ) and not audit.get("active_beat_satisfied", False):
         issues.append(
-            f"B{int(active_id):03d} is reported/required complete, but the candidate does "
+            f"Beat {int(active_id)} is reported/required complete, but the candidate does "
             "not explicitly perform every observable event in that beat."
         )
     for detail in audit.get("issues", []) or []:
@@ -5432,13 +5502,7 @@ def build_hard_cut_subject_continuity(
             fact_clauses.append(f"with clothing state: {clothing_state}")
         if all(facts[field] for field in ("location", "clothing", "clothing_state")):
             clauses.append(
-                f"{subject_name} " + " ".join(
-                    f"<Picture {picture}>"
-                    for picture in registry[subject_number].get(
-                        "picture_ids",
-                        [registry[subject_number]["picture_id"]],
-                    )
-                ) + " "
+                f"<Subject {subject_number}> {subject_name} "
                 + ", ".join(fact_clauses)
                 + "."
             )
@@ -5486,9 +5550,7 @@ def build_hard_cut_subject_continuity_from_state(
         if location in ("", "N/A") or not garments:
             continue
         clause = (
-            f"{subject['name']} " + " ".join(
-                f"<Picture {picture}>" for picture in picture_ids
-            ) + f" is at {location}, "
+            f"<Subject {subject_id}> {subject['name']} is at {location}, "
             f"wearing {', '.join(garments)}"
         )
         if condition not in ("", "N/A"):
@@ -5521,6 +5583,16 @@ def strip_field_prefix(value, field_name):
     return value
 
 
+def deduplicate_adjacent_picture_tags(value):
+    """Collapse repeated copies of the same adjacent H3 Picture tag."""
+    return re.sub(
+        r"(?i)(?P<tag><Picture\s+(?P<picture>\d+)>)"
+        r"(?:\s+<Picture\s+(?P=picture)>)+",
+        r"\g<tag>",
+        str(value or ""),
+    )
+
+
 def build_h3_prompt(
     llm_result,
     subject_definitions,
@@ -5538,9 +5610,11 @@ def build_h3_prompt(
         if not isinstance(llm_result.get(field), str):
             raise RuntimeError(f"LLM response is missing text field '{field}'.")
 
-    integrated = strip_field_prefix(
-        description,
-        "detailed_description"
+    integrated = deduplicate_adjacent_picture_tags(
+        strip_field_prefix(
+            description,
+            "detailed_description",
+        )
     )
     soundscape = strip_field_prefix(
         llm_result["overall_soundscape"],
@@ -5844,6 +5918,7 @@ def render_segment_with_retries(
     loras=None,
     lora_override=None,
     context_frames=DEFAULT_CONTEXT_FRAMES,
+    render_started_event=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     if lora_override is not None:
@@ -5899,6 +5974,8 @@ def render_segment_with_retries(
         try:
             prompt_id = queue_workflow(workflow)
             print(f"ComfyUI prompt ID: {prompt_id}")
+            if render_started_event is not None:
+                render_started_event.set()
             comfy_result = wait_for_completion(prompt_id)
             video_path = get_video_path(comfy_result, workflow)
             width, height = get_video_resolution(video_path)
@@ -6080,12 +6157,49 @@ def prepare_append_workflow(
 # STITCHING
 # ============================================================
 
+def trim_video_start(input_path, output_path, trim_seconds):
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-ss", f"{trim_seconds:.6f}",
+            "-c:v", "libx264",
+            "-preset", "medium",
+            "-crf", "18",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            output_path,
+        ],
+        check=True,
+    )
+
+
 def stitch_videos(video_paths):
     if not video_paths:
         raise RuntimeError("No generated videos are available to stitch.")
 
     os.makedirs(VIDEO_OUTPUT, exist_ok=True)
-    stitch_paths = [os.path.abspath(path) for path in video_paths]
+    stitch_paths = []
+    for index, video_path in enumerate(video_paths):
+        video_path = os.path.abspath(video_path)
+        if index == 0:
+            stitch_paths.append(video_path)
+            continue
+
+        trimmed_path = os.path.join(
+            os.path.dirname(video_path),
+            f"trimmed_{os.path.basename(video_path)}",
+        )
+        print(
+            f"Trimming first {TRIM_FRAMES_AFTER_FIRST} frames from "
+            f"segment {index + 1}."
+        )
+        trim_video_start(
+            video_path,
+            trimmed_path,
+            TRIM_SECONDS_AFTER_FIRST,
+        )
+        stitch_paths.append(trimmed_path)
 
     list_path = None
     try:
@@ -6127,7 +6241,11 @@ def stitch_videos(video_paths):
 # MAIN
 # ============================================================
 
-def _run_main(summary_executor):
+def _run_main(
+    summary_executor,
+    director_prefetch_executor=None,
+    render_executor=None,
+):
     args = parse_args()
     configure_formatter(getattr(args, "model", "ministral"))
     global_loras = normalize_lora_list(getattr(args, "lora", ()))
@@ -6163,6 +6281,11 @@ def _run_main(summary_executor):
         beat_instructions=beat_instructions,
         subject_information=subject_information,
     )
+    if beats and len(beats) != total_segments:
+        raise ValueError(
+            f"One-beat-per-segment requires exactly {total_segments} beats for "
+            f"{total_segments} segments, but beats.txt contains {len(beats)} beats."
+        )
 
     # Beat generation deliberately happens before external runtime and workflow
     # validation so an empty beats.txt is populated before normal startup work.
@@ -6262,15 +6385,6 @@ def _run_main(summary_executor):
     if resume_segment == 1:
         save_generation_state(generation_state)
 
-    director_rules = build_director_rules(
-        total_length,
-        segment_length,
-        total_segments,
-        subject_definitions,
-        megapixels,
-        beats_enabled=bool(beats),
-        context_frames=getattr(args, "context_frames", DEFAULT_CONTEXT_FRAMES),
-    )
 
     def continuity_state_sha(state):
         return hashlib.sha256(
@@ -6295,6 +6409,9 @@ def _run_main(summary_executor):
                 ),
                 "recent_results": list(recent_items),
                 "opening_state_sha256": continuity_state_sha(opening_state),
+                "subject_definitions_sha256": hashlib.sha256(
+                    str(subject_definitions or "").encode("utf-8")
+                ).hexdigest(),
             },
             ensure_ascii=False,
             sort_keys=True,
@@ -6308,16 +6425,34 @@ def _run_main(summary_executor):
     ):
         elapsed = (segment_number - 1) * segment_length
         current_duration = min(segment_length, total_length - elapsed)
-        active_beat_id = get_next_beat_id(beats, completed_ids)
+        active_beat_id = segment_number if beats else None
+        segment_director_rules = build_director_rules(
+            total_length,
+            segment_length,
+            total_segments,
+            subject_definitions,
+            segment_number,
+            beats_enabled=bool(beats),
+            context_frames=getattr(args, "context_frames", DEFAULT_CONTEXT_FRAMES),
+        )
         opening_summary = (
             format_authoritative_opening_state(
                 opening_state,
                 subject_definitions,
+                include_camera=True,
+            )
+            if segment_number > 1 else ""
+        )
+        h3_opening_summary = (
+            format_authoritative_opening_state(
+                opening_state,
+                subject_definitions,
+                include_camera=False,
             )
             if segment_number > 1 else ""
         )
         messages, estimated_tokens, recent_count = build_generation_messages(
-            director_rules=director_rules,
+            director_rules=segment_director_rules,
             story=story,
             beats=beats,
             completed_beat_ids=completed_ids,
@@ -6351,6 +6486,7 @@ def _run_main(summary_executor):
             "ministral_context": ministral_context,
             "opening_state": opening_state,
             "opening_summary": opening_summary,
+            "h3_opening_summary": h3_opening_summary,
             "opening_state_sha256": continuity_state_sha(opening_state),
             "fingerprint": build_segment_fingerprint(
                 segment_number,
@@ -6361,20 +6497,47 @@ def _run_main(summary_executor):
         }
 
     def request_segment_llm(bundle):
-        llm_result = request_valid_ministral_prompt(
-            bundle["messages"],
-            bundle["ministral_context"],
-            history_metadata={
-                "run_id": run_id,
-                "source_sha256": run_config["source_sha256"],
-                "purpose": "director",
-                "segment": bundle["segment"],
-                "attempt": 1,
-                "opening_state_sha256": bundle["opening_state_sha256"],
-            },
-        )
+        active_beat_id = bundle.get("active_beat_id")
+        llm_result = None
+        for director_attempt in (1, 2):
+            llm_result = request_valid_ministral_prompt(
+                bundle["messages"],
+                bundle["ministral_context"],
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": run_config["source_sha256"],
+                    "purpose": "director",
+                    "segment": bundle["segment"],
+                    "attempt": director_attempt,
+                    "opening_state_sha256": bundle["opening_state_sha256"],
+                },
+            )
+            if active_beat_id is None or get_accepted_reported_beat_ids(
+                beats,
+                bundle["ministral_context"].get("completed_beat_ids", []),
+                llm_result.get("completed_beat_ids", []),
+            ):
+                break
+            if director_attempt == 1:
+                print(
+                    f"Director result confirmed Beat {active_beat_id} is not "
+                    "complete; re-querying the LLM before rendering."
+                )
+        else:
+            raise RuntimeError(
+                f"Director failed to return a prompt that completes Beat "
+                f"{active_beat_id} after re-querying."
+            )
         payload = dict(bundle)
         payload["llm_result"] = llm_result
+        return payload
+
+    def request_prefetched_segment(bundle, cancellation_event):
+        if cancellation_event.is_set():
+            raise RuntimeError("prefetched director request was cancelled")
+        payload = request_segment_llm(bundle)
+        if cancellation_event.is_set():
+            raise RuntimeError("prefetched director request was cancelled")
         return payload
 
     run_start_time = time.perf_counter()
@@ -6388,16 +6551,9 @@ def _run_main(summary_executor):
         )
         if prefetched_next is not None:
             if prefetched_next["segment"] != segment:
+                prefetched_next["cancellation_event"].set()
                 if not prefetched_next["future"].done():
                     prefetched_next["future"].cancel()
-                prefetched_next = None
-            elif prefetched_next["fingerprint"] != segment_bundle["fingerprint"]:
-                if not prefetched_next["future"].done():
-                    prefetched_next["future"].cancel()
-                print(
-                    f"Discarded prefetched LLM response for segment {segment} "
-                    "because committed state changed."
-                )
                 prefetched_next = None
 
         print()
@@ -6416,8 +6572,19 @@ def _run_main(summary_executor):
         payload = None
         if prefetched_next is not None:
             try:
-                payload = prefetched_next["future"].result()
-                print(f"Using prefetched LLM response for segment {segment}.")
+                speculative_payload = prefetched_next["future"].result()
+                if (
+                    speculative_payload["fingerprint"]
+                    == segment_bundle["fingerprint"]
+                ):
+                    payload = speculative_payload
+                    print(f"Using prefetched LLM response for segment {segment}.")
+                else:
+                    print(
+                        f"Discarded prefetched LLM response for segment {segment} "
+                        "because the confirmed beat, continuity, or subject state "
+                        "differed; re-querying the LLM."
+                    )
             except Exception as error:
                 print(
                     f"WARNING: prefetched LLM response for segment {segment} failed: "
@@ -6451,7 +6618,7 @@ def _run_main(summary_executor):
             llm_result,
             subject_definitions,
             hard_cut_subject_continuity,
-            payload["opening_summary"],
+            payload["h3_opening_summary"],
             segment,
             ff=args.ff,
         )
@@ -6483,76 +6650,42 @@ def _run_main(summary_executor):
             reported_beat_ids
         )
 
-        # Director LLM prefetch is intentionally disabled. Requesting the next
-        # segment only after the current segment commits ensures it always uses
-        # the latest beat progress and continuity state.
-        # if segment < total_segments:
-        #     tentative_completed = set(
-        #         normalize_completed_beat_ids(beats, completed_beat_ids)
-        #     )
-        #     tentative_completed.update(
-        #         get_accepted_reported_beat_ids(
-        #             beats,
-        #             completed_beat_ids,
-        #             reported_beat_ids,
-        #         )
-        #     )
-        #     tentative_recent = (
-        #         recent_results + [(segment, llm_result)]
-        #     )[-RECENT_SEGMENTS_MAX:]
-        #     next_bundle = build_segment_bundle(
-        #         segment + 1,
-        #         tentative_completed,
-        #         tentative_recent,
-        #         continuity_state,
-        #     )
-        #     prefetched_next = {
-        #         "segment": segment + 1,
-        #         "fingerprint": next_bundle["fingerprint"],
-        #         "future": director_prefetch_executor.submit(
-        #             request_segment_llm,
-        #             next_bundle,
-        #         ),
-        #     }
-        #     print(
-        #         f"Started LLM prefetch for segment {segment + 1} while "
-        #         f"segment {segment} renders."
-        #     )
-
         print()
         print(h3_prompt)
         print()
 
-        try:
-            (
-                workflow,
-                video_path,
-                width,
-                height,
-                rendered_megapixels,
-            ) = render_segment_with_retries(
-                segment,
-                segment_bundle["current_duration"],
-                megapixels,
-                h3_prompt,
-                previous_video_path,
-                args.steps,
-                loras=loras,
-                context_frames=getattr(
-                    args,
-                    "context_frames",
-                    DEFAULT_CONTEXT_FRAMES,
-                ),
-            )
-        except Exception:
-            candidate_future.cancel()
-            if prefetched_next is not None and not prefetched_next["future"].done():
-                prefetched_next["future"].cancel()
-            print(
-                f"Segment {segment} render failed; candidate continuity state discarded"
-            )
-            raise
+        if render_executor is None:
+            raise RuntimeError("A background ComfyUI render executor is required.")
+        render_started = threading.Event()
+        render_future = render_executor.submit(
+            render_segment_with_retries,
+            segment,
+            segment_bundle["current_duration"],
+            megapixels,
+            h3_prompt,
+            previous_video_path,
+            args.steps,
+            loras=loras,
+            context_frames=getattr(
+                args,
+                "context_frames",
+                DEFAULT_CONTEXT_FRAMES,
+            ),
+            render_started_event=render_started,
+        )
+        while not render_started.wait(0.05):
+            if render_future.done():
+                # Surface workflow preparation/queue failures instead of waiting
+                # forever for a render-start signal that cannot arrive.
+                render_future.result()
+        print(
+            f"ComfyUI render started for segment {segment}; applying the "
+            "LLM-returned state without waiting for video completion."
+        )
 
+        # The director/continuity LLM output is the working state. ComfyUI does
+        # not verify beat completion or continuity; it only produces the video
+        # artifact that allows this state to be checkpointed durably.
         try:
             candidate_state = candidate_future.result()
         except Exception as error:
@@ -6586,18 +6719,77 @@ def _run_main(summary_executor):
                 subject_definitions,
                 candidate_state,
             )
-            director_rules = build_director_rules(
-                total_length,
-                segment_length,
-                total_segments,
-                subject_definitions,
-                megapixels,
-                beats_enabled=bool(beats),
-                context_frames=getattr(args, "context_frames", DEFAULT_CONTEXT_FRAMES),
-            )
             print("Registered video-created subject definition(s) internally:")
             for definition in appended_subject_lines:
                 print(f"  {definition}")
+
+        if beats:
+            completed_beat_ids = apply_reported_beat_completions(
+                beats,
+                completed_beat_ids,
+                reported_beat_ids,
+                segment,
+            )
+            generation_state["beat_progress"] = {
+                "completed_beat_ids": sorted(completed_beat_ids),
+                "last_segment_number": segment,
+                "newly_completed_beat_ids": prompt_completed_beat_ids,
+            }
+        recent_results.append((segment, llm_result))
+        recent_results = recent_results[-RECENT_SEGMENTS_MAX:]
+        continuity_state = candidate_state
+        generation_state["continuity_state"] = migrate_continuity_state(
+            continuity_state
+        )
+        generation_state["additional_subject_definitions"] = list(
+            additional_subject_definitions
+        )
+
+        if segment < total_segments and director_prefetch_executor is not None:
+            next_bundle = build_segment_bundle(
+                segment + 1,
+                completed_beat_ids,
+                recent_results,
+                continuity_state,
+            )
+            prefetch_cancellation = threading.Event()
+            prefetched_next = {
+                "segment": segment + 1,
+                "cancellation_event": prefetch_cancellation,
+                "future": director_prefetch_executor.submit(
+                    request_prefetched_segment,
+                    next_bundle,
+                    prefetch_cancellation,
+                ),
+            }
+            assumed = (
+                ", ".join(str(beat_id) for beat_id in prompt_completed_beat_ids)
+                or "none"
+            )
+            print(
+                f"Started LLM prefetch for segment {segment + 1} during "
+                f"segment {segment}'s ComfyUI render using the returned state "
+                f"(completed beat(s): {assumed})."
+            )
+
+        try:
+            (
+                workflow,
+                video_path,
+                width,
+                height,
+                rendered_megapixels,
+            ) = render_future.result()
+        except Exception:
+            if prefetched_next is not None:
+                prefetched_next["cancellation_event"].set()
+                if not prefetched_next["future"].done():
+                    prefetched_next["future"].cancel()
+            print(
+                f"Segment {segment} render failed; its LLM-returned working state "
+                "was not checkpointed."
+            )
+            raise
         print(
             f"Created: {video_path}\n"
             f"Resolution: {width} x {height} "
@@ -6608,23 +6800,7 @@ def _run_main(summary_executor):
         generated_video_paths.append(video_path)
         previous_video_path = video_path
 
-        # Beat state is advanced only after the render succeeds.
-        if beats:
-            completed_beat_ids = apply_reported_beat_completions(
-                beats,
-                completed_beat_ids,
-                reported_beat_ids,
-                segment
-            )
-            generation_state["beat_progress"] = {
-                "completed_beat_ids": sorted(completed_beat_ids),
-                "last_segment_number": segment,
-                "newly_completed_beat_ids": prompt_completed_beat_ids,
-            }
-
         # Commit the rendered video and structured continuity state together.
-        recent_results.append((segment, llm_result))
-        recent_results = recent_results[-RECENT_SEGMENTS_MAX:]
         record_completed_segment(
             generation_state,
             segment,
@@ -6643,7 +6819,6 @@ def _run_main(summary_executor):
                 "newly_completed_beat_ids": prompt_completed_beat_ids,
             }
         save_generation_state(generation_state)
-        continuity_state = candidate_state
         print(f"Continuity state committed after successful render of segment {segment}.")
 
         elapsed_seconds = time.perf_counter() - run_start_time
@@ -6666,7 +6841,7 @@ def _run_main(summary_executor):
         if remaining:
             print("WARNING: Runtime ended with unfinished beats:")
             for beat_id in remaining:
-                print(f"  [TODO] B{beat_id:03d}: {beats[beat_id - 1]}")
+                print(f"  [TODO] Beat {beat_id}: {beats[beat_id - 1]}")
         else:
             print(f"All {len(beats)} story beats were marked complete.")
     else:
@@ -6676,20 +6851,25 @@ def _run_main(summary_executor):
 
 
 def main():
-    # The context manager guarantees worker shutdown even when generation,
-    # ComfyUI, checkpointing, or the summary request raises an exception.
+    # The context managers guarantee worker shutdown even when generation,
+    # ComfyUI, checkpointing, or either LLM task raises an exception.
     with ThreadPoolExecutor(
         max_workers=1,
         thread_name_prefix="continuity-summary",
     ) as summary_executor:
-        # Director prefetch is intentionally disabled along with the scheduling
-        # block in _run_main.
-        # with ThreadPoolExecutor(
-        #     max_workers=1,
-        #     thread_name_prefix="director-prefetch",
-        # ) as director_prefetch_executor:
-        #     return _run_main(summary_executor, director_prefetch_executor)
-        return _run_main(summary_executor)
+        with ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix="director-prefetch",
+        ) as director_prefetch_executor:
+            with ThreadPoolExecutor(
+                max_workers=1,
+                thread_name_prefix="comfyui-render",
+            ) as render_executor:
+                return _run_main(
+                    summary_executor,
+                    director_prefetch_executor,
+                    render_executor,
+                )
 
 
 if __name__ == "__main__":
