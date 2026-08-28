@@ -34,6 +34,98 @@ class AutoRefreshTests(unittest.TestCase):
         self.assertFalse(minimax.is_refresh_segment(1, 1))
         self.assertTrue(minimax.is_refresh_segment(2, 1))
 
+    def test_conditioning_mode_uses_the_refresh_schedule_as_source_of_truth(self):
+        self.assertEqual(
+            minimax.conditioning_mode_for_segment(1, 5),
+            "initial",
+        )
+        self.assertEqual(
+            minimax.conditioning_mode_for_segment(4, 5),
+            "latent_continuation",
+        )
+        self.assertEqual(
+            minimax.conditioning_mode_for_segment(5, 5),
+            "clean_refresh",
+        )
+        self.assertEqual(
+            minimax.conditioning_mode_for_segment(6, 5),
+            "latent_continuation",
+        )
+
+    def test_refresh_conditioning_does_not_imply_a_hard_cut(self):
+        self.assertEqual(
+            minimax.conditioning_mode_for_segment(3, 3),
+            "clean_refresh",
+        )
+        self.assertFalse(minimax.is_hard_cut_segment(3))
+
+    def test_director_rules_distinguish_all_visual_conditioning_modes(self):
+        def rules(segment, mode):
+            return minimax.build_director_rules(
+                total_length=18,
+                segment_length=6,
+                total_segments=3,
+                subject_definitions="",
+                segment_number=segment,
+                beats_enabled=False,
+                context_frames=8,
+                conditioning_mode=mode,
+            )
+
+        initial = rules(1, "initial")
+        latent = rules(2, "latent_continuation")
+        refresh = rules(3, "clean_refresh")
+
+        self.assertIn("VISUAL CONDITIONING MODE: INITIAL", initial)
+        self.assertIn("no preceding video latent context", initial)
+
+        self.assertIn("VISUAL CONDITIONING MODE: LATENT CONTINUATION", latent)
+        self.assertIn("8 trailing H3 AV latent context frames", latent)
+        self.assertIn("plus its pinned final frame", latent)
+        self.assertIn("do not verbally\n  reconstruct the preceding frame", latent)
+        self.assertNotIn("does NOT receive previous latent context", latent)
+
+        self.assertIn("VISUAL CONDITIONING MODE: CLEAN REFRESH", refresh)
+        self.assertIn("does NOT receive previous latent context", refresh)
+        self.assertIn("exact final rendered frame of the preceding segment", refresh)
+        self.assertIn("`first_frame` plus the clean registered subject", refresh)
+        self.assertIn("opening composition, pose", refresh)
+        self.assertIn("topology/fusions, held-prop relationships", refresh)
+        self.assertIn("relevant\n  off-frame state", refresh)
+        self.assertIn("earlier motion or latent history", refresh)
+        self.assertNotIn("trailing H3 AV latent context frames", refresh)
+
+        self.assertIn("continuity database, NOT text", refresh)
+        self.assertIn("Silently internalize the opening state", refresh)
+        self.assertIn("Never mention the same continuity fact more than once", refresh)
+        self.assertIn("Integrate continuity facts naturally", refresh)
+
+    def test_segment_requests_switch_back_to_latent_after_refresh(self):
+        def request(segment, mode):
+            return minimax.build_segment_request(
+                segment=segment,
+                total_segments=6,
+                segment_length=6,
+                total_length=36,
+                beats=[],
+                completed_beat_ids=[],
+                conditioning_mode=mode,
+            )
+
+        initial = request(1, "initial")
+        refresh = request(5, "clean_refresh")
+        after_refresh = request(6, "latent_continuation")
+
+        self.assertIn("There is no previous-video context", initial)
+        self.assertIn("does NOT receive previous latent context", refresh)
+        self.assertIn("exact final rendered frame", refresh)
+        self.assertIn("first_frame plus the clean registered", refresh)
+        self.assertNotIn("receives trailing H3 AV latent context", refresh)
+
+        self.assertIn("receives trailing H3 AV latent context", after_refresh)
+        self.assertIn("plus its pinned final frame", after_refresh)
+        self.assertNotIn("does NOT receive previous latent context", after_refresh)
+
     def test_refresh_argument_must_be_positive(self):
         with self.assertRaises(SystemExit):
             minimax.parse_args(["5", "50", "0.5", "--refresh", "0"])
@@ -189,6 +281,54 @@ class AutoRefreshTests(unittest.TestCase):
         extract.assert_not_called()
         prepare_refresh.assert_not_called()
         prepare_append.assert_called_once()
+
+    def test_refresh_notice_is_flushed_before_and_after_ffmpeg(self):
+        events = []
+        notice = (
+            "AUTO REFRESH: segment 5 is using "
+            "'Minimax_auto_refresh_API.json'."
+        )
+
+        def extract(*args, **kwargs):
+            del args, kwargs
+            events.append("ffmpeg")
+            return "frame.png"
+
+        def capture_print(*args, **kwargs):
+            if args and args[0] == notice:
+                self.assertTrue(kwargs.get("flush"))
+                events.append("notice")
+
+        with mock.patch(
+            "minimax.extract_refresh_first_frame",
+            side_effect=extract,
+        ), mock.patch(
+            "minimax.prepare_refresh_workflow",
+            return_value={"refresh": True},
+        ), mock.patch(
+            "minimax.queue_workflow",
+            return_value="prompt-id",
+        ), mock.patch(
+            "minimax.wait_for_completion",
+            return_value={},
+        ), mock.patch(
+            "minimax.get_video_path",
+            return_value="rendered.mp4",
+        ), mock.patch(
+            "minimax.get_video_resolution",
+            return_value=(1280, 720),
+        ), mock.patch("builtins.print", side_effect=capture_print):
+            minimax.render_segment_with_retries(
+                5,
+                6.0,
+                0.4,
+                "prompt 5",
+                "segment_0004.mp4",
+                8,
+                refresh_interval=5,
+            )
+
+        self.assertEqual(events[:3], ["notice", "ffmpeg", "notice"])
 
 
 if __name__ == "__main__":

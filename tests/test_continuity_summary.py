@@ -286,6 +286,33 @@ class ContinuitySummaryTests(unittest.TestCase):
 
                 self.assertNotIn("Red Bicycle", candidate["subjects"])
 
+    def test_speaking_inanimate_entity_is_persisted_as_subject_with_speaker_id(self):
+        candidate = minimax.normalize_structured_continuity_state(
+            {"subjects": {}},
+            self.SUBJECTS,
+            origin_segment=2,
+            newest_description=(
+                "<Subject 3> Red Bicycle (S3) says: "
+                "<d>[English] Pedal faster.</d>"
+            ),
+        )
+
+        bicycle = candidate["subjects"]["Red Bicycle"]
+        self.assertEqual(bicycle["subject_id"], 3)
+        self.assertEqual(bicycle["speaker_id"], "S3")
+        self.assertEqual(bicycle["origin_segment"], 2)
+
+        additional, appended = minimax.collect_additional_subject_definitions(
+            self.SUBJECTS,
+            [],
+            candidate,
+            origin_segment=2,
+        )
+        combined = minimax.combine_subject_definitions(self.SUBJECTS, additional)
+
+        self.assertEqual(len(appended), 1)
+        self.assertEqual(minimax.parse_subject_registry(combined)[3]["speaker_id"], "S3")
+
     def test_continuity_prompt_forbids_inanimate_object_subjects(self):
         messages = minimax.build_structured_continuity_messages(
             [(1, segment_result(1))],
@@ -296,6 +323,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         system_prompt = messages[0]["content"]
         self.assertIn("entity_kind`: `animate", system_prompt)
         self.assertIn("Never create a Subject for an inanimate object", system_prompt)
+        self.assertIn("Anything that explicitly speaks", system_prompt)
 
     def test_structured_candidate_preserves_wardrobe_when_not_changed(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)

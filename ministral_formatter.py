@@ -320,6 +320,236 @@ def _subject_maps(context: Mapping[str, Any]) -> tuple[dict[str, int], set[int],
     return names, subjects, pictures
 
 
+_DIALOGUE_ATTRIBUTION = (
+    r"says?|asks?|answers?|repl(?:y|ies)|shouts?|whispers?|yells?|tells?|"
+    r"exclaims?|narrates?"
+)
+_DIALOGUE_NAME_WORD = r"[A-Za-z][\w'\u2019-]*"
+_DIALOGUE_ROLE = (
+    rf"(?:the|a|an)\s+{_DIALOGUE_NAME_WORD}"
+    rf"(?:\s+(?!(?:and|{_DIALOGUE_ATTRIBUTION})\b){_DIALOGUE_NAME_WORD}){{0,3}}"
+)
+_DIALOGUE_PROPER_NAME = (
+    rf"[A-Z][\w'\u2019-]*"
+    rf"(?:\s+(?!(?:and|{_DIALOGUE_ATTRIBUTION})\b){_DIALOGUE_NAME_WORD}){{0,3}}"
+)
+_DIALOGUE_SPEAKER_PHRASE = (
+    rf"(?:{_DIALOGUE_ROLE}|{_DIALOGUE_PROPER_NAME})"
+    rf"(?:\s+and\s+(?:{_DIALOGUE_ROLE}|{_DIALOGUE_PROPER_NAME}))?"
+)
+
+
+def _canonical_dialogue_subject_name(value: str) -> str:
+    """Return a stable parser-compatible name for a newly speaking role."""
+
+    return " ".join(
+        word[:1].upper() + word[1:]
+        for word in _clean_space(value).split()
+    )
+
+
+def _next_dialogue_identity_number(records: Mapping[str, Mapping[str, Any]]) -> int:
+    """Choose a number unused by every registered Subject and speaker ID."""
+
+    occupied: set[int] = set()
+    for record in records.values():
+        raw_subject = record.get("subject_id")
+        if str(raw_subject or "").isdigit():
+            occupied.add(int(raw_subject))
+        speaker = str(record.get("speaker_id") or "")
+        match = re.fullmatch(r"(?i)S(\d+)", speaker)
+        if match:
+            occupied.add(int(match.group(1)))
+    candidate = 1
+    while candidate in occupied:
+        candidate += 1
+    return candidate
+
+
+def _assign_unknown_dialogue_subjects(
+    text: str,
+    context: Mapping[str, Any],
+) -> str:
+    """Promote every explicit, unregistered dialogue speaker to a Subject.
+
+    The allocation is local and deterministic. The continuity updater later
+    reads the inline ``<Subject N> Name (SN)`` declaration and persists it for
+    subsequent segments.
+    """
+
+    records = _subject_records(context)
+    by_folded_name = {name.casefold(): name for name in records}
+
+    # Preserve allocations made during an earlier formatter pass or earlier
+    # dialogue block in this pass.
+    for record in extract_inline_dialogue_subjects(text):
+        name = record["name"]
+        if name.casefold() not in by_folded_name:
+            records[name] = record
+            by_folded_name[name.casefold()] = name
+
+    def resolve_names(raw_names: list[str]) -> list[tuple[str, Mapping[str, Any]]]:
+        resolved: list[tuple[str, Mapping[str, Any]]] = []
+        for raw_name in raw_names:
+            folded = _clean_space(raw_name).casefold()
+            canonical = by_folded_name.get(folded)
+            if canonical is None:
+                canonical = _canonical_dialogue_subject_name(raw_name)
+                number = _next_dialogue_identity_number(records)
+                records[canonical] = {
+                    "subject_id": number,
+                    "picture_ids": [],
+                    "picture_id": None,
+                    "speaker_id": f"S{number}",
+                }
+                by_folded_name[folded] = canonical
+            resolved.append((canonical, records[canonical]))
+        return resolved
+
+    def render_names(resolved: list[tuple[str, Mapping[str, Any]]]) -> str:
+        rendered_subjects = []
+        rendered_speakers = []
+        for canonical, record in resolved:
+            subject_id = int(record["subject_id"])
+            speaker_id = str(record.get("speaker_id") or f"S{subject_id}")
+            rendered_subjects.append(f"<Subject {subject_id}> {canonical}")
+            rendered_speakers.append(speaker_id)
+        return (
+            " and ".join(rendered_subjects)
+            + " (" + ",".join(rendered_speakers) + ")"
+        )
+
+    block_matches = list(re.finditer(r"<d>.*?</d>", text, re.I | re.S))
+    for block in reversed(block_matches):
+        window_start = max(0, block.start() - 320)
+        before = text[window_start:block.start()]
+        prior_block = before.lower().rfind("</d>")
+        if prior_block >= 0:
+            window_start += prior_block + len("</d>")
+            before = before[prior_block + len("</d>"):]
+
+        # Already-canonical attributions are intentionally idempotent.
+        if extract_inline_dialogue_subjects(
+            before + "<d>[English] validation placeholder</d>"
+        ):
+            continue
+
+        verb_matches = list(re.finditer(
+            rf"\b(?P<verb>{_DIALOGUE_ATTRIBUTION})\b"
+            rf"[^.!?]{{0,160}}:?\s*$",
+            before,
+            re.I,
+        ))
+        bare_colon = False
+        if verb_matches:
+            verb = verb_matches[-1]
+            speaker_prefix = before[:verb.start()]
+        else:
+            colon = re.search(r":\s*$", before)
+            if not colon:
+                anonymous = render_names(resolve_names(["Unidentified Speaker"]))
+                text = (
+                    text[:block.start()]
+                    + anonymous + " says: "
+                    + text[block.start():]
+                )
+                continue
+            bare_colon = True
+            speaker_prefix = before[:colon.start()]
+
+        # Remove a generated ID before resolving identity. It is not trusted
+        # for an unknown role because it may collide with a registered Subject.
+        without_id = re.sub(
+            r"\s*\(S\d+(?:\s*,\s*S\d+)*\)\s*$",
+            "",
+            speaker_prefix,
+            flags=re.I,
+        )
+        phrase_match = re.search(
+            rf"(?P<phrase>{_DIALOGUE_SPEAKER_PHRASE})\s*$",
+            without_id,
+            re.I,
+        )
+        if not phrase_match:
+            anonymous = render_names(resolve_names(["Unidentified Speaker"]))
+            text = (
+                text[:block.start()]
+                + anonymous + " says: "
+                + text[block.start():]
+            )
+            continue
+        raw_phrase = phrase_match.group("phrase")
+        raw_names = re.split(r"\s+and\s+", raw_phrase, flags=re.I)
+        if any(name.strip().casefold() in {"he", "she", "they", "it"} for name in raw_names):
+            # A pronoun is not a stable identity, but every dialogue block must
+            # still have one. Use an explicit unresolved Subject instead of
+            # guessing which registered person the pronoun means.
+            raw_names = ["Unidentified Speaker"]
+
+        rendered = render_names(resolve_names(raw_names))
+
+        absolute_start = window_start + phrase_match.start("phrase")
+        absolute_end = window_start + len(speaker_prefix)
+        replacement = rendered + (" says" if bare_colon else " ")
+        text = text[:absolute_start] + replacement + text[absolute_end:]
+
+    return text
+
+
+def extract_inline_dialogue_subjects(text: str) -> list[dict[str, Any]]:
+    """Extract Subjects explicitly declared in dialogue attributions."""
+
+    source = str(text or "")
+    found: list[dict[str, Any]] = []
+    seen: set[tuple[int, int, str]] = set()
+    for block in re.finditer(r"<d>.*?</d>", source, re.I | re.S):
+        before = source[max(0, block.start() - 280):block.start()]
+        prior_block = before.lower().rfind("</d>")
+        if prior_block >= 0:
+            before = before[prior_block + len("</d>"):]
+        attribution = re.search(
+            rf"(?P<subjects>(?:<Subject\s+\d+>\s+"
+            rf"[A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*"
+            rf"(?:\s+and\s+)?)+)\s+"
+            rf"\((?P<speakers>S\d+(?:,S\d+)*)\)"
+            rf"[^.!?]{{0,140}}(?:{_DIALOGUE_ATTRIBUTION})"
+            rf"[^.!?]{{0,100}}:?\s*$",
+            before,
+            re.I,
+        )
+        if not attribution:
+            continue
+        subjects = list(re.finditer(
+            r"<Subject\s+(?P<subject>\d+)>\s+"
+            r"(?P<name>[A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*)"
+            r"(?=\s+and\s+<Subject|\s*$)",
+            attribution.group("subjects"),
+            re.I,
+        ))
+        speakers = [
+            int(value) for value in re.findall(
+                r"S(\d+)", attribution.group("speakers"), re.I
+            )
+        ]
+        if len(subjects) != len(speakers):
+            continue
+        for subject, speaker_id in zip(subjects, speakers):
+            subject_id = int(subject.group("subject"))
+            name = _canonical_dialogue_subject_name(subject.group("name"))
+            key = (subject_id, speaker_id, name.casefold())
+            if key in seen:
+                continue
+            seen.add(key)
+            found.append({
+                "subject_id": subject_id,
+                "name": name,
+                "picture_ids": [],
+                "picture_id": None,
+                "speaker_id": f"S{speaker_id}",
+            })
+    return found
+
+
 def normalize_summary_subject_references(
     summary: str,
     subject_definitions: str,
@@ -526,6 +756,37 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
         for picture_id in picture_ids
     }
 
+    inline_subjects = extract_inline_dialogue_subjects(result[DESCRIPTION])
+    registered_subject_names = {
+        int(record["subject_id"]): name.casefold()
+        for name, record in records.items()
+        if str(record.get("subject_id") or "").isdigit()
+    }
+    registered_speaker_names = {
+        str(record["speaker_id"]).casefold(): name.casefold()
+        for name, record in records.items()
+        if record.get("speaker_id")
+    }
+    inline_subject_names: dict[int, set[str]] = {}
+    inline_speaker_names: dict[str, set[str]] = {}
+    for record in inline_subjects:
+        subject_id = int(record["subject_id"])
+        speaker_id = str(record["speaker_id"]).casefold()
+        name = record["name"].casefold()
+        inline_subject_names.setdefault(subject_id, set()).add(name)
+        inline_speaker_names.setdefault(speaker_id, set()).add(name)
+    inline_subject_ids = {
+        int(record["subject_id"])
+        for record in inline_subjects
+        if len(inline_subject_names[int(record["subject_id"])]) == 1
+        and len(inline_speaker_names[str(record["speaker_id"]).casefold()]) == 1
+        and registered_subject_names.get(
+            int(record["subject_id"]), record["name"].casefold()
+        ) == record["name"].casefold()
+        and registered_speaker_names.get(
+            str(record["speaker_id"]).casefold(), record["name"].casefold()
+        ) == record["name"].casefold()
+    }
     text = re.sub(
         r"\s*\(\s*Subject\s+\d+\s*\)",
         "",
@@ -536,7 +797,11 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
     # Remove undefined tags without inventing an identity.
     text = re.sub(
         r"<Subject\s+(\d+)>",
-        lambda match: match.group(0) if int(match.group(1)) in subjects else "",
+        lambda match: (
+            match.group(0)
+            if int(match.group(1)) in subjects | inline_subject_ids
+            else ""
+        ),
         text,
         flags=re.I,
     )
@@ -605,11 +870,22 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
             re.I,
         ):
             continue
+        inserted = False
+
+        def tag_first_unassigned(match: re.Match[str]) -> str:
+            nonlocal inserted
+            if inserted:
+                return match.group(0)
+            prefix = text[max(0, match.start() - 64):match.start()]
+            if re.search(r"<Subject\s+\d+>\s*$", prefix, re.I):
+                return match.group(0)
+            inserted = True
+            return f"<Subject {subject_id}> {name}"
+
         text = re.sub(
             rf"\b{re.escape(name)}\b",
-            f"<Subject {subject_id}> {name}",
+            tag_first_unassigned,
             text,
-            count=1,
             flags=re.I,
         )
 
@@ -835,6 +1111,8 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
                 flags=re.I,
             )
 
+    text = _assign_unknown_dialogue_subjects(text, context)
+
     # A speech verb that has been concatenated to its adverb or following word
     # (for example, "saysagain" or "saysfirmly") should still read as two
     # words, while punctuation forms like "says:" remain unchanged.
@@ -1046,7 +1324,7 @@ def _repair_canonical_subject_tags(
 
         def tag_name(match: re.Match[str], *, sid=subject_id, canonical=name) -> str:
             prefix = text[max(0, match.start() - 64):match.start()]
-            if re.search(rf"<Subject\s+{sid}>\s*$", prefix, re.I):
+            if re.search(r"<Subject\s+\d+>\s*$", prefix, re.I):
                 return canonical
             return f"<Subject {sid}> {canonical}"
 
@@ -1328,8 +1606,59 @@ def _validate_subject_tags(result: Mapping[str, Any], context: Mapping[str, Any]
     subject_pictures = _subject_picture_map(context)
     text = str(result.get(DESCRIPTION, ""))
     issues = []
+    inline_subjects = extract_inline_dialogue_subjects(text)
+    inline_subject_ids = {record["subject_id"] for record in inline_subjects}
+    registered_speaker_ids = {
+        str(record.get("speaker_id"))
+        for record in _subject_records(context).values()
+        if record.get("speaker_id")
+    }
+    registered_subject_names = {
+        int(record["subject_id"]): name
+        for name, record in _subject_records(context).items()
+        if str(record.get("subject_id") or "").isdigit()
+    }
+    registered_speaker_names = {
+        str(record["speaker_id"]): name
+        for name, record in _subject_records(context).items()
+        if record.get("speaker_id")
+    }
+    inline_subject_names: dict[int, str] = {}
+    inline_speaker_ids: dict[str, str] = {}
+    for record in inline_subjects:
+        subject_id = record["subject_id"]
+        speaker_id = record["speaker_id"]
+        name = record["name"]
+        previous_subject_name = inline_subject_names.setdefault(subject_id, name)
+        if previous_subject_name.casefold() != name.casefold():
+            issues.append(
+                f"<Subject {subject_id}> is assigned to more than one identity."
+            )
+        previous_name = inline_speaker_ids.setdefault(speaker_id, name)
+        if previous_name.casefold() != name.casefold():
+            issues.append(
+                f"Speaker ID ({speaker_id}) is assigned to more than one Subject."
+            )
+        registered_subject_name = registered_subject_names.get(subject_id)
+        if (
+            registered_subject_name
+            and registered_subject_name.casefold() != name.casefold()
+        ):
+            issues.append(
+                f"New dialogue Subject {name} reuses <Subject {subject_id}> from "
+                f"{registered_subject_name}."
+            )
+        registered_speaker_name = registered_speaker_names.get(speaker_id)
+        if (
+            speaker_id in registered_speaker_ids
+            and registered_speaker_name
+            and registered_speaker_name.casefold() != name.casefold()
+        ):
+            issues.append(
+                f"New dialogue Subject {name} reuses registered speaker ID ({speaker_id})."
+            )
     for raw in re.findall(r"<Subject\s+(\d+)>", text, re.I):
-        if int(raw) not in subjects:
+        if int(raw) not in subjects and int(raw) not in inline_subject_ids:
             issues.append(f"Undefined <Subject {int(raw)}> tag remains.")
     for raw in re.findall(r"<Picture\s+(\d+)>", text, re.I):
         if int(raw) not in pictures:
@@ -1408,11 +1737,10 @@ def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) ->
     if re.search(r"(?i)\b(?:narrates|voice[- ]over)\s*:", text):
         issues.append("Voiceover must use the exact phrase 'says in an off-screen voiceover'.")
 
-    # Every dialogue block needs a nearby, explicit speaker ID.  A role such as
-    # "the son" must remain unresolved rather than being assigned a guessed ID.
+    # Every dialogue block needs a nearby, explicit Subject and speaker ID.
     for match in re.finditer(r"<d>.*?</d>", text, re.I | re.S):
         before = text[max(0, match.start() - 220):match.start()]
-        before = re.sub(r"<Subject\s+\d+>|<Picture\s+\d+>", "", before, flags=re.I)
+        before = re.sub(r"<Picture\s+\d+>", "", before, flags=re.I)
         # Attribute only from the current clause.  A speaker ID belonging to a
         # previous dialogue block must not accidentally license "the son says".
         last_block = before.lower().rfind("</d>")
@@ -1421,8 +1749,9 @@ def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) ->
         boundaries = [before.rfind(mark) for mark in (". ", "! ", "? ")]
         sentence = before[max(boundaries) + 2:] if max(boundaries) >= 0 else before
         attributed = re.search(
-            r"\(S\d+(?:,S\d+)*\)[^<>.!?]{0,140}"
-            r"(?:says|asks|answers|replies|shouts|whispers|yells|tells|exclaims|narrates)"
+            r"<Subject\s+\d+>[^.!?]{1,180}"
+            r"\(S\d+(?:,S\d+)*\)[^.!?]{0,180}"
+            rf"(?:{_DIALOGUE_ATTRIBUTION})"
             r"[^<>.!?]{0,100}:?\s*$",
             sentence,
             re.I,
@@ -1430,18 +1759,20 @@ def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) ->
         if not attributed:
             direct = re.search(
                 r"\b(?:the\s+)?[A-Za-z][\w'’-]*(?:\s+[A-Za-z][\w'’-]*){0,3}\s+"
-                r"(?:says|asks|answers|replies|shouts|whispers|yells|tells|exclaims)"
+                rf"(?:{_DIALOGUE_ATTRIBUTION})"
                 r"[^<>.!?]{0,100}:?\s*$",
                 sentence,
                 re.I,
             )
             if direct:
                 issues.append(
-                    "An undefined or unknown directly speaking character is missing "
-                    "a stable speaker ID."
+                    "A directly speaking character is missing a stable Subject and "
+                    "speaker ID."
                 )
             else:
-                issues.append("Dialogue block is missing an attributed speaker ID.")
+                issues.append(
+                    "Dialogue block is missing an attributed Subject and speaker ID."
+                )
 
     without_blocks = re.sub(r"<d>.*?</d>", "", text, flags=re.I | re.S)
     if re.search(
@@ -1649,6 +1980,7 @@ class MinistralFormatter(BaseFormatter):
 __all__ = [
     "MinistralFormatter",
     "RULE_REGISTRY",
+    "extract_inline_dialogue_subjects",
     "format_ministral_prompt",
     "validate_ministral_prompt",
 ]

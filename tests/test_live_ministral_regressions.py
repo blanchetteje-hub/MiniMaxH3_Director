@@ -383,20 +383,94 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
         self.assertNotRegex(description, r"\bS[56]\b")
 
-    def test_speaking_undefined_son_requires_content_correction(self) -> None:
+    def test_speaking_undefined_son_becomes_a_subject_with_unique_id(self) -> None:
         malformed = response(
             "[Shot 3] Mark's unidentified son shouts: "
             "<d>[English] They're right above us!</d> while Mark and Jill turn around."
         )
 
-        formatted = format_ministral_prompt(malformed, context_for(3))
-        issues = validate_ministral_prompt(formatted, context_for(3))
+        context = context_for(3, next_beat_id=None, hard_cut_required=True)
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted[DESCRIPTION]
+        issues = validate_ministral_prompt(formatted, context)
 
-        self.assertTrue(issues)
-        self.assertTrue(
-            any(re.search(r"(?i)(son|undefined|unknown|stable speaker|S3)", issue) for issue in issues),
-            issues,
+        self.assertIn(
+            "<Subject 3> Mark's Unidentified Son (S3) shouts: "
+            "<d>[English] They're right above us!</d>",
+            description,
         )
+        self.assertEqual(issues, [])
+
+    def test_multiple_unknown_speakers_get_distinct_stable_ids(self) -> None:
+        malformed = response(
+            "[Shot 3] The guard says: <d>[English] Stop.</d> "
+            "A red door whispers: <d>[English] Come closer.</d> "
+            "The guard replies: <d>[English] I heard that.</d>"
+        )
+
+        context = context_for(3, next_beat_id=None, hard_cut_required=True)
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted[DESCRIPTION]
+
+        self.assertEqual(description.count("<Subject 3> The Guard (S3)"), 2)
+        self.assertIn("<Subject 4> A Red Door (S4) whispers:", description)
+        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+
+    def test_joint_registered_and_unknown_speakers_each_have_subject_identity(self) -> None:
+        malformed = response(
+            "[Shot 3] Mark and a guard shout together: "
+            "<d>[English] Get down!</d>"
+        )
+        context = context_for(3, next_beat_id=None, hard_cut_required=True)
+
+        formatted = format_ministral_prompt(malformed, context)
+        description = formatted[DESCRIPTION]
+
+        self.assertIn(
+            "<Subject 1> Mark and <Subject 3> A Guard (S1,S3) shout together:",
+            description,
+        )
+        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+
+    def test_unknown_speaker_cannot_reuse_registered_generated_id(self) -> None:
+        malformed = response(
+            "[Shot 3] The guard (S1) says: <d>[English] Stop.</d>"
+        )
+        context = context_for(3, next_beat_id=None, hard_cut_required=True)
+
+        description = format_ministral_prompt(malformed, context)[DESCRIPTION]
+
+        self.assertIn("<Subject 3> The Guard (S3) says:", description)
+        self.assertNotIn("The Guard (S1)", description)
+
+    def test_inline_unknown_subject_with_colliding_id_is_remapped(self) -> None:
+        malformed = response(
+            "[Shot 3] <Subject 3> The Guard (S1) says: "
+            "<d>[English] Stop.</d>"
+        )
+        context = context_for(3, next_beat_id=None, hard_cut_required=True)
+
+        formatted = format_ministral_prompt(malformed, context)
+
+        self.assertIn("<Subject 3> The Guard (S3) says:", formatted[DESCRIPTION])
+        self.assertNotIn("The Guard (S1)", formatted[DESCRIPTION])
+        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+
+    def test_unattributed_dialogue_gets_an_explicit_fallback_subject(self) -> None:
+        malformed = response(
+            "[Shot 3] A voice comes from the darkness. "
+            "<d>[English] Do not turn around.</d>"
+        )
+        context = context_for(3, next_beat_id=None, hard_cut_required=True)
+
+        formatted = format_ministral_prompt(malformed, context)
+
+        self.assertIn(
+            "<Subject 3> Unidentified Speaker (S3) says: "
+            "<d>[English] Do not turn around.</d>",
+            formatted[DESCRIPTION],
+        )
+        self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
     def test_stray_closed_lips_clause_without_voiceover_is_rejected(self) -> None:
         malformed = response(

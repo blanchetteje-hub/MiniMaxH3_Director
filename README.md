@@ -478,6 +478,11 @@ continuity state or a successfully rendered wardrobe change.
 
 If a rendered segment introduces a persistent subject that has no Picture
 reference, the continuity updater assigns the next stable `<Subject N>` ID.
+Any unregistered entity that speaks is promoted to a Subject immediately and
+receives a speaker ID not used by any other Subject. This includes a normally
+inanimate entity if it has dialogue. Every `<d>...</d>` block therefore has an
+explicit `<Subject N>` attribution and `(SN)` speaker ID; repeated lines from
+the same new speaker reuse that identity.
 Only after that segment renders successfully, Python registers an internal
 definition like this:
 

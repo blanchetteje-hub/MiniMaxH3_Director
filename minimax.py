@@ -30,6 +30,7 @@ import requests
 
 from ministral_formatter import (
     MinistralFormatter,
+    extract_inline_dialogue_subjects,
     normalize_summary_subject_references,
 )
 from qwen_formatter import QwenFormatter
@@ -339,12 +340,21 @@ MINISTRAL_CONTENT_CORRECTION_ATTEMPTS = 1
 SUMMARY_CONTENT_ATTEMPTS = 2
 BEAT_GENERATION_CONTENT_ATTEMPTS = 3
 BEAT_INSTRUCTION_REVIEW_ATTEMPTS = 3
+BEAT_PLAN_AUDIT_ATTEMPTS = 3
+BEAT_GENERATION_BATCH_SIZE = 20
 BEAT_LLM_SAMPLING_PARAMETERS = {
-    "temperature": 0.9,
-    "top_p": 0.95,
-    "presence_penalty": 0.55,
-    "frequency_penalty": 0.3,
-    "repeat_penalty": 1.08,
+    "temperature": 0.65,
+    "top_p": 0.90,
+    "presence_penalty": 0.15,
+    "frequency_penalty": 0.15,
+    "repeat_penalty": 1.05,
+}
+BEAT_AUDIT_LLM_SAMPLING_PARAMETERS = {
+    "temperature": 0.15,
+    "top_p": 0.90,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "repeat_penalty": 1.05,
 }
 
 # Continuity safety rails. These are deliberately conservative: when the
@@ -515,6 +525,45 @@ def is_refresh_segment(segment_number, refresh_interval):
         and segment_number > 1
         and segment_number % refresh_interval == 0
     )
+
+
+CONDITIONING_MODES = frozenset({
+    "initial",
+    "latent_continuation",
+    "clean_refresh",
+})
+
+
+def conditioning_mode_for_segment(segment_number, refresh_interval=None):
+    """Return the H3 visual-conditioning mode selected by workflow scheduling."""
+
+    segment_number = int(segment_number)
+    if segment_number < 1:
+        raise ValueError("Segment numbers must be one-based.")
+    if segment_number == 1:
+        return "initial"
+    if is_refresh_segment(segment_number, refresh_interval):
+        return "clean_refresh"
+    return "latent_continuation"
+
+
+def validate_conditioning_mode(conditioning_mode, segment_number):
+    """Validate an explicitly supplied Director conditioning mode."""
+
+    segment_number = int(segment_number)
+    if conditioning_mode is None:
+        conditioning_mode = conditioning_mode_for_segment(segment_number)
+    conditioning_mode = str(conditioning_mode).strip()
+    if conditioning_mode not in CONDITIONING_MODES:
+        choices = ", ".join(sorted(CONDITIONING_MODES))
+        raise ValueError(
+            f"Unknown conditioning mode {conditioning_mode!r}; expected: {choices}."
+        )
+    if segment_number == 1 and conditioning_mode != "initial":
+        raise ValueError("Segment 1 must use conditioning mode 'initial'.")
+    if segment_number > 1 and conditioning_mode == "initial":
+        raise ValueError("Only segment 1 may use conditioning mode 'initial'.")
+    return conditioning_mode
 
 
 # ============================================================
@@ -1526,84 +1575,6 @@ _EXPLICIT_REMOVAL_RE = re.compile(
     r"drop(?:s|ped|ping)?|wipe[sd]?\s+(?:off|away)|wash(?:es|ed|ing)?\s+(?:off|away)|"
     r"clean(?:s|ed|ing)?\s+(?:off|away)|dissipat(?:es|ed|ing)|fade[sd]?\s+away)\b"
 )
-
-
-def _subject_description_identity(subject_id, name, record):
-    pictures = _subject_picture_tags(record)
-    if pictures:
-        return f"{name} {' '.join(pictures)}"
-    return f"<Subject {subject_id}> {name}"
-
-
-def _description_mentions_subject(description, subject_id, name, record):
-    patterns = [
-        rf"(?i)<Subject\s+{subject_id}>",
-        rf"(?i)\b{re.escape(name)}\b",
-    ]
-    patterns.extend(
-        rf"(?i)<Picture\s+{picture_id}>"
-        for picture_id in record.get("picture_ids", [])
-    )
-    return any(re.search(pattern, description) for pattern in patterns)
-
-
-def _persistent_subject_facts(record):
-    facts = []
-    for field in ("topology", "body_state", "physical_condition"):
-        value = _known_continuity_value(record.get(field))
-        if value:
-            facts.append(value)
-    for field in PERSISTENT_SUBJECT_LIST_FIELDS:
-        facts.extend(
-            str(item).strip()
-            for item in record.get(field, [])
-            if str(item).strip() and str(item).strip().upper() != "N/A"
-        )
-    held_props = [
-        str(item).strip()
-        for item in record.get("held_props", [])
-        if str(item).strip() and str(item).strip().upper() != "N/A"
-    ]
-    if held_props:
-        facts.append(f"holding {_english_join(held_props)}")
-    wardrobe = _subject_wardrobe(record)
-    if wardrobe:
-        facts.append(f"wearing {_english_join(wardrobe)}")
-    position = _known_continuity_value(record.get("position"))
-    if position:
-        facts.append(f"remaining {position}")
-    pose = _known_continuity_value(record.get("pose_action"))
-    if pose:
-        facts.append(f"maintaining {pose}")
-    return list(dict.fromkeys(facts))
-
-
-def _related_persistent_subjects(subjects, directly_relevant):
-    relevant_names = {
-        name.casefold() for _, name, _ in directly_relevant
-    }
-    related = []
-    for item in subjects:
-        if item in directly_relevant:
-            continue
-        _, _, record = item
-        relationships = " ".join(
-            str(value)
-            for field in (
-                "topology",
-                "body_state",
-                "physical_condition",
-                *PERSISTENT_SUBJECT_LIST_FIELDS,
-            )
-            for value in (
-                record.get(field, [])
-                if isinstance(record.get(field), list)
-                else [record.get(field, "")]
-            )
-        ).casefold()
-        if any(name in relationships for name in relevant_names):
-            related.append(item)
-    return related
 
 
 _STRUCTURED_CONTINUITY_FRAGMENT_RE = re.compile(
@@ -2660,21 +2631,6 @@ def get_next_beat_id(beats, completed_beat_ids):
     return None if next_id > len(beats) else next_id
 
 
-def format_beat_progress(beats, completed_beat_ids):
-    completed = normalize_completed_beat_ids(beats, completed_beat_ids)
-    next_id = get_next_beat_id(beats, completed)
-    lines = []
-    for beat_id, beat_text in enumerate(beats, start=1):
-        if beat_id in completed:
-            status = "DONE"
-        elif beat_id == next_id:
-            status = "NEXT"
-        else:
-            status = "TODO"
-        lines.append(f"[{status}] Beat {beat_id}: {beat_text}")
-    return "\n".join(lines)
-
-
 def build_bounded_beat_state(
     beats,
     completed_beat_ids,
@@ -2976,6 +2932,15 @@ def ask_llm(
 ):
     last_error = None
     messages = normalize_lm_studio_messages(messages)
+    beat_history_purposes = {
+        "beat_arc_plan",
+        "beat_arc_fidelity",
+        "beat_generation",
+        "beat_instruction_review",
+        "beat_plan_audit",
+    }
+    history_purpose = str((history_metadata or {}).get("purpose", ""))
+    log_beat_response = history_purpose in beat_history_purposes
     for attempt in range(1, max_retries + 1):
         try:
             llm_seed = generate_random_llm_seed()
@@ -3012,6 +2977,9 @@ def ask_llm(
             if response_format is not None:
                 request_payload["response_format"] = response_format
 
+            response_format_used = response_format is not None
+            response_request_variant = None
+
             append_prompt_history(
                 messages,
                 metadata={
@@ -3019,6 +2987,7 @@ def ask_llm(
                     **(history_metadata or {}),
                     "seed": llm_seed,
                     "sampling_parameters": sampling_metadata,
+                    **({"entry_type": "request"} if log_beat_response else {}),
                 },
             )
             response = requests.post(
@@ -3043,6 +3012,8 @@ def ask_llm(
                     )
                     fallback_payload = dict(request_payload)
                     fallback_payload.pop("response_format")
+                    response_format_used = False
+                    response_request_variant = "without_response_format"
                     append_prompt_history(
                         fallback_payload["messages"],
                         metadata={
@@ -3051,6 +3022,10 @@ def ask_llm(
                             "request_variant": "without_response_format",
                             "seed": llm_seed,
                             "sampling_parameters": sampling_metadata,
+                            **(
+                                {"entry_type": "request"}
+                                if log_beat_response else {}
+                            ),
                         },
                     )
                     response = requests.post(
@@ -3063,6 +3038,20 @@ def ask_llm(
                     raise
             data = response.json()
             content = data["choices"][0]["message"]["content"]
+            if log_beat_response:
+                response_metadata = {
+                    "response_format": response_format_used,
+                    **(history_metadata or {}),
+                    "seed": llm_seed,
+                    "sampling_parameters": sampling_metadata,
+                    "entry_type": "response",
+                }
+                if response_request_variant:
+                    response_metadata["request_variant"] = response_request_variant
+                append_prompt_history(
+                    [{"role": "assistant", "content": content}],
+                    metadata=response_metadata,
+                )
             try:
                 result = parse_llm_json_content(content)
             except json.JSONDecodeError:
@@ -3145,7 +3134,7 @@ def build_beats_response_format(total_segments):
                             "type": "string",
                             "minLength": 1,
                             "description": (
-                                "One or two concise, complete sentences."
+                                "One to three concise, complete sentences."
                             ),
                         },
                         "minItems": total_segments,
@@ -3157,6 +3146,533 @@ def build_beats_response_format(total_segments):
                 "additionalProperties": False,
             },
         },
+    }
+
+
+def build_beat_arc_response_format(total_segments):
+    if total_segments <= 0:
+        raise ValueError("Beat arc planning requires at least one segment.")
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_beat_arc",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "phases": {
+                        "type": "array",
+                        "minItems": 1,
+                        "maxItems": min(8, total_segments),
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "segment_start": {"type": "integer", "minimum": 1},
+                                "segment_end": {"type": "integer", "minimum": 1},
+                                "narrative_purpose": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                },
+                                "broad_progression": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                },
+                                "required_end_state": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                },
+                            },
+                            "required": [
+                                "segment_start",
+                                "segment_end",
+                                "narrative_purpose",
+                                "broad_progression",
+                                "required_end_state",
+                            ],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["phases"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def build_beat_arc_fidelity_response_format():
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_beat_arc_fidelity",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "valid": {"type": "boolean"},
+                    "issues": {
+                        "type": "array",
+                        "items": {"type": "string", "minLength": 1},
+                    },
+                },
+                "required": ["valid", "issues"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def build_beat_plan_audit_response_format():
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_beat_plan_audit",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "valid": {"type": "boolean"},
+                    "macro_arc_consistent_with_source": {"type": "boolean"},
+                    "blocking_issues": {
+                        "type": "array",
+                        "items": {"type": "string", "minLength": 1},
+                    },
+                    "warnings": {
+                        "type": "array",
+                        "items": {"type": "string", "minLength": 1},
+                    },
+                },
+                "required": [
+                    "valid",
+                    "macro_arc_consistent_with_source",
+                    "blocking_issues",
+                    "warnings",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def build_beat_arc_plan_messages(
+    story,
+    total_segments,
+    subject_information="",
+    correction="",
+    beat_instructions="",
+):
+    target_phase_count = min(8, max(1, min(5, total_segments)))
+    subject_text = str(subject_information or "").strip() or "N/A"
+    instruction_text = str(beat_instructions or "").strip() or "N/A"
+    correction_text = ""
+    if correction:
+        correction_text = f"""
+
+CORRECTION REQUIRED
+The previous arc was invalid or inconsistent: {correction}
+Return a complete corrected arc covering the full segment range.
+"""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a conservative story editor. Plan the supplied story "
+                "without replacing its premise, required events, or outcome. "
+                "Return only the requested JSON object."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Create one concise chronological macro story arc for a {total_segments}-segment
+video. Use about {target_phase_count} phases (normally 5-8 when the segment
+count permits). The phases must cover Segment 1 through Segment {total_segments}
+exactly once, with no gaps or overlaps.
+
+For every phase provide:
+- segment_start and segment_end, both inclusive;
+- narrative_purpose;
+- broad_progression: one abstract summary of the source-derived progression;
+- required_end_state: one broad source-derived state that the next phase begins from.
+
+Keep every phase abstract. Appropriate detail is: "Chase escalates and Amy is
+caught." Do not enumerate imagery or individual actions such as a second
+many-eyed monster giggling, doors appearing, or the ground tilting. Do not write
+example dialogue, specific gore acts, invented mythology, or shot-level events.
+
+Priority order:
+1. Faithfulness to the source story and its required events and outcomes.
+2. Clear chronological cause-and-effect.
+3. Visible story progression.
+4. Variety within that established story.
+5. Creativity only when it does not alter the premise or progression.
+
+Connective detail may elaborate the supplied story, but it must not become a
+replacement story. The arc may organize and pace only what the source supports.
+Do not introduce new characters, doppelgangers/copies, loops or resurrection,
+secret mythology, flashback frameworks, rituals, existential mechanics, or any
+similar major plot concept unless story.txt explicitly supports it.
+
+MAIN CHARACTERS FROM SUBJECTS.TXT
+{subject_text}
+
+ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT
+Use these constraints when they affect chronology, placement, or the ending:
+{instruction_text}
+
+SOURCE STORY
+--- STORY START ---
+{story}
+--- STORY END ---
+{correction_text}
+
+Return only the JSON object with a phases array. Each phase must contain only
+segment_start, segment_end, narrative_purpose, broad_progression, and
+required_end_state.
+""".strip(),
+        },
+    ]
+
+
+def parse_beat_arc_plan(raw_result, total_segments, formatter=None):
+    if total_segments <= 0:
+        raise ValueError("Beat arc planning requires at least one segment.")
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate)
+        except json.JSONDecodeError as error:
+            raise ValueError("The LLM arc response must be valid JSON.") from error
+    if (
+        isinstance(candidate, dict)
+        and set(candidate) == {"arc_plan"}
+        and isinstance(candidate["arc_plan"], dict)
+    ):
+        candidate = candidate["arc_plan"]
+    if not isinstance(candidate, dict) or not isinstance(
+        candidate.get("phases"), list
+    ):
+        raise ValueError("The LLM arc response must contain a JSON 'phases' array.")
+    phases = candidate["phases"]
+    if not phases:
+        raise ValueError("The macro story arc must contain at least one phase.")
+    if len(phases) > min(8, total_segments):
+        raise ValueError("The macro story arc must contain no more than eight phases.")
+
+    normalized_phases = []
+    expected_start = 1
+    required_fields = (
+        "segment_start",
+        "segment_end",
+        "narrative_purpose",
+        "broad_progression",
+        "required_end_state",
+    )
+    for phase_number, phase in enumerate(phases, start=1):
+        if not isinstance(phase, dict):
+            raise ValueError(f"Macro arc phase {phase_number} must be an object.")
+        missing = [field for field in required_fields if field not in phase]
+        if missing:
+            raise ValueError(
+                f"Macro arc phase {phase_number} is missing: {', '.join(missing)}."
+            )
+        start = phase["segment_start"]
+        end = phase["segment_end"]
+        if isinstance(start, bool) or not isinstance(start, int):
+            raise ValueError(
+                f"Macro arc phase {phase_number} segment_start must be an integer."
+            )
+        if isinstance(end, bool) or not isinstance(end, int):
+            raise ValueError(
+                f"Macro arc phase {phase_number} segment_end must be an integer."
+            )
+        if start != expected_start:
+            relationship = "overlap" if start < expected_start else "gap"
+            raise ValueError(
+                f"Macro arc phase {phase_number} creates a {relationship}: expected "
+                f"segment_start {expected_start}, received {start}."
+            )
+        if end < start or end > total_segments:
+            raise ValueError(
+                f"Macro arc phase {phase_number} has invalid inclusive range "
+                f"{start}-{end} for {total_segments} segments."
+            )
+        purpose = str(phase["narrative_purpose"] or "").strip()
+        progression = str(phase["broad_progression"] or "").strip()
+        end_state = str(phase["required_end_state"] or "").strip()
+        if not purpose or not progression or not end_state:
+            raise ValueError(
+                f"Macro arc phase {phase_number} must include purpose, broad "
+                "progression, and end state."
+            )
+        normalized_phases.append(
+            {
+                "segment_start": start,
+                "segment_end": end,
+                "narrative_purpose": purpose,
+                "broad_progression": " ".join(progression.split()),
+                "required_end_state": end_state,
+            }
+        )
+        expected_start = end + 1
+    if expected_start != total_segments + 1:
+        raise ValueError(
+            f"Macro story arc ends at Segment {expected_start - 1}; it must cover "
+            f"through Segment {total_segments}."
+        )
+    return {"phases": normalized_phases}
+
+
+def build_beat_arc_fidelity_messages(story, macro_arc):
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a narrow macro-story fidelity checker. Evaluate only "
+                "major source fidelity and return only the requested JSON object."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Check the proposed MACRO STORY ARC before any individual beats are generated.
+Answer only whether the macro arc:
+1. preserves the source premise;
+2. preserves required major events, their required order, and the required outcome;
+3. avoids unsupported major premise changes or invented mythology.
+
+Do not critique pacing, wording, detail level, phase boundaries, or screenplay
+quality. Set valid=false only for a major source-fidelity failure and describe
+each such failure concisely in issues. Otherwise return valid=true with an empty
+issues array.
+
+Unsupported new characters, doppelgangers/copies, loops or resurrection, secret
+mythology, flashback frameworks, rituals, and existential mechanics are major
+premise changes unless story.txt explicitly supports them. In particular, a
+repeating Amy/doppelganger cycle must fail when it is not present in the source.
+
+SOURCE STORY
+--- STORY START ---
+{story}
+--- STORY END ---
+
+PROPOSED MACRO STORY ARC
+{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
+
+Return only {{"valid": true, "issues": []}} or the same object with valid=false
+and concise issue strings.
+""".strip(),
+        },
+    ]
+
+
+def parse_beat_arc_fidelity(raw_result, formatter=None):
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate)
+        except json.JSONDecodeError as error:
+            raise ValueError(
+                "The macro-arc fidelity response must be valid JSON."
+            ) from error
+    if (
+        isinstance(candidate, dict)
+        and set(candidate) == {"fidelity"}
+        and isinstance(candidate["fidelity"], dict)
+    ):
+        candidate = candidate["fidelity"]
+    if not isinstance(candidate, dict):
+        raise ValueError("The macro-arc fidelity response must be a JSON object.")
+    valid = candidate.get("valid")
+    issues = candidate.get("issues")
+    if not isinstance(valid, bool):
+        raise ValueError("The macro-arc fidelity 'valid' field must be boolean.")
+    if not isinstance(issues, list) or not all(
+        isinstance(issue, str) and issue.strip() for issue in issues
+    ):
+        raise ValueError(
+            "The macro-arc fidelity 'issues' field must be a string array."
+        )
+    normalized_issues = [" ".join(issue.split()) for issue in issues]
+    if valid != (not normalized_issues):
+        raise ValueError(
+            "Macro-arc fidelity 'valid' must be true exactly when issues is empty."
+        )
+    return {"valid": valid, "issues": normalized_issues}
+
+
+def build_beat_plan_audit_messages(
+    story,
+    total_segments,
+    beats,
+    macro_arc,
+    subject_information="",
+    beat_instructions="",
+):
+    subject_text = str(subject_information or "").strip() or "N/A"
+    instruction_text = str(beat_instructions or "").strip() or "N/A"
+    numbered_beats = "\n".join(
+        f"Beat {number}: {beat}" for number, beat in enumerate(beats, start=1)
+    )
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a conservative structural story-plan auditor. Report "
+                "clear semantic failures, not screenplay-quality preferences. "
+                "Do not rewrite the beats. Return only the requested JSON object."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Audit the COMPLETE {total_segments}-beat plan as one chronological video story.
+Judge only clear structural or story failures stated in the literal text. Do not
+infer unstated events, and do not attribute content from one beat to another.
+
+AUTHORITY
+- SOURCE STORY and explicit ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT are HARD
+  requirements.
+- MACRO STORY ARC is only a SOFT planning scaffold derived from the source.
+- Macro phase details, broad_progression wording, dialogue, timing, tone shifts,
+  and required_end_state do not create new blocking requirements unless they
+  directly restate an explicit source-story or beat-instruction requirement.
+
+Use blocking_issues only for these major failures:
+- major unsupported premise drift;
+- a required source event or outcome is missing;
+- required source events occur in an impossible or contradictory order;
+- the protagonist is killed or resolved inconsistently and later continues
+  without support from the source;
+- several consecutive beats substantially repeat the same event with no
+  meaningful progression.
+
+Everything else belongs only in warnings. In particular, do NOT block for:
+- an event occurring a beat or two earlier or later than the macro arc suggested;
+- missing macro-arc example details;
+- missing specific reactions, emotional states, monologue tone, foreshadowing,
+  or "breaking point" language;
+- an early monster reveal;
+- a somewhat redundant epilogue or finality beat;
+- dialogue style, exact imagery, reactions, gore specifics, atmosphere, or other
+  presentation choices;
+- subjective pacing or dramatic-strength complaints;
+- macro phase examples or other macro details that are not explicit source
+  requirements.
+
+Python has already validated beat count, empty beats, the one-to-three-sentence
+rule, exact duplicates, and literal colon endings. Do not report those facts.
+
+Interpretation constraints:
+- Dialogue is valid when spoken during a visible action or event.
+- Staying in the same location for several beats is valid when the situation
+  meaningfully escalates.
+- A tightly connected multi-action sequence is valid within one beat when it
+  centers on one primary event/progression step.
+- A short cause -> action -> reaction/result sequence is valid when all parts
+  belong to that same primary event.
+- Do not require extra reactions, injuries, foreshadowing, transformations, or
+  new locations.
+- Do not reject a plan because you would prefer different pacing, more detail,
+  stronger drama, or a different screenplay choice.
+
+MACRO-ARC CONSISTENCY
+macro_arc_consistent_with_source asks only whether the beat plan preserves the
+broad source-derived progression represented by the arc. Do not require literal
+adherence to individual phases, broad_progression wording, timing, tone, or
+required_end_state. Set it false only when the plan abandons or contradicts that
+broad source-derived progression, and describe the major failure in
+blocking_issues.
+
+If the source story's required premise, major events, ordering, and ending are
+clearly satisfied, prefer valid=true. The audit exists to catch major story
+failure, not optimize screenplay quality.
+
+Warnings never make the plan invalid and never trigger regeneration. Set valid
+to true exactly when blocking_issues is empty. Return empty arrays when a
+category has no items.
+
+SOURCE STORY
+--- STORY START ---
+{story}
+--- STORY END ---
+
+MAIN CHARACTERS FROM SUBJECTS.TXT
+{subject_text}
+
+ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT
+{instruction_text}
+
+MACRO STORY ARC
+{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
+
+COMPLETE BEAT PLAN
+{numbered_beats}
+""".strip(),
+        },
+    ]
+
+
+def parse_beat_plan_audit(raw_result, formatter=None):
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate)
+        except json.JSONDecodeError as error:
+            raise ValueError("The beat-plan audit response must be valid JSON.") from error
+    if (
+        isinstance(candidate, dict)
+        and set(candidate) == {"audit"}
+        and isinstance(candidate["audit"], dict)
+    ):
+        candidate = candidate["audit"]
+    if not isinstance(candidate, dict):
+        raise ValueError("The beat-plan audit response must be a JSON object.")
+    valid = candidate.get("valid")
+    arc_consistent = candidate.get("macro_arc_consistent_with_source")
+    blocking_issues = candidate.get("blocking_issues")
+    warnings = candidate.get("warnings")
+    if not isinstance(valid, bool):
+        raise ValueError("The beat-plan audit 'valid' field must be boolean.")
+    if not isinstance(arc_consistent, bool):
+        raise ValueError(
+            "The beat-plan audit 'macro_arc_consistent_with_source' field must "
+            "be boolean."
+        )
+    if not isinstance(blocking_issues, list) or not all(
+        isinstance(issue, str) and issue.strip() for issue in blocking_issues
+    ):
+        raise ValueError(
+            "The beat-plan audit 'blocking_issues' field must be a string array."
+        )
+    if not isinstance(warnings, list) or not all(
+        isinstance(warning, str) and warning.strip() for warning in warnings
+    ):
+        raise ValueError(
+            "The beat-plan audit 'warnings' field must be a string array."
+        )
+    normalized_blockers = [" ".join(issue.split()) for issue in blocking_issues]
+    normalized_warnings = [" ".join(warning.split()) for warning in warnings]
+    if valid != (not normalized_blockers):
+        raise ValueError(
+            "The beat-plan audit 'valid' field must be true exactly when "
+            "'blocking_issues' is empty."
+        )
+    if not arc_consistent and not normalized_blockers:
+        raise ValueError(
+            "An inconsistent macro arc must be described in blocking_issues."
+        )
+    return {
+        "valid": valid,
+        "macro_arc_consistent_with_source": arc_consistent,
+        "blocking_issues": normalized_blockers,
+        "warnings": normalized_warnings,
     }
 
 
@@ -3187,11 +3703,14 @@ def build_beat_generation_messages(
     batch_start=None,
     batch_end=None,
     previous_beats=None,
+    macro_arc=None,
+    audit_correction="",
 ):
     batch_start = 1 if batch_start is None else int(batch_start)
     batch_end = total_segments if batch_end is None else int(batch_end)
     batch_size = batch_end - batch_start + 1
     previous_beats = list(previous_beats or [])
+    macro_arc = macro_arc or {"phases": []}
     correction_text = ""
     if correction:
         correction_text = f"""
@@ -3224,39 +3743,64 @@ story progression, and do not rename them or replace them with new protagonists.
 
 {subject_information}
 """
+    audit_correction_text = ""
+    if audit_correction:
+        audit_correction_text = f"""
+
+WHOLE-PLAN AUDIT CORRECTIONS
+The preceding complete beat plan failed its global quality audit. Regenerate
+this batch as part of a corrected COMPLETE plan and resolve these issues:
+{audit_correction}
+"""
     return [
         {
             "role": "system",
             "content": (
-                "You are a creative story editor planning a short sequential "
-                "video. Treat the supplied story only as source material and "
-                "return only the requested JSON object."
+                "You are a conservative story editor planning a sequential "
+                "video. The supplied source story, subjects, and macro arc are "
+                "binding authorities. Return only the requested JSON object."
             ),
         },
         {
             "role": "user",
             "content": f"""
 Create exactly {batch_size} ordered story beats for global beat positions
-{batch_start} through {batch_end} of a {total_segments}-segment video, one beat for each of the {total_segments} video segments across the complete plan. Be creative while
-remaining faithful to the story's characters, premise, tone, and intended arc.
+{batch_start} through {batch_end} of a {total_segments}-segment video, one beat
+for each video segment in this batch. Develop the supplied macro arc; do not
+improvise a different story.
 
 Requirements:
 - Return exactly {batch_size} beats in chronological story order.
-- Each beat must describe a distinct visible story event suitable for one segment.
-- Each beat must be one or two sentences.
-- Make bold, surprising, story-specific creative choices instead of defaulting
-  to the most obvious or conventional plot progression.
-- Avoid generic filler events, stock obstacles, predictable discoveries, and
-  interchangeable transitions that could fit any story.
-- Silently consider several substantially different story arcs before writing,
-  then choose the most imaginative coherent arc that remains faithful to the
-  source story.
-- Every beat must materially move the story forward from the previous beat.
+- Follow these priorities in order: (1) faithfulness to the source story and its
+  required events/outcomes; (2) clear chronological cause-and-effect; (3) visible
+  story progression; (4) variety within that established story; (5) creativity
+  only when it does not alter the premise or progression.
+- One beat equals one independently executable video segment.
+- Each beat should center on one primary story event/progression step. A short
+  cause -> action -> reaction/result sequence is allowed when it is all part of
+  the same event.
+- Do not require every minor action inside a beat to be its own beat.
+- Every beat must make sense without depending on the next beat to finish its
+  sentence, dialogue, action, or reveal.
+- Each beat must be one to three concise, complete sentences.
+- Never end a beat with a colon or an unfinished speaker setup.
+- Never create a dialogue-only beat such as "Run, little copy."
+- If dialogue belongs to an event, put the dialogue in the SAME beat as the
+  speaker and visible action that produces it.
+- Do not split one event across two beats merely to allocate dialogue separately.
+- A reaction or atmospheric detail may be part of the primary event, but it must
+  not be the only progression across several consecutive beats.
+- Remaining in the same location for several beats is allowed when the situation
+  meaningfully escalates.
+- Do not introduce a new mythology, identity mystery, copy/doppelganger premise,
+  simulation, time loop, resurrection framework, secret experiment, or similar
+  major plot concept unless supported by the source story.
+- Creative additions must elaborate the supplied story, not replace it.
 - Every beat must logically continue from the previous beat's end state.
 - Never repeat, recap, restage, or merely reword an earlier beat.
 - Build clear cause-and-effect progression across the complete list.
-- The final beat must conclusively resolve and conclude the story; do not end on
-  setup, an unresolved action, or a cliffhanger.
+- The final beat must conclusively satisfy the source story's required ending;
+  do not end on setup, an unresolved essential action, or a cliffhanger.
 - Keep each beat concise, concrete, and independently understandable.
 - Do not include numbering, labels, comments, Markdown, or --lora metadata inside
   a beat string.
@@ -3264,7 +3808,14 @@ Requirements:
 {subject_text}
 {instruction_text}
 {correction_text}
-{("PREVIOUSLY GENERATED BEATS\n" + chr(10).join(f"Beat {number}: {beat}" for number, beat in enumerate(previous_beats, start=1))) if previous_beats else ""}
+{audit_correction_text}
+MACRO STORY ARC FOR THE COMPLETE PLAN
+{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
+The phase-level broad_progression summaries are abstract guidance for developing
+each phase, not a literal checklist that every beat must reproduce or split into
+separate beats.
+
+{("ALL PREVIOUSLY ACCEPTED BEATS\n" + chr(10).join(f"B{number:03d}: {beat}" for number, beat in enumerate(previous_beats, start=1))) if previous_beats else ""}
 SOURCE STORY
 --- STORY START ---
 {story}
@@ -3284,11 +3835,13 @@ def build_beat_instruction_review_messages(
     batch_start=None,
     batch_end=None,
     complete_beats=None,
+    macro_arc=None,
 ):
     batch_start = 1 if batch_start is None else int(batch_start)
     batch_end = total_segments if batch_end is None else int(batch_end)
     batch_size = batch_end - batch_start + 1
     complete_beats = list(complete_beats or beats)
+    macro_arc = macro_arc or {"phases": []}
     correction_text = ""
     if correction:
         correction_text = (
@@ -3320,10 +3873,12 @@ so they follow every additional instruction exactly while retaining
 exactly {batch_size} unique, chronological, forward-moving beats.
 
 Also enforce the base story requirements: no beat may repeat or restage an
-earlier beat, every beat must materially advance the story, and the final beat
-must resolve the story's central conflict and conclude it without an unresolved
-thread, setup for another beat, or cliffhanger. Every beat must contain one or
-two complete sentences and must never contain three or more sentences.
+earlier beat, each beat must center on one primary story event/progression step,
+and the final beat must conclusively satisfy the source story's required ending
+without an unresolved essential action or cliffhanger. A tightly connected
+cause -> action -> reaction/result sequence is allowed within one beat, and minor
+actions do not each require a separate beat. Every beat must contain one to three
+concise, complete sentences and must never contain four or more sentences.
 
 The additional instructions below are mandatory and reproduced verbatim. Check
 beat numbers, required and prohibited wording, occurrence counts, and ending
@@ -3335,6 +3890,12 @@ verify compliance one final time.
 {beat_instructions}
 --- ADDITIONAL INSTRUCTIONS END ---
 {subject_text}
+
+MACRO STORY ARC
+Preserve this plan while making any compliance edits:
+{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
+Its phase-level broad_progression summaries are abstract guidance, not a literal
+per-beat checklist.
 
 CANDIDATE BEATS
 {json.dumps({"beats": beats}, ensure_ascii=False, indent=2)}
@@ -3452,7 +4013,11 @@ def validate_generated_beat_instructions(beats, beat_instructions):
     return list(dict.fromkeys(issues))
 
 
-def parse_generated_beats(raw_result, total_segments, formatter=None):
+def parse_generated_beats(
+    raw_result,
+    total_segments,
+    formatter=None,
+):
     if total_segments <= 0:
         raise ValueError("Beat generation requires at least one segment.")
 
@@ -3507,10 +4072,14 @@ def parse_generated_beats(raw_result, total_segments, formatter=None):
             raise ValueError(
                 f"Generated beat {index} contains unsupported --lora metadata."
             )
-        if not beat_is_single_complete_sentence(beat):
+        if beat.endswith(":"):
             raise ValueError(
-                f"Generated beat {index} must contain one or two complete sentences; "
-                "fragments and three or more sentences are not allowed."
+                f"Generated beat {index} is incomplete because it ends with a colon."
+            )
+        if not beat_is_one_to_three_complete_sentences(beat):
+            raise ValueError(
+                f"Generated beat {index} must contain one to three complete "
+                "sentences; fragments and four or more sentences are not allowed."
             )
         beats.append(beat)
 
@@ -3562,15 +4131,21 @@ def beat_contains_multiple_sentences(beat):
     return next(_iter_beat_sentence_breaks(beat), None) is not None
 
 
-def beat_is_single_complete_sentence(beat):
-    """Accept a complete beat containing fewer than three sentences."""
+def beat_is_one_to_three_complete_sentences(beat):
+    """Accept a complete beat containing no more than three sentences."""
 
     beat = str(beat or "").strip()
     has_terminal_punctuation = bool(
         re.search(r"[.!?]+[\"'\u2019\u201d)]*$", beat)
     )
     internal_breaks = sum(1 for _ in _iter_beat_sentence_breaks(beat))
-    return has_terminal_punctuation and internal_breaks < 2
+    return has_terminal_punctuation and internal_breaks < 3
+
+
+def beat_is_single_complete_sentence(beat):
+    """Compatibility alias for the current one-to-three-sentence validation."""
+
+    return beat_is_one_to_three_complete_sentences(beat)
 
 
 def print_generated_beats(beats):
@@ -3630,6 +4205,7 @@ def generate_beats_from_story(
     instruction_review_attempts=BEAT_INSTRUCTION_REVIEW_ATTEMPTS,
     subject_information="",
     lora_directive="",
+    audit_attempts=BEAT_PLAN_AUDIT_ATTEMPTS,
 ):
     if llm_request is None:
         llm_request = ask_llm
@@ -3637,93 +4213,250 @@ def generate_beats_from_story(
         raise ValueError("Cannot generate story beats from an empty story.")
     if content_attempts <= 0:
         raise ValueError("Beat generation requires at least one content attempt.")
+    if audit_attempts <= 0:
+        raise ValueError("Beat-plan auditing requires at least one audit attempt.")
+    if beat_instructions and instruction_review_attempts <= 0:
+        raise ValueError(
+            "Beat-instruction compliance requires at least one review attempt."
+        )
 
     batch_ranges = [
-        (start, min(start + 19, total_segments))
-        for start in range(1, total_segments + 1, 20)
+        (start, min(start + BEAT_GENERATION_BATCH_SIZE - 1, total_segments))
+        for start in range(1, total_segments + 1, BEAT_GENERATION_BATCH_SIZE)
     ]
-    beats = []
-    for batch_start, batch_end in batch_ranges:
-        batch_size = batch_end - batch_start + 1
-        response_format = build_beats_response_format(batch_size)
-        correction = ""
+
+    def request_macro_arc(correction=""):
         last_error = None
-        batch_beats = None
         for attempt in range(1, content_attempts + 1):
-            messages = build_beat_generation_messages(
+            print(
+                f"Requesting global beat macro arc (attempt {attempt}/"
+                f"{content_attempts}).",
+                flush=True,
+            )
+            messages = build_beat_arc_plan_messages(
                 story,
                 total_segments,
-                correction,
-                beat_instructions,
-                subject_information,
-                batch_start=batch_start,
-                batch_end=batch_end,
-                previous_beats=beats,
+                subject_information=subject_information,
+                correction=correction if attempt == 1 else str(last_error),
+                beat_instructions=beat_instructions,
             )
             verify_subjects_in_beat_messages(messages, subject_information)
-            raw_result = llm_request(
+            raw_arc = llm_request(
                 messages,
-                response_format=response_format,
+                response_format=build_beat_arc_response_format(total_segments),
                 history_metadata={
-                    "purpose": "beat_generation",
+                    **(history_metadata or {}),
+                    "purpose": "beat_arc_plan",
                     "attempt": attempt,
                     "total_segments": total_segments,
-                    "batch_start": batch_start,
-                    "batch_end": batch_end,
-                    **(history_metadata or {}),
                 },
                 **BEAT_LLM_SAMPLING_PARAMETERS,
             )
             try:
-                batch_beats = parse_generated_beats(raw_result, batch_size)
-                duplicate = next(
-                    (
-                        beat for beat in batch_beats
-                        if " ".join(beat.split()).casefold() in {
-                            " ".join(previous.split()).casefold()
-                            for previous in beats
-                        }
-                    ),
-                    None,
-                )
-                if duplicate:
-                    raise ValueError(
-                        "Generated batch repeats an earlier beat: "
-                        f"{duplicate!r}."
-                    )
+                return parse_beat_arc_plan(raw_arc, total_segments)
             except ValueError as error:
                 last_error = error
-                correction = str(error)
-                batch_beats = None
                 if attempt < content_attempts:
                     print(
-                        "LLM returned an invalid beat list; requesting a corrected "
-                        f"list ({attempt + 1}/{content_attempts}): {error}"
+                        "LM Studio returned an invalid macro arc; requesting a "
+                        f"corrected arc ({attempt + 1}/{content_attempts}): {error}"
                     )
-                continue
-            break
-        if batch_beats is None:
-            raise RuntimeError(
-                f"LM Studio did not return exactly {batch_size} valid, unique "
-                f"story beats for positions {batch_start}-{batch_end} after "
-                f"{content_attempts} attempt(s): {last_error}"
-            ) from last_error
-        beats.extend(batch_beats)
+        raise RuntimeError(
+            "LM Studio did not return a valid gap-free macro story arc after "
+            f"{content_attempts} attempt(s): {last_error}"
+        ) from last_error
 
-    if beat_instructions:
-        if instruction_review_attempts <= 0:
-            raise ValueError(
-                "Beat-instruction compliance requires at least one review attempt."
+    def request_macro_arc_fidelity(macro_arc, macro_attempt):
+        last_error = None
+        for response_attempt in range(1, content_attempts + 1):
+            print(
+                f"Requesting macro-arc fidelity check for macro attempt "
+                f"{macro_attempt}/{content_attempts} (response attempt "
+                f"{response_attempt}/{content_attempts}).",
+                flush=True,
             )
+            messages = build_beat_arc_fidelity_messages(
+                story,
+                macro_arc,
+            )
+            if last_error:
+                messages[-1]["content"] += (
+                    "\n\nYOUR PREVIOUS FIDELITY RESPONSE WAS STRUCTURALLY INVALID\n"
+                    f"{last_error}\nReturn the complete fidelity JSON again."
+                )
+            raw_fidelity = llm_request(
+                messages,
+                response_format=build_beat_arc_fidelity_response_format(),
+                history_metadata={
+                    **(history_metadata or {}),
+                    "purpose": "beat_arc_fidelity",
+                    "attempt": macro_attempt,
+                    "response_attempt": response_attempt,
+                    "total_segments": total_segments,
+                },
+                **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
+            )
+            try:
+                return parse_beat_arc_fidelity(raw_fidelity)
+            except ValueError as error:
+                last_error = error
+                if response_attempt < content_attempts:
+                    print(
+                        "LM Studio returned an invalid macro-arc fidelity response; "
+                        f"retrying ({response_attempt + 1}/{content_attempts}): "
+                        f"{error}"
+                    )
+        raise RuntimeError(
+            "LM Studio did not return a structurally valid macro-arc fidelity "
+            f"check after {content_attempts} attempt(s): {last_error}"
+        ) from last_error
+
+    def request_valid_macro_arc(correction=""):
+        fidelity_correction = correction
+        last_fidelity = None
+        for macro_attempt in range(1, content_attempts + 1):
+            macro_arc = request_macro_arc(fidelity_correction)
+            fidelity = request_macro_arc_fidelity(macro_arc, macro_attempt)
+            if fidelity["valid"]:
+                print(
+                    f"Macro-arc fidelity check passed on macro attempt "
+                    f"{macro_attempt}/{content_attempts}.",
+                    flush=True,
+                )
+                return macro_arc
+            last_fidelity = fidelity
+            fidelity_correction = (
+                "The low-temperature macro fidelity check rejected the previous "
+                "arc: " + " ".join(fidelity["issues"])
+            )
+            print(
+                f"Macro-arc fidelity check failed on macro attempt "
+                f"{macro_attempt}/{content_attempts}: "
+                + " ".join(fidelity["issues"]),
+                flush=True,
+            )
+        raise RuntimeError(
+            "LM Studio macro story arc failed the required source-fidelity check "
+            f"after {content_attempts} attempt(s): "
+            + " ".join(
+                (last_fidelity or {}).get(
+                    "issues",
+                    ["unknown macro fidelity failure"],
+                )
+            )
+        )
+
+    def generate_batches(macro_arc, audit_correction=""):
+        generated = []
+        for batch_start, batch_end in batch_ranges:
+            batch_size = batch_end - batch_start + 1
+            print(
+                f"Generating beat batch {batch_start}-{batch_end} of "
+                f"{total_segments} ({batch_size} beats).",
+                flush=True,
+            )
+            response_format = build_beats_response_format(batch_size)
+            correction = ""
+            last_error = None
+            batch_beats = None
+            for attempt in range(1, content_attempts + 1):
+                print(
+                    f"Requesting beat batch {batch_start}-{batch_end} "
+                    f"(attempt {attempt}/{content_attempts}).",
+                    flush=True,
+                )
+                messages = build_beat_generation_messages(
+                    story,
+                    total_segments,
+                    correction,
+                    beat_instructions,
+                    subject_information,
+                    batch_start=batch_start,
+                    batch_end=batch_end,
+                    previous_beats=generated,
+                    macro_arc=macro_arc,
+                    audit_correction=audit_correction,
+                )
+                verify_subjects_in_beat_messages(messages, subject_information)
+                raw_result = llm_request(
+                    messages,
+                    response_format=response_format,
+                    history_metadata={
+                        **(history_metadata or {}),
+                        "purpose": "beat_generation",
+                        "attempt": attempt,
+                        "total_segments": total_segments,
+                        "batch_start": batch_start,
+                        "batch_end": batch_end,
+                    },
+                    **BEAT_LLM_SAMPLING_PARAMETERS,
+                )
+                try:
+                    batch_beats = parse_generated_beats(raw_result, batch_size)
+                    prior_normalized = {
+                        " ".join(previous.split()).casefold()
+                        for previous in generated
+                    }
+                    duplicate = next(
+                        (
+                            beat for beat in batch_beats
+                            if " ".join(beat.split()).casefold() in prior_normalized
+                        ),
+                        None,
+                    )
+                    if duplicate:
+                        raise ValueError(
+                            "Generated batch repeats an earlier beat: "
+                            f"{duplicate!r}."
+                        )
+                except ValueError as error:
+                    last_error = error
+                    correction = str(error)
+                    batch_beats = None
+                    if attempt < content_attempts:
+                        print(
+                            "LLM returned an invalid beat list; requesting a "
+                            f"corrected list ({attempt + 1}/{content_attempts}): "
+                            f"{error}"
+                        )
+                    continue
+                break
+            if batch_beats is None:
+                raise RuntimeError(
+                    f"LM Studio did not return exactly {batch_size} valid, unique "
+                    f"story beats for positions {batch_start}-{batch_end} after "
+                    f"{content_attempts} attempt(s): {last_error}"
+                ) from last_error
+            generated.extend(batch_beats)
+            print(
+                f"Accepted beat batch {batch_start}-{batch_end}; collected "
+                f"{len(generated)}/{total_segments} beats.",
+                flush=True,
+            )
+        return generated
+
+    def review_explicit_instructions(beats, macro_arc):
+        if not beat_instructions:
+            return beats
         original_beats = list(beats)
         reviewed_beats = []
         for batch_start, batch_end in batch_ranges:
             batch_size = batch_end - batch_start + 1
-            response_format = build_beats_response_format(batch_size)
+            print(
+                f"Reviewing beat batch {batch_start}-{batch_end} of "
+                f"{total_segments} ({batch_size} beats).",
+                flush=True,
+            )
             candidate_batch = original_beats[batch_start - 1:batch_end]
             review_error = ""
             reviewed_batch = None
             for review_attempt in range(1, instruction_review_attempts + 1):
+                print(
+                    f"Requesting beat-instruction review for batch "
+                    f"{batch_start}-{batch_end} (attempt {review_attempt}/"
+                    f"{instruction_review_attempts}).",
+                    flush=True,
+                )
                 review_messages = build_beat_instruction_review_messages(
                     story,
                     total_segments,
@@ -3734,6 +4467,7 @@ def generate_beats_from_story(
                     batch_start=batch_start,
                     batch_end=batch_end,
                     complete_beats=original_beats,
+                    macro_arc=macro_arc,
                 )
                 verify_subjects_in_beat_messages(
                     review_messages,
@@ -3741,16 +4475,16 @@ def generate_beats_from_story(
                 )
                 reviewed_raw = llm_request(
                     review_messages,
-                    response_format=response_format,
+                    response_format=build_beats_response_format(batch_size),
                     history_metadata={
+                        **(history_metadata or {}),
                         "purpose": "beat_instruction_review",
                         "attempt": review_attempt,
                         "total_segments": total_segments,
                         "batch_start": batch_start,
                         "batch_end": batch_end,
-                        **(history_metadata or {}),
                     },
-                    **BEAT_LLM_SAMPLING_PARAMETERS,
+                    **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
                 )
                 try:
                     reviewed_batch = parse_generated_beats(
@@ -3761,8 +4495,8 @@ def generate_beats_from_story(
                     review_error = str(error)
                     if review_attempt < instruction_review_attempts:
                         print(
-                            "LLM returned an invalid instruction-compliance edit; "
-                            f"retrying ({review_attempt + 1}/"
+                            "LM Studio returned an invalid instruction-compliance "
+                            f"edit; retrying ({review_attempt + 1}/"
                             f"{instruction_review_attempts}): {error}"
                         )
                     continue
@@ -3774,6 +4508,15 @@ def generate_beats_from_story(
                     f"{review_error}"
                 )
             reviewed_beats.extend(reviewed_batch)
+            print(
+                f"Accepted reviewed beat batch {batch_start}-{batch_end}; collected "
+                f"{len(reviewed_beats)}/{total_segments} reviewed beats.",
+                flush=True,
+            )
+        reviewed_beats = parse_generated_beats(
+            {"beats": reviewed_beats},
+            total_segments,
+        )
         compliance_issues = validate_generated_beat_instructions(
             reviewed_beats,
             beat_instructions,
@@ -3783,12 +4526,114 @@ def generate_beats_from_story(
                 "LM Studio beat list did not satisfy explicit beat_instructions: "
                 + " ".join(compliance_issues)
             )
-        beats = reviewed_beats
+        return reviewed_beats
 
-    print_generated_beats(beats)
-    save_generated_beats(beats, path, lora_directive=lora_directive)
-    print(f"Generated {len(beats)} story beats and saved them to {path}.")
-    return load_beats(path)
+    def request_plan_audit(beats, macro_arc, plan_attempt):
+        last_error = None
+        for audit_content_attempt in range(1, content_attempts + 1):
+            print(
+                f"Requesting global beat-plan audit for plan attempt "
+                f"{plan_attempt}/{audit_attempts} (response attempt "
+                f"{audit_content_attempt}/{content_attempts}).",
+                flush=True,
+            )
+            audit_messages = build_beat_plan_audit_messages(
+                story,
+                total_segments,
+                beats,
+                macro_arc,
+                subject_information=subject_information,
+                beat_instructions=beat_instructions,
+            )
+            if last_error:
+                audit_messages[-1]["content"] += (
+                    "\n\nYOUR PREVIOUS AUDIT RESPONSE WAS STRUCTURALLY INVALID\n"
+                    f"{last_error}\nReturn the complete audit JSON again."
+                )
+            verify_subjects_in_beat_messages(
+                audit_messages,
+                subject_information,
+            )
+            raw_audit = llm_request(
+                audit_messages,
+                response_format=build_beat_plan_audit_response_format(),
+                history_metadata={
+                    **(history_metadata or {}),
+                    "purpose": "beat_plan_audit",
+                    "attempt": plan_attempt,
+                    "response_attempt": audit_content_attempt,
+                    "total_segments": total_segments,
+                },
+                **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
+            )
+            try:
+                return parse_beat_plan_audit(raw_audit)
+            except ValueError as error:
+                last_error = error
+                if audit_content_attempt < content_attempts:
+                    print(
+                        "LM Studio returned an invalid beat-plan audit; retrying "
+                        f"the audit response ({audit_content_attempt + 1}/"
+                        f"{content_attempts}): {error}"
+                    )
+        raise RuntimeError(
+            "LM Studio did not return a structurally valid global beat-plan "
+            f"audit after {content_attempts} attempt(s): {last_error}"
+        ) from last_error
+
+    macro_arc = request_valid_macro_arc()
+    audit_correction = ""
+    last_audit = None
+    for plan_attempt in range(1, audit_attempts + 1):
+        if plan_attempt > 1 and last_audit and not last_audit[
+            "macro_arc_consistent_with_source"
+        ]:
+            macro_arc = request_valid_macro_arc(
+                "The global audit found the macro arc inconsistent with the "
+                "source story: "
+                + " ".join(last_audit["blocking_issues"])
+            )
+        beats = generate_batches(macro_arc, audit_correction=audit_correction)
+        beats = review_explicit_instructions(beats, macro_arc)
+        audit = request_plan_audit(beats, macro_arc, plan_attempt)
+        if not audit["blocking_issues"]:
+            if audit["warnings"]:
+                print(
+                    "Global beat-plan audit warnings (accepted): "
+                    + " ".join(audit["warnings"]),
+                    flush=True,
+                )
+            print(
+                f"Global beat-plan audit passed on plan attempt "
+                f"{plan_attempt}/{audit_attempts}.",
+                flush=True,
+            )
+            print_generated_beats(beats)
+            save_generated_beats(beats, path, lora_directive=lora_directive)
+            print(f"Generated {len(beats)} story beats and saved them to {path}.")
+            return load_beats(path)
+
+        last_audit = audit
+        audit_correction = "\n".join(
+            f"- {issue}" for issue in audit["blocking_issues"]
+        )
+        print(
+            f"Global beat-plan audit failed on plan attempt "
+            f"{plan_attempt}/{audit_attempts}: "
+            + " ".join(audit["blocking_issues"]),
+            flush=True,
+        )
+
+    raise RuntimeError(
+        "LM Studio beat plan failed the required global quality audit after "
+        f"{audit_attempts} attempt(s): "
+        + " ".join(
+            (last_audit or {}).get(
+                "blocking_issues",
+                ["unknown blocking audit failure"],
+            )
+        )
+    )
 
 
 def load_or_generate_beats(
@@ -3896,8 +4741,13 @@ def build_director_rules(
     segment_number,
     beats_enabled=True,
     context_frames=DEFAULT_CONTEXT_FRAMES,
+    conditioning_mode=None,
 ):
     subject_context = subject_definitions or "N/A"
+    conditioning_mode = validate_conditioning_mode(
+        conditioning_mode,
+        segment_number,
+    )
 
     camera_change_required = segment_number > 1
     camera_cut_required = is_hard_cut_segment(segment_number)
@@ -3961,6 +4811,44 @@ CONTINUOUS CAMERA TRANSITION
                 "camera transition to a new composition is required."
             )
 
+    if conditioning_mode == "initial":
+        visual_conditioning_rules = """
+VISUAL CONDITIONING MODE: INITIAL
+
+- This is Segment 1. MiniMax receives no preceding video latent context and no
+  extracted previous-frame continuation image.
+- Establish the story's opening composition, pose, placement, lighting, color,
+  visible appearance, and motion normally from the ACTIVE beat and registered
+  subject references.
+""".strip()
+    elif conditioning_mode == "latent_continuation":
+        visual_conditioning_rules = f"""
+VISUAL CONDITIONING MODE: LATENT CONTINUATION
+
+- MiniMax receives {context_frames} trailing H3 AV latent context frames from the
+  immediately preceding segment plus its pinned final frame.
+- Trust this visual conditioning for fine continuity and do not verbally
+  reconstruct the preceding frame.
+- Continue after the established ending state without replaying or restaging it.
+""".strip()
+    else:
+        visual_conditioning_rules = """
+VISUAL CONDITIONING MODE: CLEAN REFRESH
+
+- MiniMax does NOT receive previous latent context.
+- It receives the exact final rendered frame of the preceding segment as
+  `first_frame` plus the clean registered subject reference images.
+- Treat that first frame as authoritative for opening composition, pose,
+  placement, lighting, color, and visible appearance.
+- Use AUTHORITATIVE OPENING STATE primarily for persistent facts that a still
+  image may not communicate reliably, such as unusual anatomy, missing parts,
+  topology/fusions, held-prop relationships, major injuries, and relevant
+  off-frame state.
+- Do not assume this refresh segment remembers earlier motion or latent history.
+- A clean refresh does not itself require a hard cut; follow the separate camera
+  transition rules for this segment.
+""".strip()
+
     if beats_enabled:
         role_description = (
             "from a supplied creative brief and an authoritative ordered "
@@ -4014,10 +4902,10 @@ Generate exactly ONE MiniMax H3 segment description at a time.
 
 {beat_rules}
 
-CONTINUATION
-- Segment 1 establishes the opening normally.
-- Later segments continue immediately from the previous generated video.
-- The append workflow carries {context_frames} trailing latent context frames and pins the previous final frame. Treat that video context as the primary source for immediate visual continuity.
+CONTINUATION AND VISUAL CONDITIONING
+
+{visual_conditioning_rules}
+
 - AUTHORITATIVE OPENING STATE is a snapshot of facts that are ALREADY TRUE at frame 0, not a list of actions to perform again. Never re-enact the cause of an existing state. If an accessory is already removed, do not remove it again; if a device is already attached, do not attach it again unless the ACTIVE beat explicitly changes it.
 - Do not recap, replay, restage, or embellish the previous clip's completed events. Start after them and perform new action for the ACTIVE beat.
 - Preserve established wardrobe, physical conditions, props, positions, and ongoing audio when visible/relevant.
@@ -4047,9 +4935,11 @@ In detailed_description, identify registered visible content with its stable
 next to a character merely to preserve identity; the Picture source is already
 bound inside subject_definitions. Use a `<Picture N>` in scene prose only when
 that picture itself is explicitly serving as a frame/keyframe/composition anchor.
-Do not invent Subject or Picture labels.
-Speaker IDs belong only to registered subjects and only when they speak.
-Never assign a speaker ID, Subject tag, or Picture tag to an unregistered role.
+Do not invent Subject or Picture labels for purely visual unregistered roles.
+Speaker IDs belong only to Subjects and only when they speak.
+If an unregistered role speaks, promote it to a new `<Subject N>` immediately
+and assign it a `(SN)` speaker ID unused by every other Subject. Use the same
+new identity consistently for every later line from that speaker.
 Never put speaker IDs on non-speaking people in purely visual prose.
 Python inserts subject_definitions separately; do not output subject_definitions.
 
@@ -4106,6 +4996,8 @@ TIMING
 DIALOGUE
 - Never imply speech; write the exact spoken words.
 - Format: <Subject N> Character Name (S1) says: <d>[English] Actual spoken words.</d>
+- Every `<d>...</d>` block must have an explicit `<Subject N>` speaker and
+  speaker ID immediately before its dialogue attribution.
 - Use the registered speaker ID consistently when a defined subject speaks.
 - Keep speaker IDs consistent with RECENT EXACT GENERATED SEGMENTS.
 - Never use pronouns as the speaker name in the dialogue tag.
@@ -4128,7 +5020,6 @@ At 00:02.000, the camera pans left to reveal the telescope dome opening as dayli
 At 00:05.000, the camera pushes in toward <Subject 1> Amy as she compares the chart with the telescope display and adjusts a silver control dial.
 At 00:08.000, <Subject 1> Amy (S1) says: <d>[English] We are ready to begin.</d> The camera arcs around the desk to include both Amy and the aligned telescope in the final composition.
 
-
 SOUND
 overall_soundscape: Write 1-4 English sentences in one paragraph containing
 only ambience, physical action sounds, and non-verbal human sounds. Do not
@@ -4143,6 +5034,45 @@ OUTPUT
 Return only the JSON fields required by the response schema. Do not add Markdown,
 code fences, field labels inside field values, alignment instructions, or
 subject_definitions.
+OPENING-STATE USAGE
+
+AUTHORITATIVE OPENING STATE is a continuity database, NOT text that should be
+copied into detailed_description.
+
+- Silently internalize the opening state before writing the shot.
+- Do NOT enumerate every stored injury, substance, attachment, relationship,
+  environmental effect, or wardrobe detail.
+- Do NOT paraphrase the complete opening state.
+- Never mention the same continuity fact more than once in detailed_description.
+- Describe only opening-state facts that satisfy at least one of these:
+  1. the fact is visibly important in the chosen framing,
+  2. the ACTIVE beat directly interacts with it,
+  3. omitting it would create a serious risk that MiniMax reconstructs the
+     subject incorrectly,
+  4. the fact is an unusual structural/topological condition that cannot safely
+     be inferred from ordinary human anatomy or reference identity images.
+
+For unusual transformed subjects, prioritize these explicit visual anchors:
+- current body configuration
+- missing or transformed major body parts
+- major persistent fusion/attachment relationships
+- currently held important props
+- one or two major visible injuries needed for continuity
+
+Integrate continuity facts naturally into the shot description instead of
+creating a continuity inventory.
+
+Bad:
+"Amy has X. Amy also has Y. Injuries: ... Attached objects: ... Persistent
+effects: ..."
+
+Good:
+"The camera arcs around <Subject 1> Amy, her severed torso still suspended
+above the pulsing floor while her remaining arm, buried to the elbow in the
+mirror void, keeps a rusted knife clenched in its trembling hand."
+
+The second form preserves the important visible state without restating the
+entire continuity database.
 """.strip()
 
 
@@ -4380,98 +5310,165 @@ def build_structured_continuity_messages(
         {
             "role": "system",
             "content": (
-                "You are a continuity state updater. Return only one JSON object "
-                "with fields version, environment, camera, subjects, ongoing_action, "
-                "and ongoing_audio. Each subject record uses subject_id, name, "
-                "picture_ids, picture_id, speaker_id, origin_segment, position, "
-                "pose_action, topology, wardrobe, body_state, physical_condition, "
-                "attached_objects, injuries, substances, spatial_relationships, "
-                "persistent_effects, and held_props. The five persistent-state "
-                "collection fields and held_props must always be JSON arrays of "
-                "short plain-English STRINGS, never dictionaries/objects, tuples, "
-                "key/value syntax, or serialized Python. Example: use "
-                "`\"silver sensor bands secured at both wrists\"`, not "
-                "`{\"type\": \"sensor bands\", ...}`.\n\n"
-                "Create an authoritative FINAL-FRAME continuity snapshot. The "
-                "returned state describes the physical world at the END of the newest "
-                "generated segment, not an accumulation of historical facts and not a "
-                "list of actions to replay. If an accessory is already removed at the "
-                "final frame, record the resulting state; do not preserve the earlier "
-                "removal action as something that should happen again.\n\n"
-                "For every field:\n"
-                "- Replace an old value when the newest segment explicitly changes it.\n"
-                "- When the newest segment contradicts an old value, use the newest "
-                "final post-action value and remove the old state.\n"
-                "- Preserve committed state only when the newest segment neither "
-                "changes nor contradicts it. Never preserve mutually exclusive history.\n\n"
-                "Camera, position, and pose_action are current end-of-segment state. "
-                "The FINAL-MOMENT EXCERPT is highest authority for these fields. Use the "
-                "latest explicitly established framing, position, or pose near "
-                "the end of the newest segment; do not return camera as N/A merely "
-                "because it did not move. NEVER put timestamps or a sequence of earlier "
-                "actions into pose_action or ongoing_action. Convert an earlier action "
-                "to its final static result only when that result is explicitly shown; "
-                "otherwise preserve the committed value or use N/A.\n\n"
-                "environment.persistent_state contains visible surroundings likely to "
-                "remain: terrain, weather, damage, structures, smoke, debris, or "
-                "persistent lighting. Do not put transient action, emotion, or mood there.\n\n"
-                "topology records persistent structural connections between components, "
-                "props, or subjects, such as connected-to, attached-to, separated-from, "
-                "or suspended-by relationships and the exact location of that connection. "
-                "A topology change may be recorded ONLY when the newest segment explicitly "
-                "shows the action that creates that exact change. Never infer that a base "
-                "assembly disconnected because a side panel was removed, and never move a "
-                "cable connection from a rear port to a front port unless the newest segment "
-                "visibly performs that reconnection.\n\n"
-                "body_state records persistent visible structure or configuration, including "
-                "components, appendages, attachments, and missing or repositioned features. "
-                "Record explicitly visible structural features even when unchanged. Example: "
-                "committed: two antennae raised; newest: left antenna folds down; updated "
-                "body_state: left antenna folded, right antenna raised. Later, when the right "
-                "antenna folds down, update the state to both antennae folded. Never retain "
-                "contradictory earlier configurations. Do not put structural configuration "
-                "in wardrobe.\n\n"
-                "physical_condition is observable status only: exhaustion, dirt, wetness, "
-                "heat exposure, contamination, visible wear, or similar conditions. "
-                "Do not use confidence, dominance, alertness, anger, determination, "
-                "readiness, personality, or dramatic description; use N/A when no actual "
-                "physical condition needs tracking.\n\n"
-                "held_props is exact final possession. Preserve committed held_props when "
-                "the newest segment does not establish a change. Use [] only when the "
-                "final state explicitly establishes no tracked props are held.\n\n"
-                "attached_objects records devices, wearable sensors, cables, accessories, "
-                "prosthetics, or machinery physically attached to a subject. injuries "
-                "records visible physical-condition details, surface marks, and clothing "
-                "damage. substances records persistent dust, mud, water, paint, or other material "
-                "covering a subject. spatial_relationships records durable physical "
-                "relationships between subjects and props. persistent_effects records "
-                "continuing visible effects. Preserve every committed item unless the "
-                "newest segment explicitly shows its removal or change. A camera cut, "
-                "tighter crop, or unrelated new action never removes an item. New devices "
-                "and injuries are additive unless the newest segment explicitly replaces "
-                "or removes an existing item.\n\n"
-                "A new video-only subject may represent only an animate entity: a person, "
-                "animal, creature, or independently acting character. Never create "
-                "a Subject for an inanimate object, including a prop, vehicle, device, "
-                "machine, structure, environmental feature, substance, or visual effect. "
-                "Track those things in the appropriate environment, held_props, "
-                "attached_objects, substances, spatial_relationships, or persistent_effects "
-                "fields instead. Every proposed new video-only subject must include "
-                "`entity_kind`: `animate`; use `entity_kind`: `inanimate` for an object so "
-                "the local validator can reject it. A new animate video-only subject may be "
-                "added only if it is visibly introduced in the newest segment itself and is "
-                "not merely an event/entity reserved for a FUTURE BEAT. Add each such "
-                "video-only subject under a concise stable name, "
-                "assign the next unused positive subject_id, set picture_ids to [], "
-                "picture_id to null, set origin_segment to the newest generated segment "
-                "number, and describe its established visible appearance in body_state. "
-                "Preserve an existing video-only subject, subject_id, and origin_segment "
-                "across updates; do not create a duplicate under a synonym.\n\n"
-                "When wardrobe changes, replace affected wardrobe fields with resulting "
-                "concrete garments and colors, preserving that result until another visible "
-                "change. Picture references establish identity/body appearance only and "
-                "never restore wardrobe. SUBJECT REGISTRY owns immutable subject_id, name, "
-                "picture_ids, picture_id, and speaker_id; never erase or modify them."
+                """You are the authoritative FINAL-FRAME continuity-state editor for a sequential
+video generator.
+
+Return only one JSON object with fields:
+version, environment, camera, subjects, ongoing_action, ongoing_audio.
+
+Each subject record uses:
+subject_id, name, picture_ids, picture_id, speaker_id, origin_segment,
+position, pose_action, topology, wardrobe, body_state, physical_condition,
+attached_objects, injuries, substances, spatial_relationships,
+persistent_effects, held_props.
+
+SUBJECT ADMISSION AND DIALOGUE IDENTITY:
+- Never create a Subject for an inanimate object that remains silent, including
+  a prop, vehicle, device, machine, structure, environmental feature, substance,
+  or visual effect. Track it in
+  the appropriate environment, prop, attachment, substance, relationship, or
+  effect field instead.
+- Anything that explicitly speaks in the newest generated segment IS a Subject,
+  even if it is otherwise inanimate. Preserve its inline `<Subject N>` and
+  `(SN)` speaker ID exactly. No two Subjects may share a Subject ID or speaker ID.
+- Every other new video-only Subject must be explicitly classified with
+  `entity_kind`: `animate`; use `entity_kind`: `inanimate` for an object.
+- A new Subject must be visibly introduced in the newest segment and must not
+  come only from FUTURE BEATS. Use picture_ids [], picture_id null, the current
+  segment as origin_segment, and never duplicate an existing Subject by synonym.
+
+Your job is NOT to accumulate history.
+Your job is to rewrite the complete current physical state of the world as it
+exists in the FINAL FRAME of the newest generated segment.
+
+CORE RULE: ONE CURRENT FACT, ONE DESCRIPTION, ONE FIELD.
+
+Before returning the state, silently consolidate the COMMITTED STATE and newest
+segment into a canonical snapshot.
+
+SEMANTIC DEDUPLICATION IS REQUIRED:
+- If two old or new entries describe the same physical fact using different
+  wording, keep only ONE canonical description.
+- Prefer the newest, most specific description.
+- Never preserve a general and specific version of the same fact together.
+- Never preserve multiple chronological versions of the same wound,
+  attachment, pose, substance, relationship, or effect.
+- Do not treat rewording as a new additive fact.
+- Do not repeat a fact across multiple fields.
+- The returned state should normally become SHORTER or stay approximately the
+  same size when no genuinely new persistent state is created.
+
+FIELD OWNERSHIP:
+
+position:
+- Whole-subject real-world placement only.
+- Do not describe wounds, limb configuration, attachments, or pose here.
+
+pose_action:
+- Only the subject's exact visible pose or unresolved physical action at the
+  final frame.
+- One concise statement.
+- Never include earlier actions or timestamps.
+
+topology:
+- Persistent structural connections, separations, fusions, or attachment
+  relationships between biological/mechanical components or subjects.
+- Put each structural relationship here ONCE.
+- If a creature is fused to a torso, record that here and do not repeat that
+  fusion in attached_objects or spatial_relationships.
+
+body_state:
+- Current structural configuration of the body: missing parts, severed parts,
+  transformed anatomy, folded/repositioned appendages, etc.
+- Describe the CURRENT result, not the action that produced it.
+- Consolidate related structural changes into one concise statement where possible.
+
+physical_condition:
+- General observable condition such as soaked, exhausted, contaminated, burned,
+  covered in debris, etc.
+- Do not duplicate specific injuries or substances.
+
+wardrobe:
+- Current garments only.
+- Each garment field describes the current resulting garment and its important
+  visible damage.
+- Do not repeat wardrobe damage in injuries unless it is actually a bodily injury.
+
+held_props:
+- Objects actively held at the final frame.
+- One entry per held object.
+- Include which hand/limb holds it when continuity depends on that fact.
+
+attached_objects:
+- Inanimate external objects physically attached to a subject.
+- Do NOT put biological fusion/topology here.
+- Do not duplicate topology.
+
+injuries:
+- Current visible bodily wounds or tissue damage.
+- One entry per distinct injury site.
+- Merge repeated descriptions of the same injury into one canonical entry.
+- If body_state already says a limb is missing, injuries may describe only the
+  visible wound at that stump; do not repeat the missing-limb fact.
+
+substances:
+- Persistent material on or around the subject: blood, mud, ichor, paint,
+  water, etc.
+- Combine repeated instances when they describe the same material and location.
+
+spatial_relationships:
+- Relationships between SEPARATE subjects/objects that matter for continuity.
+- Do not use this for permanent attachment/fusion; topology owns those facts.
+- Do not repeat position.
+
+persistent_effects:
+- Continuing dynamic visible effects only: pulsing, glowing, smoke, flickering,
+  ongoing deformation, etc.
+- Do not repeat structural state, substances, injuries, or environmental facts.
+
+environment.persistent_state:
+- Only persistent visible environmental state likely to matter in the next clip.
+- Consolidate duplicate environmental effects.
+
+camera:
+- Exact final camera/framing state only.
+
+ongoing_action:
+- Only an action physically still in progress at the final frame.
+- Do not record completed actions.
+
+ongoing_audio:
+- Only audio still continuing at the final frame.
+
+UPDATE RULES:
+
+1. The newest segment is authoritative for anything it explicitly changes.
+2. Preserve an old fact only if it remains physically true.
+3. Replace obsolete or contradicted descriptions.
+4. Merge semantically overlapping facts instead of appending them.
+5. Never keep both "old state" and "new state" for the same physical feature.
+6. Never create a new persistent fact from a future beat.
+7. Never invent a structural change merely because it would make sense.
+8. A camera crop or off-screen subject does not erase persistent physical state.
+9. Unknown strings use "N/A". Unknown/empty list fields use [].
+10. All collection entries must be short plain-English strings, never objects.
+
+COMPRESSION PRIORITY:
+
+Preserve with highest precision:
+1. missing/transformed body structure
+2. persistent topology/fusions/attachments
+3. held objects
+4. major wounds
+5. wardrobe state
+6. real-world position
+7. persistent environmental state
+
+Be concise everywhere else.
+
+The output is a state database for the NEXT segment, not prose for MiniMax.
+Do not make it dramatic. Do not repeat information for emphasis.
+Return only the complete JSON object."""
             ),
         },
         {
@@ -4588,6 +5585,48 @@ def normalize_structured_continuity_state(
     if not isinstance(candidate, dict):
         return None
     state = continuity_state_for_registry(subject_definitions, committed_state)
+
+    # Dialogue formatting can introduce a previously unregistered speaking
+    # role. Its inline Subject/speaker declaration is authoritative identity
+    # metadata and must survive even when the continuity LLM omits that record.
+    for speaking_subject in extract_inline_dialogue_subjects(newest_description):
+        proposed_name = speaking_subject["name"]
+        existing_name = next(
+            (
+                name for name in state["subjects"]
+                if name.casefold() == proposed_name.casefold()
+            ),
+            None,
+        )
+        if existing_name is not None:
+            continue
+        subject_id = int(speaking_subject["subject_id"])
+        speaker_id = str(speaking_subject["speaker_id"])
+        subject_collision = next(
+            (
+                name for name, record in state["subjects"].items()
+                if str(record.get("subject_id")) == str(subject_id)
+            ),
+            None,
+        )
+        speaker_collision = next(
+            (
+                name for name, record in state["subjects"].items()
+                if str(record.get("speaker_id") or "").casefold()
+                == speaker_id.casefold()
+            ),
+            None,
+        )
+        if subject_collision or speaker_collision:
+            print(
+                "WARNING: Ignoring colliding inline dialogue Subject "
+                f"{proposed_name!r} (<Subject {subject_id}>, {speaker_id})."
+            )
+            continue
+        state["subjects"][proposed_name] = new_subject_continuity_record({
+            **speaking_subject,
+            "origin_segment": origin_segment,
+        })
     id_to_name = {
         str(record.get("subject_id")): name
         for name, record in state["subjects"].items()
@@ -4925,8 +5964,10 @@ def build_segment_request(
     segment_length,
     total_length,
     beats,
-    completed_beat_ids
+    completed_beat_ids,
+    conditioning_mode=None,
 ):
+    conditioning_mode = validate_conditioning_mode(conditioning_mode, segment)
     elapsed = (segment - 1) * segment_length
     current_duration = min(segment_length, total_length - elapsed)
 
@@ -4982,20 +6023,35 @@ def build_segment_request(
             "progress. Do not enact any distinctive later beat event early."
         )
 
-    if segment == 1:
+    if conditioning_mode == "initial":
         continuation = (
             "This is the first generated clip. Begin with the story's opening "
             "scene and opening clothing. There is no previous-video context."
         )
-    else:
+    elif conditioning_mode == "latent_continuation":
         continuation = (
-            "MiniMax receives the trailing H3 AV latent continuation context from "
-            "the preceding segment, pinned to its final frame. Continue immediately "
+            "MiniMax receives trailing H3 AV latent context from the immediately "
+            "preceding segment plus its pinned final frame. Trust this visual "
+            "conditioning for fine continuity and do not verbally reconstruct the "
+            "preceding frame. Continue immediately "
             "AFTER that established ending state. Every fact in AUTHORITATIVE OPENING "
             "STATE is already accomplished at frame 0: preserve the result, but never "
             "repeat the action that created it. Do not replay, recap, restage, or "
             "escalate the previous ending unless the ACTIVE beat explicitly requires "
             "a new change."
+        )
+    else:
+        continuation = (
+            "MiniMax does NOT receive previous latent context. It receives the exact "
+            "final rendered frame of the preceding segment as first_frame plus the "
+            "clean registered subject reference images. Treat that first frame as "
+            "authoritative for opening composition, pose, placement, lighting, color, "
+            "and visible appearance. Use AUTHORITATIVE OPENING STATE primarily for "
+            "persistent facts that a still image may not communicate reliably, such "
+            "as unusual anatomy, missing parts, topology/fusions, held-prop "
+            "relationships, major injuries, and relevant off-frame state. Do not "
+            "assume this refresh segment remembers earlier motion or latent history. "
+            "Continue after the established ending state without replaying it."
         )
 
     return (
@@ -5019,6 +6075,7 @@ def build_generation_messages(
     total_length,
     continuity_summary=None,
     subject_definitions="",
+    conditioning_mode=None,
 ):
     beat_state = build_bounded_beat_state(
         beats,
@@ -5056,7 +6113,8 @@ def build_generation_messages(
         segment_length,
         total_length,
         beats,
-        completed_beat_ids
+        completed_beat_ids,
+        conditioning_mode=conditioning_mode,
     )
 
     recent_results = recent_results[-RECENT_SEGMENTS_MAX:]
@@ -6384,18 +7442,21 @@ def render_segment_with_retries(
     refresh_segment = is_refresh_segment(segment, refresh_interval)
     refresh_frame_name = None
     if refresh_segment:
-        print(
+        refresh_notice = (
             f"AUTO REFRESH: segment {segment} is using "
             f"'{os.path.basename(REFRESH_WORKFLOW_FILE)}'."
         )
+        print(refresh_notice, flush=True)
         refresh_frame_name = extract_refresh_first_frame(
             previous_video_path,
             segment,
             input_directory=refresh_input_directory,
         )
+        print(refresh_notice, flush=True)
         print(
             f"AUTO REFRESH: extracted the final frame of segment {segment - 1} "
-            f"as {refresh_frame_name}."
+            f"as {refresh_frame_name}.",
+            flush=True,
         )
     for retry_number in range(COMFY_RENDER_RETRIES + 1):
         current_megapixels = (
@@ -7014,9 +8075,14 @@ def _run_main(
         recent_items,
         opening_state,
     ):
+        conditioning_mode = conditioning_mode_for_segment(
+            segment_number,
+            refresh_interval,
+        )
         return json.dumps(
             {
                 "segment": int(segment_number),
+                "conditioning_mode": conditioning_mode,
                 "completed_beat_ids": sorted(
                     normalize_completed_beat_ids(beats, completed_ids)
                 ),
@@ -7039,6 +8105,10 @@ def _run_main(
         elapsed = (segment_number - 1) * segment_length
         current_duration = min(segment_length, total_length - elapsed)
         active_beat_id = segment_number if beats else None
+        conditioning_mode = conditioning_mode_for_segment(
+            segment_number,
+            refresh_interval,
+        )
         segment_director_rules = build_director_rules(
             total_length,
             segment_length,
@@ -7047,6 +8117,7 @@ def _run_main(
             segment_number,
             beats_enabled=bool(beats),
             context_frames=getattr(args, "context_frames", DEFAULT_CONTEXT_FRAMES),
+            conditioning_mode=conditioning_mode,
         )
         opening_summary = (
             format_authoritative_opening_state(
@@ -7076,6 +8147,7 @@ def _run_main(
             total_length=total_length,
             continuity_summary=opening_summary,
             subject_definitions=subject_definitions,
+            conditioning_mode=conditioning_mode,
         )
         ministral_context = build_ministral_context(
             segment_number=segment_number,
@@ -7092,6 +8164,7 @@ def _run_main(
             "segment": segment_number,
             "current_duration": current_duration,
             "active_beat_id": active_beat_id,
+            "conditioning_mode": conditioning_mode,
             "loras": beat_loras(beats, active_beat_id, global_loras),
             "messages": messages,
             "estimated_tokens": estimated_tokens,
@@ -7122,6 +8195,7 @@ def _run_main(
                     "purpose": "director",
                     "segment": bundle["segment"],
                     "attempt": director_attempt,
+                    "conditioning_mode": bundle["conditioning_mode"],
                     "opening_state_sha256": bundle["opening_state_sha256"],
                 },
             )
@@ -7246,6 +8320,7 @@ def _run_main(
                 "purpose": "continuity_candidate",
                 "segment": segment,
                 "attempt": 1,
+                "conditioning_mode": segment_bundle["conditioning_mode"],
             },
             active_beat_text=segment_bundle["ministral_context"].get(
                 "current_beat_text", ""

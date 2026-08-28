@@ -332,6 +332,92 @@ class BeatGenerationTests(unittest.TestCase):
         ]
         self.assertEqual((beat_array["minItems"], beat_array["maxItems"]), (3, 3))
 
+    def test_final_sentence_failure_accepts_the_last_returned_beats(self):
+        last_beats = [
+            f"Visible story event {number} advances the plot."
+            for number in range(1, 21)
+        ]
+        last_beats[18] = (
+            "The gate opens. The warning siren sounds. Everyone runs inside."
+        )
+        llm_request = mock.Mock(
+            side_effect=[{"beats": list(last_beats)} for _ in range(3)]
+        )
+
+        with tempfile.TemporaryDirectory() as directory, mock.patch(
+            "builtins.print"
+        ) as print_mock:
+            beats = minimax.generate_beats_from_story(
+                "A group races through a dangerous city.",
+                20,
+                path=os.path.join(directory, "beats.txt"),
+                llm_request=llm_request,
+                content_attempts=3,
+                beat_instructions="Keep the chase visually clear.",
+            )
+
+        self.assertEqual([str(beat) for beat in beats], last_beats)
+        self.assertEqual(llm_request.call_count, 3)
+        print_mock.assert_any_call(
+            "WARNING: final beat-generation attempt failed validation; "
+            "accepting the last returned batch because it contains exactly "
+            "20 beats.",
+            flush=True,
+        )
+        print_mock.assert_any_call(
+            "WARNING: skipping beat-instruction compliance review because the "
+            "final generation attempt was accepted by beat count only.",
+            flush=True,
+        )
+
+    def test_final_fallback_still_rejects_a_wrong_beat_count(self):
+        llm_request = mock.Mock(
+            return_value={"beats": ["Only one returned beat."]}
+        )
+
+        with tempfile.TemporaryDirectory() as directory, self.assertRaisesRegex(
+            RuntimeError,
+            "did not return exactly 2 valid",
+        ):
+            minimax.generate_beats_from_story(
+                "A two-part story.",
+                2,
+                path=os.path.join(directory, "beats.txt"),
+                llm_request=llm_request,
+                content_attempts=3,
+            )
+
+        self.assertEqual(llm_request.call_count, 3)
+
+    def test_generation_requests_no_more_than_twenty_beats_per_batch(self):
+        requested_ranges = []
+
+        def llm_request(messages, **kwargs):
+            del messages
+            metadata = kwargs["history_metadata"]
+            batch_start = metadata["batch_start"]
+            batch_end = metadata["batch_end"]
+            requested_ranges.append((batch_start, batch_end))
+            return {
+                "beats": [
+                    f"Visible event {number} advances the story."
+                    for number in range(batch_start, batch_end + 1)
+                ]
+            }
+
+        with tempfile.TemporaryDirectory() as directory, mock.patch(
+            "builtins.print"
+        ):
+            beats = minimax.generate_beats_from_story(
+                "A long journey unfolds.",
+                45,
+                path=os.path.join(directory, "beats.txt"),
+                llm_request=llm_request,
+            )
+
+        self.assertEqual(requested_ranges, [(1, 20), (21, 40), (41, 45)])
+        self.assertEqual(len(beats), 45)
+
     def test_more_than_twenty_beats_are_generated_in_batches(self):
         calls = []
 

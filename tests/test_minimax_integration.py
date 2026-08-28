@@ -207,7 +207,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             segment_length=6,
             total_segments=2,
             subject_definitions=SUBJECTS,
-            megapixels=0.5,
+            segment_number=1,
             beats_enabled=True,
         )
         messages, _, _ = minimax.build_generation_messages(
@@ -230,25 +230,25 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertIn("persistent visible alteration", combined)
         self.assertIn("B001: Opening event", combined)
 
-    def test_director_forbids_ids_and_identity_tags_on_unregistered_roles(self):
+    def test_director_promotes_unregistered_speakers_but_not_visual_roles(self):
         rules = minimax.build_director_rules(
             total_length=12,
             segment_length=6,
             total_segments=2,
             subject_definitions=SUBJECTS,
-            megapixels=0.5,
+            segment_number=1,
             beats_enabled=True,
         )
 
         self.assertIn(
-            "Speaker IDs belong only to registered subjects and only when they speak",
+            "Speaker IDs belong only to Subjects and only when they speak",
             rules,
         )
         self.assertIn(
-            "Never assign a speaker ID, Subject tag, or Picture tag to an "
-            "unregistered role",
+            "If an unregistered role speaks, promote it to a new `<Subject N>`",
             rules,
         )
+        self.assertIn("Every `<d>...</d>` block must have", rules)
         self.assertIn(
             "Never put speaker IDs on non-speaking people in purely visual prose",
             rules,
@@ -808,6 +808,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
                     "purpose": "director",
                     "segment": 1,
                     "attempt": 1,
+                    "conditioning_mode": "initial",
                 },
             )
             minimax.append_prompt_history(
@@ -824,6 +825,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             self.assertIn('"purpose": "summary"', history)
             self.assertIn('"run_id": "run-123"', history)
             self.assertIn('"source_sha256": "source-abc"', history)
+            self.assertIn('"conditioning_mode": "initial"', history)
 
     def test_reset_prompt_history_clears_previous_run_before_appending(self):
         with tempfile.TemporaryDirectory() as directory:
