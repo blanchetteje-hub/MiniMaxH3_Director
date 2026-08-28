@@ -472,6 +472,48 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
         self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
+    def test_dynamic_speaker_is_allocated_after_all_defined_subject_ids(self) -> None:
+        context = context_for(
+            3,
+            subject_definitions=(
+                "<Subject 1> is Mark, referenced in <Picture 1>.\n"
+                "<Subject 4> is Jill, referenced in <Picture 2>."
+            ),
+            known_subjects={},
+            next_beat_id=None,
+            hard_cut_required=True,
+        )
+        malformed = response(
+            "[Shot 3] A scream comes from off-screen. "
+            "<d>[English] AHHH!</d>"
+        )
+
+        formatted = format_ministral_prompt(malformed, context)
+
+        self.assertIn(
+            "<Subject 5> Unidentified Speaker (S5) says: "
+            "<d>[English] AHHH!</d>",
+            formatted[DESCRIPTION],
+        )
+        self.assertNotIn("<Subject 1> Unidentified Speaker", formatted[DESCRIPTION])
+
+    def test_raw_subject_tags_reserve_ids_even_when_definition_prose_is_unparsed(self) -> None:
+        context = context_for(
+            3,
+            subject_definitions="<Subject 1> Existing\n<Subject 7> Existing Other",
+            known_subjects={},
+            next_beat_id=None,
+            hard_cut_required=True,
+        )
+        malformed = response("[Shot 3] <d>[English] AHHH!</d>")
+
+        formatted = format_ministral_prompt(malformed, context)
+
+        self.assertIn(
+            "<Subject 8> Unidentified Speaker (S8) says:",
+            formatted[DESCRIPTION],
+        )
+
     def test_stray_closed_lips_clause_without_voiceover_is_rejected(self) -> None:
         malformed = response(
             "[Shot 3] Jill (S6) says: <d>[English] I can see them now.</d> "

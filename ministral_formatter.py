@@ -348,8 +348,11 @@ def _canonical_dialogue_subject_name(value: str) -> str:
     )
 
 
-def _next_dialogue_identity_number(records: Mapping[str, Mapping[str, Any]]) -> int:
-    """Choose a number unused by every registered Subject and speaker ID."""
+def _next_dialogue_identity_number(
+    records: Mapping[str, Mapping[str, Any]],
+    context: Mapping[str, Any],
+) -> int:
+    """Choose a number after every defined Subject and speaker ID."""
 
     occupied: set[int] = set()
     for record in records.values():
@@ -360,10 +363,20 @@ def _next_dialogue_identity_number(records: Mapping[str, Mapping[str, Any]]) -> 
         match = re.fullmatch(r"(?i)S(\d+)", speaker)
         if match:
             occupied.add(int(match.group(1)))
-    candidate = 1
-    while candidate in occupied:
-        candidate += 1
-    return candidate
+
+    # Reserving IDs must not depend on successfully parsing the full Subject
+    # prose. Even a definition shape the formatter does not understand still
+    # owns its explicit numeric IDs from subjects.txt.
+    definitions = str(context.get("subject_definitions", "") or "")
+    occupied.update(
+        int(value)
+        for value in re.findall(r"(?i)<Subject\s+(\d+)>", definitions)
+    )
+    occupied.update(
+        int(value)
+        for value in re.findall(r"(?i)\(S(\d+)\)", definitions)
+    )
+    return max(occupied, default=0) + 1
 
 
 def _assign_unknown_dialogue_subjects(
@@ -395,7 +408,7 @@ def _assign_unknown_dialogue_subjects(
             canonical = by_folded_name.get(folded)
             if canonical is None:
                 canonical = _canonical_dialogue_subject_name(raw_name)
-                number = _next_dialogue_identity_number(records)
+                number = _next_dialogue_identity_number(records, context)
                 records[canonical] = {
                     "subject_id": number,
                     "picture_ids": [],
@@ -479,6 +492,18 @@ def _assign_unknown_dialogue_subjects(
             )
             continue
         raw_phrase = phrase_match.group("phrase")
+        if re.search(
+            r"(?i)\b(?:camera|shot|scene|timestamp|description)\b",
+            raw_phrase,
+        ):
+            # A structural/camera label ending in a colon is not a speaker.
+            anonymous = render_names(resolve_names(["Unidentified Speaker"]))
+            text = (
+                text[:block.start()]
+                + anonymous + " says: "
+                + text[block.start():]
+            )
+            continue
         raw_names = re.split(r"\s+and\s+", raw_phrase, flags=re.I)
         if any(name.strip().casefold() in {"he", "she", "they", "it"} for name in raw_names):
             # A pronoun is not a stable identity, but every dialogue block must

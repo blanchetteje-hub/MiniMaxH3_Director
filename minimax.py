@@ -4749,7 +4749,11 @@ def build_director_rules(
         segment_number,
     )
 
-    camera_change_required = segment_number > 1
+    camera_change_required = (
+        segment_number > 1
+        and segment_number % 3 == 0
+    )
+
     camera_cut_required = is_hard_cut_segment(segment_number)
 
     if segment_number == 1:
@@ -4763,91 +4767,82 @@ def build_director_rules(
             "- Static Shot is allowed only when it is clearly the best way to depict "
             "the ACTIVE beat."
         )
+
+    elif camera_cut_required:
+        camera_policy = (
+            "IMPORTANT: Begin this segment with the required deliberate camera cut."
+        )
+        camera_change_rules = ""
+        camera_transition_rules = """
+    CAMERA CUT
+
+    - Begin this segment with a deliberate camera cut to a substantially different
+    camera setup from the previous segment.
+    - The new setup must change at least TWO of: viewing angle, shot scale, camera
+    height, primary framed subject, or side/direction from which the action is viewed.
+    - A cut to effectively the same composition does not satisfy this requirement.
+    """.strip()
+        static_camera_rule = (
+            "- After the required cut, Static Shot is acceptable if the new opening "
+            "composition clearly serves the ACTIVE beat."
+        )
+
+    elif camera_change_required:
+        camera_policy = (
+            "IMPORTANT: Preserve the inherited camera composition through the first "
+            "00:01.000 of this segment. After 00:01.000, transition naturally into a "
+            "meaningfully different composition."
+        )
+
+        camera_change_rules = """
+    MEANINGFUL CAMERA CHANGE
+
+    - Do not begin the deliberate recomposition before 00:01.000.
+    - After 00:01.000, materially change one or more of: camera angle around the action,
+    camera-to-subject distance, camera height, primary framed subject,
+    foreground/background relationship, subject placement within the frame, or the
+    direction from which the action is viewed.
+    - Slight drift, stabilization, minor shake, or a tiny zoom while retaining
+    essentially the same composition does NOT count as the required change.
+    """.strip()
+
+        camera_transition_rules = """
+    CONTINUOUS CAMERA TRANSITION
+
+    - Do not use a camera cut.
+    - Preserve the inherited opening composition through 00:01.000.
+    - After 00:01.000, use visible camera movement to transition naturally into the
+    new composition.
+    - Prefer Pan, Truck, Arc Shot, Tracking Shot, Pedestal, or substantial Push/Pull.
+    """.strip()
+
+        static_camera_rule = (
+            "- Static Shot is not allowed after 00:01.000 because this segment requires "
+            "a meaningful continuous camera-composition change."
+        )
+
     else:
         camera_policy = (
-            "IMPORTANT: A meaningful camera-composition change from the previous "
-            "segment is REQUIRED."
+            "IMPORTANT: Prioritize seamless visual continuity with the inherited "
+            "composition. A camera-composition change is NOT required in this segment."
         )
-        camera_change_rules = """
-MEANINGFUL CAMERA CHANGE
 
-- Do not preserve substantially the same framing, viewing angle, camera distance,
-  camera height, subject emphasis, and screen composition as the previous segment.
-- The new shot must materially change one or more of: camera angle around the action,
-  camera-to-subject distance, camera height, primary framed subject,
-  foreground/background relationship, subject placement within the frame, or the
-  direction from which the action is viewed.
-- Slight drift, stabilization, minor shake, or a tiny zoom while retaining
-  essentially the same composition does NOT count as a meaningful camera change.
-""".strip()
-        if camera_cut_required:
-            camera_transition_rules = """
-CAMERA CUT
+        camera_change_rules = ""
 
-- Begin this segment with a deliberate camera cut to a substantially different
-  camera setup from the previous segment.
-- The new setup must change at least TWO of: viewing angle, shot scale, camera
-  height, primary framed subject, or side/direction from which the action is viewed.
-- A cut to effectively the same composition does not satisfy this requirement.
-""".strip()
-            static_camera_rule = (
-                "- After the required cut, Static Shot is acceptable only if the new "
-                "opening composition is already substantially different from the "
-                "previous segment and clearly serves the ACTIVE beat."
-            )
-        else:
-            camera_transition_rules = """
-CONTINUOUS CAMERA TRANSITION
+        camera_transition_rules = """
+    CAMERA CONTINUITY
 
-- Do not use a camera cut. Describe the actual visible camera movement that carries
-  the viewer from the inherited opening composition into the new composition.
-- Do NOT merely write "Camera continues from the previous shot."
-- The continuity must be expressed through the physical camera movement itself.
-- Prefer Pan, Truck, Arc Shot, Tracking Shot, Pedestal, or substantial Push/Pull
-  when a meaningful change in composition is required.
-""".strip()
-            static_camera_rule = (
-                "- Static Shot is not allowed in this segment because a continuous "
-                "camera transition to a new composition is required."
-            )
+    - Do not use a camera cut.
+    - Preserve the inherited opening composition and spatial orientation.
+    - Camera movement is optional and should occur only when it naturally helps depict
+    the ACTIVE beat.
+    - Do not manufacture a new angle, shot scale, or composition merely for variety.
+    """.strip()
 
-    if conditioning_mode == "initial":
-        visual_conditioning_rules = """
-VISUAL CONDITIONING MODE: INITIAL
-
-- This is Segment 1. MiniMax receives no preceding video latent context and no
-  extracted previous-frame continuation image.
-- Establish the story's opening composition, pose, placement, lighting, color,
-  visible appearance, and motion normally from the ACTIVE beat and registered
-  subject references.
-""".strip()
-    elif conditioning_mode == "latent_continuation":
-        visual_conditioning_rules = f"""
-VISUAL CONDITIONING MODE: LATENT CONTINUATION
-
-- MiniMax receives {context_frames} trailing H3 AV latent context frames from the
-  immediately preceding segment plus its pinned final frame.
-- Trust this visual conditioning for fine continuity and do not verbally
-  reconstruct the preceding frame.
-- Continue after the established ending state without replaying or restaging it.
-""".strip()
-    else:
-        visual_conditioning_rules = """
-VISUAL CONDITIONING MODE: CLEAN REFRESH
-
-- MiniMax does NOT receive previous latent context.
-- It receives the exact final rendered frame of the preceding segment as
-  `first_frame` plus the clean registered subject reference images.
-- Treat that first frame as authoritative for opening composition, pose,
-  placement, lighting, color, and visible appearance.
-- Use AUTHORITATIVE OPENING STATE primarily for persistent facts that a still
-  image may not communicate reliably, such as unusual anatomy, missing parts,
-  topology/fusions, held-prop relationships, major injuries, and relevant
-  off-frame state.
-- Do not assume this refresh segment remembers earlier motion or latent history.
-- A clean refresh does not itself require a hard cut; follow the separate camera
-  transition rules for this segment.
-""".strip()
+        static_camera_rule = (
+            "- Static Shot is allowed when it best preserves continuity and clearly "
+            "depicts the ACTIVE beat."
+        )
 
     if beats_enabled:
         role_description = (
@@ -4903,8 +4898,6 @@ Generate exactly ONE MiniMax H3 segment description at a time.
 {beat_rules}
 
 CONTINUATION AND VISUAL CONDITIONING
-
-{visual_conditioning_rules}
 
 - AUTHORITATIVE OPENING STATE is a snapshot of facts that are ALREADY TRUE at frame 0, not a list of actions to perform again. Never re-enact the cause of an existing state. If an accessory is already removed, do not remove it again; if a device is already attached, do not attach it again unless the ACTIVE beat explicitly changes it.
 - Do not recap, replay, restage, or embellish the previous clip's completed events. Start after them and perform new action for the ACTIVE beat.
