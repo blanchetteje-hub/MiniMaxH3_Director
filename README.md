@@ -54,7 +54,7 @@ Complete these once, in order:
 
 1. Install Python and this project's Python dependency.
 2. Install or update ComfyUI.
-3. Install the five required custom-node packages.
+3. Install the six required custom-node packages.
 4. Download the seven model/LoRA files selected by the supplied workflows.
 5. Place six reference images in `ComfyUI/input` and update both workflow JSON
    files to use them.
@@ -151,6 +151,7 @@ Custom Nodes**, search for each package below, install it, and restart ComfyUI.
 | [ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes) | `PathchSageAttentionKJ`, `ImageBatchMulti` |
 | [ComfyUI-VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite) | `VHS_LoadVideoPath` |
 | [ComfyUI-DynamicPrompts](https://github.com/adieyal/comfyui-dynamicprompts) | `DPRandomGenerator` |
+| [MiniMax H3 Hybrid Cond](https://github.com/kitsune123150/minimax-h3-hybrid-cond) | `MiniMaxH3HybridRefAndKeyframe` used by the refresh workflow |
 
 Even though Python replaces the prompt text, Dynamic Prompts must still be
 installed because the workflow contains a `DPRandomGenerator` node.
@@ -166,11 +167,35 @@ git clone https://github.com/kat3ri/ComfyUI-MiniMax-H3-Extend.git
 git clone https://github.com/kijai/ComfyUI-KJNodes.git
 git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git
 git clone https://github.com/adieyal/comfyui-dynamicprompts.git
+git clone https://github.com/kitsune123150/minimax-h3-hybrid-cond.git
 ```
 
 Install each package's Python requirements with the same Python environment
 used by ComfyUI, then restart ComfyUI. For a portable build, that is normally
 `python_embeded/python.exe`, not your system Python.
+
+### MiniMax H3 hybrid conditioning patch
+
+The `minimax-h3-hybrid-cond` custom-node package contains
+`model_base_patch.py`. This file is not part of `minimax.py`, the Save Latent
+node, or the core ComfyUI source. The package imports it automatically from its
+`__init__.py` when ComfyUI starts. It patches `MiniMaxH3.extra_conds` so the
+refresh workflow can combine its extracted first-frame keyframe with the normal
+reference images in one conditioning payload.
+
+Some versions of this patch assume every keyframe dictionary contains a
+`latent` value. A conditioning pass may retain keyframe layout metadata without
+that value, producing this error before sampling and Save Latent can run:
+
+```text
+model_base_patch.py, line 30, in extra_conds_with_hybrid
+KeyError: 'latent'
+```
+
+The corrected patch filters both keyframes and references with
+`item.get("latent") is not None` before adding their latents. This matches the
+defensive behavior in ComfyUI's native MiniMax H3 implementation while keeping
+valid keyframe and reference latents in order. After installing the node, overwrite the model_base_patch.py in customnodes/minimax-h3-hybrid-cond folder with the file provided.  This is assuming they haven't patched it themselves by this point.
 
 ### Optional SageAttention acceleration
 
@@ -252,13 +277,16 @@ consistent between the initial and append workflow:
 | `<Picture 5>` | `ref_images.ref_image_4` | `Image Batch Multi.image_5` |
 | `<Picture 6>` | `ref_images.ref_image_5` | `Image Batch Multi.image_6` |
 
-The checked-in workflows currently use `0.png` as a placeholder in all six
-`Load Image` nodes. At minimum, `0.png` must exist in `ComfyUI/input` or ComfyUI
-will reject the workflow. For real identity continuity:
+The checked-in workflows currently use `0.png` as a placeholder in the
+reference `Load Image` nodes. Before any workflow is queued, the program checks
+each configured image against the ComfyUI input folder and disconnects missing
+slots. A missing image is therefore omitted from MiniMax H3 instead of causing
+the workflow to fail. For real identity continuity:
 
 1. Copy up to six reference images into `ComfyUI/input`.
-2. In both workflows, assign them to the clearly titled `Reference Image 1`
-   through `Reference Image 6` nodes in the same order.
+2. In the initial and append workflows, assign them to the clearly titled
+   `Reference Image 1` through `Reference Image 6` nodes in the same order. The
+   refresh workflow receives the initial workflow's filenames automatically.
 3. Export each workflow in **API format**, keeping these filenames:
    `Minimax_auto_API.json` and `Minimax_auto_append_API.json`.
 4. Keep the automation-controlled node titles unchanged: `Float (duration)`,
@@ -552,7 +580,7 @@ initial clip.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--context-frames FRAMES] [--model {ministral,qwen}] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--context-frames FRAMES] [--refresh SEGMENTS] [--model {ministral,qwen}] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -563,10 +591,11 @@ accepted, including both `python minimax.py 5, 10, .2` and
 |---|---|
 | `SEGMENT_LENGTH` | Target seconds generated per segment; must be greater than zero. |
 | `TOTAL_LENGTH` | Target total movie length in seconds; must be greater than zero. |
-| `MEGAPIXELS` | Initial workflow resolution target; must be greater than zero. |
+| `MEGAPIXELS` | Initial and refresh workflow resolution target; must be greater than zero. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
 | `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
 | `--context-frames FRAMES` | Latent frames retained by `MiniMaxH3VideoExtendPatched`; defaults to `8` and supports values such as `2`, `4`, `8`, or `12`. |
+| `--refresh SEGMENTS` | Enable auto refresh on every Nth segment using `Minimax_auto_refresh_API.json`; disabled by default. |
 | `--model {ministral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `ministral`. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |
 | `ff` or `--ff` | Add opening-frame instructions for `<Picture 1>` when generating segment 1; defaults to disabled. |
@@ -586,6 +615,19 @@ python minimax.py 5 60 0.5
 
 This creates 12 segments. Starting a new run with the default resume value of
 `1` starts a new checkpoint and resets beat progress.
+
+### Example: refresh every fifth segment
+
+```powershell
+python minimax.py 5 60 0.5 --refresh 5
+```
+
+Segments 5 and 10 use `Minimax_auto_refresh_API.json`. Before each refresh, the
+program extracts the exact last frame of the preceding segment into the ComfyUI
+input folder, assigns it to `Refresh First Frame`, copies all six reference-image
+settings from the initial workflow, and prints an `AUTO REFRESH` notice. The
+following segments return to the normal append workflow until the next multiple
+of five. Segment 1 always uses the initial workflow.
 
 ### Example: resume at segment 12
 
@@ -770,6 +812,7 @@ MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
 | `minimax.py` | Main automation program. |
 | `Minimax_auto_API.json` | Initial reference-to-video API workflow. |
 | `Minimax_auto_append_API.json` | Video-continuation API workflow. |
+| `Minimax_auto_refresh_API.json` | Auto-refresh reference-to-video workflow used by `--refresh`. |
 | `story.txt` | Source story or creative brief. |
 | `beats.txt` | Ordered story events; blank triggers automatic beat generation. |
 | `subjects.txt` | Optional subject/reference definitions. |

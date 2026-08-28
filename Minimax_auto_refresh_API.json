@@ -65,7 +65,7 @@
       "steps": 6,
       "denoise": 1,
       "model": [
-        "138",
+        "140",
         0
       ]
     },
@@ -77,11 +77,11 @@
   "80": {
     "inputs": {
       "model": [
-        "138",
+        "140",
         0
       ],
       "conditioning": [
-        "148",
+        "105",
         0
       ]
     },
@@ -92,7 +92,7 @@
   },
   "81": {
     "inputs": {
-      "noise_seed": 277
+      "noise_seed": 273
     },
     "class_type": "RandomNoise",
     "_meta": {
@@ -128,7 +128,7 @@
         0
       ],
       "latent_image": [
-        "148",
+        "105",
         1
       ]
     },
@@ -190,7 +190,7 @@
   },
   "87": {
     "inputs": {
-      "filename_prefix": "video/ComfyUI",
+      "filename_prefix": "video/refresh_segment",
       "format": "mp4",
       "format.codec": "auto",
       "codec": "auto",
@@ -233,9 +233,75 @@
       "title": "MiniMax-H3 Turbo LoRA"
     }
   },
+  "105": {
+    "inputs": {
+      "clip": [
+        "77",
+        0
+      ],
+      "vae": [
+        "76",
+        0
+      ],
+      "audio_vae": [
+        "74",
+        0
+      ],
+      "prompt": [
+        "118",
+        0
+      ],
+      "width": [
+        "141",
+        0
+      ],
+      "height": [
+        "141",
+        1
+      ],
+      "length": [
+        "73",
+        1
+      ],
+      "ref_image_size": "max",
+      "first_frame": [
+        "143",
+        0
+      ],
+      "also_ref_first_frame": false,
+      "ref_images.ref_image_0": [
+        "114",
+        0
+      ],
+      "ref_images.ref_image_1": [
+        "116",
+        0
+      ],
+      "ref_images.ref_image_2": [
+        "120",
+        0
+      ],
+      "ref_images.ref_image_3": [
+        "137",
+        0
+      ],
+      "ref_images.ref_image_4": [
+        "138",
+        0
+      ],
+      "ref_images.ref_image_5": [
+        "139",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3HybridRefAndKeyframe",
+    "_meta": {
+      "title": "MiniMax H3 Hybrid Cond (R2V + I2V)"
+    }
+  },
   "114": {
     "inputs": {
-      "image": "0.png"
+      "image": "H:\\Images\\input\\woman1.jpg"
     },
     "class_type": "LoadImage",
     "_meta": {
@@ -254,7 +320,7 @@
   "118": {
     "inputs": {
       "text": "",
-      "seed": 1115,
+      "seed": 922,
       "autorefresh": "No"
     },
     "class_type": "DPRandomGenerator",
@@ -282,94 +348,6 @@
   },
   "138": {
     "inputs": {
-      "shift_video": 12,
-      "shift_audio": 6,
-      "model": [
-        "149",
-        0
-      ]
-    },
-    "class_type": "MiniMaxH3SigmaShift",
-    "_meta": {
-      "title": "ModelSamplingMiniMaxH3"
-    }
-  },
-  "139": {
-    "inputs": {
-      "inputcount": 6,
-      "Update inputs": null,
-      "image_1": [
-        "114",
-        0
-      ],
-      "image_2": [
-        "116",
-        0
-      ],
-      "image_3": [
-        "120",
-        0
-      ],
-      "image_4": [
-        "137",
-        0
-      ],
-      "image_5": [
-        "144",
-        0
-      ],
-      "image_6": [
-        "145",
-        0
-      ]
-    },
-    "class_type": "ImageBatchMulti",
-    "_meta": {
-      "title": "Image Batch Multi"
-    }
-  },
-  "142": {
-    "inputs": {
-      "vae": [
-        "76",
-        0
-      ],
-      "images": [
-        "143",
-        0
-      ],
-      "audio_vae": [
-        "74",
-        0
-      ],
-      "audio": [
-        "143",
-        2
-      ]
-    },
-    "class_type": "MiniMaxH3EncodeAVPatched",
-    "_meta": {
-      "title": "MiniMax H3 Encode AV (Backported)"
-    }
-  },
-  "143": {
-    "inputs": {
-      "video": "",
-      "force_rate": 0,
-      "custom_width": 0,
-      "custom_height": 0,
-      "frame_load_cap": 0,
-      "skip_first_frames": 0,
-      "select_every_nth": 1,
-      "format": "None"
-    },
-    "class_type": "VHS_LoadVideoPath",
-    "_meta": {
-      "title": "Load Video (Path) 🎥🅥🅗🅢"
-    }
-  },
-  "144": {
-    "inputs": {
       "image": "0.png"
     },
     "class_type": "LoadImage",
@@ -377,7 +355,7 @@
       "title": "Reference Image 5"
     }
   },
-  "145": {
+  "139": {
     "inputs": {
       "image": "0.png"
     },
@@ -386,46 +364,7 @@
       "title": "Reference Image 6"
     }
   },
-  "148": {
-    "inputs": {
-      "prompt": [
-        "118",
-        0
-      ],
-      "length": [
-        "73",
-        1
-      ],
-      "context_frames": 7,
-      "pin_last_frame": false,
-      "ref_image_size": "max",
-      "clip": [
-        "77",
-        0
-      ],
-      "vae": [
-        "76",
-        0
-      ],
-      "context_latent": [
-        "150",
-        0
-      ],
-      "audio_vae": [
-        "74",
-        0
-      ],
-      "ref_images": [
-        "139",
-        0
-      ]
-    },
-    "class_type": "MiniMaxH3VideoExtendPatched",
-    "_meta": {
-      "title": "MiniMax H3 Video Extend (Backported)"
-    }
-  },
-  "149": {
+  "140": {
     "inputs": {
       "lora_name": "",
       "strength_model": 0.5,
@@ -439,20 +378,21 @@
       "title": "Load LoRA"
     }
   },
-  "150": {
+  "141": {
     "inputs": {
-      "filename_prefix": "h3_context/segment",
-      "clip_index": 1
+      "aspect_ratio": "16:9 (Widescreen)",
+      "megapixels": 0.2,
+      "multiple": 64
     },
-    "class_type": "MiniMaxH3AVLoadLatentForExtend",
+    "class_type": "ResolutionSelector",
     "_meta": {
-      "title": "H3 AV Load Latent"
+      "title": "Resolution Selector"
     }
   },
-  "151": {
+  "142": {
     "inputs": {
       "filename_prefix": "h3_context/segment",
-      "clip_index": 2,
+      "clip_index": 1,
       "latent": [
         "83",
         0
@@ -461,6 +401,15 @@
     "class_type": "MiniMaxH3AVSaveLatentForExtend",
     "_meta": {
       "title": "H3 AV Save Latent"
+    }
+  },
+  "143": {
+    "inputs": {
+      "image": "0.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Refresh First Frame"
     }
   }
 }

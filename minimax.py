@@ -17,6 +17,7 @@ import os
 import re
 import secrets
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -85,7 +86,7 @@ COMFY_URL = os.environ.get(
 
 if os.name == "nt":
     DEFAULT_COMFY_OUTPUT = r"H:\images\output"
-    DEFAULT_COMFY_INPUT = r"H:\ComfyUI\input"
+    DEFAULT_COMFY_INPUT = r"H:\images\input"
 else:
     DEFAULT_COMFY_OUTPUT = os.path.expanduser("~/ComfyUI/output")
     DEFAULT_COMFY_INPUT = os.path.expanduser("~/ComfyUI/input")
@@ -121,6 +122,7 @@ H3_LATENT_FILENAME_PREFIX = "h3_context/segment"
 
 INITIAL_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_API.json")
 APPEND_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_append_API.json")
+REFRESH_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_refresh_API.json")
 STORY_FILE = os.path.join(SCRIPT_DIR, "story.txt")
 BEATS_FILE = os.path.join(SCRIPT_DIR, "beats.txt")
 SUBJECT_DEFINITIONS_FILE = os.path.join(SCRIPT_DIR, "subjects.txt")
@@ -128,6 +130,181 @@ GENERATION_STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
 PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
 FINAL_VIDEO = os.path.join(VIDEO_OUTPUT, "final.mp4")
 PROMPT_HISTORY_LOCK = threading.Lock()
+_WINDOWS_CONSOLE_HANDLER = None
+_WINDOWS_JOB_HANDLE = None
+
+
+def _immediate_interrupt_handler(signum, frame):
+    """Exit immediately instead of waiting for background worker threads.
+
+    ThreadPoolExecutor context managers wait for running requests and renders
+    during normal exception unwinding.  A hard exit is intentional here so a
+    Ctrl+C emergency stop cannot be delayed by those long-running workers.
+    Generation-state writes use temporary files plus ``os.replace``, so the
+    last fully committed checkpoint remains resumable.
+    """
+
+    del signum, frame
+    try:
+        os.write(
+            2,
+            b"\nEmergency stop requested; exiting immediately.\n",
+        )
+    finally:
+        os._exit(130)
+
+
+def _install_windows_console_handler():
+    """Use Win32 console events instead of relying only on Python signals."""
+
+    global _WINDOWS_CONSOLE_HANDLER
+    if os.name != "nt" or _WINDOWS_CONSOLE_HANDLER is not None:
+        return _WINDOWS_CONSOLE_HANDLER is not None
+
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    handler_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+
+    @handler_type
+    def console_handler(control_type):
+        # CTRL_C_EVENT = 0 and CTRL_BREAK_EVENT = 1.  Windows invokes this
+        # callback on a system-created thread, so it still runs when Python's
+        # main thread is blocked in requests, Future.result(), or subprocess.
+        if control_type in (0, 1):
+            _immediate_interrupt_handler(None, None)
+            return True
+        return False
+
+    kernel32.SetConsoleCtrlHandler.argtypes = [ctypes.c_void_p, wintypes.BOOL]
+    kernel32.SetConsoleCtrlHandler.restype = wintypes.BOOL
+    # CREATE_NEW_PROCESS_GROUP and some launchers inherit an ignore-Ctrl+C
+    # setting.  Explicitly clear it before registering our handler.
+    kernel32.SetConsoleCtrlHandler(None, False)
+    if not kernel32.SetConsoleCtrlHandler(console_handler, True):
+        return False
+    # ctypes callbacks must remain strongly referenced for their full lifetime.
+    _WINDOWS_CONSOLE_HANDLER = console_handler
+    return True
+
+
+def _install_windows_kill_on_exit_job():
+    """Put this process and child ffmpeg processes in a kill-on-close job."""
+
+    global _WINDOWS_JOB_HANDLE
+    if os.name != "nt" or _WINDOWS_JOB_HANDLE is not None:
+        return _WINDOWS_JOB_HANDLE is not None
+
+    import ctypes
+    from ctypes import wintypes
+
+    class BasicLimitInformation(ctypes.Structure):
+        _fields_ = [
+            ("PerProcessUserTimeLimit", ctypes.c_longlong),
+            ("PerJobUserTimeLimit", ctypes.c_longlong),
+            ("LimitFlags", wintypes.DWORD),
+            ("MinimumWorkingSetSize", ctypes.c_size_t),
+            ("MaximumWorkingSetSize", ctypes.c_size_t),
+            ("ActiveProcessLimit", wintypes.DWORD),
+            ("Affinity", ctypes.c_size_t),
+            ("PriorityClass", wintypes.DWORD),
+            ("SchedulingClass", wintypes.DWORD),
+        ]
+
+    class IoCounters(ctypes.Structure):
+        _fields_ = [
+            ("ReadOperationCount", ctypes.c_ulonglong),
+            ("WriteOperationCount", ctypes.c_ulonglong),
+            ("OtherOperationCount", ctypes.c_ulonglong),
+            ("ReadTransferCount", ctypes.c_ulonglong),
+            ("WriteTransferCount", ctypes.c_ulonglong),
+            ("OtherTransferCount", ctypes.c_ulonglong),
+        ]
+
+    class ExtendedLimitInformation(ctypes.Structure):
+        _fields_ = [
+            ("BasicLimitInformation", BasicLimitInformation),
+            ("IoInfo", IoCounters),
+            ("ProcessMemoryLimit", ctypes.c_size_t),
+            ("JobMemoryLimit", ctypes.c_size_t),
+            ("PeakProcessMemoryUsed", ctypes.c_size_t),
+            ("PeakJobMemoryUsed", ctypes.c_size_t),
+        ]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateJobObjectW.argtypes = [ctypes.c_void_p, wintypes.LPCWSTR]
+    kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+    kernel32.SetInformationJobObject.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+    ]
+    kernel32.SetInformationJobObject.restype = wintypes.BOOL
+    kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+    kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+    kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel32.CloseHandle.restype = wintypes.BOOL
+
+    job_handle = kernel32.CreateJobObjectW(None, None)
+    if not job_handle:
+        return False
+    limits = ExtendedLimitInformation()
+    limits.BasicLimitInformation.LimitFlags = 0x00002000  # KILL_ON_JOB_CLOSE
+    configured = kernel32.SetInformationJobObject(
+        job_handle,
+        9,  # JobObjectExtendedLimitInformation
+        ctypes.byref(limits),
+        ctypes.sizeof(limits),
+    )
+    assigned = configured and kernel32.AssignProcessToJobObject(
+        job_handle,
+        kernel32.GetCurrentProcess(),
+    )
+    if not assigned:
+        kernel32.CloseHandle(job_handle)
+        return False
+    _WINDOWS_JOB_HANDLE = job_handle
+    return True
+
+
+def install_immediate_interrupt_handlers():
+    """Make Ctrl+C (and Ctrl+Break on Windows) hard-stop this process."""
+
+    signal.signal(signal.SIGINT, _immediate_interrupt_handler)
+    if os.name == "nt" and hasattr(signal, "SIGBREAK"):
+        signal.signal(signal.SIGBREAK, _immediate_interrupt_handler)
+        _install_windows_console_handler()
+        _install_windows_kill_on_exit_job()
+
+
+def start_emergency_stop_listener():
+    """On Windows, make Ctrl+Q stop even while the main thread is blocked."""
+
+    if os.name != "nt":
+        return None
+
+    import msvcrt
+
+    def watch_keyboard():
+        while True:
+            try:
+                key = msvcrt.getwch()
+            except (EOFError, OSError):
+                return
+            if key == "\x11":  # Ctrl+Q
+                _immediate_interrupt_handler(None, None)
+
+    listener = threading.Thread(
+        target=watch_keyboard,
+        name="emergency-stop-listener",
+        daemon=True,
+    )
+    listener.start()
+    return listener
+
 
 FRAME_RATE = 24
 TRIM_FRAMES_AFTER_FIRST = 2
@@ -193,6 +370,9 @@ MATH_NODE_NAME = "Math Expression"
 VIDEO_EXTEND_NODE_NAME = "MiniMax H3 Video Extend (Backported)"
 ENCODE_AV_NODE_NAME = "MiniMax H3 Encode AV (Backported)"
 LOAD_VIDEO_NODE_NAME = "Load Video (Path) 🎥🅥🅗🅢"
+REFRESH_FIRST_FRAME_NODE_NAME = "Refresh First Frame"
+REFRESH_CONDITIONING_NODE_NAME = "MiniMax H3 Hybrid Cond (R2V + I2V)"
+INITIAL_REFERENCE_CONDITIONING_NODE_NAME = "MiniMax H3 Reference to Video"
 REFERENCE_IMAGE_NODE_NAMES = tuple(
     f"Reference Image {image_number}"
     for image_number in range(1, 7)
@@ -254,6 +434,16 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
+        "--refresh",
+        type=int,
+        default=None,
+        metavar="SEGMENTS",
+        help=(
+            "regenerate from the preceding segment's last frame on every "
+            "SEGMENTS-th segment"
+        ),
+    )
+    parser.add_argument(
         "--model",
         choices=tuple(FORMATTER_CLASSES),
         default="ministral",
@@ -302,6 +492,8 @@ def parse_args(arguments=None):
         parser.error("--steps must be greater than zero.")
     if args.context_frames <= 0:
         parser.error("--context-frames must be greater than zero.")
+    if args.refresh is not None and args.refresh <= 0:
+        parser.error("--refresh must be greater than zero.")
 
     return args
 
@@ -313,6 +505,16 @@ def get_segments_to_generate(resume_segment, total_segments):
             "segments in this run."
         )
     return range(resume_segment, total_segments + 1)
+
+
+def is_refresh_segment(segment_number, refresh_interval):
+    """Return whether this non-opening segment uses the refresh workflow."""
+
+    return bool(
+        refresh_interval
+        and segment_number > 1
+        and segment_number % refresh_interval == 0
+    )
 
 
 # ============================================================
@@ -395,7 +597,130 @@ def load_workflow(path):
     return workflow
 
 
-def verify_reference_images(initial_workflow, append_workflow, input_directory=None):
+def copy_reference_image_inputs(source_workflow, destination_workflow, label):
+    """Copy all six named reference-image filenames between workflows."""
+
+    for node_name in REFERENCE_IMAGE_NODE_NAMES:
+        _, source = find_workflow_node(
+            source_workflow,
+            node_name,
+            "reference source workflow",
+            "LoadImage",
+        )
+        image_name = source["inputs"].get("image")
+        if not isinstance(image_name, str) or not image_name.strip():
+            raise RuntimeError(
+                f"Node '{node_name}' in the reference source workflow has no image."
+            )
+        set_node_input(
+            destination_workflow,
+            node_name,
+            "image",
+            image_name.strip(),
+            label,
+            "LoadImage",
+        )
+
+
+def _resolve_comfy_input_image(image_name, input_directory):
+    """Resolve a LoadImage value while tolerating ComfyUI's folder suffix."""
+
+    cleaned = re.sub(
+        r"\s+\[(?:input|output|temp)\]\s*$",
+        "",
+        str(image_name or ""),
+        flags=re.IGNORECASE,
+    ).strip()
+    if not cleaned:
+        return ""
+    cleaned = os.path.expandvars(os.path.expanduser(cleaned))
+    if os.path.isabs(cleaned):
+        return os.path.abspath(cleaned)
+    return os.path.abspath(os.path.join(input_directory, cleaned))
+
+
+def prune_missing_reference_images(
+    workflow,
+    workflow_label,
+    workflow_kind,
+    input_directory=None,
+):
+    """Disconnect missing LoadImage references before queueing a workflow."""
+
+    input_directory = os.path.abspath(input_directory or COMFY_INPUT)
+    if workflow_kind == "append":
+        destination_name = IMAGE_BATCH_NODE_NAME
+        input_names = [f"image_{number}" for number in range(1, 7)]
+    elif workflow_kind == "initial":
+        destination_name = INITIAL_REFERENCE_CONDITIONING_NODE_NAME
+        input_names = [f"ref_images.ref_image_{number}" for number in range(6)]
+    elif workflow_kind == "refresh":
+        destination_name = REFRESH_CONDITIONING_NODE_NAME
+        input_names = [f"ref_images.ref_image_{number}" for number in range(6)]
+    else:
+        raise ValueError(f"Unknown workflow kind: {workflow_kind!r}")
+
+    _, destination = find_workflow_node(
+        workflow,
+        destination_name,
+        workflow_label,
+    )
+    removed = []
+    for image_number, (node_name, input_name) in enumerate(
+        zip(REFERENCE_IMAGE_NODE_NAMES, input_names),
+        start=1,
+    ):
+        matches = [
+            (node_id, node)
+            for node_id, node in workflow.items()
+            if isinstance(node, dict)
+            and node.get("_meta", {}).get("title") == node_name
+        ]
+        if not matches:
+            continue
+        node_id, image_node = find_workflow_node(
+            workflow,
+            node_name,
+            workflow_label,
+            "LoadImage",
+        )
+        image_name = image_node["inputs"].get("image")
+        image_path = _resolve_comfy_input_image(image_name, input_directory)
+        if image_path and os.path.isfile(image_path):
+            continue
+
+        inputs = destination["inputs"]
+        container = inputs
+        leaf_name = input_name
+        if input_name not in inputs and "." in input_name:
+            container_name, leaf_name = input_name.split(".", 1)
+            nested = inputs.get(container_name)
+            if not isinstance(nested, dict):
+                continue
+            container = nested
+        connection = container.get(leaf_name)
+        if not (
+            isinstance(connection, list)
+            and len(connection) == 2
+            and str(connection[0]) == str(node_id)
+        ):
+            continue
+        del container[leaf_name]
+        removed.append(image_number)
+        print(
+            f"WARNING: {workflow_label} disconnected Reference Image "
+            f"{image_number} because it was not found: "
+            f"{image_path or image_name!r}"
+        )
+    return removed
+
+
+def verify_reference_images(
+    initial_workflow,
+    append_workflow,
+    input_directory=None,
+    refresh_workflow=None,
+):
     """Verify existing images on connected workflow image inputs."""
     input_directory = os.path.abspath(input_directory or COMFY_INPUT)
 
@@ -451,7 +776,7 @@ def verify_reference_images(initial_workflow, append_workflow, input_directory=N
     initial_references = active_references(
         initial_workflow,
         "initial workflow",
-        "MiniMax H3 Reference to Video",
+        INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
         [
             (image_number, f"ref_images.ref_image_{image_number - 1}")
             for image_number in range(1, 7)
@@ -466,6 +791,17 @@ def verify_reference_images(initial_workflow, append_workflow, input_directory=N
             for image_number in range(1, 7)
         ],
     )
+    refresh_references = {}
+    if refresh_workflow is not None:
+        refresh_references = active_references(
+            refresh_workflow,
+            "refresh workflow",
+            REFRESH_CONDITIONING_NODE_NAME,
+            [
+                (image_number, f"ref_images.ref_image_{image_number - 1}")
+                for image_number in range(1, 7)
+            ],
+        )
 
     for image_number, initial_name in initial_references.items():
         append_name = append_references.get(image_number)
@@ -479,11 +815,24 @@ def verify_reference_images(initial_workflow, append_workflow, input_directory=N
                 f"WARNING: Reference Image {image_number} differs between "
                 f"workflows: {initial_name!r} vs {append_name!r}."
             )
+        refresh_name = refresh_references.get(image_number)
+        if refresh_workflow is not None and refresh_name is None:
+            print(
+                f"WARNING: Image {initial_name} is connected in the initial "
+                "workflow but not in the refresh workflow."
+            )
+        elif refresh_name is not None and initial_name != refresh_name:
+            print(
+                f"WARNING: Reference Image {image_number} differs between "
+                f"initial and refresh workflows: {initial_name!r} vs "
+                f"{refresh_name!r}."
+            )
 
     for image_number in range(1, 7):
         image_name = (
             initial_references.get(image_number)
             or append_references.get(image_number)
+            or refresh_references.get(image_number)
         )
         if image_name is None:
             continue
@@ -491,7 +840,8 @@ def verify_reference_images(initial_workflow, append_workflow, input_directory=N
         if not os.path.isfile(image_path):
             print(
                 f"WARNING: Image {image_name} for reference slot "
-                f"{image_number} was not found: {image_path}"
+                f"{image_number} was not found and will be disconnected "
+                f"before queueing: {image_path}"
             )
             continue
         print(f"Image {image_name} verified.")
@@ -506,6 +856,7 @@ def build_run_config(
     beats=None,
     subject_definitions="",
     global_loras=None,
+    refresh_interval=None,
 ):
     # Auto-discovered video subjects are durable continuity metadata, not a
     # user edit to the creative source. Excluding those appended lines keeps a
@@ -524,6 +875,7 @@ def build_run_config(
             "story": story,
             "beats": serialize_beats(beats),
             "global_loras": [list(lora) for lora in (global_loras or ())],
+            "refresh_interval": refresh_interval,
             "subject_definitions": source_subject_definitions,
         },
         ensure_ascii=False,
@@ -534,6 +886,7 @@ def build_run_config(
         "total_length": float(total_length),
         "megapixels": float(megapixels),
         "total_segments": int(total_segments),
+        "refresh_interval": refresh_interval,
         "source_sha256": hashlib.sha256(source_payload).hexdigest(),
     }
 
@@ -2003,6 +2356,40 @@ def validate_workflow(workflow, workflow_label, is_append=False):
         )
 
 
+def validate_refresh_workflow(workflow, workflow_label):
+    """Validate the refresh graph, including its frame and reference inputs."""
+
+    validate_workflow(workflow, workflow_label, is_append=False)
+    find_workflow_node(
+        workflow,
+        REFRESH_FIRST_FRAME_NODE_NAME,
+        workflow_label,
+        "LoadImage",
+    )
+    find_workflow_node(
+        workflow,
+        REFRESH_CONDITIONING_NODE_NAME,
+        workflow_label,
+        "MiniMaxH3HybridRefAndKeyframe",
+    )
+    validate_named_connection(
+        workflow,
+        REFRESH_CONDITIONING_NODE_NAME,
+        "first_frame",
+        REFRESH_FIRST_FRAME_NODE_NAME,
+        0,
+        workflow_label,
+    )
+    validate_named_connection(
+        workflow,
+        H3_LATENT_SAVE_NODE_NAME,
+        "latent",
+        "SamplerCustomAdvanced",
+        0,
+        workflow_label,
+    )
+
+
 def normalize_lora_list(loras):
     normalized = []
     for lora in loras or ():
@@ -2758,7 +3145,7 @@ def build_beats_response_format(total_segments):
                             "type": "string",
                             "minLength": 1,
                             "description": (
-                                "Exactly one concise, complete sentence."
+                                "One or two concise, complete sentences."
                             ),
                         },
                         "minItems": total_segments,
@@ -2856,8 +3243,7 @@ remaining faithful to the story's characters, premise, tone, and intended arc.
 Requirements:
 - Return exactly {batch_size} beats in chronological story order.
 - Each beat must describe a distinct visible story event suitable for one segment.
-- Each beat must be exactly one complete sentence; never combine two or more
-  sentences in a single beat.
+- Each beat must be one or two sentences.
 - Make bold, surprising, story-specific creative choices instead of defaulting
   to the most obvious or conventional plot progression.
 - Avoid generic filler events, stock obstacles, predictable discoveries, and
@@ -2866,6 +3252,7 @@ Requirements:
   then choose the most imaginative coherent arc that remains faithful to the
   source story.
 - Every beat must materially move the story forward from the previous beat.
+- Every beat must logically continue from the previous beat's end state.
 - Never repeat, recap, restage, or merely reword an earlier beat.
 - Build clear cause-and-effect progression across the complete list.
 - The final beat must conclusively resolve and conclude the story; do not end on
@@ -2935,8 +3322,8 @@ exactly {batch_size} unique, chronological, forward-moving beats.
 Also enforce the base story requirements: no beat may repeat or restage an
 earlier beat, every beat must materially advance the story, and the final beat
 must resolve the story's central conflict and conclude it without an unresolved
-thread, setup for another beat, or cliffhanger. Every beat must remain exactly
-one complete sentence and must never combine multiple sentences.
+thread, setup for another beat, or cliffhanger. Every beat must contain one or
+two complete sentences and must never contain three or more sentences.
 
 The additional instructions below are mandatory and reproduced verbatim. Check
 beat numbers, required and prohibited wording, occurrence counts, and ending
@@ -3065,12 +3452,15 @@ def validate_generated_beat_instructions(beats, beat_instructions):
     return list(dict.fromkeys(issues))
 
 
-def parse_generated_beats(raw_result, total_segments):
+def parse_generated_beats(raw_result, total_segments, formatter=None):
     if total_segments <= 0:
         raise ValueError("Beat generation requires at least one segment.")
 
+    formatter = formatter or ACTIVE_FORMATTER
+
     candidate = raw_result
     if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
         try:
             candidate = parse_llm_json_content(candidate)
         except json.JSONDecodeError:
@@ -3103,7 +3493,8 @@ def parse_generated_beats(raw_result, total_segments):
     for index, raw_beat in enumerate(candidate["beats"], start=1):
         if not isinstance(raw_beat, str):
             raise ValueError(f"Generated beat {index} must be text.")
-        beat = " ".join(raw_beat.split()).strip()
+        beat = formatter.sanitize_generated_text(raw_beat)
+        beat = " ".join(beat.split()).strip()
         beat = re.sub(
             r"^(?:[-*\u2022]\s+|(?:B\s*0*)?\d+\s*[.):\-]\s*)",
             "",
@@ -3118,8 +3509,8 @@ def parse_generated_beats(raw_result, total_segments):
             )
         if not beat_is_single_complete_sentence(beat):
             raise ValueError(
-                f"Generated beat {index} must be exactly one sentence; "
-                "fragments and multiple sentences are not allowed."
+                f"Generated beat {index} must contain one or two complete sentences; "
+                "fragments and three or more sentences are not allowed."
             )
         beats.append(beat)
 
@@ -3146,8 +3537,9 @@ _BEAT_ABBREVIATIONS = {
 }
 
 
-def beat_contains_multiple_sentences(beat):
-    """Detect a second top-level sentence without splitting common titles."""
+def _iter_beat_sentence_breaks(beat):
+    """Yield top-level sentence breaks without splitting common titles."""
+
     beat = str(beat or "").strip()
     for match in _BEAT_SENTENCE_BREAK.finditer(beat):
         if match.group("next").islower():
@@ -3161,16 +3553,24 @@ def beat_contains_multiple_sentences(beat):
                 continue
             if re.search(r"(?:\b[A-Z]\.){1,}$", prefix):
                 continue
-        return True
-    return False
+        yield match
+
+
+def beat_contains_multiple_sentences(beat):
+    """Detect a second top-level sentence without splitting common titles."""
+
+    return next(_iter_beat_sentence_breaks(beat), None) is not None
 
 
 def beat_is_single_complete_sentence(beat):
+    """Accept a complete beat containing fewer than three sentences."""
+
     beat = str(beat or "").strip()
     has_terminal_punctuation = bool(
         re.search(r"[.!?]+[\"'\u2019\u201d)]*$", beat)
     )
-    return has_terminal_punctuation and not beat_contains_multiple_sentences(beat)
+    internal_breaks = sum(1 for _ in _iter_beat_sentence_breaks(beat))
+    return has_terminal_punctuation and internal_breaks < 2
 
 
 def print_generated_beats(beats):
@@ -5908,6 +6308,59 @@ def get_video_resolution(video_path):
     return int(stream["width"]), int(stream["height"])
 
 
+def extract_refresh_first_frame(
+    previous_video_path,
+    segment_number,
+    input_directory=None,
+):
+    """Extract the exact final video frame into ComfyUI's input directory."""
+
+    if not previous_video_path or not os.path.isfile(previous_video_path):
+        raise FileNotFoundError(
+            f"Cannot refresh segment {segment_number}: previous video is missing: "
+            f"{previous_video_path!r}"
+        )
+    input_directory = os.path.abspath(input_directory or COMFY_INPUT)
+    os.makedirs(input_directory, exist_ok=True)
+    frame_name = f"minimax_refresh_first_frame_{segment_number:04d}.png"
+    frame_path = os.path.join(input_directory, frame_name)
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix=f".refresh_{segment_number:04d}_",
+        suffix=".png",
+        dir=input_directory,
+    )
+    os.close(descriptor)
+    try:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                previous_video_path,
+                "-map",
+                "0:v:0",
+                "-vf",
+                "reverse",
+                "-frames:v",
+                "1",
+                "-update",
+                "1",
+                "-an",
+                temporary_path,
+            ],
+            check=True,
+        )
+        if not os.path.isfile(temporary_path) or os.path.getsize(temporary_path) == 0:
+            raise RuntimeError(
+                f"ffmpeg did not produce a refresh frame for segment {segment_number}."
+            )
+        os.replace(temporary_path, frame_path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+    return frame_name
+
+
 def render_segment_with_retries(
     segment,
     current_duration,
@@ -5919,6 +6372,8 @@ def render_segment_with_retries(
     lora_override=None,
     context_frames=DEFAULT_CONTEXT_FRAMES,
     render_started_event=None,
+    refresh_interval=None,
+    refresh_input_directory=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     if lora_override is not None:
@@ -5926,6 +6381,22 @@ def render_segment_with_retries(
             raise ValueError("Pass loras or lora_override, not both.")
         loras = [lora_override]
     loras = normalize_lora_list(loras)
+    refresh_segment = is_refresh_segment(segment, refresh_interval)
+    refresh_frame_name = None
+    if refresh_segment:
+        print(
+            f"AUTO REFRESH: segment {segment} is using "
+            f"'{os.path.basename(REFRESH_WORKFLOW_FILE)}'."
+        )
+        refresh_frame_name = extract_refresh_first_frame(
+            previous_video_path,
+            segment,
+            input_directory=refresh_input_directory,
+        )
+        print(
+            f"AUTO REFRESH: extracted the final frame of segment {segment - 1} "
+            f"as {refresh_frame_name}."
+        )
     for retry_number in range(COMFY_RENDER_RETRIES + 1):
         current_megapixels = (
             max(
@@ -5933,12 +6404,12 @@ def render_segment_with_retries(
                 requested_megapixels
                 - retry_number * COMFY_RETRY_MEGAPIXEL_STEP
             )
-            if segment == 1
+            if segment == 1 or refresh_segment
             else requested_megapixels
         )
         if retry_number:
             #free_vram()
-            if segment == 1:
+            if segment == 1 or refresh_segment:
                 print(
                     f"Retrying ComfyUI render ({retry_number}/"
                     f"{COMFY_RENDER_RETRIES}) at "
@@ -5956,6 +6427,16 @@ def render_segment_with_retries(
                 current_duration,
                 current_megapixels,
                 h3_prompt,
+                segment,
+                steps,
+                **lora_kwargs,
+            )
+        elif refresh_segment:
+            workflow = prepare_refresh_workflow(
+                current_duration,
+                current_megapixels,
+                h3_prompt,
+                refresh_frame_name,
                 segment,
                 steps,
                 **lora_kwargs,
@@ -6010,6 +6491,7 @@ def prepare_initial_workflow(
     workflow = load_workflow(INITIAL_WORKFLOW_FILE)
     label = f"initial workflow '{INITIAL_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=False)
+    prune_missing_reference_images(workflow, label, "initial")
 
     set_node_input(
         workflow,
@@ -6059,6 +6541,110 @@ def prepare_initial_workflow(
     return workflow
 
 
+def prepare_refresh_workflow(
+    duration,
+    megapixels,
+    h3_prompt,
+    refresh_frame_name,
+    segment_number,
+    steps=6,
+    loras=None,
+    lora_override=None,
+    reference_workflow=None,
+):
+    """Prepare a fresh reference-to-video segment from the prior last frame."""
+
+    if lora_override is not None:
+        if loras:
+            raise ValueError("Pass loras or lora_override, not both.")
+        loras = [lora_override]
+    workflow = load_workflow(REFRESH_WORKFLOW_FILE)
+    label = f"refresh workflow '{REFRESH_WORKFLOW_FILE}'"
+    validate_refresh_workflow(workflow, label)
+
+    if not isinstance(refresh_frame_name, str) or not refresh_frame_name.strip():
+        raise ValueError("A refresh frame filename is required.")
+    if reference_workflow is None:
+        reference_workflow = load_workflow(INITIAL_WORKFLOW_FILE)
+    copy_reference_image_inputs(reference_workflow, workflow, label)
+    prune_missing_reference_images(workflow, label, "refresh")
+
+    set_node_input(
+        workflow,
+        REFRESH_FIRST_FRAME_NODE_NAME,
+        "image",
+        refresh_frame_name.strip(),
+        label,
+        "LoadImage",
+    )
+    set_node_input(
+        workflow,
+        H3_LATENT_SAVE_NODE_NAME,
+        "filename_prefix",
+        H3_LATENT_FILENAME_PREFIX,
+        label,
+        "MiniMaxH3AVSaveLatentForExtend",
+    )
+    set_node_input(
+        workflow,
+        H3_LATENT_SAVE_NODE_NAME,
+        "clip_index",
+        segment_number,
+        label,
+        "MiniMaxH3AVSaveLatentForExtend",
+    )
+    set_node_input(
+        workflow,
+        DURATION_NODE_NAME,
+        "value",
+        duration,
+        label,
+        "PrimitiveFloat",
+    )
+    set_node_input(
+        workflow,
+        PROMPT_NODE_NAME,
+        "text",
+        h3_prompt,
+        label,
+        "DPRandomGenerator",
+    )
+    set_node_input(
+        workflow,
+        SCHEDULER_NODE_NAME,
+        "steps",
+        steps,
+        label,
+        "BasicScheduler",
+    )
+    set_node_input(
+        workflow,
+        NOISE_NODE_NAME,
+        "noise_seed",
+        generate_random_seed(),
+        label,
+        "RandomNoise",
+    )
+    set_node_input(
+        workflow,
+        RESOLUTION_NODE_NAME,
+        "megapixels",
+        megapixels,
+        label,
+        "ResolutionSelector",
+    )
+    set_node_input(
+        workflow,
+        SAVE_VIDEO_NODE_NAME,
+        "filename_prefix",
+        f"video/segment_{segment_number:04d}",
+        label,
+        "SaveVideo",
+    )
+    configure_lora_chain(workflow, loras, label)
+    return workflow
+
+
 def prepare_append_workflow(
     duration,
     h3_prompt,
@@ -6076,6 +6662,7 @@ def prepare_append_workflow(
     workflow = load_workflow(APPEND_WORKFLOW_FILE)
     label = f"append workflow '{APPEND_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=True)
+    prune_missing_reference_images(workflow, label, "append")
 
     if not os.path.exists(previous_video_path):
         raise FileNotFoundError(
@@ -6254,6 +6841,7 @@ def _run_main(
     segment_length = args.segment_length
     total_length = args.total_length
     megapixels = args.megapixels
+    refresh_interval = getattr(args, "refresh", None)
     total_segments = math.ceil(total_length / segment_length)
     resume_segment = args.resume
     segments_to_generate = get_segments_to_generate(
@@ -6300,6 +6888,7 @@ def _run_main(
         beats,
         subject_definitions,
         global_loras,
+        refresh_interval,
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
@@ -6355,6 +6944,14 @@ def _run_main(
     print(f"Formatter:            {getattr(args, 'model', 'ministral')}")
     print(f"Global LoRAs:         {len(global_loras)}")
     print(
+        "Auto refresh:         "
+        + (
+            f"every {refresh_interval} segment(s)"
+            if refresh_interval is not None
+            else "disabled"
+        )
+    )
+    print(
         "Prompt corrections:   up to "
         f"{MINISTRAL_CONTENT_CORRECTION_ATTEMPTS}; best effort on failure"
     )
@@ -6370,6 +6967,7 @@ def _run_main(
     # Validate both workflows before spending time on generation.
     initial_test = load_workflow(INITIAL_WORKFLOW_FILE)
     append_test = load_workflow(APPEND_WORKFLOW_FILE)
+    refresh_test = None
     validate_workflow(
         initial_test,
         f"initial workflow '{INITIAL_WORKFLOW_FILE}'",
@@ -6380,7 +6978,22 @@ def _run_main(
         f"append workflow '{APPEND_WORKFLOW_FILE}'",
         is_append=True
     )
-    verify_reference_images(initial_test, append_test)
+    if refresh_interval is not None:
+        refresh_test = load_workflow(REFRESH_WORKFLOW_FILE)
+        validate_refresh_workflow(
+            refresh_test,
+            f"refresh workflow '{REFRESH_WORKFLOW_FILE}'",
+        )
+        copy_reference_image_inputs(
+            initial_test,
+            refresh_test,
+            f"refresh workflow '{REFRESH_WORKFLOW_FILE}'",
+        )
+    verify_reference_images(
+        initial_test,
+        append_test,
+        refresh_workflow=refresh_test,
+    )
     print("Workflow validation passed.")
     if resume_segment == 1:
         save_generation_state(generation_state)
@@ -6672,6 +7285,7 @@ def _run_main(
                 DEFAULT_CONTEXT_FRAMES,
             ),
             render_started_event=render_started,
+            refresh_interval=refresh_interval,
         )
         while not render_started.wait(0.05):
             if render_future.done():
@@ -6745,6 +7359,16 @@ def _run_main(
             additional_subject_definitions
         )
 
+        # Persist the LLM-returned working state before waiting for ComfyUI's
+        # render response.  The completed-segment record is deliberately added
+        # only after ComfyUI returns a verified video path, so an interrupted or
+        # failed render is never advertised as resumable.
+        save_generation_state(generation_state)
+        print(
+            f"Continuity state saved before the ComfyUI response for "
+            f"segment {segment}."
+        )
+
         if segment < total_segments and director_prefetch_executor is not None:
             next_bundle = build_segment_bundle(
                 segment + 1,
@@ -6787,7 +7411,7 @@ def _run_main(
                     prefetched_next["future"].cancel()
             print(
                 f"Segment {segment} render failed; its LLM-returned working state "
-                "was not checkpointed."
+                "was saved, but the segment was not marked complete."
             )
             raise
         print(
@@ -6819,7 +7443,7 @@ def _run_main(
                 "newly_completed_beat_ids": prompt_completed_beat_ids,
             }
         save_generation_state(generation_state)
-        print(f"Continuity state committed after successful render of segment {segment}.")
+        print(f"Completed segment {segment} committed with its rendered video.")
 
         elapsed_seconds = time.perf_counter() - run_start_time
         hours = int(elapsed_seconds // 3600)
@@ -6873,6 +7497,9 @@ def main():
 
 
 if __name__ == "__main__":
+    install_immediate_interrupt_handlers()
+    start_emergency_stop_listener()
+    print("Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).")
     try:
         main()
     except KeyboardInterrupt:

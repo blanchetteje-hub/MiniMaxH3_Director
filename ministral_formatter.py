@@ -1600,6 +1600,10 @@ def format_ministral_prompt(llm_result: Any, context: Mapping[str, Any] | None) 
         formatted = {field: formatted[field] for field in CORE_FIELDS}
         if formatted == before:
             break
+    # Keep this as a final output-boundary guarantee in case a later repair
+    # rule introduces text sourced from model-provided context.
+    for field in (DESCRIPTION, SOUNDSCAPE, MUSIC):
+        formatted[field] = _strip_markdown(formatted[field])
     return formatted
 
 
@@ -1621,6 +1625,11 @@ def validate_ministral_prompt(
 
 class MinistralFormatter(BaseFormatter):
     """Adapter exposing the Ministral repair pipeline through the shared API."""
+
+    def sanitize_generated_text(self, value: str) -> str:
+        """Remove every asterisk emitted as Ministral Markdown decoration."""
+
+        return _strip_markdown(str(value))
 
     def format_prompt(
         self,

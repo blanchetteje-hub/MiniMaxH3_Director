@@ -22,7 +22,7 @@ class BeatGenerationTests(unittest.TestCase):
         self.assertEqual([item["role"] for item in messages], ["system", "user"])
         self.assertIn("exactly 10 ordered story beats", prompt)
         self.assertIn("one beat for each of the 10 video segments", prompt)
-        self.assertIn("exactly one complete sentence", prompt)
+        self.assertIn("less than three sentences", prompt)
         self.assertIn("bold, surprising, story-specific", prompt)
         self.assertIn("several substantially different story arcs", prompt)
         self.assertIn("Avoid generic filler events", prompt)
@@ -44,7 +44,7 @@ class BeatGenerationTests(unittest.TestCase):
         self.assertEqual(beat_array["minItems"], 10)
         self.assertEqual(beat_array["maxItems"], 10)
         self.assertTrue(beat_array["uniqueItems"])
-        self.assertIn("Exactly one", beat_array["items"]["description"])
+        self.assertIn("One or two", beat_array["items"]["description"])
 
     def test_subject_registry_descriptions_are_formatted_for_beat_generation(self):
         definitions = (
@@ -147,6 +147,41 @@ class BeatGenerationTests(unittest.TestCase):
             ],
         )
 
+    def test_ministral_asterisks_are_removed_from_generated_beats(self):
+        formatter = minimax.MinistralFormatter()
+        beats = minimax.parse_generated_beats(
+            {
+                "beats": [
+                    "**The courier** opens the *sealed* vault.",
+                    "The *stolen star* returns before sunrise.*",
+                ]
+            },
+            2,
+            formatter=formatter,
+        )
+
+        self.assertEqual(
+            beats,
+            [
+                "The courier opens the sealed vault.",
+                "The stolen star returns before sunrise.",
+            ],
+        )
+        self.assertTrue(all("*" not in beat for beat in beats))
+
+        self.assertEqual(
+            minimax.parse_generated_beats(
+                "**Beats:**\n* **The courier** opens the vault.\n"
+                "* The stolen star *returns* before sunrise.",
+                2,
+                formatter=formatter,
+            ),
+            [
+                "The courier opens the vault.",
+                "The stolen star returns before sunrise.",
+            ],
+        )
+
     def test_parser_rejects_wrong_count_and_duplicate_beats(self):
         with self.assertRaisesRegex(ValueError, "exactly 3"):
             minimax.parse_generated_beats({"beats": ["First", "Second"]}, 3)
@@ -156,12 +191,12 @@ class BeatGenerationTests(unittest.TestCase):
                 3,
             )
 
-    def test_parser_requires_one_complete_sentence_per_beat(self):
-        with self.assertRaisesRegex(ValueError, "exactly one sentence"):
+    def test_parser_accepts_one_or_two_sentences_and_rejects_three(self):
+        with self.assertRaisesRegex(ValueError, "three or more sentences"):
             minimax.parse_generated_beats(
                 {
                     "beats": [
-                        "The vault opens. The alarm sounds.",
+                        "The vault opens. The alarm sounds. The guards arrive.",
                         "The guard catches the thief.",
                     ]
                 },
@@ -177,14 +212,14 @@ class BeatGenerationTests(unittest.TestCase):
             minimax.parse_generated_beats(
                 {
                     "beats": [
-                        "Dr. Reyes discovers the hidden transmitter.",
+                        "Dr. Reyes discovers the hidden transmitter. She activates it.",
                         'She shouts "Run!" before sealing the tunnel.',
                     ]
                 },
                 2,
             ),
             [
-                "Dr. Reyes discovers the hidden transmitter.",
+                "Dr. Reyes discovers the hidden transmitter. She activates it.",
                 'She shouts "Run!" before sealing the tunnel.',
             ],
         )
@@ -245,7 +280,7 @@ class BeatGenerationTests(unittest.TestCase):
             side_effect=[
                 {
                     "beats": [
-                        valid_beats[0] + " A second sentence is not allowed.",
+                        valid_beats[0] + " A second sentence is allowed. A third is not.",
                         valid_beats[1],
                         valid_beats[2],
                     ]
@@ -281,7 +316,7 @@ class BeatGenerationTests(unittest.TestCase):
                 self.assertEqual(call.kwargs[name], value)
         retry_prompt = llm_request.call_args_list[1].args[0][1]["content"]
         self.assertIn("PREVIOUS RESPONSE WAS INVALID", retry_prompt)
-        self.assertIn("multiple sentences are not allowed", retry_prompt)
+        self.assertIn("three or more sentences are not allowed", retry_prompt)
         self.assertIn("Make the observatory feel ancient.", retry_prompt)
         self.assertIn("Priya is an experienced explorer", retry_prompt)
         review_prompt = llm_request.call_args_list[2].args[0][1]["content"]

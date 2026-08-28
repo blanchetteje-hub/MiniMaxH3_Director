@@ -8,6 +8,11 @@ from typing import Any, Mapping
 class BaseFormatter:
     """Format and validate an LLM response for the MiniMax prompt schema."""
 
+    def sanitize_generated_text(self, value: str) -> str:
+        """Return model-specific cleanup for generated free-form text."""
+
+        return str(value)
+
     def format_prompt(
         self,
         llm_result: Any,

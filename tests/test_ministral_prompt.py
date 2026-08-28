@@ -70,6 +70,24 @@ def result(
 
 
 class FieldAndFixedPointTests(unittest.TestCase):
+    def test_every_asterisk_is_removed_from_prompt_text(self) -> None:
+        raw = result(
+            "*[Shot 1]* Live-action, cinematic, **Mark**, Jill, and Mark's "
+            "family stand together at a busy theme park.*",
+            soundscape="*Crowds* murmur and **footsteps** cross the pavement.",
+            music="*N/A*",
+            completed=[1],
+        )
+
+        formatted = format_ministral_prompt(raw, context_for(1))
+
+        for field in (
+            "detailed_description",
+            "overall_soundscape",
+            "non_diegetic_music",
+        ):
+            self.assertNotIn("*", formatted[field])
+
     def test_legacy_description_field_is_migrated_to_detailed_description(self) -> None:
         raw = {
             "integrated_multimodal_description": (
