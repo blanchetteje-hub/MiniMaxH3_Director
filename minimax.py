@@ -10295,37 +10295,6 @@ def stitch_videos(video_paths):
     print(f"Stitching complete: {FINAL_VIDEO}")
 
 
-def replace_video_artifact(source_path, destination_path):
-    """Atomically replace a segment artifact while keeping its checkpoint path."""
-
-    source_path = os.path.abspath(source_path)
-    destination_path = os.path.abspath(destination_path)
-    if not os.path.isfile(source_path) or os.path.getsize(source_path) == 0:
-        raise RuntimeError(f"Repair output is missing or empty: {source_path}")
-    if os.path.normcase(source_path) == os.path.normcase(destination_path):
-        return destination_path
-
-    destination_directory = os.path.dirname(destination_path)
-    os.makedirs(destination_directory, exist_ok=True)
-    descriptor, temporary_path = tempfile.mkstemp(
-        prefix=".minimax_repair_video_",
-        suffix=os.path.splitext(destination_path)[1] or ".mp4",
-        dir=destination_directory,
-    )
-    os.close(descriptor)
-    try:
-        shutil.copy2(source_path, temporary_path)
-        if os.path.getsize(temporary_path) == 0:
-            raise RuntimeError(
-                f"Copied repair output is empty: {temporary_path}"
-            )
-        os.replace(temporary_path, destination_path)
-    finally:
-        if os.path.exists(temporary_path):
-            os.remove(temporary_path)
-    return destination_path
-
-
 def repair_existing_segment(
     segment_number,
     *,
@@ -10334,6 +10303,7 @@ def repair_existing_segment(
     generation_state_path=GENERATION_STATE_FILE,
     subjects_path=SUBJECT_DEFINITIONS_FILE,
     beats_path=BEATS_FILE,
+    story_path=STORY_FILE,
     input_directory=None,
 ):
     """Rerender one checkpointed middle segment without changing semantic state."""
@@ -10385,16 +10355,107 @@ def repair_existing_segment(
         historical_subject_definitions,
         include_camera=False,
     )
-    saved_llm_result = copy.deepcopy(repair["target_record"]["llm_result"])
+    director_opening_summary = format_authoritative_opening_state(
+        opening_state,
+        historical_subject_definitions,
+        include_camera=True,
+    )
+
+    beats_raw = load_text_file(beats_path, required=True)
+    beats = parse_beats_content(beats_raw)[0]
+    if len(beats) < segment_number:
+        raise RuntimeError(
+            f"Cannot repair segment {segment_number}: {os.path.basename(beats_path)} "
+            f"contains only {len(beats)} beat(s)."
+        )
+    story_source = load_text_file(story_path, required=True)
+    story, _beat_instructions = parse_story_beat_instructions(story_source)
+    if not story:
+        raise ValueError("story.txt contains no story after beat_instructions metadata.")
+
+    conditioning_mode = "clean_refresh"
+    segment_length = float(repair["config"]["segment_length"])
+    total_length = float(repair["config"]["total_length"])
+    completed_before_target = set(range(1, segment_number))
+    recent_results = [(
+        segment_number - 1,
+        repair["previous_record"]["llm_result"],
+    )]
+    director_rules = build_director_rules(
+        total_length,
+        segment_length,
+        repair["total_segments"],
+        historical_subject_definitions,
+        segment_number,
+        beats_enabled=True,
+        conditioning_mode=conditioning_mode,
+    )
+    messages, _estimated_tokens, _recent_count = build_generation_messages(
+        director_rules=director_rules,
+        story=story,
+        beats=beats,
+        completed_beat_ids=completed_before_target,
+        recent_results=recent_results,
+        current_segment=segment_number,
+        total_segments=repair["total_segments"],
+        segment_length=segment_length,
+        total_length=total_length,
+        continuity_summary=director_opening_summary,
+        subject_definitions=historical_subject_definitions,
+        conditioning_mode=conditioning_mode,
+    )
+    ministral_context = build_ministral_context(
+        segment_number=segment_number,
+        segment_duration=duration,
+        beats=beats,
+        completed_beat_ids=completed_before_target,
+        subject_definitions=historical_subject_definitions,
+        story=story,
+        recent_results=recent_results,
+        opening_state=director_opening_summary,
+    )
+    director_bundle = {
+        "segment": segment_number,
+        "active_beat_id": segment_number,
+        "conditioning_mode": conditioning_mode,
+        "messages": messages,
+        "ministral_context": ministral_context,
+        "opening_state_sha256": hashlib.sha256(
+            json.dumps(
+                opening_state,
+                ensure_ascii=False,
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest(),
+    }
+    director_run_config = dict(repair["config"])
+    director_run_config.setdefault(
+        "source_sha256",
+        hashlib.sha256(beats_raw.encode("utf-8")).hexdigest(),
+    )
+    print(
+        f"Requesting a fresh Director prompt from Beat {segment_number} in "
+        f"{os.path.basename(beats_path)}."
+    )
+    director_payload = request_segment_llm(
+        director_bundle,
+        beats,
+        f"repair-{uuid.uuid4()}",
+        director_run_config,
+    )
+    llm_result = copy.deepcopy(director_payload["llm_result"])
+    llm_result["detailed_description"] = inject_persistent_state_into_description(
+        get_detailed_description(llm_result, "")
+    )
     hard_cut_subject_continuity = ""
     if is_hard_cut_segment(segment_number):
         hard_cut_subject_continuity = build_hard_cut_subject_continuity_from_state(
             historical_subject_definitions,
-            saved_llm_result,
+            llm_result,
             opening_state,
         )
     h3_prompt = build_h3_prompt(
-        saved_llm_result,
+        llm_result,
         historical_subject_definitions,
         hard_cut_subject_continuity,
         h3_opening_summary,
@@ -10402,8 +10463,6 @@ def repair_existing_segment(
         ff=False,
     )
 
-    beats_raw = load_text_file(beats_path, required=False)
-    beats = parse_beats_content(beats_raw)[0] if beats_raw else []
     loras = beat_loras(beats, segment_number, global_loras)
 
     print()
@@ -10454,17 +10513,9 @@ def repair_existing_segment(
         f"target {rendered_megapixels:.2f} MP)"
     )
 
-    original_video_path = os.path.abspath(
-        repair["target_record"]["video_path"]
-    )
-    saved_video_path = replace_video_artifact(
-        repaired_video_path,
-        original_video_path,
-    )
     print("Repaired video clip saved, you can run stitch.bat to combine them.")
     return {
-        "video_path": saved_video_path,
-        "comfy_output_path": repaired_video_path,
+        "video_path": repaired_video_path,
         "width": width,
         "height": height,
         "megapixels": rendered_megapixels,

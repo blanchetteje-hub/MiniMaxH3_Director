@@ -225,7 +225,7 @@ class RepairModeTests(unittest.TestCase):
             latent["inputs"]["filename_prefix"], minimax.H3_LATENT_FILENAME_PREFIX
         )
 
-    def test_repair_reuses_historical_prompt_and_keeps_checkpoint_path(self):
+    def test_repair_keeps_checkpoint_and_original_target_file_untouched(self):
         previous_dynamic = (
             "<Subject 2> is Guard, male (S2), created in generated video "
             "segment 1 and continued from <Video 1>."
@@ -246,10 +246,23 @@ class RepairModeTests(unittest.TestCase):
             subjects_path = os.path.join(directory, "subjects.txt")
             with open(subjects_path, "w", encoding="utf-8") as subjects:
                 subjects.write(SUBJECTS)
+            beats_path = os.path.join(directory, "beats.txt")
+            with open(beats_path, "w", encoding="utf-8") as beats_file:
+                beats_file.write(
+                    "Original first beat.\nEdited repair beat.\n"
+                    "Third beat.\nFourth beat.\n"
+                )
+            story_path = os.path.join(directory, "story.txt")
+            with open(story_path, "w", encoding="utf-8") as story_file:
+                story_file.write("A test story.")
             repaired_video = os.path.join(directory, "repair.mp4")
             with open(repaired_video, "wb") as video:
                 video.write(b"repair")
             opening_state = {"historical": True}
+            fresh_director_result = director_result(2)
+            fresh_director_result["detailed_description"] = (
+                "[Shot 1] Fresh prompt for the edited repair beat."
+            )
 
             with mock.patch(
                 "minimax.continuity_state_for_registry",
@@ -271,7 +284,8 @@ class RepairModeTests(unittest.TestCase):
             ) as stitch, mock.patch(
                 "minimax.save_generation_state"
             ) as save, mock.patch(
-                "minimax.request_valid_ministral_prompt"
+                "minimax.request_segment_llm",
+                return_value={"llm_result": fresh_director_result},
             ) as director, mock.patch(
                 "minimax.request_structured_continuity_state"
             ) as continuity_llm, mock.patch(
@@ -281,7 +295,8 @@ class RepairModeTests(unittest.TestCase):
                     2,
                     generation_state_path=checkpoint,
                     subjects_path=subjects_path,
-                    beats_path=os.path.join(directory, "missing_beats.txt"),
+                    beats_path=beats_path,
+                    story_path=story_path,
                 )
 
             historical_subjects = continuity.call_args.args[0]
@@ -291,11 +306,16 @@ class RepairModeTests(unittest.TestCase):
                 continuity.call_args.args[1],
                 before["segments"][0]["continuity_state"],
             )
-            opening.assert_called_once_with(
+            self.assertEqual(opening.call_count, 2)
+            opening.assert_any_call(
                 opening_state, historical_subjects, include_camera=False
             )
+            opening.assert_any_call(
+                opening_state, historical_subjects, include_camera=True
+            )
             self.assertEqual(
-                build_prompt.call_args.args[0], before["segments"][1]["llm_result"]
+                build_prompt.call_args.args[0]["detailed_description"],
+                "[Shot 1] Fresh prompt for the edited repair beat.",
             )
             self.assertEqual(build_prompt.call_args.args[1], historical_subjects)
             self.assertEqual(build_prompt.call_args.args[3], "OPENING")
@@ -308,7 +328,16 @@ class RepairModeTests(unittest.TestCase):
                 input_directory=None,
             )
             self.assertEqual(render.call_args.args[3], "SAVED H3 PROMPT")
-            director.assert_not_called()
+            director.assert_called_once()
+            director_bundle = director.call_args.args[0]
+            self.assertEqual(
+                director_bundle["ministral_context"]["current_beat_text"],
+                "Edited repair beat.",
+            )
+            self.assertIn(
+                "Beat 2: Edited repair beat.",
+                director_bundle["messages"][1]["content"],
+            )
             continuity_llm.assert_not_called()
             beat_generation.assert_not_called()
 
@@ -323,9 +352,11 @@ class RepairModeTests(unittest.TestCase):
                 before["segments"][1]["continuity_state"],
             )
             self.assertEqual(
-                result["video_path"], before["segments"][1]["video_path"]
+                result["video_path"], os.path.abspath(repaired_video)
             )
             with open(before["segments"][1]["video_path"], "rb") as video:
+                self.assertEqual(video.read(), b"video 2")
+            with open(repaired_video, "rb") as video:
                 self.assertEqual(video.read(), b"repair")
             save.assert_not_called()
             stitch.assert_not_called()
@@ -333,10 +364,21 @@ class RepairModeTests(unittest.TestCase):
     def test_render_failure_does_not_save_or_stitch(self):
         with tempfile.TemporaryDirectory() as directory:
             _state, checkpoint = make_checkpoint(directory)
+            beats_path = os.path.join(directory, "beats.txt")
+            with open(beats_path, "w", encoding="utf-8") as beats_file:
+                beats_file.write(
+                    "First beat.\nRepair beat.\nThird beat.\nFourth beat.\n"
+                )
+            story_path = os.path.join(directory, "story.txt")
+            with open(story_path, "w", encoding="utf-8") as story_file:
+                story_file.write("A test story.")
             with mock.patch(
                 "minimax.format_authoritative_opening_state", return_value="OPENING"
             ), mock.patch(
                 "minimax.build_h3_prompt", return_value="PROMPT"
+            ), mock.patch(
+                "minimax.request_segment_llm",
+                return_value={"llm_result": director_result(2)},
             ), mock.patch(
                 "minimax.extract_repair_anchor_frames",
                 return_value=("first.png", "last.png"),
@@ -351,7 +393,8 @@ class RepairModeTests(unittest.TestCase):
                         2,
                         generation_state_path=checkpoint,
                         subjects_path=os.path.join(directory, "missing_subjects.txt"),
-                        beats_path=os.path.join(directory, "missing_beats.txt"),
+                        beats_path=beats_path,
+                        story_path=story_path,
                     )
             save.assert_not_called()
             stitch.assert_not_called()
