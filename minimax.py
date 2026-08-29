@@ -3640,8 +3640,8 @@ Return a complete corrected arc covering the full segment range.
             "role": "system",
             "content": (
                 "You are a conservative story editor planning a sequential "
-                "video. The supplied source story, subjects, and macro arc are "
-                "binding authorities. Return only the requested JSON object."
+                "video. The supplied source story and subjects are binding authorities. "
+                "Return only the requested JSON object."
             ),
         },
         {
@@ -3669,7 +3669,6 @@ Keep every phase abstract. Appropriate detail is: "Chase escalates and Amy is
 caught." Do not enumerate imagery or individual actions such as a second
 many-eyed monster giggling, doors appearing, or the ground tilting. Do not write
 example dialogue, specific prop interactions, invented mythology, or shot-level events.
-Keep the number of sentences to half the number of phases.
 
 Priority order:
 1. Faithfulness to the SOURCE STORY and its required events and outcomes.
@@ -3682,7 +3681,7 @@ Connective detail may elaborate the SOURCE STORY, but it must not become a
 replacement story. The arc may organize and pace only what the source supports.
 Do not introduce new characters, doppelgängers or copies, loops or resurrection,
 secret mythology, flashback frameworks, rituals, existential mechanics, or any
-similar major plot concept unless the SOURE STORY explicitly supports it.
+similar major plot concept unless the SOURCE STORY explicitly supports it.
 
 MAIN CHARACTER(S):
 {subject_text}
@@ -4057,8 +4056,8 @@ Everything else belongs only in warnings. In particular, do NOT block for:
 - macro phase examples or other macro details that are not explicit source
   requirements.
 
-Python has already validated beat count, empty beats, the one-sentence
-rule, exact duplicates, and literal colon endings. Do not report those facts.
+Python has already validated beat count, empty beats, exact duplicates,
+and literal colon endings. Do not report those facts.
 
 Interpretation constraints:
 - Dialogue is valid when spoken during a visible action or event.
@@ -6170,7 +6169,7 @@ def build_director_rules(
         and segment_number % 3 == 0
     )
 
-    camera_cut_required = is_hard_cut_segment(segment_number)
+    camera_cut_required = False #is_hard_cut_segment(segment_number)
 
     if segment_number == 1:
         camera_policy = (
@@ -6725,11 +6724,15 @@ video generator.
 Return only one JSON object with fields:
 version, environment, camera, subjects, ongoing_action, ongoing_audio.
 
-Each subject record uses:
+Each persistent subject record uses:
 subject_id, name, gender, picture_ids, picture_id, speaker_id, origin_segment,
 position, pose_action, topology, wardrobe, body_state, physical_condition,
 attached_objects, injuries, substances, spatial_relationships,
 persistent_effects, held_props.
+
+For a newly proposed video-only subject only, also include the temporary
+admission field `entity_kind`, set to `animate` or `inanimate`.
+`entity_kind` is used only for new-subject admission and is not persistent state.
 
 SUBJECT ADMISSION AND DIALOGUE IDENTITY:
 - Never create a Subject for an inanimate object that remains silent, including

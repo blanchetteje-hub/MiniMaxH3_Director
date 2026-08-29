@@ -5,6 +5,19 @@ __pycache__/
 
 # Per-segment prompt logs are generated during a run.
 prompts/
+# Local creative inputs / generated planning
+story.txt
+beats.txt
+story_arc.txt
+story_arc.txt.sha256
+subjects.txt
 fix.py
+
+# Runtime state / LLM traces
+generation_state.json
 prompt_history.txt
-minimax - Copy.py
+
+# Generated media / intermediates
+*.mp4
+*.safetensors
+refresh_first_frame*
