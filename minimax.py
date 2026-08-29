@@ -131,6 +131,7 @@ VIDEO_OUTPUT = os.path.abspath(
 H3_LATENT_SAVE_NODE_NAME = "H3 AV Save Latent"
 H3_LATENT_LOAD_NODE_NAME = "H3 AV Load Latent"
 H3_LATENT_FILENAME_PREFIX = "h3_context/segment"
+H3_REPAIR_LATENT_FILENAME_PREFIX = "h3_repair/segment"
 
 INITIAL_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_API.json")
 APPEND_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_append_API.json")
@@ -350,6 +351,7 @@ DEFAULT_BEAT_LOOKAHEAD = 8
 RECENT_SEGMENTS_MAX = 1
 MINISTRAL_CONTENT_CORRECTION_ATTEMPTS = 1
 SUMMARY_CONTENT_ATTEMPTS = 2
+DIRECTOR_BEAT_COMPLETION_ATTEMPTS = 5
 BEAT_LLM_SAMPLING_PARAMETERS = {
     "temperature": 0.65,
     "top_p": 0.90,
@@ -389,6 +391,7 @@ VIDEO_EXTEND_NODE_NAME = "MiniMax H3 Video Extend (Backported)"
 ENCODE_AV_NODE_NAME = "MiniMax H3 Encode AV (Backported)"
 LOAD_VIDEO_NODE_NAME = "Load Video (Path) 🎥🅥🅗🅢"
 REFRESH_FIRST_FRAME_NODE_NAME = "Refresh First Frame"
+REPAIR_LAST_FRAME_NODE_NAME = "Repair Last Frame"
 REFRESH_CONDITIONING_NODE_NAME = "MiniMax H3 Hybrid Cond (R2V + I2V)"
 INITIAL_REFERENCE_CONDITIONING_NODE_NAME = "MiniMax H3 Reference to Video"
 REFERENCE_IMAGE_NODE_NAMES = tuple(
@@ -462,6 +465,13 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
+        "--repair",
+        type=int,
+        default=None,
+        metavar="SEGMENT",
+        help="rerender only this existing one-based middle segment",
+    )
+    parser.add_argument(
         "--model",
         choices=tuple(FORMATTER_CLASSES),
         default="ministral",
@@ -512,6 +522,12 @@ def parse_args(arguments=None):
         parser.error("--context-frames must be greater than zero.")
     if args.refresh is not None and args.refresh <= 0:
         parser.error("--refresh must be greater than zero.")
+    if args.repair is not None and args.repair <= 0:
+        parser.error("--repair must be a positive one-based segment number.")
+    if args.repair == 1:
+        parser.error("--repair requires a middle segment; Segment 1 is not repairable.")
+    if args.repair is not None and args.resume != 1:
+        parser.error("--repair cannot be combined with --resume other than 1.")
 
     return args
 
@@ -2091,6 +2107,138 @@ def save_generation_state(state, path=GENERATION_STATE_FILE):
             os.remove(temporary_path)
 
 
+def validate_repair_checkpoint(state, segment_number):
+    """Validate and return the checkpoint records needed for an isolated repair."""
+
+    if not isinstance(segment_number, int) or isinstance(segment_number, bool):
+        raise ValueError("--repair must identify an integer segment number.")
+    if not isinstance(state, dict):
+        raise RuntimeError("Generation checkpoint must contain a JSON object.")
+    if state.get("version") != 1:
+        raise RuntimeError("Generation checkpoint version is unsupported for repair.")
+    records = state.get("segments")
+    if not isinstance(records, list):
+        raise RuntimeError("Generation checkpoint has no valid segment records.")
+    config = state.get("config")
+    if not isinstance(config, dict):
+        raise RuntimeError("Generation checkpoint has no saved run configuration.")
+    try:
+        raw_total_segments = config["total_segments"]
+        if isinstance(raw_total_segments, bool):
+            raise ValueError
+        total_segments = int(raw_total_segments)
+        if float(raw_total_segments) != total_segments or total_segments <= 0:
+            raise ValueError
+    except (KeyError, TypeError, ValueError, OverflowError) as error:
+        raise RuntimeError(
+            "Generation checkpoint has no valid total_segments setting."
+        ) from error
+    if segment_number < 2:
+        raise ValueError("Repair requires a middle segment; Segment 1 has no prior neighbor.")
+    if segment_number >= total_segments:
+        raise ValueError(
+            f"Repair requires both neighbors; segment {segment_number} must be less "
+            f"than the final segment {total_segments}."
+        )
+
+    required = {}
+    for required_segment in (
+        segment_number - 1,
+        segment_number,
+        segment_number + 1,
+    ):
+        record_index = required_segment - 1
+        if record_index >= len(records):
+            raise RuntimeError(
+                f"Cannot repair segment {segment_number}: checkpoint record for "
+                f"segment {required_segment} is missing."
+            )
+        record = records[record_index]
+        if (
+            not isinstance(record, dict)
+            or record.get("segment_number") != required_segment
+        ):
+            raise RuntimeError(
+                f"Cannot repair segment {segment_number}: checkpoint record for "
+                f"segment {required_segment} is missing or out of order."
+            )
+        video_path = record.get("video_path")
+        if (
+            not isinstance(video_path, str)
+            or not os.path.isfile(video_path)
+            or os.path.getsize(video_path) == 0
+        ):
+            raise RuntimeError(
+                f"Cannot repair segment {segment_number}: video for segment "
+                f"{required_segment} is missing or empty: {video_path!r}"
+            )
+        required[required_segment] = record
+
+    previous_record = required[segment_number - 1]
+    target_record = required[segment_number]
+    if not isinstance(target_record.get("llm_result"), dict):
+        raise RuntimeError(
+            f"Cannot repair segment {segment_number}: its saved Director result "
+            "is missing."
+        )
+    if not isinstance(previous_record.get("continuity_state"), dict):
+        raise RuntimeError(
+            f"Cannot repair segment {segment_number}: segment {segment_number - 1} "
+            "has no committed continuity state."
+        )
+    if not isinstance(
+        previous_record.get("additional_subject_definitions"), list
+    ):
+        raise RuntimeError(
+            f"Cannot repair segment {segment_number}: segment {segment_number - 1} "
+            "has no historical dynamic Subject registry."
+        )
+    return {
+        "records": records,
+        "config": config,
+        "total_segments": total_segments,
+        "previous_record": previous_record,
+        "target_record": target_record,
+        "next_record": required[segment_number + 1],
+    }
+
+
+def get_repair_render_settings(checkpoint_config, segment_number):
+    """Derive repair duration and resolution from the original run settings."""
+
+    try:
+        segment_length = float(checkpoint_config["segment_length"])
+        total_length = float(checkpoint_config["total_length"])
+        megapixels = float(checkpoint_config["megapixels"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise RuntimeError(
+            "Generation checkpoint has invalid repair render settings."
+        ) from error
+    if (
+        not all(math.isfinite(value) for value in (
+            segment_length,
+            total_length,
+            megapixels,
+        ))
+        or segment_length <= 0
+        or total_length <= 0
+        or megapixels <= 0
+    ):
+        raise RuntimeError(
+            "Generation checkpoint repair render settings must be positive."
+        )
+    duration = min(
+        segment_length,
+        total_length - (segment_number - 1) * segment_length,
+    )
+    if duration <= 0:
+        raise RuntimeError(
+            f"Generation checkpoint has no positive duration for segment "
+            f"{segment_number}."
+        )
+    return duration, megapixels
+
+
 def restore_generation_state(
     resume_segment,
     beats,
@@ -3144,6 +3292,7 @@ def ask_llm(
         "beat_instruction_review",
         "beat_plan_audit",
         "beat_plan_repair",
+        "beat_plan_verify",
     }
     history_purpose = str((history_metadata or {}).get("purpose", ""))
     log_beat_response = history_purpose in beat_history_purposes
@@ -3974,6 +4123,198 @@ def parse_beat_arc_fidelity(raw_result, formatter=None):
     return {"valid": valid, "issues": normalized_issues}
 
 
+def format_macro_phase_boundaries(macro_arc):
+    """Render exact Python-known phase ranges for audit/verification prompts."""
+    phases = macro_arc.get("phases") if isinstance(macro_arc, dict) else None
+    if not isinstance(phases, list) or not phases:
+        return "N/A"
+    lines = []
+    for index, phase in enumerate(phases, start=1):
+        if not isinstance(phase, dict):
+            continue
+        phase_number = phase.get("phase_number", index)
+        beat_start = phase.get("beat_start")
+        beat_end = phase.get("beat_end")
+        if not isinstance(beat_start, int) or not isinstance(beat_end, int):
+            continue
+        if index < len(phases):
+            transition = f"next phase begins at Beat {beat_end + 1}"
+        else:
+            transition = "final phase; there is no next phase"
+        lines.append(
+            f"Phase {phase_number}: Beats {beat_start}-{beat_end}; "
+            f"exact phase-ending beat = Beat {beat_end}; {transition}."
+        )
+    return "\n".join(lines) or "N/A"
+
+
+def build_beat_plan_verification_response_format(issue_ids):
+    """Return a compact schema for verifying only already-frozen blockers."""
+    issue_ids = sorted(set(int(issue_id) for issue_id in issue_ids))
+    if not issue_ids:
+        raise ValueError("Beat-plan verification requires at least one issue ID.")
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_beat_plan_verification",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "unresolved_issue_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "enum": issue_ids,
+                        },
+                        "uniqueItems": True,
+                    },
+                },
+                "required": ["unresolved_issue_ids"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_beat_plan_verification(raw_result, issue_ids, formatter=None):
+    """Parse a verifier response without permitting new blocker identities."""
+    formatter = formatter or ACTIVE_FORMATTER
+    allowed_ids = sorted(set(int(issue_id) for issue_id in issue_ids))
+    allowed = set(allowed_ids)
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate)
+        except json.JSONDecodeError as error:
+            raise ValueError(
+                "The beat-plan verification response must be valid JSON."
+            ) from error
+    if not isinstance(candidate, dict) or set(candidate) != {"unresolved_issue_ids"}:
+        raise ValueError(
+            "The beat-plan verification response must contain only "
+            "'unresolved_issue_ids'."
+        )
+    unresolved = candidate["unresolved_issue_ids"]
+    if not isinstance(unresolved, list):
+        raise ValueError("'unresolved_issue_ids' must be an array.")
+    normalized = []
+    seen = set()
+    for raw_issue_id in unresolved:
+        if isinstance(raw_issue_id, bool) or not isinstance(raw_issue_id, int):
+            raise ValueError("Every unresolved issue ID must be an integer.")
+        if raw_issue_id not in allowed:
+            raise ValueError(
+                f"Verifier returned unknown frozen issue ID {raw_issue_id}."
+            )
+        if raw_issue_id in seen:
+            raise ValueError(
+                f"Verifier returned duplicate frozen issue ID {raw_issue_id}."
+            )
+        seen.add(raw_issue_id)
+        normalized.append(raw_issue_id)
+    return sorted(normalized)
+
+
+def build_beat_plan_verification_messages(
+    story,
+    total_segments,
+    beats,
+    macro_arc,
+    frozen_issues,
+    pending_issue_ids,
+    subject_information="",
+):
+    """Verify only frozen blockers; never discover or redefine new blockers."""
+    subject_text = str(subject_information or "").strip() or "N/A"
+    numbered_beats = "\n".join(
+        f"Beat {number}: {beat}" for number, beat in enumerate(beats, start=1)
+    )
+    phase_boundaries = format_macro_phase_boundaries(macro_arc)
+    pending_issue_ids = sorted(set(int(issue_id) for issue_id in pending_issue_ids))
+    issue_sections = []
+    for issue_id in pending_issue_ids:
+        if issue_id <= 0 or issue_id > len(frozen_issues):
+            raise ValueError(f"Unknown frozen beat-plan issue ID {issue_id}.")
+        issue_sections.append(
+            f"ISSUE {issue_id}\n"
+            + json.dumps(frozen_issues[issue_id - 1], ensure_ascii=False, indent=2)
+        )
+    frozen_text = "\n\n".join(issue_sections)
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a narrow beat-plan repair verifier. Verify only the "
+                "listed frozen issues. You are forbidden from discovering, "
+                "inventing, broadening, renaming, or relocating blockers. "
+                "Return only the requested JSON object."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Verify the current COMPLETE {total_segments}-beat plan ONLY against the frozen
+issues listed below.
+
+The initial global audit already established the complete blocker set. This is
+NOT a new global audit. Do not search for new problems and do not reinterpret the
+story to create additional requirements.
+
+VERIFICATION RULES
+- For each frozen issue, answer only whether its HARD source requirement is still
+  clearly unsatisfied in the CURRENT beat plan.
+- Return its numeric issue ID in unresolved_issue_ids only if it still clearly
+  fails. Omit the ID when the requirement is now reasonably satisfied.
+- Never return an issue ID that was not supplied below.
+- Never change a frozen issue's type, source requirement, or repair target.
+- If a frozen issue's old problem explanation contains a factual, numeric, or
+  semantic mistake, judge the CURRENT beats against the quoted source_requirement
+  instead of preserving the old mistake.
+- Semantic equivalence counts. Do not fail synonyms or paraphrases such as
+  "warped" versus "distorted" unless SOURCE STORY explicitly requires exact
+  wording.
+- If a required event or character appears anywhere in the exact phase-ending
+  beat, that satisfies "at the end of the phase" unless SOURCE STORY explicitly
+  requires a finer within-beat sequence. Do not call an event in Beat 20
+  "mid-phase" when Python says Beat 20 is the phase-ending beat.
+- A transition requirement such as "at the end of each phase ... into the next
+  area" applies only to phases that actually have a next phase unless SOURCE
+  STORY explicitly requires the same transition after the final phase.
+- "Periodically" or "occasionally" means recurring at reasonable intervals; it
+  does NOT mean every phase, every beat, or every phase-ending beat unless SOURCE
+  STORY explicitly says so.
+- Do not require characters or events merely because they exist in a famous or
+  established version of the story. Only SOURCE STORY is hard authority.
+- When the source requirement is already visibly satisfied, mark the issue
+  resolved even if you would prefer different wording, placement, pacing, or
+  dramatic emphasis.
+
+PYTHON-DERIVED PHASE BOUNDARIES
+{phase_boundaries}
+
+FROZEN ISSUES TO VERIFY
+{frozen_text}
+
+SOURCE STORY
+--- STORY START ---
+{story}
+--- STORY END ---
+
+MAIN CHARACTER(S)
+{subject_text}
+
+CURRENT COMPLETE BEAT PLAN
+{numbered_beats}
+
+Return only:
+{{"unresolved_issue_ids": [/* zero or more supplied issue IDs */]}}
+""".strip(),
+        },
+    ]
+
+
 def build_beat_plan_audit_messages(
     story,
     total_segments,
@@ -3994,6 +4335,7 @@ def build_beat_plan_audit_messages(
         if repaired_beat_ids
         else "N/A (initial audit; no targeted repair has occurred)"
     )
+    phase_boundaries = format_macro_phase_boundaries(macro_arc)
     return [
         {
             "role": "system",
@@ -4011,8 +4353,7 @@ Judge only clear structural or story failures stated in the literal text. Do not
 infer unstated events, and do not attribute content from one beat to another.
 
 AUTHORITY
-- SOURCE STORY is explicit ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT are HARD
-  requirements.
+- SOURCE STORY contains the HARD story requirements.
 - MACRO STORY ARC is only a SOFT planning scaffold derived from the source.
 - Macro phase details, broad_progression wording, dialogue, timing, tone shifts,
   and required_end_state do not create new blocking requirements unless they
@@ -4021,11 +4362,42 @@ AUTHORITY
 Use blocking_issues only for these major failures:
 - major unsupported premise drift;
 - a required source event or outcome is missing;
+- a named character explicitly required by SOURCE STORY is completely missing
+  from the beat plan;
+- an explicitly required recurring character, recurring event, or recurring
+  transition is missing often enough to violate the literal source requirement;
 - required source events occur in an impossible or contradictory order;
 - the protagonist is killed or resolved inconsistently and later continues
   without support from the source;
 - several consecutive beats substantially repeat the same event with no
   meaningful progression.
+
+CHARACTER FIDELITY
+- Check the COMPLETE BEAT PLAN against SOURCE STORY for explicitly required
+  characters.
+- If SOURCE STORY says a character appears, returns, follows, accompanies,
+  interrupts, or appears periodically, verify that the completed beat plan
+  reasonably satisfies that requirement.
+- "Periodically" or "occasionally" means recurring at reasonable intervals; it
+  does NOT mean every phase, every beat, or every phase-ending beat unless SOURCE
+  STORY explicitly says so.
+- Do not require characters merely because they exist in a famous or established
+  version of the story; only characters required by the supplied SOURCE STORY
+  matter.
+- Semantic equivalence counts. Do not create a blocker because the beats use a
+  reasonable synonym or paraphrase (for example "warped" versus "distorted")
+  unless SOURCE STORY explicitly requires exact wording.
+
+PHASE-BOUNDARY INTERPRETATION
+- The Python-derived phase boundaries below are exact. Never infer different
+  phase ranges from prose.
+- If an event or character appears anywhere in the exact phase-ending beat, that
+  satisfies "at the end of the phase" unless SOURCE STORY explicitly requires a
+  finer within-beat sequence.
+- Never call the exact phase-ending beat "mid-phase."
+- A transition requirement such as "at the end of each phase ... into the next
+  area" applies only to phases that actually have a next phase unless SOURCE
+  STORY explicitly requires the transition after the final phase too.
 
 Every blocking_issues entry must be an object with:
 - beat_start and beat_end: the smallest contiguous range that actually needs
@@ -4034,6 +4406,28 @@ Every blocking_issues entry must be an object with:
 - source_requirement: the concise HARD requirement from SOURCE STORY or explicit
   beat instructions that is violated. Never cite a macro-only requirement;
 - problem: the concrete failure in the cited beats.
+
+REPAIR TARGETING
+
+`beat_start` and `beat_end` identify the exact beat or smallest contiguous group
+of beats that must actually be rewritten to fix the problem. They are NOT the
+span of the story over which the problem can be observed.
+
+For a recurring requirement missing at several separate points, return a
+separate blocking issue for each missing occurrence. Do not span the gaps
+between them.
+
+Example: if SOURCE STORY requires the Rabbit at the end of every phase and the
+Rabbit is missing only at the ends of Beats 10, 30, and 50, return three
+localized blockers targeting Beat 10, Beat 30, and Beat 50. Do NOT return
+beat_start=1 and beat_end=60.
+
+If a required character is completely missing, identify the smallest natural
+beat range where that character needs to be introduced or used. Do not target
+the entire story.
+
+Never return the complete 1-through-final-beat range unless essentially the
+entire beat plan actually requires rewriting.
 
 For a missing required ending, cite only the smallest ending range that must be
 changed. Never speculate about a range. Before reporting any blocker, verify all
@@ -4114,6 +4508,9 @@ SOURCE STORY
 
 MAIN CHARACTER(S):
 {subject_text}
+
+PYTHON-DERIVED PHASE BOUNDARIES
+{phase_boundaries}
 
 MACRO STORY ARC
 {json.dumps(macro_arc, ensure_ascii=False, indent=2)}
@@ -4210,7 +4607,9 @@ REPAIR CONTRACT
 - Each replacement beat must contain one concise complete sentence,
   must not end with a colon, and must satisfy the existing structural rules.
 
-ALL CREDIBLE STRUCTURED BLOCKING ISSUES FROM THIS AUDIT
+FROZEN BLOCKING ISSUES TO REPAIR
+These issues came from the initial global audit. Fix these requirements only; do
+not reinterpret them into new requirements or broaden their scope.
 {json.dumps(blocking_issues, ensure_ascii=False, indent=2)}
 
 NORMALIZED REPAIR RANGES
@@ -4378,7 +4777,7 @@ def normalize_beat_plan_repair_ranges(
     repaired_beat_ids=None,
     story="",
     beat_instructions="",
-    max_gap=2,
+    max_gap=0,
 ):
     if total_segments <= 0:
         raise ValueError("Beat-plan repair requires at least one beat.")
@@ -4611,6 +5010,51 @@ def build_beat_generation_messages(
     phase_number = int(current_phase.get("phase_number", 1))
     subject_names = _format_beat_arc_subject_names(subject_information) or "N/A"
 
+    phases = macro_arc.get("phases", [])
+
+    previous_phase = next(
+        (
+            phase for phase in phases
+            if phase.get("phase_number") == phase_number - 1
+        ),
+        None,
+    )
+
+    future_phases = [
+        phase for phase in phases
+        if phase.get("phase_number", 0) > phase_number
+    ]
+
+    future_characters = list(dict.fromkeys(
+        character
+        for phase in future_phases
+        for character in phase.get("characters_introduced", [])
+    ))
+
+    future_locations = list(dict.fromkeys(
+        phase.get("location")
+        for phase in future_phases
+        if phase.get("location")
+    ))
+
+    previous_phase_end_state = (
+        previous_phase.get("required_end_state", "N/A")
+        if previous_phase
+        else "N/A"
+    )
+
+    future_characters_text = (
+        ", ".join(future_characters)
+        if future_characters
+        else "N/A"
+    )
+
+    future_locations_text = (
+        ", ".join(future_locations)
+        if future_locations
+        else "N/A"
+    )
+
     previous_context = "N/A"
     if previous_beats:
         previous_start = max(1, batch_start - min(5, len(previous_beats)))
@@ -4660,9 +5104,10 @@ def build_beat_generation_messages(
         {
             "role": "system",
             "content": (
-                "You are a movie director planning a sequential video. The "
-                "supplied MACRO STORY ARC is the authoritative Bible and drives "
-                "the story. Return only the requested JSON object."
+                "You are a movie director planning one phase of a sequential video. "
+                "The supplied CURRENT MACRO PHASE and SOURCE STORY are authoritative. "
+                "Concentrate only on the current phase and do not advance into later "
+                "phases. Return only the requested JSON object."
             ),
         },
         {
@@ -4676,10 +5121,14 @@ Requirements:
 (1) faithfulness to the SOURCE STORY.
 (2) follow the MACRO STORY ARC's phase {phase_number}.
 (3) clear chronological cause-and-effect.
-(3) Do not introduce a location until the location in the macro story appears in the phase's location. For example: if "Jim's House" doesn't appear until beat_start 20, do not introduce the location before beat 20.
-(4) do not introduce characters until they appear in the phase's characters_introduced array. For example: if "Jim" doesn't appear until beat_start 20, do not introduce him before beat 20.
-(5) variety within that established story.
-(6) creativity only when it does not alter the premise or progression.
+(3) Stay within the CURRENT MACRO PHASE's location and progression.
+(4) `characters_introduced` identifies characters whose FIRST appearance belongs
+    to this phase. Characters already established in the source story or previous
+    accepted beats may continue or reappear when appropriate.
+(5) Do not introduce any character or location listed under FUTURE PHASE
+    ENTITIES. Those belong to later phases.
+(6) variety within that established story.
+(7) creativity only when it does not alter the premise or progression.
 - If the MACRO STORY ARC allows, beats can be combined into a longer progression of events.
 - Do not require every minor action inside a beat to be its own beat.
 - Every beat must make sense without depending on the next beat to finish its sentence, dialogue, action, or reveal.
@@ -4699,18 +5148,28 @@ Requirements:
 - Keep each beat concise, concrete, and independently understandable.
 - Do not include numbering, labels, comments, Markdown, or --lora metadata inside a beat string.
 - Do not skip ahead to future beats or move back to previous beats.
-- Do not introduce characters until they appear in the MACRO STORY ARC.
 - Return only a JSON object shaped exactly as {response_shape}.
 {supplemental_text}
 
 Main Character(s):
 {subject_names}
 
-MACRO STORY ARC
+CURRENT MACRO PHASE
 
-{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
+{json.dumps(current_phase, ensure_ascii=False, indent=2)}
 
-PREVIOUS BEATS: {previous_context}
+PREVIOUS PHASE END STATE
+
+{previous_phase_end_state}
+
+RECENT PREVIOUS BEATS
+
+{previous_context}
+
+FUTURE PHASE ENTITIES — DO NOT INTRODUCE THESE YET
+
+Characters: {future_characters_text}
+Locations: {future_locations_text}
 
 SOURCE STORY
 
@@ -4786,7 +5245,7 @@ and the final beat must conclusively satisfy the source story's required ending
 without an unresolved essential action or cliffhanger. A tightly connected
 cause -> action -> reaction/result sequence is allowed within one beat, and minor
 actions do not each require a separate beat.
-IMPORTANT: Every beat must be one sentence that clearly conveys a single primary story event or progression step.
+IMPORTANT: Every beat must clearly convey a single primary story event or progression step.
 
 {subject_text}
 
@@ -5775,6 +6234,74 @@ def generate_beats_from_story(
                     f"another audit response: {last_error}"
                 )
 
+    def request_plan_verification(
+        beats,
+        macro_arc,
+        frozen_issues,
+        pending_issue_ids,
+        plan_attempt,
+        verification_round,
+    ):
+        last_error = None
+        response_attempt = 0
+        pending_issue_ids = sorted(set(pending_issue_ids))
+        while True:
+            response_attempt += 1
+            print(
+                f"Verifying {len(pending_issue_ids)} frozen beat-plan blocker"
+                f"{'' if len(pending_issue_ids) == 1 else 's'} "
+                f"(round {verification_round}, response attempt "
+                f"{response_attempt}; unlimited until successful or Ctrl+Q).",
+                flush=True,
+            )
+            messages = build_beat_plan_verification_messages(
+                story,
+                total_segments,
+                beats,
+                macro_arc,
+                frozen_issues,
+                pending_issue_ids,
+                subject_information=subject_information,
+            )
+            if last_error:
+                messages[-1]["content"] += (
+                    "\n\nYOUR PREVIOUS VERIFICATION RESPONSE WAS STRUCTURALLY "
+                    "INVALID\n"
+                    f"{last_error}\nReturn the verification JSON again."
+                )
+            verify_subjects_in_beat_messages(
+                messages,
+                subject_information,
+            )
+            raw_verification = llm_request(
+                messages,
+                response_format=build_beat_plan_verification_response_format(
+                    pending_issue_ids
+                ),
+                history_metadata={
+                    **(history_metadata or {}),
+                    "purpose": "beat_plan_verify",
+                    "attempt": plan_attempt,
+                    "verification_round": verification_round,
+                    "response_attempt": response_attempt,
+                    "total_segments": total_segments,
+                    "pending_issue_ids": pending_issue_ids,
+                },
+                **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
+            )
+            try:
+                return parse_beat_plan_verification(
+                    raw_verification,
+                    pending_issue_ids,
+                )
+            except ValueError as error:
+                last_error = error
+                print(
+                    "LM Studio returned an invalid frozen-blocker verification; "
+                    f"requesting another response: {last_error}",
+                    flush=True,
+                )
+
     def request_plan_repair(
         beats,
         macro_arc,
@@ -5887,158 +6414,219 @@ def generate_beats_from_story(
         repaired_beat_ids = set()
         completed_repair_rounds = 0
         fallback_reason = ""
+        frozen_issues = []
+        pending_issue_ids = []
+        last_audit = audit
 
-        repair_round = 0
-        while True:
-            repair_round += 1
-            last_audit = audit
-            normalized = normalize_beat_plan_repair_ranges(
+        if not audit["macro_arc_consistent_with_source"]:
+            fallback_reason = (
+                "the audit found the macro arc inconsistent with the hard "
+                "source requirements"
+            )
+        else:
+            initial_normalized = normalize_beat_plan_repair_ranges(
                 audit["blocking_issues"],
                 total_segments,
-                repaired_beat_ids=repaired_beat_ids,
                 story=story,
                 beat_instructions=beat_instructions,
             )
             discarded_count = (
                 audit.get("discarded_blocking_issues", 0)
-                + len(normalized["discarded"])
+                + len(initial_normalized["discarded"])
             )
-            if not normalized["issues"]:
-                if normalized["downgraded"] and not discarded_count:
+
+            if not initial_normalized["issues"]:
+                if discarded_count:
+                    fallback_reason = (
+                        "the audit's blocking ranges were malformed or outside "
+                        "the beat plan and could not be localized safely"
+                    )
+                else:
+                    return accept_plan(
+                        beats,
+                        audit,
+                        plan_attempt,
+                        completed_repair_rounds,
+                    )
+            else:
+                # Freeze the initial global audit's blocker identities. Every
+                # subsequent LLM call may only resolve or retain these issues;
+                # it may never discover a new blocker or move the goalposts.
+                frozen_issues = list(initial_normalized["issues"])
+                pending_issue_ids = list(range(1, len(frozen_issues) + 1))
+                print(
+                    "Initial global beat-plan audit reported "
+                    f"{len(frozen_issues)} frozen blocking issue"
+                    f"{'' if len(frozen_issues) == 1 else 's'}; verifying them "
+                    "before making repairs.",
+                    flush=True,
+                )
+                pending_issue_ids = request_plan_verification(
+                    beats,
+                    macro_arc,
+                    frozen_issues,
+                    pending_issue_ids,
+                    plan_attempt,
+                    verification_round=0,
+                )
+
+                if not pending_issue_ids:
                     accepted_audit = dict(audit)
                     accepted_audit["valid"] = True
                     accepted_audit["blocking_issues"] = []
-                    accepted_audit["warnings"] = list(audit["warnings"]) + [
-                        "Ignored repeated post-repair blocker(s) that did not "
-                        "identify a concrete hard-source requirement."
-                    ]
                     return accept_plan(
                         beats,
                         accepted_audit,
                         plan_attempt,
                         completed_repair_rounds,
                     )
-                if not audit["macro_arc_consistent_with_source"]:
-                    fallback_reason = (
-                        "the audit found the macro arc inconsistent with the "
-                        "hard source requirements"
-                    )
-                    break
-                if discarded_count:
-                    fallback_reason = (
-                        "the audit's blocking ranges were malformed or outside "
-                        "the beat plan and could not be localized safely"
-                    )
-                    break
-                return accept_plan(
-                    beats,
-                    audit,
-                    plan_attempt,
-                    completed_repair_rounds,
-                )
-            if not audit["macro_arc_consistent_with_source"]:
-                fallback_reason = (
-                    "the audit found the macro arc inconsistent with the hard "
-                    "source requirements"
-                )
-                break
-            repair_ranges = normalized["ranges"]
-            if not repair_ranges:
-                fallback_reason = (
-                    "the audit failed without a safely localized blocker"
-                )
-                break
 
-            print(
-                "Global beat-plan audit failed: "
-                f"{len(normalized['issues'])} blocking issue"
-                f"{'' if len(normalized['issues']) == 1 else 's'}.",
-                flush=True,
-            )
-            print(f"Issues: {normalized['issues']}", flush=True)
-            range_label = format_beat_plan_repair_ranges(repair_ranges)
-            print(
-                f"Repair round {repair_round}: repairing "
-                f"{range_label} in one request.",
-                flush=True,
-            )
-            correction = ""
-            repaired_beats = None
-            response_attempt = 0
-            while True:
-                response_attempt += 1
-                try:
-                    replacement_beats = request_plan_repair(
-                        beats,
-                        macro_arc,
-                        repair_ranges,
-                        normalized["issues"],
-                        plan_attempt,
-                        repair_round,
-                        response_attempt,
-                        correction=correction,
+                repair_round = 0
+                while pending_issue_ids:
+                    repair_round += 1
+                    pending_issues = [
+                        frozen_issues[issue_id - 1]
+                        for issue_id in pending_issue_ids
+                    ]
+                    normalized = normalize_beat_plan_repair_ranges(
+                        pending_issues,
+                        total_segments,
+                        story=story,
+                        beat_instructions=beat_instructions,
                     )
-                    repaired_beats = splice_beat_plan_repair(
-                        beats,
-                        repair_ranges,
-                        replacement_beats,
-                    )
-                    introduction_issues = (
-                        validate_generated_beat_macro_introductions(
-                            repaired_beats,
-                            macro_arc,
+                    discarded_count = len(normalized["discarded"])
+                    if discarded_count or not normalized["issues"]:
+                        fallback_reason = (
+                            "a frozen blocker could no longer be localized safely"
                         )
-                    )
-                    if introduction_issues:
-                        raise ValueError(
-                            "Repaired complete plan violates macro introduction "
-                            "timing: " + " ".join(introduction_issues)
+                        break
+
+                    repair_ranges = normalized["ranges"]
+                    if not repair_ranges:
+                        fallback_reason = (
+                            "the frozen blockers produced no safely localized "
+                            "repair range"
                         )
-                    instruction_issues = validate_generated_beat_instructions(
-                        repaired_beats,
-                        beat_instructions,
-                    )
-                    if instruction_issues:
-                        raise ValueError(
-                            "Repaired complete plan violates explicit beat "
-                            "instructions: " + " ".join(instruction_issues)
-                        )
-                except Exception as error:
-                    correction = str(error)
-                    repaired_beats = None
+                        break
+
                     print(
-                        f"Repair round {repair_round} response failed validation "
-                        f"(attempt {response_attempt}; unlimited until successful "
-                        f"or Ctrl+Q): {error}",
+                        "Frozen beat-plan verification still has "
+                        f"{len(pending_issue_ids)} unresolved blocker"
+                        f"{'' if len(pending_issue_ids) == 1 else 's'}: "
+                        + ", ".join(
+                            f"Issue {issue_id}" for issue_id in pending_issue_ids
+                        ),
                         flush=True,
                     )
-                    continue
-                break
+                    print(f"Issues: {pending_issues}", flush=True)
+                    range_label = format_beat_plan_repair_ranges(repair_ranges)
+                    print(
+                        f"Repair round {repair_round}: repairing "
+                        f"{range_label} in one request.",
+                        flush=True,
+                    )
+                    correction = ""
+                    repaired_beats = None
+                    response_attempt = 0
+                    while True:
+                        response_attempt += 1
+                        try:
+                            replacement_beats = request_plan_repair(
+                                beats,
+                                macro_arc,
+                                repair_ranges,
+                                pending_issues,
+                                plan_attempt,
+                                repair_round,
+                                response_attempt,
+                                correction=correction,
+                            )
+                            repaired_beats = splice_beat_plan_repair(
+                                beats,
+                                repair_ranges,
+                                replacement_beats,
+                            )
+                            introduction_issues = (
+                                validate_generated_beat_macro_introductions(
+                                    repaired_beats,
+                                    macro_arc,
+                                )
+                            )
+                            if introduction_issues:
+                                raise ValueError(
+                                    "Repaired complete plan violates macro "
+                                    "introduction timing: "
+                                    + " ".join(introduction_issues)
+                                )
+                            instruction_issues = (
+                                validate_generated_beat_instructions(
+                                    repaired_beats,
+                                    beat_instructions,
+                                )
+                            )
+                            if instruction_issues:
+                                raise ValueError(
+                                    "Repaired complete plan violates explicit beat "
+                                    "instructions: "
+                                    + " ".join(instruction_issues)
+                                )
+                        except Exception as error:
+                            correction = str(error)
+                            repaired_beats = None
+                            print(
+                                f"Repair round {repair_round} response failed "
+                                f"validation (attempt {response_attempt}; "
+                                "unlimited until successful or Ctrl+Q): "
+                                f"{error}",
+                                flush=True,
+                            )
+                            continue
+                        break
 
-            beats = repaired_beats
-            completed_repair_rounds = repair_round
-            repaired_beat_ids.update(
-                beat_ids_for_repair_ranges(repair_ranges)
-            )
-            print(
-                f"Repair round {repair_round} completed; re-auditing complete "
-                f"{total_segments}-beat plan.",
-                flush=True,
-            )
-            audit = request_plan_audit(
-                beats,
-                macro_arc,
-                plan_attempt,
-                audit_round=repair_round,
-                repaired_beat_ids=repaired_beat_ids,
-            )
+                    beats = repaired_beats
+                    completed_repair_rounds = repair_round
+                    repaired_beat_ids.update(
+                        beat_ids_for_repair_ranges(repair_ranges)
+                    )
+                    print(
+                        f"Repair round {repair_round} completed; verifying only "
+                        f"the {len(pending_issue_ids)} remaining frozen blocker"
+                        f"{'' if len(pending_issue_ids) == 1 else 's'}.",
+                        flush=True,
+                    )
+                    pending_issue_ids = request_plan_verification(
+                        beats,
+                        macro_arc,
+                        frozen_issues,
+                        pending_issue_ids,
+                        plan_attempt,
+                        verification_round=repair_round,
+                    )
+
+                if not pending_issue_ids and not fallback_reason:
+                    accepted_audit = dict(audit)
+                    accepted_audit["valid"] = True
+                    accepted_audit["blocking_issues"] = []
+                    return accept_plan(
+                        beats,
+                        accepted_audit,
+                        plan_attempt,
+                        completed_repair_rounds,
+                    )
 
         last_audit = audit
-        audit_correction = (
-            format_beat_plan_blocking_issues(audit["blocking_issues"])
-            if audit["blocking_issues"]
-            else fallback_reason
-        )
+        if pending_issue_ids:
+            remaining_frozen = [
+                frozen_issues[issue_id - 1]
+                for issue_id in pending_issue_ids
+            ]
+            audit_correction = format_beat_plan_blocking_issues(remaining_frozen)
+        else:
+            audit_correction = (
+                format_beat_plan_blocking_issues(audit["blocking_issues"])
+                if audit["blocking_issues"]
+                else fallback_reason
+            )
         print(
             "Falling back to full-plan regeneration because "
             f"{fallback_reason}. Remaining blockers: "
@@ -8819,6 +9407,77 @@ def get_video_resolution(video_path):
     return int(stream["width"]), int(stream["height"])
 
 
+def extract_video_frame(
+    video_path,
+    frame_name,
+    *,
+    input_directory=None,
+    final_frame=False,
+    frame_index=None,
+    temporary_prefix=".minimax_frame_",
+    error_label="video frame",
+):
+    """Atomically extract one exact decoded frame into ComfyUI's input folder."""
+
+    if bool(final_frame) == (frame_index is not None):
+        raise ValueError("Choose exactly one of final_frame or frame_index.")
+    if not video_path or not os.path.isfile(video_path):
+        raise FileNotFoundError(
+            f"Cannot extract {error_label}: source video is missing: {video_path!r}"
+        )
+    if not isinstance(frame_name, str) or not frame_name.strip():
+        raise ValueError("A destination frame filename is required.")
+    if frame_index is not None:
+        if (
+            not isinstance(frame_index, int)
+            or isinstance(frame_index, bool)
+            or frame_index < 0
+        ):
+            raise ValueError("frame_index must be a non-negative integer.")
+
+    input_directory = os.path.abspath(input_directory or COMFY_INPUT)
+    os.makedirs(input_directory, exist_ok=True)
+    frame_name = frame_name.strip()
+    frame_path = os.path.join(input_directory, frame_name)
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix=temporary_prefix,
+        suffix=".png",
+        dir=input_directory,
+    )
+    os.close(descriptor)
+    command = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        video_path,
+        "-map",
+        "0:v:0",
+    ]
+    if final_frame:
+        command.extend(["-vf", "reverse"])
+    else:
+        command.extend(["-vf", f"select=eq(n\\,{frame_index})", "-vsync", "0"])
+    command.extend([
+        "-frames:v",
+        "1",
+        "-update",
+        "1",
+        "-an",
+        temporary_path,
+    ])
+    try:
+        subprocess.run(command, check=True)
+        if not os.path.isfile(temporary_path) or os.path.getsize(temporary_path) == 0:
+            raise RuntimeError(f"ffmpeg did not produce {error_label}.")
+        os.replace(temporary_path, frame_path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+    if not os.path.isfile(frame_path) or os.path.getsize(frame_path) == 0:
+        raise RuntimeError(f"Extracted {error_label} is missing or empty: {frame_path}")
+    return frame_name
+
+
 def extract_refresh_first_frame(
     previous_video_path,
     segment_number,
@@ -8831,45 +9490,44 @@ def extract_refresh_first_frame(
             f"Cannot refresh segment {segment_number}: previous video is missing: "
             f"{previous_video_path!r}"
         )
-    input_directory = os.path.abspath(input_directory or COMFY_INPUT)
-    os.makedirs(input_directory, exist_ok=True)
     frame_name = f"minimax_refresh_first_frame_{segment_number:04d}.png"
-    frame_path = os.path.join(input_directory, frame_name)
-    descriptor, temporary_path = tempfile.mkstemp(
-        prefix=f".refresh_{segment_number:04d}_",
-        suffix=".png",
-        dir=input_directory,
+    return extract_video_frame(
+        previous_video_path,
+        frame_name,
+        input_directory=input_directory,
+        final_frame=True,
+        temporary_prefix=f".refresh_{segment_number:04d}_",
+        error_label=f"a refresh frame for segment {segment_number}",
     )
-    os.close(descriptor)
-    try:
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-i",
-                previous_video_path,
-                "-map",
-                "0:v:0",
-                "-vf",
-                "reverse",
-                "-frames:v",
-                "1",
-                "-update",
-                "1",
-                "-an",
-                temporary_path,
-            ],
-            check=True,
-        )
-        if not os.path.isfile(temporary_path) or os.path.getsize(temporary_path) == 0:
-            raise RuntimeError(
-                f"ffmpeg did not produce a refresh frame for segment {segment_number}."
-            )
-        os.replace(temporary_path, frame_path)
-    finally:
-        if os.path.exists(temporary_path):
-            os.remove(temporary_path)
-    return frame_name
+
+
+def extract_repair_anchor_frames(
+    previous_video_path,
+    next_video_path,
+    segment_number,
+    input_directory=None,
+):
+    """Extract the two visible-neighbor anchors for one repaired bridge."""
+
+    first_frame_name = f"minimax_repair_first_frame_{segment_number:04d}.png"
+    last_frame_name = f"minimax_repair_last_frame_{segment_number:04d}.png"
+    first_frame_name = extract_video_frame(
+        previous_video_path,
+        first_frame_name,
+        input_directory=input_directory,
+        final_frame=True,
+        temporary_prefix=f".repair_first_{segment_number:04d}_",
+        error_label=f"the first repair anchor for segment {segment_number}",
+    )
+    last_frame_name = extract_video_frame(
+        next_video_path,
+        last_frame_name,
+        input_directory=input_directory,
+        frame_index=TRIM_FRAMES_AFTER_FIRST,
+        temporary_prefix=f".repair_last_{segment_number:04d}_",
+        error_label=f"the last repair anchor for segment {segment_number}",
+    )
+    return first_frame_name, last_frame_name
 
 
 def render_segment_with_retries(
@@ -8987,6 +9645,68 @@ def render_segment_with_retries(
                 ) from error
 
     raise AssertionError("ComfyUI render retry loop did not return or raise.")
+
+
+def render_repair_segment_with_retries(
+    segment_number,
+    duration,
+    requested_megapixels,
+    h3_prompt,
+    first_frame_name,
+    last_frame_name,
+    steps,
+    loras=None,
+):
+    """Render an isolated two-keyframe bridge with normal ComfyUI retries."""
+
+    loras = normalize_lora_list(loras)
+    for retry_number in range(COMFY_RENDER_RETRIES + 1):
+        current_megapixels = max(
+            0.01,
+            requested_megapixels
+            - retry_number * COMFY_RETRY_MEGAPIXEL_STEP,
+        )
+        if retry_number:
+            print(
+                f"Retrying repair render ({retry_number}/{COMFY_RENDER_RETRIES}) "
+                f"at {current_megapixels:.2f} MP."
+            )
+        workflow = prepare_repair_workflow(
+            duration,
+            current_megapixels,
+            h3_prompt,
+            first_frame_name,
+            last_frame_name,
+            segment_number,
+            steps=steps,
+            loras=loras,
+        )
+        try:
+            prompt_id = queue_workflow(workflow)
+            print(f"ComfyUI prompt ID: {prompt_id}")
+            comfy_result = wait_for_completion(prompt_id)
+            video_path = get_video_path(comfy_result, workflow)
+            if (
+                not os.path.isfile(video_path)
+                or os.path.getsize(video_path) == 0
+            ):
+                raise ComfyUIExecutionError(
+                    f"ComfyUI repair output is missing or empty: {video_path}"
+                )
+            width, height = get_video_resolution(video_path)
+            return workflow, video_path, width, height, current_megapixels
+        except (ComfyUIExecutionError, ComfyUIRenderTimeout) as error:
+            print(
+                f"ComfyUI repair attempt failed "
+                f"({retry_number + 1}/{COMFY_RENDER_RETRIES + 1}): {error}"
+            )
+            if retry_number == COMFY_RENDER_RETRIES:
+                raise RuntimeError(
+                    "ComfyUI repair failed after "
+                    f"{COMFY_RENDER_RETRIES} retries."
+                ) from error
+
+    raise AssertionError("ComfyUI repair retry loop did not return or raise.")
 
 
 def prepare_initial_workflow(
@@ -9156,6 +9876,243 @@ def prepare_refresh_workflow(
         "SaveVideo",
     )
     configure_lora_chain(workflow, loras, label)
+    return workflow
+
+
+def _next_workflow_node_id(workflow):
+    numeric_ids = []
+    for node_id in workflow:
+        try:
+            numeric_ids.append(int(node_id))
+        except (TypeError, ValueError):
+            continue
+    next_node_id = max(numeric_ids, default=0) + 1
+    while str(next_node_id) in workflow or next_node_id in workflow:
+        next_node_id += 1
+    return str(next_node_id)
+
+
+def _repair_last_frame_node(workflow, conditioning, label):
+    """Return an existing dedicated last-frame loader or add one dynamically."""
+
+    connection = conditioning["inputs"].get("last_frame")
+    if isinstance(connection, list) and len(connection) == 2:
+        source = workflow.get(str(connection[0]), workflow.get(connection[0]))
+        if (
+            isinstance(source, dict)
+            and source.get("class_type") == "LoadImage"
+            and connection[1] == 0
+        ):
+            title = source.get("_meta", {}).get("title")
+            if (
+                isinstance(title, str)
+                and title.strip()
+                and title.strip() != REFRESH_FIRST_FRAME_NODE_NAME
+                and title.strip() not in REFERENCE_IMAGE_NODE_NAMES
+            ):
+                return str(connection[0]), source, title.strip()
+
+    candidates = []
+    for node_id, node in workflow.items():
+        if not isinstance(node, dict) or node.get("class_type") != "LoadImage":
+            continue
+        title = node.get("_meta", {}).get("title")
+        if (
+            isinstance(title, str)
+            and title.strip().lower().endswith("last frame")
+            and title != REFRESH_FIRST_FRAME_NODE_NAME
+        ):
+            candidates.append((str(node_id), node, title.strip()))
+    if len(candidates) > 1:
+        raise RuntimeError(f"{label} contains multiple dedicated last-frame loaders.")
+    if candidates:
+        return candidates[0]
+
+    node_id = _next_workflow_node_id(workflow)
+    node = {
+        "inputs": {"image": ""},
+        "class_type": "LoadImage",
+        "_meta": {"title": REPAIR_LAST_FRAME_NODE_NAME},
+    }
+    workflow[node_id] = node
+    return node_id, node, REPAIR_LAST_FRAME_NODE_NAME
+
+
+def validate_repair_workflow(
+    workflow,
+    workflow_label,
+    last_frame_node_name,
+    preserved_conditioning=None,
+):
+    """Validate both repair keyframes and isolated latent persistence."""
+
+    find_workflow_node(
+        workflow,
+        REFRESH_FIRST_FRAME_NODE_NAME,
+        workflow_label,
+        "LoadImage",
+    )
+    find_workflow_node(
+        workflow,
+        REFRESH_CONDITIONING_NODE_NAME,
+        workflow_label,
+        "MiniMaxH3HybridRefAndKeyframe",
+    )
+    validate_named_connection(
+        workflow,
+        REFRESH_CONDITIONING_NODE_NAME,
+        "first_frame",
+        REFRESH_FIRST_FRAME_NODE_NAME,
+        0,
+        workflow_label,
+    )
+    _, conditioning = find_workflow_node(
+        workflow,
+        REFRESH_CONDITIONING_NODE_NAME,
+        workflow_label,
+        "MiniMaxH3HybridRefAndKeyframe",
+    )
+    for image_index, reference_node_name in enumerate(REFERENCE_IMAGE_NODE_NAMES):
+        input_name = f"ref_images.ref_image_{image_index}"
+        if input_name not in conditioning["inputs"]:
+            continue
+        validate_named_connection(
+            workflow,
+            REFRESH_CONDITIONING_NODE_NAME,
+            input_name,
+            reference_node_name,
+            0,
+            workflow_label,
+        )
+    for input_name, expected_value in (preserved_conditioning or {}).items():
+        if conditioning["inputs"].get(input_name) != expected_value:
+            raise RuntimeError(
+                f"Repair workflow unexpectedly changed conditioning input "
+                f"'{input_name}'."
+            )
+    find_workflow_node(
+        workflow,
+        last_frame_node_name,
+        workflow_label,
+        "LoadImage",
+    )
+    validate_named_connection(
+        workflow,
+        REFRESH_CONDITIONING_NODE_NAME,
+        "last_frame",
+        last_frame_node_name,
+        0,
+        workflow_label,
+    )
+    _, latent_save = find_workflow_node(
+        workflow,
+        H3_LATENT_SAVE_NODE_NAME,
+        workflow_label,
+        "MiniMaxH3AVSaveLatentForExtend",
+    )
+    validate_named_connection(
+        workflow,
+        H3_LATENT_SAVE_NODE_NAME,
+        "latent",
+        "SamplerCustomAdvanced",
+        0,
+        workflow_label,
+    )
+    if latent_save["inputs"].get("filename_prefix") != H3_REPAIR_LATENT_FILENAME_PREFIX:
+        raise RuntimeError(
+            "Repair workflow must save its latent outside the normal h3_context chain."
+        )
+
+
+def prepare_repair_workflow(
+    duration,
+    megapixels,
+    h3_prompt,
+    first_frame_name,
+    last_frame_name,
+    segment_number,
+    steps=6,
+    loras=None,
+    lora_override=None,
+    reference_workflow=None,
+):
+    """Prepare the refresh graph as an isolated first/last-keyframe bridge."""
+
+    if not isinstance(first_frame_name, str) or not first_frame_name.strip():
+        raise ValueError("A repair first-frame filename is required.")
+    if not isinstance(last_frame_name, str) or not last_frame_name.strip():
+        raise ValueError("A repair last-frame filename is required.")
+    workflow = prepare_refresh_workflow(
+        duration,
+        megapixels,
+        h3_prompt,
+        first_frame_name,
+        segment_number,
+        steps=steps,
+        loras=loras,
+        lora_override=lora_override,
+        reference_workflow=reference_workflow,
+    )
+    label = f"repair workflow '{REFRESH_WORKFLOW_FILE}'"
+    _, conditioning = find_workflow_node(
+        workflow,
+        REFRESH_CONDITIONING_NODE_NAME,
+        label,
+        "MiniMaxH3HybridRefAndKeyframe",
+    )
+    preserved_conditioning = {
+        input_name: copy.deepcopy(conditioning["inputs"].get(input_name))
+        for input_name in (
+            "also_ref_first_frame",
+            "ref_image_size",
+            *(
+                f"ref_images.ref_image_{image_index}"
+                for image_index in range(len(REFERENCE_IMAGE_NODE_NAMES))
+                if f"ref_images.ref_image_{image_index}" in conditioning["inputs"]
+            ),
+        )
+    }
+    last_node_id, last_node, last_node_name = _repair_last_frame_node(
+        workflow,
+        conditioning,
+        label,
+    )
+    if "image" not in last_node.get("inputs", {}):
+        raise RuntimeError(
+            f"Last-frame LoadImage node '{last_node_name}' has no image input."
+        )
+    last_node["inputs"]["image"] = last_frame_name.strip()
+    conditioning["inputs"]["last_frame"] = [last_node_id, 0]
+    set_node_input(
+        workflow,
+        H3_LATENT_SAVE_NODE_NAME,
+        "filename_prefix",
+        H3_REPAIR_LATENT_FILENAME_PREFIX,
+        label,
+        "MiniMaxH3AVSaveLatentForExtend",
+    )
+    set_node_input(
+        workflow,
+        H3_LATENT_SAVE_NODE_NAME,
+        "clip_index",
+        segment_number,
+        label,
+        "MiniMaxH3AVSaveLatentForExtend",
+    )
+    set_node_input(
+        workflow,
+        SAVE_VIDEO_NODE_NAME,
+        "filename_prefix",
+        f"video/repair_segment_{segment_number:04d}",
+        label,
+        "SaveVideo",
+    )
+    validate_repair_workflow(
+        workflow,
+        label,
+        last_node_name,
+        preserved_conditioning=preserved_conditioning,
+    )
     return workflow
 
 
@@ -9338,6 +10295,224 @@ def stitch_videos(video_paths):
     print(f"Stitching complete: {FINAL_VIDEO}")
 
 
+def replace_video_artifact(source_path, destination_path):
+    """Atomically replace a segment artifact while keeping its checkpoint path."""
+
+    source_path = os.path.abspath(source_path)
+    destination_path = os.path.abspath(destination_path)
+    if not os.path.isfile(source_path) or os.path.getsize(source_path) == 0:
+        raise RuntimeError(f"Repair output is missing or empty: {source_path}")
+    if os.path.normcase(source_path) == os.path.normcase(destination_path):
+        return destination_path
+
+    destination_directory = os.path.dirname(destination_path)
+    os.makedirs(destination_directory, exist_ok=True)
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix=".minimax_repair_video_",
+        suffix=os.path.splitext(destination_path)[1] or ".mp4",
+        dir=destination_directory,
+    )
+    os.close(descriptor)
+    try:
+        shutil.copy2(source_path, temporary_path)
+        if os.path.getsize(temporary_path) == 0:
+            raise RuntimeError(
+                f"Copied repair output is empty: {temporary_path}"
+            )
+        os.replace(temporary_path, destination_path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+    return destination_path
+
+
+def repair_existing_segment(
+    segment_number,
+    *,
+    steps=6,
+    global_loras=(),
+    generation_state_path=GENERATION_STATE_FILE,
+    subjects_path=SUBJECT_DEFINITIONS_FILE,
+    beats_path=BEATS_FILE,
+    input_directory=None,
+):
+    """Rerender one checkpointed middle segment without changing semantic state."""
+
+    try:
+        generation_state = load_generation_state(generation_state_path)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"Cannot repair because the generation checkpoint is missing: "
+            f"{generation_state_path}"
+        ) from None
+    repair = validate_repair_checkpoint(generation_state, segment_number)
+    duration, megapixels = get_repair_render_settings(
+        repair["config"],
+        segment_number,
+    )
+
+    # Preflight every current stitch artifact before spending time on a rerender.
+    for expected_segment, record in enumerate(repair["records"], start=1):
+        if (
+            not isinstance(record, dict)
+            or record.get("segment_number") != expected_segment
+        ):
+            raise RuntimeError(
+                "Generation checkpoint segment records are missing or out of order."
+            )
+        #video_path = record.get("video_path")
+        #if (
+        #    not isinstance(video_path, str)
+        #    or not os.path.isfile(video_path)
+        #    or os.path.getsize(video_path) == 0
+        #):
+        #    raise RuntimeError(
+        #        f"Cannot re-stitch after repair: video for segment "
+        #        f"{expected_segment} is missing or empty: {video_path!r}"
+        #    )
+
+    base_subject_definitions = load_text_file(subjects_path, required=False)
+    historical_subject_definitions = combine_subject_definitions(
+        base_subject_definitions,
+        repair["previous_record"]["additional_subject_definitions"],
+    )
+    opening_state = continuity_state_for_registry(
+        historical_subject_definitions,
+        copy.deepcopy(repair["previous_record"]["continuity_state"]),
+    )
+    h3_opening_summary = format_authoritative_opening_state(
+        opening_state,
+        historical_subject_definitions,
+        include_camera=False,
+    )
+    saved_llm_result = copy.deepcopy(repair["target_record"]["llm_result"])
+    hard_cut_subject_continuity = ""
+    if is_hard_cut_segment(segment_number):
+        hard_cut_subject_continuity = build_hard_cut_subject_continuity_from_state(
+            historical_subject_definitions,
+            saved_llm_result,
+            opening_state,
+        )
+    h3_prompt = build_h3_prompt(
+        saved_llm_result,
+        historical_subject_definitions,
+        hard_cut_subject_continuity,
+        h3_opening_summary,
+        segment_number,
+        ff=False,
+    )
+
+    beats_raw = load_text_file(beats_path, required=False)
+    beats = parse_beats_content(beats_raw)[0] if beats_raw else []
+    loras = beat_loras(beats, segment_number, global_loras)
+
+    print()
+    print("=" * 64)
+    print(f"REPAIR SEGMENT {segment_number}")
+    print("=" * 64)
+    print(
+        f"Previous anchor: segment {segment_number - 1} final frame"
+    )
+    print(
+        f"Next anchor: segment {segment_number + 1} stitched frame "
+        f"{TRIM_FRAMES_AFTER_FIRST}"
+    )
+    first_frame_name, last_frame_name = extract_repair_anchor_frames(
+        repair["previous_record"]["video_path"],
+        repair["next_record"]["video_path"],
+        segment_number,
+        input_directory=input_directory,
+    )
+    (
+        _workflow,
+        repaired_video_path,
+        width,
+        height,
+        rendered_megapixels,
+    ) = render_repair_segment_with_retries(
+        segment_number,
+        duration,
+        megapixels,
+        h3_prompt,
+        first_frame_name,
+        last_frame_name,
+        steps,
+        loras=loras,
+    )
+    repaired_video_path = os.path.abspath(repaired_video_path)
+    if (
+        not os.path.isfile(repaired_video_path)
+        or os.path.getsize(repaired_video_path) == 0
+    ):
+        raise RuntimeError(
+            f"Repair output is missing or empty: {repaired_video_path}"
+        )
+    print(
+        f"Created: {repaired_video_path}\n"
+        f"Resolution: {width} x {height} "
+        f"({width * height / 1_000_000:.3f} MP; "
+        f"target {rendered_megapixels:.2f} MP)"
+    )
+
+    original_video_path = os.path.abspath(
+        repair["target_record"]["video_path"]
+    )
+    saved_video_path = replace_video_artifact(
+        repaired_video_path,
+        original_video_path,
+    )
+    print("Repaired video clip saved, you can run stitch.bat to combine them.")
+    return {
+        "video_path": saved_video_path,
+        "comfy_output_path": repaired_video_path,
+        "width": width,
+        "height": height,
+        "megapixels": rendered_megapixels,
+    }
+
+
+def request_segment_llm(bundle, beats, run_id, run_config):
+    """Request a segment prompt, falling back to the fifth incomplete result."""
+
+    active_beat_id = bundle.get("active_beat_id")
+    llm_result = None
+    for director_attempt in range(1, DIRECTOR_BEAT_COMPLETION_ATTEMPTS + 1):
+        llm_result = request_valid_ministral_prompt(
+            bundle["messages"],
+            bundle["ministral_context"],
+            history_metadata={
+                "run_id": run_id,
+                "source_sha256": run_config["source_sha256"],
+                "purpose": "director",
+                "segment": bundle["segment"],
+                "attempt": director_attempt,
+                "conditioning_mode": bundle["conditioning_mode"],
+                "opening_state_sha256": bundle["opening_state_sha256"],
+            },
+        )
+        if active_beat_id is None or get_accepted_reported_beat_ids(
+            beats,
+            bundle["ministral_context"].get("completed_beat_ids", []),
+            llm_result.get("completed_beat_ids", []),
+        ):
+            break
+        if director_attempt < DIRECTOR_BEAT_COMPLETION_ATTEMPTS:
+            print(
+                f"Director result confirmed Beat {active_beat_id} is not "
+                f"complete; re-querying the LLM before rendering "
+                f"({director_attempt}/{DIRECTOR_BEAT_COMPLETION_ATTEMPTS})."
+            )
+        else:
+            print(
+                f"WARNING: Director did not return a prompt that completes Beat "
+                f"{active_beat_id} after {DIRECTOR_BEAT_COMPLETION_ATTEMPTS} "
+                "attempts; continuing with the latest result."
+            )
+    payload = dict(bundle)
+    payload["llm_result"] = llm_result
+    return payload
+
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -9350,6 +10525,15 @@ def _run_main(
     args = parse_args()
     configure_formatter(getattr(args, "model", "ministral"))
     global_loras = normalize_lora_list(getattr(args, "lora", ()))
+    repair_segment = getattr(args, "repair", None)
+    if repair_segment is not None:
+        validate_runtime_environment()
+        verify_global_loras(global_loras)
+        return repair_existing_segment(
+            repair_segment,
+            steps=args.steps,
+            global_loras=global_loras,
+        )
     run_id = str(uuid.uuid4())
 
     segment_length = args.segment_length
@@ -9635,47 +10819,10 @@ def _run_main(
             ),
         }
 
-    def request_segment_llm(bundle):
-        active_beat_id = bundle.get("active_beat_id")
-        llm_result = None
-        for director_attempt in (1, 2):
-            llm_result = request_valid_ministral_prompt(
-                bundle["messages"],
-                bundle["ministral_context"],
-                history_metadata={
-                    "run_id": run_id,
-                    "source_sha256": run_config["source_sha256"],
-                    "purpose": "director",
-                    "segment": bundle["segment"],
-                    "attempt": director_attempt,
-                    "conditioning_mode": bundle["conditioning_mode"],
-                    "opening_state_sha256": bundle["opening_state_sha256"],
-                },
-            )
-            if active_beat_id is None or get_accepted_reported_beat_ids(
-                beats,
-                bundle["ministral_context"].get("completed_beat_ids", []),
-                llm_result.get("completed_beat_ids", []),
-            ):
-                break
-            if director_attempt == 1:
-                print(
-                    f"Director result confirmed Beat {active_beat_id} is not "
-                    "complete; re-querying the LLM before rendering."
-                )
-        else:
-            raise RuntimeError(
-                f"Director failed to return a prompt that completes Beat "
-                f"{active_beat_id} after re-querying."
-            )
-        payload = dict(bundle)
-        payload["llm_result"] = llm_result
-        return payload
-
     def request_prefetched_segment(bundle, cancellation_event):
         if cancellation_event.is_set():
             raise RuntimeError("prefetched director request was cancelled")
-        payload = request_segment_llm(bundle)
+        payload = request_segment_llm(bundle, beats, run_id, run_config)
         if cancellation_event.is_set():
             raise RuntimeError("prefetched director request was cancelled")
         return payload
@@ -9751,7 +10898,12 @@ def _run_main(
             finally:
                 prefetched_next = None
         if payload is None:
-            payload = request_segment_llm(segment_bundle)
+            payload = request_segment_llm(
+                segment_bundle,
+                beats,
+                run_id,
+                run_config,
+            )
 
         llm_result = dict(payload["llm_result"])
         llm_result["detailed_description"] = (
