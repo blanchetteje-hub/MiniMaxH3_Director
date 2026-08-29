@@ -59,46 +59,24 @@ class AutoRefreshTests(unittest.TestCase):
         )
         self.assertFalse(minimax.is_hard_cut_segment(3))
 
-    def test_director_rules_distinguish_all_visual_conditioning_modes(self):
-        def rules(segment, mode):
-            return minimax.build_director_rules(
-                total_length=18,
-                segment_length=6,
-                total_segments=3,
-                subject_definitions="",
-                segment_number=segment,
-                beats_enabled=False,
-                context_frames=8,
-                conditioning_mode=mode,
-            )
+    def test_director_rules_leave_conditioning_details_to_segment_request(self):
+        rules = minimax.build_director_rules(
+            total_length=18,
+            segment_length=6,
+            total_segments=3,
+            subject_definitions="",
+            segment_number=2,
+            beats_enabled=False,
+        )
 
-        initial = rules(1, "initial")
-        latent = rules(2, "latent_continuation")
-        refresh = rules(3, "clean_refresh")
-
-        self.assertIn("VISUAL CONDITIONING MODE: INITIAL", initial)
-        self.assertIn("no preceding video latent context", initial)
-
-        self.assertIn("VISUAL CONDITIONING MODE: LATENT CONTINUATION", latent)
-        self.assertIn("8 trailing H3 AV latent context frames", latent)
-        self.assertIn("plus its pinned final frame", latent)
-        self.assertIn("do not verbally\n  reconstruct the preceding frame", latent)
-        self.assertNotIn("does NOT receive previous latent context", latent)
-
-        self.assertIn("VISUAL CONDITIONING MODE: CLEAN REFRESH", refresh)
-        self.assertIn("does NOT receive previous latent context", refresh)
-        self.assertIn("exact final rendered frame of the preceding segment", refresh)
-        self.assertIn("`first_frame` plus the clean registered subject", refresh)
-        self.assertIn("opening composition, pose", refresh)
-        self.assertIn("topology/fusions, held-prop relationships", refresh)
-        self.assertIn("relevant\n  off-frame state", refresh)
-        self.assertIn("earlier motion or latent history", refresh)
-        self.assertNotIn("trailing H3 AV latent context frames", refresh)
-
-        self.assertIn("continuity database, NOT text", refresh)
-        self.assertIn("Silently internalize the opening state", refresh)
-        self.assertIn("Never mention the same continuity fact more than once", refresh)
-        self.assertIn("Integrate continuity facts naturally", refresh)
+        self.assertIn("CONTINUATION AND VISUAL CONDITIONING", rules)
+        self.assertIn("continuity database, NOT text", rules)
+        self.assertIn("Silently internalize the opening state", rules)
+        self.assertIn("Never mention the same continuity fact more than once", rules)
+        self.assertIn("Integrate continuity facts naturally", rules)
+        self.assertNotIn("VISUAL CONDITIONING MODE:", rules)
+        self.assertNotIn("receives trailing H3 AV latent context", rules)
+        self.assertNotIn("does NOT receive previous latent context", rules)
 
     def test_segment_requests_switch_back_to_latent_after_refresh(self):
         def request(segment, mode):
@@ -108,7 +86,6 @@ class AutoRefreshTests(unittest.TestCase):
                 segment_length=6,
                 total_length=36,
                 beats=[],
-                completed_beat_ids=[],
                 conditioning_mode=mode,
             )
 

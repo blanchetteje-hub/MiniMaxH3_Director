@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -122,6 +123,47 @@ class BeatGenerationTests(unittest.TestCase):
             [(1, 4), (5, 9)],
         )
 
+    def test_generated_phase_markers_round_trip_with_beats(self):
+        macro_arc = {
+            "phases": [
+                {"phase_number": 1, "beat_start": 1, "beat_end": 2},
+                {"phase_number": 2, "beat_start": 3, "beat_end": 4},
+            ]
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "beats.txt")
+            minimax.save_generated_beats(
+                ["Beat one.", "Beat two.", "Beat three.", "Beat four."],
+                path,
+                macro_arc=macro_arc,
+            )
+            beats = minimax.load_beats(path)
+            with open(path, "r", encoding="utf-8") as beat_file:
+                saved = beat_file.read()
+
+        self.assertEqual(
+            saved,
+            "# Phase 1\nBeat one.\nBeat two.\n"
+            "# Phase 2\nBeat three.\nBeat four.\n",
+        )
+        self.assertEqual([beat.phase_number for beat in beats], [1, 1, 2, 2])
+        self.assertEqual(
+            [beat.phase_start for beat in beats],
+            [True, False, True, False],
+        )
+        self.assertFalse(minimax.is_new_phase_start(beats, 1))
+        self.assertTrue(minimax.is_new_phase_start(beats, 3))
+
+    def test_manual_phase_markers_are_supported(self):
+        beats, _ = minimax.parse_beats_content(
+            "Opening.\n# Phase 2\nA new phase begins.\nThe phase continues.\n"
+        )
+
+        self.assertIsNone(beats[0].phase_number)
+        self.assertEqual(beats[1].phase_number, 2)
+        self.assertTrue(beats[1].phase_start)
+        self.assertFalse(beats[2].phase_start)
+
     def test_generation_requests_follow_macro_phase_ranges(self):
         calls = []
 
@@ -183,14 +225,30 @@ class BeatGenerationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, mock.patch(
             "builtins.print"
         ):
+            story_source = (
+                "A mountain team finds a victim and brings them safely home."
+            )
+            beats_path = os.path.join(directory, "beats.txt")
             beats = minimax.generate_beats_from_story(
-                "A mountain team finds a victim and brings them safely home.",
+                story_source,
                 7,
-                path=os.path.join(directory, "beats.txt"),
+                path=beats_path,
                 llm_request=llm_request,
                 content_attempts=1,
                 audit_attempts=1,
             )
+            with open(
+                os.path.join(directory, "story_arc.txt"),
+                "r",
+                encoding="utf-8",
+            ) as arc_file:
+                saved_arc = json.load(arc_file)
+            with open(
+                os.path.join(directory, "story_arc.txt.sha256"),
+                "r",
+                encoding="utf-8",
+            ) as hash_file:
+                saved_source_hash = hash_file.read().strip()
 
         generation_calls = [call for call in calls if call[0] == "beat_generation"]
         self.assertEqual(
@@ -209,6 +267,186 @@ class BeatGenerationTests(unittest.TestCase):
             generation_calls[1][1][1]["content"],
         )
         self.assertEqual(len(beats), 7)
+        self.assertEqual(saved_arc["phases"][1]["beat_start"], 4)
+        self.assertEqual(
+            saved_source_hash,
+            minimax.hash_story_arc_source(story_source),
+        )
+
+    def test_existing_story_arc_is_used_without_requesting_a_new_arc(self):
+        macro_arc = {
+            "phases": [
+                {
+                    "phase_number": 1,
+                    "beat_start": 1,
+                    "beat_end": 2,
+                    "narrative_purpose": "Complete the delivery.",
+                    "broad_progression": "The courier reaches the destination.",
+                    "characters_introduced": ["The courier"],
+                    "location": "Mountain road",
+                    "required_end_state": "The package is delivered.",
+                }
+            ]
+        }
+        purposes = []
+
+        def llm_request(messages, **kwargs):
+            del messages
+            metadata = kwargs["history_metadata"]
+            purpose = metadata["purpose"]
+            purposes.append(purpose)
+            if purpose == "beat_generation":
+                return {
+                    "beats": [
+                        {
+                            "beat_number": 1,
+                            "beat_text": "The courier climbs the mountain road.",
+                        },
+                        {
+                            "beat_number": 2,
+                            "beat_text": "The courier delivers the package safely.",
+                        },
+                    ]
+                }
+            if purpose == "beat_plan_audit":
+                return {
+                    "valid": True,
+                    "macro_arc_consistent_with_source": True,
+                    "blocking_issues": [],
+                    "warnings": [],
+                }
+            raise AssertionError(f"Unexpected purpose: {purpose}")
+
+        with tempfile.TemporaryDirectory() as directory, mock.patch(
+            "builtins.print"
+        ):
+            story_source = "A courier completes a mountain delivery."
+            beats_path = os.path.join(directory, "beats.txt")
+            arc_path = os.path.join(directory, "story_arc.txt")
+            with open(beats_path, "w", encoding="utf-8") as beat_file:
+                beat_file.write("")
+            minimax.save_story_arc(macro_arc, story_source, arc_path)
+            with open(arc_path, "r", encoding="utf-8") as arc_file:
+                original_arc_text = arc_file.read()
+
+            beats = minimax.load_or_generate_beats(
+                beats_path,
+                story_source,
+                2,
+                llm_request=llm_request,
+            )
+            with open(arc_path, "r", encoding="utf-8") as arc_file:
+                preserved_arc_text = arc_file.read()
+
+        self.assertEqual(
+            [str(beat) for beat in beats],
+            [
+                "The courier climbs the mountain road.",
+                "The courier delivers the package safely.",
+            ],
+        )
+        self.assertEqual(purposes, ["beat_generation", "beat_plan_audit"])
+        self.assertEqual(preserved_arc_text, original_arc_text)
+
+    def test_story_arc_hash_mismatch_regenerates_and_overwrites_arc(self):
+        old_arc = {
+            "phases": [
+                {
+                    "phase_number": 1,
+                    "beat_start": 1,
+                    "beat_end": 2,
+                    "narrative_purpose": "Follow the old journey.",
+                    "broad_progression": "A sailor crosses the sea.",
+                    "characters_introduced": ["The sailor"],
+                    "location": "Open sea",
+                    "required_end_state": "The sailor reaches port.",
+                }
+            ]
+        }
+        new_arc = {
+            "phases": [
+                {
+                    "phase_number": 1,
+                    "beat_start": 1,
+                    "beat_end": 2,
+                    "narrative_purpose": "Complete the new delivery.",
+                    "broad_progression": "A pilot reaches the airfield.",
+                    "characters_introduced": ["The pilot"],
+                    "location": "Mountain airfield",
+                    "required_end_state": "The medicine is delivered.",
+                }
+            ]
+        }
+        purposes = []
+
+        def llm_request(messages, **kwargs):
+            del messages
+            metadata = kwargs["history_metadata"]
+            purpose = metadata["purpose"]
+            purposes.append(purpose)
+            if purpose == "beat_arc_plan":
+                return new_arc
+            if purpose == "beat_arc_fidelity":
+                return {"valid": True, "issues": []}
+            if purpose == "beat_generation":
+                return {
+                    "beats": [
+                        {
+                            "beat_number": 1,
+                            "beat_text": "The pilot lands at the mountain airfield.",
+                        },
+                        {
+                            "beat_number": 2,
+                            "beat_text": "The pilot delivers the medicine safely.",
+                        },
+                    ]
+                }
+            if purpose == "beat_plan_audit":
+                return {
+                    "valid": True,
+                    "macro_arc_consistent_with_source": True,
+                    "blocking_issues": [],
+                    "warnings": [],
+                }
+            raise AssertionError(f"Unexpected purpose: {purpose}")
+
+        with tempfile.TemporaryDirectory() as directory, mock.patch(
+            "builtins.print"
+        ):
+            old_story = "A sailor completes a sea voyage."
+            new_story = "A pilot delivers medicine to a mountain airfield."
+            beats_path = os.path.join(directory, "beats.txt")
+            arc_path = os.path.join(directory, "story_arc.txt")
+            with open(beats_path, "w", encoding="utf-8") as beat_file:
+                beat_file.write("")
+            minimax.save_story_arc(old_arc, old_story, arc_path)
+
+            minimax.load_or_generate_beats(
+                beats_path,
+                new_story,
+                2,
+                llm_request=llm_request,
+            )
+            with open(arc_path, "r", encoding="utf-8") as arc_file:
+                saved_arc = json.load(arc_file)
+            with open(
+                minimax.get_story_arc_hash_path(arc_path),
+                "r",
+                encoding="utf-8",
+            ) as hash_file:
+                saved_hash = hash_file.read().strip()
+
+        self.assertEqual(
+            purposes,
+            [
+                "beat_arc_plan",
+                "beat_arc_fidelity",
+                "beat_generation",
+                "beat_plan_audit",
+            ],
+        )
+        self.assertEqual(saved_arc, new_arc)
+        self.assertEqual(saved_hash, minimax.hash_story_arc_source(new_story))
 
     def test_future_macro_introduction_retries_the_phase(self):
         generation_calls = []
@@ -311,6 +549,87 @@ class BeatGenerationTests(unittest.TestCase):
                 "Amy and Jim complete the search safely.",
             ],
         )
+
+    def test_beat_generation_retries_past_former_limits_until_valid(self):
+        macro_arc = {
+            "phases": [
+                {
+                    "phase_number": 1,
+                    "beat_start": 1,
+                    "beat_end": 2,
+                    "narrative_purpose": "Complete the rescue.",
+                    "broad_progression": "Amy finds and rescues Ben.",
+                    "characters_introduced": ["Amy", "Ben"],
+                    "location": "Mountain trail",
+                    "required_end_state": "Ben is safe.",
+                }
+            ]
+        }
+        generation_attempts = 0
+
+        def llm_request(_messages, **kwargs):
+            nonlocal generation_attempts
+            purpose = kwargs["history_metadata"]["purpose"]
+            if purpose == "beat_generation":
+                generation_attempts += 1
+                if generation_attempts <= 5:
+                    return {"beats": ["Only one beat is returned."]}
+                return {
+                    "beats": [
+                        {
+                            "beat_number": 1,
+                            "beat_text": "Amy finds Ben on the mountain trail.",
+                        },
+                        {
+                            "beat_number": 2,
+                            "beat_text": "Amy brings Ben safely home.",
+                        },
+                    ]
+                }
+            if purpose == "beat_plan_audit":
+                return {
+                    "valid": True,
+                    "macro_arc_consistent_with_source": True,
+                    "blocking_issues": [],
+                    "warnings": [],
+                }
+            raise AssertionError(f"Unexpected purpose: {purpose}")
+
+        with tempfile.TemporaryDirectory() as directory, mock.patch(
+            "builtins.print"
+        ):
+            beats_path = os.path.join(directory, "beats.txt")
+            arc_path = os.path.join(directory, "story_arc.txt")
+            with open(arc_path, "w", encoding="utf-8") as arc_file:
+                json.dump(macro_arc, arc_file)
+            beats = minimax.generate_beats_from_story(
+                "Amy rescues Ben from a mountain trail.",
+                2,
+                path=beats_path,
+                llm_request=llm_request,
+                content_attempts=1,
+                audit_attempts=1,
+            )
+
+        self.assertEqual(generation_attempts, 6)
+        self.assertEqual(
+            [str(beat) for beat in beats],
+            [
+                "Amy finds Ben on the mountain trail.",
+                "Amy brings Ben safely home.",
+            ],
+        )
+
+    def test_user_interrupt_escapes_unlimited_beat_generation(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch(
+            "builtins.print"
+        ), self.assertRaises(KeyboardInterrupt):
+            minimax.generate_beats_from_story(
+                "Amy begins a rescue.",
+                2,
+                path=os.path.join(directory, "beats.txt"),
+                llm_request=mock.Mock(side_effect=KeyboardInterrupt),
+            )
 
     def test_prompt_requests_one_creative_progressive_beat_per_segment(self):
         extra = "Make beat 4 a silent reveal; preserve Jack’s exact motivation."
@@ -466,7 +785,6 @@ class BeatGenerationTests(unittest.TestCase):
             "A rescue story.",
             2,
             ["Marc finds the beacon.", "Elena guides everyone home."],
-            "Keep the rescue grounded.",
             subject_information=subjects,
         )
 
@@ -767,62 +1085,92 @@ class BeatGenerationTests(unittest.TestCase):
         ]
         self.assertEqual((beat_array["minItems"], beat_array["maxItems"]), (3, 3))
 
-    def test_final_sentence_failure_accepts_the_last_returned_beats(self):
-        last_beats = [
+    def test_duplicate_failure_keeps_retrying_until_valid(self):
+        invalid_beats = [
             f"Visible story event {number} advances the plot."
             for number in range(1, 21)
         ]
-        last_beats[18] = (
-            "The gate opens. The warning siren sounds. Everyone runs inside."
-        )
+        invalid_beats[18] = invalid_beats[17]
+        valid_beats = list(invalid_beats)
+        valid_beats[18] = "The gate opens and everyone runs inside."
+        macro_arc = {
+            "phases": [{
+                "phase_number": 1,
+                "beat_start": 1,
+                "beat_end": 20,
+                "narrative_purpose": "Complete the chase.",
+                "broad_progression": "The group crosses the city.",
+                "characters_introduced": [],
+                "location": "The city",
+                "required_end_state": "The group reaches safety.",
+            }]
+        }
         llm_request = mock.Mock(
-            side_effect=[{"beats": list(last_beats)} for _ in range(3)]
+            side_effect=(
+                [{"beats": list(invalid_beats)} for _ in range(5)]
+                + [
+                    {"beats": valid_beats},
+                    {
+                        "valid": True,
+                        "macro_arc_consistent_with_source": True,
+                        "blocking_issues": [],
+                        "warnings": [],
+                    },
+                ]
+            )
         )
 
         with tempfile.TemporaryDirectory() as directory, mock.patch(
             "builtins.print"
-        ) as print_mock:
+        ), mock.patch("minimax.load_story_arc", return_value=macro_arc):
             beats = minimax.generate_beats_from_story(
                 "A group races through a dangerous city.",
                 20,
                 path=os.path.join(directory, "beats.txt"),
                 llm_request=llm_request,
-                content_attempts=3,
-                beat_instructions="Keep the chase visually clear.",
+                content_attempts=1,
             )
 
-        self.assertEqual([str(beat) for beat in beats], last_beats)
-        self.assertEqual(llm_request.call_count, 3)
-        print_mock.assert_any_call(
-            "WARNING: final beat-generation attempt failed validation; "
-            "accepting the last returned batch because it contains exactly "
-            "20 beats.",
-            flush=True,
-        )
-        print_mock.assert_any_call(
-            "WARNING: skipping beat-instruction compliance review because the "
-            "final generation attempt was accepted by beat count only.",
-            flush=True,
-        )
+        self.assertEqual([str(beat) for beat in beats], valid_beats)
+        self.assertEqual(llm_request.call_count, 7)
 
-    def test_final_fallback_still_rejects_a_wrong_beat_count(self):
-        llm_request = mock.Mock(
-            return_value={"beats": ["Only one returned beat."]}
-        )
+    def test_wrong_beat_count_keeps_requesting_until_interrupt(self):
+        macro_arc = {
+            "phases": [{
+                "phase_number": 1,
+                "beat_start": 1,
+                "beat_end": 2,
+                "narrative_purpose": "Complete the story.",
+                "broad_progression": "The story advances.",
+                "characters_introduced": [],
+                "location": "A location",
+                "required_end_state": "The story concludes.",
+            }]
+        }
+        calls = 0
 
-        with tempfile.TemporaryDirectory() as directory, self.assertRaisesRegex(
-            RuntimeError,
-            "did not return exactly 2 valid",
-        ):
+        def llm_request(_messages, **_kwargs):
+            nonlocal calls
+            calls += 1
+            if calls > 5:
+                raise KeyboardInterrupt
+            return {"beats": ["Only one returned beat."]}
+
+        with tempfile.TemporaryDirectory() as directory, mock.patch(
+            "builtins.print"
+        ), mock.patch(
+            "minimax.load_story_arc",
+            return_value=macro_arc,
+        ), self.assertRaises(KeyboardInterrupt):
             minimax.generate_beats_from_story(
                 "A two-part story.",
                 2,
                 path=os.path.join(directory, "beats.txt"),
                 llm_request=llm_request,
-                content_attempts=3,
+                content_attempts=1,
             )
 
-        self.assertEqual(llm_request.call_count, 3)
+        self.assertEqual(calls, 6)
 
     def test_generation_requests_no_more_than_twenty_beats_per_batch(self):
         requested_ranges = []
@@ -1071,6 +1419,15 @@ class BeatGenerationTests(unittest.TestCase):
         self.assertEqual(
             generated.call_args.kwargs["subject_information"],
             "- Marc is a 40-year-old man.",
+        )
+        self.assertEqual(
+            generated.call_args.kwargs["story_arc_path"],
+            minimax.STORY_ARC_FILE,
+        )
+        self.assertEqual(
+            generated.call_args.kwargs["story_arc_source"],
+            "beat_instructions: [Make the middle beat surprising.]\n"
+            "A three-part story.",
         )
 
     def test_invalid_subjects_stop_startup_before_beat_generation(self):

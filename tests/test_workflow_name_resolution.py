@@ -65,6 +65,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             {
                 1: {
                     "name": "Amy",
+                    "gender": "female",
                     "picture_ids": [1],
                     "picture_id": 1,
                     "speaker_id": "S1",
@@ -84,6 +85,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             {
                 1: {
                     "name": "Amy",
+                    "gender": "female",
                     "picture_ids": [1],
                     "picture_id": 1,
                     "speaker_id": "S1",
@@ -103,6 +105,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             {
                 1: {
                     "name": "Amy",
+                    "gender": "female",
                     "picture_ids": [1],
                     "picture_id": 1,
                     "speaker_id": "S1",
@@ -137,6 +140,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         registry = minimax.parse_subject_registry(definitions)
 
         self.assertEqual(registry[3]["name"], "spider-alien")
+        self.assertEqual(registry[3]["gender"], "female")
         self.assertEqual(registry[3]["picture_ids"], [])
         self.assertIsNone(registry[3]["picture_id"])
         self.assertEqual(registry[3]["speaker_id"], "S3")
@@ -186,8 +190,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         )
 
         expected = (
-            "<Subject 2> is spider-alien, created in generated video "
-            "segment 4 and continued from <Video 1>."
+            "<Subject 2> is spider-alien, female (S2), continued from <Video 1>."
         )
         self.assertEqual(added, [expected])
         self.assertEqual(additional, [expected])
@@ -225,15 +228,24 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             is_append=True
         )
 
-    def test_append_workflow_defaults_to_twenty_two_context_frames_and_pins_last(self):
+    def test_append_preparation_defaults_to_seven_context_frames(self):
+        workflow = copy.deepcopy(self.append)
+        with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(
+            "minimax.secrets.randbelow", return_value=123456
+        ):
+            prepared = minimax.prepare_append_workflow(
+                6.0,
+                "prompt",
+                2,
+            )
+
         _, extender = minimax.find_workflow_node(
-            self.append,
+            prepared,
             minimax.VIDEO_EXTEND_NODE_NAME,
-            "append workflow",
+            "prepared append workflow",
             "MiniMaxH3VideoExtendPatched",
         )
-
-        self.assertEqual(extender["inputs"]["context_frames"], 22)
+        self.assertEqual(extender["inputs"]["context_frames"], 7)
         self.assertIs(extender["inputs"]["pin_last_frame"], True)
 
     def test_append_validation_allows_any_number_of_reference_images(self):
@@ -332,6 +344,46 @@ class WorkflowNameResolutionTests(unittest.TestCase):
                 for call in print_mock.call_args_list
             )
         )
+
+    def test_global_loras_are_verified_and_printed(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            nested_dir = os.path.join(temp_dir, "styles")
+            os.makedirs(nested_dir)
+            open(os.path.join(nested_dir, "cinematic.safetensors"), "wb").close()
+
+            with mock.patch(
+                "minimax.LORA_DIRECTORY",
+                temp_dir,
+            ), mock.patch("builtins.print") as print_mock:
+                minimax.verify_global_loras(
+                    [("styles/cinematic.safetensors", 0.75)],
+                )
+
+        print_mock.assert_called_once_with(
+            "Global LoRA styles/cinematic.safetensors:0.75 verified."
+        )
+
+    def test_missing_global_lora_fails_validation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaisesRegex(
+                FileNotFoundError,
+                "Global LoRA not found",
+            ):
+                minimax.verify_global_loras(
+                    [("missing.safetensors", 1.0)],
+                    temp_dir,
+                )
+
+    def test_global_lora_cannot_escape_lora_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaisesRegex(
+                ValueError,
+                "must be relative",
+            ):
+                minimax.verify_global_loras(
+                    [("../outside.safetensors", 1.0)],
+                    temp_dir,
+                )
 
     def test_initial_preparation_updates_nodes_by_title_after_renumbering(self):
         workflow = renumber_workflow(self.initial)
@@ -444,28 +496,35 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         extender["inputs"]["context_frames"] = 2
         extender["inputs"]["pin_last_frame"] = False
         with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(
-            "minimax.os.path.exists", return_value=True
-        ), mock.patch("minimax.secrets.randbelow", return_value=654321):
+            "minimax.secrets.randbelow", return_value=654321
+        ):
             prepared = minimax.prepare_append_workflow(
                 6.0,
                 "prompt",
-                "previous.mp4",
                 7,
                 steps=10,
                 context_frames=12,
             )
 
-        _, video = minimax.find_workflow_node(
+        _, latent_load = minimax.find_workflow_node(
             prepared,
-            minimax.LOAD_VIDEO_NODE_NAME,
-            "prepared append"
+            minimax.H3_LATENT_LOAD_NODE_NAME,
+            "prepared append",
+            "MiniMaxH3AVLoadLatentForExtend",
+        )
+        _, latent_save = minimax.find_workflow_node(
+            prepared,
+            minimax.H3_LATENT_SAVE_NODE_NAME,
+            "prepared append",
+            "MiniMaxH3AVSaveLatentForExtend",
         )
         _, save = minimax.find_workflow_node(
             prepared,
             minimax.SAVE_VIDEO_NODE_NAME,
             "prepared append"
         )
-        self.assertTrue(video["inputs"]["video"].endswith("previous.mp4"))
+        self.assertEqual(latent_load["inputs"]["clip_index"], 6)
+        self.assertEqual(latent_save["inputs"]["clip_index"], 7)
         self.assertEqual(
             save["inputs"]["filename_prefix"],
             "video/segment_0007"

@@ -401,7 +401,7 @@ class BeatPlanRepairFlowTests(unittest.TestCase):
             2,
         )
 
-    def test_final_failed_audit_falls_back_without_a_third_repair_round(self):
+    def test_repair_rounds_continue_past_former_limit(self):
         fake = PurposeDispatchLLM(
             8,
             audits=[
@@ -413,16 +413,19 @@ class BeatPlanRepairFlowTests(unittest.TestCase):
             repairs=[
                 {"beats": [{"beat_id": 2, "text": "Amy completes the rescue."}]},
                 {"beats": [{"beat_id": 5, "text": "The team starts home."}]},
+                {"beats": [{"beat_id": 8, "text": "The team arrives home."}]},
             ],
         )
 
-        beats = self.run_generation(fake, 8, audit_attempts=2)
+        beats = self.run_generation(fake, 8, audit_attempts=1, repair_rounds=1)
 
-        self.assertTrue(all(beat.startswith("Plan 2 event") for beat in beats))
-        self.assertEqual(fake.generation_count, 2)
+        self.assertEqual(beats[1], "Amy completes the rescue.")
+        self.assertEqual(beats[4], "The team starts home.")
+        self.assertEqual(beats[7], "The team arrives home.")
+        self.assertEqual(fake.generation_count, 1)
         self.assertEqual(
             sum(1 for purpose, _, _ in fake.calls if purpose == "beat_plan_repair"),
-            2,
+            3,
         )
 
     def test_all_malformed_ranges_trigger_full_plan_fallback(self):
@@ -442,7 +445,7 @@ class BeatPlanRepairFlowTests(unittest.TestCase):
             any(purpose == "beat_plan_repair" for purpose, _, _ in fake.calls)
         )
 
-    def test_response_attempt_exhaustion_regenerates_without_round_two(self):
+    def test_repair_responses_continue_past_former_attempt_limit(self):
         fake = PurposeDispatchLLM(
             4,
             audits=[
@@ -452,14 +455,28 @@ class BeatPlanRepairFlowTests(unittest.TestCase):
             repairs=[
                 RuntimeError("first malformed response"),
                 RuntimeError("second malformed response"),
+                RuntimeError("third malformed response"),
+                {
+                    "beats": [
+                        {
+                            "beat_id": 2,
+                            "text": "Amy completes the rescue.",
+                        }
+                    ]
+                },
             ],
         )
 
-        beats = self.run_generation(fake, 4, audit_attempts=2)
+        beats = self.run_generation(
+            fake,
+            4,
+            audit_attempts=1,
+            repair_response_attempts=1,
+        )
 
-        self.assertTrue(all(beat.startswith("Plan 2 event") for beat in beats))
+        self.assertEqual(beats[1], "Amy completes the rescue.")
         repair_calls = [call for call in fake.calls if call[0] == "beat_plan_repair"]
-        self.assertEqual(len(repair_calls), 2)
+        self.assertEqual(len(repair_calls), 4)
         self.assertEqual(
             {
                 call[2]["history_metadata"]["repair_round"]

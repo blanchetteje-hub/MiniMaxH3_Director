@@ -236,17 +236,21 @@ def _subject_records(context: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     for match in re.finditer(
         r"(?im)^\s*<Subject\s+(?P<subject>\d+)>\s*(?:is\s+)?"
         r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)\s*,\s*"
-        r".*?\b(?:created|established)\s+(?:by\s+<Video\s+1>|"
-        r"in\s+generated\s+"
-        r"video\s+segment\s+\d+).*?\.?\s*$",
+        r"(?P<details>.*?)\b(?:continued\s+from\s+<Video\s+1>|"
+        r"(?:created|established)\s+(?:by\s+<Video\s+1>|in\s+generated\s+"
+        r"video\s+segment\s+\d+).*?)\.?\s*$",
         definitions,
     ):
         name = match.group("name").strip()
+        speaker = next(
+            iter(re.findall(r"(?i)\(S(\d+)\)", match.group("details"))),
+            match.group("subject"),
+        )
         records[name] = {
             "subject_id": int(match.group("subject")),
             "picture_ids": [],
             "picture_id": None,
-            "speaker_id": f"S{match.group('subject')}",
+            "speaker_id": f"S{speaker}",
         }
     for match in re.finditer(
         r"(?im)^\s*<Subject\s+(?P<subject>\d+)>\s*(?:is\s+)?"

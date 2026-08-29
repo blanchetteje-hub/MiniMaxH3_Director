@@ -213,8 +213,9 @@ class VisualFormattingTests(unittest.TestCase):
         formatted = format_ministral_prompt(malformed, context)
         description = formatted["detailed_description"]
 
-        self.assertEqual(description.count("<Picture 2>"), 1)
-        self.assertIn("Ben <Picture 2> doing something.", description)
+        self.assertEqual(description.count("<Subject 2>"), 1)
+        self.assertIn("<Subject 2> Ben doing something.", description)
+        self.assertNotIn("<Picture 2>", description)
 
     def test_multi_word_subject_gets_registered_picture_tag_once(self) -> None:
         context = context_for(
@@ -232,8 +233,9 @@ class VisualFormattingTests(unittest.TestCase):
         formatted = format_ministral_prompt(malformed, context)
         description = formatted["detailed_description"]
 
-        self.assertIn("Mary Jane Watson <Picture 4> charges forward", description)
-        self.assertEqual(description.count("<Picture 4>"), 1)
+        self.assertIn("<Subject 1> Mary Jane Watson charges forward", description)
+        self.assertEqual(description.count("<Subject 1>"), 1)
+        self.assertNotIn("<Picture 4>", description)
         self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
     def test_picture_only_definition_infers_subject_and_speaker(self) -> None:
@@ -249,7 +251,7 @@ class VisualFormattingTests(unittest.TestCase):
         formatted = format_ministral_prompt(malformed, context)
         description = formatted["detailed_description"]
 
-        self.assertIn("Amy <Picture 1> (S1) says:", description)
+        self.assertIn("<Subject 1> Amy (S1) says:", description)
         self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
     def test_stripped_unknown_picture_does_not_leave_spaced_apostrophe(self) -> None:
@@ -295,7 +297,7 @@ class VisualFormattingTests(unittest.TestCase):
 
         self.assertEqual(
             description,
-            "[Shot 17] Camera continues from the previous shot.\nAt 00:01.200, "
+            "[Shot 17] At 00:01.200, "
             "Jack’s smirk fades into a mischievous grin as he hooks both "
             "thumbs onto his jeans.",
         )
@@ -319,7 +321,7 @@ class VisualFormattingTests(unittest.TestCase):
 
         self.assertTrue(description.startswith("[Shot 3] Camera cuts to a new shot:"))
 
-    def test_non_hard_cut_converts_model_cut_to_continuation(self) -> None:
+    def test_non_hard_cut_removes_model_cut_without_inventing_camera_prose(self) -> None:
         malformed = result(
             "[Shot 2] Camera cuts to a new shot: Mark walks toward Jill."
         )
@@ -329,12 +331,9 @@ class VisualFormattingTests(unittest.TestCase):
             context_for(2, hard_cut_required=False),
         )["detailed_description"]
 
-        self.assertTrue(
-            description.startswith(
-                "[Shot 2] Camera continues from the previous shot."
-            )
-        )
+        self.assertTrue(description.startswith("[Shot 2] <Subject 1> Mark walks"))
         self.assertNotIn("Camera cuts to a new shot", description)
+        self.assertNotIn("Camera continues from the previous shot", description)
 
     def test_hard_cut_removes_conflicting_continuation_opening(self) -> None:
         malformed = result(
@@ -350,7 +349,7 @@ class VisualFormattingTests(unittest.TestCase):
         self.assertTrue(
             description.startswith("[Shot 3] Camera cuts to a new shot:")
         )
-        self.assertIn("Mark <Picture 1> and Jill <Picture 2>", description)
+        self.assertIn("<Subject 1> Mark and <Subject 2> Jill", description)
         self.assertIn("face the saucers.", description)
         self.assertNotIn("continues from the previous shot", description.lower())
 
@@ -396,9 +395,9 @@ class VisualFormattingTests(unittest.TestCase):
 
         self.assertNotIn("At 00:05.200, and", description)
         self.assertNotIn("At 00:06.800, .", description)
-        self.assertIn("Mark <Picture 1> runs forward.", description)
+        self.assertIn("<Subject 1> Mark runs forward.", description)
 
-    def test_continuation_opening_uses_zero_timestamp_and_h3_sentence_form(self) -> None:
+    def test_generic_continuation_opening_and_timestamp_are_removed(self) -> None:
         formatted = format_ministral_prompt(
             result(
                 "[Shot 2] Camera continues from the previous shot At 00:01.500, "
@@ -414,12 +413,9 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
         description = formatted["detailed_description"]
-        self.assertTrue(
-            description.startswith(
-                "[Shot 2] Camera continues from the previous shot."
-            )
-        )
+        self.assertTrue(description.startswith("[Shot 2] <Subject 1> Mark walks"))
         self.assertNotIn("00:01.500", description)
+        self.assertNotIn("continues from the previous shot", description.lower())
         self.assertEqual(
             validate_ministral_prompt(
                 formatted,
@@ -495,10 +491,10 @@ class VisualFormattingTests(unittest.TestCase):
             "detailed_description"
         ]
 
-        self.assertIn("Mark <Picture 1>", description)
-        self.assertIn("<Picture 1>", description)
-        self.assertIn("Jill <Picture 2>", description)
-        self.assertIn("<Picture 2>", description)
+        self.assertIn("<Subject 1> Mark", description)
+        self.assertIn("<Subject 2> Jill", description)
+        self.assertNotIn("<Picture 1>", description)
+        self.assertNotIn("<Picture 2>", description)
         self.assertNotIn("<Subject 3>", description)
         self.assertNotIn("<Picture 3>", description)
         self.assertIn("son", description)
@@ -530,8 +526,8 @@ class DialogueFormattingTests(unittest.TestCase):
             "detailed_description"
         ]
 
-        self.assertIn("Mark <Picture 1> (S1)", description)
-        self.assertIn("Jill <Picture 2> (S2)", description)
+        self.assertIn("<Subject 1> Mark (S1)", description)
+        self.assertIn("<Subject 2> Jill (S2)", description)
         self.assertIn("(S1,S2)", description)
         self.assertNotRegex(description, r"\(S[34](?:,S[34])?\)")
         self.assertIn("<d>[English] Those can't be airplanes!</d>", description)
@@ -550,8 +546,8 @@ class DialogueFormattingTests(unittest.TestCase):
         ]
 
         self.assertNotRegex(description, r"\bS[56]\b")
-        self.assertIn("Mark <Picture 1> (S1)", description)
-        self.assertIn("Jill <Picture 2> (S2)", description)
+        self.assertIn("<Subject 1> Mark (S1)", description)
+        self.assertIn("<Subject 2> Jill (S2)", description)
         self.assertIn("(S1,S2)", description)
         self.assertIn("<d>[English] Where did those saucers come from?</d>", description)
         self.assertIn("<d>[English] They appeared above the rides.</d>", description)
@@ -584,8 +580,8 @@ class DialogueFormattingTests(unittest.TestCase):
             "detailed_description"
         ]
 
-        self.assertIn("Mark <Picture 1> (S1)", description)
-        self.assertIn("Jill <Picture 2> (S2)", description)
+        self.assertIn("<Subject 1> Mark (S1)", description)
+        self.assertIn("<Subject 2> Jill (S2)", description)
         self.assertIn("<d>[English] What is happening?!</d>", description)
         self.assertIn("<d>[English] I don't know, look up!</d>", description)
         self.assertEqual(description.count("What is happening?!"), 1)
@@ -620,7 +616,7 @@ class DialogueFormattingTests(unittest.TestCase):
         self.assertIn("<d>[English] I knew something was wrong.</d>", description)
         self.assertRegex(
             description,
-            r"I knew something was wrong\.</d> while (?:Mark's|his) lips remain completely closed",
+            r"I knew something was wrong\.</d> while (?:Mark's|his|their) lips remain completely closed",
         )
 
 
@@ -695,10 +691,10 @@ class CompletionMetadataTests(unittest.TestCase):
 
         formatted = format_ministral_prompt(prompt, context_for(1))
 
-        self.assertTrue(any(
-            issue.startswith("Segment 1 must complete and report active beat B001")
-            for issue in validate_ministral_prompt(formatted, context_for(1))
-        ))
+        self.assertIn(
+            "Segment 1 must report exactly one completed beat ID: [1].",
+            validate_ministral_prompt(formatted, context_for(1)),
+        )
 
     def test_completion_ids_are_normalized_to_consecutive_beats(self) -> None:
         malformed = result(
@@ -710,7 +706,7 @@ class CompletionMetadataTests(unittest.TestCase):
 
         repaired = format_ministral_prompt(malformed, context_for(3))
 
-        self.assertEqual(repaired["completed_beat_ids"], [3, 4])
+        self.assertEqual(repaired["completed_beat_ids"], [3])
 
     def test_completion_metadata_is_removed_from_rendered_description(self) -> None:
         malformed = result(
@@ -754,8 +750,8 @@ class BeatFixtureTests(unittest.TestCase):
             completed=["B001"],
         )
         valid = result(
-            "[Shot 1] Live-action, cinematic, a medium-wide shot shows Mark <Picture 1>, "
-            "Jill <Picture 2>, and Mark's family enjoying the busy theme park together.",
+            "[Shot 1] Live-action, cinematic, a medium-wide shot shows <Subject 1> Mark, "
+            "<Subject 2> Jill, and <Subject 1> Mark's family enjoying the busy theme park together.",
             completed=[1],
         )
 
@@ -770,7 +766,7 @@ class BeatFixtureTests(unittest.TestCase):
             completed=["B002"],
         )
         valid = result(
-            "[Shot 2] Camera continues from the previous shot. Live-action, cinematic, "
+            "[Shot 2] Live-action, cinematic, "
             "several flying saucers fly overhead above the "
             "theme park as the camera tilts up with large amplitude at fast speed.",
             completed=[2],
@@ -792,9 +788,9 @@ class BeatFixtureTests(unittest.TestCase):
         )
         valid = result(
             "[Shot 3] Camera cuts to a new shot: Live-action, cinematic, "
-            "Mark <Picture 1> turns to Jill <Picture 2> as they try to "
-            "understand the saucers. Mark (S1) asks: <d>[English] What is happening?!</d> "
-            "Jill (S2) answers: <d>[English] I don't know, those things aren't planes.</d>",
+            "<Subject 1> Mark turns to <Subject 2> Jill as they try to "
+            "understand the saucers. <Subject 1> Mark (S1) asks: <d>[English] What is happening?!</d> "
+            "<Subject 2> Jill (S2) answers: <d>[English] I don't know, those things aren't planes.</d>",
             soundscape="Crowds gasp while footsteps shuffle across the pavement.",
             completed=[3],
         )
@@ -815,10 +811,10 @@ class BeatFixtureTests(unittest.TestCase):
             completed=["B004", 5],
         )
         valid = result(
-            "[Shot 4] Camera continues from the previous shot. Live-action, cinematic, "
-            "Mark <Picture 1>'s family run from the descending saucers. "
+            "[Shot 4] Live-action, cinematic, "
+            "<Subject 1> Mark's family run from the descending saucers. "
             "Beams seize and lift them from the ground, carrying the entire family into the "
-            "craft until Mark and Jill <Picture 2> stand beside empty pavement "
+            "craft until <Subject 1> Mark and <Subject 2> Jill stand beside empty pavement "
             "after the completed abduction.",
             soundscape="Running footsteps and frightened gasps give way to a low electronic hum.",
             completed=[4],

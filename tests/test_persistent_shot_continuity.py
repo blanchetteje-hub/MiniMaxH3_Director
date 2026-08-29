@@ -40,9 +40,6 @@ def inject(description, state, segment_number=2):
     """Invoke the public shot-local continuity enrichment API."""
     return minimax.inject_persistent_state_into_description(
         description,
-        state,
-        SUBJECT_DEFINITIONS,
-        segment_number=segment_number,
     )
 
 

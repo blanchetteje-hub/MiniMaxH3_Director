@@ -227,16 +227,9 @@ ComfyUI/
     │   └── minimax_h3_video_vae_fp16.safetensors
     └── loras/
         └── MiniMaxH3/
-            ├── minimax_h3_turbo_v4_step600_pruned_comfyui.safetensors
-            └── minimax_h3_ref2v_turbo_4step_v0.1_comfyui.safetensors
+            └── minimax_h3_turbo_v4_step600_ema_pruned_comfyui.safetensors
 ```
 
-Both LoRAs are required:
-
-- The initial workflow selects
-  `minimax_h3_turbo_v4_step600_pruned_comfyui.safetensors`.
-- The append workflow selects
-  `minimax_h3_ref2v_turbo_4step_v0.1_comfyui.safetensors`.
 Nested model paths use `/` in the checked-in JSON. Python converts those paths
 to the separator expected by the current operating system before submitting a
 workflow, so the same JSON works on Windows and Linux.
@@ -313,7 +306,12 @@ of global LoRAs to every beat. Beat-specific LoRAs are appended after the
 global LoRAs in the order written; duplicate names are preserved. For each
 segment, the program removes the workflow's blank placeholder when the merged
 list is empty, reuses it for the first LoRA, and adds/chains as many additional
-`LoraLoaderModelOnly` nodes as needed in both API workflows.
+`LoraLoaderModelOnly` nodes as needed in both API workflows. These specific LoRAs are
+looked for in the constant LORA_DIRECTORY.
+
+At startup, each command-line LoRA is verified under
+`MINIMAX_COMFYUI_ROOT/models/loras` immediately after the reference images are
+checked. Every verified LoRA and its strength are printed before generation.
 
 To automatically generate beats while applying one LoRA to every generated beat,
 put only a file-level directive in `beats.txt` (comments and blank lines are also
@@ -444,7 +442,8 @@ Flying saucers appear above the park.
 The saucers abduct Mark's family while they flee.
 ```
 
-Blank lines and lines beginning with `#` are ignored. The order is
+Blank lines and ordinary lines beginning with `#` are ignored. A line formatted
+as `# Phase N` marks the first beat of a new macro phase. The order is
 authoritative, and the director cannot mark a later beat complete before an
 earlier one. If the file is blank or contains only comments, the program first
 asks LM Studio for a macro story arc, then generates the beats one complete
@@ -455,6 +454,26 @@ order, count, uniqueness, one-complete-sentence limit, and the macro arc's
 earliest permitted introduction beat for every named character and location
 before saving the beat text to `beats.txt`. The final generated beat must
 conclude the story.
+
+Automatic beat creation has no retry limit. LM Studio transport failures,
+invalid macro arcs, invalid phase batches, instruction reviews, audits, and
+repairs continue until a fully validated beat plan is saved. Press `Ctrl+Q` to
+stop the process at any point.
+
+Each valid macro arc returned by LM Studio is written as formatted JSON to
+`story_arc.txt`, overwriting the previous contents. Its SHA-256 source hash is
+written alongside it in `story_arc.txt.sha256`. When beats need to be generated,
+the saved arc is reused only when that sidecar matches the current `story.txt`
+source and the arc validates against the current segment count. A missing,
+malformed, or mismatched hash triggers generation of a new arc and overwrites
+both files. Clear either file to request a new arc on the next automatic beat
+generation.
+
+Automatically generated beat files include `# Phase N` markers. Video-created
+Subjects and `additional_subject_definitions` are retained when a later phase
+starts. Prefetch remains skipped across phase boundaries so each new phase begins
+with a fresh director request. Manually authored beat files can use the same
+markers.
 
 Beat generation uses `temperature=0.65`, `top_p=0.90`,
 `presence_penalty=0.15`, `frequency_penalty=0.15`, and
@@ -471,8 +490,8 @@ Describe persistent subjects and map them to the reference-image tags:
 <Subject 2> is Elena, Mark's wife, referenced in <Picture 2>.
 ```
 
-Subject identity, Picture identity, and speaker identity are separate mappings.
-An optional speaker mapping may be declared with `(S1)` on the subject line.
+Subject identity, Picture identity, gender, and speaker identity are separate
+mappings. A speaker mapping may be declared with `(S1)` on the subject line.
 Picture references establish visual identity/body appearance only; they never
 establish current clothing. Current wardrobe comes from the committed
 continuity state or a successfully rendered wardrobe change.
@@ -488,10 +507,13 @@ Only after that segment renders successfully, Python registers an internal
 definition like this:
 
 ```text
-<Subject 3> is spider-alien, created in generated video segment 2 and continued from <Video 1>.
+<Subject 3> is spider-alien, female (S3), continued from <Video 1>.
 ```
 
-The internal definition list and the same `origin_segment` are stored in
+Every new Subject is recorded as `male` or `female` (unknown defaults to
+`female`) and receives a unique speaker ID on that same definition line, even
+if it has not spoken. The complete Subject record and internal definition list,
+including gender, speaker ID, and the same `origin_segment`, are stored in
 `generation_state.json`; `subjects.txt` is never modified. Later segments reuse
 the ID and origin, combine the internal entry with the file-backed definitions
 under `subject_definitions`, and use the immediately preceding `<Video 1>` as
@@ -820,6 +842,8 @@ MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
 | `Minimax_auto_append_API.json` | Video-continuation API workflow. |
 | `Minimax_auto_refresh_API.json` | Auto-refresh reference-to-video workflow used by `--refresh`. |
 | `story.txt` | Source story or creative brief. |
+| `story_arc.txt` | Persisted macro story arc reused by automatic beat generation when nonblank. |
+| `story_arc.txt.sha256` | SHA-256 of the `story.txt` source associated with the persisted arc. |
 | `beats.txt` | Ordered story events; blank triggers automatic beat generation. |
 | `subjects.txt` | Optional subject/reference definitions. |
 | `stitch.bat` | Optional Windows-only FFmpeg concat helper. |

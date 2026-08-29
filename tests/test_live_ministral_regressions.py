@@ -61,6 +61,17 @@ def response(
 
 
 class LiveDialogueRegressionTests(unittest.TestCase):
+    def test_video_subject_definition_keeps_its_colocated_speaker_id(self) -> None:
+        records = formatter._subject_records({
+            "subject_definitions": (
+                "<Subject 3> is New Guard, male (S7), created in generated "
+                "video segment 2 and continued from <Video 1>."
+            )
+        })
+
+        self.assertEqual(records["New Guard"]["subject_id"], 3)
+        self.assertEqual(records["New Guard"]["speaker_id"], "S7")
+
     def test_parenthetical_subject_annotation_is_removed(self) -> None:
         context = context_for(
             1,
@@ -81,7 +92,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
                 formatted = format_ministral_prompt(malformed, context)
                 description = formatted[DESCRIPTION]
 
-                self.assertIn("Connie <Picture 1>", description)
+                self.assertIn("<Subject 1> Connie", description)
                 self.assertNotRegex(description, r"(?i)\(\s*Subject\s+\d+\s*\)")
                 self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
@@ -107,8 +118,8 @@ class LiveDialogueRegressionTests(unittest.TestCase):
 
         self.assertNotIn("—", description)
         self.assertNotRegex(description, r"\(S\d+\)")
-        self.assertIn("Jim <Picture 1>", description)
-        self.assertIn("Frank <Picture 2>", description)
+        self.assertIn("<Subject 1> Jim", description)
+        self.assertIn("<Subject 2> Frank", description)
         self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
     def test_actual_jim_dialogue_keeps_canonical_speaker_id(self) -> None:
@@ -128,7 +139,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
 
         description = format_ministral_prompt(malformed, context)[DESCRIPTION]
 
-        self.assertIn("Jim <Picture 1> (S1) says:", description)
+        self.assertIn("<Subject 1> Jim (S1) says:", description)
         self.assertIn("<d>[English] Keep walking.</d>", description)
 
     def test_missing_dialogue_speaker_id_is_inserted_from_subject_definition(self) -> None:
@@ -150,7 +161,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         formatted = format_ministral_prompt(malformed, context)
         description = formatted[DESCRIPTION]
 
-        self.assertIn("Jim <Picture 1> (S1) says:", description)
+        self.assertIn("<Subject 1> Jim (S1) says:", description)
         self.assertNotIn("Dialogue block is missing an attributed speaker ID.", " ".join(
             validate_ministral_prompt(formatted, context)
         ))
@@ -177,12 +188,12 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         description = formatted[DESCRIPTION]
 
         self.assertIn(
-            "Connie <Picture 1> (S1) says in a softer voice directed at "
-            "Beth <Picture 2>: <d>[English] Alright.</d>",
+            "<Subject 1> Connie (S1) says in a softer voice directed at "
+            "<Subject 2> Beth: <d>[English] Alright.</d>",
             description,
         )
         self.assertNotRegex(description, r"\(\s*\)")
-        self.assertNotIn("Beth <Picture 2> (S2)", description)
+        self.assertNotIn("<Subject 2> Beth (S2)", description)
         self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
     def test_speaker_ids_are_removed_from_purely_visual_roles(self) -> None:
@@ -225,7 +236,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         description = formatted[DESCRIPTION]
 
         self.assertIn(
-            "Connie <Picture 1> (S1) replies immediately: "
+            "<Subject 1> Connie (S1) replies immediately: "
             "<d>[English] I will! We’re gonna have so much fun!</d>",
             description,
         )
@@ -247,11 +258,11 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             (
                 "[Shot 1] Beth (S2) saysagain, louder and more emphatic."
                 " She turns toward the crowd.",
-                "Beth <Picture 1> says again, louder and more emphatic.",
+                "<Subject 1> Beth says again, louder and more emphatic.",
             ),
             (
                 "[Shot 1] Beth (S2) saysfirmly while focusing on the road.",
-                "Beth <Picture 1> says firmly while focusing on the road.",
+                "<Subject 1> Beth says firmly while focusing on the road.",
             ),
         ):
             with self.subTest(malformed=malformed):
@@ -263,7 +274,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
                 self.assertNotIn("saysagain", description.lower())
                 self.assertNotIn("saysfirmly", description.lower())
 
-    def test_subject_keeps_multiple_picture_references(self) -> None:
+    def test_subject_identity_replaces_multiple_legacy_picture_references(self) -> None:
         context = context_for(
             1,
             subject_definitions=(
@@ -282,7 +293,8 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
 
         description = formatted[DESCRIPTION]
-        self.assertIn("Mark <Picture 1> <Picture 2>", description)
+        self.assertIn("<Subject 1> Mark", description)
+        self.assertNotIn("<Picture", description)
 
     def test_delivery_tags_move_outside_dialogue_without_rewriting_words(self) -> None:
         cases = (
@@ -583,7 +595,10 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
             "as she lies prone in the pod, her hand still hovering near her cheek."
         )
 
-        for identity_tag in ("<Subject 1>", "<Picture 1>"):
+        for identity_tag, expected_anchor in (
+            ("<Subject 1>", "<Subject 1> Terri\u2019s final frame"),
+            ("<Picture 1>", "<Picture 1>\u2019s final frame"),
+        ):
             with self.subTest(identity_tag=identity_tag):
                 formatted = format_ministral_prompt(
                     response(
@@ -595,11 +610,8 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
                 )
                 description = formatted[DESCRIPTION]
 
-                self.assertRegex(
-                    description,
-                    r"Camera continues from the previous shot\. "
-                    r"Terri(?: <Picture 1>)?\u2019s final frame",
-                )
+                self.assertIn(expected_anchor, description)
+                self.assertNotIn("continues from the previous shot", description.lower())
                 self.assertNotRegex(
                     description,
                     r"(?:^|\]\s+|[.!?]\s+)['\u2019]s\b",
@@ -613,8 +625,8 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
             context,
         )
         self.assertIn(
-            "Camera continues from the previous shot\u2019s final frame with "
-            "a slow push-in toward Terri",
+            "The camera resumes from the previous final frame with "
+            "a slow push-in toward <Subject 1> Terri",
             formatted[DESCRIPTION],
         )
         self.assertNotIn("previous shot. \u2019s", formatted[DESCRIPTION])
@@ -633,7 +645,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
             video_only_context,
         )
         self.assertIn(
-            "Camera continues from the previous shot. Terri\u2019s final frame",
+            "<Subject 3> Terri\u2019s final frame",
             formatted[DESCRIPTION],
         )
 
@@ -645,8 +657,8 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
             context,
         )
         self.assertIn(
-            "Camera continues from the previous shot\u2019s final frame with "
-            "a slow push-in toward Terri",
+            "The camera resumes from the previous final frame with "
+            "a slow push-in toward <Subject 1> Terri",
             formatted[DESCRIPTION],
         )
         self.assertNotRegex(
@@ -691,8 +703,8 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
         cases = (
             (
                 "Arc Shot around Mark and Jill as they stare upward.",
-                    r"(?i)camera moves in an arc around Mark(?: <Picture 1>)? and "
-                    r"Jill(?: <Picture 2>)?",
+                    r"(?i)camera moves in an arc around <Subject 1> Mark and "
+                    r"<Subject 2> Jill",
                 r"(?i)\bArc Shot\b",
             ),
             (

@@ -234,8 +234,8 @@ class ContinuitySummaryTests(unittest.TestCase):
                     )
                 )
                 expected = (
-                    "<Subject 3> is Baby Alpha, created in generated "
-                    "video segment 2 and continued from <Video 1>."
+                    "<Subject 3> is Baby Alpha, female (S3), continued from "
+                    "<Video 1>."
                 )
                 self.assertEqual(added, [expected])
                 self.assertEqual(additional, [expected])
@@ -316,6 +316,7 @@ class ContinuitySummaryTests(unittest.TestCase):
 
         bicycle = candidate["subjects"]["Red Bicycle"]
         self.assertEqual(bicycle["subject_id"], 3)
+        self.assertEqual(bicycle["gender"], "female")
         self.assertEqual(bicycle["speaker_id"], "S3")
         self.assertEqual(bicycle["origin_segment"], 2)
 
@@ -328,7 +329,134 @@ class ContinuitySummaryTests(unittest.TestCase):
         combined = minimax.combine_subject_definitions(self.SUBJECTS, additional)
 
         self.assertEqual(len(appended), 1)
-        self.assertEqual(minimax.parse_subject_registry(combined)[3]["speaker_id"], "S3")
+        persisted = minimax.parse_subject_registry(combined)[3]
+        self.assertEqual(persisted["gender"], "female")
+        self.assertEqual(persisted["speaker_id"], "S3")
+
+    def test_new_subject_persists_gender_and_speaker_with_identity(self):
+        snapshot = canonical_candidate(self.SUBJECTS)
+        snapshot["subjects"]["New Guard"] = complete_new_subject(
+            3,
+            "New Guard",
+            entity_kind="animate",
+            gender="male",
+            position="beside the doorway",
+        )
+
+        candidate = minimax.normalize_structured_continuity_state(
+            snapshot,
+            self.SUBJECTS,
+            origin_segment=2,
+            newest_description="A male guard enters and stands beside the doorway.",
+        )
+        guard = candidate["subjects"]["New Guard"]
+
+        self.assertEqual(guard["gender"], "male")
+        self.assertEqual(guard["speaker_id"], "S3")
+        additional, appended = minimax.collect_additional_subject_definitions(
+            self.SUBJECTS,
+            [],
+            candidate,
+            origin_segment=2,
+        )
+        expected = (
+            "<Subject 3> is New Guard, male (S3), continued from <Video 1>."
+        )
+        self.assertEqual(appended, [expected])
+        self.assertEqual(additional, [expected])
+
+    def test_unknown_new_subject_gender_defaults_to_female(self):
+        snapshot = canonical_candidate(self.SUBJECTS)
+        snapshot["subjects"]["New Arrival"] = complete_new_subject(
+            3,
+            "New Arrival",
+            entity_kind="animate",
+            gender="unknown",
+        )
+
+        candidate = minimax.normalize_structured_continuity_state(
+            snapshot,
+            self.SUBJECTS,
+            origin_segment=2,
+            newest_description="A new arrival steps into view.",
+        )
+
+        self.assertEqual(candidate["subjects"]["New Arrival"]["gender"], "female")
+        self.assertEqual(candidate["subjects"]["New Arrival"]["speaker_id"], "S3")
+
+    def test_new_subject_speaker_id_collision_is_reassigned(self):
+        snapshot = canonical_candidate(self.SUBJECTS)
+        snapshot["subjects"]["New Guard"] = complete_new_subject(
+            3,
+            "New Guard",
+            entity_kind="animate",
+            gender="male",
+            speaker_id="S1",
+        )
+
+        candidate = minimax.normalize_structured_continuity_state(
+            snapshot,
+            self.SUBJECTS,
+            origin_segment=2,
+            newest_description="A male guard enters.",
+        )
+
+        self.assertEqual(candidate["subjects"]["New Guard"]["speaker_id"], "S3")
+
+    def test_new_phase_clears_only_dynamically_created_subjects(self):
+        state = minimax.continuity_state_for_registry(self.SUBJECTS)
+        state["environment"]["location"] = "moonlit courtyard"
+        state["subjects"]["Connie"]["position"] = "beside the gate"
+        state["subjects"]["New Guard"] = complete_new_subject(
+            3,
+            "New Guard",
+            gender="male",
+            speaker_id="S3",
+            origin_segment=2,
+            position="inside the gate",
+        )
+
+        cleared, removed = minimax.clear_dynamic_subjects_for_new_phase(
+            self.SUBJECTS,
+            state,
+        )
+
+        self.assertEqual(removed, ["New Guard"])
+        self.assertEqual(set(cleared["subjects"]), {"Connie", "Beth"})
+        self.assertEqual(cleared["subjects"]["Connie"]["position"], "beside the gate")
+        self.assertEqual(cleared["environment"]["location"], "moonlit courtyard")
+
+    def test_new_phase_reset_updates_generation_state_fields(self):
+        state = minimax.continuity_state_for_registry(self.SUBJECTS)
+        state["subjects"]["New Guard"] = complete_new_subject(
+            3,
+            "New Guard",
+            gender="male",
+            speaker_id="S3",
+            origin_segment=2,
+        )
+        generation_state = {
+            "continuity_state": copy.deepcopy(state),
+            "additional_subject_definitions": [
+                "<Subject 3> is New Guard, male (S3), continued from <Video 1>."
+            ],
+        }
+
+        cleared, removed = (
+            minimax.reset_generation_state_subjects_for_new_phase(
+                generation_state,
+                self.SUBJECTS,
+                state,
+            )
+        )
+
+        self.assertEqual(removed, ["New Guard"])
+        self.assertNotIn("New Guard", cleared["subjects"])
+        self.assertNotIn(
+            "New Guard",
+            generation_state["continuity_state"]["subjects"],
+        )
+        self.assertEqual(generation_state["additional_subject_definitions"], [])
 
     def test_continuity_prompt_forbids_inanimate_object_subjects(self):
         messages = minimax.build_structured_continuity_messages(

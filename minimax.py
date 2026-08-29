@@ -106,6 +106,17 @@ COMFY_INPUT = os.path.abspath(
         )
     )
 )
+COMFY_ROOT = os.path.abspath(
+    os.path.expandvars(
+        os.path.expanduser(
+            os.environ.get(
+                "MINIMAX_COMFYUI_ROOT",
+                os.path.dirname(COMFY_OUTPUT),
+            )
+        )
+    )
+)
+LORA_DIRECTORY = "H:\\StableDiffusion\\loras"
 VIDEO_OUTPUT = os.path.abspath(
     os.path.expandvars(
         os.path.expanduser(
@@ -125,6 +136,8 @@ INITIAL_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_API.json")
 APPEND_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_append_API.json")
 REFRESH_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_refresh_API.json")
 STORY_FILE = os.path.join(SCRIPT_DIR, "story.txt")
+STORY_ARC_FILE = os.path.join(SCRIPT_DIR, "story_arc.txt")
+STORY_ARC_HASH_FILE = STORY_ARC_FILE + ".sha256"
 BEATS_FILE = os.path.join(SCRIPT_DIR, "beats.txt")
 SUBJECT_DEFINITIONS_FILE = os.path.join(SCRIPT_DIR, "subjects.txt")
 GENERATION_STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
@@ -135,7 +148,7 @@ _WINDOWS_CONSOLE_HANDLER = None
 _WINDOWS_JOB_HANDLE = None
 
 
-def _immediate_interrupt_handler(signum, frame):
+def _immediate_interrupt_handler(_signum, _frame):
     """Exit immediately instead of waiting for background worker threads.
 
     ThreadPoolExecutor context managers wait for running requests and renders
@@ -145,7 +158,6 @@ def _immediate_interrupt_handler(signum, frame):
     last fully committed checkpoint remains resumable.
     """
 
-    del signum, frame
     try:
         os.write(
             2,
@@ -321,7 +333,7 @@ COMFY_HISTORY_RETRY_DELAY = 10
 COMFY_RENDER_TIMEOUT = 15 * 60
 COMFY_RENDER_RETRIES = 10
 COMFY_RETRY_MEGAPIXEL_STEP = 0.02
-CONTINUITY_STATE_VERSION = 3
+CONTINUITY_STATE_VERSION = 4
 
 PERSISTENT_SUBJECT_LIST_FIELDS = (
     "attached_objects",
@@ -338,11 +350,6 @@ DEFAULT_BEAT_LOOKAHEAD = 8
 RECENT_SEGMENTS_MAX = 1
 MINISTRAL_CONTENT_CORRECTION_ATTEMPTS = 1
 SUMMARY_CONTENT_ATTEMPTS = 2
-BEAT_GENERATION_CONTENT_ATTEMPTS = 3
-BEAT_INSTRUCTION_REVIEW_ATTEMPTS = 3
-BEAT_PLAN_AUDIT_ATTEMPTS = 3
-BEAT_PLAN_REPAIR_RESPONSE_ATTEMPTS = 2
-BEAT_PLAN_REPAIR_ROUNDS = 2
 BEAT_LLM_SAMPLING_PARAMETERS = {
     "temperature": 0.65,
     "top_p": 0.90,
@@ -897,6 +904,31 @@ def verify_reference_images(
         print(f"Image {image_name} verified.")
 
 
+def verify_global_loras(global_loras, lora_directory=None):
+    """Verify that command-line LoRAs exist in ComfyUI's LoRA directory."""
+
+    lora_directory = os.path.abspath(lora_directory or LORA_DIRECTORY)
+    for lora_name, strength in normalize_lora_list(global_loras):
+        relative_name = re.sub(r"[\\/]+", lambda _match: os.sep, lora_name)
+        lora_path = os.path.abspath(os.path.join(lora_directory, relative_name))
+        try:
+            is_within_lora_directory = (
+                os.path.commonpath((lora_directory, lora_path))
+                == lora_directory
+            )
+        except ValueError:
+            is_within_lora_directory = False
+        if not is_within_lora_directory:
+            raise ValueError(
+                f"Global LoRA must be relative to {lora_directory}: {lora_name!r}."
+            )
+        if not os.path.isfile(lora_path):
+            raise FileNotFoundError(
+                f"Global LoRA not found: {lora_name!r} (expected {lora_path})"
+            )
+        print(f"Global LoRA {lora_name}:{strength:g} verified.")
+
+
 def build_run_config(
     segment_length,
     total_length,
@@ -963,8 +995,59 @@ def get_h3_latent_path(segment_number):
         )
     )
 
+def normalize_subject_gender(value):
+    """Return the supported binary Subject gender, defaulting unknown to N/A."""
+    rendered = str(value or "").strip().casefold()
+    if rendered in {"male", "man", "boy", "he", "him"}:
+        return "male"
+    elif rendered in {"female", "woman", "girl", "she", "her"}:
+        return "female"
+    return "N/A"
+
+
+def infer_subject_gender(definition, subject_name=None):
+    """Read a Subject gender from definition prose, defaulting unknown to N/A."""
+    text = str(definition or "")
+    if subject_name:
+        windows = []
+        for match in re.finditer(re.escape(str(subject_name)), text, re.I):
+            windows.append(text[max(0, match.start() - 100):match.end() + 100])
+        text = " ".join(windows)
+    if re.search(r"(?i)\b(?:male|man|boy|he|him)\b", text):
+        return "male"
+    elif re.search(r"(?i)\b(?:female|woman|girl|she|her)\b", text):
+        return "female"
+    return "N/A"
+
+
+def available_subject_speaker_id(subject_id, records, requested=None):
+    """Choose a valid speaker ID unused by the supplied Subject records."""
+    used = {
+        str(record.get("speaker_id") or "").strip().casefold()
+        for record in records
+        if isinstance(record, dict) and record.get("speaker_id")
+    }
+    requested = str(requested or "").strip().upper()
+    if re.fullmatch(r"S\d+", requested) and requested.casefold() not in used:
+        return requested
+    preferred = f"S{subject_id}"
+    if preferred.casefold() not in used:
+        return preferred
+    number = max(
+        [
+            int(match.group(1))
+            for value in used
+            if (match := re.fullmatch(r"s(\d+)", value))
+        ],
+        default=0,
+    ) + 1
+    while f"s{number}" in used:
+        number += 1
+    return f"S{number}"
+
+
 def parse_subject_registry(subject_definitions):
-    """Parse independent name, Picture, and speaker mappings."""
+    """Parse independent name, gender, Picture, and speaker mappings."""
     registry = {}
     raw_lines = [
         line.strip() for line in str(subject_definitions or "").splitlines()
@@ -1000,9 +1083,9 @@ def parse_subject_registry(subject_definitions):
             ]
             picture_ids = list(dict.fromkeys(picture_ids))
             video_origin = bool(re.search(
-                r"(?i)\b(?:created|established)\s+(?:by\s+<Video\s+1>|"
-                r"in\s+generated\s+"
-                r"video\s+segment\s+\d+)",
+                r"(?i)(?:\b(?:created|established)\s+(?:by\s+<Video\s+1>|"
+                r"in\s+generated\s+video\s+segment\s+\d+)|"
+                r"\bcontinued\s+from\s+<Video\s+1>)",
                 line,
             ))
             speaker_id = (
@@ -1025,6 +1108,7 @@ def parse_subject_registry(subject_definitions):
             raise ValueError(f"Duplicate speaker ID: {speaker_id}")
         registry_record = {
             "name": name,
+            "gender": infer_subject_gender(line),
             "picture_ids": picture_ids,
             "picture_id": picture_ids[0] if picture_ids else None,
             "speaker_id": speaker_id,
@@ -1057,9 +1141,17 @@ def new_subject_continuity_record(subject):
     return {
         "subject_id": subject.get("subject_id"),
         "name": subject.get("name"),
+        "gender": normalize_subject_gender(subject.get("gender")),
         "picture_ids": picture_ids,
         "picture_id": picture_id,
-        "speaker_id": subject.get("speaker_id"),
+        "speaker_id": (
+            subject.get("speaker_id")
+            or (
+                f"S{subject.get('subject_id')}"
+                if str(subject.get("subject_id") or "").isdigit()
+                else None
+            )
+        ),
         "origin_segment": subject.get("origin_segment"),
         "position": "N/A",
         "pose_action": "N/A",
@@ -1119,7 +1211,8 @@ def continuity_state_for_registry(subject_definitions, state=None):
         registry = {
             int(record.get("subject_id", index)): {
                 "name": name,
-                    "picture_ids": record.get(
+                "gender": normalize_subject_gender(record.get("gender")),
+                "picture_ids": record.get(
                         "picture_ids",
                         [record.get("picture_id")],
                     ),
@@ -1139,8 +1232,7 @@ def continuity_state_for_registry(subject_definitions, state=None):
             "Expected one definition per line, for example: "
             "<Subject 1> is Mark, a 40-year-old man referenced in "
             "<Picture 1>. Video-only subjects use: <Subject 2> is creature, "
-            "created in generated video segment 1 and continued from "
-            "<Video 1>."
+            "N/A (S2), continued from <Video 1>."
         )
     def copy_continuity_fields(record, existing):
         if not isinstance(existing, dict):
@@ -1171,6 +1263,10 @@ def continuity_state_for_registry(subject_definitions, state=None):
         record = new_subject_continuity_record({
             **subject,
             "subject_id": subject_id,
+            "origin_segment": subject.get(
+                "origin_segment",
+                existing.get("origin_segment"),
+            ),
         })
         copy_continuity_fields(record, existing)
         subjects[subject["name"]] = record
@@ -1201,9 +1297,10 @@ def continuity_state_for_registry(subject_definitions, state=None):
         record = new_subject_continuity_record({
             "subject_id": subject_id,
             "name": name,
+            "gender": existing.get("gender"),
             "picture_ids": picture_ids,
             "picture_id": picture_ids[0] if picture_ids else None,
-            "speaker_id": existing.get("speaker_id"),
+            "speaker_id": existing.get("speaker_id") or f"S{subject_id}",
             "origin_segment": existing.get("origin_segment"),
         })
         copy_continuity_fields(record, existing)
@@ -1429,6 +1526,12 @@ def migrate_continuity_state(state):
         # legacy checkpoints.
         for record in normalized_subjects.values():
             if isinstance(record, dict):
+                record["gender"] = normalize_subject_gender(record.get("gender"))
+                if (
+                    not record.get("speaker_id")
+                    and str(record.get("subject_id") or "").isdigit()
+                ):
+                    record["speaker_id"] = f"S{record['subject_id']}"
                 record.setdefault("topology", "N/A")
                 for field in PERSISTENT_SUBJECT_LIST_FIELDS:
                     record.setdefault(field, [])
@@ -1584,13 +1687,8 @@ _STRUCTURED_CONTINUITY_FRAGMENT_RE = re.compile(
 )
 
 
-def inject_persistent_state_into_description(
-    detailed_description,
-    continuity_state,
-    subject_definitions="",
-    segment_number=None,
-):
-    """Keep the legacy call seam without dumping state into H3 scene prose.
+def inject_persistent_state_into_description(detailed_description):
+    """Remove structured continuity fragments from H3 scene prose.
 
     The append workflow now carries a much larger trailing video context window,
     while the director receives the committed continuity snapshot separately.
@@ -1599,7 +1697,6 @@ def inject_persistent_state_into_description(
     in the continuity store and is reintroduced by the director only when it is
     actually visible/relevant on re-entry.
     """
-    del continuity_state, subject_definitions, segment_number
     description = str(detailed_description or "")
     description = _STRUCTURED_CONTINUITY_FRAGMENT_RE.sub("", description)
     description = re.sub(r"\s+,", ",", description)
@@ -1733,6 +1830,7 @@ def format_subject_registry(subject_definitions):
         lines.append(
             f"- canonical_name: {subject['name']}\n"
             f"  subject_id: {subject_id}\n"
+            f"  gender: {subject['gender']}\n"
             f"  picture_ids: {json.dumps(subject.get('picture_ids', [subject['picture_id']]))}\n"
             f"  continuation_source: "
             f"{'Picture reference(s)' if subject.get('picture_ids') else '<Video 1>'}\n"
@@ -1770,6 +1868,7 @@ def collect_additional_subject_definitions(
     }
     state = continuity_state_for_registry(existing_text, continuity_state)
     appended_lines = []
+    speaker_records = list(registry.values())
 
     for subject_id, name, record in _ordered_continuity_subjects(state):
         if record.get("picture_ids"):
@@ -1793,14 +1892,62 @@ def collect_additional_subject_definitions(
         except (TypeError, ValueError):
             created_in_segment = int(origin_segment)
         record["origin_segment"] = created_in_segment
+        gender = normalize_subject_gender(record.get("gender"))
+        speaker_id = available_subject_speaker_id(
+            subject_id,
+            speaker_records,
+            record.get("speaker_id"),
+        )
+        record["gender"] = gender
+        record["speaker_id"] = speaker_id
+        speaker_records.append(record)
         appended_lines.append(
-            f"<Subject {subject_id}> is {name}, created in generated "
-            f"video segment {created_in_segment} and continued from <Video 1>."
+            f"<Subject {subject_id}> is {name}, {gender} ({speaker_id}), "
+            f"continued from <Video 1>."
         )
         known_ids.add(subject_id)
         known_names.add(name.lower())
 
     return list(additional_definitions or []) + appended_lines, appended_lines
+
+
+def clear_dynamic_subjects_for_new_phase(
+    base_subject_definitions,
+    continuity_state,
+):
+    """Remove video-created Subjects while retaining file-backed identities."""
+    base_registry = parse_subject_registry(base_subject_definitions)
+    base_names = {record["name"] for record in base_registry.values()}
+    normalized = continuity_state_for_registry(
+        base_subject_definitions,
+        copy.deepcopy(continuity_state),
+    )
+    removed_names = [
+        name for name in normalized.get("subjects", {}) if name not in base_names
+    ]
+    normalized["subjects"] = {
+        name: record
+        for name, record in normalized.get("subjects", {}).items()
+        if name in base_names
+    }
+    return normalized, removed_names
+
+
+def reset_generation_state_subjects_for_new_phase(
+    generation_state,
+    base_subject_definitions,
+    continuity_state,
+):
+    """Clear dynamic Subjects from current state and its checkpoint fields."""
+    cleared_state, removed_names = clear_dynamic_subjects_for_new_phase(
+        base_subject_definitions,
+        continuity_state,
+    )
+    generation_state["continuity_state"] = migrate_continuity_state(
+        cleared_state
+    )
+    generation_state["additional_subject_definitions"] = []
+    return cleared_state, removed_names
 
 
 def format_beat_generation_subjects(subject_definitions):
@@ -1946,7 +2093,6 @@ def save_generation_state(state, path=GENERATION_STATE_FILE):
 
 def restore_generation_state(
     resume_segment,
-    run_config,
     beats,
     path=GENERATION_STATE_FILE,
 ):
@@ -1970,6 +2116,7 @@ def restore_generation_state(
     video_paths = []
     recent_results = []
     completed_beat_ids = set()
+    latent_path = None
     for expected_segment, record in enumerate(
         records[:required_count],
         start=1,
@@ -2474,12 +2621,26 @@ LORA_DIRECTIVE_PATTERN = re.compile(
     r"^--lora\s+(?P<spec>[^\s]+)$",
     re.IGNORECASE,
 )
+PHASE_DIRECTIVE_PATTERN = re.compile(
+    r"^#\s*phase\s+(?P<number>\d+)\s*$",
+    re.IGNORECASE,
+)
 
 
 class BeatDefinition(str):
-    def __new__(cls, text, loras=None):
+    def __new__(
+        cls,
+        text,
+        loras=None,
+        phase_number=None,
+        phase_start=False,
+    ):
         beat = super().__new__(cls, text)
         beat.loras = tuple(loras or ())
+        beat.phase_number = (
+            int(phase_number) if str(phase_number or "").isdigit() else None
+        )
+        beat.phase_start = bool(phase_start)
         # Retain the old scalar attributes for callers that inspect beats made
         # with exactly one LoRA. New code should use ``beat.loras``.
         beat.lora_name = beat.loras[0][0] if len(beat.loras) == 1 else None
@@ -2549,9 +2710,23 @@ def parse_beats_content(raw):
     beats = []
     global_lora = None
     global_lora_directive = ""
+    current_phase = None
+    pending_phase_start = False
     for line in raw.splitlines():
         beat = line.strip()
-        if not beat or beat.startswith("#"):
+        if not beat:
+            continue
+        phase_match = PHASE_DIRECTIVE_PATTERN.fullmatch(beat)
+        if phase_match is not None:
+            phase_number = int(phase_match.group("number"))
+            if phase_number <= 0:
+                raise ValueError("Beat phases must use positive one-based numbers.")
+            if current_phase is not None and phase_number != current_phase + 1:
+                raise ValueError("Beat phase markers must be consecutive and ordered.")
+            current_phase = phase_number
+            pending_phase_start = True
+            continue
+        if beat.startswith("#"):
             continue
 
         directive_match = LORA_DIRECTIVE_PATTERN.fullmatch(beat)
@@ -2568,11 +2743,23 @@ def parse_beats_content(raw):
                 ) from error
             global_lora_directive = beat
             continue
-        beats.append(parse_beat_definition(beat))
+        parsed = parse_beat_definition(beat)
+        beats.append(BeatDefinition(
+            str(parsed),
+            parsed.loras,
+            phase_number=current_phase,
+            phase_start=pending_phase_start,
+        ))
+        pending_phase_start = False
 
     if global_lora is not None:
         beats = [
-            BeatDefinition(str(beat), (global_lora, *beat.loras))
+            BeatDefinition(
+                str(beat),
+                (global_lora, *beat.loras),
+                phase_number=beat.phase_number,
+                phase_start=beat.phase_start,
+            )
             for beat in beats
         ]
     return beats, global_lora_directive
@@ -2601,9 +2788,28 @@ def serialize_beats(beats):
         {
             "text": str(beat),
             "loras": [list(lora) for lora in getattr(beat, "loras", ())],
+            "phase_number": getattr(beat, "phase_number", None),
+            "phase_start": bool(getattr(beat, "phase_start", False)),
         }
         for beat in beats or []
     ]
+
+
+def is_new_phase_start(beats, beat_id):
+    """Return whether this beat begins a phase after the opening phase."""
+    try:
+        beat_id = int(beat_id)
+    except (TypeError, ValueError):
+        return False
+    if beat_id <= 0 or beat_id > len(beats or ()):
+        return False
+    beat = beats[beat_id - 1]
+    phase_number = getattr(beat, "phase_number", None)
+    return bool(
+        getattr(beat, "phase_start", False)
+        and isinstance(phase_number, int)
+        and phase_number > 1
+    )
 
 
 def normalize_completed_beat_ids(beats, completed_beat_ids):
@@ -2636,7 +2842,6 @@ def build_bounded_beat_state(
     beats,
     completed_beat_ids,
     segment_number=None,
-    total_segments=None,
     lookahead=DEFAULT_BEAT_LOOKAHEAD,
 ):
     """Return the one-beat-per-segment window needed by the director."""
@@ -2808,8 +3013,7 @@ def apply_reported_beat_completions(
     return normalize_completed_beat_ids(beats, completed)
 
 
-def get_beat_deadline_segment(beat_id, beats, total_segments):
-    del beats, total_segments
+def get_beat_deadline_segment(beat_id):
     return max(1, int(beat_id))
 
 
@@ -2943,7 +3147,10 @@ def ask_llm(
     }
     history_purpose = str((history_metadata or {}).get("purpose", ""))
     log_beat_response = history_purpose in beat_history_purposes
-    for attempt in range(1, max_retries + 1):
+    retry_until_success = history_purpose in beat_history_purposes
+    attempt = 0
+    while retry_until_success or attempt < max_retries:
+        attempt += 1
         try:
             llm_seed = generate_random_llm_seed()
             request_payload = {
@@ -3081,11 +3288,21 @@ def ask_llm(
             json.JSONDecodeError
         ) as e:
             last_error = e
-            print(
-                f"LLM request failed (attempt {attempt}/{max_retries}): {e}"
-            )
-            if attempt < max_retries:
+            if retry_until_success:
+                print(
+                    f"LLM beat-creation request failed (attempt {attempt}); "
+                    f"retrying until successful or Ctrl+Q: {e}"
+                )
                 time.sleep(retry_delay)
+            else:
+                print(
+                    f"LLM request failed (attempt {attempt}/{max_retries}): {e}"
+                )
+                if attempt < max_retries:
+                    time.sleep(retry_delay)
+
+    if retry_until_success:
+        raise AssertionError("Unlimited beat-creation request loop exited.")
 
     raise RuntimeError(
         f"LM Studio failed after {max_retries} attempts. "
@@ -3408,7 +3625,6 @@ def build_beat_arc_plan_messages(
     total_segments,
     subject_information="",
     correction="",
-    beat_instructions="",
 ):
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
     correction_text = ""
@@ -3432,8 +3648,8 @@ Return a complete corrected arc covering the full segment range.
             "role": "user",
             "content": f"""
 Create one concise chronological macro story arc for a {total_segments}-beat
-video. Use the number of phases (or beats) specified in the SOURCE STORY; if it is not specified,
-use between 4 to 8 phases. The phases must cover beat 1 through beat
+video. Use ~5 phases unless the SOURCE STORY specifies the number of phases
+(or beats); otherwise use between 4 and 8 phases. The phases must cover beat 1 through beat
 {total_segments} exactly once, with no gaps or overlaps. If the beat range is
 not specified in the SOURCE STORY, analyze the SOURCE STORY and determine the
 beat_start and beat_end for each phase. Phases do NOT need the same number of
@@ -3452,7 +3668,7 @@ For every phase provide:
 Keep every phase abstract. Appropriate detail is: "Chase escalates and Amy is
 caught." Do not enumerate imagery or individual actions such as a second
 many-eyed monster giggling, doors appearing, or the ground tilting. Do not write
-example dialogue, specific gore acts, invented mythology, or shot-level events.
+example dialogue, specific prop interactions, invented mythology, or shot-level events.
 Keep the number of sentences to half the number of phases.
 
 Priority order:
@@ -3835,7 +4051,7 @@ Everything else belongs only in warnings. In particular, do NOT block for:
   or "breaking point" language;
 - an early monster reveal;
 - a somewhat redundant epilogue or finality beat;
-- dialogue style, exact imagery, reactions, gore specifics, atmosphere, or other
+- dialogue style, exact imagery, reactions, prop specifics, atmosphere, or other
   presentation choices;
 - subjective pacing or dramatic-strength complaints;
 - macro phase examples or other macro details that are not explicit source
@@ -4511,7 +4727,6 @@ def build_beat_instruction_review_messages(
     story,
     total_segments,
     beats,
-    beat_instructions,
     correction="",
     subject_information="",
     batch_start=None,
@@ -4981,7 +5196,95 @@ def print_generated_beats(beats):
     print()
 
 
-def save_generated_beats(beats, path=BEATS_FILE, lora_directive=""):
+def get_story_arc_path(beats_path=BEATS_FILE, story_arc_path=None):
+    """Return the explicit arc path or the story_arc.txt beside beats.txt."""
+    if story_arc_path is not None:
+        return os.path.abspath(os.fspath(story_arc_path))
+    return os.path.join(
+        os.path.dirname(os.path.abspath(os.fspath(beats_path))),
+        "story_arc.txt",
+    )
+
+
+def get_story_arc_hash_path(story_arc_path=STORY_ARC_FILE):
+    """Return the SHA-256 sidecar path for a persisted story arc."""
+    return os.fspath(story_arc_path) + ".sha256"
+
+
+def hash_story_arc_source(source_text):
+    """Return the SHA-256 digest for the story source used to plan an arc."""
+    return hashlib.sha256(str(source_text or "").encode("utf-8")).hexdigest()
+
+
+def save_story_arc(macro_arc, source_text, path=STORY_ARC_FILE):
+    """Atomically overwrite an arc and its story-source SHA-256 sidecar."""
+    directory = os.path.dirname(os.path.abspath(path))
+    os.makedirs(directory, exist_ok=True)
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix=".story_arc_",
+        suffix=".tmp",
+        dir=directory,
+        text=True,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as arc_file:
+            json.dump(macro_arc, arc_file, ensure_ascii=False, indent=2)
+            arc_file.write("\n")
+            arc_file.flush()
+            os.fsync(arc_file.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+
+    hash_path = get_story_arc_hash_path(path)
+    descriptor, temporary_hash_path = tempfile.mkstemp(
+        prefix=".story_arc_hash_",
+        suffix=".tmp",
+        dir=directory,
+        text=True,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as hash_file:
+            hash_file.write(hash_story_arc_source(source_text) + "\n")
+            hash_file.flush()
+            os.fsync(hash_file.fileno())
+        os.replace(temporary_hash_path, hash_path)
+    finally:
+        if os.path.exists(temporary_hash_path):
+            os.remove(temporary_hash_path)
+
+
+def load_story_arc(path, total_segments, source_text):
+    """Load an arc only when its sidecar matches the current story source."""
+    raw_arc = load_text_file(path, required=False)
+    if not raw_arc:
+        return None
+    hash_path = get_story_arc_hash_path(path)
+    stored_hash = load_text_file(hash_path, required=False).casefold()
+    expected_hash = hash_story_arc_source(source_text)
+    if (
+        re.fullmatch(r"[0-9a-f]{64}", stored_hash) is None
+        or not secrets.compare_digest(stored_hash, expected_hash)
+    ):
+        print(
+            f"Ignoring {path} because {hash_path} is missing or does not match "
+            "the current story.txt source; a new story arc will be generated.",
+            flush=True,
+        )
+        return None
+    try:
+        return parse_beat_arc_plan(raw_arc, total_segments)
+    except ValueError as error:
+        raise ValueError(f"Invalid story arc in {path}: {error}") from error
+
+
+def save_generated_beats(
+    beats,
+    path=BEATS_FILE,
+    lora_directive="",
+    macro_arc=None,
+):
     lora_directive = str(lora_directive or "").strip()
     if lora_directive:
         directive_match = LORA_DIRECTIVE_PATTERN.fullmatch(lora_directive)
@@ -4995,10 +5298,21 @@ def save_generated_beats(beats, path=BEATS_FILE, lora_directive=""):
             raise ValueError(
                 f"Invalid file-level LoRA directive: {lora_directive!r}."
             ) from error
-    saved_beats = [
-        f"{beat} {lora_directive}" if lora_directive else beat
-        for beat in beats
-    ]
+    phase_starts = {}
+    if macro_arc is not None:
+        for phase_batch in build_phase_generation_batches(macro_arc):
+            phase = phase_batch["phase"]
+            phase_starts.setdefault(
+                int(phase["beat_start"]),
+                int(phase["phase_number"]),
+            )
+    saved_beats = []
+    for beat_number, beat in enumerate(beats, start=1):
+        if beat_number in phase_starts:
+            saved_beats.append(f"# Phase {phase_starts[beat_number]}")
+        saved_beats.append(
+            f"{beat} {lora_directive}" if lora_directive else str(beat)
+        )
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
     descriptor, temporary_path = tempfile.mkstemp(
@@ -5023,41 +5337,50 @@ def generate_beats_from_story(
     total_segments,
     path=BEATS_FILE,
     llm_request=None,
-    content_attempts=BEAT_GENERATION_CONTENT_ATTEMPTS,
+    content_attempts=None,
     history_metadata=None,
     beat_instructions="",
-    instruction_review_attempts=BEAT_INSTRUCTION_REVIEW_ATTEMPTS,
+    instruction_review_attempts=None,
     subject_information="",
     lora_directive="",
-    audit_attempts=BEAT_PLAN_AUDIT_ATTEMPTS,
-    repair_response_attempts=BEAT_PLAN_REPAIR_RESPONSE_ATTEMPTS,
-    repair_rounds=BEAT_PLAN_REPAIR_ROUNDS,
+    audit_attempts=None,
+    repair_response_attempts=None,
+    repair_rounds=None,
+    story_arc_path=None,
+    story_arc_source=None,
 ):
     if llm_request is None:
         llm_request = ask_llm
     if not str(story or "").strip():
         raise ValueError("Cannot generate story beats from an empty story.")
-    if content_attempts <= 0:
-        raise ValueError("Beat generation requires at least one content attempt.")
-    if audit_attempts <= 0:
-        raise ValueError("Beat-plan auditing requires at least one audit attempt.")
-    if repair_response_attempts <= 0:
-        raise ValueError(
-            "Beat-plan repair requires at least one response attempt."
-        )
-    if repair_rounds <= 0:
-        raise ValueError("Beat-plan repair requires at least one repair round.")
-    if beat_instructions and instruction_review_attempts <= 0:
-        raise ValueError(
-            "Beat-instruction compliance requires at least one review attempt."
-        )
+    # These former attempt-limit arguments remain accepted so existing callers
+    # do not break, but beat creation is intentionally unbounded. Ctrl+Q is the
+    # user-controlled stop condition; a successfully validated plan is the only
+    # normal return condition.
+    del (
+        content_attempts,
+        instruction_review_attempts,
+        audit_attempts,
+        repair_response_attempts,
+        repair_rounds,
+    )
+    story_arc_path = get_story_arc_path(path, story_arc_path)
+    if story_arc_source is None:
+        story_arc_source = story
+    saved_macro_arc = load_story_arc(
+        story_arc_path,
+        total_segments,
+        story_arc_source,
+    )
 
     def request_macro_arc(correction=""):
         last_error = None
-        for attempt in range(1, content_attempts + 1):
+        attempt = 0
+        while True:
+            attempt += 1
             print(
-                f"Requesting global beat macro arc (attempt {attempt}/"
-                f"{content_attempts}).",
+                f"Requesting global beat macro arc (attempt {attempt}; "
+                "unlimited until successful or Ctrl+Q).",
                 flush=True,
             )
             messages = build_beat_arc_plan_messages(
@@ -5065,7 +5388,6 @@ def generate_beats_from_story(
                 total_segments,
                 subject_information=subject_information,
                 correction=correction if attempt == 1 else str(last_error),
-                beat_instructions=beat_instructions,
             )
             verify_subjects_in_beat_messages(
                 messages,
@@ -5084,26 +5406,26 @@ def generate_beats_from_story(
             )
             try:
                 print(raw_arc, flush=True)
-                return parse_beat_arc_plan(raw_arc, total_segments)
+                macro_arc = parse_beat_arc_plan(raw_arc, total_segments)
+                save_story_arc(macro_arc, story_arc_source, story_arc_path)
+                print(f"Saved story arc to {story_arc_path}.", flush=True)
+                return macro_arc
             except ValueError as error:
                 last_error = error
-                if attempt < content_attempts:
-                    print(
-                        "LM Studio returned an invalid macro arc; requesting a "
-                        f"corrected arc ({attempt + 1}/{content_attempts}): {error}"
-                    )
-        raise RuntimeError(
-            "LM Studio did not return a valid gap-free macro story arc after "
-            f"{content_attempts} attempt(s): {last_error}"
-        ) from last_error
+                print(
+                    "LM Studio returned an invalid macro arc; requesting a "
+                    f"corrected arc: {last_error}"
+                )
 
     def request_macro_arc_fidelity(macro_arc, macro_attempt):
         last_error = None
-        for response_attempt in range(1, content_attempts + 1):
+        response_attempt = 0
+        while True:
+            response_attempt += 1
             print(
                 f"Requesting macro-arc fidelity check for macro attempt "
-                f"{macro_attempt}/{content_attempts} (response attempt "
-                f"{response_attempt}/{content_attempts}).",
+                f"{macro_attempt} (response attempt {response_attempt}; "
+                "unlimited until successful or Ctrl+Q).",
                 flush=True,
             )
             messages = build_beat_arc_fidelity_messages(
@@ -5131,51 +5453,35 @@ def generate_beats_from_story(
                 return parse_beat_arc_fidelity(raw_fidelity)
             except ValueError as error:
                 last_error = error
-                if response_attempt < content_attempts:
-                    print(
-                        "LM Studio returned an invalid macro-arc fidelity response; "
-                        f"retrying ({response_attempt + 1}/{content_attempts}): "
-                        f"{error}"
-                    )
-        raise RuntimeError(
-            "LM Studio did not return a structurally valid macro-arc fidelity "
-            f"check after {content_attempts} attempt(s): {last_error}"
-        ) from last_error
+                print(
+                    "LM Studio returned an invalid macro-arc fidelity response; "
+                    f"requesting another response: {last_error}"
+                )
 
     def request_valid_macro_arc(correction=""):
         fidelity_correction = correction
-        last_fidelity = None
-        for macro_attempt in range(1, content_attempts + 1):
+        macro_attempt = 0
+        while True:
+            macro_attempt += 1
             macro_arc = request_macro_arc(fidelity_correction)
             fidelity = request_macro_arc_fidelity(macro_arc, macro_attempt)
             if fidelity["valid"]:
                 print(
                     f"Macro-arc fidelity check passed on macro attempt "
-                    f"{macro_attempt}/{content_attempts}.",
+                    f"{macro_attempt}.",
                     flush=True,
                 )
                 return macro_arc
-            last_fidelity = fidelity
             fidelity_correction = (
                 "The low-temperature macro fidelity check rejected the previous "
                 "arc: " + " ".join(fidelity["issues"])
             )
             print(
                 f"Macro-arc fidelity check failed on macro attempt "
-                f"{macro_attempt}/{content_attempts}: "
+                f"{macro_attempt}; requesting another macro arc: "
                 + " ".join(fidelity["issues"]),
                 flush=True,
             )
-        raise RuntimeError(
-            "LM Studio macro story arc failed the required source-fidelity check "
-            f"after {content_attempts} attempt(s): "
-            + " ".join(
-                (last_fidelity or {}).get(
-                    "issues",
-                    ["unknown macro fidelity failure"],
-                )
-            )
-        )
 
     def generate_batches(macro_arc, audit_correction=""):
         generated = []
@@ -5198,10 +5504,12 @@ def generate_beats_from_story(
             correction = ""
             last_error = None
             batch_beats = None
-            for attempt in range(1, content_attempts + 1):
+            attempt = 0
+            while True:
+                attempt += 1
                 print(
                     f"Requesting beats for phase {current_phase['phase_number']} "
-                    f"(attempt {attempt}/{content_attempts}).",
+                    f"(attempt {attempt}; unlimited until successful or Ctrl+Q).",
                     flush=True,
                 )
                 messages = build_beat_generation_messages(
@@ -5273,20 +5581,12 @@ def generate_beats_from_story(
                     last_error = error
                     correction = str(error)
                     batch_beats = None
-                    if attempt < content_attempts:
-                        print(
-                            "LLM returned an invalid beat list; requesting a "
-                            f"corrected list ({attempt + 1}/{content_attempts}): "
-                            f"{error}"
-                        )
+                    print(
+                        "LLM returned an invalid beat list; requesting a "
+                        f"corrected list: {last_error}"
+                    )
                     continue
                 break
-            if batch_beats is None:
-                raise RuntimeError(
-                    f"LM Studio did not return exactly {batch_size} valid, unique "
-                    f"story beats for positions {batch_start}-{batch_end} after "
-                    f"{content_attempts} attempt(s): {last_error}"
-                ) from last_error
             generated.extend(batch_beats)
             print(
                 f"Accepted macro phase {current_phase['phase_number']}; collected "
@@ -5299,116 +5599,120 @@ def generate_beats_from_story(
         if not beat_instructions:
             return beats
         original_beats = list(beats)
-        reviewed_beats = []
         phase_batches = build_phase_generation_batches(macro_arc)
-        for phase_batch in phase_batches:
-            current_phase = phase_batch["phase"]
-            batch_start = phase_batch["batch_start"]
-            batch_end = phase_batch["batch_end"]
-            batch_size = batch_end - batch_start + 1
-            print(
-                f"Reviewing beat batch {batch_start}-{batch_end} of "
-                f"{total_segments} ({batch_size} beats).",
-                flush=True,
-            )
-            candidate_batch = original_beats[batch_start - 1:batch_end]
-            review_error = ""
-            reviewed_batch = None
-            for review_attempt in range(1, instruction_review_attempts + 1):
+        compliance_error = ""
+        review_pass = 0
+        while True:
+            review_pass += 1
+            reviewed_beats = []
+            for phase_batch in phase_batches:
+                current_phase = phase_batch["phase"]
+                batch_start = phase_batch["batch_start"]
+                batch_end = phase_batch["batch_end"]
+                batch_size = batch_end - batch_start + 1
                 print(
-                    f"Requesting beat-instruction review for batch "
-                    f"{batch_start}-{batch_end} (attempt {review_attempt}/"
-                    f"{instruction_review_attempts}).",
+                    f"Reviewing beat batch {batch_start}-{batch_end} of "
+                    f"{total_segments} ({batch_size} beats).",
                     flush=True,
                 )
-                review_messages = build_beat_instruction_review_messages(
-                    story,
-                    total_segments,
-                    candidate_batch,
-                    beat_instructions,
-                    review_error,
-                    subject_information,
-                    batch_start=batch_start,
-                    batch_end=batch_end,
-                    complete_beats=original_beats,
-                    macro_arc=macro_arc,
-                    current_phase=current_phase,
-                )
-                verify_subjects_in_beat_messages(
-                    review_messages,
-                    subject_information,
-                )
-                reviewed_raw = llm_request(
-                    review_messages,
-                    response_format=build_beats_response_format(
-                        batch_size,
-                        beat_start=batch_start,
-                    ),
-                    history_metadata={
-                        **(history_metadata or {}),
-                        "purpose": "beat_instruction_review",
-                        "attempt": review_attempt,
-                        "total_segments": total_segments,
-                        "batch_start": batch_start,
-                        "batch_end": batch_end,
-                        "phase_number": current_phase["phase_number"],
-                    },
-                    **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
-                )
-                try:
-                    reviewed_batch = parse_generated_beats(
-                        reviewed_raw,
-                        batch_size,
-                        expected_start=batch_start,
+                candidate_batch = original_beats[batch_start - 1:batch_end]
+                review_error = compliance_error
+                reviewed_batch = None
+                review_attempt = 0
+                while True:
+                    review_attempt += 1
+                    print(
+                        f"Requesting beat-instruction review for batch "
+                        f"{batch_start}-{batch_end} (pass {review_pass}, attempt "
+                        f"{review_attempt}; unlimited until successful or Ctrl+Q).",
+                        flush=True,
                     )
-                    introduction_issues = (
-                        validate_generated_beat_macro_introductions(
-                            reviewed_batch,
-                            macro_arc,
+                    review_messages = build_beat_instruction_review_messages(
+                        story,
+                        total_segments,
+                        candidate_batch,
+                        review_error,
+                        subject_information,
+                        batch_start=batch_start,
+                        batch_end=batch_end,
+                        complete_beats=original_beats,
+                        macro_arc=macro_arc,
+                        current_phase=current_phase,
+                    )
+                    verify_subjects_in_beat_messages(
+                        review_messages,
+                        subject_information,
+                    )
+                    reviewed_raw = llm_request(
+                        review_messages,
+                        response_format=build_beats_response_format(
+                            batch_size,
                             beat_start=batch_start,
-                        )
+                        ),
+                        history_metadata={
+                            **(history_metadata or {}),
+                            "purpose": "beat_instruction_review",
+                            "attempt": review_attempt,
+                            "review_pass": review_pass,
+                            "total_segments": total_segments,
+                            "batch_start": batch_start,
+                            "batch_end": batch_end,
+                            "phase_number": current_phase["phase_number"],
+                        },
+                        **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
                     )
-                    if introduction_issues:
-                        raise ValueError(
-                            "Reviewed phase violates macro introduction timing: "
-                            + " ".join(introduction_issues)
+                    try:
+                        reviewed_batch = parse_generated_beats(
+                            reviewed_raw,
+                            batch_size,
+                            expected_start=batch_start,
                         )
-                except ValueError as error:
-                    review_error = str(error)
-                    if review_attempt < instruction_review_attempts:
+                        introduction_issues = (
+                            validate_generated_beat_macro_introductions(
+                                reviewed_batch,
+                                macro_arc,
+                                beat_start=batch_start,
+                            )
+                        )
+                        if introduction_issues:
+                            raise ValueError(
+                                "Reviewed phase violates macro introduction timing: "
+                                + " ".join(introduction_issues)
+                            )
+                    except ValueError as error:
+                        review_error = str(error)
                         print(
                             "LM Studio returned an invalid instruction-compliance "
-                            f"edit; retrying ({review_attempt + 1}/"
-                            f"{instruction_review_attempts}): {error}"
+                            f"edit; requesting another edit: {error}"
                         )
-                    continue
-                break
-            if reviewed_batch is None:
-                raise RuntimeError(
-                    "LM Studio could not return a structurally valid beat list "
-                    "during the instruction-compliance review: "
-                    f"{review_error}"
+                        continue
+                    break
+                reviewed_beats.extend(reviewed_batch)
+                print(
+                    f"Accepted reviewed beat batch {batch_start}-{batch_end}; "
+                    f"collected {len(reviewed_beats)}/{total_segments} reviewed "
+                    "beats.",
+                    flush=True,
                 )
-            reviewed_beats.extend(reviewed_batch)
+            reviewed_beats = parse_generated_beats(
+                {"beats": reviewed_beats},
+                total_segments,
+            )
+            compliance_issues = validate_generated_beat_instructions(
+                reviewed_beats,
+                beat_instructions,
+            )
+            if not compliance_issues:
+                return reviewed_beats
+            compliance_error = (
+                "The prior complete review still violated explicit "
+                "beat_instructions: " + " ".join(compliance_issues)
+            )
             print(
-                f"Accepted reviewed beat batch {batch_start}-{batch_end}; collected "
-                f"{len(reviewed_beats)}/{total_segments} reviewed beats.",
+                f"{compliance_error} Starting another review pass; attempts are "
+                "unlimited until successful or Ctrl+Q.",
                 flush=True,
             )
-        reviewed_beats = parse_generated_beats(
-            {"beats": reviewed_beats},
-            total_segments,
-        )
-        compliance_issues = validate_generated_beat_instructions(
-            reviewed_beats,
-            beat_instructions,
-        )
-        if compliance_issues:
-            raise RuntimeError(
-                "LM Studio beat list did not satisfy explicit beat_instructions: "
-                + " ".join(compliance_issues)
-            )
-        return reviewed_beats
 
     def request_plan_audit(
         beats,
@@ -5418,11 +5722,13 @@ def generate_beats_from_story(
         repaired_beat_ids=None,
     ):
         last_error = None
-        for audit_content_attempt in range(1, content_attempts + 1):
+        audit_content_attempt = 0
+        while True:
+            audit_content_attempt += 1
             print(
                 f"Requesting global beat-plan audit for plan attempt "
-                f"{plan_attempt}/{audit_attempts} (response attempt "
-                f"{audit_content_attempt}/{content_attempts}).",
+                f"{plan_attempt} (response attempt {audit_content_attempt}; "
+                "unlimited until successful or Ctrl+Q).",
                 flush=True,
             )
             audit_messages = build_beat_plan_audit_messages(
@@ -5465,16 +5771,10 @@ def generate_beats_from_story(
                 )
             except ValueError as error:
                 last_error = error
-                if audit_content_attempt < content_attempts:
-                    print(
-                        "LM Studio returned an invalid beat-plan audit; retrying "
-                        f"the audit response ({audit_content_attempt + 1}/"
-                        f"{content_attempts}): {error}"
-                    )
-        raise RuntimeError(
-            "LM Studio did not return a structurally valid global beat-plan "
-            f"audit after {content_attempts} attempt(s): {last_error}"
-        ) from last_error
+                print(
+                    "LM Studio returned an invalid beat-plan audit; requesting "
+                    f"another audit response: {last_error}"
+                )
 
     def request_plan_repair(
         beats,
@@ -5547,22 +5847,34 @@ def generate_beats_from_story(
         else:
             print(
                 f"Global beat-plan audit passed on plan attempt "
-                f"{plan_attempt}/{audit_attempts}.",
+                f"{plan_attempt}.",
                 flush=True,
             )
         print_generated_beats(beats)
-        save_generated_beats(beats, path, lora_directive=lora_directive)
+        save_generated_beats(
+            beats,
+            path,
+            lora_directive=lora_directive,
+            macro_arc=macro_arc,
+        )
         print(f"Generated {len(beats)} story beats and saved them to {path}.")
         return load_beats(path)
 
-    macro_arc = request_valid_macro_arc()
+    if saved_macro_arc is not None:
+        macro_arc = saved_macro_arc
+        print(f"Using existing story arc from {story_arc_path}.", flush=True)
+    else:
+        macro_arc = request_valid_macro_arc()
     audit_correction = ""
     last_audit = None
-    last_failure_reason = ""
-    for plan_attempt in range(1, audit_attempts + 1):
-        if plan_attempt > 1 and last_audit and not last_audit[
-            "macro_arc_consistent_with_source"
-        ]:
+    plan_attempt = 0
+    while True:
+        plan_attempt += 1
+        if (
+            plan_attempt > 1
+            and last_audit
+            and not last_audit["macro_arc_consistent_with_source"]
+        ):
             macro_arc = request_valid_macro_arc(
                 "The global audit found the macro arc inconsistent with the "
                 "source story: "
@@ -5572,25 +5884,14 @@ def generate_beats_from_story(
             )
         beats = generate_batches(macro_arc, audit_correction=audit_correction)
         beats = review_explicit_instructions(beats, macro_arc)
-        try:
-            audit = request_plan_audit(beats, macro_arc, plan_attempt)
-        except RuntimeError as error:
-            last_failure_reason = (
-                "the global audit could not be localized safely because its "
-                f"response remained invalid: {error}"
-            )
-            print(
-                "Falling back to full-plan regeneration because "
-                + last_failure_reason,
-                flush=True,
-            )
-            audit_correction = last_failure_reason
-            continue
+        audit = request_plan_audit(beats, macro_arc, plan_attempt)
         repaired_beat_ids = set()
         completed_repair_rounds = 0
         fallback_reason = ""
 
-        for repair_round in range(1, repair_rounds + 1):
+        repair_round = 0
+        while True:
+            repair_round += 1
             last_audit = audit
             normalized = normalize_beat_plan_repair_ranges(
                 audit["blocking_issues"],
@@ -5658,16 +5959,15 @@ def generate_beats_from_story(
             print(f"Issues: {normalized['issues']}", flush=True)
             range_label = format_beat_plan_repair_ranges(repair_ranges)
             print(
-                f"Repair round {repair_round}/{repair_rounds}: repairing "
+                f"Repair round {repair_round}: repairing "
                 f"{range_label} in one request.",
                 flush=True,
             )
             correction = ""
             repaired_beats = None
-            for response_attempt in range(
-                1,
-                repair_response_attempts + 1,
-            ):
+            response_attempt = 0
+            while True:
+                response_attempt += 1
                 try:
                     replacement_beats = request_plan_repair(
                         beats,
@@ -5709,17 +6009,11 @@ def generate_beats_from_story(
                     repaired_beats = None
                     print(
                         f"Repair round {repair_round} response failed validation "
-                        f"(attempt {response_attempt}/"
-                        f"{repair_response_attempts}): {error}",
+                        f"(attempt {response_attempt}; unlimited until successful "
+                        f"or Ctrl+Q): {error}",
                         flush=True,
                     )
                     continue
-                break
-            if repaired_beats is None:
-                fallback_reason = (
-                    f"repair round {repair_round} did not produce a valid "
-                    f"response after {repair_response_attempts} attempt(s)"
-                )
                 break
 
             beats = repaired_beats
@@ -5727,81 +6021,20 @@ def generate_beats_from_story(
             repaired_beat_ids.update(
                 beat_ids_for_repair_ranges(repair_ranges)
             )
-            if repair_round == repair_rounds:
-                print(
-                    f"Repair round {repair_round} completed; performing final "
-                    "global audit.",
-                    flush=True,
-                )
-            else:
-                print(
-                    f"Repair round {repair_round} completed; re-auditing complete "
-                    f"{total_segments}-beat plan.",
-                    flush=True,
-                )
-            try:
-                audit = request_plan_audit(
-                    beats,
-                    macro_arc,
-                    plan_attempt,
-                    audit_round=repair_round,
-                    repaired_beat_ids=repaired_beat_ids,
-                )
-            except RuntimeError as error:
-                fallback_reason = (
-                    "the post-repair global audit remained structurally invalid: "
-                    f"{error}"
-                )
-                break
+            print(
+                f"Repair round {repair_round} completed; re-auditing complete "
+                f"{total_segments}-beat plan.",
+                flush=True,
+            )
+            audit = request_plan_audit(
+                beats,
+                macro_arc,
+                plan_attempt,
+                audit_round=repair_round,
+                repaired_beat_ids=repaired_beat_ids,
+            )
 
         last_audit = audit
-        if not fallback_reason:
-            remaining = normalize_beat_plan_repair_ranges(
-                audit["blocking_issues"],
-                total_segments,
-                repaired_beat_ids=repaired_beat_ids,
-                story=story,
-                beat_instructions=beat_instructions,
-            )
-            discarded_count = (
-                audit.get("discarded_blocking_issues", 0)
-                + len(remaining["discarded"])
-            )
-            if (
-                not remaining["issues"]
-                and not remaining["downgraded"]
-                and not audit["macro_arc_consistent_with_source"]
-            ):
-                fallback_reason = (
-                    "the final audit found the macro arc inconsistent with the "
-                    "hard source requirements"
-                )
-            elif not remaining["issues"] and not discarded_count:
-                accepted_audit = dict(audit)
-                if remaining["downgraded"]:
-                    accepted_audit["valid"] = True
-                    accepted_audit["blocking_issues"] = []
-                    accepted_audit["warnings"] = list(audit["warnings"]) + [
-                        "Ignored repeated post-repair blocker(s) that did not "
-                        "identify a concrete hard-source requirement."
-                    ]
-                return accept_plan(
-                    beats,
-                    accepted_audit,
-                    plan_attempt,
-                    completed_repair_rounds,
-                )
-            if discarded_count and not remaining["issues"]:
-                fallback_reason = (
-                    "the final audit's blocking ranges could not be localized "
-                    "safely"
-                )
-            else:
-                fallback_reason = (
-                    f"the plan remains invalid after {repair_rounds} complete "
-                    "repair rounds"
-                )
-        last_failure_reason = fallback_reason
         audit_correction = (
             format_beat_plan_blocking_issues(audit["blocking_issues"])
             if audit["blocking_issues"]
@@ -5810,19 +6043,10 @@ def generate_beats_from_story(
         print(
             "Falling back to full-plan regeneration because "
             f"{fallback_reason}. Remaining blockers: "
-            f"{audit_correction}",
+            f"{audit_correction}. Plan attempts are unlimited until successful "
+            "or Ctrl+Q.",
             flush=True,
         )
-
-    raise RuntimeError(
-        "LM Studio beat plan failed the required global quality audit after "
-        f"{audit_attempts} attempt(s): "
-        + (
-            format_beat_plan_blocking_issues(last_audit["blocking_issues"])
-            if last_audit and last_audit.get("blocking_issues")
-            else last_failure_reason or "unknown blocking audit failure"
-        )
-    )
 
 
 def load_or_generate_beats(
@@ -5833,6 +6057,8 @@ def load_or_generate_beats(
     history_metadata=None,
     beat_instructions="",
     subject_information="",
+    story_arc_path=None,
+    story_arc_source=None,
 ):
     raw = load_text_file(path, required=True)
     beats, lora_directive = parse_beats_content(raw)
@@ -5851,6 +6077,8 @@ def load_or_generate_beats(
         beat_instructions=beat_instructions,
         subject_information=subject_information,
         lora_directive=lora_directive,
+        story_arc_path=story_arc_path,
+        story_arc_source=story_arc_source,
     )
 
 
@@ -5929,7 +6157,6 @@ def build_director_rules(
     subject_definitions,
     segment_number,
     beats_enabled=True,
-    context_frames=DEFAULT_CONTEXT_FRAMES,
     conditioning_mode=None,
 ):
     subject_context = subject_definitions or "N/A"
@@ -6236,22 +6463,22 @@ copied into detailed_description.
 
 For unusual transformed subjects, prioritize these explicit visual anchors:
 - current body configuration
-- missing or transformed major body parts
+- unusual appendage positions or nonhuman features
 - major persistent fusion/attachment relationships
 - currently held important props
-- one or two major visible injuries needed for continuity
+- one or two distinctive visible accessories needed for continuity
 
 Integrate continuity facts naturally into the shot description instead of
 creating a continuity inventory.
 
 Bad:
-"Amy has X. Amy also has Y. Injuries: ... Attached objects: ... Persistent
+"Amy has X. Amy also has Y. Wardrobe: ... Attached objects: ... Persistent
 effects: ..."
 
 Good:
-"The camera arcs around <Subject 1> Amy, her severed torso still suspended
-above the pulsing floor while her remaining arm, buried to the elbow in the
-mirror void, keeps a rusted knife clenched in its trembling hand."
+"The camera arcs around <Subject 1> Amy, her silver scarf still looped through
+the hovering brass ring while her raised left hand keeps a blue glass key
+pointed toward the softly glowing doorway."
 
 The second form preserves the important visible state without restating the
 entire continuity database.
@@ -6499,7 +6726,7 @@ Return only one JSON object with fields:
 version, environment, camera, subjects, ongoing_action, ongoing_audio.
 
 Each subject record uses:
-subject_id, name, picture_ids, picture_id, speaker_id, origin_segment,
+subject_id, name, gender, picture_ids, picture_id, speaker_id, origin_segment,
 position, pose_action, topology, wardrobe, body_state, physical_condition,
 attached_objects, injuries, substances, spatial_relationships,
 persistent_effects, held_props.
@@ -6515,6 +6742,10 @@ SUBJECT ADMISSION AND DIALOGUE IDENTITY:
   `(SN)` speaker ID exactly. No two Subjects may share a Subject ID or speaker ID.
 - Every other new video-only Subject must be explicitly classified with
   `entity_kind`: `animate`; use `entity_kind`: `inanimate` for an object.
+- Set every new Subject's `gender` to exactly `male` or `female`. If the newest
+  segment does not establish gender, use `N/A`.
+- Give every new Subject a unique `speaker_id`, even if it has not spoken yet.
+  Keep that speaker ID in the same Subject record as its Subject ID and gender.
 - A new Subject must be visibly introduced in the newest segment and must not
   come only from FUTURE BEATS. Use picture_ids [], picture_id null, the current
   segment as origin_segment, and never duplicate an existing Subject by synonym.
@@ -6533,7 +6764,7 @@ SEMANTIC DEDUPLICATION IS REQUIRED:
   wording, keep only ONE canonical description.
 - Prefer the newest, most specific description.
 - Never preserve a general and specific version of the same fact together.
-- Never preserve multiple chronological versions of the same wound,
+- Never preserve multiple chronological versions of the same wardrobe tear,
   attachment, pose, substance, relationship, or effect.
 - Do not treat rewording as a new additive fact.
 - Do not repeat a fact across multiple fields.
@@ -6544,7 +6775,7 @@ FIELD OWNERSHIP:
 
 position:
 - Whole-subject real-world placement only.
-- Do not describe wounds, limb configuration, attachments, or pose here.
+- Do not describe wardrobe condition, limb configuration, attachments, or pose here.
 
 pose_action:
 - Only the subject's exact visible pose or unresolved physical action at the
@@ -6560,8 +6791,10 @@ topology:
   fusion in attached_objects or spatial_relationships.
 
 body_state:
-- Current structural configuration of the body: missing parts, severed parts,
-  transformed anatomy, folded/repositioned appendages, etc.
+- Persistent anatomical or physical changes that affect visual continuity,
+  including missing, altered, injured, transformed, or repositioned body parts.
+- Current structural configuration of the body: nonhuman features,
+  missing/repositioned appendages, transformed anatomy, etc.
 - Describe the CURRENT result, not the action that produced it.
 - Consolidate related structural changes into one concise statement where possible.
 
@@ -6587,15 +6820,14 @@ attached_objects:
 - Do not duplicate topology.
 
 injuries:
-- Current visible bodily wounds or tissue damage.
+- Persistent visible injuries or physical damage needed for continuity.
 - One entry per distinct injury site.
 - Merge repeated descriptions of the same injury into one canonical entry.
-- If body_state already says a limb is missing, injuries may describe only the
-  visible wound at that stump; do not repeat the missing-limb fact.
+- Keep descriptions concise and clinical; do not add graphic anatomical detail.
 
 substances:
-- Persistent material on or around the subject: blood, mud, ichor, paint,
-  water, etc.
+- Persistent visible substances or residue on the subject, such as mud,
+  water, dust, paint, or other story-relevant material.
 - Combine repeated instances when they describe the same material and location.
 
 spatial_relationships:
@@ -6641,7 +6873,7 @@ Preserve with highest precision:
 1. missing/transformed body structure
 2. persistent topology/fusions/attachments
 3. held objects
-4. major wounds
+4. visible physical condition and wounds
 5. wardrobe state
 6. real-world position
 7. persistent environmental state
@@ -6767,6 +6999,15 @@ def normalize_structured_continuity_state(
     if not isinstance(candidate, dict):
         return None
 
+    # Gender is durable identity metadata. Normalize model omissions and
+    # unsupported values before schema validation so unknown always becomes
+    # the required N/A default instead of rejecting the whole snapshot.
+    candidate_subjects = candidate.get("subjects")
+    if isinstance(candidate_subjects, dict):
+        for record in candidate_subjects.values():
+            if isinstance(record, dict):
+                record["gender"] = normalize_subject_gender(record.get("gender"))
+
     subject_scalar_fields = (
         "position",
         "pose_action",
@@ -6821,6 +7062,7 @@ def normalize_structured_continuity_state(
                 "subject_id": lambda value: isinstance(value, int)
                 and not isinstance(value, bool),
                 "name": lambda value: isinstance(value, str),
+                "gender": lambda value: isinstance(value, str),
                 "picture_ids": lambda value: isinstance(value, list),
                 "picture_id": lambda value: value is None
                 or (isinstance(value, int) and not isinstance(value, bool)),
@@ -6894,6 +7136,7 @@ def normalize_structured_continuity_state(
         state["subjects"][name] = new_subject_continuity_record({
             "subject_id": record.get("subject_id"),
             "name": record.get("name") or name,
+            "gender": record.get("gender"),
             "picture_ids": list(record.get("picture_ids", [])),
             "picture_id": record.get("picture_id"),
             "speaker_id": record.get("speaker_id"),
@@ -6933,6 +7176,7 @@ def normalize_structured_continuity_state(
             continue
         state["subjects"][proposed_name] = new_subject_continuity_record({
             **speaking_subject,
+            "gender": infer_subject_gender(newest_description, proposed_name),
             "origin_segment": origin_segment,
         })
 
@@ -7029,6 +7273,11 @@ def normalize_structured_continuity_state(
                 or proposed_id in used_ids
             ):
                 proposed_id = max(used_ids, default=0) + 1
+            proposed_speaker_id = available_subject_speaker_id(
+                proposed_id,
+                state["subjects"].values(),
+                record.get("speaker_id"),
+            )
             try:
                 created_in_segment = int(
                     record.get("origin_segment", origin_segment)
@@ -7039,9 +7288,10 @@ def normalize_structured_continuity_state(
             state["subjects"][name] = new_subject_continuity_record({
                 "subject_id": proposed_id,
                 "name": name,
+                "gender": normalize_subject_gender(record.get("gender")),
                 "picture_ids": [],
                 "picture_id": None,
-                "speaker_id": None,
+                "speaker_id": proposed_speaker_id,
                 "origin_segment": created_in_segment,
             })
             id_to_name[str(proposed_id)] = name
@@ -7169,7 +7419,6 @@ def build_segment_request(
     segment_length,
     total_length,
     beats,
-    completed_beat_ids,
     conditioning_mode=None,
 ):
     conditioning_mode = validate_conditioning_mode(conditioning_mode, segment)
@@ -7253,8 +7502,8 @@ def build_segment_request(
             "authoritative for opening composition, pose, placement, lighting, color, "
             "and visible appearance. Use AUTHORITATIVE OPENING STATE primarily for "
             "persistent facts that a still image may not communicate reliably, such "
-            "as unusual anatomy, missing parts, topology/fusions, held-prop "
-            "relationships, major injuries, and relevant off-frame state. Do not "
+            "as unusual anatomy, appendage positions, topology/fusions, held-prop "
+            "relationships, visible physical condition, and relevant off-frame state. Do not "
             "assume this refresh segment remembers earlier motion or latent history. "
             "Continue after the established ending state without replaying it."
         )
@@ -7286,7 +7535,6 @@ def build_generation_messages(
         beats,
         completed_beat_ids,
         current_segment,
-        total_segments,
     )
     if beats:
         if beat_state["active_beat"] is None:
@@ -7318,7 +7566,6 @@ def build_generation_messages(
         segment_length,
         total_length,
         beats,
-        completed_beat_ids,
         conditioning_mode=conditioning_mode,
     )
 
@@ -7444,7 +7691,6 @@ def story_requests_complete_silence(story):
 def build_ministral_context(
     segment_number,
     segment_duration,
-    total_segments,
     beats,
     completed_beat_ids,
     subject_definitions,
@@ -7457,7 +7703,6 @@ def build_ministral_context(
         beats,
         completed,
         segment_number,
-        total_segments,
     )
     active_beat = beat_state["active_beat"]
     current_beat_text = active_beat["text"] if active_beat else None
@@ -9134,6 +9379,8 @@ def _run_main(
         history_metadata={"run_id": run_id},
         beat_instructions=beat_instructions,
         subject_information=subject_information,
+        story_arc_path=STORY_ARC_FILE,
+        story_arc_source=story_source,
     )
     if beats and len(beats) != total_segments:
         raise ValueError(
@@ -9170,7 +9417,6 @@ def _run_main(
     else:
         restored = restore_generation_state(
             resume_segment,
-            run_config,
             beats,
         )
         generation_state = restored["state"]
@@ -9260,6 +9506,7 @@ def _run_main(
         append_test,
         refresh_workflow=refresh_test,
     )
+    verify_global_loras(global_loras)
     print("Workflow validation passed.")
     if resume_segment == 1:
         save_generation_state(generation_state)
@@ -9321,7 +9568,6 @@ def _run_main(
             subject_definitions,
             segment_number,
             beats_enabled=bool(beats),
-            context_frames=getattr(args, "context_frames", DEFAULT_CONTEXT_FRAMES),
             conditioning_mode=conditioning_mode,
         )
         opening_summary = (
@@ -9357,7 +9603,6 @@ def _run_main(
         ministral_context = build_ministral_context(
             segment_number=segment_number,
             segment_duration=current_duration,
-            total_segments=total_segments,
             beats=beats,
             completed_beat_ids=completed_ids,
             subject_definitions=subject_definitions,
@@ -9435,6 +9680,24 @@ def _run_main(
     run_start_time = time.perf_counter()
     prefetched_next = None
     for segment in segments_to_generate:
+        if is_new_phase_start(beats, segment):
+            # Dynamic Subject cleanup at phase boundaries is intentionally
+            # disabled so Subjects established in earlier phases persist.
+            # continuity_state, removed_subject_names = (
+            #     reset_generation_state_subjects_for_new_phase(
+            #         generation_state,
+            #         base_subject_definitions,
+            #         continuity_state,
+            #     )
+            # )
+            # additional_subject_definitions = []
+            # subject_definitions = base_subject_definitions
+            # save_generation_state(generation_state)
+            phase_number = beats[segment - 1].phase_number
+            print(
+                f"Starting phase {phase_number} at segment {segment}; retaining "
+                "dynamically created Subjects from earlier phases."
+            )
         segment_bundle = build_segment_bundle(
             segment,
             completed_beat_ids,
@@ -9491,9 +9754,6 @@ def _run_main(
         llm_result["detailed_description"] = (
             inject_persistent_state_into_description(
                 get_detailed_description(llm_result, ""),
-                continuity_state,
-                subject_definitions,
-                segment,
             )
         )
         payload["llm_result"] = llm_result
@@ -9649,7 +9909,12 @@ def _run_main(
             f"segment {segment}."
         )
 
-        if segment < total_segments and director_prefetch_executor is not None:
+        next_segment_starts_phase = is_new_phase_start(beats, segment + 1)
+        if (
+            segment < total_segments
+            and director_prefetch_executor is not None
+            and not next_segment_starts_phase
+        ):
             next_bundle = build_segment_bundle(
                 segment + 1,
                 completed_beat_ids,
@@ -9674,6 +9939,11 @@ def _run_main(
                 f"Started LLM prefetch for segment {segment + 1} during "
                 f"segment {segment}'s ComfyUI render using the returned state "
                 f"(completed beat(s): {assumed})."
+            )
+        elif next_segment_starts_phase and director_prefetch_executor is not None:
+            print(
+                f"Skipped LLM prefetch for segment {segment + 1} because it "
+                "starts a new phase."
             )
 
         try:

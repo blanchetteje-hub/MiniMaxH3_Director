@@ -59,7 +59,6 @@ class ResumeTests(unittest.TestCase):
 
             restored = minimax.restore_generation_state(
                 2,
-                config,
                 [],
                 checkpoint,
             )
@@ -73,6 +72,40 @@ class ResumeTests(unittest.TestCase):
             restored["state"]["segments"][0]["additional_subject_definitions"],
             [definition],
         )
+
+    def test_new_subject_identity_is_saved_in_generation_state_json(self):
+        definition = (
+            "<Subject 2> is New Guard, male (S2), created in generated video "
+            "segment 1 and continued from <Video 1>."
+        )
+        continuity = minimax.new_continuity_state()
+        continuity["subjects"]["New Guard"] = (
+            minimax.new_subject_continuity_record({
+                "subject_id": 2,
+                "name": "New Guard",
+                "gender": "male",
+                "picture_ids": [],
+                "picture_id": None,
+                "speaker_id": "S2",
+                "origin_segment": 1,
+            })
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = os.path.join(directory, "generation_state.json")
+            state = minimax.new_generation_state(
+                minimax.build_run_config(5, 10, 0.5, 2)
+            )
+            state["continuity_state"] = continuity
+            state["additional_subject_definitions"] = [definition]
+            minimax.save_generation_state(state, checkpoint)
+            saved = minimax.load_generation_state(checkpoint)
+
+        subject = saved["continuity_state"]["subjects"]["New Guard"]
+        self.assertEqual(subject["subject_id"], 2)
+        self.assertEqual(subject["gender"], "male")
+        self.assertEqual(subject["speaker_id"], "S2")
+        self.assertEqual(saved["additional_subject_definitions"], [definition])
 
     def test_beat_progress_is_kept_in_generation_state(self):
         config = minimax.build_run_config(5, 20, 0.5, 4)
@@ -113,10 +146,10 @@ class ResumeTests(unittest.TestCase):
         args = minimax.parse_args(["5", "20", ".5", "--steps", "12"])
         self.assertEqual(args.steps, 12)
 
-    def test_parse_args_defaults_extension_context_to_twenty_two_frames(self):
+    def test_parse_args_defaults_extension_context_to_seven_frames(self):
         args = minimax.parse_args(["5", "20", ".5"])
 
-        self.assertEqual(args.context_frames, 22)
+        self.assertEqual(args.context_frames, 7)
 
     def test_parse_args_accepts_common_extension_context_sizes(self):
         for context_frames in (2, 4, 8, 12):
@@ -330,7 +363,7 @@ class ResumeTests(unittest.TestCase):
             checkpoint = os.path.join(directory, "generation_state.json")
             minimax.save_generation_state(state, checkpoint)
             restored = minimax.restore_generation_state(
-                3, config, ["Walk", "Talk"], checkpoint
+                3, ["Walk", "Talk"], checkpoint
             )
 
             self.assertEqual(restored["video_paths"], paths)
@@ -365,7 +398,7 @@ class ResumeTests(unittest.TestCase):
             minimax.save_generation_state(state, checkpoint)
 
             restored = minimax.restore_generation_state(
-                2, config, [], checkpoint
+                2, [], checkpoint
             )
 
             self.assertEqual(len(restored["state"]["segments"]), 1)
@@ -393,7 +426,7 @@ class ResumeTests(unittest.TestCase):
             minimax.save_generation_state(state, checkpoint)
 
             restored = minimax.restore_generation_state(
-                3, config, [], checkpoint
+                3, [], checkpoint
             )
 
             self.assertTrue(restored["continuity_summary_pending"])
@@ -442,7 +475,6 @@ class ResumeTests(unittest.TestCase):
             )
             restored = minimax.restore_generation_state(
                 2,
-                changed,
                 ["new beat 1", "new beat 2"],
                 checkpoint,
             )
@@ -479,7 +511,7 @@ class ResumeTests(unittest.TestCase):
             minimax.save_generation_state(state, checkpoint)
             config = minimax.build_run_config(5, 10, 0.5, 2)
 
-            restored = minimax.restore_generation_state(1, config, [], checkpoint)
+            restored = minimax.restore_generation_state(1, [], checkpoint)
 
             self.assertEqual(restored["video_paths"], [])
             self.assertIsNone(restored["previous_video_path"])
@@ -498,7 +530,7 @@ class ResumeTests(unittest.TestCase):
             minimax.save_generation_state(state, checkpoint)
 
             with self.assertRaisesRegex(RuntimeError, "video for segment 1"):
-                minimax.restore_generation_state(2, config, [], checkpoint)
+                minimax.restore_generation_state(2, [], checkpoint)
 
 
 if __name__ == "__main__":

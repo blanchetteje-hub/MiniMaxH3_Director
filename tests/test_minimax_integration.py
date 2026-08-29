@@ -188,10 +188,10 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertTrue(context.startswith("CURRENT STORY CONTEXT"))
         self.assertIn("Other source-story material omitted", context)
 
-    def test_bounded_beat_state_exposes_active_and_five_lookahead(self):
+    def test_bounded_beat_state_exposes_active_and_ordered_lookahead(self):
         beats = [f"Event {number}" for number in range(1, 12)]
 
-        state = minimax.build_bounded_beat_state(beats, {1, 2}, 3, 11)
+        state = minimax.build_bounded_beat_state(beats, {1, 2}, 3)
 
         self.assertEqual(state["completed_through"], 2)
         self.assertEqual(state["active_beat"], {"id": 3, "text": "Event 3"})
@@ -201,7 +201,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(state["beats_remaining"], 9)
 
-    def test_director_beat_contract_requires_b001_in_segment_one_and_forbids_done_beats(self):
+    def test_director_beat_contract_maps_beat_one_to_segment_one(self):
         rules = minimax.build_director_rules(
             total_length=12,
             segment_length=6,
@@ -224,11 +224,15 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         combined = "\n".join(message["content"] for message in messages)
-        self.assertIn("On Segment 1, the ACTIVE beat must be B001", combined)
+        self.assertIn(
+            "The ACTIVE beat ID must equal the current segment number",
+            combined,
+        )
+        self.assertIn("Segment 1 executes Beat 1", combined)
         self.assertIn("Never repeat any beat already completed", combined)
         self.assertIn("one substantial new exchange or", combined)
         self.assertIn("persistent visible alteration", combined)
-        self.assertIn("B001: Opening event", combined)
+        self.assertIn("Beat 1: Opening event", combined)
 
     def test_director_promotes_unregistered_speakers_but_not_visual_roles(self):
         rules = minimax.build_director_rules(
@@ -259,7 +263,6 @@ class LmStudioIntegrationTests(unittest.TestCase):
         context = minimax.build_ministral_context(
             segment_number=3,
             segment_duration=6.0,
-            total_segments=11,
             beats=beats,
             completed_beat_ids={1, 2},
             subject_definitions=SUBJECTS,
@@ -508,47 +511,44 @@ class LmStudioIntegrationTests(unittest.TestCase):
     def test_next_beat_prompt_demands_immediate_dominant_execution(self):
         request = minimax.build_segment_request(
             segment=1,
-            total_segments=8,
+            total_segments=4,
             segment_length=6,
-            total_length=48,
+            total_length=24,
             beats=BEATS,
-            completed_beat_ids=[]
         )
 
-        self.assertIn("PRIMARY BEAT EXECUTION: ACTIVE beat", request)
-        self.assertIn("Begin visibly advancing this beat early", request)
-        self.assertIn("make it the primary story event", request)
-        self.assertIn("Devote enough of the clip to clearly enact its required observable events", request)
-        self.assertIn("Actively attempt to complete B001 in THIS segment", request)
-        self.assertIn("Segment 2 is only its absolute latest completion point", request)
-        self.assertIn("If all required observable events fit naturally within this segment", request)
+        self.assertIn("PRIMARY BEAT EXECUTION: ACTIVE Beat 1", request)
+        self.assertIn("Segment 1 must visibly perform and complete Beat 1", request)
+        self.assertIn("it may not be deferred to another segment", request)
+        self.assertIn("Begin advancing it early", request)
+        self.assertIn("clearly enact every required observable event", request)
+        self.assertIn("completed_beat_ids: [1]", request)
         self.assertIn("Do not substitute atmosphere", request)
 
     def test_action_and_dialogue_beats_receive_specific_execution_orders(self):
         action_request = minimax.build_segment_request(
-            2, 8, 6, 48, BEATS, [1]
+            2, 4, 6, 24, BEATS
         )
         dialogue_request = minimax.build_segment_request(
-            3, 8, 6, 48, BEATS, [1, 2]
+            3, 4, 6, 24, BEATS
         )
 
         self.assertIn("show that action clearly on screen", action_request)
-        self.assertIn("primary story event", dialogue_request)
+        self.assertIn("write the required audible exchange", dialogue_request)
         self.assertIn("Narration, off-screen action", dialogue_request)
 
-    def test_beat_deadline_demands_visible_outcome_and_completion_id(self):
+    def test_each_segment_requires_its_beat_outcome_and_completion_id(self):
         request = minimax.build_segment_request(
             segment=2,
-            total_segments=8,
+            total_segments=4,
             segment_length=6,
-            total_length=48,
+            total_length=24,
             beats=BEATS,
-            completed_beat_ids=[]
         )
 
-        self.assertIn("has reached its pacing deadline", request)
-        self.assertIn("unmistakable outcome before the shot ends", request)
-        self.assertIn("Report this beat in completed_beat_ids", request)
+        self.assertIn("complete Beat 2 within this clip", request)
+        self.assertIn("required observable event and its required outcome", request)
+        self.assertIn("completed_beat_ids: [2]", request)
 
     def test_unconfirmed_beat_is_not_advanced(self):
         with self.assertRaisesRegex(
@@ -572,31 +572,6 @@ class LmStudioIntegrationTests(unittest.TestCase):
             {1, 2},
         )
 
-    def test_low_megapixel_director_guidance_uses_exact_thresholds(self):
-        def rules_for(megapixels):
-            return minimax.build_director_rules(
-                total_length=12,
-                segment_length=6,
-                total_segments=2,
-                subject_definitions=SUBJECTS,
-                megapixels=megapixels,
-                beats_enabled=False
-            )
-
-        at_half = rules_for(0.5)
-        below_half = rules_for(0.49)
-        at_four_tenths = rules_for(0.4)
-        below_four_tenths = rules_for(0.39)
-
-        self.assertNotIn("mostly close-up camera shots", at_half)
-        self.assertNotIn("Avoid a lot of movement", at_half)
-        self.assertNotIn("mostly close-up camera shots", below_half)
-        self.assertNotIn("Avoid a lot of movement", below_half)
-        self.assertIn("mostly close-up camera shots", at_four_tenths)
-        self.assertNotIn("Avoid a lot of movement", at_four_tenths)
-        self.assertIn("mostly close-up camera shots", below_four_tenths)
-        self.assertNotIn("Avoid a lot of movement", below_four_tenths)
-
     @mock.patch("minimax.load_text_file")
     def test_blank_or_comment_only_beats_file_disables_beats(self, load_text):
         for contents in ("", "\n  \n", "# no beat tracking\n  # disabled\n"):
@@ -610,7 +585,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             segment_length=6,
             total_segments=2,
             subject_definitions=SUBJECTS,
-            megapixels=0.5,
+            segment_number=1,
             beats_enabled=False
         )
         messages, _, _ = minimax.build_generation_messages(
@@ -636,7 +611,6 @@ class LmStudioIntegrationTests(unittest.TestCase):
         context = minimax.build_ministral_context(
             segment_number=2,
             segment_duration=6.0,
-            total_segments=2,
             beats=[],
             completed_beat_ids=[99],
             subject_definitions=SUBJECTS,
@@ -653,7 +627,6 @@ class LmStudioIntegrationTests(unittest.TestCase):
         context = minimax.build_ministral_context(
             segment_number=1,
             segment_duration=6.0,
-            total_segments=1,
             beats=[],
             completed_beat_ids=[],
             subject_definitions=SUBJECTS,
@@ -778,6 +751,31 @@ class LmStudioIntegrationTests(unittest.TestCase):
             [101, 202],
         )
         self.assertEqual(random_seed.call_count, 2)
+
+    @mock.patch("minimax.time.sleep")
+    @mock.patch("minimax.requests.post")
+    def test_beat_transport_retries_past_normal_limit_until_success(
+        self,
+        post,
+        sleep,
+    ):
+        payload = {"beats": ["A valid beat."]}
+        post.side_effect = [
+            minimax.requests.ConnectionError(f"temporary failure {attempt}")
+            for attempt in range(6)
+        ] + [FakeResponse(json.dumps(payload))]
+
+        result = minimax.ask_llm(
+            [{"role": "user", "content": "create beats"}],
+            max_retries=1,
+            retry_delay=0,
+            response_format=None,
+            history_metadata={"purpose": "beat_generation"},
+        )
+
+        self.assertEqual(result, payload)
+        self.assertEqual(post.call_count, 7)
+        self.assertEqual(sleep.call_count, 6)
 
     def test_lm_message_normalizer_merges_adjacent_users(self):
         normalized = minimax.normalize_lm_studio_messages([
@@ -1068,28 +1066,28 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertEqual(llm_request.call_count, 2)
         self.assertIn("Mark", result["detailed_description"])
 
-    def test_context_uses_real_total_segment_deadline(self):
-        before_deadline = minimax.build_ministral_context(
+    def test_context_requires_each_active_beat_in_its_assigned_segment(self):
+        first_segment = minimax.build_ministral_context(
             segment_number=1,
             segment_duration=6.0,
-            total_segments=8,
             beats=BEATS,
             completed_beat_ids=[],
             subject_definitions=SUBJECTS,
             story="A noisy theme park."
         )
-        at_deadline = minimax.build_ministral_context(
+        second_segment = minimax.build_ministral_context(
             segment_number=2,
             segment_duration=6.0,
-            total_segments=8,
             beats=BEATS,
             completed_beat_ids=[],
             subject_definitions=SUBJECTS,
             story="A noisy theme park."
         )
 
-        self.assertFalse(before_deadline["beat_deadline_required"])
-        self.assertTrue(at_deadline["beat_deadline_required"])
+        self.assertTrue(first_segment["beat_deadline_required"])
+        self.assertEqual(first_segment["next_beat_id"], 1)
+        self.assertTrue(second_segment["beat_deadline_required"])
+        self.assertEqual(second_segment["next_beat_id"], 2)
 
     def test_later_beat_leakage_is_checked_before_deadline(self):
         context = context_for(1)
@@ -1179,12 +1177,12 @@ class LmStudioIntegrationTests(unittest.TestCase):
             integrated.startswith("[Shot 3] Camera cuts to a new shot:")
         )
         self.assertIn(
-            "Mark <Picture 1> is at arcade entrance, wearing a navy jacket "
+            "<Subject 1> Mark is at arcade entrance, wearing a navy jacket "
             "and black jeans, with clothing state: wet",
             clothing
         )
         self.assertIn(
-            "Jill <Picture 2> is at fountain, wearing a yellow dress and "
+            "<Subject 2> Jill is at fountain, wearing a yellow dress and "
             "white sneakers, with clothing state: dry",
             clothing
         )
@@ -1346,12 +1344,12 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "Connie <Picture 1> is at roadside, wearing a faded green jacket "
+            "<Subject 1> Connie is at roadside, wearing a faded green jacket "
             "over a white shirt and black jeans, with clothing state: clean",
             clothing
         )
         self.assertIn(
-            "Frank <Picture 2> is at road, wearing a blue polo, khaki trousers, "
+            "<Subject 2> Frank is at road, wearing a blue polo, khaki trousers, "
             "and brown shoes, with clothing state: dry",
             clothing
         )
@@ -1372,7 +1370,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "Connie <Picture 1> is at arcade entrance, wearing a burgundy coat "
+            "<Subject 1> Connie is at arcade entrance, wearing a burgundy coat "
             "and black boots, with clothing state: wet",
             clothing
         )
@@ -1399,7 +1397,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "Connie <Picture 1> is at arcade entrance, wearing a burgundy coat "
+            "<Subject 1> Connie is at arcade entrance, wearing a burgundy coat "
             "and black boots, with clothing state: wet",
             clothing
         )
