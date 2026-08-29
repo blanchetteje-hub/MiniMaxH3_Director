@@ -90,7 +90,7 @@ class PersistentShotContinuityTests(unittest.TestCase):
         self.assertIn("two metal spikes", opening.casefold())
         self.assertIn("thick wires", after.casefold())
 
-    def test_explicit_removal_starts_with_old_state_then_removes_it(self):
+    def test_complete_candidate_empty_list_removes_old_attachment(self):
         state = state_for_jenny(
             attached_objects=["metal spike embedded in Jenny's left shoulder"]
         )
@@ -108,19 +108,19 @@ class PersistentShotContinuityTests(unittest.TestCase):
         self.assertIn("metal spike", opening.casefold())
         self.assertIn("embedded", opening.casefold())
 
+        replacement = state_for_jenny()
         cut_only_state = minimax.normalize_structured_continuity_state(
-            {"subjects": {"Jenny": {"attached_objects": []}}},
+            replacement,
             SUBJECT_DEFINITIONS,
             state,
             newest_description="[Shot 4] Camera cuts to Jenny's left shoulder.",
         )
         self.assertEqual(
-            ["metal spike embedded in Jenny's left shoulder"],
-            cut_only_state["subjects"]["Jenny"]["attached_objects"],
+            [], cut_only_state["subjects"]["Jenny"]["attached_objects"]
         )
 
         resulting_state = minimax.normalize_structured_continuity_state(
-            {"subjects": {"Jenny": {"attached_objects": []}}},
+            replacement,
             SUBJECT_DEFINITIONS,
             state,
             newest_description=before,

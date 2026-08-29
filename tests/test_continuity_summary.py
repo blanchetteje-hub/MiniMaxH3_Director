@@ -1,7 +1,35 @@
+import copy
 import unittest
 from unittest.mock import Mock, call, patch
 
 import minimax
+
+
+def canonical_candidate(subject_definitions, committed_state=None):
+    """Return a complete fresh snapshot carrying stable identities only."""
+    identities = minimax.continuity_state_for_registry(
+        subject_definitions,
+        committed_state,
+    )
+    candidate = minimax.new_continuity_state()
+    candidate["subjects"] = {
+        name: minimax.new_subject_continuity_record(copy.deepcopy(record))
+        for name, record in identities["subjects"].items()
+    }
+    return candidate
+
+
+def complete_new_subject(subject_id, name, **updates):
+    record = minimax.new_subject_continuity_record({
+        "subject_id": subject_id,
+        "name": name,
+        "picture_ids": [],
+        "picture_id": None,
+        "speaker_id": None,
+        "origin_segment": None,
+    })
+    record.update(updates)
+    return record
 
 
 def segment_result(number):
@@ -123,19 +151,17 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
 
     def test_continuity_candidate_records_new_subject_creation_segment(self):
+        initial_snapshot = canonical_candidate(self.SUBJECTS)
+        initial_snapshot["subjects"]["spider-alien"] = complete_new_subject(
+            3,
+            "spider-alien",
+            entity_kind="animate",
+            position="above Connie",
+            pose_action="crawling forward",
+            body_state="segmented body and eight legs",
+        )
         candidate = minimax.normalize_structured_continuity_state(
-            {
-                "subjects": {
-                    "spider-alien": {
-                        "subject_id": 3,
-                        "name": "spider-alien",
-                        "entity_kind": "animate",
-                        "position": "above Connie",
-                        "pose_action": "crawling forward",
-                        "body_state": "segmented body and eight legs",
-                    }
-                }
-            },
+            initial_snapshot,
             self.SUBJECTS,
             origin_segment=2,
             newest_description=(
@@ -148,16 +174,12 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(created["picture_ids"], [])
         self.assertEqual(created["origin_segment"], 2)
 
+        next_snapshot = canonical_candidate(self.SUBJECTS, candidate)
+        next_snapshot["subjects"]["spider-alien"]["subject_id"] = 99
+        next_snapshot["subjects"]["spider-alien"]["origin_segment"] = 99
+        next_snapshot["subjects"]["spider-alien"]["position"] = "beside Connie"
         preserved = minimax.normalize_structured_continuity_state(
-            {
-                "subjects": {
-                    "spider-alien": {
-                        "subject_id": 99,
-                        "origin_segment": 99,
-                        "position": "beside Connie",
-                    }
-                }
-            },
+            next_snapshot,
             self.SUBJECTS,
             candidate,
             origin_segment=3,
@@ -175,14 +197,6 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
 
     def test_new_video_subject_does_not_require_name_evidence_in_prose(self):
-        record = {
-            "subject_id": 3,
-            "name": "Baby Alpha",
-            "entity_kind": "animate",
-            "position": "in Terri's arms",
-            "body_state": "newborn infant",
-        }
-
         for description in (
             "Terri cradles the baby in her arms.",
             "Terri cradles the newborn in her arms.",
@@ -190,8 +204,16 @@ class ContinuitySummaryTests(unittest.TestCase):
             "Terri cradles the newly arrived figure in her arms.",
         ):
             with self.subTest(description=description):
+                snapshot = canonical_candidate(self.SUBJECTS)
+                snapshot["subjects"]["Baby Alpha"] = complete_new_subject(
+                    3,
+                    "Baby Alpha",
+                    entity_kind="animate",
+                    position="in Terri's arms",
+                    body_state="newborn infant",
+                )
                 candidate = minimax.normalize_structured_continuity_state(
-                    {"subjects": {"Baby Alpha": record}},
+                    snapshot,
                     self.SUBJECTS,
                     origin_segment=2,
                     newest_description=description,
@@ -219,17 +241,15 @@ class ContinuitySummaryTests(unittest.TestCase):
                 self.assertEqual(additional, [expected])
 
     def test_new_video_subject_is_accepted_without_current_name_evidence(self):
+        snapshot = canonical_candidate(self.SUBJECTS)
+        snapshot["subjects"]["Baby Alpha"] = complete_new_subject(
+            3,
+            "Baby Alpha",
+            entity_kind="animate",
+            body_state="newborn infant",
+        )
         candidate = minimax.normalize_structured_continuity_state(
-            {
-                "subjects": {
-                    "Baby Alpha": {
-                        "subject_id": 3,
-                        "name": "Baby Alpha",
-                        "entity_kind": "animate",
-                        "body_state": "newborn infant",
-                    }
-                }
-            },
+            snapshot,
             self.SUBJECTS,
             origin_segment=2,
             newest_description="Connie stands alone in the empty room.",
@@ -239,17 +259,15 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertIn("Baby Alpha", candidate["subjects"])
 
     def test_future_only_named_subject_is_still_rejected(self):
+        snapshot = canonical_candidate(self.SUBJECTS)
+        snapshot["subjects"]["Baby Alpha"] = complete_new_subject(
+            3,
+            "Baby Alpha",
+            entity_kind="animate",
+            body_state="newly visible subject",
+        )
         candidate = minimax.normalize_structured_continuity_state(
-            {
-                "subjects": {
-                    "Baby Alpha": {
-                        "subject_id": 3,
-                        "name": "Baby Alpha",
-                        "entity_kind": "animate",
-                        "body_state": "newly visible subject",
-                    }
-                }
-            },
+            snapshot,
             self.SUBJECTS,
             origin_segment=2,
             newest_description="Connie stands alone in the empty room.",
@@ -262,21 +280,20 @@ class ContinuitySummaryTests(unittest.TestCase):
     def test_new_inanimate_objects_are_not_created_as_subjects(self):
         for entity_kind in ("inanimate", ""):
             with self.subTest(entity_kind=entity_kind or "missing"):
+                snapshot = canonical_candidate(self.SUBJECTS)
+                updates = {
+                    "position": "beside Connie",
+                    "body_state": "red frame and silver handlebars",
+                }
+                if entity_kind:
+                    updates["entity_kind"] = entity_kind
+                snapshot["subjects"]["Red Bicycle"] = complete_new_subject(
+                    3,
+                    "Red Bicycle",
+                    **updates,
+                )
                 candidate = minimax.normalize_structured_continuity_state(
-                    {
-                        "subjects": {
-                            "Red Bicycle": {
-                                "subject_id": 3,
-                                "name": "Red Bicycle",
-                                **(
-                                    {"entity_kind": entity_kind}
-                                    if entity_kind else {}
-                                ),
-                                "position": "beside Connie",
-                                "body_state": "red frame and silver handlebars",
-                            }
-                        }
-                    },
+                    snapshot,
                     self.SUBJECTS,
                     origin_segment=2,
                     newest_description=(
@@ -288,7 +305,7 @@ class ContinuitySummaryTests(unittest.TestCase):
 
     def test_speaking_inanimate_entity_is_persisted_as_subject_with_speaker_id(self):
         candidate = minimax.normalize_structured_continuity_state(
-            {"subjects": {}},
+            canonical_candidate(self.SUBJECTS),
             self.SUBJECTS,
             origin_segment=2,
             newest_description=(
@@ -325,27 +342,26 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertIn("Never create a Subject for an inanimate object", system_prompt)
         self.assertIn("Anything that explicitly speaks", system_prompt)
 
-    def test_structured_candidate_preserves_wardrobe_when_not_changed(self):
+    def test_structured_candidate_replaces_omitted_old_wardrobe_with_na(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
         committed["subjects"]["Connie"]["wardrobe"]["upper"] = "green sweater"
 
+        snapshot = canonical_candidate(self.SUBJECTS, committed)
+        snapshot["environment"]["location"] = "bedroom"
+        snapshot["subjects"]["Connie"]["position"] = "left side"
         candidate = minimax.normalize_structured_continuity_state(
-            {
-                "version": 1,
-                "environment": {"location": "bedroom"},
-                "subjects": {"Connie": {"position": "left side"}},
-            },
+            snapshot,
             self.SUBJECTS,
             committed,
         )
 
         self.assertEqual(
             candidate["subjects"]["Connie"]["wardrobe"]["upper"],
-            "green sweater",
+            "N/A",
         )
         self.assertEqual(candidate["subjects"]["Connie"]["position"], "left side")
 
-    def test_structured_candidate_preserves_all_known_subject_state_on_na(self):
+    def test_structured_candidate_na_and_empty_lists_clear_known_subject_state(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
         committed_subject = committed["subjects"]["Connie"]
         committed_subject["position"] = "beside the bed"
@@ -359,32 +375,22 @@ class ContinuitySummaryTests(unittest.TestCase):
         committed_subject["body_state"] = "left horn missing"
         committed_subject["held_props"] = ["flashlight"]
 
+        snapshot = canonical_candidate(self.SUBJECTS, committed)
         candidate = minimax.normalize_structured_continuity_state(
-            {
-                "subjects": {
-                    "Connie": {
-                        "position": "N/A",
-                        "wardrobe": {
-                            "upper": "N/A",
-                            "lower": "N/A",
-                            "footwear": "",
-                            "other": "N/A",
-                        },
-                        "physical_condition": "N/A",
-                        "body_state": "N/A",
-                    }
-                }
-            },
+            snapshot,
             self.SUBJECTS,
             committed,
         )
 
         result = candidate["subjects"]["Connie"]
-        self.assertEqual(result["position"], "beside the bed")
-        self.assertEqual(result["wardrobe"], committed_subject["wardrobe"])
-        self.assertEqual(result["physical_condition"], "muddy and alert")
-        self.assertEqual(result["body_state"], "left horn missing")
-        self.assertEqual(result["held_props"], ["flashlight"])
+        self.assertEqual(result["position"], "N/A")
+        self.assertEqual(
+            result["wardrobe"],
+            {field: "N/A" for field in ("upper", "lower", "footwear", "other")},
+        )
+        self.assertEqual(result["physical_condition"], "N/A")
+        self.assertEqual(result["body_state"], "N/A")
+        self.assertEqual(result["held_props"], [])
 
     def test_structured_state_rebuilds_name_keys_from_numeric_subject_ids(self):
         committed = minimax.new_continuity_state()
@@ -427,8 +433,10 @@ class ContinuitySummaryTests(unittest.TestCase):
     def test_structured_candidate_fills_unknown_body_state(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
 
+        snapshot = canonical_candidate(self.SUBJECTS, committed)
+        snapshot["subjects"]["Connie"]["body_state"] = "left horn missing"
         candidate = minimax.normalize_structured_continuity_state(
-            {"subjects": {"Connie": {"body_state": "left horn missing"}}},
+            snapshot,
             self.SUBJECTS,
             committed,
             newest_description="Connie's left horn is visibly missing.",
@@ -469,17 +477,12 @@ class ContinuitySummaryTests(unittest.TestCase):
         committed["subjects"]["Connie"]["pose_action"] = "running"
         committed["subjects"]["Connie"]["physical_condition"] = "bleeding"
 
+        snapshot = canonical_candidate(self.SUBJECTS, committed)
+        snapshot["camera"] = "medium shot beside Gogol"
+        snapshot["subjects"]["Connie"]["position"] = "beside Gogol"
+        snapshot["subjects"]["Connie"]["pose_action"] = "standing still"
         candidate = minimax.normalize_structured_continuity_state(
-            {
-                "camera": "medium shot beside Gogol",
-                "subjects": {
-                    "Connie": {
-                        "position": "beside Gogol",
-                        "pose_action": "standing still",
-                        "physical_condition": "N/A",
-                    }
-                },
-            },
+            snapshot,
             self.SUBJECTS,
             committed,
         )
@@ -488,20 +491,18 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(candidate["camera"], "medium shot beside Gogol")
         self.assertEqual(connie["position"], "beside Gogol")
         self.assertEqual(connie["pose_action"], "standing still")
-        self.assertEqual(connie["physical_condition"], "bleeding")
+        self.assertEqual(connie["physical_condition"], "N/A")
 
     def test_explicit_held_props_lists_replace_only_the_matching_subject(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
         committed["subjects"]["Connie"]["held_props"] = ["flashlight"]
         committed["subjects"]["Beth"]["held_props"] = ["map"]
 
+        snapshot = canonical_candidate(self.SUBJECTS, committed)
+        snapshot["subjects"]["Connie"]["held_props"] = []
+        snapshot["subjects"]["Beth"]["held_props"] = ["silver sword"]
         candidate = minimax.normalize_structured_continuity_state(
-            {
-                "subjects": {
-                    "Connie": {"held_props": []},
-                    "Beth": {"held_props": ["silver sword"]},
-                }
-            },
+            snapshot,
             self.SUBJECTS,
             committed,
             newest_description=(
@@ -516,17 +517,15 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
 
     def test_registry_identity_fields_override_candidate_values(self):
+        snapshot = canonical_candidate(self.SUBJECTS)
+        snapshot["subjects"]["Connie"].update({
+            "subject_id": 99,
+            "picture_ids": [99],
+            "picture_id": 99,
+            "speaker_id": "S99",
+        })
         candidate = minimax.normalize_structured_continuity_state(
-            {
-                "subjects": {
-                    "Connie": {
-                        "subject_id": 99,
-                        "picture_ids": [99],
-                        "picture_id": 99,
-                        "speaker_id": "S99",
-                    }
-                }
-            },
+            snapshot,
             self.SUBJECTS,
         )
 
@@ -536,66 +535,54 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(connie["picture_id"], 1)
         self.assertEqual(connie["speaker_id"], "S1")
 
-    def test_numeric_subject_id_candidates_preserve_existing_state_when_values_are_na(self):
+    def test_numeric_subject_id_candidates_replace_existing_state_with_na(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
         committed["subjects"]["Connie"]["position"] = "beside the bed"
         committed["subjects"]["Connie"]["wardrobe"]["upper"] = "green sweater"
         committed["subjects"]["Connie"]["physical_condition"] = "alert"
         committed["subjects"]["Connie"]["held_props"] = ["flashlight"]
 
+        snapshot = canonical_candidate(self.SUBJECTS, committed)
+        snapshot["subjects"]["1"] = snapshot["subjects"].pop("Connie")
         candidate = minimax.normalize_structured_continuity_state(
-            {
-                "subjects": {
-                    "1": {
-                        "position": "N/A",
-                        "pose_action": "N/A",
-                        "wardrobe": {
-                            "upper": "N/A",
-                            "lower": "N/A",
-                            "footwear": "N/A",
-                            "other": "N/A",
-                        },
-                        "physical_condition": "N/A",
-                    }
-                }
-            },
+            snapshot,
             self.SUBJECTS,
             committed,
         )
 
         result = candidate["subjects"]["Connie"]
-        self.assertEqual(result["position"], "beside the bed")
-        self.assertEqual(result["wardrobe"]["upper"], "green sweater")
-        self.assertEqual(result["physical_condition"], "alert")
-        self.assertEqual(result["held_props"], ["flashlight"])
+        self.assertEqual(result["position"], "N/A")
+        self.assertEqual(result["wardrobe"]["upper"], "N/A")
+        self.assertEqual(result["physical_condition"], "N/A")
+        self.assertEqual(result["held_props"], [])
 
-    def test_na_with_implied_note_only_fills_unknown_continuity_fields(self):
+    def test_na_with_implied_note_normalizes_to_na_without_recovery(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
         committed["subjects"]["Connie"]["position"] = "beside the bed"
         committed["subjects"]["Connie"]["wardrobe"]["upper"] = "N/A"
         committed["subjects"]["Connie"]["physical_condition"] = "N/A"
         committed["subjects"]["Connie"]["held_props"] = []
 
+        snapshot = canonical_candidate(self.SUBJECTS, committed)
+        snapshot["subjects"]["Connie"].update({
+            "position": "N/A (implied near the doorway)",
+            "physical_condition": "N/A (implied startled)",
+            "held_props": ["N/A (implied flashlight)"],
+        })
+        snapshot["subjects"]["Connie"]["wardrobe"]["upper"] = (
+            "N/A (implied red shirt)"
+        )
         candidate = minimax.normalize_structured_continuity_state(
-            {
-                "subjects": {
-                    "Connie": {
-                        "position": "N/A (implied near the doorway)",
-                        "wardrobe": {"upper": "N/A (implied red shirt)"},
-                        "physical_condition": "N/A (implied startled)",
-                        "held_props": ["N/A (implied flashlight)"],
-                    }
-                }
-            },
+            snapshot,
             self.SUBJECTS,
             committed,
         )
 
         result = candidate["subjects"]["Connie"]
-        self.assertEqual(result["position"], "beside the bed")
-        self.assertEqual(result["wardrobe"]["upper"], "red shirt")
-        self.assertEqual(result["physical_condition"], "startled")
-        self.assertEqual(result["held_props"], ["flashlight"])
+        self.assertEqual(result["position"], "N/A")
+        self.assertEqual(result["wardrobe"]["upper"], "N/A")
+        self.assertEqual(result["physical_condition"], "N/A")
+        self.assertEqual(result["held_props"], [])
 
     def test_background_workers_are_closed_when_generation_raises(self):
         summary_worker = Mock()

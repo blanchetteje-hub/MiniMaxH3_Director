@@ -341,7 +341,8 @@ SUMMARY_CONTENT_ATTEMPTS = 2
 BEAT_GENERATION_CONTENT_ATTEMPTS = 3
 BEAT_INSTRUCTION_REVIEW_ATTEMPTS = 3
 BEAT_PLAN_AUDIT_ATTEMPTS = 3
-BEAT_GENERATION_BATCH_SIZE = 20
+BEAT_PLAN_REPAIR_RESPONSE_ATTEMPTS = 2
+BEAT_PLAN_REPAIR_ROUNDS = 2
 BEAT_LLM_SAMPLING_PARAMETERS = {
     "temperature": 0.65,
     "top_p": 0.90,
@@ -2938,6 +2939,7 @@ def ask_llm(
         "beat_generation",
         "beat_instruction_review",
         "beat_plan_audit",
+        "beat_plan_repair",
     }
     history_purpose = str((history_metadata or {}).get("purpose", ""))
     log_beat_response = history_purpose in beat_history_purposes
@@ -3117,9 +3119,16 @@ def estimate_message_tokens(messages):
 # STORY BEAT GENERATION
 # ============================================================
 
-def build_beats_response_format(total_segments):
+def build_beats_response_format(total_segments, beat_start=1):
     if total_segments <= 0:
         raise ValueError("Beat generation requires at least one segment.")
+    if (
+        isinstance(beat_start, bool)
+        or not isinstance(beat_start, int)
+        or beat_start <= 0
+    ):
+        raise ValueError("Beat generation requires a positive beat_start.")
+    beat_end = beat_start + total_segments - 1
     return {
         "type": "json_schema",
         "json_schema": {
@@ -3131,11 +3140,23 @@ def build_beats_response_format(total_segments):
                     "beats": {
                         "type": "array",
                         "items": {
-                            "type": "string",
-                            "minLength": 1,
-                            "description": (
-                                "One to three concise, complete sentences."
-                            ),
+                            "type": "object",
+                            "properties": {
+                                "beat_number": {
+                                    "type": "integer",
+                                    "minimum": beat_start,
+                                    "maximum": beat_end,
+                                },
+                                "beat_text": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": (
+                                        "One concise, complete sentence."
+                                    ),
+                                },
+                            },
+                            "required": ["beat_number", "beat_text"],
+                            "additionalProperties": False,
                         },
                         "minItems": total_segments,
                         "maxItems": total_segments,
@@ -3163,12 +3184,13 @@ def build_beat_arc_response_format(total_segments):
                     "phases": {
                         "type": "array",
                         "minItems": 1,
-                        "maxItems": min(8, total_segments),
+                        "maxItems": total_segments,
                         "items": {
                             "type": "object",
                             "properties": {
-                                "segment_start": {"type": "integer", "minimum": 1},
-                                "segment_end": {"type": "integer", "minimum": 1},
+                                "phase_number": {"type": "integer", "minimum": 1},
+                                "beat_start": {"type": "integer", "minimum": 1},
+                                "beat_end": {"type": "integer", "minimum": 1},
                                 "narrative_purpose": {
                                     "type": "string",
                                     "minLength": 1,
@@ -3181,12 +3203,24 @@ def build_beat_arc_response_format(total_segments):
                                     "type": "string",
                                     "minLength": 1,
                                 },
+                                "characters_introduced": {
+                                    "type": "array",
+                                    "items": {"type": "string", "minLength": 1},
+                                    "uniqueItems": True,
+                                },
+                                "location": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                },
                             },
                             "required": [
-                                "segment_start",
-                                "segment_end",
+                                "phase_number",
+                                "beat_start",
+                                "beat_end",
                                 "narrative_purpose",
                                 "broad_progression",
+                                "characters_introduced",
+                                "location",
                                 "required_end_state",
                             ],
                             "additionalProperties": False,
@@ -3222,7 +3256,13 @@ def build_beat_arc_fidelity_response_format():
     }
 
 
-def build_beat_plan_audit_response_format():
+def build_beat_plan_audit_response_format(total_segments=None):
+    beat_id_schema = {"type": "integer", "minimum": 1}
+    if total_segments is not None:
+        total_segments = int(total_segments)
+        if total_segments <= 0:
+            raise ValueError("Beat-plan auditing requires at least one segment.")
+        beat_id_schema["maximum"] = total_segments
     return {
         "type": "json_schema",
         "json_schema": {
@@ -3235,7 +3275,34 @@ def build_beat_plan_audit_response_format():
                     "macro_arc_consistent_with_source": {"type": "boolean"},
                     "blocking_issues": {
                         "type": "array",
-                        "items": {"type": "string", "minLength": 1},
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "beat_start": {
+                                    **beat_id_schema,
+                                },
+                                "beat_end": {
+                                    **beat_id_schema,
+                                },
+                                "type": {"type": "string", "minLength": 1},
+                                "source_requirement": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                },
+                                "problem": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                },
+                            },
+                            "required": [
+                                "beat_start",
+                                "beat_end",
+                                "type",
+                                "source_requirement",
+                                "problem",
+                            ],
+                            "additionalProperties": False,
+                        },
                     },
                     "warnings": {
                         "type": "array",
@@ -3254,6 +3321,88 @@ def build_beat_plan_audit_response_format():
     }
 
 
+def beat_ids_for_repair_ranges(repair_ranges, beat_end=None):
+    if beat_end is not None:
+        repair_ranges = [{
+            "beat_start": repair_ranges,
+            "beat_end": beat_end,
+        }]
+    if not isinstance(repair_ranges, list) or not repair_ranges:
+        raise ValueError("Beat-plan repair requires at least one repair range.")
+    requested_ids = set()
+    for range_number, repair_range in enumerate(repair_ranges, start=1):
+        if not isinstance(repair_range, dict):
+            raise ValueError(f"Repair range {range_number} must be an object.")
+        beat_start = repair_range.get("beat_start")
+        range_end = repair_range.get("beat_end")
+        if (
+            isinstance(beat_start, bool)
+            or not isinstance(beat_start, int)
+            or isinstance(range_end, bool)
+            or not isinstance(range_end, int)
+            or beat_start <= 0
+            or range_end < beat_start
+        ):
+            raise ValueError(f"Repair range {range_number} is invalid.")
+        requested_ids.update(range(beat_start, range_end + 1))
+    return sorted(requested_ids)
+
+
+def format_beat_plan_repair_ranges(repair_ranges):
+    beat_ids_for_repair_ranges(repair_ranges)
+    return "Beats " + ", ".join(
+        f"{repair_range['beat_start']}-{repair_range['beat_end']}"
+        for repair_range in repair_ranges
+    )
+
+
+def build_beat_plan_repair_response_format(repair_ranges, beat_end=None):
+    expected_ids = beat_ids_for_repair_ranges(repair_ranges, beat_end)
+    replacement_count = len(expected_ids)
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_beat_plan_repair",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "beats": {
+                        "type": "array",
+                        "minItems": replacement_count,
+                        "maxItems": replacement_count,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "beat_id": {
+                                    "type": "integer",
+                                    "enum": expected_ids,
+                                },
+                                "text": {"type": "string", "minLength": 1},
+                            },
+                            "required": ["beat_id", "text"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["beats"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def _format_beat_arc_subject_names(subject_information):
+    subject_names = []
+    for subject_line in str(subject_information or "").splitlines():
+        subject_name, separator, _ = subject_line.strip().lstrip("- ").partition(
+            " is "
+        )
+        if separator and subject_name:
+            subject_names.append(subject_name)
+    return ", ".join(subject_names)
+
+
 def build_beat_arc_plan_messages(
     story,
     total_segments,
@@ -3261,9 +3410,7 @@ def build_beat_arc_plan_messages(
     correction="",
     beat_instructions="",
 ):
-    target_phase_count = min(8, max(1, min(5, total_segments)))
-    subject_text = str(subject_information or "").strip() or "N/A"
-    instruction_text = str(beat_instructions or "").strip() or "N/A"
+    subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
     correction_text = ""
     if correction:
         correction_text = f"""
@@ -3276,59 +3423,64 @@ Return a complete corrected arc covering the full segment range.
         {
             "role": "system",
             "content": (
-                "You are a conservative story editor. Plan the supplied story "
-                "without replacing its premise, required events, or outcome. "
-                "Return only the requested JSON object."
+                "You are a conservative story editor planning a sequential "
+                "video. The supplied source story, subjects, and macro arc are "
+                "binding authorities. Return only the requested JSON object."
             ),
         },
         {
             "role": "user",
             "content": f"""
-Create one concise chronological macro story arc for a {total_segments}-segment
-video. Use about {target_phase_count} phases (normally 5-8 when the segment
-count permits). The phases must cover Segment 1 through Segment {total_segments}
-exactly once, with no gaps or overlaps.
+Create one concise chronological macro story arc for a {total_segments}-beat
+video. Use the number of phases (or beats) specified in the SOURCE STORY; if it is not specified,
+use between 4 to 8 phases. The phases must cover beat 1 through beat
+{total_segments} exactly once, with no gaps or overlaps. If the beat range is
+not specified in the SOURCE STORY, analyze the SOURCE STORY and determine the
+beat_start and beat_end for each phase. Phases do NOT need the same number of
+beats; analyze the SOURCE STORY and determine what elements should have more or
+less beats.
 
 For every phase provide:
-- segment_start and segment_end, both inclusive;
+- beat_start and beat_end, both inclusive;
 - narrative_purpose;
 - broad_progression: one abstract summary of the source-derived progression;
 - required_end_state: one broad source-derived state that the next phase begins from.
+- characters_introduced: array of characters introduced in this phase
+- location: the location of the phase
+- phase_number: the phase number
 
 Keep every phase abstract. Appropriate detail is: "Chase escalates and Amy is
 caught." Do not enumerate imagery or individual actions such as a second
 many-eyed monster giggling, doors appearing, or the ground tilting. Do not write
 example dialogue, specific gore acts, invented mythology, or shot-level events.
+Keep the number of sentences to half the number of phases.
 
 Priority order:
-1. Faithfulness to the source story and its required events and outcomes.
+1. Faithfulness to the SOURCE STORY and its required events and outcomes.
 2. Clear chronological cause-and-effect.
 3. Visible story progression.
 4. Variety within that established story.
 5. Creativity only when it does not alter the premise or progression.
 
-Connective detail may elaborate the supplied story, but it must not become a
+Connective detail may elaborate the SOURCE STORY, but it must not become a
 replacement story. The arc may organize and pace only what the source supports.
-Do not introduce new characters, doppelgangers/copies, loops or resurrection,
+Do not introduce new characters, doppelgängers or copies, loops or resurrection,
 secret mythology, flashback frameworks, rituals, existential mechanics, or any
-similar major plot concept unless story.txt explicitly supports it.
+similar major plot concept unless the SOURE STORY explicitly supports it.
 
-MAIN CHARACTERS FROM SUBJECTS.TXT
+MAIN CHARACTER(S):
 {subject_text}
 
-ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT
-Use these constraints when they affect chronology, placement, or the ending:
-{instruction_text}
-
 SOURCE STORY
---- STORY START ---
+
 {story}
---- STORY END ---
+
+END OF SOURCE STORY
 {correction_text}
 
 Return only the JSON object with a phases array. Each phase must contain only
-segment_start, segment_end, narrative_purpose, broad_progression, and
-required_end_state.
+phase_number, beat_start, beat_end, narrative_purpose, broad_progression,
+characters_introduced, location, and required_end_state.
 """.strip(),
         },
     ]
@@ -3355,19 +3507,28 @@ def parse_beat_arc_plan(raw_result, total_segments, formatter=None):
         candidate.get("phases"), list
     ):
         raise ValueError("The LLM arc response must contain a JSON 'phases' array.")
+    if set(candidate) != {"phases"}:
+        raise ValueError(
+            "The LLM arc response must contain only the JSON 'phases' array."
+        )
     phases = candidate["phases"]
     if not phases:
         raise ValueError("The macro story arc must contain at least one phase.")
-    if len(phases) > min(8, total_segments):
-        raise ValueError("The macro story arc must contain no more than eight phases.")
+    if len(phases) > total_segments:
+        raise ValueError(
+            "The macro story arc cannot contain more phases than story beats."
+        )
 
     normalized_phases = []
     expected_start = 1
     required_fields = (
-        "segment_start",
-        "segment_end",
+        "phase_number",
+        "beat_start",
+        "beat_end",
         "narrative_purpose",
         "broad_progression",
+        "characters_introduced",
+        "location",
         "required_end_state",
     )
     for phase_number, phase in enumerate(phases, start=1):
@@ -3378,51 +3539,144 @@ def parse_beat_arc_plan(raw_result, total_segments, formatter=None):
             raise ValueError(
                 f"Macro arc phase {phase_number} is missing: {', '.join(missing)}."
             )
-        start = phase["segment_start"]
-        end = phase["segment_end"]
+        extras = [field for field in phase if field not in required_fields]
+        if extras:
+            raise ValueError(
+                f"Macro arc phase {phase_number} has unsupported fields: "
+                f"{', '.join(extras)}."
+            )
+        returned_phase_number = phase["phase_number"]
+        if (
+            isinstance(returned_phase_number, bool)
+            or not isinstance(returned_phase_number, int)
+            or returned_phase_number != phase_number
+        ):
+            raise ValueError(
+                f"Macro arc phase {phase_number} must have phase_number "
+                f"{phase_number}."
+            )
+        start = phase["beat_start"]
+        end = phase["beat_end"]
         if isinstance(start, bool) or not isinstance(start, int):
             raise ValueError(
-                f"Macro arc phase {phase_number} segment_start must be an integer."
+                f"Macro arc phase {phase_number} beat_start must be an integer."
             )
         if isinstance(end, bool) or not isinstance(end, int):
             raise ValueError(
-                f"Macro arc phase {phase_number} segment_end must be an integer."
+                f"Macro arc phase {phase_number} beat_end must be an integer."
             )
         if start != expected_start:
             relationship = "overlap" if start < expected_start else "gap"
             raise ValueError(
                 f"Macro arc phase {phase_number} creates a {relationship}: expected "
-                f"segment_start {expected_start}, received {start}."
+                f"beat_start {expected_start}, received {start}."
             )
         if end < start or end > total_segments:
             raise ValueError(
                 f"Macro arc phase {phase_number} has invalid inclusive range "
-                f"{start}-{end} for {total_segments} segments."
+                f"{start}-{end} for {total_segments} beats."
             )
         purpose = str(phase["narrative_purpose"] or "").strip()
         progression = str(phase["broad_progression"] or "").strip()
         end_state = str(phase["required_end_state"] or "").strip()
-        if not purpose or not progression or not end_state:
+        location = str(phase["location"] or "").strip()
+        characters = phase["characters_introduced"]
+        if not isinstance(characters, list) or any(
+            not isinstance(character, str) or not character.strip()
+            for character in characters
+        ):
+            raise ValueError(
+                f"Macro arc phase {phase_number} characters_introduced must be "
+                "an array of non-empty strings."
+            )
+        normalized_characters = [
+            " ".join(character.split()) for character in characters
+        ]
+        if len({character.casefold() for character in normalized_characters}) != len(
+            normalized_characters
+        ):
+            raise ValueError(
+                f"Macro arc phase {phase_number} characters_introduced contains "
+                "duplicates."
+            )
+        if not purpose or not progression or not end_state or not location:
             raise ValueError(
                 f"Macro arc phase {phase_number} must include purpose, broad "
-                "progression, and end state."
+                "progression, location, and end state."
             )
         normalized_phases.append(
             {
-                "segment_start": start,
-                "segment_end": end,
+                "phase_number": phase_number,
+                "beat_start": start,
+                "beat_end": end,
                 "narrative_purpose": purpose,
                 "broad_progression": " ".join(progression.split()),
+                "characters_introduced": normalized_characters,
+                "location": " ".join(location.split()),
                 "required_end_state": end_state,
             }
         )
         expected_start = end + 1
     if expected_start != total_segments + 1:
         raise ValueError(
-            f"Macro story arc ends at Segment {expected_start - 1}; it must cover "
-            f"through Segment {total_segments}."
+            f"Macro story arc ends at Beat {expected_start - 1}; it must cover "
+            f"through Beat {total_segments}."
         )
     return {"phases": normalized_phases}
+
+
+def build_phase_generation_batches(
+    macro_arc,
+    max_batch_size=None,
+):
+    """Return one generation batch per phase unless a limit is explicitly set."""
+    if max_batch_size is not None:
+        if isinstance(max_batch_size, bool) or not isinstance(max_batch_size, int):
+            raise ValueError("Beat generation batch size must be an integer.")
+        if max_batch_size <= 0:
+            raise ValueError("Beat generation batch size must be positive.")
+    phases = macro_arc.get("phases") if isinstance(macro_arc, dict) else None
+    if not isinstance(phases, list) or not phases:
+        raise ValueError("Phase-based beat generation requires a macro arc.")
+
+    batches = []
+    expected_start = 1
+    for phase_index, phase in enumerate(phases, start=1):
+        if not isinstance(phase, dict):
+            raise ValueError(f"Macro arc phase {phase_index} must be an object.")
+        phase_number = phase.get("phase_number")
+        beat_start = phase.get("beat_start")
+        beat_end = phase.get("beat_end")
+        if phase_number != phase_index:
+            raise ValueError(
+                f"Macro arc phase {phase_index} must have phase_number "
+                f"{phase_index}."
+            )
+        if (
+            isinstance(beat_start, bool)
+            or not isinstance(beat_start, int)
+            or isinstance(beat_end, bool)
+            or not isinstance(beat_end, int)
+            or beat_start != expected_start
+            or beat_end < beat_start
+        ):
+            raise ValueError(
+                f"Macro arc phase {phase_index} has an invalid beat range."
+            )
+        phase_batch_size = max_batch_size or (beat_end - beat_start + 1)
+        for batch_start in range(beat_start, beat_end + 1, phase_batch_size):
+            batches.append(
+                {
+                    "phase": phase,
+                    "batch_start": batch_start,
+                    "batch_end": min(
+                        batch_start + phase_batch_size - 1,
+                        beat_end,
+                    ),
+                }
+            )
+        expected_start = beat_end + 1
+    return batches
 
 
 def build_beat_arc_fidelity_messages(story, macro_arc):
@@ -3512,11 +3766,18 @@ def build_beat_plan_audit_messages(
     macro_arc,
     subject_information="",
     beat_instructions="",
+    repaired_beat_ids=None,
 ):
     subject_text = str(subject_information or "").strip() or "N/A"
     instruction_text = str(beat_instructions or "").strip() or "N/A"
     numbered_beats = "\n".join(
         f"Beat {number}: {beat}" for number, beat in enumerate(beats, start=1)
+    )
+    repaired_beat_ids = sorted(set(repaired_beat_ids or []))
+    repaired_context = (
+        ", ".join(str(beat_id) for beat_id in repaired_beat_ids)
+        if repaired_beat_ids
+        else "N/A (initial audit; no targeted repair has occurred)"
     )
     return [
         {
@@ -3535,7 +3796,7 @@ Judge only clear structural or story failures stated in the literal text. Do not
 infer unstated events, and do not attribute content from one beat to another.
 
 AUTHORITY
-- SOURCE STORY and explicit ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT are HARD
+- SOURCE STORY is explicit ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT are HARD
   requirements.
 - MACRO STORY ARC is only a SOFT planning scaffold derived from the source.
 - Macro phase details, broad_progression wording, dialogue, timing, tone shifts,
@@ -3551,6 +3812,22 @@ Use blocking_issues only for these major failures:
 - several consecutive beats substantially repeat the same event with no
   meaningful progression.
 
+Every blocking_issues entry must be an object with:
+- beat_start and beat_end: the smallest contiguous range that actually needs
+  modification;
+- type: a concise failure category;
+- source_requirement: the concise HARD requirement from SOURCE STORY or explicit
+  beat instructions that is violated. Never cite a macro-only requirement;
+- problem: the concrete failure in the cited beats.
+
+For a missing required ending, cite only the smallest ending range that must be
+changed. Never speculate about a range. Before reporting any blocker, verify all
+three facts: (1) the claimed requirement actually exists in SOURCE STORY or the
+explicit beat instructions, (2) the cited beat numbers contain the claimed
+events or omission context, and (3) any claimed ordering is numerically and
+semantically demonstrated by those exact beats. Do not manufacture hard
+requirements from the macro arc.
+
 Everything else belongs only in warnings. In particular, do NOT block for:
 - an event occurring a beat or two earlier or later than the macro arc suggested;
 - missing macro-arc example details;
@@ -3564,7 +3841,7 @@ Everything else belongs only in warnings. In particular, do NOT block for:
 - macro phase examples or other macro details that are not explicit source
   requirements.
 
-Python has already validated beat count, empty beats, the one-to-three-sentence
+Python has already validated beat count, empty beats, the one-sentence
 rule, exact duplicates, and literal colon endings. Do not report those facts.
 
 Interpretation constraints:
@@ -3581,16 +3858,35 @@ Interpretation constraints:
   stronger drama, or a different screenplay choice.
 
 MACRO-ARC CONSISTENCY
-macro_arc_consistent_with_source asks only whether the beat plan preserves the
-broad source-derived progression represented by the arc. Do not require literal
-adherence to individual phases, broad_progression wording, timing, tone, or
-required_end_state. Set it false only when the plan abandons or contradicts that
-broad source-derived progression, and describe the major failure in
-blocking_issues.
+macro_arc_consistent_with_source asks whether the MACRO STORY ARC itself remains
+consistent with the hard source story and explicit beat instructions. Set it
+false only when that soft scaffold contradicts a hard source requirement strongly
+enough that targeted beat repair would be unsafe. Do not set it false merely
+because the beat plan departs from macro timing or detail. Describe the concrete
+source conflict in blocking_issues without treating macro-only wording as a hard
+requirement.
 
 If the source story's required premise, major events, ordering, and ending are
 clearly satisfied, prefer valid=true. The audit exists to catch major story
 failure, not optimize screenplay quality.
+
+POST-REPAIR STABILITY
+- Previously repaired beats are not inherently suspicious.
+- Report only remaining HARD source-story or explicit-instruction failures.
+- Do not invent a new criticism merely because another issue was corrected.
+- Do not expand a blocker beyond the beats actually responsible.
+- Do not block for alternative pacing, transitions, dramatic strength, location
+  ordering, or macro-phase adherence unless story.txt explicitly requires it.
+- For any blocker touching a previously repaired beat ID listed below,
+  source_requirement must quote or closely restate the concrete HARD requirement
+  from the source story or explicit instructions that remains unsatisfied.
+- Reuse the same source_requirement wording for the same hard requirement; do
+  not paraphrase it to make an old criticism appear new.
+- If the premise, required events/order, and ending are now satisfied, return
+  valid=true.
+
+PREVIOUSLY REPAIRED BEAT IDS
+{repaired_context}
 
 Warnings never make the plan invalid and never trigger regeneration. Set valid
 to true exactly when blocking_issues is empty. Return empty arrays when a
@@ -3601,11 +3897,8 @@ SOURCE STORY
 {story}
 --- STORY END ---
 
-MAIN CHARACTERS FROM SUBJECTS.TXT
+MAIN CHARACTER(S):
 {subject_text}
-
-ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT
-{instruction_text}
 
 MACRO STORY ARC
 {json.dumps(macro_arc, ensure_ascii=False, indent=2)}
@@ -3617,7 +3910,126 @@ COMPLETE BEAT PLAN
     ]
 
 
-def parse_beat_plan_audit(raw_result, formatter=None):
+def build_beat_plan_repair_messages(
+    story,
+    total_segments,
+    beats,
+    macro_arc,
+    blocking_issues,
+    repair_ranges,
+    subject_information="",
+    beat_instructions="",
+    correction="",
+):
+    requested_ids = beat_ids_for_repair_ranges(repair_ranges)
+    if requested_ids[-1] > len(beats):
+        raise ValueError("Beat-plan repair range is outside the complete plan.")
+    range_label = format_beat_plan_repair_ranges(repair_ranges)
+    subject_text = str(subject_information or "").strip() or "N/A"
+    instruction_text = str(beat_instructions or "").strip() or "N/A"
+    numbered_beats = "\n".join(
+        f"Beat {number}: {beat}" for number, beat in enumerate(beats, start=1)
+    )
+    boundary_sections = []
+    for repair_range in repair_ranges:
+        beat_start = repair_range["beat_start"]
+        beat_end = repair_range["beat_end"]
+        preceding = (
+            f"Beat {beat_start - 1}: {beats[beat_start - 2]}"
+            if beat_start > 1
+            else "N/A (this range begins at Beat 1)"
+        )
+        following = (
+            f"Beat {beat_end + 1}: {beats[beat_end]}"
+            if beat_end < len(beats)
+            else "N/A (this range includes the final beat)"
+        )
+        boundary_sections.append(
+            f"RANGE Beats {beat_start}-{beat_end}\n"
+            f"Immutable beat before: {preceding}\n"
+            f"Immutable beat after: {following}"
+        )
+    boundaries = "\n\n".join(boundary_sections)
+    correction_text = ""
+    if correction:
+        correction_text = f"""
+
+YOUR PREVIOUS REPAIR RESPONSE WAS INVALID
+{correction}
+Return the complete requested replacement range again.
+"""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a conservative beat-plan repair editor. Repair only "
+                "the explicitly authorized beat range and return only the "
+                "requested JSON object."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Repair {range_label} in this {total_segments}-beat plan in one repair round.
+
+HARD AUTHORITY
+- SOURCE STORY and explicit ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT are hard
+  requirements.
+- MACRO STORY ARC is authoritative for the earliest beat at which each phase's
+  location and characters_introduced entries may first appear; its remaining
+  details are soft guidance.
+
+REPAIR CONTRACT
+- Modify ONLY beats inside these listed ranges: {range_label}.
+- Every beat outside those ranges is immutable and must remain exactly unchanged.
+- Return exactly one replacement object for every requested beat ID, preserving
+  the same IDs and total replacement count.
+- Fix only the stated blocking problem and preserve usable existing material
+  where possible.
+- Maintain chronological cause-and-effect continuity with the immutable beats
+  immediately before and after the range.
+- Do not introduce a new premise, mythology, characters, loops, copies,
+  resurrection, or other major concepts unless the hard source supports them.
+- Never mention a macro location or character before the beat_start of the phase
+  where that location or characters_introduced entry first appears.
+- Each replacement beat must contain one concise complete sentence,
+  must not end with a colon, and must satisfy the existing structural rules.
+
+ALL CREDIBLE STRUCTURED BLOCKING ISSUES FROM THIS AUDIT
+{json.dumps(blocking_issues, ensure_ascii=False, indent=2)}
+
+NORMALIZED REPAIR RANGES
+{json.dumps(repair_ranges, ensure_ascii=False, indent=2)}
+
+IMMUTABLE RANGE BOUNDARIES
+{boundaries}
+
+SOURCE STORY
+--- STORY START ---
+{story}
+--- STORY END ---
+
+ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT
+{instruction_text}
+
+MAIN CHARACTERS FROM SUBJECTS.TXT
+{subject_text}
+
+MACRO STORY ARC (SOFT CONTEXT ONLY)
+{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
+
+COMPLETE CURRENT BEAT PLAN
+{numbered_beats}
+{correction_text}
+
+Return only a JSON object with a beats array. Each item must contain exactly
+beat_id and text, with one item for every requested beat ID and no others.
+""".strip(),
+        },
+    ]
+
+
+def parse_beat_plan_audit(raw_result, formatter=None, total_segments=None):
     formatter = formatter or ACTIVE_FORMATTER
     candidate = raw_result
     if isinstance(candidate, str):
@@ -3645,11 +4057,9 @@ def parse_beat_plan_audit(raw_result, formatter=None):
             "The beat-plan audit 'macro_arc_consistent_with_source' field must "
             "be boolean."
         )
-    if not isinstance(blocking_issues, list) or not all(
-        isinstance(issue, str) and issue.strip() for issue in blocking_issues
-    ):
+    if not isinstance(blocking_issues, list):
         raise ValueError(
-            "The beat-plan audit 'blocking_issues' field must be a string array."
+            "The beat-plan audit 'blocking_issues' field must be an array."
         )
     if not isinstance(warnings, list) or not all(
         isinstance(warning, str) and warning.strip() for warning in warnings
@@ -3657,23 +4067,293 @@ def parse_beat_plan_audit(raw_result, formatter=None):
         raise ValueError(
             "The beat-plan audit 'warnings' field must be a string array."
         )
-    normalized_blockers = [" ".join(issue.split()) for issue in blocking_issues]
+    if valid != (not blocking_issues):
+        raise ValueError(
+            "The beat-plan audit 'valid' field must be true exactly when the "
+            "reported 'blocking_issues' array is empty."
+        )
+    required_issue_fields = {
+        "beat_start",
+        "beat_end",
+        "type",
+        "source_requirement",
+        "problem",
+    }
+    normalized_blockers = []
+    for issue_number, issue in enumerate(blocking_issues, start=1):
+        if not isinstance(issue, dict) or set(issue) != required_issue_fields:
+            continue
+        beat_start = issue["beat_start"]
+        beat_end = issue["beat_end"]
+        if (
+            isinstance(beat_start, bool)
+            or not isinstance(beat_start, int)
+            or isinstance(beat_end, bool)
+            or not isinstance(beat_end, int)
+        ):
+            continue
+        if beat_start <= 0 or beat_end < beat_start:
+            continue
+        if total_segments is not None and beat_end > total_segments:
+            continue
+        normalized_issue = {
+            "beat_start": beat_start,
+            "beat_end": beat_end,
+        }
+        for field in ("type", "source_requirement", "problem"):
+            value = issue[field]
+            if not isinstance(value, str) or not value.strip():
+                normalized_issue = None
+                break
+            normalized_issue[field] = " ".join(value.split())
+        if normalized_issue is not None:
+            normalized_blockers.append(normalized_issue)
     normalized_warnings = [" ".join(warning.split()) for warning in warnings]
-    if valid != (not normalized_blockers):
-        raise ValueError(
-            "The beat-plan audit 'valid' field must be true exactly when "
-            "'blocking_issues' is empty."
-        )
-    if not arc_consistent and not normalized_blockers:
-        raise ValueError(
-            "An inconsistent macro arc must be described in blocking_issues."
-        )
     return {
-        "valid": valid,
+        "valid": not normalized_blockers,
         "macro_arc_consistent_with_source": arc_consistent,
         "blocking_issues": normalized_blockers,
+        "discarded_blocking_issues": len(blocking_issues) - len(
+            normalized_blockers
+        ),
         "warnings": normalized_warnings,
     }
+
+
+def hard_source_requirement_is_grounded(
+    source_requirement,
+    story,
+    beat_instructions="",
+):
+    requirement = re.sub(
+        r"[^a-z0-9]+",
+        " ",
+        str(source_requirement or "").casefold(),
+    ).strip()
+    hard_source = re.sub(
+        r"[^a-z0-9]+",
+        " ",
+        f"{story or ''} {beat_instructions or ''}".casefold(),
+    ).strip()
+    if not requirement or requirement in {"n a", "unknown", "unspecified"}:
+        return False
+    if requirement in hard_source:
+        return True
+    ignored = {
+        "a", "an", "and", "are", "as", "at", "be", "before", "by", "for",
+        "from", "in", "is", "it", "must", "of", "on", "or", "should", "the",
+        "then", "to", "with",
+    }
+    requirement_tokens = {
+        token for token in requirement.split()
+        if token not in ignored and len(token) > 2
+    }
+    source_tokens = set(hard_source.split())
+    if len(requirement_tokens) < 2:
+        return False
+    overlap = requirement_tokens & source_tokens
+    return len(overlap) >= 2 and (
+        len(overlap) / len(requirement_tokens) >= 0.6
+    )
+
+
+def normalize_beat_plan_repair_ranges(
+    blocking_issues,
+    total_segments,
+    repaired_beat_ids=None,
+    story="",
+    beat_instructions="",
+    max_gap=2,
+):
+    if total_segments <= 0:
+        raise ValueError("Beat-plan repair requires at least one beat.")
+    repaired_beat_ids = set(repaired_beat_ids or [])
+    credible = []
+    discarded = []
+    downgraded = []
+    required_fields = {
+        "beat_start",
+        "beat_end",
+        "type",
+        "source_requirement",
+        "problem",
+    }
+    for issue in blocking_issues:
+        if not isinstance(issue, dict):
+            discarded.append(issue)
+            continue
+        beat_start = issue.get("beat_start")
+        beat_end = issue.get("beat_end")
+        if (
+            set(issue) != required_fields
+            or isinstance(beat_start, bool)
+            or not isinstance(beat_start, int)
+            or isinstance(beat_end, bool)
+            or not isinstance(beat_end, int)
+            or beat_start <= 0
+            or beat_end < beat_start
+            or beat_end > total_segments
+        ):
+            discarded.append(issue)
+            continue
+        normalized_issue = {
+            "beat_start": beat_start,
+            "beat_end": beat_end,
+        }
+        invalid_text = False
+        for field in ("type", "source_requirement", "problem"):
+            value = issue.get(field)
+            if not isinstance(value, str) or not value.strip():
+                invalid_text = True
+                break
+            normalized_issue[field] = " ".join(value.split())
+        if invalid_text:
+            discarded.append(issue)
+            continue
+        issue_ids = set(range(beat_start, beat_end + 1))
+        if (
+            issue_ids & repaired_beat_ids
+            and not hard_source_requirement_is_grounded(
+                normalized_issue["source_requirement"],
+                story,
+                beat_instructions,
+            )
+        ):
+            downgraded.append(normalized_issue)
+            continue
+        credible.append(normalized_issue)
+
+    credible.sort(key=lambda issue: (issue["beat_start"], issue["beat_end"]))
+    merged = []
+    for issue in credible:
+        if (
+            not merged
+            or issue["beat_start"] > merged[-1]["beat_end"] + max_gap + 1
+        ):
+            merged.append({
+                "beat_start": issue["beat_start"],
+                "beat_end": issue["beat_end"],
+                "issues": [issue],
+            })
+            continue
+        merged[-1]["beat_end"] = max(merged[-1]["beat_end"], issue["beat_end"])
+        merged[-1]["issues"].append(issue)
+    return {
+        "issues": credible,
+        "ranges": merged,
+        "discarded": discarded,
+        "downgraded": downgraded,
+    }
+
+
+def merge_overlapping_beat_blockers(blocking_issues, total_segments):
+    return normalize_beat_plan_repair_ranges(
+        blocking_issues,
+        total_segments,
+    )["ranges"]
+
+
+def format_beat_plan_blocking_issues(blocking_issues):
+    return " ".join(
+        (
+            f"Beats {issue['beat_start']}-{issue['beat_end']} "
+            f"({issue['type']}): {issue['problem']} "
+            f"[source requirement: {issue['source_requirement']}]"
+        )
+        for issue in blocking_issues
+    )
+
+
+def parse_beat_plan_repair(
+    raw_result,
+    repair_ranges,
+    beat_end=None,
+    formatter=None,
+):
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate)
+        except json.JSONDecodeError as error:
+            raise ValueError("The beat-plan repair response must be valid JSON.") from error
+    if (
+        isinstance(candidate, dict)
+        and set(candidate) == {"repair"}
+        and isinstance(candidate["repair"], dict)
+    ):
+        candidate = candidate["repair"]
+    if not isinstance(candidate, dict) or set(candidate) != {"beats"}:
+        raise ValueError(
+            "The beat-plan repair response must contain only a JSON 'beats' array."
+        )
+    replacements = candidate["beats"]
+    if not isinstance(replacements, list):
+        raise ValueError("The beat-plan repair 'beats' field must be an array.")
+    expected_ids = beat_ids_for_repair_ranges(repair_ranges, beat_end)
+    if len(replacements) != len(expected_ids):
+        raise ValueError(
+            f"Expected exactly {len(expected_ids)} repaired beats for "
+            f"the requested ranges, received {len(replacements)}."
+        )
+    by_id = {}
+    for item_number, item in enumerate(replacements, start=1):
+        if not isinstance(item, dict) or set(item) != {"beat_id", "text"}:
+            raise ValueError(
+                f"Repaired beat item {item_number} must contain exactly beat_id "
+                "and text."
+            )
+        beat_id = item["beat_id"]
+        if isinstance(beat_id, bool) or not isinstance(beat_id, int):
+            raise ValueError(f"Repaired beat item {item_number} has a non-integer ID.")
+        if beat_id not in expected_ids:
+            raise ValueError(f"Unexpected repaired beat ID {beat_id}.")
+        if beat_id in by_id:
+            raise ValueError(f"Duplicate repaired beat ID {beat_id}.")
+        by_id[beat_id] = item["text"]
+    missing_ids = [beat_id for beat_id in expected_ids if beat_id not in by_id]
+    if missing_ids:
+        raise ValueError(
+            "Missing repaired beat ID(s): "
+            + ", ".join(str(beat_id) for beat_id in missing_ids)
+            + "."
+        )
+    normalized_texts = parse_generated_beats(
+        {"beats": [by_id[beat_id] for beat_id in expected_ids]},
+        len(expected_ids),
+        formatter=formatter,
+    )
+    return dict(zip(expected_ids, normalized_texts))
+
+
+def splice_beat_plan_repair(
+    beats,
+    repair_ranges,
+    replacement_beats,
+    beat_end=None,
+):
+    original = list(beats)
+    expected_ids = beat_ids_for_repair_ranges(repair_ranges, beat_end)
+    if expected_ids[-1] > len(original):
+        raise ValueError("Cannot splice an invalid beat-plan repair range.")
+    if not isinstance(replacement_beats, dict) or set(replacement_beats) != set(
+        expected_ids
+    ):
+        raise ValueError(
+            "Repair replacements must exactly match the requested beat IDs."
+        )
+    repaired = list(original)
+    for beat_id in expected_ids:
+        repaired[beat_id - 1] = replacement_beats[beat_id]
+    validated = parse_generated_beats({"beats": repaired}, len(original))
+    requested = set(expected_ids)
+    for beat_id, original_text in enumerate(original, start=1):
+        if beat_id not in requested and validated[beat_id - 1] != original_text:
+            raise RuntimeError(
+                f"Beat-plan repair changed immutable Beat {beat_id}."
+            )
+    return repaired
 
 
 _BEAT_INSTRUCTIONS = re.compile(
@@ -3704,6 +4384,7 @@ def build_beat_generation_messages(
     batch_end=None,
     previous_beats=None,
     macro_arc=None,
+    current_phase=None,
     audit_correction="",
 ):
     batch_start = 1 if batch_start is None else int(batch_start)
@@ -3711,18 +4392,28 @@ def build_beat_generation_messages(
     batch_size = batch_end - batch_start + 1
     previous_beats = list(previous_beats or [])
     macro_arc = macro_arc or {"phases": []}
-    correction_text = ""
-    if correction:
-        correction_text = f"""
+    current_phase = current_phase or {}
+    phase_number = int(current_phase.get("phase_number", 1))
+    subject_names = _format_beat_arc_subject_names(subject_information) or "N/A"
 
-YOUR PREVIOUS RESPONSE WAS INVALID
-{correction}
-Generate the complete list again and obey every requirement below.
-"""
-    instruction_text = ""
+    previous_context = "N/A"
+    if previous_beats:
+        previous_start = max(1, batch_start - min(5, len(previous_beats)))
+        previous_context = "\n".join(
+            f"Beat {number}: {beat}"
+            for number, beat in enumerate(previous_beats[-5:], start=previous_start)
+        )
+
+    supplemental_sections = []
+    if correction:
+        supplemental_sections.append(
+            "YOUR PREVIOUS RESPONSE WAS INVALID\n"
+            f"{correction}\n"
+            "Generate the complete phase again and obey every requirement."
+        )
     if beat_instructions:
-        instruction_text = (
-            "\n\nADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT (VERBATIM)\n"
+        supplemental_sections.append(
+            "ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT (VERBATIM)\n"
             "These instructions are mandatory. Follow every constraint exactly. "
             "When they require an exact quoted phrase, copy it character-for-"
             "character without changing tense, spelling, plurality, or wording.\n"
@@ -3732,94 +4423,85 @@ Generate the complete list again and obey every requirement below.
             "Before returning JSON, silently audit every beat against all of "
             "these additional instructions and correct any violation."
         )
-    subject_text = ""
-    if subject_information:
-        subject_text = f"""
-
-MAIN CHARACTERS FROM SUBJECTS.TXT
-The registered subjects below are the main characters in the beats you generate.
-Use their exact names and established information, keep them central to the
-story progression, and do not rename them or replace them with new protagonists.
-
-{subject_information}
-"""
-    audit_correction_text = ""
     if audit_correction:
-        audit_correction_text = f"""
+        supplemental_sections.append(
+            "WHOLE-PLAN AUDIT CORRECTIONS\n"
+            "Regenerate this phase as part of the corrected complete plan and "
+            f"resolve these issues:\n{audit_correction}"
+        )
+    supplemental_text = ""
+    if supplemental_sections:
+        supplemental_text = "\n\n" + "\n\n".join(supplemental_sections)
 
-WHOLE-PLAN AUDIT CORRECTIONS
-The preceding complete beat plan failed its global quality audit. Regenerate
-this batch as part of a corrected COMPLETE plan and resolve these issues:
-{audit_correction}
-"""
+    response_shape = json.dumps(
+        {
+            "beats": [
+                {"beat_number": batch_start, "beat_text": "..."},
+            ]
+        },
+        ensure_ascii=False,
+    )
     return [
         {
             "role": "system",
             "content": (
-                "You are a conservative story editor planning a sequential "
-                "video. The supplied source story, subjects, and macro arc are "
-                "binding authorities. Return only the requested JSON object."
+                "You are a movie director planning a sequential video. The "
+                "supplied MACRO STORY ARC is the authoritative Bible and drives "
+                "the story. Return only the requested JSON object."
             ),
         },
         {
             "role": "user",
             "content": f"""
-Create exactly {batch_size} ordered story beats for global beat positions
-{batch_start} through {batch_end} of a {total_segments}-segment video, one beat
-for each video segment in this batch. Develop the supplied macro arc; do not
-improvise a different story.
+Create exactly {batch_size} ordered story beats for phase {phase_number} of the MACRO STORY ARC. Do not improvise a different story.
 
 Requirements:
 - Return exactly {batch_size} beats in chronological story order.
-- Follow these priorities in order: (1) faithfulness to the source story and its
-  required events/outcomes; (2) clear chronological cause-and-effect; (3) visible
-  story progression; (4) variety within that established story; (5) creativity
-  only when it does not alter the premise or progression.
-- One beat equals one independently executable video segment.
-- Each beat should center on one primary story event/progression step. A short
-  cause -> action -> reaction/result sequence is allowed when it is all part of
-  the same event.
+- Follow these priorities in order:
+(1) faithfulness to the SOURCE STORY.
+(2) follow the MACRO STORY ARC's phase {phase_number}.
+(3) clear chronological cause-and-effect.
+(3) Do not introduce a location until the location in the macro story appears in the phase's location. For example: if "Jim's House" doesn't appear until beat_start 20, do not introduce the location before beat 20.
+(4) do not introduce characters until they appear in the phase's characters_introduced array. For example: if "Jim" doesn't appear until beat_start 20, do not introduce him before beat 20.
+(5) variety within that established story.
+(6) creativity only when it does not alter the premise or progression.
+- If the MACRO STORY ARC allows, beats can be combined into a longer progression of events.
 - Do not require every minor action inside a beat to be its own beat.
-- Every beat must make sense without depending on the next beat to finish its
-  sentence, dialogue, action, or reveal.
-- Each beat must be one to three concise, complete sentences.
-- Never end a beat with a colon or an unfinished speaker setup.
-- Never create a dialogue-only beat such as "Run, little copy."
-- If dialogue belongs to an event, put the dialogue in the SAME beat as the
-  speaker and visible action that produces it.
+- Every beat must make sense without depending on the next beat to finish its sentence, dialogue, action, or reveal.
+- Each beat must be one complete sentence.
+- Make each beat transition smooth if the scenery changes.
+- Never create a dialogue-only beat such as "Run, little woman."
+- If dialogue belongs to an event, put the dialogue in the SAME beat as the speaker and visible action that produces it.
 - Do not split one event across two beats merely to allocate dialogue separately.
-- A reaction or atmospheric detail may be part of the primary event, but it must
-  not be the only progression across several consecutive beats.
-- Remaining in the same location for several beats is allowed when the situation
-  meaningfully escalates.
-- Do not introduce a new mythology, identity mystery, copy/doppelganger premise,
-  simulation, time loop, resurrection framework, secret experiment, or similar
-  major plot concept unless supported by the source story.
+- A reaction or atmospheric detail may be part of the primary event, but it must not be the only progression across several consecutive beats.
+- Remaining in the same location is allowed when the story meaningfully progresses.
+- Do not introduce a new mythology, identity mystery, doppelgängers premise, simulation, time loop, resurrection framework, secret experiment, or similar major plot concept unless supported by the source story.
 - Creative additions must elaborate the supplied story, not replace it.
 - Every beat must logically continue from the previous beat's end state.
 - Never repeat, recap, restage, or merely reword an earlier beat.
 - Build clear cause-and-effect progression across the complete list.
-- The final beat must conclusively satisfy the source story's required ending;
-  do not end on setup, an unresolved essential action, or a cliffhanger.
+- Beat {total_segments} must conclusively satisfy the source story's required ending; do not end on setup, an unresolved essential action, or a cliffhanger.
 - Keep each beat concise, concrete, and independently understandable.
-- Do not include numbering, labels, comments, Markdown, or --lora metadata inside
-  a beat string.
-- Return only a JSON object shaped exactly as {{"beats": ["...", "..."]}}.
-{subject_text}
-{instruction_text}
-{correction_text}
-{audit_correction_text}
-MACRO STORY ARC FOR THE COMPLETE PLAN
-{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
-The phase-level broad_progression summaries are abstract guidance for developing
-each phase, not a literal checklist that every beat must reproduce or split into
-separate beats.
+- Do not include numbering, labels, comments, Markdown, or --lora metadata inside a beat string.
+- Do not skip ahead to future beats or move back to previous beats.
+- Do not introduce characters until they appear in the MACRO STORY ARC.
+- Return only a JSON object shaped exactly as {response_shape}.
+{supplemental_text}
 
-{("ALL PREVIOUSLY ACCEPTED BEATS\n" + chr(10).join(f"B{number:03d}: {beat}" for number, beat in enumerate(previous_beats, start=1))) if previous_beats else ""}
+Main Character(s):
+{subject_names}
+
+MACRO STORY ARC
+
+{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
+
+PREVIOUS BEATS: {previous_context}
+
 SOURCE STORY
---- STORY START ---
+
 {story}
---- STORY END ---
+
+END OF SOURCE STORY
 """.strip(),
         },
     ]
@@ -3836,12 +4518,14 @@ def build_beat_instruction_review_messages(
     batch_end=None,
     complete_beats=None,
     macro_arc=None,
+    current_phase=None,
 ):
     batch_start = 1 if batch_start is None else int(batch_start)
     batch_end = total_segments if batch_end is None else int(batch_end)
     batch_size = batch_end - batch_start + 1
     complete_beats = list(complete_beats or beats)
     macro_arc = macro_arc or {"phases": []}
+    current_phase = current_phase or {}
     correction_text = ""
     if correction:
         correction_text = (
@@ -3857,6 +4541,16 @@ Preserve these main characters, their exact names, and their established
 information in the corrected beats:
 {subject_information}
 """
+    complete_context = ""
+    if len(complete_beats) > len(beats):
+        outside_beats = "\n".join(
+            f"Beat {number}: {beat}"
+            for number, beat in enumerate(complete_beats, start=1)
+            if number < batch_start or number > batch_end
+        )
+        complete_context = (
+            "COMPLETE PLAN CONTEXT OUTSIDE THIS BATCH\n" + outside_beats
+        )
     return [
         {
             "role": "system",
@@ -3877,29 +4571,26 @@ earlier beat, each beat must center on one primary story event/progression step,
 and the final beat must conclusively satisfy the source story's required ending
 without an unresolved essential action or cliffhanger. A tightly connected
 cause -> action -> reaction/result sequence is allowed within one beat, and minor
-actions do not each require a separate beat. Every beat must contain one to three
-concise, complete sentences and must never contain four or more sentences.
+actions do not each require a separate beat.
+IMPORTANT: Every beat must be one sentence that clearly conveys a single primary story event or progression step.
 
-The additional instructions below are mandatory and reproduced verbatim. Check
-beat numbers, required and prohibited wording, occurrence counts, and ending
-requirements. Copy every required exact phrase character-for-character without
-changing tense, spelling, plurality, or wording. Before returning, silently
-verify compliance one final time.
-
---- ADDITIONAL INSTRUCTIONS START ---
-{beat_instructions}
---- ADDITIONAL INSTRUCTIONS END ---
 {subject_text}
 
 MACRO STORY ARC
 Preserve this plan while making any compliance edits:
 {json.dumps(macro_arc, ensure_ascii=False, indent=2)}
-Its phase-level broad_progression summaries are abstract guidance, not a literal
+
+CURRENT MACRO PHASE
+{json.dumps(current_phase, ensure_ascii=False, indent=2)}
+Keep the reviewed beats inside this phase's progression and preserve its
+required_end_state. Its broad_progression is abstract guidance, not a literal
 per-beat checklist.
+Do not mention any MACRO STORY ARC location or character before the beat_start
+of the phase where that location or characters_introduced entry first appears.
 
 CANDIDATE BEATS
 {json.dumps({"beats": beats}, ensure_ascii=False, indent=2)}
-{("COMPLETE PLAN CONTEXT OUTSIDE THIS BATCH\n" + chr(10).join(f"Beat {number}: {beat}" for number, beat in enumerate(complete_beats, start=1) if number < batch_start or number > batch_end)) if len(complete_beats) > len(beats) else ""}
+{complete_context}
 {correction_text}
 
 SOURCE STORY
@@ -3907,7 +4598,8 @@ SOURCE STORY
 {story}
 --- STORY END ---
 
-Return only a JSON object shaped exactly as {{"beats": ["...", "..."]}}.
+Return only a JSON object shaped exactly as
+{{"beats": [{{"beat_number": {batch_start}, "beat_text": "..."}}]}}.
 """.strip(),
         },
     ]
@@ -3932,6 +4624,104 @@ def verify_subjects_in_beat_messages(messages, subject_information):
 
 def _normalize_instruction_check_text(text):
     return re.sub(r"[*_`]", "", " ".join(str(text or "").split())).casefold()
+
+
+def _normalize_macro_introduction_text(text):
+    """Normalize prose for whole-token macro character/location matching."""
+
+    return " ".join(
+        re.findall(r"[^\W_]+", str(text or "").casefold(), flags=re.UNICODE)
+    )
+
+
+def _macro_introduction_aliases(value):
+    normalized = _normalize_macro_introduction_text(value)
+    if not normalized or normalized in {"n a", "none", "unknown"}:
+        return set()
+    aliases = {normalized}
+    words = normalized.split()
+    if len(words) > 1 and words[0] in {"a", "an", "the"}:
+        aliases.add(" ".join(words[1:]))
+    return aliases
+
+
+def _macro_entity_is_mentioned(beat_text, aliases):
+    normalized_beat = _normalize_macro_introduction_text(beat_text)
+    padded_beat = f" {normalized_beat} "
+    return any(f" {alias} " in padded_beat for alias in aliases)
+
+
+def validate_generated_beat_macro_introductions(
+    beats,
+    macro_arc,
+    beat_start=1,
+):
+    """Report characters or locations used before their macro phase begins."""
+
+    if isinstance(beat_start, bool) or not isinstance(beat_start, int) or beat_start <= 0:
+        raise ValueError("Macro introduction validation requires a positive beat_start.")
+    phases = macro_arc.get("phases") if isinstance(macro_arc, dict) else None
+    if not isinstance(phases, list) or not phases:
+        raise ValueError("Macro introduction validation requires a macro arc.")
+
+    introductions = {"character": {}, "location": {}}
+
+    def register(kind, display_name, introduction_beat):
+        aliases = _macro_introduction_aliases(display_name)
+        if not aliases:
+            return
+        key = min(aliases, key=lambda alias: (len(alias), alias))
+        existing = introductions[kind].get(key)
+        if existing is None or introduction_beat < existing["beat_start"]:
+            introductions[kind][key] = {
+                "name": " ".join(str(display_name).split()),
+                "aliases": aliases,
+                "beat_start": introduction_beat,
+            }
+
+    for phase_number, phase in enumerate(phases, start=1):
+        if not isinstance(phase, dict):
+            raise ValueError(f"Macro arc phase {phase_number} must be an object.")
+        introduction_beat = phase.get("beat_start")
+        if (
+            isinstance(introduction_beat, bool)
+            or not isinstance(introduction_beat, int)
+            or introduction_beat <= 0
+        ):
+            raise ValueError(
+                f"Macro arc phase {phase_number} must have a positive beat_start."
+            )
+        characters = phase.get("characters_introduced")
+        if not isinstance(characters, list):
+            raise ValueError(
+                f"Macro arc phase {phase_number} must have characters_introduced."
+            )
+        for character in characters:
+            if not isinstance(character, str):
+                raise ValueError(
+                    f"Macro arc phase {phase_number} has an invalid character."
+                )
+            register("character", character, introduction_beat)
+        location = phase.get("location")
+        if not isinstance(location, str):
+            raise ValueError(f"Macro arc phase {phase_number} must have a location.")
+        register("location", location, introduction_beat)
+
+    issues = []
+    for offset, beat in enumerate(beats):
+        beat_number = beat_start + offset
+        for kind in ("location", "character"):
+            for introduction in introductions[kind].values():
+                allowed_from = introduction["beat_start"]
+                if beat_number >= allowed_from:
+                    continue
+                if _macro_entity_is_mentioned(beat, introduction["aliases"]):
+                    issues.append(
+                        f"Beat {beat_number} introduces future {kind} "
+                        f"{introduction['name']!r} before its macro phase begins "
+                        f"at beat {allowed_from}."
+                    )
+    return list(dict.fromkeys(issues))
 
 
 def validate_generated_beat_instructions(beats, beat_instructions):
@@ -4017,9 +4807,16 @@ def parse_generated_beats(
     raw_result,
     total_segments,
     formatter=None,
+    expected_start=1,
 ):
     if total_segments <= 0:
         raise ValueError("Beat generation requires at least one segment.")
+    if (
+        isinstance(expected_start, bool)
+        or not isinstance(expected_start, int)
+        or expected_start <= 0
+    ):
+        raise ValueError("Beat generation requires a positive expected_start.")
 
     formatter = formatter or ACTIVE_FORMATTER
 
@@ -4056,8 +4853,29 @@ def parse_generated_beats(
 
     beats = []
     for index, raw_beat in enumerate(candidate["beats"], start=1):
+        expected_beat_number = expected_start + index - 1
+        if isinstance(raw_beat, dict):
+            if set(raw_beat) != {"beat_number", "beat_text"}:
+                raise ValueError(
+                    f"Generated beat {expected_beat_number} must contain exactly "
+                    "beat_number and beat_text."
+                )
+            returned_beat_number = raw_beat["beat_number"]
+            if (
+                isinstance(returned_beat_number, bool)
+                or not isinstance(returned_beat_number, int)
+                or returned_beat_number != expected_beat_number
+            ):
+                raise ValueError(
+                    f"Generated beat {index} must have beat_number "
+                    f"{expected_beat_number}."
+                )
+            raw_beat = raw_beat["beat_text"]
         if not isinstance(raw_beat, str):
-            raise ValueError(f"Generated beat {index} must be text.")
+            raise ValueError(
+                f"Generated beat {expected_beat_number} must have text in "
+                "beat_text."
+            )
         beat = formatter.sanitize_generated_text(raw_beat)
         beat = " ".join(beat.split()).strip()
         beat = re.sub(
@@ -4067,20 +4885,22 @@ def parse_generated_beats(
             flags=re.IGNORECASE,
         ).strip()
         if not beat:
-            raise ValueError(f"Generated beat {index} is empty.")
+            raise ValueError(f"Generated beat {expected_beat_number} is empty.")
         if "--lora" in beat.lower():
             raise ValueError(
-                f"Generated beat {index} contains unsupported --lora metadata."
+                f"Generated beat {expected_beat_number} contains unsupported "
+                "--lora metadata."
             )
         if beat.endswith(":"):
             raise ValueError(
-                f"Generated beat {index} is incomplete because it ends with a colon."
+                f"Generated beat {expected_beat_number} is incomplete because it "
+                "ends with a colon."
             )
-        if not beat_is_one_to_three_complete_sentences(beat):
-            raise ValueError(
-                f"Generated beat {index} must contain one to three complete "
-                "sentences; fragments and four or more sentences are not allowed."
-            )
+        #if not beat_is_single_complete_sentence(beat):
+        #    raise ValueError(
+        #        f"Generated beat {expected_beat_number} must contain exactly one "
+        #        "complete sentence."
+        #    )
         beats.append(beat)
 
     normalized = [beat.casefold() for beat in beats]
@@ -4143,9 +4963,13 @@ def beat_is_one_to_three_complete_sentences(beat):
 
 
 def beat_is_single_complete_sentence(beat):
-    """Compatibility alias for the current one-to-three-sentence validation."""
+    """Return whether a beat is exactly one complete sentence."""
 
-    return beat_is_one_to_three_complete_sentences(beat)
+    beat = str(beat or "").strip()
+    has_terminal_punctuation = bool(
+        re.search(r"[.!?]+[\"'\u2019\u201d)]*$", beat)
+    )
+    return has_terminal_punctuation and not beat_contains_multiple_sentences(beat)
 
 
 def print_generated_beats(beats):
@@ -4206,6 +5030,8 @@ def generate_beats_from_story(
     subject_information="",
     lora_directive="",
     audit_attempts=BEAT_PLAN_AUDIT_ATTEMPTS,
+    repair_response_attempts=BEAT_PLAN_REPAIR_RESPONSE_ATTEMPTS,
+    repair_rounds=BEAT_PLAN_REPAIR_ROUNDS,
 ):
     if llm_request is None:
         llm_request = ask_llm
@@ -4215,15 +5041,16 @@ def generate_beats_from_story(
         raise ValueError("Beat generation requires at least one content attempt.")
     if audit_attempts <= 0:
         raise ValueError("Beat-plan auditing requires at least one audit attempt.")
+    if repair_response_attempts <= 0:
+        raise ValueError(
+            "Beat-plan repair requires at least one response attempt."
+        )
+    if repair_rounds <= 0:
+        raise ValueError("Beat-plan repair requires at least one repair round.")
     if beat_instructions and instruction_review_attempts <= 0:
         raise ValueError(
             "Beat-instruction compliance requires at least one review attempt."
         )
-
-    batch_ranges = [
-        (start, min(start + BEAT_GENERATION_BATCH_SIZE - 1, total_segments))
-        for start in range(1, total_segments + 1, BEAT_GENERATION_BATCH_SIZE)
-    ]
 
     def request_macro_arc(correction=""):
         last_error = None
@@ -4240,7 +5067,10 @@ def generate_beats_from_story(
                 correction=correction if attempt == 1 else str(last_error),
                 beat_instructions=beat_instructions,
             )
-            verify_subjects_in_beat_messages(messages, subject_information)
+            verify_subjects_in_beat_messages(
+                messages,
+                _format_beat_arc_subject_names(subject_information),
+            )
             raw_arc = llm_request(
                 messages,
                 response_format=build_beat_arc_response_format(total_segments),
@@ -4253,6 +5083,7 @@ def generate_beats_from_story(
                 **BEAT_LLM_SAMPLING_PARAMETERS,
             )
             try:
+                print(raw_arc, flush=True)
                 return parse_beat_arc_plan(raw_arc, total_segments)
             except ValueError as error:
                 last_error = error
@@ -4348,20 +5179,28 @@ def generate_beats_from_story(
 
     def generate_batches(macro_arc, audit_correction=""):
         generated = []
-        for batch_start, batch_end in batch_ranges:
+        phase_batches = build_phase_generation_batches(macro_arc)
+        for phase_batch in phase_batches:
+            current_phase = phase_batch["phase"]
+            batch_start = phase_batch["batch_start"]
+            batch_end = phase_batch["batch_end"]
             batch_size = batch_end - batch_start + 1
             print(
-                f"Generating beat batch {batch_start}-{batch_end} of "
-                f"{total_segments} ({batch_size} beats).",
+                f"Generating macro phase {current_phase['phase_number']} "
+                f"({batch_size} beats, global beats {batch_start}-{batch_end} "
+                f"of {total_segments}).",
                 flush=True,
             )
-            response_format = build_beats_response_format(batch_size)
+            response_format = build_beats_response_format(
+                batch_size,
+                beat_start=batch_start,
+            )
             correction = ""
             last_error = None
             batch_beats = None
             for attempt in range(1, content_attempts + 1):
                 print(
-                    f"Requesting beat batch {batch_start}-{batch_end} "
+                    f"Requesting beats for phase {current_phase['phase_number']} "
                     f"(attempt {attempt}/{content_attempts}).",
                     flush=True,
                 )
@@ -4375,9 +5214,13 @@ def generate_beats_from_story(
                     batch_end=batch_end,
                     previous_beats=generated,
                     macro_arc=macro_arc,
+                    current_phase=current_phase,
                     audit_correction=audit_correction,
                 )
-                verify_subjects_in_beat_messages(messages, subject_information)
+                verify_subjects_in_beat_messages(
+                    messages,
+                    _format_beat_arc_subject_names(subject_information),
+                )
                 raw_result = llm_request(
                     messages,
                     response_format=response_format,
@@ -4388,11 +5231,16 @@ def generate_beats_from_story(
                         "total_segments": total_segments,
                         "batch_start": batch_start,
                         "batch_end": batch_end,
+                        "phase_number": current_phase["phase_number"],
                     },
                     **BEAT_LLM_SAMPLING_PARAMETERS,
                 )
                 try:
-                    batch_beats = parse_generated_beats(raw_result, batch_size)
+                    batch_beats = parse_generated_beats(
+                        raw_result,
+                        batch_size,
+                        expected_start=batch_start,
+                    )
                     prior_normalized = {
                         " ".join(previous.split()).casefold()
                         for previous in generated
@@ -4408,6 +5256,18 @@ def generate_beats_from_story(
                         raise ValueError(
                             "Generated batch repeats an earlier beat: "
                             f"{duplicate!r}."
+                        )
+                    introduction_issues = (
+                        validate_generated_beat_macro_introductions(
+                            batch_beats,
+                            macro_arc,
+                            beat_start=batch_start,
+                        )
+                    )
+                    if introduction_issues:
+                        raise ValueError(
+                            "Generated phase violates macro introduction timing: "
+                            + " ".join(introduction_issues)
                         )
                 except ValueError as error:
                     last_error = error
@@ -4429,7 +5289,7 @@ def generate_beats_from_story(
                 ) from last_error
             generated.extend(batch_beats)
             print(
-                f"Accepted beat batch {batch_start}-{batch_end}; collected "
+                f"Accepted macro phase {current_phase['phase_number']}; collected "
                 f"{len(generated)}/{total_segments} beats.",
                 flush=True,
             )
@@ -4440,7 +5300,11 @@ def generate_beats_from_story(
             return beats
         original_beats = list(beats)
         reviewed_beats = []
-        for batch_start, batch_end in batch_ranges:
+        phase_batches = build_phase_generation_batches(macro_arc)
+        for phase_batch in phase_batches:
+            current_phase = phase_batch["phase"]
+            batch_start = phase_batch["batch_start"]
+            batch_end = phase_batch["batch_end"]
             batch_size = batch_end - batch_start + 1
             print(
                 f"Reviewing beat batch {batch_start}-{batch_end} of "
@@ -4468,6 +5332,7 @@ def generate_beats_from_story(
                     batch_end=batch_end,
                     complete_beats=original_beats,
                     macro_arc=macro_arc,
+                    current_phase=current_phase,
                 )
                 verify_subjects_in_beat_messages(
                     review_messages,
@@ -4475,7 +5340,10 @@ def generate_beats_from_story(
                 )
                 reviewed_raw = llm_request(
                     review_messages,
-                    response_format=build_beats_response_format(batch_size),
+                    response_format=build_beats_response_format(
+                        batch_size,
+                        beat_start=batch_start,
+                    ),
                     history_metadata={
                         **(history_metadata or {}),
                         "purpose": "beat_instruction_review",
@@ -4483,6 +5351,7 @@ def generate_beats_from_story(
                         "total_segments": total_segments,
                         "batch_start": batch_start,
                         "batch_end": batch_end,
+                        "phase_number": current_phase["phase_number"],
                     },
                     **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
                 )
@@ -4490,7 +5359,20 @@ def generate_beats_from_story(
                     reviewed_batch = parse_generated_beats(
                         reviewed_raw,
                         batch_size,
+                        expected_start=batch_start,
                     )
+                    introduction_issues = (
+                        validate_generated_beat_macro_introductions(
+                            reviewed_batch,
+                            macro_arc,
+                            beat_start=batch_start,
+                        )
+                    )
+                    if introduction_issues:
+                        raise ValueError(
+                            "Reviewed phase violates macro introduction timing: "
+                            + " ".join(introduction_issues)
+                        )
                 except ValueError as error:
                     review_error = str(error)
                     if review_attempt < instruction_review_attempts:
@@ -4528,7 +5410,13 @@ def generate_beats_from_story(
             )
         return reviewed_beats
 
-    def request_plan_audit(beats, macro_arc, plan_attempt):
+    def request_plan_audit(
+        beats,
+        macro_arc,
+        plan_attempt,
+        audit_round=0,
+        repaired_beat_ids=None,
+    ):
         last_error = None
         for audit_content_attempt in range(1, content_attempts + 1):
             print(
@@ -4544,6 +5432,7 @@ def generate_beats_from_story(
                 macro_arc,
                 subject_information=subject_information,
                 beat_instructions=beat_instructions,
+                repaired_beat_ids=repaired_beat_ids,
             )
             if last_error:
                 audit_messages[-1]["content"] += (
@@ -4556,18 +5445,24 @@ def generate_beats_from_story(
             )
             raw_audit = llm_request(
                 audit_messages,
-                response_format=build_beat_plan_audit_response_format(),
+                response_format=build_beat_plan_audit_response_format(
+                    total_segments
+                ),
                 history_metadata={
                     **(history_metadata or {}),
                     "purpose": "beat_plan_audit",
                     "attempt": plan_attempt,
                     "response_attempt": audit_content_attempt,
+                    "audit_round": audit_round,
                     "total_segments": total_segments,
                 },
                 **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
             )
             try:
-                return parse_beat_plan_audit(raw_audit)
+                return parse_beat_plan_audit(
+                    raw_audit,
+                    total_segments=total_segments,
+                )
             except ValueError as error:
                 last_error = error
                 if audit_content_attempt < content_attempts:
@@ -4581,9 +5476,89 @@ def generate_beats_from_story(
             f"audit after {content_attempts} attempt(s): {last_error}"
         ) from last_error
 
+    def request_plan_repair(
+        beats,
+        macro_arc,
+        repair_ranges,
+        blocking_issues,
+        plan_attempt,
+        repair_round,
+        response_attempt,
+        correction="",
+    ):
+        requested_ids = beat_ids_for_repair_ranges(repair_ranges)
+        repair_messages = build_beat_plan_repair_messages(
+            story,
+            total_segments,
+            beats,
+            macro_arc,
+            blocking_issues,
+            repair_ranges,
+            subject_information=subject_information,
+            beat_instructions=beat_instructions,
+            correction=correction,
+        )
+        verify_subjects_in_beat_messages(
+            repair_messages,
+            subject_information,
+        )
+        raw_repair = llm_request(
+            repair_messages,
+            response_format=build_beat_plan_repair_response_format(
+                repair_ranges,
+            ),
+            history_metadata={
+                **(history_metadata or {}),
+                "purpose": "beat_plan_repair",
+                "attempt": plan_attempt,
+                "repair_round": repair_round,
+                "response_attempt": response_attempt,
+                "total_segments": total_segments,
+                "repair_ranges": [
+                    {
+                        "beat_start": repair_range["beat_start"],
+                        "beat_end": repair_range["beat_end"],
+                    }
+                    for repair_range in repair_ranges
+                ],
+                "repair_beat_ids": requested_ids,
+            },
+            **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
+        )
+        return parse_beat_plan_repair(
+            raw_repair,
+            repair_ranges,
+        )
+
+    def accept_plan(beats, audit, plan_attempt, completed_repair_rounds):
+        if audit["warnings"]:
+            print(
+                "Global beat-plan audit warnings (accepted): "
+                + " ".join(audit["warnings"]),
+                flush=True,
+            )
+        if completed_repair_rounds:
+            print(
+                "Global beat-plan audit passed after "
+                f"{completed_repair_rounds} targeted repair round"
+                f"{'' if completed_repair_rounds == 1 else 's'}.",
+                flush=True,
+            )
+        else:
+            print(
+                f"Global beat-plan audit passed on plan attempt "
+                f"{plan_attempt}/{audit_attempts}.",
+                flush=True,
+            )
+        print_generated_beats(beats)
+        save_generated_beats(beats, path, lora_directive=lora_directive)
+        print(f"Generated {len(beats)} story beats and saved them to {path}.")
+        return load_beats(path)
+
     macro_arc = request_valid_macro_arc()
     audit_correction = ""
     last_audit = None
+    last_failure_reason = ""
     for plan_attempt in range(1, audit_attempts + 1):
         if plan_attempt > 1 and last_audit and not last_audit[
             "macro_arc_consistent_with_source"
@@ -4591,47 +5566,261 @@ def generate_beats_from_story(
             macro_arc = request_valid_macro_arc(
                 "The global audit found the macro arc inconsistent with the "
                 "source story: "
-                + " ".join(last_audit["blocking_issues"])
+                + format_beat_plan_blocking_issues(
+                    last_audit["blocking_issues"]
+                )
             )
         beats = generate_batches(macro_arc, audit_correction=audit_correction)
         beats = review_explicit_instructions(beats, macro_arc)
-        audit = request_plan_audit(beats, macro_arc, plan_attempt)
-        if not audit["blocking_issues"]:
-            if audit["warnings"]:
-                print(
-                    "Global beat-plan audit warnings (accepted): "
-                    + " ".join(audit["warnings"]),
-                    flush=True,
-                )
+        try:
+            audit = request_plan_audit(beats, macro_arc, plan_attempt)
+        except RuntimeError as error:
+            last_failure_reason = (
+                "the global audit could not be localized safely because its "
+                f"response remained invalid: {error}"
+            )
             print(
-                f"Global beat-plan audit passed on plan attempt "
-                f"{plan_attempt}/{audit_attempts}.",
+                "Falling back to full-plan regeneration because "
+                + last_failure_reason,
                 flush=True,
             )
-            print_generated_beats(beats)
-            save_generated_beats(beats, path, lora_directive=lora_directive)
-            print(f"Generated {len(beats)} story beats and saved them to {path}.")
-            return load_beats(path)
+            audit_correction = last_failure_reason
+            continue
+        repaired_beat_ids = set()
+        completed_repair_rounds = 0
+        fallback_reason = ""
+
+        for repair_round in range(1, repair_rounds + 1):
+            last_audit = audit
+            normalized = normalize_beat_plan_repair_ranges(
+                audit["blocking_issues"],
+                total_segments,
+                repaired_beat_ids=repaired_beat_ids,
+                story=story,
+                beat_instructions=beat_instructions,
+            )
+            discarded_count = (
+                audit.get("discarded_blocking_issues", 0)
+                + len(normalized["discarded"])
+            )
+            if not normalized["issues"]:
+                if normalized["downgraded"] and not discarded_count:
+                    accepted_audit = dict(audit)
+                    accepted_audit["valid"] = True
+                    accepted_audit["blocking_issues"] = []
+                    accepted_audit["warnings"] = list(audit["warnings"]) + [
+                        "Ignored repeated post-repair blocker(s) that did not "
+                        "identify a concrete hard-source requirement."
+                    ]
+                    return accept_plan(
+                        beats,
+                        accepted_audit,
+                        plan_attempt,
+                        completed_repair_rounds,
+                    )
+                if not audit["macro_arc_consistent_with_source"]:
+                    fallback_reason = (
+                        "the audit found the macro arc inconsistent with the "
+                        "hard source requirements"
+                    )
+                    break
+                if discarded_count:
+                    fallback_reason = (
+                        "the audit's blocking ranges were malformed or outside "
+                        "the beat plan and could not be localized safely"
+                    )
+                    break
+                return accept_plan(
+                    beats,
+                    audit,
+                    plan_attempt,
+                    completed_repair_rounds,
+                )
+            if not audit["macro_arc_consistent_with_source"]:
+                fallback_reason = (
+                    "the audit found the macro arc inconsistent with the hard "
+                    "source requirements"
+                )
+                break
+            repair_ranges = normalized["ranges"]
+            if not repair_ranges:
+                fallback_reason = (
+                    "the audit failed without a safely localized blocker"
+                )
+                break
+
+            print(
+                "Global beat-plan audit failed: "
+                f"{len(normalized['issues'])} blocking issue"
+                f"{'' if len(normalized['issues']) == 1 else 's'}.",
+                flush=True,
+            )
+            print(f"Issues: {normalized['issues']}", flush=True)
+            range_label = format_beat_plan_repair_ranges(repair_ranges)
+            print(
+                f"Repair round {repair_round}/{repair_rounds}: repairing "
+                f"{range_label} in one request.",
+                flush=True,
+            )
+            correction = ""
+            repaired_beats = None
+            for response_attempt in range(
+                1,
+                repair_response_attempts + 1,
+            ):
+                try:
+                    replacement_beats = request_plan_repair(
+                        beats,
+                        macro_arc,
+                        repair_ranges,
+                        normalized["issues"],
+                        plan_attempt,
+                        repair_round,
+                        response_attempt,
+                        correction=correction,
+                    )
+                    repaired_beats = splice_beat_plan_repair(
+                        beats,
+                        repair_ranges,
+                        replacement_beats,
+                    )
+                    introduction_issues = (
+                        validate_generated_beat_macro_introductions(
+                            repaired_beats,
+                            macro_arc,
+                        )
+                    )
+                    if introduction_issues:
+                        raise ValueError(
+                            "Repaired complete plan violates macro introduction "
+                            "timing: " + " ".join(introduction_issues)
+                        )
+                    instruction_issues = validate_generated_beat_instructions(
+                        repaired_beats,
+                        beat_instructions,
+                    )
+                    if instruction_issues:
+                        raise ValueError(
+                            "Repaired complete plan violates explicit beat "
+                            "instructions: " + " ".join(instruction_issues)
+                        )
+                except Exception as error:
+                    correction = str(error)
+                    repaired_beats = None
+                    print(
+                        f"Repair round {repair_round} response failed validation "
+                        f"(attempt {response_attempt}/"
+                        f"{repair_response_attempts}): {error}",
+                        flush=True,
+                    )
+                    continue
+                break
+            if repaired_beats is None:
+                fallback_reason = (
+                    f"repair round {repair_round} did not produce a valid "
+                    f"response after {repair_response_attempts} attempt(s)"
+                )
+                break
+
+            beats = repaired_beats
+            completed_repair_rounds = repair_round
+            repaired_beat_ids.update(
+                beat_ids_for_repair_ranges(repair_ranges)
+            )
+            if repair_round == repair_rounds:
+                print(
+                    f"Repair round {repair_round} completed; performing final "
+                    "global audit.",
+                    flush=True,
+                )
+            else:
+                print(
+                    f"Repair round {repair_round} completed; re-auditing complete "
+                    f"{total_segments}-beat plan.",
+                    flush=True,
+                )
+            try:
+                audit = request_plan_audit(
+                    beats,
+                    macro_arc,
+                    plan_attempt,
+                    audit_round=repair_round,
+                    repaired_beat_ids=repaired_beat_ids,
+                )
+            except RuntimeError as error:
+                fallback_reason = (
+                    "the post-repair global audit remained structurally invalid: "
+                    f"{error}"
+                )
+                break
 
         last_audit = audit
-        audit_correction = "\n".join(
-            f"- {issue}" for issue in audit["blocking_issues"]
+        if not fallback_reason:
+            remaining = normalize_beat_plan_repair_ranges(
+                audit["blocking_issues"],
+                total_segments,
+                repaired_beat_ids=repaired_beat_ids,
+                story=story,
+                beat_instructions=beat_instructions,
+            )
+            discarded_count = (
+                audit.get("discarded_blocking_issues", 0)
+                + len(remaining["discarded"])
+            )
+            if (
+                not remaining["issues"]
+                and not remaining["downgraded"]
+                and not audit["macro_arc_consistent_with_source"]
+            ):
+                fallback_reason = (
+                    "the final audit found the macro arc inconsistent with the "
+                    "hard source requirements"
+                )
+            elif not remaining["issues"] and not discarded_count:
+                accepted_audit = dict(audit)
+                if remaining["downgraded"]:
+                    accepted_audit["valid"] = True
+                    accepted_audit["blocking_issues"] = []
+                    accepted_audit["warnings"] = list(audit["warnings"]) + [
+                        "Ignored repeated post-repair blocker(s) that did not "
+                        "identify a concrete hard-source requirement."
+                    ]
+                return accept_plan(
+                    beats,
+                    accepted_audit,
+                    plan_attempt,
+                    completed_repair_rounds,
+                )
+            if discarded_count and not remaining["issues"]:
+                fallback_reason = (
+                    "the final audit's blocking ranges could not be localized "
+                    "safely"
+                )
+            else:
+                fallback_reason = (
+                    f"the plan remains invalid after {repair_rounds} complete "
+                    "repair rounds"
+                )
+        last_failure_reason = fallback_reason
+        audit_correction = (
+            format_beat_plan_blocking_issues(audit["blocking_issues"])
+            if audit["blocking_issues"]
+            else fallback_reason
         )
         print(
-            f"Global beat-plan audit failed on plan attempt "
-            f"{plan_attempt}/{audit_attempts}: "
-            + " ".join(audit["blocking_issues"]),
+            "Falling back to full-plan regeneration because "
+            f"{fallback_reason}. Remaining blockers: "
+            f"{audit_correction}",
             flush=True,
         )
 
     raise RuntimeError(
         "LM Studio beat plan failed the required global quality audit after "
         f"{audit_attempts} attempt(s): "
-        + " ".join(
-            (last_audit or {}).get(
-                "blocking_issues",
-                ["unknown blocking audit failure"],
-            )
+        + (
+            format_beat_plan_blocking_issues(last_audit["blocking_issues"])
+            if last_audit and last_audit.get("blocking_issues")
+            else last_failure_reason or "unknown blocking audit failure"
         )
     )
 
@@ -5577,11 +6766,143 @@ def normalize_structured_continuity_state(
 ):
     if not isinstance(candidate, dict):
         return None
-    state = continuity_state_for_registry(subject_definitions, committed_state)
+
+    subject_scalar_fields = (
+        "position",
+        "pose_action",
+        "topology",
+        "body_state",
+        "physical_condition",
+    )
+    wardrobe_fields = ("upper", "lower", "footwear", "other")
+    subject_list_fields = (*PERSISTENT_SUBJECT_LIST_FIELDS, "held_props")
+
+    # The committed snapshot is identity metadata and a structural-safety
+    # comparison source only. An accepted candidate never mutates or inherits
+    # its physical-state object.
+    committed_snapshot = continuity_state_for_registry(
+        subject_definitions,
+        committed_state,
+    )
+
+    def candidate_error():
+        required_top_level = {
+            "version",
+            "environment",
+            "camera",
+            "subjects",
+            "ongoing_action",
+            "ongoing_audio",
+        }
+        missing = sorted(required_top_level - set(candidate))
+        if missing:
+            return f"missing top-level field(s): {', '.join(missing)}"
+        if isinstance(candidate.get("version"), bool) or not isinstance(
+            candidate.get("version"), int
+        ):
+            return "version must be an integer"
+        environment = candidate.get("environment")
+        if not isinstance(environment, dict):
+            return "environment must be an object"
+        for field in ("location", "persistent_state"):
+            if field not in environment or not isinstance(environment[field], str):
+                return f"environment.{field} must be a string"
+        for field in ("camera", "ongoing_action", "ongoing_audio"):
+            if not isinstance(candidate.get(field), str):
+                return f"{field} must be a string"
+        subjects = candidate.get("subjects")
+        if not isinstance(subjects, dict):
+            return "subjects must be an object"
+        for raw_name, record in subjects.items():
+            label = str(raw_name)
+            if not isinstance(record, dict):
+                return f"subjects.{label} must be an object"
+            identity_types = {
+                "subject_id": lambda value: isinstance(value, int)
+                and not isinstance(value, bool),
+                "name": lambda value: isinstance(value, str),
+                "picture_ids": lambda value: isinstance(value, list),
+                "picture_id": lambda value: value is None
+                or (isinstance(value, int) and not isinstance(value, bool)),
+                "speaker_id": lambda value: value is None
+                or isinstance(value, str),
+                "origin_segment": lambda value: value is None
+                or (isinstance(value, int) and not isinstance(value, bool)),
+            }
+            for field, valid in identity_types.items():
+                if field not in record or not valid(record[field]):
+                    return f"subjects.{label}.{field} has an invalid type"
+            if any(
+                isinstance(value, bool) or not isinstance(value, int)
+                for value in record["picture_ids"]
+            ):
+                return f"subjects.{label}.picture_ids must contain integers"
+            for field in subject_scalar_fields:
+                if field not in record or not isinstance(record[field], str):
+                    return f"subjects.{label}.{field} must be a string"
+            wardrobe = record.get("wardrobe")
+            if not isinstance(wardrobe, dict):
+                return f"subjects.{label}.wardrobe must be an object"
+            for field in wardrobe_fields:
+                if field not in wardrobe or not isinstance(wardrobe[field], str):
+                    return f"subjects.{label}.wardrobe.{field} must be a string"
+            for field in subject_list_fields:
+                if field not in record or not isinstance(record[field], list):
+                    return f"subjects.{label}.{field} must be an array"
+        known_by_folded_name = {
+            name.casefold(): name
+            for name in committed_snapshot.get("subjects", {})
+        }
+        known_by_id = {
+            str(record.get("subject_id")): name
+            for name, record in committed_snapshot.get("subjects", {}).items()
+            if record.get("subject_id") is not None
+        }
+        supplied_known_names = set()
+        for raw_name, record in subjects.items():
+            raw_text = str(raw_name).strip()
+            resolved_name = known_by_folded_name.get(raw_text.casefold())
+            if resolved_name is None and raw_text.isdigit():
+                resolved_name = known_by_id.get(raw_text)
+            if resolved_name is None:
+                candidate_name = str(record.get("name", "")).strip()
+                resolved_name = known_by_folded_name.get(candidate_name.casefold())
+            if resolved_name is None:
+                resolved_name = known_by_id.get(str(record.get("subject_id")))
+            if resolved_name is not None:
+                if resolved_name in supplied_known_names:
+                    return f"duplicate record for known Subject {resolved_name}"
+                supplied_known_names.add(resolved_name)
+        missing_subjects = sorted(
+            set(committed_snapshot.get("subjects", {})) - supplied_known_names
+        )
+        if missing_subjects:
+            return "missing known Subject record(s): " + ", ".join(
+                missing_subjects
+            )
+        return None
+
+    validation_error = candidate_error()
+    if validation_error:
+        print(f"[Continuity] canonical replacement rejected: {validation_error}")
+        return None
+
+    state = new_continuity_state()
+    for name, record in committed_snapshot.get("subjects", {}).items():
+        if not isinstance(record, dict):
+            continue
+        state["subjects"][name] = new_subject_continuity_record({
+            "subject_id": record.get("subject_id"),
+            "name": record.get("name") or name,
+            "picture_ids": list(record.get("picture_ids", [])),
+            "picture_id": record.get("picture_id"),
+            "speaker_id": record.get("speaker_id"),
+            "origin_segment": record.get("origin_segment"),
+        })
 
     # Dialogue formatting can introduce a previously unregistered speaking
-    # role. Its inline Subject/speaker declaration is authoritative identity
-    # metadata and must survive even when the continuity LLM omits that record.
+    # Subject. On a valid replacement, retain that stable inline identity while
+    # leaving all of its mutable fields at fresh defaults unless supplied below.
     for speaking_subject in extract_inline_dialogue_subjects(newest_description):
         proposed_name = speaking_subject["name"]
         existing_name = next(
@@ -5595,20 +6916,14 @@ def normalize_structured_continuity_state(
             continue
         subject_id = int(speaking_subject["subject_id"])
         speaker_id = str(speaking_subject["speaker_id"])
-        subject_collision = next(
-            (
-                name for name, record in state["subjects"].items()
-                if str(record.get("subject_id")) == str(subject_id)
-            ),
-            None,
+        subject_collision = any(
+            str(record.get("subject_id")) == str(subject_id)
+            for record in state["subjects"].values()
         )
-        speaker_collision = next(
-            (
-                name for name, record in state["subjects"].items()
-                if str(record.get("speaker_id") or "").casefold()
-                == speaker_id.casefold()
-            ),
-            None,
+        speaker_collision = any(
+            str(record.get("speaker_id") or "").casefold()
+            == speaker_id.casefold()
+            for record in state["subjects"].values()
         )
         if subject_collision or speaker_collision:
             print(
@@ -5620,284 +6935,181 @@ def normalize_structured_continuity_state(
             **speaking_subject,
             "origin_segment": origin_segment,
         })
+
     id_to_name = {
         str(record.get("subject_id")): name
         for name, record in state["subjects"].items()
         if record.get("subject_id") is not None
     }
 
-    def is_unknown_value(value):
-        if isinstance(value, str):
-            cleaned = sanitize_previous_state_value(value).strip()
-            return cleaned == "" or cleaned.upper() == "N/A"
-        if isinstance(value, (list, tuple, set)):
-            if not value:
-                return True
-            return all(
-                is_unknown_value(str(item))
-                for item in value
-            )
-        return False
-
-    def extract_implied_value(value):
-        if not isinstance(value, str):
-            return None
-        cleaned = sanitize_previous_state_value(value).strip()
-        if not cleaned:
-            return None
-        if cleaned.upper() == "N/A":
-            return None
-        match = re.match(
-            r"(?i)^N/A\s*(?:\(|\[|:|-)?\s*(?:implied|inferred|assumed|likely|possibly)?\s*(.+?)\s*(?:\)|\]|:|-)?$",
-            cleaned,
-        )
-        if match:
-            inferred = match.group(1).strip(" .;:,-")
-            if inferred and inferred.upper() != "N/A":
-                return inferred
-        if cleaned.upper().startswith("N/A"):
-            tail = cleaned[3:].strip(" :;-()[]")
-            if tail and tail.upper() != "N/A":
-                return tail
-        return None
-
-    def concrete_value(value, field_name=""):
-        if not isinstance(value, str):
-            return None
+    def replacement_value(value, field_name=""):
         raw = sanitize_previous_state_value(value).strip()
-        if not raw or raw.upper() == "N/A":
-            return None
-        # A final-frame snapshot must never contain local-timeline history.
-        # Reject timestamped action fields outright instead of replaying them
-        # as the next segment's opening action.
-        if field_name in {"pose_action", "ongoing_action"} and _CONTINUITY_TIMESTAMP_RE.search(raw):
-            print(
-                f"WARNING: Ignoring historical timestamped continuity field "
-                f"{field_name}: {raw!r}"
-            )
-            return None
+        if not raw or re.match(r"(?i)^N/A(?:\b|\s|[(:;\-\[])", raw):
+            return "N/A"
         cleaned = _scrub_snapshot_text(raw, field_name)
-        if not cleaned or cleaned.upper() == "N/A":
-            return None
-        implied = extract_implied_value(cleaned)
-        if implied is not None:
-            return implied
+        if not cleaned or re.match(
+            r"(?i)^N/A(?:\b|\s|[(:;\-\[])", cleaned
+        ):
+            return "N/A"
         return cleaned
 
-    def resolve_subject_name(raw_name):
-        if raw_name in state["subjects"]:
-            return raw_name
-        if isinstance(raw_name, str) and raw_name.isdigit():
-            mapped = id_to_name.get(raw_name)
-            if mapped and mapped in state["subjects"]:
-                return mapped
-        return None
-
-    def update_value(target, key, candidate_value, is_implied=False):
-        if candidate_value is None:
-            return
-        if not is_implied or is_unknown_value(target.get(key)):
-            target[key] = candidate_value
+    def cleaned_list(items, field_name):
+        cleaned_items = []
+        for item in items:
+            cleaned = _continuity_item_text(item, field_name)
+            if not cleaned or re.match(
+                r"(?i)^N/A(?:\b|\s|[(:;\-\[])", cleaned
+            ):
+                continue
+            cleaned_items.append(cleaned)
+        return list(dict.fromkeys(cleaned_items))
 
     for field in ("camera", "ongoing_action", "ongoing_audio"):
-        if isinstance(candidate.get(field), str):
-            value = concrete_value(candidate[field], field)
-            if value is not None:
-                update_value(
-                    state,
-                    field,
-                    value,
-                    extract_implied_value(candidate[field]) is not None,
-                )
-    environment = candidate.get("environment")
-    if isinstance(environment, dict):
-        for field in ("location", "persistent_state"):
-            if isinstance(environment.get(field), str):
-                value = concrete_value(environment[field], f"environment.{field}")
-                if value is not None:
-                    update_value(
-                        state["environment"],
-                        field,
-                        value,
-                        extract_implied_value(environment[field]) is not None,
-                    )
-    candidate_subjects = candidate.get("subjects")
-    if isinstance(candidate_subjects, dict):
-        for raw_name, record in candidate_subjects.items():
-            if not isinstance(record, dict):
+        state[field] = replacement_value(candidate[field], field)
+    for field in ("location", "persistent_state"):
+        state["environment"][field] = replacement_value(
+            candidate["environment"][field],
+            f"environment.{field}",
+        )
+
+    def resolve_subject_name(raw_name, record):
+        if raw_name in state["subjects"]:
+            return raw_name
+        raw_text = str(raw_name)
+        if raw_text.isdigit():
+            mapped = id_to_name.get(raw_text)
+            if mapped:
+                return mapped
+        proposed_name = str(record.get("name", raw_name)).strip()
+        if not proposed_name or proposed_name.isdigit():
+            return None
+        return next(
+            (
+                current_name for current_name in state["subjects"]
+                if current_name.casefold() == proposed_name.casefold()
+            ),
+            None,
+        )
+
+    for raw_name, record in candidate["subjects"].items():
+        name = resolve_subject_name(raw_name, record)
+        if name is None:
+            proposed_name = str(record.get("name", raw_name)).strip()
+            if not proposed_name or proposed_name.isdigit():
                 continue
-            name = resolve_subject_name(raw_name)
-            if name is None:
-                proposed_name = str(record.get("name", raw_name)).strip()
-                if not proposed_name or proposed_name.isdigit():
-                    continue
-                existing_name = next(
-                    (
-                        current_name
-                        for current_name in state["subjects"]
-                        if current_name.lower() == proposed_name.lower()
-                    ),
-                    None,
+            if not _new_subject_is_animate(record):
+                print(
+                    "WARNING: Ignoring inanimate or unclassified video-only "
+                    f"subject {proposed_name!r}; new Subjects require "
+                    "entity_kind='animate'."
                 )
-                if existing_name is not None:
-                    name = existing_name
-                else:
-                    if not _new_subject_is_animate(record):
-                        print(
-                            "WARNING: Ignoring inanimate or unclassified video-only "
-                            f"subject {proposed_name!r}; new Subjects require "
-                            "entity_kind='animate'."
-                        )
-                        continue
-                    if _future_subject_name_is_reserved(
-                        proposed_name, active_beat_text, future_beat_texts
-                    ):
-                        print(
-                            "WARNING: Ignoring premature future-beat subject "
-                            f"{proposed_name!r}."
-                        )
-                        continue
-                    used_ids = {
-                        int(current.get("subject_id"))
-                        for current in state["subjects"].values()
-                        if str(current.get("subject_id", "")).isdigit()
-                    }
-                    try:
-                        proposed_id = int(record.get("subject_id"))
-                    except (TypeError, ValueError):
-                        proposed_id = None
-                    if (
-                        proposed_id is None
-                        or proposed_id <= 0
-                        or proposed_id in used_ids
-                    ):
-                        proposed_id = max(used_ids, default=0) + 1
-                    try:
-                        created_in_segment = int(
-                            record.get("origin_segment", origin_segment)
-                        )
-                    except (TypeError, ValueError):
-                        created_in_segment = origin_segment
-                    name = proposed_name
-                    state["subjects"][name] = new_subject_continuity_record({
-                        "subject_id": proposed_id,
-                        "name": name,
-                        "picture_ids": [],
-                        "picture_id": None,
-                        "speaker_id": None,
-                        "origin_segment": created_in_segment,
-                    })
-                    id_to_name[str(proposed_id)] = name
-            target = state["subjects"][name]
-            for field in (
-                "position",
-                "pose_action",
-                "topology",
-                "body_state",
-                "physical_condition",
+                continue
+            if _future_subject_name_is_reserved(
+                proposed_name,
+                active_beat_text,
+                future_beat_texts,
             ):
-                if isinstance(record.get(field), str):
-                    value = concrete_value(record[field], field)
-                    if value is None:
-                        continue
-                    if (
-                        CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES
-                        and field in {"topology", "body_state"}
-                        and not is_unknown_value(target.get(field))
-                        and value != target.get(field)
-                        and not _structural_change_has_evidence(
-                            name, value, newest_description
-                        )
-                    ):
-                        print(
-                            "WARNING: Ignoring unevidenced structural continuity "
-                            f"change for {name} ({field}): {value!r}"
-                        )
-                        continue
-                    update_value(
-                        target,
-                        field,
-                        value,
-                        extract_implied_value(record[field]) is not None,
-                    )
-            wardrobe = record.get("wardrobe")
-            if isinstance(wardrobe, dict):
-                for garment in target["wardrobe"]:
-                    if isinstance(wardrobe.get(garment), str):
-                        value = concrete_value(wardrobe[garment], f"wardrobe.{garment}")
-                        if value is not None:
-                            update_value(
-                                target["wardrobe"],
-                                garment,
-                                value,
-                                extract_implied_value(wardrobe[garment]) is not None,
-                            )
-            for field in PERSISTENT_SUBJECT_LIST_FIELDS:
-                proposed_items = record.get(field)
-                if not isinstance(proposed_items, list):
-                    continue
-                cleaned_items = []
-                for item in proposed_items:
-                    cleaned = _continuity_item_text(item, field)
-                    if not cleaned:
-                        continue
-                    inferred = extract_implied_value(cleaned)
-                    cleaned_items.append(inferred if inferred is not None else cleaned)
-                cleaned_items = list(dict.fromkeys(cleaned_items))
-                existing_items = [
-                    cleaned
-                    for item in target.get(field, [])
-                    if (cleaned := _continuity_item_text(item, field))
-                ]
-                removal_text = str(newest_description or "")
-                removal_is_explicit = bool(
-                    _EXPLICIT_REMOVAL_RE.search(removal_text)
-                    and re.search(rf"(?i)\b{re.escape(name)}\b", removal_text)
-                    and (
-                        not existing_items
-                        or any(
-                            any(
-                                len(token) >= 4 and token.casefold() in removal_text.casefold()
-                                for token in re.findall(r"[A-Za-z][A-Za-z'-]+", item)
-                            )
-                            for item in existing_items
-                        )
-                    )
+                print(
+                    "WARNING: Ignoring premature future-beat subject "
+                    f"{proposed_name!r}."
                 )
-                if removal_is_explicit:
-                    target[field] = cleaned_items
-                elif cleaned_items:
-                    # New apparatus/effects are additive. A partial model snapshot
-                    # must not silently erase committed physical state.
-                    target[field] = list(dict.fromkeys(existing_items + cleaned_items))
-                elif not existing_items:
-                    target[field] = []
-            if isinstance(record.get("held_props"), list):
-                props = []
-                for prop in record["held_props"]:
-                    cleaned = _continuity_item_text(prop, "held_props")
-                    if not cleaned:
-                        continue
-                    inferred = extract_implied_value(cleaned)
-                    props.append(inferred if inferred is not None else cleaned)
-                if props:
-                    target["held_props"] = props
-                elif not target.get("held_props"):
-                    target["held_props"] = []
-                else:
-                    release_pattern = re.compile(
-                        rf"(?is)\b{re.escape(name)}\b.{{0,180}}\b"
-                        r"(?:drops?|releases?|lets? go|sets? down|puts? down|throws?)\b"
-                    )
-                    if release_pattern.search(str(newest_description or "")):
-                        target["held_props"] = []
-                    else:
-                        print(
-                            f"WARNING: Preserving {name}'s held props because "
-                            "the newest segment does not explicitly release them."
-                        )
+                continue
+            used_ids = {
+                int(current.get("subject_id"))
+                for current in state["subjects"].values()
+                if str(current.get("subject_id", "")).isdigit()
+            }
+            try:
+                proposed_id = int(record.get("subject_id"))
+            except (TypeError, ValueError):
+                proposed_id = None
+            if (
+                proposed_id is None
+                or proposed_id <= 0
+                or proposed_id in used_ids
+            ):
+                proposed_id = max(used_ids, default=0) + 1
+            try:
+                created_in_segment = int(
+                    record.get("origin_segment", origin_segment)
+                )
+            except (TypeError, ValueError):
+                created_in_segment = origin_segment
+            name = proposed_name
+            state["subjects"][name] = new_subject_continuity_record({
+                "subject_id": proposed_id,
+                "name": name,
+                "picture_ids": [],
+                "picture_id": None,
+                "speaker_id": None,
+                "origin_segment": created_in_segment,
+            })
+            id_to_name[str(proposed_id)] = name
+
+        target = state["subjects"][name]
+        committed_record = committed_snapshot.get("subjects", {}).get(name, {})
+        for field in subject_scalar_fields:
+            value = replacement_value(record[field], field)
+            if (
+                CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES
+                and field in {"topology", "body_state"}
+                and value != "N/A"
+                and value != replacement_value(
+                    str(committed_record.get(field, "N/A")),
+                    field,
+                )
+                and not _structural_change_has_evidence(
+                    name,
+                    value,
+                    newest_description,
+                )
+            ):
+                old_value = replacement_value(
+                    str(committed_record.get(field, "N/A")),
+                    field,
+                )
+                target[field] = old_value
+                print(
+                    "WARNING: Ignoring unevidenced structural continuity "
+                    f"change for {name} ({field}): {value!r}"
+                )
+            else:
+                target[field] = value
+
+        for garment in wardrobe_fields:
+            target["wardrobe"][garment] = replacement_value(
+                record["wardrobe"][garment],
+                f"wardrobe.{garment}",
+            )
+        for field in subject_list_fields:
+            target[field] = cleaned_list(record[field], field)
+
     state["version"] = CONTINUITY_STATE_VERSION
-    return scrub_continuity_state(state)
+    state = scrub_continuity_state(state)
+
+    def brief(value):
+        rendered = json.dumps(value, ensure_ascii=False)
+        return rendered if len(rendered) <= 120 else rendered[:117] + "..."
+
+    print("[Continuity] canonical replacement accepted")
+    for field in ("camera", "ongoing_action", "ongoing_audio"):
+        old_value = committed_snapshot.get(field, "N/A")
+        if old_value != state[field]:
+            print(
+                f"[Continuity] {field}: {brief(old_value)} -> "
+                f"{brief(state[field])}"
+            )
+    for name, record in state["subjects"].items():
+        old_record = committed_snapshot.get("subjects", {}).get(name, {})
+        for field in subject_list_fields:
+            old_count = len(old_record.get(field, []))
+            new_count = len(record.get(field, []))
+            if old_count != new_count:
+                print(
+                    f"[Continuity] {name}.{field}: "
+                    f"{old_count} -> {new_count}"
+                )
+    return state
 
 
 def request_structured_continuity_state(

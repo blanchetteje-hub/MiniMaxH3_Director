@@ -447,19 +447,20 @@ The saucers abduct Mark's family while they flee.
 Blank lines and lines beginning with `#` are ignored. The order is
 authoritative, and the director cannot mark a later beat complete before an
 earlier one. If the file is blank or contains only comments, the program first
-asks LM Studio to create exactly one creative, non-repeating, forward-moving
-beat per requested video segment. The final generated beat must conclude the
-story. Every generated beat is restricted to exactly one complete sentence.
-Python validates the sentence limit, exact count, and uniqueness; prints the
-accepted beats as a numbered list; saves them to `beats.txt`; and then continues
-through normal startup.
+asks LM Studio for a macro story arc, then generates the beats one complete
+macro phase at a time. Each later phase receives only the five immediately
+preceding accepted beats as continuity context. Responses use globally numbered
+`beat_number`/`beat_text` objects, and Python validates the phase's exact range,
+order, count, uniqueness, one-complete-sentence limit, and the macro arc's
+earliest permitted introduction beat for every named character and location
+before saving the beat text to `beats.txt`. The final generated beat must
+conclude the story.
 
-Beat generation uses a higher-creativity sampling profile than continuity and
-formatting requests: `temperature=0.9`, `top_p=0.95`,
-`presence_penalty=0.55`, `frequency_penalty=0.3`, and
-`repeat_penalty=1.08`. The prompt also requires the model to consider multiple
-distinct arcs and avoid generic filler, stock obstacles, and predictable plot
-progression. Other LLM calls retain their conservative sampling defaults.
+Beat generation uses `temperature=0.65`, `top_p=0.90`,
+`presence_penalty=0.15`, `frequency_penalty=0.15`, and
+`repeat_penalty=1.05`. The phase prompt treats the macro story arc as the
+authoritative story plan and prioritizes source-story fidelity and chronological
+cause-and-effect over unsupported invention.
 
 ### `subjects.txt` — optional
 
