@@ -16,10 +16,8 @@ fix.py
 # Runtime state / LLM traces
 generation_state.json
 prompt_history.txt
-beats.txt
 
 # Generated media / intermediates
 *.mp4
 *.safetensors
 refresh_first_frame*
-

@@ -75,6 +75,8 @@ class PurposeDispatchLLM:
                     )
                 ]
             }
+        if purpose == "beat_phase_validation":
+            return {"valid": True, "issues": []}
         if purpose == "beat_plan_audit":
             if not self.audits:
                 raise AssertionError("Unexpected extra global audit.")

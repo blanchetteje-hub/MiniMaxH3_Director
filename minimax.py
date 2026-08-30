@@ -3725,6 +3725,60 @@ def build_beat_arc_fidelity_response_format():
     }
 
 
+BEAT_PHASE_VALIDATION_ISSUE_TYPES = (
+    "missing_end_state",
+    "next_phase_scope_creep",
+    "future_character",
+    "future_location",
+    "bad_opening_continuity",
+)
+
+
+def build_beat_phase_validation_response_format(beat_start=None, beat_end=None):
+    beat_id_schema = {"type": "integer", "minimum": 1}
+    if beat_start is not None:
+        beat_start = int(beat_start)
+        if beat_start <= 0:
+            raise ValueError("Phase validation requires a positive beat_start.")
+        beat_id_schema["minimum"] = beat_start
+    if beat_end is not None:
+        beat_end = int(beat_end)
+        if beat_end < beat_id_schema["minimum"]:
+            raise ValueError("Phase validation requires beat_end >= beat_start.")
+        beat_id_schema["maximum"] = beat_end
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_beat_phase_validation",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "valid": {"type": "boolean"},
+                    "issues": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "beat_id": beat_id_schema,
+                                "type": {
+                                    "type": "string",
+                                    "enum": list(BEAT_PHASE_VALIDATION_ISSUE_TYPES),
+                                },
+                                "problem": {"type": "string", "minLength": 1},
+                            },
+                            "required": ["beat_id", "type", "problem"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["valid", "issues"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
 def build_beat_plan_audit_response_format(total_segments=None):
     beat_id_schema = {"type": "integer", "minimum": 1}
     if total_segments is not None:
@@ -4224,6 +4278,313 @@ def parse_beat_arc_fidelity(raw_result, formatter=None):
             "Macro-arc fidelity 'valid' must be true exactly when issues is empty."
         )
     return {"valid": valid, "issues": normalized_issues}
+
+
+def build_beat_phase_validation_messages(
+    beats,
+    current_phase,
+    next_phase=None,
+    previous_phase=None,
+    previous_beat=None,
+):
+    """Build the mandatory validation request for one generated macro phase."""
+    phase_number = int(current_phase["phase_number"])
+    beat_start = int(current_phase["beat_start"])
+    beat_end = int(current_phase["beat_end"])
+
+    numbered_beats = "\n".join(
+        f"Beat {number}: {beat}"
+        for number, beat in enumerate(beats, start=beat_start)
+    )
+
+    next_phase_text = (
+        json.dumps(next_phase, ensure_ascii=False, indent=2)
+        if next_phase is not None
+        else "N/A (this is the final phase)"
+    )
+
+    previous_phase_text = (
+        json.dumps(previous_phase, ensure_ascii=False, indent=2)
+        if previous_phase is not None
+        else "N/A (this is the first phase)"
+    )
+
+    previous_beat_text = (
+        f"Beat {beat_start - 1}: {previous_beat}"
+        if previous_beat is not None
+        else "N/A (this is the first phase)"
+    )
+
+    issue_types_text = "\n".join(
+        f"- {issue_type}"
+        for issue_type in BEAT_PHASE_VALIDATION_ISSUE_TYPES
+    )
+
+    response_example = json.dumps(
+        {
+            "valid": False,
+            "issues": [
+                {
+                    "beat_id": beat_end,
+                    "type": "missing_end_state",
+                    "problem": (
+                        "The final beat does not clearly establish the "
+                        "current phase required_end_state."
+                    ),
+                }
+            ],
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
+
+    following_phase_rules = ""
+    if next_phase is not None:
+        following_phase_rules = f"""
+FOLLOWING-PHASE BOUNDARY RULES
+
+- CURRENT PHASE.required_end_state owns the boundary and takes precedence over
+  conflicting FOLLOWING PHASE fields.
+
+- Anything explicitly necessary to establish CURRENT PHASE.required_end_state
+  is allowed in the current phase, even if the same character, entity, location,
+  condition, or event also appears in the FOLLOWING PHASE.
+
+- Treat the FOLLOWING PHASE as beginning immediately AFTER the current
+  required_end_state becomes true.
+
+- next_phase_scope_creep means a beat performs meaningful progression that
+  occurs AFTER the current required_end_state, not progression needed to reach it.
+
+- A character from FOLLOWING PHASE.characters_introduced is NOT early if that
+  character or entity must appear for CURRENT PHASE.required_end_state to become
+  true.
+
+- A FOLLOWING PHASE location or environmental state is NOT early if reaching or
+  beginning that state is explicitly required by CURRENT PHASE.required_end_state.
+
+- Do not treat a changed condition of the same physical place as a new location
+  merely because the FOLLOWING PHASE describes it differently.
+
+- Setup, reaction, or foreshadowing is allowed when it helps establish the
+  current required_end_state. Reject only events that materially continue
+  beyond that handoff into phase {phase_number + 1}'s distinctive progression.
+
+Example boundary logic:
+If the current required_end_state is "alien craft land in the theme park,
+starting the crisis" and the following phase is "visitors flee while aliens
+abduct people," then the landing belongs to the CURRENT phase. Abductions and
+the family's flight belong to the FOLLOWING phase.
+""".strip()
+
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a narrow story-phase boundary validator. Check only "
+                "opening continuity, whether the current phase reaches its "
+                "required end state, and whether it materially progresses past "
+                "that boundary. Do not rewrite the beats. Do not critique "
+                "quality, pacing, drama, or wording. Return only the requested "
+                "JSON object."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Validate the newly generated beats for macro phase {phase_number}, whose exact
+range is Beats {beat_start}-{beat_end}.
+
+CORE RULES
+
+1. Beat {beat_start} must plausibly continue from the previous accepted phase
+   end state when a previous phase exists.
+
+2. The beats must execute the CURRENT PHASE's broad_progression.
+
+3. Beat {beat_end} MUST clearly make CURRENT PHASE.required_end_state true.
+
+4. Semantic equivalence counts. Do not require exact wording or a preferred
+   dramatic presentation.
+
+5. CURRENT PHASE.required_end_state defines the handoff boundary. Events needed
+   to make that state true belong to the CURRENT PHASE.
+
+6. Do not reject a beat merely because its event, character, location, or
+   environmental condition is also mentioned in the FOLLOWING PHASE.
+
+7. Reject scope creep only when a beat materially performs story progression
+   that occurs AFTER CURRENT PHASE.required_end_state has already been reached.
+
+8. Do not invent finer distinctions than the phase text states. For example,
+   if required_end_state says an entity "emerges," do not reinterpret that as
+   "partially emerges" or "only hints at emerging."
+
+9. Do not invent requirements from SOURCE STORY, canon, genre expectations, or
+   your own preferences. Judge only the supplied phase information and beats.
+
+10. Do not report pacing, tone, imagery, detail level, dramatic strength, or
+    minor connective actions as failures.
+
+{following_phase_rules}
+
+ISSUE REPORTING
+
+Set valid=true only when there is a clear pass.
+
+Otherwise return one issue object per concrete boundary failure.
+
+Each issue must contain exactly:
+- beat_id: the global beat number responsible;
+- type: one allowed type;
+- problem: a concise factual explanation.
+
+ALLOWED ISSUE TYPES
+{issue_types_text}
+
+Use them narrowly:
+
+- missing_end_state:
+  Beat {beat_end} fails to make CURRENT PHASE.required_end_state true.
+
+- next_phase_scope_creep:
+  A beat materially performs progression that belongs AFTER the current
+  required_end_state.
+
+- future_character:
+  A genuinely next-phase-only character appears before the boundary and is NOT
+  required to establish the current required_end_state.
+
+- future_location:
+  A genuinely different next-phase location is entered before the boundary and
+  is NOT required by the current required_end_state. Do not use this merely for
+  a changed condition of the same physical location.
+
+- bad_opening_continuity:
+  Beat {beat_start} contradicts or skips the previous accepted phase end state.
+  Never use this type for the first phase.
+
+PREVIOUS PHASE
+{previous_phase_text}
+
+PREVIOUS ACCEPTED BEAT
+{previous_beat_text}
+
+CURRENT PHASE
+{json.dumps(current_phase, ensure_ascii=False, indent=2)}
+
+FOLLOWING PHASE
+{next_phase_text}
+
+NEWLY GENERATED CURRENT-PHASE BEATS
+{numbered_beats}
+
+Return only JSON using this structure:
+{response_example}
+
+When the phase passes, return:
+{{"valid": true, "issues": []}}
+""".strip(),
+        },
+    ]
+
+
+def parse_beat_phase_validation(
+    raw_result,
+    formatter=None,
+    beat_start=None,
+    beat_end=None,
+):
+    """Parse a phase validation response and enforce valid/issues agreement."""
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate)
+        except json.JSONDecodeError as error:
+            raise ValueError(
+                "The beat-phase validation response must be valid JSON."
+            ) from error
+    if not isinstance(candidate, dict) or set(candidate) != {"valid", "issues"}:
+        raise ValueError(
+            "The beat-phase validation response must contain only 'valid' and "
+            "'issues'."
+        )
+    valid = candidate["valid"]
+    issues = candidate["issues"]
+    if not isinstance(valid, bool):
+        raise ValueError("The beat-phase validation 'valid' field must be boolean.")
+    if not isinstance(issues, list):
+        raise ValueError(
+            "The beat-phase validation 'issues' field must be an array."
+        )
+    normalized_issues = []
+    for issue in issues:
+        if not isinstance(issue, dict) or set(issue) != {
+            "beat_id",
+            "type",
+            "problem",
+        }:
+            raise ValueError(
+                "Every beat-phase validation issue must contain exactly "
+                "'beat_id', 'type', and 'problem'."
+            )
+        beat_id = issue["beat_id"]
+        issue_type = issue["type"]
+        problem = issue["problem"]
+        if isinstance(beat_id, bool) or not isinstance(beat_id, int) or beat_id <= 0:
+            raise ValueError(
+                "Every beat-phase validation issue beat_id must be a positive "
+                "integer."
+            )
+        if beat_start is not None and beat_id < int(beat_start):
+            raise ValueError("Beat-phase validation issue beat_id precedes the phase.")
+        if beat_end is not None and beat_id > int(beat_end):
+            raise ValueError("Beat-phase validation issue beat_id exceeds the phase.")
+        if issue_type not in BEAT_PHASE_VALIDATION_ISSUE_TYPES:
+            raise ValueError(
+                "Beat-phase validation issue type must be one of: "
+                + ", ".join(BEAT_PHASE_VALIDATION_ISSUE_TYPES)
+                + "."
+            )
+        if not isinstance(problem, str) or not problem.strip():
+            raise ValueError(
+                "Every beat-phase validation issue problem must be a non-empty "
+                "string."
+            )
+        normalized_issues.append(
+            {
+                "beat_id": beat_id,
+                "type": issue_type,
+                "problem": " ".join(problem.split()),
+            }
+        )
+    if valid != (not normalized_issues):
+        raise ValueError(
+            "Beat-phase validation 'valid' must be true exactly when issues is "
+            "empty."
+        )
+    return {"valid": valid, "issues": normalized_issues}
+
+
+def format_beat_phase_validation_correction(validation):
+    """Format structured phase issues for whole-phase regeneration."""
+    issues = sorted(
+        validation["issues"],
+        key=lambda issue: (issue["beat_id"], issue["type"]),
+    )
+    bullets = "\n".join(
+        f"- Beat {issue['beat_id']}: {issue['problem']}" for issue in issues
+    )
+    return (
+        "PHASE VALIDATION CORRECTION\n\n"
+        "The previous phase crossed or failed its macro boundary:\n\n"
+        f"{bullets}\n\n"
+        "Regenerate this entire phase. Preserve the CURRENT PHASE progression, "
+        "reach its\nrequired_end_state in the final beat, and do not enact NEXT "
+        "PHASE progression."
+    )
 
 
 def format_macro_phase_boundaries(macro_arc):
@@ -5168,11 +5529,14 @@ def build_beat_generation_messages(
 
     supplemental_sections = []
     if correction:
-        supplemental_sections.append(
-            "YOUR PREVIOUS RESPONSE WAS INVALID\n"
-            f"{correction}\n"
-            "Generate the complete phase again and obey every requirement."
-        )
+        if correction.startswith("PHASE VALIDATION CORRECTION\n"):
+            supplemental_sections.append(correction)
+        else:
+            supplemental_sections.append(
+                "YOUR PREVIOUS RESPONSE WAS INVALID\n"
+                f"{correction}\n"
+                "Generate the complete phase again and obey every requirement."
+            )
     if beat_instructions:
         supplemental_sections.append(
             "ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT (VERBATIM)\n"
@@ -5228,7 +5592,12 @@ Requirements:
 (4) `characters_introduced` identifies characters whose FIRST appearance belongs
     to this phase. Characters already established in the source story or previous
     accepted beats may continue or reappear when appropriate.
-(5) Do not introduce any character or location listed under FUTURE PHASE
+(5) FOLLOWING PHASE CONTEXT — DO NOT ADVANCE BEYOND CURRENT END STATE
+Do not introduce future-phase characters, locations, or events UNLESS they are
+explicitly necessary to satisfy CURRENT PHASE.required_end_state.
+Phase {phase_number}'s required_end_state has priority over future-phase restrictions.
+Stop once that end state is established; do not continue into the following
+phase's post-boundary progression.
     ENTITIES. Those belong to later phases.
 (6) variety within that established story.
 (7) creativity only when it does not alter the premise or progression.
@@ -5247,6 +5616,7 @@ Requirements:
 - Every beat must logically continue from the previous beat's end state.
 - Never repeat, recap, restage, or merely reword an earlier beat.
 - Build clear cause-and-effect progression across the complete list.
+- The final beat should reach the **current phase end state**, but it should **not automatically perform Beat 1 of the next phase**.
 - Beat {total_segments} must conclusively satisfy the source story's required ending; do not end on setup, an unresolved essential action, or a cliffhanger.
 - Keep each beat concise, concrete, and independently understandable.
 - Do not include numbering, labels, comments, Markdown, or --lora metadata inside a beat string.
@@ -6072,6 +6442,70 @@ def generate_beats_from_story(
                 flush=True,
             )
 
+    def request_phase_validation(
+        phase_beats,
+        macro_arc,
+        current_phase,
+        generation_attempt,
+        previous_beats,
+    ):
+        phases = macro_arc["phases"]
+        phase_index = current_phase["phase_number"] - 1
+        previous_phase = phases[phase_index - 1] if phase_index > 0 else None
+        next_phase = (
+            phases[phase_index + 1]
+            if phase_index + 1 < len(phases)
+            else None
+        )
+        response_attempt = 0
+        last_error = None
+        while True:
+            response_attempt += 1
+            messages = build_beat_phase_validation_messages(
+                phase_beats,
+                current_phase,
+                next_phase=next_phase,
+                previous_phase=previous_phase,
+                previous_beat=previous_beats[-1] if previous_beats else None,
+            )
+            if last_error:
+                messages[-1]["content"] += (
+                    "\n\nYOUR PREVIOUS VALIDATION RESPONSE WAS STRUCTURALLY "
+                    "INVALID\n"
+                    f"{last_error}\nReturn the complete validation JSON again."
+                )
+            raw_validation = llm_request(
+                messages,
+                response_format=build_beat_phase_validation_response_format(
+                    current_phase["beat_start"],
+                    current_phase["beat_end"],
+                ),
+                history_metadata={
+                    **(history_metadata or {}),
+                    "purpose": "beat_phase_validation",
+                    "attempt": generation_attempt,
+                    "response_attempt": response_attempt,
+                    "total_segments": total_segments,
+                    "batch_start": current_phase["beat_start"],
+                    "batch_end": current_phase["beat_end"],
+                    "phase_number": current_phase["phase_number"],
+                },
+                **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
+            )
+            try:
+                return parse_beat_phase_validation(
+                    raw_validation,
+                    beat_start=current_phase["beat_start"],
+                    beat_end=current_phase["beat_end"],
+                )
+            except ValueError as error:
+                last_error = error
+                print(
+                    "LM Studio returned an invalid phase-validation response; "
+                    f"requesting another response: {last_error}",
+                    flush=True,
+                )
+
     def generate_batches(macro_arc, audit_correction=""):
         generated = []
         phase_batches = build_phase_generation_batches(macro_arc)
@@ -6173,6 +6607,29 @@ def generate_beats_from_story(
                     print(
                         "LLM returned an invalid beat list; requesting a "
                         f"corrected list: {last_error}"
+                    )
+                    continue
+                phase_validation = request_phase_validation(
+                    batch_beats,
+                    macro_arc,
+                    current_phase,
+                    attempt,
+                    generated,
+                )
+                if not phase_validation["valid"]:
+                    correction = format_beat_phase_validation_correction(
+                        phase_validation
+                    )
+                    issue_summary = " ".join(
+                        f"Beat {issue['beat_id']}: {issue['problem']}"
+                        for issue in phase_validation["issues"]
+                    )
+                    batch_beats = None
+                    print(
+                        f"Phase {current_phase['phase_number']} failed "
+                        f"post-generation validation; regenerating it: "
+                        + issue_summary,
+                        flush=True,
                     )
                     continue
                 break
