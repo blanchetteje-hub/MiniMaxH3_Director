@@ -70,6 +70,39 @@ def result(
 
 
 class FieldAndFixedPointTests(unittest.TestCase):
+    def test_absolute_segment_reference_is_rewritten_as_video_1(self) -> None:
+        raw = result(
+            "[Shot 31] The camera inherits the final frame of Segment 30 and "
+            "pushes in toward Mark as he studies the control panel.",
+            completed=[31],
+        )
+        context = context_for(
+            4,
+            segment_number=31,
+            next_beat_id=31,
+            current_beat_text="Show Mark studying the control panel.",
+            completed_beat_ids=list(range(1, 31)),
+            hard_cut_required=False,
+        )
+
+        formatted = format_ministral_prompt(raw, context)
+
+        self.assertIn("final frame of <Video 1>", formatted["detailed_description"])
+        self.assertNotIn("Segment 30", formatted["detailed_description"])
+        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+
+    def test_symbolic_segment_reference_is_rewritten_as_video_1(self) -> None:
+        raw = result(
+            "[Shot 2] The final frame of video Segment N remains the opening "
+            "composition as flying saucers cross overhead.",
+            completed=[2],
+        )
+
+        formatted = format_ministral_prompt(raw, context_for(2))
+
+        self.assertIn("final frame of <Video 1>", formatted["detailed_description"])
+        self.assertNotRegex(formatted["detailed_description"], r"(?i)segment\s+N")
+
     def test_every_asterisk_is_removed_from_prompt_text(self) -> None:
         raw = result(
             "*[Shot 1]* Live-action, cinematic, **Mark**, Jill, and Mark's "

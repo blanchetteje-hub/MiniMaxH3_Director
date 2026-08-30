@@ -470,6 +470,18 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertIn("Never create a Subject for an inanimate object", system_prompt)
         self.assertIn("Anything that explicitly speaks", system_prompt)
 
+    def test_continuity_prompt_includes_phase_characters_introduced(self):
+        messages = minimax.build_structured_continuity_messages(
+            [(2, segment_result(2))],
+            minimax.continuity_state_for_registry(self.SUBJECTS),
+            self.SUBJECTS,
+            new_subjects=["The pilot", "Ben"],
+        )
+
+        system_prompt = messages[0]["content"]
+        self.assertIn('["The pilot", "Ben"]', system_prompt)
+        self.assertNotIn("{new_subjects}", system_prompt)
+
     def test_structured_candidate_replaces_omitted_old_wardrobe_with_na(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
         committed["subjects"]["Connie"]["wardrobe"]["upper"] = "green sweater"
@@ -488,6 +500,107 @@ class ContinuitySummaryTests(unittest.TestCase):
             "N/A",
         )
         self.assertEqual(candidate["subjects"]["Connie"]["position"], "left side")
+
+    def test_partial_candidate_updates_wardrobe_without_freezing_entire_state(self):
+        committed = minimax.continuity_state_for_registry(self.SUBJECTS)
+        committed["subjects"]["Connie"]["position"] = "beside the window"
+        committed["subjects"]["Beth"]["wardrobe"]["upper"] = "blue jacket"
+        partial = {
+            "subjects": {
+                "Connie": {
+                    "wardrobe": {"upper": "green sweater"},
+                },
+            },
+        }
+
+        candidate = minimax.normalize_structured_continuity_state(
+            partial,
+            self.SUBJECTS,
+            committed,
+        )
+
+        self.assertIsNotNone(candidate)
+        self.assertEqual(
+            candidate["subjects"]["Connie"]["wardrobe"]["upper"],
+            "green sweater",
+        )
+        self.assertEqual(
+            candidate["subjects"]["Connie"]["position"],
+            "beside the window",
+        )
+        self.assertEqual(
+            candidate["subjects"]["Beth"]["wardrobe"]["upper"],
+            "blue jacket",
+        )
+
+    def test_inline_subject_is_registered_before_same_segment_h3_prompt(self):
+        state = minimax.continuity_state_for_registry(self.SUBJECTS)
+        state["subjects"]["Connie"]["wardrobe"]["upper"] = "green sweater"
+        description = (
+            "[Shot 2] <Subject 3> New Guard (S3) says: "
+            "<d>[English] Stop there.</d>"
+        )
+
+        state, added_names = minimax.register_inline_dialogue_subjects(
+            state,
+            self.SUBJECTS,
+            description,
+            origin_segment=2,
+        )
+        additional, added_lines = minimax.collect_additional_subject_definitions(
+            self.SUBJECTS,
+            [],
+            state,
+            origin_segment=2,
+        )
+        combined = minimax.combine_subject_definitions(self.SUBJECTS, additional)
+        opening = minimax.format_authoritative_opening_state(
+            state,
+            combined,
+            include_camera=False,
+        )
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": description,
+                "overall_soundscape": "Room tone.",
+                "non_diegetic_music": "N/A",
+                "completed_beat_ids": [2],
+            },
+            combined,
+            previous_state=opening,
+            segment_number=2,
+        )
+
+        self.assertEqual(added_names, ["New Guard"])
+        self.assertEqual(len(added_lines), 1)
+        self.assertIn("<Subject 3> is New Guard", prompt)
+        self.assertIn("wearing green sweater", prompt)
+
+    def test_continuity_request_retries_invalid_json_and_accepts_partial_update(self):
+        committed = minimax.continuity_state_for_registry(self.SUBJECTS)
+        llm_request = Mock(side_effect=[
+            "not JSON",
+            {
+                "subjects": {
+                    "Connie": {
+                        "wardrobe": {"upper": "green sweater"},
+                    },
+                },
+            },
+        ])
+
+        result = minimax.request_structured_continuity_state(
+            [(2, segment_result(2))],
+            committed,
+            self.SUBJECTS,
+            llm_request=llm_request,
+        )
+
+        self.assertEqual(llm_request.call_count, 2)
+        self.assertEqual(
+            result["subjects"]["Connie"]["wardrobe"]["upper"],
+            "green sweater",
+        )
 
     def test_structured_candidate_na_and_empty_lists_clear_known_subject_state(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)

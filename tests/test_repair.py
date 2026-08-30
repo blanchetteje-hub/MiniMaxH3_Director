@@ -261,7 +261,9 @@ class RepairModeTests(unittest.TestCase):
             opening_state = {"historical": True}
             fresh_director_result = director_result(2)
             fresh_director_result["detailed_description"] = (
-                "[Shot 1] Fresh prompt for the edited repair beat."
+                "[Shot 1] Fresh prompt for the edited repair beat. "
+                "<Subject 1> Mark (S1) says: "
+                "<d>[English] This repaired line is new.</d>"
             )
 
             with mock.patch(
@@ -315,7 +317,9 @@ class RepairModeTests(unittest.TestCase):
             )
             self.assertEqual(
                 build_prompt.call_args.args[0]["detailed_description"],
-                "[Shot 1] Fresh prompt for the edited repair beat.",
+                "[Shot 1] Fresh prompt for the edited repair beat. "
+                "<Subject 1> Mark (S1) says: "
+                "<d>[English] This repaired line is new.</d>",
             )
             self.assertEqual(build_prompt.call_args.args[1], historical_subjects)
             self.assertEqual(build_prompt.call_args.args[3], "OPENING")
@@ -358,7 +362,17 @@ class RepairModeTests(unittest.TestCase):
                 self.assertEqual(video.read(), b"video 2")
             with open(repaired_video, "rb") as video:
                 self.assertEqual(video.read(), b"repair")
-            save.assert_not_called()
+            save.assert_called_once()
+            saved_state, saved_path = save.call_args.args
+            self.assertEqual(saved_path, checkpoint)
+            self.assertEqual(
+                saved_state["segments"][1]["dialogues"],
+                ["This repaired line is new."],
+            )
+            self.assertIn(
+                "This repaired line is new.",
+                saved_state["recent_dialogues"],
+            )
             stitch.assert_not_called()
 
     def test_render_failure_does_not_save_or_stitch(self):

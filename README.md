@@ -293,7 +293,7 @@ program finds automation-controlled nodes by title, not by node number.
 Each line in `beats.txt` may end with any number of beat-specific LoRA options:
 
 ```text
-The portal opens --lora my_style.safetensors:0.8 --lora portal_glow.safetensors:0.45
+1. The portal opens --lora my_style.safetensors:0.8 --lora portal_glow.safetensors:0.45
 ```
 
 The options are removed before beat text is sent to the LLM and apply while
@@ -434,17 +434,20 @@ phrases, and an exact final sentence; failed checks trigger another correction.
 
 ### `beats.txt` — optional beat tracking
 
-Write one required story event per non-empty line, in chronological order:
+Write one required story event per non-empty line, in chronological order.
+Saved beat files number each event as `N. [beat text]`:
 
 ```text
-Introduce Mark and his family at the crowded theme park.
-Flying saucers appear above the park.
-The saucers abduct Mark's family while they flee.
+1. Introduce Mark and his family at the crowded theme park.
+2. Flying saucers appear above the park.
+3. The saucers abduct Mark's family while they flee.
 ```
 
 Blank lines and ordinary lines beginning with `#` are ignored. A line formatted
 as `# Phase N` marks the first beat of a new macro phase. The order is
-authoritative, and the director cannot mark a later beat complete before an
+authoritative, numbered beats must be consecutive, and the numeric prefixes are
+removed when beat text is loaded. Existing unnumbered hand-authored beat lines
+remain supported. The director cannot mark a later beat complete before an
 earlier one. If the file is blank or contains only comments, the program first
 asks LM Studio for a macro story arc, then generates the beats one complete
 macro phase at a time. Each later phase receives only the five immediately

@@ -123,6 +123,31 @@ class BeatGenerationTests(unittest.TestCase):
             [(1, 4), (5, 9)],
         )
 
+    def test_phase_characters_introduced_are_selected_by_beat_range(self):
+        macro_arc = {
+            "phases": [
+                {
+                    "beat_start": 1,
+                    "beat_end": 3,
+                    "characters_introduced": ["Amy"],
+                },
+                {
+                    "beat_start": 4,
+                    "beat_end": 7,
+                    "characters_introduced": ["The pilot", "Ben"],
+                },
+            ]
+        }
+
+        self.assertEqual(
+            minimax.phase_characters_introduced_for_beat(macro_arc, 5),
+            ["The pilot", "Ben"],
+        )
+        self.assertEqual(
+            minimax.phase_characters_introduced_for_beat(macro_arc, 8),
+            [],
+        )
+
     def test_generated_phase_markers_round_trip_with_beats(self):
         macro_arc = {
             "phases": [
@@ -143,8 +168,8 @@ class BeatGenerationTests(unittest.TestCase):
 
         self.assertEqual(
             saved,
-            "# Phase 1\nBeat one.\nBeat two.\n"
-            "# Phase 2\nBeat three.\nBeat four.\n",
+            "# Phase 1\n1. Beat one.\n2. Beat two.\n"
+            "# Phase 2\n3. Beat three.\n4. Beat four.\n",
         )
         self.assertEqual([beat.phase_number for beat in beats], [1, 1, 2, 2])
         self.assertEqual(
@@ -153,6 +178,24 @@ class BeatGenerationTests(unittest.TestCase):
         )
         self.assertFalse(minimax.is_new_phase_start(beats, 1))
         self.assertTrue(minimax.is_new_phase_start(beats, 3))
+
+    def test_saved_beats_number_lines_with_file_level_lora(self):
+        directive = "--lora lighting.safetensors:0.75"
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "beats.txt")
+            minimax.save_generated_beats(
+                ["Opening event.", "Concluding event."],
+                path,
+                lora_directive=directive,
+            )
+            with open(path, "r", encoding="utf-8") as beat_file:
+                saved = beat_file.read()
+
+        self.assertEqual(
+            saved,
+            "1. Opening event. --lora lighting.safetensors:0.75\n"
+            "2. Concluding event. --lora lighting.safetensors:0.75\n",
+        )
 
     def test_manual_phase_markers_are_supported(self):
         beats, _ = minimax.parse_beats_content(
@@ -163,6 +206,31 @@ class BeatGenerationTests(unittest.TestCase):
         self.assertEqual(beats[1].phase_number, 2)
         self.assertTrue(beats[1].phase_start)
         self.assertFalse(beats[2].phase_start)
+
+    def test_numbered_beats_are_parsed_without_number_prefixes(self):
+        beats, _ = minimax.parse_beats_content(
+            "# Phase 1\n"
+            "1. Opening event.\n"
+            "2. Rising action. --lora motion.safetensors:0.5\n"
+            "# Phase 2\n"
+            "3. Concluding event.\n"
+        )
+
+        self.assertEqual(
+            [str(beat) for beat in beats],
+            ["Opening event.", "Rising action.", "Concluding event."],
+        )
+        self.assertEqual(beats[1].lora_override, ("motion.safetensors", 0.5))
+        self.assertEqual([beat.phase_number for beat in beats], [1, 1, 2])
+
+    def test_numbered_beats_must_be_consecutive_and_ordered(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "expected beat 2, found 3",
+        ):
+            minimax.parse_beats_content(
+                "1. Opening event.\n3. Concluding event.\n"
+            )
 
     def test_generation_requests_follow_macro_phase_ranges(self):
         calls = []
@@ -1057,7 +1125,13 @@ class BeatGenerationTests(unittest.TestCase):
                 saved = beat_file.read()
 
             self.assertEqual([str(beat) for beat in beats], valid_beats)
-            self.assertEqual(saved, "\n".join(valid_beats) + "\n")
+            self.assertEqual(
+                saved,
+                "\n".join(
+                    f"{number}. {beat}"
+                    for number, beat in enumerate(valid_beats, start=1)
+                ) + "\n",
+            )
             self.assertEqual(
                 [name for name in os.listdir(directory) if name.endswith(".tmp")],
                 [],
@@ -1328,7 +1402,13 @@ class BeatGenerationTests(unittest.TestCase):
                 saved = beat_file.read()
 
         self.assertEqual([str(beat) for beat in beats], generated)
-        self.assertEqual(saved, "\n".join(generated) + "\n")
+        self.assertEqual(
+            saved,
+            "\n".join(
+                f"{number}. {beat}"
+                for number, beat in enumerate(generated, start=1)
+            ) + "\n",
+        )
         llm_request.assert_called_once()
 
     def test_lora_only_beats_file_triggers_generation_and_tags_every_beat(self):
@@ -1353,7 +1433,8 @@ class BeatGenerationTests(unittest.TestCase):
                 saved = beat_file.read()
 
         expected_saved = "\n".join(
-            f"{beat} {directive}" for beat in generated
+            f"{number}. {beat} {directive}"
+            for number, beat in enumerate(generated, start=1)
         ) + "\n"
         self.assertEqual(saved, expected_saved)
         self.assertEqual([str(beat) for beat in beats], generated)

@@ -73,6 +73,10 @@ _TRAILING_PARENTHESIZED_TIME = re.compile(
     re.IGNORECASE,
 )
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+_ABSOLUTE_SEGMENT_REFERENCE = re.compile(
+    r"(?i)(?<![\w<])(?:generated\s+video\s+|video\s+)?"
+    r"segment\s+(?:#\s*)?(?:\d+|N)\b"
+)
 
 
 def _clean_space(value: str) -> str:
@@ -635,6 +639,37 @@ def _repair_fields(result: dict[str, Any], context: Mapping[str, Any]) -> None:
         result[field] = re.sub(r"(?i)\s*\(\s*unidentified\s*\)", "", result[field])
         result[field] = _strip_markdown(result[field])
         result[field] = _replace_unsupported_dashes(result[field])
+
+
+def _repair_video_references(
+    result: dict[str, Any],
+    context: Mapping[str, Any],
+) -> None:
+    """Use MiniMax's clip-local name for the preceding video input.
+
+    Movie segment numbers are orchestration metadata. MiniMax exposes the
+    immediately preceding rendered clip to every continuation request as
+    ``<Video 1>``, even when that clip was, for example, movie segment 30.
+    """
+
+    del context
+    for field in (DESCRIPTION, SOUNDSCAPE, MUSIC):
+        result[field] = _ABSOLUTE_SEGMENT_REFERENCE.sub(
+            "<Video 1>",
+            result[field],
+        )
+
+
+def _validate_video_references(
+    result: Mapping[str, Any],
+    context: Mapping[str, Any],
+) -> list[str]:
+    del context
+    return [
+        "Absolute Segment N references must use the clip-local <Video 1> label."
+        for field in (DESCRIPTION, SOUNDSCAPE, MUSIC)
+        if _ABSOLUTE_SEGMENT_REFERENCE.search(str(result.get(field, "")))
+    ][:1]
 
 
 
@@ -1368,6 +1403,19 @@ def _repair_canonical_subject_tags(
             flags=re.I,
         )
 
+        # Dialogue speaker IDs already provide stable H3 identity. Do not retain
+        # redundant <Subject N> tags directly on dialogue attributions.
+        text = re.sub(
+            r"<Subject\s+\d+>\s+"
+            r"(?P<name>[A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*)"
+            r"(?=\s+\(S\d+\)\s+"
+            r"(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+            r"tells?|exclaims?|narrates?))",
+            r"\g<name>",
+            text,
+            flags=re.I,
+        )
+
     result[DESCRIPTION] = _clean_space(text)
 
 
@@ -1722,11 +1770,93 @@ def _validate_subject_tags(result: Mapping[str, Any], context: Mapping[str, Any]
                 )
     return issues
 
+def _validate_dialogue_speaker_contract(
+    text: str,
+    context: Mapping[str, Any],
+) -> list[str]:
+    """Require every dialogue block to use a canonical name and speaker ID."""
+
+    records = _subject_records(context)
+
+    known_speakers = {
+        name.casefold(): (
+            name,
+            str(record.get("speaker_id") or f"S{record['subject_id']}"),
+        )
+        for name, record in records.items()
+        if str(record.get("subject_id") or "").isdigit()
+    }
+
+    issues = []
+
+    attribution_pattern = re.compile(
+        r"(?P<name>[A-Z][\w'\u2019-]*"
+        r"(?:\s+[A-Z][\w'\u2019-]*)*)\s+"
+        r"\((?P<speaker>S\d+)\)\s+"
+        r"(?P<verb>"
+        r"says in an off-screen voiceover|"
+        r"says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"tells?|exclaims?|narrates?"
+        r")"
+        r"[^<>.!?]{0,100}:\s*$",
+        re.I,
+    )
+
+    for dialogue in re.finditer(r"<d>.*?</d>", text, re.I | re.S):
+        before = text[max(0, dialogue.start() - 260):dialogue.start()]
+
+        # Do not let attribution from an earlier dialogue block license this one.
+        previous_dialogue = before.lower().rfind("</d>")
+        if previous_dialogue >= 0:
+            before = before[previous_dialogue + len("</d>"):]
+
+        # Restrict attribution to the current sentence/clause.
+        boundaries = [
+            before.rfind(". "),
+            before.rfind("! "),
+            before.rfind("? "),
+            before.rfind("\n"),
+        ]
+        boundary = max(boundaries)
+        if boundary >= 0:
+            before = before[boundary + 1:]
+
+        attribution = attribution_pattern.search(before)
+
+        if attribution is None:
+            issues.append(
+                "HARD_DIALOGUE_FORMAT: Every <d> dialogue block must immediately "
+                "follow `Character Name (SN) says:`, or an equivalent registered "
+                "speech attribution."
+            )
+            continue
+
+        written_name = _clean_space(attribution.group("name"))
+        written_speaker = attribution.group("speaker").upper()
+
+        expected = known_speakers.get(written_name.casefold())
+
+        # A genuinely new speaker can be handled by the existing unknown-speaker
+        # promotion logic. Here we enforce registered identities.
+        if expected is None:
+            continue
+
+        expected_name, expected_speaker = expected
+
+        if written_speaker.casefold() != expected_speaker.casefold():
+            issues.append(
+                f"HARD_DIALOGUE_FORMAT: {expected_name} must use speaker ID "
+                f"({expected_speaker}), not ({written_speaker})."
+            )
+
+    return issues
+
 def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
     text = str(result.get(DESCRIPTION, ""))
     names, _, _ = _subject_maps(context)
     records = _subject_records(context)
-    issues = []
+
+    issues = _validate_dialogue_speaker_contract(text, context)
     if text.lower().count("<d>") != text.lower().count("</d>"):
         issues.append("Dialogue tags are unbalanced.")
     for block in re.findall(r"<d>(.*?)</d>", text, re.I | re.S):
@@ -1743,74 +1873,33 @@ def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) ->
             re.I,
         ):
             issues.append(f"{name} must consistently use speaker ID ({speaker_id}).")
-    for match in re.finditer(r"says in an off-screen voiceover:\s*<d>.*?</d>", text, re.I | re.S):
-        after = text[match.end():match.end() + 100]
-        if not re.match(
-            r"\s+while\s+(?:his|her|their|[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*'s)\s+lips remain completely closed",
-            after,
-            re.I,
-        ):
-            issues.append("Every voiceover must state that the on-screen character's lips remain closed.")
-    for clause in re.finditer(
-        r"while\s+(?:his|her|their|[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*'s)\s+lips\s+remain\s+completely\s+closed",
+     # Any apparent spoken quotation outside <d> is invalid dialogue formatting.
+    without_blocks = re.sub(
+        r"<d>.*?</d>",
+        "",
         text,
-        re.I,
-    ):
-        before = text[max(0, clause.start() - 300):clause.start()]
-        if not re.search(
-            r"says in an off-screen voiceover:\s*<d>.*?</d>\s*$",
-            before,
-            re.I | re.S,
-        ):
-            issues.append("A closed-lips clause may only accompany a matching off-screen voiceover.")
-    if re.search(r"(?i)\b(?:narrates|voice[- ]over)\s*:", text):
-        issues.append("Voiceover must use the exact phrase 'says in an off-screen voiceover'.")
+        flags=re.I | re.S,
+    )
 
-    # Every dialogue block needs a nearby, explicit Subject and speaker ID.
-    for match in re.finditer(r"<d>.*?</d>", text, re.I | re.S):
-        before = text[max(0, match.start() - 220):match.start()]
-        before = re.sub(r"<Picture\s+\d+>", "", before, flags=re.I)
-        # Attribute only from the current clause.  A speaker ID belonging to a
-        # previous dialogue block must not accidentally license "the son says".
-        last_block = before.lower().rfind("</d>")
-        if last_block >= 0:
-            before = before[last_block + len("</d>"):]
-        boundaries = [before.rfind(mark) for mark in (". ", "! ", "? ")]
-        sentence = before[max(boundaries) + 2:] if max(boundaries) >= 0 else before
-        attributed = re.search(
-            r"<Subject\s+\d+>[^.!?]{1,180}"
-            r"\(S\d+(?:,S\d+)*\)[^.!?]{0,180}"
-            rf"(?:{_DIALOGUE_ATTRIBUTION})"
-            r"[^<>.!?]{0,100}:?\s*$",
-            sentence,
-            re.I,
-        )
-        if not attributed:
-            direct = re.search(
-                r"\b(?:the\s+)?[A-Za-z][\w'’-]*(?:\s+[A-Za-z][\w'’-]*){0,3}\s+"
-                rf"(?:{_DIALOGUE_ATTRIBUTION})"
-                r"[^<>.!?]{0,100}:?\s*$",
-                sentence,
-                re.I,
-            )
-            if direct:
-                issues.append(
-                    "A directly speaking character is missing a stable Subject and "
-                    "speaker ID."
-                )
-            else:
-                issues.append(
-                    "Dialogue block is missing an attributed Subject and speaker ID."
-                )
-
-    without_blocks = re.sub(r"<d>.*?</d>", "", text, flags=re.I | re.S)
-    if re.search(
-        r"\b(?:says|asks|answers|replies|shouts|whispers|yells|tells|exclaims)\b"
-        r"[^.!?\n]{0,100}[\"“][^\"”]+[\"”]",
+    quoted_speech = re.search(
+        r"\b(?:says|asks|answers|replies|shouts|whispers|yells|tells|"
+        r"exclaims|yelps|cries|calls|murmurs|mutters|growls|screams)\b"
+        r"[^.!?\n]{0,120}"
+        r"(?:"
+        r"\"[^\"\n]+\""          # straight double quotes
+        r"|“[^”\n]+”"            # curly double quotes
+        r"|‘[^’\n]+’"            # curly single quotes
+        r")",
         without_blocks,
         re.I,
-    ):
-        issues.append("Quoted spoken dialogue must be enclosed in <d> tags.")
+    )
+
+    if quoted_speech:
+        issues.append(
+            "HARD_DIALOGUE_FORMAT: Spoken dialogue must use "
+            "`Character Name (SN) says: <d>[English] exact words</d>`. "
+            "Never put spoken words in quotation marks or embed them in prose."
+        )
     return issues
 
 
@@ -1917,6 +2006,11 @@ class PromptRule:
 
 RULE_REGISTRY = (
     PromptRule("fields", _repair_fields, _validate_fields),
+    PromptRule(
+        "video_references",
+        _repair_video_references,
+        _validate_video_references,
+    ),
     PromptRule("shots", _repair_shots, _validate_shots),
     PromptRule("camera", _repair_camera, _validate_camera),
     PromptRule("subject_tags", _repair_subject_tags, _validate_subject_tags),

@@ -34,7 +34,17 @@ class DirectorBeatCompletionRetryTests(unittest.TestCase):
             )
 
         self.assertEqual(request.call_count, 5)
-        self.assertIs(payload["llm_result"], results[-1])
+        self.assertEqual(payload["llm_result"]["iteration"], 5)
+        self.assertEqual(payload["llm_result"]["completed_beat_ids"], [1])
+        self.assertEqual(
+            minimax.apply_reported_beat_completions(
+                ["Beat one"],
+                set(),
+                payload["llm_result"]["completed_beat_ids"],
+                1,
+            ),
+            {1},
+        )
         self.assertEqual(
             [
                 call.kwargs["history_metadata"]["attempt"]
@@ -43,7 +53,7 @@ class DirectorBeatCompletionRetryTests(unittest.TestCase):
             [1, 2, 3, 4, 5],
         )
         self.assertTrue(any(
-            "continuing with the latest result" in str(call)
+            "continuing with the latest result and marking" in str(call)
             for call in output.call_args_list
         ))
 
@@ -64,6 +74,42 @@ class DirectorBeatCompletionRetryTests(unittest.TestCase):
 
         self.assertEqual(request.call_count, 2)
         self.assertIs(payload["llm_result"], completed)
+
+    @mock.patch("minimax.validate_ministral_prompt")
+    @mock.patch("minimax.format_ministral_prompt")
+    @mock.patch("minimax.ask_llm")
+    def test_actual_generation_path_never_runs_prompt_validation(
+        self,
+        ask_llm,
+        formatter,
+        validator,
+    ):
+        result = {
+            "detailed_description": (
+                "[Shot 1] Alice enters and reacts to the environment without "
+                "performing the active beat's listed events."
+            ),
+            "overall_soundscape": "Room ambience continues.",
+            "non_diegetic_music": "N/A",
+            "completed_beat_ids": [1],
+        }
+        ask_llm.return_value = result
+        formatter.return_value = result
+
+        payload = minimax.request_segment_llm(
+            segment_bundle(),
+            ["Alice confronts the Duchess, Cook, piglets, and Cheshire Cat."],
+            "run-id",
+            {"source_sha256": "source-hash"},
+        )
+
+        ask_llm.assert_called_once()
+        formatter.assert_called_once_with(
+            result,
+            segment_bundle()["ministral_context"],
+        )
+        validator.assert_not_called()
+        self.assertIs(payload["llm_result"], result)
 
 
 if __name__ == "__main__":

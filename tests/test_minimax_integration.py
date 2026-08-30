@@ -550,17 +550,19 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertIn("required observable event and its required outcome", request)
         self.assertIn("completed_beat_ids: [2]", request)
 
-    def test_unconfirmed_beat_is_not_advanced(self):
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "did not confirm Beat 2 complete",
-        ):
-            minimax.apply_reported_beat_completions(
+    def test_unconfirmed_beat_is_advanced_after_director_retry_fallback(self):
+        with mock.patch("builtins.print") as output:
+            completed = minimax.apply_reported_beat_completions(
                 BEATS,
                 {1},
                 [],
                 2,
             )
+        self.assertEqual(completed, {1, 2})
+        self.assertTrue(any(
+            "treating the assigned beat as complete" in str(call)
+            for call in output.call_args_list
+        ))
 
         self.assertEqual(
             minimax.apply_reported_beat_completions(
@@ -941,10 +943,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             "together in a busy theme park.",
             ["B001"]
         )
-        llm_request = mock.Mock(side_effect=[
-            malformed,
-            {"active_beat_satisfied": True, "issues": []},
-        ])
+        llm_request = mock.Mock(return_value=malformed)
 
         formatted = minimax.request_valid_ministral_prompt(
             [{"role": "user", "content": "beat one"}],
@@ -952,12 +951,12 @@ class LmStudioIntegrationTests(unittest.TestCase):
             llm_request=llm_request
         )
 
-        self.assertEqual(llm_request.call_count, 2)
+        self.assertEqual(llm_request.call_count, 1)
         self.assertTrue(
             formatted["detailed_description"].startswith("[Shot 1]")
         )
 
-    def test_unresolved_content_retries_then_uses_best_effort_without_exiting(self):
+    def test_active_beat_content_is_not_validated_during_video_generation(self):
         missing = response(
             "[Shot 4] Live-action, cinematic, Mark and Jill look at the sky.",
             [4]
@@ -970,28 +969,22 @@ class LmStudioIntegrationTests(unittest.TestCase):
             llm_request=llm_request
         )
 
-        self.assertEqual(llm_request.call_count, 4)
+        self.assertEqual(llm_request.call_count, 1)
         self.assertIn("look at the sky", result[
             "detailed_description"
         ])
 
-    def test_content_correction_uses_stateless_system_user_roles_and_can_succeed(self):
+    @mock.patch("minimax.validate_ministral_prompt")
+    def test_runtime_validator_and_correction_are_not_run(
+        self,
+        validator,
+    ):
         missing = response(
             "[Shot 4] Live-action, cinematic, Mark and Jill look at the sky.",
             [4]
         )
-        corrected = response(
-            "[Shot 4] At 00:01.000, live-action, cinematic, Mark's family run from the "
-            "saucers as beams seize and lift them into the craft until the "
-            "completed abduction leaves Mark and Jill beside empty pavement.",
-            [4]
-        )
-        llm_request = mock.Mock(side_effect=[
-            missing,
-            {"active_beat_satisfied": False, "issues": []},
-            corrected,
-            {"active_beat_satisfied": True, "issues": []},
-        ])
+        validator.return_value = ["Malformed H3 prompt structure."]
+        llm_request = mock.Mock(return_value=missing)
 
         result = minimax.request_valid_ministral_prompt(
             [
@@ -1002,29 +995,29 @@ class LmStudioIntegrationTests(unittest.TestCase):
             llm_request=llm_request
         )
 
-        self.assertEqual(llm_request.call_count, 4)
-        correction_messages = llm_request.call_args_list[2].args[0]
-        self.assertEqual(
-            [message["role"] for message in correction_messages],
-            ["system", "user"]
-        )
-        self.assertIn("PREVIOUS BEST-EFFORT JSON", correction_messages[1]["content"])
+        self.assertEqual(llm_request.call_count, 1)
+        validator.assert_not_called()
+        self.assertIn("look at the sky", result["detailed_description"])
         self.assertEqual(result["completed_beat_ids"], [4])
 
-    def test_failed_correction_request_keeps_existing_prompt(self):
+    @mock.patch("minimax.validate_ministral_prompt")
+    def test_correction_limit_does_not_enable_runtime_validation(self, validator):
         missing = response(
             "[Shot 4] Live-action, cinematic, Mark and Jill look at the sky.",
             [4]
         )
-        llm_request = mock.Mock(side_effect=[missing, RuntimeError("LM failed")])
+        validator.return_value = ["Malformed H3 prompt structure."]
+        llm_request = mock.Mock(return_value=missing)
 
         result = minimax.request_valid_ministral_prompt(
             [{"role": "user", "content": "beat four"}],
             context_for(4),
-            llm_request=llm_request
+            llm_request=llm_request,
+            max_content_corrections=5,
         )
 
-        self.assertEqual(llm_request.call_count, 2)
+        self.assertEqual(llm_request.call_count, 1)
+        validator.assert_not_called()
         self.assertIn("look at the sky", result["detailed_description"])
 
     @mock.patch("minimax.format_ministral_prompt")
@@ -1042,7 +1035,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             llm_request=llm_request
         )
 
-        self.assertEqual(llm_request.call_count, 2)
+        self.assertEqual(llm_request.call_count, 1)
         self.assertEqual(
             result["detailed_description"],
             raw["detailed_description"]
@@ -1050,7 +1043,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
     @mock.patch("minimax.validate_ministral_prompt")
     def test_validator_exception_uses_formatted_prompt_without_exiting(self, validator):
-        validator.side_effect = RuntimeError("local validator broke")
+        validator.side_effect = AssertionError("runtime validator must not run")
         raw = response(
             "[Shot 1] Live-action, cinematic, Mark and Jill stand together.",
             []
@@ -1063,7 +1056,8 @@ class LmStudioIntegrationTests(unittest.TestCase):
             llm_request=llm_request
         )
 
-        self.assertEqual(llm_request.call_count, 2)
+        self.assertEqual(llm_request.call_count, 1)
+        validator.assert_not_called()
         self.assertIn("Mark", result["detailed_description"])
 
     def test_context_requires_each_active_beat_in_its_assigned_segment(self):
@@ -1089,7 +1083,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertTrue(second_segment["beat_deadline_required"])
         self.assertEqual(second_segment["next_beat_id"], 2)
 
-    def test_later_beat_leakage_is_checked_before_deadline(self):
+    def test_future_beat_content_is_not_validated_during_video_generation(self):
         context = context_for(1)
         context["beat_deadline_required"] = False
         leaked = response(
@@ -1098,21 +1092,15 @@ class LmStudioIntegrationTests(unittest.TestCase):
             []
         )
 
-        formatted = minimax.format_ministral_prompt(leaked, context)
-        issues = minimax.semantic_audit_issues(
-            {
-                "active_beat_satisfied": True,
-                "future_beat_leakage": True,
-                "issues": [],
-            },
-            formatted,
+        llm_request = mock.Mock(return_value=leaked)
+        formatted = minimax.request_valid_ministral_prompt(
+            [{"role": "user", "content": "beat one"}],
             context,
+            llm_request=llm_request,
         )
 
-        self.assertTrue(
-            any("future beat" in issue for issue in issues),
-            issues,
-        )
+        self.assertEqual(llm_request.call_count, 1)
+        self.assertIn("flying saucers", formatted["detailed_description"])
 
     def test_serializer_has_no_language_suffix_or_completion_metadata(self):
         formatted = response(
