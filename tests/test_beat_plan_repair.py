@@ -150,6 +150,27 @@ class BeatPlanRepairHelperTests(unittest.TestCase):
             [(10, 12), (20, 22)],
         )
 
+    def test_persistent_state_conflict_remains_repairable_after_prior_repair(self):
+        issue = blocker(
+            6,
+            6,
+            problem="The later beat repeats a completed irreversible transition.",
+            source_requirement=(
+                "Definitive persistent state established earlier remains true."
+            ),
+            issue_type="persistent_state_conflict",
+        )
+
+        normalized = minimax.normalize_beat_plan_repair_ranges(
+            [issue],
+            8,
+            repaired_beat_ids={6},
+            story=STORY,
+        )
+
+        self.assertEqual(normalized["issues"], [issue])
+        self.assertEqual(normalized["downgraded"], [])
+
     def test_multirange_response_and_splice_use_exact_id_union(self):
         ranges = [
             {"beat_start": 2, "beat_end": 3},

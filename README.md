@@ -458,10 +458,23 @@ earliest permitted introduction beat for every named character and location
 before saving the beat text to `beats.txt`. The final generated beat must
 conclude the story.
 
-Automatic beat creation has no retry limit. LM Studio transport failures,
-invalid macro arcs, invalid phase batches, instruction reviews, audits, and
-repairs continue until a fully validated beat plan is saved. Press `Ctrl+Q` to
-stop the process at any point.
+Initial beat generation retries a phase normally through attempt 9. If attempt
+10 still fails content validation but contains the required number of
+structurally usable beats, that response is retained and passed to the phase
+validator and downstream targeted-repair flow. If attempt 10 is structurally
+unusable, requests continue without an error until the next usable beat list is
+returned. Macro-arc, instruction-review, audit, and repair requests remain
+unbounded when waiting for a structurally usable response. Phase-targeted repair
+is capped at 10 semantic rounds; each round keeps requesting until it receives a
+structurally valid replacement. After round 10, Python performs one final phase
+validation and accepts the round-10 beats without requesting round 11. Press
+`Ctrl+Q` to stop the process at any point.
+
+During phase-validation retries, Python remembers every unchanged beat that a
+prior validation response passed. A later seeded response cannot reopen those
+accepted beats: its claims against them are ignored, while issues for beats that
+have not yet passed continue through targeted repair. If only previously passed
+beats are challenged, the phase passes.
 
 Each valid macro arc returned by LM Studio is written as formatted JSON to
 `story_arc.txt`, overwriting the previous contents. Its SHA-256 source hash is

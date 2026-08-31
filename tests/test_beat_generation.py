@@ -757,7 +757,7 @@ class BeatGenerationTests(unittest.TestCase):
             item["properties"]["beat_text"]["description"],
         )
 
-    def test_later_phase_prompt_uses_only_the_previous_five_beats(self):
+    def test_later_phase_prompt_includes_all_earlier_beats_as_state_authority(self):
         phase = {
             "phase_number": 2,
             "beat_start": 8,
@@ -791,10 +791,11 @@ class BeatGenerationTests(unittest.TestCase):
         prompt = messages[1]["content"]
 
         self.assertIn("exactly 3 ordered story beats for phase 2", prompt)
-        self.assertNotIn("Previous event 1.", prompt)
-        self.assertNotIn("Previous event 2.", prompt)
+        self.assertIn("Beat 1: Previous event 1.", prompt)
+        self.assertIn("Beat 2: Previous event 2.", prompt)
         self.assertIn("Beat 3: Previous event 3.", prompt)
         self.assertIn("Beat 7: Previous event 7.", prompt)
+        self.assertIn("PERSISTENT STATE AUTHORITY", prompt)
         self.assertIn('"phase_number": 2', prompt)
         schema = minimax.build_beats_response_format(3, beat_start=8)[
             "json_schema"
@@ -874,6 +875,7 @@ class BeatGenerationTests(unittest.TestCase):
                 "future_character",
                 "future_location",
                 "bad_opening_continuity",
+                "persistent_state_conflict",
             ],
         )
 
@@ -924,7 +926,129 @@ class BeatGenerationTests(unittest.TestCase):
                     {"valid": False, "issues": [issue]}
                 )
 
-    def test_phase_validation_rejection_regenerates_before_phase_is_accepted(self):
+    def test_phase_validation_keeps_previously_passed_beats_accepted(self):
+        passed_beat_ids = set()
+        first, ignored = minimax.reconcile_beat_phase_validation(
+            {
+                "valid": False,
+                "issues": [{
+                    "beat_id": 5,
+                    "type": "missing_end_state",
+                    "problem": "Beat 5 misses the required end state.",
+                }],
+            },
+            4,
+            5,
+            passed_beat_ids,
+        )
+
+        self.assertEqual(passed_beat_ids, {4})
+        self.assertEqual([issue["beat_id"] for issue in first["issues"]], [5])
+        self.assertEqual(ignored, [])
+
+        second, ignored = minimax.reconcile_beat_phase_validation(
+            {
+                "valid": False,
+                "issues": [
+                    {
+                        "beat_id": 4,
+                        "type": "bad_opening_continuity",
+                        "problem": "The validator changed its opinion about Beat 4.",
+                    },
+                    {
+                        "beat_id": 5,
+                        "type": "missing_end_state",
+                        "problem": "Beat 5 still misses the required end state.",
+                    },
+                ],
+            },
+            4,
+            5,
+            passed_beat_ids,
+        )
+
+        self.assertFalse(second["valid"])
+        self.assertEqual([issue["beat_id"] for issue in second["issues"]], [5])
+        self.assertEqual([issue["beat_id"] for issue in ignored], [4])
+
+        third, ignored = minimax.reconcile_beat_phase_validation(
+            {
+                "valid": False,
+                "issues": [{
+                    "beat_id": 4,
+                    "type": "bad_opening_continuity",
+                    "problem": "Only the previously passed beat is challenged.",
+                }],
+            },
+            4,
+            5,
+            passed_beat_ids,
+        )
+
+        self.assertTrue(third["valid"])
+        self.assertEqual(third["issues"], [])
+        self.assertEqual([issue["beat_id"] for issue in ignored], [4])
+        self.assertEqual(passed_beat_ids, {4, 5})
+
+    def test_phase_repair_targets_each_unique_violating_id_only(self):
+        current_phase = {
+            "phase_number": 2,
+            "beat_start": 5,
+            "beat_end": 7,
+            "narrative_purpose": "Recover the map.",
+            "broad_progression": "Amy searches the harbor and finds the map.",
+            "characters_introduced": [],
+            "location": "Harbor",
+            "required_end_state": "Amy has the map.",
+        }
+        validation = {
+            "valid": False,
+            "issues": [
+                {
+                    "beat_id": 7,
+                    "type": "missing_end_state",
+                    "problem": "Amy does not recover the map.",
+                },
+                {
+                    "beat_id": 5,
+                    "type": "bad_opening_continuity",
+                    "problem": "Amy begins in the wrong location.",
+                },
+                {
+                    "beat_id": 7,
+                    "type": "next_phase_scope_creep",
+                    "problem": "Amy begins the next journey too early.",
+                },
+            ],
+        }
+
+        repair_ranges = minimax.beat_phase_validation_repair_ranges(validation)
+        messages = minimax.build_beat_phase_repair_messages(
+            ["Wrong opening.", "Amy searches the pier.", "Wrong ending."],
+            current_phase,
+            validation,
+            previous_beats=[f"Prior event {number}." for number in range(1, 5)],
+        )
+        schema = minimax.build_beat_plan_repair_response_format(repair_ranges)
+        beat_array = schema["json_schema"]["schema"]["properties"]["beats"]
+
+        self.assertEqual(
+            repair_ranges,
+            [
+                {"beat_start": 5, "beat_end": 5},
+                {"beat_start": 7, "beat_end": 7},
+            ],
+        )
+        self.assertEqual((beat_array["minItems"], beat_array["maxItems"]), (2, 2))
+        self.assertEqual(
+            beat_array["items"]["properties"]["beat_id"]["enum"],
+            [5, 7],
+        )
+        self.assertIn("Repair only violating Beat IDs 5, 7", messages[1]["content"])
+        self.assertIn("Beat 6: Amy searches the pier.", messages[1]["content"])
+        self.assertIn("and no others", messages[1]["content"])
+
+    def test_phase_validation_rejection_repairs_only_violating_beats(self):
         macro_arc = {
             "phases": [
                 {
@@ -951,52 +1075,28 @@ class BeatGenerationTests(unittest.TestCase):
         }
         purposes = []
         phase_one_generations = 0
+        phase_one_validations = 0
 
         def llm_request(messages, **kwargs):
-            nonlocal phase_one_generations
+            nonlocal phase_one_generations, phase_one_validations
             metadata = kwargs["history_metadata"]
             purpose = metadata["purpose"]
             purposes.append(purpose)
             if purpose == "beat_generation":
                 if metadata["phase_number"] == 1:
                     phase_one_generations += 1
-                    if phase_one_generations == 1:
-                        return {"beats": [
-                            "Amy searches the harbor for the missing map.",
-                            "Amy identifies the lighthouse route from a copied symbol without finding the map.",
-                        ]}
-                    self.assertIn(
-                        "PHASE VALIDATION CORRECTION",
-                        messages[1]["content"],
-                    )
-                    self.assertIn(
-                        "The previous phase crossed or failed its macro boundary:",
-                        messages[1]["content"],
-                    )
-                    self.assertIn(
-                        "- Beat 2: The final beat does not recover the missing map.",
-                        messages[1]["content"],
-                    )
-                    self.assertIn(
-                        "- Beat 2: The lighthouse route is identified before phase 2.",
-                        messages[1]["content"],
-                    )
-                    self.assertIn(
-                        "Regenerate this entire phase. Preserve the CURRENT PHASE "
-                        "progression, reach its\nrequired_end_state in the final "
-                        "beat, and do not enact NEXT PHASE progression.",
-                        messages[1]["content"],
-                    )
                     return {"beats": [
                         "Amy searches the harbor for the missing map.",
-                        "Amy recovers the map from beneath the pier.",
+                        "Amy identifies the lighthouse route from a copied symbol without finding the map.",
                     ]}
                 return {"beats": [
                     "Amy carries the recovered map into the harbor office.",
                     "Amy deciphers the map and identifies the lighthouse route.",
                 ]}
             if purpose == "beat_phase_validation":
-                if metadata["phase_number"] == 1 and phase_one_generations == 1:
+                if metadata["phase_number"] == 1:
+                    phase_one_validations += 1
+                if metadata["phase_number"] == 1 and phase_one_validations == 1:
                     return {
                         "valid": False,
                         "issues": [
@@ -1012,7 +1112,46 @@ class BeatGenerationTests(unittest.TestCase):
                             },
                         ],
                     }
+                if metadata["phase_number"] == 1 and phase_one_validations == 2:
+                    return {
+                        "valid": False,
+                        "issues": [{
+                            "beat_id": 1,
+                            "type": "bad_opening_continuity",
+                            "problem": (
+                                "A new seed now disputes the already accepted "
+                                "opening beat."
+                            ),
+                        }],
+                    }
                 return {"valid": True, "issues": []}
+            if purpose == "beat_phase_repair":
+                self.assertEqual(metadata["repair_beat_ids"], [2])
+                beat_array = kwargs["response_format"]["json_schema"]["schema"][
+                    "properties"
+                ]["beats"]
+                self.assertEqual((beat_array["minItems"], beat_array["maxItems"]), (1, 1))
+                self.assertEqual(
+                    beat_array["items"]["properties"]["beat_id"]["enum"],
+                    [2],
+                )
+                repair_prompt = messages[1]["content"]
+                self.assertIn("Repair only violating Beat IDs 2", repair_prompt)
+                self.assertIn(
+                    "Do not rewrite, paraphrase, or return any non-violating beat.",
+                    repair_prompt,
+                )
+                self.assertIn(
+                    "Beat 1: Amy searches the harbor for the missing map.",
+                    repair_prompt,
+                )
+                self.assertNotIn("Regenerate this entire phase", repair_prompt)
+                return {
+                    "beats": [{
+                        "beat_id": 2,
+                        "text": "Amy recovers the map from beneath the pier.",
+                    }]
+                }
             if purpose == "beat_plan_audit":
                 return {
                     "valid": True,
@@ -1032,13 +1171,14 @@ class BeatGenerationTests(unittest.TestCase):
                 llm_request=llm_request,
             )
 
-        self.assertEqual(phase_one_generations, 2)
+        self.assertEqual(phase_one_generations, 1)
+        self.assertEqual(phase_one_validations, 2)
         self.assertEqual(
             purposes,
             [
                 "beat_generation",
                 "beat_phase_validation",
-                "beat_generation",
+                "beat_phase_repair",
                 "beat_phase_validation",
                 "beat_generation",
                 "beat_phase_validation",
@@ -1053,6 +1193,224 @@ class BeatGenerationTests(unittest.TestCase):
                 "Amy carries the recovered map into the harbor office.",
                 "Amy deciphers the map and identifies the lighthouse route.",
             ],
+        )
+
+    def test_subsequent_repair_requests_exclude_previously_passed_beats(self):
+        macro_arc = {
+            "phases": [{
+                "phase_number": 1,
+                "beat_start": 1,
+                "beat_end": 2,
+                "narrative_purpose": "Find the missing map.",
+                "broad_progression": "Amy searches the harbor for the map.",
+                "characters_introduced": ["Amy"],
+                "location": "Harbor",
+                "required_end_state": "Amy has the map.",
+            }]
+        }
+        validation_attempt = 0
+        repair_calls = []
+
+        def issue(beat_id, issue_type, problem):
+            return {
+                "beat_id": beat_id,
+                "type": issue_type,
+                "problem": problem,
+            }
+
+        def llm_request(messages, **kwargs):
+            nonlocal validation_attempt
+            metadata = kwargs["history_metadata"]
+            purpose = metadata["purpose"]
+            if purpose == "beat_generation":
+                return {
+                    "beats": [
+                        "Amy searches the harbor warehouses.",
+                        "Amy leaves the harbor without finding the map.",
+                    ]
+                }
+            if purpose == "beat_phase_validation":
+                validation_attempt += 1
+                if validation_attempt == 1:
+                    return {
+                        "valid": False,
+                        "issues": [issue(
+                            2,
+                            "missing_end_state",
+                            "Amy still does not have the map.",
+                        )],
+                    }
+                if validation_attempt == 2:
+                    return {
+                        "valid": False,
+                        "issues": [
+                            issue(
+                                1,
+                                "bad_opening_continuity",
+                                "A new seed disputes the already passed opening.",
+                            ),
+                            issue(
+                                2,
+                                "missing_end_state",
+                                "Amy still does not have the map.",
+                            ),
+                        ],
+                    }
+                return {
+                    "valid": False,
+                    "issues": [issue(
+                        1,
+                        "bad_opening_continuity",
+                        "A third seed disputes only the passed opening.",
+                    )],
+                }
+            if purpose == "beat_phase_repair":
+                repair_calls.append((messages, kwargs))
+                repair_number = len(repair_calls)
+                return {
+                    "beats": [{
+                        "beat_id": 2,
+                        "text": (
+                            "Amy finds a clue pointing to the map beneath the pier."
+                            if repair_number == 1
+                            else "Amy recovers the map from beneath the pier."
+                        ),
+                    }]
+                }
+            if purpose == "beat_plan_audit":
+                return {
+                    "valid": True,
+                    "macro_arc_consistent_with_source": True,
+                    "blocking_issues": [],
+                    "warnings": [],
+                }
+            raise AssertionError(f"Unexpected LLM purpose: {purpose}")
+
+        with tempfile.TemporaryDirectory() as directory, mock.patch(
+            "builtins.print"
+        ), mock.patch(
+            "minimax.load_story_arc",
+            return_value=macro_arc,
+        ):
+            beats = minimax.generate_beats_from_story(
+                "Amy searches the harbor and recovers a missing map.",
+                2,
+                path=os.path.join(directory, "beats.txt"),
+                llm_request=llm_request,
+            )
+
+        self.assertEqual(validation_attempt, 3)
+        self.assertEqual(len(repair_calls), 2)
+        for messages, kwargs in repair_calls:
+            self.assertEqual(
+                kwargs["history_metadata"]["repair_beat_ids"],
+                [2],
+            )
+            beat_id_schema = kwargs["response_format"]["json_schema"]["schema"][
+                "properties"
+            ]["beats"]["items"]["properties"]["beat_id"]
+            self.assertEqual(beat_id_schema["enum"], [2])
+            self.assertIn(
+                "Repair only violating Beat IDs 2",
+                messages[1]["content"],
+            )
+            self.assertNotIn('"beat_id": 1', messages[1]["content"])
+            self.assertNotIn(
+                "A new seed disputes the already passed opening.",
+                messages[1]["content"],
+            )
+        self.assertEqual(
+            [str(beat) for beat in beats],
+            [
+                "Amy searches the harbor warehouses.",
+                "Amy recovers the map from beneath the pier.",
+            ],
+        )
+
+    def test_targeted_phase_repairs_stop_after_round_ten(self):
+        macro_arc = {
+            "phases": [{
+                "phase_number": 1,
+                "beat_start": 1,
+                "beat_end": 2,
+                "narrative_purpose": "Find the missing map.",
+                "broad_progression": "Amy searches the harbor for the map.",
+                "characters_introduced": ["Amy"],
+                "location": "Harbor",
+                "required_end_state": "Amy has the map.",
+            }]
+        }
+        validation_attempts = 0
+        repair_rounds = []
+
+        def llm_request(_messages, **kwargs):
+            nonlocal validation_attempts
+            metadata = kwargs["history_metadata"]
+            purpose = metadata["purpose"]
+            if purpose == "beat_generation":
+                return {
+                    "beats": [
+                        "Amy searches the harbor warehouses.",
+                        "Amy leaves without finding the map.",
+                    ]
+                }
+            if purpose == "beat_phase_validation":
+                validation_attempts += 1
+                return {
+                    "valid": False,
+                    "issues": [{
+                        "beat_id": 2,
+                        "type": "missing_end_state",
+                        "problem": "The seeded validator continues to reject Beat 2.",
+                    }],
+                }
+            if purpose == "beat_phase_repair":
+                repair_round = metadata["repair_round"]
+                repair_rounds.append(repair_round)
+                return {
+                    "beats": [{
+                        "beat_id": 2,
+                        "text": (
+                            f"Amy follows map clue revision {repair_round} along "
+                            "the pier."
+                        ),
+                    }]
+                }
+            if purpose == "beat_plan_audit":
+                return {
+                    "valid": True,
+                    "macro_arc_consistent_with_source": True,
+                    "blocking_issues": [],
+                    "warnings": [],
+                }
+            raise AssertionError(f"Unexpected LLM purpose: {purpose}")
+
+        with tempfile.TemporaryDirectory() as directory, mock.patch(
+            "builtins.print"
+        ) as print_mock, mock.patch(
+            "minimax.load_story_arc",
+            return_value=macro_arc,
+        ):
+            beats = minimax.generate_beats_from_story(
+                "Amy searches the harbor for a missing map.",
+                2,
+                path=os.path.join(directory, "beats.txt"),
+                llm_request=llm_request,
+            )
+
+        self.assertEqual(repair_rounds, list(range(1, 11)))
+        self.assertEqual(validation_attempts, 11)
+        self.assertEqual(
+            str(beats[1]),
+            "Amy follows map clue revision 10 along the pier.",
+        )
+        rendered_output = "\n".join(
+            str(call.args[0]) for call in print_mock.call_args_list if call.args
+        )
+        self.assertNotIn("repair round 11", rendered_output)
+        self.assertIn(
+            "reached the 10-round targeted-repair limit",
+            rendered_output,
         )
 
     def test_subject_registry_descriptions_are_formatted_for_beat_generation(self):
@@ -1449,6 +1807,7 @@ class BeatGenerationTests(unittest.TestCase):
                 [{"beats": list(invalid_beats)} for _ in range(5)]
                 + [
                     {"beats": valid_beats},
+                    {"valid": True, "issues": []},
                     {
                         "valid": True,
                         "macro_arc_consistent_with_source": True,
@@ -1471,7 +1830,133 @@ class BeatGenerationTests(unittest.TestCase):
             )
 
         self.assertEqual([str(beat) for beat in beats], valid_beats)
-        self.assertEqual(llm_request.call_count, 7)
+        self.assertEqual(llm_request.call_count, 8)
+
+    def test_tenth_phase_generation_failure_uses_tenth_response(self):
+        invalid_beats = [
+            "The group enters the city.",
+            "The group enters the city.",
+            "The group reaches the safe house.",
+        ]
+        macro_arc = {
+            "phases": [{
+                "phase_number": 1,
+                "beat_start": 1,
+                "beat_end": 3,
+                "narrative_purpose": "Complete the escape.",
+                "broad_progression": "The group crosses the city to safety.",
+                "characters_introduced": [],
+                "location": "The city",
+                "required_end_state": "The group reaches safety.",
+            }]
+        }
+        generation_attempts = []
+
+        def llm_request(_messages, **kwargs):
+            metadata = kwargs["history_metadata"]
+            purpose = metadata["purpose"]
+            if purpose == "beat_generation":
+                generation_attempts.append(metadata["attempt"])
+                return {"beats": list(invalid_beats)}
+            if purpose == "beat_phase_validation":
+                return {"valid": True, "issues": []}
+            if purpose == "beat_plan_audit":
+                return {
+                    "valid": True,
+                    "macro_arc_consistent_with_source": True,
+                    "blocking_issues": [],
+                    "warnings": [],
+                }
+            raise AssertionError(f"Unexpected LLM purpose: {purpose}")
+
+        with tempfile.TemporaryDirectory() as directory, mock.patch(
+            "builtins.print"
+        ) as print_mock, mock.patch(
+            "minimax.load_story_arc",
+            return_value=macro_arc,
+        ):
+            beats = minimax.generate_beats_from_story(
+                "A group escapes through a dangerous city.",
+                3,
+                path=os.path.join(directory, "beats.txt"),
+                llm_request=llm_request,
+            )
+
+        self.assertEqual(generation_attempts, list(range(1, 11)))
+        self.assertEqual([str(beat) for beat in beats], invalid_beats)
+        rendered_output = "\n".join(
+            str(call.args[0]) for call in print_mock.call_args_list if call.args
+        )
+        self.assertIn(
+            "using the beats returned on that attempt",
+            rendered_output,
+        )
+
+    def test_unusable_tenth_response_waits_for_next_usable_beat_list(self):
+        usable_beats = [
+            "The group enters the city.",
+            "The group enters the city.",
+            "The group reaches the safe house.",
+        ]
+        macro_arc = {
+            "phases": [{
+                "phase_number": 1,
+                "beat_start": 1,
+                "beat_end": 3,
+                "narrative_purpose": "Complete the escape.",
+                "broad_progression": "The group crosses the city to safety.",
+                "characters_introduced": [],
+                "location": "The city",
+                "required_end_state": "The group reaches safety.",
+            }]
+        }
+        generation_attempts = []
+
+        def llm_request(_messages, **kwargs):
+            metadata = kwargs["history_metadata"]
+            purpose = metadata["purpose"]
+            if purpose == "beat_generation":
+                generation_attempts.append(metadata["attempt"])
+                if metadata["attempt"] <= 10:
+                    return {"beats": ["Only one beat is returned."]}
+                return {"beats": list(usable_beats)}
+            if purpose == "beat_phase_validation":
+                return {"valid": True, "issues": []}
+            if purpose == "beat_plan_audit":
+                return {
+                    "valid": True,
+                    "macro_arc_consistent_with_source": True,
+                    "blocking_issues": [],
+                    "warnings": [],
+                }
+            raise AssertionError(f"Unexpected LLM purpose: {purpose}")
+
+        with tempfile.TemporaryDirectory() as directory, mock.patch(
+            "builtins.print"
+        ) as print_mock, mock.patch(
+            "minimax.load_story_arc",
+            return_value=macro_arc,
+        ):
+            beats = minimax.generate_beats_from_story(
+                "A group escapes through a dangerous city.",
+                3,
+                path=os.path.join(directory, "beats.txt"),
+                llm_request=llm_request,
+            )
+
+        self.assertEqual(generation_attempts, list(range(1, 12)))
+        self.assertEqual([str(beat) for beat in beats], usable_beats)
+        rendered_output = "\n".join(
+            str(call.args[0]) for call in print_mock.call_args_list if call.args
+        )
+        self.assertIn(
+            "Continuing until the next usable beat list is returned.",
+            rendered_output,
+        )
+        self.assertIn(
+            "attempt 11; waiting for the next structurally usable beat list",
+            rendered_output,
+        )
 
     def test_wrong_beat_count_keeps_requesting_until_interrupt(self):
         macro_arc = {

@@ -711,6 +711,31 @@ class ContinuitySummaryTests(unittest.TestCase):
             )
         )
 
+    def test_persistent_structural_change_is_marked_and_copied_forward(self):
+        definitions = "<Subject 1> is Unit, referenced in <Picture 1>."
+        committed = minimax.continuity_state_for_registry(definitions)
+        snapshot = canonical_candidate(definitions, committed)
+        snapshot["subjects"]["Unit"]["body_state"] = (
+            "upper section permanently separated"
+        )
+
+        changed = minimax.normalize_structured_continuity_state(
+            snapshot,
+            definitions,
+            committed,
+            newest_description=(
+                "Unit's upper section is now permanently separated."
+            ),
+        )
+        copied = minimax.continuity_state_for_registry(definitions, changed)
+
+        self.assertTrue(
+            changed["subjects"]["Unit"]["persistent_structural_change"]
+        )
+        self.assertTrue(
+            copied["subjects"]["Unit"]["persistent_structural_change"]
+        )
+
     def test_structured_candidate_replaces_explicit_final_frame_state(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
         committed["camera"] = "wide shot of the ridge"

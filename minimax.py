@@ -334,14 +334,34 @@ COMFY_HISTORY_RETRY_DELAY = 10
 COMFY_RENDER_TIMEOUT = 15 * 60
 COMFY_RENDER_RETRIES = 10
 COMFY_RETRY_MEGAPIXEL_STEP = 0.02
-CONTINUITY_STATE_VERSION = 4
+CONTINUITY_STATE_VERSION = 5
 
 PERSISTENT_SUBJECT_LIST_FIELDS = (
     "attached_objects",
     "injuries",
     "substances",
-    "spatial_relationships",
     "persistent_effects",
+)
+
+CURRENT_SUBJECT_SCALAR_FIELDS = (
+    "position",
+    "pose_action",
+    "physical_condition",
+)
+
+PERSISTENT_SUBJECT_SCALAR_FIELDS = (
+    "topology",
+    "body_state",
+)
+
+CURRENT_SUBJECT_LIST_FIELDS = (
+    "spatial_relationships",
+)
+
+SUBJECT_LIST_FIELDS = (
+    *PERSISTENT_SUBJECT_LIST_FIELDS,
+    *CURRENT_SUBJECT_LIST_FIELDS,
+    "held_props",
 )
 
 LLM_INPUT_TOKEN_BUDGET = 14000
@@ -352,6 +372,8 @@ RECENT_SEGMENTS_MAX = 1
 DIALOGUE_HISTORY_SEGMENTS_MAX = 5
 SUMMARY_CONTENT_ATTEMPTS = 2
 DIRECTOR_BEAT_COMPLETION_ATTEMPTS = 5
+BEAT_PHASE_GENERATION_ATTEMPTS = 10
+BEAT_PHASE_REPAIR_ROUNDS = 10
 BEAT_LLM_SAMPLING_PARAMETERS = {
     "temperature": 0.65,
     "top_p": 0.90,
@@ -785,6 +807,91 @@ def prune_missing_reference_images(
     return removed
 
 
+def disconnect_reference_images(
+    workflow,
+    workflow_label,
+    workflow_kind,
+    image_numbers,
+    reason="reference incompatibility",
+):
+    """Disconnect selected Picture slots from one workflow's conditioning."""
+
+    if workflow_kind == "append":
+        destination_name = IMAGE_BATCH_NODE_NAME
+        input_names = [f"image_{number}" for number in range(1, 7)]
+    elif workflow_kind == "initial":
+        destination_name = INITIAL_REFERENCE_CONDITIONING_NODE_NAME
+        input_names = [f"ref_images.ref_image_{number}" for number in range(6)]
+    elif workflow_kind == "refresh":
+        destination_name = REFRESH_CONDITIONING_NODE_NAME
+        input_names = [f"ref_images.ref_image_{number}" for number in range(6)]
+    else:
+        raise ValueError(f"Unknown workflow kind: {workflow_kind!r}")
+
+    selected = {
+        int(image_number)
+        for image_number in image_numbers or ()
+        if str(image_number).isdigit() and 1 <= int(image_number) <= 6
+    }
+    if not selected:
+        return []
+
+    _, destination = find_workflow_node(
+        workflow,
+        destination_name,
+        workflow_label,
+    )
+    removed = []
+    for image_number, input_name in enumerate(input_names, start=1):
+        if image_number not in selected:
+            continue
+        inputs = destination["inputs"]
+        container = inputs
+        leaf_name = input_name
+        if input_name not in inputs and "." in input_name:
+            container_name, leaf_name = input_name.split(".", 1)
+            nested = inputs.get(container_name)
+            if not isinstance(nested, dict):
+                continue
+            container = nested
+        if leaf_name not in container:
+            continue
+        del container[leaf_name]
+        removed.append(image_number)
+        print(
+            f"{workflow_label} disconnected Reference Image {image_number} "
+            f"because of {reason}."
+        )
+    return removed
+
+
+def disconnect_append_reference_batch(
+    workflow,
+    workflow_label,
+    reason="reference incompatibility",
+):
+    """Disconnect the optional append ref_images batch as one atomic input.
+
+    ImageBatchMulti requires image_1 and emits a dense batch. Removing an
+    individual slot can therefore fail validation or renumber later Picture
+    references. MiniMaxH3VideoExtendPatched accepts ref_images as optional, so
+    incompatible pristine references are disabled as a whole for append mode.
+    """
+    _, extend_node = find_workflow_node(
+        workflow,
+        VIDEO_EXTEND_NODE_NAME,
+        workflow_label,
+    )
+    if "ref_images" not in extend_node["inputs"]:
+        return False
+    del extend_node["inputs"]["ref_images"]
+    print(
+        f"{workflow_label} disconnected the optional reference-image batch "
+        f"because of {reason}. AV latent continuity remains active."
+    )
+    return True
+
+
 def verify_reference_images(
     initial_workflow,
     append_workflow,
@@ -1059,6 +1166,38 @@ def available_subject_speaker_id(subject_id, records, requested=None):
     return f"S{number}"
 
 
+def _subject_identity_key(name):
+    """Return a conservative key for matching harmless Subject name variants."""
+    normalized = re.sub(r"[^a-z0-9]+", " ", str(name or "").casefold())
+    normalized = re.sub(r"^(?:a|an|the)\s+", "", normalized.strip())
+    return " ".join(normalized.split())
+
+
+def _find_existing_subject_name(subjects, proposed_name, subject_id=None, speaker_id=None):
+    """Resolve a proposed identity without creating article/case duplicates."""
+    if not isinstance(subjects, dict):
+        return None
+    proposed_key = _subject_identity_key(proposed_name)
+    proposed_speaker = str(speaker_id or "").strip().casefold()
+    for current_name, record in subjects.items():
+        if not isinstance(record, dict):
+            continue
+        if subject_id is not None and str(record.get("subject_id")) == str(subject_id):
+            return current_name
+        if (
+            proposed_speaker
+            and str(record.get("speaker_id") or "").strip().casefold()
+            == proposed_speaker
+        ):
+            return current_name
+        if proposed_key and _subject_identity_key(current_name) == proposed_key:
+            return current_name
+        record_name = str(record.get("name") or "").strip()
+        if proposed_key and _subject_identity_key(record_name) == proposed_key:
+            return current_name
+    return None
+
+
 def parse_subject_registry(subject_definitions):
     """Parse independent name, gender, Picture, and speaker mappings."""
     registry = {}
@@ -1166,6 +1305,11 @@ def new_subject_continuity_record(subject):
             )
         ),
         "origin_segment": subject.get("origin_segment"),
+        # Once generated video establishes a major persistent structural change,
+        # a pristine identity reference can become incompatible with later refreshes.
+        "persistent_structural_change": bool(
+            subject.get("persistent_structural_change", False)
+        ),
         "position": "N/A",
         "pose_action": "N/A",
         "wardrobe": {
@@ -1250,6 +1394,9 @@ def continuity_state_for_registry(subject_definitions, state=None):
     def copy_continuity_fields(record, existing):
         if not isinstance(existing, dict):
             return
+        record["persistent_structural_change"] = bool(
+            existing.get("persistent_structural_change", False)
+        )
         for field in (
             "position",
             "pose_action",
@@ -1261,7 +1408,7 @@ def continuity_state_for_registry(subject_definitions, state=None):
                 record[field] = existing[field]
         if isinstance(existing.get("held_props"), list):
             record["held_props"] = list(existing["held_props"])
-        for field in PERSISTENT_SUBJECT_LIST_FIELDS:
+        for field in SUBJECT_LIST_FIELDS:
             if isinstance(existing.get(field), list):
                 record[field] = list(existing[field])
         if isinstance(existing.get("wardrobe"), dict):
@@ -1272,7 +1419,13 @@ def continuity_state_for_registry(subject_definitions, state=None):
     subjects = {}
     used_subject_ids = set()
     for subject_id, subject in registry.items():
-        existing = current.get("subjects", {}).get(subject["name"], {})
+        existing_name = _find_existing_subject_name(
+            current.get("subjects", {}),
+            subject["name"],
+            subject_id=subject_id,
+            speaker_id=subject.get("speaker_id"),
+        )
+        existing = current.get("subjects", {}).get(existing_name, {})
         record = new_subject_continuity_record({
             **subject,
             "subject_id": subject_id,
@@ -1285,12 +1438,19 @@ def continuity_state_for_registry(subject_definitions, state=None):
         subjects[subject["name"]] = record
         used_subject_ids.add(subject_id)
 
-    # A continuing video can establish an important subject that has no Picture
-    # reference (a creature, vehicle, or newly introduced person). Preserve these
-    # records instead of rebuilding the state exclusively from the Picture registry.
+    # A continuing video can establish an important animate Subject without a
+    # Picture reference. Preserve it instead of rebuilding only from Pictures.
     next_subject_id = max(used_subject_ids, default=0) + 1
     for name, existing in current.get("subjects", {}).items():
-        if name in subjects or not isinstance(existing, dict):
+        if (
+            not isinstance(existing, dict)
+            or _find_existing_subject_name(
+                subjects,
+                name,
+                subject_id=existing.get("subject_id"),
+                speaker_id=existing.get("speaker_id"),
+            ) is not None
+        ):
             continue
         raw_subject_id = existing.get("subject_id")
         try:
@@ -1356,6 +1516,104 @@ _STRUCTURAL_REGION_QUALIFIERS = (
 )
 
 
+_TERMINAL_ABSENCE_RE = re.compile(
+    r"(?i)\b(?:absent|gone|missing|not present|no longer present|"
+    r"no longer exists?|ceased to exist|fully (?:dissolved|disintegrated)|"
+    r"removed(?: entirely| completely)?)\b"
+)
+_TERMINAL_DESTRUCTION_RE = re.compile(
+    r"(?i)\b(?:destroyed|demolished|irreparably damaged|"
+    r"shattered beyond repair)\b"
+)
+_TERMINAL_PROCESS_RE = re.compile(
+    r"(?i)\b(?:dissolv(?:e|es|ing)|disintegrat(?:e|es|ing)|"
+    r"break(?:s|ing)? apart|collaps(?:e|es|ing)|fragment(?:s|ing)?)\b"
+)
+_PERSISTENT_CATEGORICAL_FIELDS = frozenset({
+    "topology", "body_state", "attached_objects", "persistent_effects",
+    "held_props", "environment.persistent_state",
+})
+
+
+def _terminal_state_status(value):
+    """Return the authoritative terminal category expressed by a state fact."""
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if _TERMINAL_ABSENCE_RE.search(text):
+        return "absent"
+    if re.search(
+        r"(?i)\bno\s+[^.;:,]{1,80}\s+(?:is|are|remains?)\s+present\b",
+        text,
+    ):
+        return "absent"
+    if _TERMINAL_DESTRUCTION_RE.search(text):
+        return "destroyed"
+    return None
+
+
+def _terminal_state_label(value):
+    """Extract a concise entity/component label from a terminal state fact."""
+    text = " ".join(str(value or "").strip().split())
+    if not text:
+        return None
+    status_expression = (
+        r"(?:absent|gone|missing|not present|no longer present|"
+        r"no longer exists?|ceased to exist|fully (?:dissolved|disintegrated)|"
+        r"removed(?: entirely| completely)?|destroyed|demolished|"
+        r"irreparably damaged|shattered beyond repair)"
+    )
+    patterns = (
+        rf"^(?P<label>[^:;,.]{{1,100}}?)\s*:\s*(?:is\s+)?{status_expression}\b",
+        rf"^(?P<label>[^:;,.]{{1,100}}?)\s+(?:is|are|was|were|being|"
+        rf"has been|have been|remains?)\s+(?:now\s+|fully\s+|completely\s+|"
+        rf"entirely\s+|both\s+)*{status_expression}\b",
+        rf"^(?P<label>[^:;,.]{{1,100}}?)\s+{status_expression}(?:\s*$|\s*[,;])",
+        rf"^(?:the\s+)?{status_expression}\s+(?P<label>[^:;,.]{{1,100}}?)(?:\s*$|\s*[,;])",
+        rf"^no\s+(?P<label>[^:;,.]{{1,100}}?)\s+(?:is|are|remains?)\s+present\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, re.I)
+        if not match:
+            continue
+        label = match.group("label").strip(" ,;:-")
+        label = re.sub(r"(?i)^(?:the|a|an)\s+", "", label)
+        label = re.sub(r"(?i)^(?:its|their)\s+", "", label)
+        if label and len(label.split()) <= 12:
+            return label
+    return None
+
+
+def _categorical_persistent_state(value, field_name=""):
+    """Collapse definitive absence/destruction prose to a current category."""
+    text = str(value or "").strip()
+    if field_name.startswith("wardrobe."):
+        return _terminal_state_status(text) or text
+    if field_name not in _PERSISTENT_CATEGORICAL_FIELDS:
+        return text
+    clauses = [
+        clause.strip(" ,;:-")
+        for clause in re.split(r"\s*(?:;|\n+)\s*", text)
+        if clause.strip(" ,;:-")
+    ]
+    terminal_by_index = {}
+    for index, clause in enumerate(clauses):
+        status = _terminal_state_status(clause)
+        if status is None:
+            continue
+        label = _terminal_state_label(clause)
+        terminal_by_index[index] = f"{label}: {status}" if label else status
+    if not terminal_by_index:
+        return text
+    normalized = []
+    for index, clause in enumerate(clauses):
+        if index in terminal_by_index:
+            normalized.append(terminal_by_index[index])
+        elif _TERMINAL_PROCESS_RE.search(clause) is None:
+            normalized.append(clause)
+    return "; ".join(dict.fromkeys(normalized))
+
+
 def _scrub_snapshot_text(value, field_name=""):
     """Return snapshot-safe prose; historical timestamped actions are discarded."""
     if not isinstance(value, str):
@@ -1378,6 +1636,7 @@ def _scrub_snapshot_text(value, field_name=""):
     cleaned = re.sub(r"\s+,\s*,\s*", ", ", cleaned)
     cleaned = re.sub(r"\(\s*[–—-]\s*\)", "", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip(" ,;:-")
+    cleaned = _categorical_persistent_state(cleaned, field_name)
     return cleaned or "N/A"
 
 
@@ -1467,7 +1726,7 @@ def _scrub_continuity_subject_record(record):
         for garment in ("upper", "lower", "footwear", "other"):
             if garment in wardrobe:
                 wardrobe[garment] = _scrub_snapshot_text(wardrobe.get(garment), f"wardrobe.{garment}")
-    for field in (*PERSISTENT_SUBJECT_LIST_FIELDS, "held_props"):
+    for field in SUBJECT_LIST_FIELDS:
         if isinstance(record.get(field), list):
             record[field] = list(dict.fromkeys(
                 cleaned
@@ -1556,16 +1815,68 @@ def migrate_continuity_state(state):
         for record in normalized_subjects.values():
             if isinstance(record, dict):
                 record["gender"] = normalize_subject_gender(record.get("gender"))
+                record["persistent_structural_change"] = bool(
+                    record.get("persistent_structural_change", False)
+                )
                 if (
                     not record.get("speaker_id")
                     and str(record.get("subject_id") or "").isdigit()
                 ):
                     record["speaker_id"] = f"S{record['subject_id']}"
                 record.setdefault("topology", "N/A")
-                for field in PERSISTENT_SUBJECT_LIST_FIELDS:
+                for field in SUBJECT_LIST_FIELDS:
                     record.setdefault(field, [])
         migrated["subjects"] = normalized_subjects
     return scrub_continuity_state(migrated)
+
+
+def get_refresh_incompatible_picture_ids(continuity_state):
+    """Return Picture IDs incompatible with the Subject's current configuration."""
+    incompatible = set()
+    state = migrate_continuity_state(continuity_state)
+    for record in state.get("subjects", {}).values():
+        if not isinstance(record, dict) or not record.get(
+            "persistent_structural_change", False
+        ):
+            continue
+        for picture_id in record.get("picture_ids", []):
+            if isinstance(picture_id, int) or str(picture_id).isdigit():
+                incompatible.add(int(picture_id))
+        picture_id = record.get("picture_id")
+        if isinstance(picture_id, int) or str(picture_id).isdigit():
+            incompatible.add(int(picture_id))
+    return incompatible
+
+
+def get_continuity_picture_ids(continuity_state):
+    """Return every stable Picture ID represented by the continuity state."""
+    picture_ids = set()
+    state = migrate_continuity_state(continuity_state)
+    for record in state.get("subjects", {}).values():
+        if not isinstance(record, dict):
+            continue
+        for picture_id in record.get("picture_ids", []):
+            if isinstance(picture_id, int) or str(picture_id).isdigit():
+                picture_ids.add(int(picture_id))
+        picture_id = record.get("picture_id")
+        if isinstance(picture_id, int) or str(picture_id).isdigit():
+            picture_ids.add(int(picture_id))
+    return picture_ids
+
+
+def get_conditioning_excluded_picture_ids(continuity_state, conditioning_mode):
+    """Return Picture IDs omitted from H3 text/reference conditioning.
+
+    Clean refresh can omit incompatible named slots individually. Latent
+    continuation uses one dense ImageBatchMulti batch, so deleting a slot can
+    invalidate image_1 or silently renumber later Pictures. Once any pristine
+    Picture becomes structurally incompatible, omit the entire append reference
+    batch and let the authoritative AV latent carry identity and current state.
+    """
+    incompatible = get_refresh_incompatible_picture_ids(continuity_state)
+    if conditioning_mode == "latent_continuation" and incompatible:
+        return get_continuity_picture_ids(continuity_state)
+    return incompatible
 
 
 def _known_continuity_value(value):
@@ -1597,11 +1908,61 @@ def _subject_wardrobe(record):
     ]
 
 
-def _subject_picture_tags(record):
+_WARDROBE_CONTINUITY_LABELS = {
+    "upper": "upper garment",
+    "lower": "lower garment",
+    "footwear": "footwear",
+    "other": "additional garment or accessory",
+}
+
+
+def _h3_terminal_constraint(value, field_name=""):
+    """Render a terminal database fact as a result-only H3 constraint."""
+    status = _terminal_state_status(value)
+    if status is None:
+        return None
+    if field_name in {"topology", "body_state"}:
+        return "Preserve the current structural configuration."
+    if field_name.startswith("wardrobe."):
+        key = field_name.partition(".")[2]
+        label = _WARDROBE_CONTINUITY_LABELS.get(key, "garment")
+    else:
+        label = _terminal_state_label(value)
+    if not label:
+        if field_name == "held_props":
+            label = "held prop"
+        elif field_name == "attached_objects":
+            label = "attached object"
+        else:
+            label = "affected item"
+    if status == "absent":
+        return f"No {label} is present."
+    return f"The {label} remains destroyed."
+
+
+def _split_h3_terminal_facts(items, field_name):
+    """Separate result-only constraints from ordinary current-state wording."""
+    current = []
+    constraints = []
+    for item in items:
+        constraint = _h3_terminal_constraint(item, field_name)
+        if constraint:
+            constraints.append(constraint)
+        else:
+            current.append(item)
+    return current, constraints
+
+
+def _subject_picture_tags(record, excluded_picture_ids=None):
+    excluded = {
+        int(value)
+        for value in (excluded_picture_ids or ())
+        if isinstance(value, int) or str(value).isdigit()
+    }
     return [
         f"<Picture {picture_id}>"
         for picture_id in record.get("picture_ids", [])
-        if picture_id is not None
+        if picture_id is not None and int(picture_id) not in excluded
     ]
 
 
@@ -1609,7 +1970,19 @@ def _subject_opening_sentence(subject_id, name, record, summary=False):
     tag = f"<Subject {subject_id}>"
     position = _known_continuity_value(record.get("position"))
     pose_action = _known_continuity_value(record.get("pose_action"))
-    wardrobe = _subject_wardrobe(record)
+    wardrobe = []
+    terminal_constraints = []
+    wardrobe_state = record.get("wardrobe", {})
+    if isinstance(wardrobe_state, dict):
+        for field in ("upper", "lower", "footwear", "other"):
+            value = _known_continuity_value(wardrobe_state.get(field))
+            if not value:
+                continue
+            constraint = _h3_terminal_constraint(value, f"wardrobe.{field}")
+            if constraint:
+                terminal_constraints.append(constraint)
+            else:
+                wardrobe.append(value)
     topology = _known_continuity_value(record.get("topology"))
     body_state = _known_continuity_value(record.get("body_state"))
     physical_condition = _known_continuity_value(
@@ -1626,8 +1999,24 @@ def _subject_opening_sentence(subject_id, name, record, summary=False):
             for item in record.get(field, [])
             if (cleaned := _continuity_item_text(item, field))
         ]
-        for field in PERSISTENT_SUBJECT_LIST_FIELDS
+        for field in SUBJECT_LIST_FIELDS
     }
+    topology_constraint = _h3_terminal_constraint(topology, "topology")
+    body_state_constraint = _h3_terminal_constraint(body_state, "body_state")
+    for constraint in (topology_constraint, body_state_constraint):
+        if constraint and constraint not in terminal_constraints:
+            terminal_constraints.append(constraint)
+    held_props, constraints = _split_h3_terminal_facts(
+        held_props,
+        "held_props",
+    )
+    terminal_constraints.extend(constraints)
+    for field in PERSISTENT_SUBJECT_LIST_FIELDS:
+        persistent_lists[field], constraints = _split_h3_terminal_facts(
+            persistent_lists[field],
+            field,
+        )
+        terminal_constraints.extend(constraints)
 
     if summary:
         # subject_definitions already carries identity.  Only repeat a Subject
@@ -1647,9 +2036,9 @@ def _subject_opening_sentence(subject_id, name, record, summary=False):
             facts.append(f"At the opening, {name} is {wardrobe_text}")
     if pose_action:
         facts.append(f"Opening pose/action: {pose_action}")
-    if topology:
+    if topology and not topology_constraint:
         facts.append(f"Topology: {topology}")
-    if body_state:
+    if body_state and not body_state_constraint:
         facts.append(f"Body state: {body_state}")
     if physical_condition:
         facts.append(f"Physical condition: {physical_condition}")
@@ -1677,6 +2066,7 @@ def _subject_opening_sentence(subject_id, name, record, summary=False):
             "Persistent effects: "
             + _english_join(persistent_lists["persistent_effects"])
         )
+    facts.extend(dict.fromkeys(terminal_constraints))
     return ". ".join(fact.rstrip(". ") for fact in facts) + ("." if facts else "")
 
 
@@ -1732,9 +2122,15 @@ def format_authoritative_opening_state(
     state,
     subject_definitions="",
     include_camera=True,
+    excluded_picture_ids=None,
 ):
     """Render continuation/reference guidance, optionally including camera state."""
     state = continuity_state_for_registry(subject_definitions, state)
+    excluded_picture_ids = {
+        int(value)
+        for value in (excluded_picture_ids or ())
+        if isinstance(value, int) or str(value).isdigit()
+    }
     subjects = _ordered_continuity_subjects(state)
     if not subjects:
         raise RuntimeError(
@@ -1773,7 +2169,8 @@ def format_authoritative_opening_state(
         record_pictures = [
             int(value)
             for value in record.get("picture_ids", [])
-            if isinstance(value, int) or str(value).isdigit()
+            if (isinstance(value, int) or str(value).isdigit())
+            and int(value) not in excluded_picture_ids
         ]
         if record_pictures:
             picture_numbers.extend(record_pictures)
@@ -1802,7 +2199,10 @@ def format_authoritative_opening_state(
     lines.extend(["", "retention_analysis:", ""])
 
     for subject_id, name, record in subjects:
-        picture_tags = _subject_picture_tags(record)
+        picture_tags = _subject_picture_tags(
+            record,
+            excluded_picture_ids=excluded_picture_ids,
+        )
         details = _subject_opening_sentence(subject_id, name, record)
         if picture_tags:
             source = (
@@ -1827,7 +2227,11 @@ def format_authoritative_opening_state(
     ongoing_action = _known_continuity_value(state.get("ongoing_action"))
     ongoing_audio = _known_continuity_value(state.get("ongoing_audio"))
     if persistent_state:
-        video_details.append(persistent_state)
+        terminal_constraint = _h3_terminal_constraint(
+            persistent_state,
+            "environment.persistent_state",
+        )
+        video_details.append(terminal_constraint or persistent_state)
     if include_camera and camera:
         video_details.append(f"camera/framing: {camera}")
     if ongoing_action:
@@ -1842,7 +2246,18 @@ def format_authoritative_opening_state(
         "final frame of the preceding video."
     )
     if video_details:
-        video_line += f" Also preserve {_english_join(video_details)}."
+        result_constraints = [
+            detail for detail in video_details
+            if str(detail).rstrip().endswith(".")
+        ]
+        descriptive_details = [
+            detail for detail in video_details
+            if not str(detail).rstrip().endswith(".")
+        ]
+        if descriptive_details:
+            video_line += f" Also preserve {_english_join(descriptive_details)}."
+        if result_constraints:
+            video_line += " " + " ".join(result_constraints)
     lines.append(video_line)
     return "\n".join(lines)
 
@@ -3725,12 +4140,15 @@ def build_beat_arc_fidelity_response_format():
     }
 
 
+PERSISTENT_STATE_CONFLICT_ISSUE_TYPE = "persistent_state_conflict"
+
 BEAT_PHASE_VALIDATION_ISSUE_TYPES = (
     "missing_end_state",
     "next_phase_scope_creep",
     "future_character",
     "future_location",
     "bad_opening_continuity",
+    PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
 )
 
 
@@ -3954,8 +4372,11 @@ Return a complete corrected arc covering the full segment range.
             "role": "user",
             "content": f"""
 Create one concise chronological macro story arc for a {total_segments}-beat
-video. Use ~5 phases unless the SOURCE STORY specifies the number of phases
-(or beats); otherwise use between 4 and 8 phases. The phases must cover beat 1 through beat
+video. Use the SOURCE STORY to determine the number of phases if it specifies them; 
+otherwise use at least {int(total_segments / 10)} phases. The phases must cover beat 1 through beat {total_segments} exactly once, with no gaps or overlaps.
+If the beat range is not specified in the SOURCE STORY, analyze the SOURCE STORY and determine the beat_start and beat_end for each phase. Phases do NOT need the same number of
+beats; analyze the SOURCE STORY and determine what elements should have more or
+less beats.
 {total_segments} exactly once, with no gaps or overlaps. If the beat range is
 not specified in the SOURCE STORY, analyze the SOURCE STORY and determine the
 beat_start and beat_end for each phase. Phases do NOT need the same number of
@@ -4286,6 +4707,7 @@ def build_beat_phase_validation_messages(
     next_phase=None,
     previous_phase=None,
     previous_beat=None,
+    previous_beats=None,
 ):
     """Build the mandatory validation request for one generated macro phase."""
     phase_number = int(current_phase["phase_number"])
@@ -4312,6 +4734,19 @@ def build_beat_phase_validation_messages(
     previous_beat_text = (
         f"Beat {beat_start - 1}: {previous_beat}"
         if previous_beat is not None
+        else "N/A (this is the first phase)"
+    )
+
+    earlier_beats = list(previous_beats or [])
+    if not earlier_beats and previous_beat is not None:
+        earlier_beats = [previous_beat]
+    earlier_start = max(1, beat_start - len(earlier_beats))
+    earlier_beats_text = (
+        "\n".join(
+            f"Beat {number}: {beat}"
+            for number, beat in enumerate(earlier_beats, start=earlier_start)
+        )
+        if earlier_beats
         else "N/A (this is the first phase)"
     )
 
@@ -4381,12 +4816,12 @@ the family's flight belong to the FOLLOWING phase.
         {
             "role": "system",
             "content": (
-                "You are a narrow story-phase boundary validator. Check only "
-                "opening continuity, whether the current phase reaches its "
-                "required end state, and whether it materially progresses past "
-                "that boundary. Do not rewrite the beats. Do not critique "
-                "quality, pacing, drama, or wording. Return only the requested "
-                "JSON object."
+                "You are a narrow chronological story-state and phase-boundary "
+                "validator. Check persistent state, opening continuity, whether "
+                "the current phase reaches its required end state, and whether "
+                "it materially progresses past that boundary. Do not rewrite "
+                "the beats. Do not critique quality, pacing, drama, or wording. "
+                "Return only the requested JSON object."
             ),
         },
         {
@@ -4426,6 +4861,19 @@ CORE RULES
 10. Do not report pacing, tone, imagery, detail level, dramatic strength, or
     minor connective actions as failures.
 
+11. Track the semantic result of every explicit irreversible transition in ALL
+    EARLIER ACCEPTED BEATS and in earlier beats of the current phase. Once an
+    item, clothing, or structural feature is definitively destroyed, removed, consumed,
+    detached, replaced, or otherwise permanently changed, every later beat must
+    begin from that resulting state. Reject a later beat that repeats the same
+    transition on the same entity or treats its prior state as still true.
+
+12. Use semantic reasoning, not keyword matching. Report a conflict only when
+    the earlier transition is definitive and the later beat clearly requires an
+    incompatible earlier state or performs that completed transition again.
+    Do not report a conflict when the text clearly establishes restoration, a
+    new instance, or a distinct entity between the two events.
+
 {following_phase_rules}
 
 ISSUE REPORTING
@@ -4464,11 +4912,19 @@ Use them narrowly:
   Beat {beat_start} contradicts or skips the previous accepted phase end state.
   Never use this type for the first phase.
 
+- persistent_state_conflict:
+  A later beat contradicts the lasting result of an earlier irreversible event
+  or attempts the same completed irreversible transition again. Set beat_id to
+  the later conflicting beat, not the earlier state-establishing beat.
+
 PREVIOUS PHASE
 {previous_phase_text}
 
 PREVIOUS ACCEPTED BEAT
 {previous_beat_text}
+
+ALL EARLIER ACCEPTED BEATS
+{earlier_beats_text}
 
 CURRENT PHASE
 {json.dumps(current_phase, ensure_ascii=False, indent=2)}
@@ -4568,23 +5024,181 @@ def parse_beat_phase_validation(
     return {"valid": valid, "issues": normalized_issues}
 
 
+def reconcile_beat_phase_validation(
+    validation,
+    beat_start,
+    beat_end,
+    passed_beat_ids,
+):
+    """Ignore new claims against unchanged beats that passed an earlier check."""
+    phase_beat_ids = set(range(int(beat_start), int(beat_end) + 1))
+    previously_passed = set(passed_beat_ids) & phase_beat_ids
+    reported_issue_ids = {
+        issue["beat_id"] for issue in validation["issues"]
+    }
+
+    # Every beat omitted from this validation response has passed this check.
+    # Previously passed beats remain trusted because targeted repair never edits
+    # them, even if a later seeded validation response changes its opinion.
+    passed_beat_ids.update(phase_beat_ids - reported_issue_ids)
+    effective_issues = [
+        issue
+        for issue in validation["issues"]
+        if issue["beat_id"] not in previously_passed
+    ]
+    ignored_issues = [
+        issue
+        for issue in validation["issues"]
+        if issue["beat_id"] in previously_passed
+    ]
+    return (
+        {"valid": not effective_issues, "issues": effective_issues},
+        ignored_issues,
+    )
+
+
 def format_beat_phase_validation_correction(validation):
-    """Format structured phase issues for whole-phase regeneration."""
+    """Format structured phase issues for targeted beat repair."""
     issues = sorted(
         validation["issues"],
         key=lambda issue: (issue["beat_id"], issue["type"]),
     )
+    beat_ids = sorted({issue["beat_id"] for issue in issues})
     bullets = "\n".join(
         f"- Beat {issue['beat_id']}: {issue['problem']}" for issue in issues
     )
     return (
         "PHASE VALIDATION CORRECTION\n\n"
-        "The previous phase crossed or failed its macro boundary:\n\n"
+        "The previous phase failed chronological state or macro-boundary "
+        "validation:\n\n"
         f"{bullets}\n\n"
-        "Regenerate this entire phase. Preserve the CURRENT PHASE progression, "
-        "reach its\nrequired_end_state in the final beat, and do not enact NEXT "
+        "Repair only the violating beat IDs "
+        + ", ".join(str(beat_id) for beat_id in beat_ids)
+        + ". Every other beat is immutable. Preserve the CURRENT PHASE "
+        "progression, honor every lasting state established by earlier beats, "
+        "reach its required_end_state in the final beat, and do not enact NEXT "
         "PHASE progression."
     )
+
+
+def beat_phase_validation_repair_ranges(validation):
+    """Return one exact singleton repair range per violating phase beat."""
+    beat_ids = sorted({issue["beat_id"] for issue in validation["issues"]})
+    if not beat_ids:
+        raise ValueError("Targeted phase repair requires at least one violation.")
+    return [
+        {"beat_start": beat_id, "beat_end": beat_id}
+        for beat_id in beat_ids
+    ]
+
+
+def build_beat_phase_repair_messages(
+    phase_beats,
+    current_phase,
+    validation,
+    next_phase=None,
+    previous_phase=None,
+    previous_beats=None,
+    correction="",
+):
+    """Build a repair request containing only the validator-cited beat IDs."""
+    beat_start = int(current_phase["beat_start"])
+    beat_end = int(current_phase["beat_end"])
+    expected_count = beat_end - beat_start + 1
+    if len(phase_beats) != expected_count:
+        raise ValueError("Phase repair requires the complete current phase context.")
+
+    repair_ranges = beat_phase_validation_repair_ranges(validation)
+    requested_ids = beat_ids_for_repair_ranges(repair_ranges)
+    if requested_ids[0] < beat_start or requested_ids[-1] > beat_end:
+        raise ValueError("Phase repair violation is outside the current phase.")
+
+    previous_beats = list(previous_beats or [])
+    earlier_text = (
+        "\n".join(
+            f"Beat {number}: {beat}"
+            for number, beat in enumerate(previous_beats, start=1)
+        )
+        if previous_beats
+        else "N/A (this is the first phase)"
+    )
+    phase_text = "\n".join(
+        f"Beat {number}: {beat}"
+        for number, beat in enumerate(phase_beats, start=beat_start)
+    )
+    previous_phase_text = (
+        json.dumps(previous_phase, ensure_ascii=False, indent=2)
+        if previous_phase is not None
+        else "N/A (this is the first phase)"
+    )
+    next_phase_text = (
+        json.dumps(next_phase, ensure_ascii=False, indent=2)
+        if next_phase is not None
+        else "N/A (this is the final phase)"
+    )
+    correction_text = ""
+    if correction:
+        correction_text = f"""
+
+YOUR PREVIOUS REPAIR RESPONSE WAS INVALID
+{correction}
+Return all and only the same requested beat IDs again.
+"""
+
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a conservative story-beat repair editor. Rewrite only "
+                "the beat IDs explicitly cited by the validator. Treat every "
+                "other beat as immutable and return only the requested JSON."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Repair only violating Beat IDs {', '.join(str(beat_id) for beat_id in requested_ids)}
+in macro phase {current_phase['phase_number']} (Beats {beat_start}-{beat_end}).
+
+TARGETED REPAIR CONTRACT
+- Return exactly one replacement for each requested Beat ID and no other beats.
+- Do not rewrite, paraphrase, or return any non-violating beat.
+- Fix every listed validation issue associated with each requested beat.
+- All earlier accepted beats and all non-violating current-phase beats are
+  immutable story-state and continuity anchors.
+- Preserve chronological cause and effect with the immutable beats immediately
+  before and after each replacement.
+- Keep the current phase inside its broad_progression, make its
+  required_end_state true by its final beat, and do not perform progression that
+  belongs after that boundary.
+- Each replacement must contain one to three concise complete sentences and
+  must not end with a colon.
+
+PHASE VALIDATION ISSUES
+{json.dumps(validation['issues'], ensure_ascii=False, indent=2)}
+
+PREVIOUS PHASE
+{previous_phase_text}
+
+ALL EARLIER ACCEPTED BEATS (IMMUTABLE)
+{earlier_text}
+
+CURRENT PHASE
+{json.dumps(current_phase, ensure_ascii=False, indent=2)}
+
+FOLLOWING PHASE
+{next_phase_text}
+
+CURRENT-PHASE BEATS
+{phase_text}
+{correction_text}
+
+Return only a JSON object with a beats array. Each item must contain exactly
+beat_id and text. Include Beat IDs {', '.join(str(beat_id) for beat_id in requested_ids)}
+and no others.
+""".strip(),
+        },
+    ]
 
 
 def format_macro_phase_boundaries(macro_arc):
@@ -4729,6 +5343,11 @@ story to create additional requirements.
 VERIFICATION RULES
 - For each frozen issue, answer only whether its HARD source requirement is still
   clearly unsatisfied in the CURRENT beat plan.
+- For an issue whose type is `{PERSISTENT_STATE_CONFLICT_ISSUE_TYPE}`, instead
+  verify semantically whether the targeted later beat still contradicts the
+  definitive lasting state established earlier or repeats the same completed
+  irreversible transition. This built-in chronological rule does not need to
+  appear in SOURCE STORY.
 - Return its numeric issue ID in unresolved_issue_ids only if it still clearly
   fails. Omit the ID when the requirement is now reasonably satisfied.
 - Never return an issue ID that was not supplied below.
@@ -4833,8 +5452,26 @@ Use blocking_issues only for these major failures:
 - required source events occur in an impossible or contradictory order;
 - the protagonist is killed or resolved inconsistently and later continues
   without support from the source;
+- a later beat contradicts the lasting result of a definitive irreversible
+  event in an earlier beat, or attempts the same irreversible transition on the
+  same item or structural feature again;
 - several consecutive beats substantially repeat the same event with no
   meaningful progression.
+
+PERSISTENT STATE
+- Read the complete plan chronologically and track explicit, definitive state
+  changes semantically. Do not use a keyword checklist.
+- Once a beat permanently changes an item or structural feature, all later beats
+  must begin from the resulting state.
+- A later beat is conflicting when it requires the incompatible earlier state or
+  performs the already-completed irreversible transition again.
+- Do not report a conflict when the plan clearly establishes restoration, a new
+  instance, a distinct entity, or another intervening state that makes the later
+  transition logically possible.
+- Use type `{PERSISTENT_STATE_CONFLICT_ISSUE_TYPE}` for every such blocker.
+- Target only the later conflicting beat or smallest later range that must be
+  rewritten; do not include the earlier state-establishing beat merely to show
+  where the conflict originated.
 
 CHARACTER FIDELITY
 - Check the COMPLETE BEAT PLAN against SOURCE STORY for explicitly required
@@ -4868,7 +5505,10 @@ Every blocking_issues entry must be an object with:
   modification;
 - type: a concise failure category;
 - source_requirement: the concise HARD requirement from SOURCE STORY or explicit
-  beat instructions that is violated. Never cite a macro-only requirement;
+  beat instructions that is violated. For type
+  `{PERSISTENT_STATE_CONFLICT_ISSUE_TYPE}` only, state the built-in chronological
+  requirement that definitive persistent state remains true. Never cite a
+  macro-only requirement;
 - problem: the concrete failure in the cited beats.
 
 REPAIR TARGETING
@@ -4896,10 +5536,10 @@ entire beat plan actually requires rewriting.
 For a missing required ending, cite only the smallest ending range that must be
 changed. Never speculate about a range. Before reporting any blocker, verify all
 three facts: (1) the claimed requirement actually exists in SOURCE STORY or the
-explicit beat instructions, (2) the cited beat numbers contain the claimed
-events or omission context, and (3) any claimed ordering is numerically and
-semantically demonstrated by those exact beats. Do not manufacture hard
-requirements from the macro arc.
+explicit beat instructions, except for the built-in persistent-state rule, (2)
+the cited beat numbers contain the claimed events or omission context, and (3)
+any claimed ordering is numerically and semantically demonstrated by those exact
+beats. Do not manufacture hard requirements from the macro arc.
 
 Everything else belongs only in warnings. In particular, do NOT block for:
 - an event occurring a beat or two earlier or later than the macro arc suggested;
@@ -4940,23 +5580,27 @@ source conflict in blocking_issues without treating macro-only wording as a hard
 requirement.
 
 If the source story's required premise, major events, ordering, and ending are
-clearly satisfied, prefer valid=true. The audit exists to catch major story
-failure, not optimize screenplay quality.
+clearly satisfied and no persistent-state conflict remains, prefer valid=true.
+The audit exists to catch major story failure and chronological state conflict,
+not optimize screenplay quality.
 
 POST-REPAIR STABILITY
 - Previously repaired beats are not inherently suspicious.
-- Report only remaining HARD source-story or explicit-instruction failures.
+- Report only remaining HARD source-story, explicit-instruction, or
+  `{PERSISTENT_STATE_CONFLICT_ISSUE_TYPE}` failures.
 - Do not invent a new criticism merely because another issue was corrected.
 - Do not expand a blocker beyond the beats actually responsible.
 - Do not block for alternative pacing, transitions, dramatic strength, location
   ordering, or macro-phase adherence unless story.txt explicitly requires it.
 - For any blocker touching a previously repaired beat ID listed below,
   source_requirement must quote or closely restate the concrete HARD requirement
-  from the source story or explicit instructions that remains unsatisfied.
+  from the source story or explicit instructions that remains unsatisfied. For
+  `{PERSISTENT_STATE_CONFLICT_ISSUE_TYPE}` only, it must closely restate the
+  built-in persistent-state rule instead.
 - Reuse the same source_requirement wording for the same hard requirement; do
   not paraphrase it to make an old criticism appear new.
-- If the premise, required events/order, and ending are now satisfied, return
-  valid=true.
+- If the premise, required events/order, ending, and persistent state are now
+  consistent, return valid=true.
 
 PREVIOUSLY REPAIRED BEAT IDS
 {repaired_context}
@@ -5064,6 +5708,10 @@ REPAIR CONTRACT
   where possible.
 - Maintain chronological cause-and-effect continuity with the immutable beats
   immediately before and after the range.
+- When repairing a `{PERSISTENT_STATE_CONFLICT_ISSUE_TYPE}` blocker, preserve the
+  definitive lasting result established by the earlier immutable beat and
+  rewrite the later conflict so it starts from that resulting state without
+  repeating the completed irreversible transition.
 - Do not introduce a new premise, mythology, characters, loops, copies,
   resurrection, or other major concepts unless the hard source supports them.
 - Never mention a macro location or character before the beat_start of the phase
@@ -5291,6 +5939,8 @@ def normalize_beat_plan_repair_ranges(
         issue_ids = set(range(beat_start, beat_end + 1))
         if (
             issue_ids & repaired_beat_ids
+            and normalized_issue["type"]
+            != PERSISTENT_STATE_CONFLICT_ISSUE_TYPE
             and not hard_source_requirement_is_grounded(
                 normalized_issue["source_requirement"],
                 story,
@@ -5521,10 +6171,10 @@ def build_beat_generation_messages(
 
     previous_context = "N/A"
     if previous_beats:
-        previous_start = max(1, batch_start - min(5, len(previous_beats)))
+        previous_start = max(1, batch_start - len(previous_beats))
         previous_context = "\n".join(
             f"Beat {number}: {beat}"
-            for number, beat in enumerate(previous_beats[-5:], start=previous_start)
+            for number, beat in enumerate(previous_beats, start=previous_start)
         )
 
     supplemental_sections = []
@@ -5615,6 +6265,12 @@ phase's post-boundary progression.
 - Creative additions must elaborate the supplied story, not replace it.
 - Every beat must logically continue from the previous beat's end state.
 - Never repeat, recap, restage, or merely reword an earlier beat.
+- Treat the semantic result of every explicit irreversible event in all earlier
+  beats as the current state. If an item or structural feature was definitively
+  destroyed, removed, consumed, detached, replaced, or otherwise permanently
+  changed, do not perform that same transition again and do not rely on its
+  incompatible prior state. A clearly established restoration, new instance, or
+  distinct entity is not the same transition.
 - Build clear cause-and-effect progression across the complete list.
 - The final beat should reach the **current phase end state**, but it should **not automatically perform Beat 1 of the next phase**.
 - Beat {total_segments} must conclusively satisfy the source story's required ending; do not end on setup, an unresolved essential action, or a cliffhanger.
@@ -5635,7 +6291,7 @@ PREVIOUS PHASE END STATE
 
 {previous_phase_end_state}
 
-RECENT PREVIOUS BEATS
+ALL EARLIER ACCEPTED BEATS â€” PERSISTENT STATE AUTHORITY
 
 {previous_context}
 
@@ -5718,6 +6374,11 @@ and the final beat must conclusively satisfy the source story's required ending
 without an unresolved essential action or cliffhanger. A tightly connected
 cause -> action -> reaction/result sequence is allowed within one beat, and minor
 actions do not each require a separate beat.
+Preserve chronological persistent state across the complete plan: after an
+earlier beat definitively and permanently changes an item or structural feature,
+later beats must begin from the resulting state and must not perform that same
+irreversible transition again. Determine this semantically rather than by
+matching individual words.
 IMPORTANT: Every beat must clearly convey a single primary story event or progression step.
 
 {subject_text}
@@ -5954,6 +6615,7 @@ def parse_generated_beats(
     total_segments,
     formatter=None,
     expected_start=1,
+    enforce_content_validation=True,
 ):
     if total_segments <= 0:
         raise ValueError("Beat generation requires at least one segment.")
@@ -6037,7 +6699,7 @@ def parse_generated_beats(
                 f"Generated beat {expected_beat_number} contains unsupported "
                 "--lora metadata."
             )
-        if beat.endswith(":"):
+        if enforce_content_validation and beat.endswith(":"):
             raise ValueError(
                 f"Generated beat {expected_beat_number} is incomplete because it "
                 "ends with a colon."
@@ -6050,7 +6712,7 @@ def parse_generated_beats(
         beats.append(beat)
 
     normalized = [beat.casefold() for beat in beats]
-    if len(set(normalized)) != len(normalized):
+    if enforce_content_validation and len(set(normalized)) != len(normalized):
         raise ValueError("Generated beats must not contain duplicates.")
     return beats
 
@@ -6312,10 +6974,12 @@ def generate_beats_from_story(
         llm_request = ask_llm
     if not str(story or "").strip():
         raise ValueError("Cannot generate story beats from an empty story.")
-    # These former attempt-limit arguments remain accepted so existing callers
-    # do not break, but beat creation is intentionally unbounded. Ctrl+Q is the
-    # user-controlled stop condition; a successfully validated plan is the only
-    # normal return condition.
+    # These former configurable attempt-limit arguments remain accepted so
+    # existing callers do not break. Starting with the tenth phase-generation
+    # response, the first structurally usable beat list is accepted even when
+    # content validation still fails. Phase-targeted semantic repair is capped
+    # at ten rounds, while malformed repair responses and other audit loops keep
+    # retrying until they receive structurally usable responses.
     del (
         content_attempts,
         instruction_review_attempts,
@@ -6467,6 +7131,7 @@ def generate_beats_from_story(
                 next_phase=next_phase,
                 previous_phase=previous_phase,
                 previous_beat=previous_beats[-1] if previous_beats else None,
+                previous_beats=previous_beats,
             )
             if last_error:
                 messages[-1]["content"] += (
@@ -6506,6 +7171,99 @@ def generate_beats_from_story(
                     flush=True,
                 )
 
+    def request_phase_repair(
+        phase_beats,
+        macro_arc,
+        current_phase,
+        validation,
+        previous_beats,
+        generation_attempt,
+        repair_round,
+    ):
+        phases = macro_arc["phases"]
+        phase_index = current_phase["phase_number"] - 1
+        previous_phase = phases[phase_index - 1] if phase_index > 0 else None
+        next_phase = (
+            phases[phase_index + 1]
+            if phase_index + 1 < len(phases)
+            else None
+        )
+        repair_ranges = beat_phase_validation_repair_ranges(validation)
+        repair_ids = beat_ids_for_repair_ranges(repair_ranges)
+        response_attempt = 0
+        correction = ""
+        while True:
+            response_attempt += 1
+            print(
+                f"Requesting targeted repair for phase "
+                f"{current_phase['phase_number']} Beat ID"
+                f"{'' if len(repair_ids) == 1 else 's'} "
+                + ", ".join(str(beat_id) for beat_id in repair_ids)
+                + f" (repair round {repair_round}, response attempt "
+                f"{response_attempt}; unlimited until successful or Ctrl+Q).",
+                flush=True,
+            )
+            messages = build_beat_phase_repair_messages(
+                phase_beats,
+                current_phase,
+                validation,
+                next_phase=next_phase,
+                previous_phase=previous_phase,
+                previous_beats=previous_beats,
+                correction=correction,
+            )
+            raw_repair = llm_request(
+                messages,
+                response_format=build_beat_plan_repair_response_format(
+                    repair_ranges,
+                ),
+                history_metadata={
+                    **(history_metadata or {}),
+                    "purpose": "beat_phase_repair",
+                    "attempt": generation_attempt,
+                    "repair_round": repair_round,
+                    "response_attempt": response_attempt,
+                    "total_segments": total_segments,
+                    "batch_start": current_phase["beat_start"],
+                    "batch_end": current_phase["beat_end"],
+                    "phase_number": current_phase["phase_number"],
+                    "repair_beat_ids": repair_ids,
+                },
+                **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
+            )
+            try:
+                replacements = parse_beat_plan_repair(
+                    raw_repair,
+                    repair_ranges,
+                )
+                current_prefix = list(previous_beats) + list(phase_beats)
+                repaired_prefix = splice_beat_plan_repair(
+                    current_prefix,
+                    repair_ranges,
+                    replacements,
+                )
+                repaired_phase = repaired_prefix[
+                    current_phase["beat_start"] - 1:current_phase["beat_end"]
+                ]
+                introduction_issues = validate_generated_beat_macro_introductions(
+                    repaired_phase,
+                    macro_arc,
+                    beat_start=current_phase["beat_start"],
+                )
+                if introduction_issues:
+                    raise ValueError(
+                        "Targeted phase repair violates macro introduction timing: "
+                        + " ".join(introduction_issues)
+                    )
+                return repaired_phase
+            except ValueError as error:
+                correction = str(error)
+                print(
+                    "LM Studio returned an invalid targeted phase repair; "
+                    f"requesting another repair response: {correction}",
+                    flush=True,
+                )
+
     def generate_batches(macro_arc, audit_correction=""):
         generated = []
         phase_batches = build_phase_generation_batches(macro_arc)
@@ -6530,9 +7288,17 @@ def generate_beats_from_story(
             attempt = 0
             while True:
                 attempt += 1
+                attempt_label = (
+                    f"{attempt}/{BEAT_PHASE_GENERATION_ATTEMPTS}"
+                    if attempt <= BEAT_PHASE_GENERATION_ATTEMPTS
+                    else (
+                        f"{attempt}; waiting for the next structurally usable "
+                        "beat list"
+                    )
+                )
                 print(
                     f"Requesting beats for phase {current_phase['phase_number']} "
-                    f"(attempt {attempt}; unlimited until successful or Ctrl+Q).",
+                    f"(attempt {attempt_label}).",
                     flush=True,
                 )
                 messages = build_beat_generation_messages(
@@ -6603,35 +7369,107 @@ def generate_beats_from_story(
                 except ValueError as error:
                     last_error = error
                     correction = str(error)
-                    batch_beats = None
-                    print(
-                        "LLM returned an invalid beat list; requesting a "
-                        f"corrected list: {last_error}"
+                    if attempt >= BEAT_PHASE_GENERATION_ATTEMPTS:
+                        try:
+                            batch_beats = parse_generated_beats(
+                                raw_result,
+                                batch_size,
+                                expected_start=batch_start,
+                                enforce_content_validation=False,
+                            )
+                        except ValueError as fallback_error:
+                            batch_beats = None
+                            print(
+                                f"Phase {current_phase['phase_number']} response "
+                                f"on attempt {attempt} is not structurally usable: "
+                                f"{fallback_error} Continuing until the next usable "
+                                "beat list is returned.",
+                                flush=True,
+                            )
+                            continue
+                        print(
+                            f"Phase {current_phase['phase_number']} still failed "
+                            f"beat-list validation on attempt {attempt}; using the "
+                            f"beats returned on that attempt: {last_error}",
+                            flush=True,
+                        )
+                    else:
+                        batch_beats = None
+                        print(
+                            "LLM returned an invalid beat list; requesting a "
+                            f"corrected list: {last_error}"
+                        )
+                        continue
+                phase_repair_round = 0
+                passed_phase_beat_ids = set()
+                while True:
+                    phase_validation = request_phase_validation(
+                        batch_beats,
+                        macro_arc,
+                        current_phase,
+                        attempt,
+                        generated,
                     )
-                    continue
-                phase_validation = request_phase_validation(
-                    batch_beats,
-                    macro_arc,
-                    current_phase,
-                    attempt,
-                    generated,
-                )
-                if not phase_validation["valid"]:
-                    correction = format_beat_phase_validation_correction(
-                        phase_validation
+                    phase_validation, ignored_issues = (
+                        reconcile_beat_phase_validation(
+                            phase_validation,
+                            batch_start,
+                            batch_end,
+                            passed_phase_beat_ids,
+                        )
                     )
+                    if ignored_issues:
+                        ignored_ids = sorted({
+                            issue["beat_id"] for issue in ignored_issues
+                        })
+                        print(
+                            "Ignoring new validation claims against previously "
+                            "accepted, unchanged Beat ID"
+                            f"{'' if len(ignored_ids) == 1 else 's'} "
+                            + ", ".join(str(beat_id) for beat_id in ignored_ids)
+                            + ".",
+                            flush=True,
+                        )
+                    if phase_validation["valid"]:
+                        break
+                    if phase_repair_round >= BEAT_PHASE_REPAIR_ROUNDS:
+                        remaining_ids = sorted({
+                            issue["beat_id"]
+                            for issue in phase_validation["issues"]
+                        })
+                        print(
+                            f"Phase {current_phase['phase_number']} reached the "
+                            f"{BEAT_PHASE_REPAIR_ROUNDS}-round targeted-repair "
+                            "limit; accepting the structurally valid beats returned "
+                            "by round 10 without requesting another repair. Final "
+                            "validation still disputed Beat ID"
+                            f"{'' if len(remaining_ids) == 1 else 's'} "
+                            + ", ".join(str(beat_id) for beat_id in remaining_ids)
+                            + ".",
+                            flush=True,
+                        )
+                        break
+                    phase_repair_round += 1
                     issue_summary = " ".join(
                         f"Beat {issue['beat_id']}: {issue['problem']}"
                         for issue in phase_validation["issues"]
                     )
-                    batch_beats = None
                     print(
                         f"Phase {current_phase['phase_number']} failed "
-                        f"post-generation validation; regenerating it: "
+                        "post-generation validation; repairing only its "
+                        "violating beats: "
                         + issue_summary,
                         flush=True,
                     )
-                    continue
+                    batch_beats = request_phase_repair(
+                        batch_beats,
+                        macro_arc,
+                        current_phase,
+                        phase_validation,
+                        generated,
+                        attempt,
+                        phase_repair_round,
+                    )
                 break
             generated.extend(batch_beats)
             print(
@@ -7457,6 +8295,9 @@ BEAT CONTRACT
 - Do not create irreversible physical changes unless the ACTIVE beat requires them.
 - When the ACTIVE beat causes a lasting structural, wardrobe, attachment, removal, transformation, or destruction change, visibly depict the causal action.
 - Opening-state facts are already true; preserve their consequences without reenacting how they happened.
+- A definitively absent or destroyed item/component remains so. Do not show or
+  imply that it still exists unless the ACTIVE beat explicitly restores or
+  replaces that same item/component.
 - Return `completed_beat_ids` containing exactly the ACTIVE beat ID.
 """.strip()
 
@@ -7493,7 +8334,10 @@ Subjects established by generated video keep their stable <Subject N> IDs from
 {subject_context}
 
 In detailed_description, identify each registered visible subject on its FIRST
-mention in the shot using the subject's normal name or an unambiguous pronoun.
+mention in the shot using its exact canonical name. Keep using that identity in
+later segments even if the Subject never speaks; do not demote it into generic
+environment or spatial prose. Use pronouns only after the canonical identity is
+clear in the shot.
 Dialogue must always use the speaker ID. Do NOT write `<Picture N>`
 next to a character merely to preserve identity; the Picture source is already
 bound inside subject_definitions. Use a `<Picture N>` in scene prose only when
@@ -7505,8 +8349,10 @@ unique `(SN)` speaker ID unused by every other Subject. Keep that exact name and
 speaker ID for every later line from the same speaker; Python promotes it into
 the Subject registry. Do not add a `<Subject N>` tag to the dialogue attribution.
 Never put speaker IDs on non-speaking people in purely visual prose.
-For a newly appearing silent named character, use one consistent name throughout
-the segment so Python can register it after the segment.
+For a newly appearing silent, visually distinct animate entity that is expected
+to recur, use one consistent canonical name throughout the segment so Python can
+register it after the segment. Do not name anonymous crowds, incidental
+background figures, generic groups, props, vehicles, structures, or effects.
 Python inserts subject_definitions separately; do not output subject_definitions.
 
 SHOT AND CAMERA
@@ -7605,6 +8451,8 @@ CONTINUITY
 - Off-camera subjects retain their committed state.
 - Mention only opening-state details that are visible, interact with the ACTIVE beat, prevent likely reconstruction errors, or describe unusual structural/topological conditions.
 - When the ACTIVE beat changes persistent state, explicitly show the change and resulting state.
+- Express inherited irreversible facts only through their resulting current
+  configuration; never replay or continue the process that produced them.
 - Never emit continuity JSON, dictionaries, field names, or key/value syntax.
 """.strip()
 
@@ -7862,17 +8710,38 @@ You maintain the FINAL-FRAME continuity database for a sequential video.
 Return only the requested JSON object.
 
 CORE RULE
-COMMITTED STATE is authoritative. Copy it forward first, then patch only facts
-that the newest generated segment explicitly changes.
+COMMITTED STATE is authoritative for persistent continuity. Preserve persistent
+facts unless the newest segment clearly changes them. Rebuild current-frame
+facts from the newest segment on every update.
 
-- Unchanged facts must remain exactly unchanged.
-- An unmentioned or off-camera Subject remains in the database unchanged.
+- Unchanged persistent facts must remain exactly unchanged.
+- An unmentioned or off-camera Subject keeps its identity and persistent facts;
+  use N/A or [] for current-frame facts that are not established at the end.
 - NEVER replace a known persistent fact with N/A or [] merely because the newest
   prompt does not mention it.
 - Use the full LATEST GENERATED PROMPT to find persistent changes. Use the
   FINAL-MOMENT EXCERPT mainly for final pose, position, camera, action, and audio.
-- Replace obsolete state only when the newest segment actually changes, removes,
-  releases, cleans, destroys, or ends it.
+- Replace persistent state only when the newest segment actually changes,
+  removes, releases, cleans, destroys, or ends it.
+- Treat irreversible results as authoritative current state. Record a definitively
+  absent or destroyed item/component as a concise categorical fact in the form
+  "concise label: absent" or "concise label: destroyed". Do not retain process
+  narration or intermediate wording such as something continuing to change after
+  the irreversible result is already true.
+- Never reconstruct or reintroduce a definitively absent item/component unless the
+  ACTIVE BEAT explicitly restores or replaces that same item/component.
+- The returned object is a snapshot of the NEWEST FINAL FRAME, not an event log.
+  position, pose_action, physical_condition, camera, ongoing_action,
+  ongoing_audio, spatial_relationships, and environment.persistent_state are current-frame
+  fields. Replace each one every segment; never append or copy forward an older
+  pose, action, sound, camera state, relationship, or environment activity.
+- Set ongoing_action to N/A unless an action is clearly still underway in the
+  newest final frame. A completed action is history, not current state.
+- A clear move into a fundamentally different environment is a scene-state
+  replacement boundary. Rebuild environment.persistent_state, positions, and
+  spatial_relationships for the new place while preserving bodily/anatomical
+  state, wardrobe and garment damage, injuries, attached or held objects,
+  substances still present, and other genuinely lasting physical effects.
 - Do not create anything from FUTURE BEATS.
 
 SUBJECTS
@@ -7880,11 +8749,23 @@ Resolve an entity to an existing Subject by stable name or identity before
 creating a new Subject. Preserve every existing Subject's subject_id, name,
 gender, Picture mapping, speaker_id, and origin_segment.
 
-Create a new Subject only for a distinct identifiable animate entity visibly
-introduced in the newest segment. Any `Character Name (SN)` speaker is a Subject;
-keep that exact name and speaker ID. Silent identifiable people, creatures,
-animals, or robots may also be Subjects. Do not create Subjects for anonymous
-crowds, groups, props, vehicles, structures, substances, or effects.
+Promote a visually distinct, identifiable animate entity when the generated
+segments establish that it recurs or is expected to remain relevant in later
+segments. It does not need to speak. Anything that explicitly speaks is also a
+Subject; keep its exact name and speaker ID. Silent people, creatures, animals,
+autonomous robots, and autonomous drones may qualify. Examples of suitable
+canonical descriptive names are `Large Drone`, `Service Robot`, and
+`Alien Scout`.
+
+Do not leave a qualifying recurring animate entity buried only in environment,
+position, action, or spatial-relationship prose: create its own Subject record
+and express those facts through that stable identity. Before creating it, match
+against every registered subject_id, speaker_id, canonical name, and obvious
+name variant so the same entity never gets a second Subject.
+
+Never create a Subject for an inanimate object, prop, ordinary vehicle,
+structure, substance, visual effect, anonymous crowd, generic group, or
+temporary background figure. A one-shot incidental figure is not recurring.
 
 SUBJECT NAME HINTS are possible canonical names from the story plan. Use a hint
 only when that entity actually appears in the newest generated segment. A hint
@@ -7892,18 +8773,36 @@ never proves that the Subject is present.
 
 For a new Subject use picture_ids [], picture_id null, CURRENT SEGMENT NUMBER as
 origin_segment, a unique positive subject_id, a unique speaker_id, gender male,
-female, or N/A, and temporary entity_kind "animate".
+female, or N/A, and temporary `entity_kind`: `animate`. Assign a speaker_id even
+when the Subject is silent; it becomes the reserved stable ID for later dialogue.
 
 STATE FIELDS
 Each Subject uses: subject_id, name, gender, picture_ids, picture_id, speaker_id,
-origin_segment, position, pose_action, topology, wardrobe, body_state,
+origin_segment, persistent_structural_change, position, pose_action, topology,
+wardrobe, body_state,
 physical_condition, attached_objects, injuries, substances,
 spatial_relationships, persistent_effects, held_props.
 
+- persistent_structural_change is host-maintained continuity metadata. Copy its
+  committed boolean value exactly; do not infer or clear it.
+
 - position: physical location only.
 - pose_action: final visible pose/action.
-- topology/body_state: persistent structural or anatomical state.
+- topology/body_state: persistent structural or anatomical state. Any lasting change
+  to the presence, count, connectivity, or configuration of visible Subject
+  features MUST be represented here, even when injuries or physical_condition
+  also describe the visible result. Do not leave topology/body_state as N/A after
+  the newest segment clearly establishes such a durable configuration change.
+  injuries may describe damage, but they do not substitute for topology/body_state
+  when the Subject's persistent configuration itself has changed.
 - wardrobe: current garments and visible garment damage.
+  Treat upper, lower, footwear, and other as independent slots. Inspect the
+  entire newest segment and decompose every clearly visible outfit component
+  into its proper slot; never put a multi-piece outfit into one slot while
+  leaving another established slot as N/A. A one-piece garment belongs in
+  other. Preserve each unchanged slot independently when another slot changes.
+  If a garment is visibly gone, store an explicit current value such as
+  "absent" in that slot rather than N/A, and do not clear unrelated slots.
 - physical_condition: general visible condition.
 - held_props: objects actively held.
 - attached_objects: external objects attached to the Subject.
@@ -7916,8 +8815,18 @@ spatial_relationships, persistent_effects, held_props.
 
 Do not duplicate one fact across fields. Do not keep both old and new versions
 of the same fact. Completed actions are history, not ongoing_action.
-Unknown values use N/A only when no committed fact exists and the newest segment
-does not establish one. Unknown lists use [] under the same condition.
+For persistent fields, use N/A or [] only when no committed fact exists and the
+newest segment does not establish one. For current-frame fields, use N/A or []
+whenever the newest final frame does not establish a current value. N/A means
+genuinely unknown; it never means absent or destroyed. Before returning, verify
+that every visible component of a described multi-part state has been assigned
+to its own applicable field.
+
+Example semantics: when subjects move into a fundamentally different location,
+the old location's geometry and proximity relationships disappear unless the
+final frame explicitly re-establishes them. Current clothing, garment damage,
+wounds, residue, held items, attachments, and lasting anatomical changes travel
+with the subjects. N/A or [] must not lazily erase such carried physical facts.
 """.strip(),
         },
         {
@@ -7937,8 +8846,9 @@ does not establish one. Unknown lists use [] under the same condition.
                 f"{final_moment_excerpt or 'N/A'}\n\n"
                 "LATEST GENERATED PROMPT:\n"
                 f"{exact_prompts or 'N/A'}\n\n"
-                "Return the complete final-frame state after copying COMMITTED "
-                "STATE forward and applying only explicit changes."
+                "Return the complete final-frame state. Preserve reliable "
+                "persistent facts and replace every current-frame field from "
+                "the newest final frame."
             ),
         },
     ]
@@ -8091,8 +9001,22 @@ def _subject_hint_is_collective(name):
     return normalized in {
         "family", "crowd", "group", "people", "children", "adults",
         "visitors", "tourists", "guests", "workers", "staff", "guards",
-        "soldiers", "aliens", "creatures", "monsters",
+        "soldiers", "aliens", "creatures", "monsters", "robots", "drones",
+        "scouts", "figures", "bystanders", "pedestrians", "passengers",
     }
+
+
+def _subject_name_is_promotable(name):
+    """Reject labels that explicitly describe incidental or non-Subject roles."""
+    normalized = _subject_identity_key(name)
+    if not normalized or _subject_hint_is_collective(name):
+        return False
+    disallowed_words = {
+        "anonymous", "background", "bystander", "crowd", "effect", "generic",
+        "group", "incidental", "object", "passerby", "prop", "temporary",
+        "unidentified", "unknown", "unnamed",
+    }
+    return not (set(normalized.split()) & disallowed_words)
 
 
 def register_named_subject_hints(
@@ -8111,12 +9035,9 @@ def register_named_subject_hints(
     added_names = []
     for raw_name in subject_hints or []:
         name = " ".join(str(raw_name).split()).strip(" ,.;:-")
-        if not name or _subject_hint_is_collective(name):
+        if not _subject_name_is_promotable(name):
             continue
-        if any(
-            existing.casefold() == name.casefold()
-            for existing in state["subjects"]
-        ):
+        if _find_existing_subject_name(state["subjects"], name) is not None:
             continue
         if re.search(
             rf"(?<![\w]){re.escape(name)}(?![\w])",
@@ -8163,12 +9084,9 @@ def register_inline_dialogue_subjects(
         detailed_description
     ):
         proposed_name = speaking_subject["name"]
-        existing_name = next(
-            (
-                name for name in state["subjects"]
-                if name.casefold() == proposed_name.casefold()
-            ),
-            None,
+        existing_name = _find_existing_subject_name(
+            state["subjects"],
+            proposed_name,
         )
         if existing_name is not None:
             continue
@@ -8215,15 +9133,18 @@ def _complete_partial_continuity_candidate(candidate, committed_snapshot):
     candidate = copy.deepcopy(candidate)
     candidate.setdefault("version", CONTINUITY_STATE_VERSION)
     for field in ("camera", "ongoing_action", "ongoing_audio"):
-        candidate.setdefault(field, committed_snapshot.get(field, "N/A"))
+        candidate.setdefault(field, "N/A")
 
     environment = candidate.get("environment")
     if not isinstance(environment, dict):
         environment = {}
         candidate["environment"] = environment
     committed_environment = committed_snapshot.get("environment", {})
-    for field in ("location", "persistent_state"):
-        environment.setdefault(field, committed_environment.get(field, "N/A"))
+    environment.setdefault(
+        "location",
+        committed_environment.get("location", "N/A"),
+    )
+    environment.setdefault("persistent_state", "N/A")
 
     subjects = candidate.get("subjects")
     if subjects is None:
@@ -8280,13 +9201,12 @@ def _complete_partial_continuity_candidate(candidate, committed_snapshot):
         record.setdefault("picture_id", baseline.get("picture_id"))
         record.setdefault("speaker_id", baseline.get("speaker_id"))
         record.setdefault("origin_segment", baseline.get("origin_segment"))
-        for field in (
-            "position",
-            "pose_action",
-            "topology",
-            "body_state",
-            "physical_condition",
-        ):
+        record["persistent_structural_change"] = bool(
+            baseline.get("persistent_structural_change", False)
+        )
+        for field in CURRENT_SUBJECT_SCALAR_FIELDS:
+            record.setdefault(field, "N/A")
+        for field in PERSISTENT_SUBJECT_SCALAR_FIELDS:
             record.setdefault(field, baseline.get(field, "N/A"))
 
         wardrobe = record.get("wardrobe")
@@ -8296,12 +9216,19 @@ def _complete_partial_continuity_candidate(candidate, committed_snapshot):
         baseline_wardrobe = baseline.get("wardrobe", {})
         for field in ("upper", "lower", "footwear", "other"):
             wardrobe.setdefault(field, baseline_wardrobe.get(field, "N/A"))
-        for field in (*PERSISTENT_SUBJECT_LIST_FIELDS, "held_props"):
+        for field in SUBJECT_LIST_FIELDS:
             record.setdefault(field, list(baseline.get(field, [])))
+        for field in CURRENT_SUBJECT_LIST_FIELDS:
+            record.setdefault(field, [])
 
     for name, record in committed_subjects.items():
         if name not in supplied_known_names:
-            subjects[name] = copy.deepcopy(record)
+            inherited = copy.deepcopy(record)
+            for field in CURRENT_SUBJECT_SCALAR_FIELDS:
+                inherited[field] = "N/A"
+            for field in CURRENT_SUBJECT_LIST_FIELDS:
+                inherited[field] = []
+            subjects[name] = inherited
     return candidate
 
 
@@ -8359,7 +9286,7 @@ def _coerce_continuity_candidate_types(candidate):
                         wardrobe[garment],
                         f"wardrobe.{garment}",
                     )
-        for field in (*PERSISTENT_SUBJECT_LIST_FIELDS, "held_props"):
+        for field in SUBJECT_LIST_FIELDS:
             if field not in record:
                 continue
             value = record[field]
@@ -8398,9 +9325,537 @@ def _known_replacement_value(value, field_name=""):
     return cleaned
 
 
-def _explicit_list_clear_is_grounded(field_name, newest_description):
-    """Require field-specific visible evidence before [] erases old state."""
+_COMPLETED_ACTION_RE = re.compile(
+    r"(?i)^(?:the\s+)?(?:action\s+)?(?:has\s+|is\s+)?"
+    r"(?:complete(?:d)?|finish(?:ed)?|ended|stopped|ceased|done)\b"
+)
+
+
+def _current_frame_replacement_value(value, field_name=""):
+    """Normalize a current-frame value while preserving an explicit N/A."""
+    cleaned = _scrub_snapshot_text(
+        _coerce_continuity_string(value, field_name),
+        field_name,
+    )
+    if field_name == "ongoing_action" and _COMPLETED_ACTION_RE.search(cleaned):
+        return "N/A"
+    return cleaned or "N/A"
+
+
+_WARDROBE_COMPONENT_PATTERNS = {
+    "upper": re.compile(
+        r"(?i)\b(?:shirt|blouse|top|sweater|sweatshirt|hoodie|jacket|coat|"
+        r"blazer|vest|waistcoat|tunic|jersey|cardigan|bodice)s?\b"
+    ),
+    "lower": re.compile(
+        r"(?i)\b(?:pants?|trousers?|jeans|shorts|skirt|leggings|slacks|"
+        r"breeches|culottes|bottoms?|lower\s+garments?)\b"
+    ),
+    "footwear": re.compile(
+        r"(?i)\b(?:shoes?|boots?|sneakers?|sandals?|heels?|loafers?|"
+        r"slippers?|footwear)\b"
+    ),
+    "other": re.compile(
+        r"(?i)\b(?:dress|gown|robe|jumpsuit|coveralls|overalls|hat|cap|"
+        r"scarf|tie|belt|gloves?|necklace|bracelet|watch|glasses|"
+        r"accessor(?:y|ies))\b"
+    ),
+}
+
+_WARDROBE_DESCRIPTION_RE = re.compile(
+    r"(?i)\b(?:wears?|wearing|dressed\s+in|clad\s+in|draped\s+in|"
+    r"outfitted\s+in|outfit\s+(?:consists?\s+of|comprises)|"
+    r"two-piece\s+outfit\s+(?:consists?\s+of|with))\s+"
+    r"(?P<items>[^.!?;\r\n]{1,240})"
+)
+
+_WARDROBE_ACTION_BOUNDARY_RE = re.compile(
+    r"(?i)\s+\b(?:while|then|before|after|stands?|sits?|walks?|runs?|"
+    r"moves?|turns?|looks?|holds?|carries?|raises?|lowers?(?!\s+garments?\b)|reaches?|"
+    r"speaks?|says?|enters?|exits?)\b.*$"
+)
+
+
+def _wardrobe_component_field(value):
+    """Return the structured slot named by an explicit garment phrase."""
+    text = str(value or "")
+    matches = [
+        field for field, pattern in _WARDROBE_COMPONENT_PATTERNS.items()
+        if pattern.search(text)
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _split_wardrobe_components(value):
+    """Split a plainly enumerated outfit into independently classifiable parts."""
+    text = str(value or "").strip(" ,;:-")
+    if not text:
+        return []
+    text = _WARDROBE_ACTION_BOUNDARY_RE.sub("", text).strip(" ,;:-")
+    raw_parts = re.split(
+        r"\s*(?:;|,|\s+(?:and|plus)\s+)\s*",
+        text,
+        flags=re.IGNORECASE,
+    )
+    parts = []
+    for raw_part in raw_parts:
+        part = re.sub(r"(?i)^(?:and\s+)?(?:a|an|the)\s+", "", raw_part)
+        part = part.strip(" ,;:-")
+        field = _wardrobe_component_field(part)
+        if part and field:
+            parts.append((field, part))
+    return parts
+
+
+def _join_wardrobe_components(values):
+    values = list(dict.fromkeys(value for value in values if value))
+    return _english_join(values) if values else "N/A"
+
+
+def _decompose_candidate_wardrobe(wardrobe):
+    """Move enumerated garments out of an overloaded wardrobe slot."""
+    if not isinstance(wardrobe, dict):
+        return wardrobe
+    original = {
+        field: _known_replacement_value(wardrobe.get(field), f"wardrobe.{field}")
+        for field in _WARDROBE_COMPONENT_PATTERNS
+    }
+    repaired = dict(wardrobe)
+    for source_field, value in original.items():
+        if value is None:
+            continue
+        components = _split_wardrobe_components(value)
+        component_fields = {field for field, _ in components}
+        if not components or (
+            component_fields == {source_field} and len(components) == 1
+        ):
+            continue
+        if len(component_fields) < 2 and source_field in component_fields:
+            continue
+
+        grouped = {}
+        for field, component in components:
+            grouped.setdefault(field, []).append(component)
+        for field, values in grouped.items():
+            repaired[field] = _join_wardrobe_components(values)
+        if source_field not in grouped:
+            repaired[source_field] = "N/A"
+    return repaired
+
+
+def _explicit_wardrobe_from_description(description, subject_name):
+    """Extract only plainly stated, subject-scoped wardrobe enumerations."""
+    text = str(description or "")
+    name = str(subject_name or "").strip()
+    if not name or not re.search(rf"(?i)(?<!\w){re.escape(name)}(?!\w)", text):
+        return {}
+    context = _subject_description_context(text, name)
+    extracted = {}
+    for match in _WARDROBE_DESCRIPTION_RE.finditer(context):
+        for field, component in _split_wardrobe_components(match.group("items")):
+            extracted.setdefault(field, []).append(component)
+    return {
+        field: _join_wardrobe_components(values)
+        for field, values in extracted.items()
+    }
+
+
+def _wardrobe_absence_fields(description, subject_name):
+    """Find wardrobe slots whose absence is explicitly established."""
+    text = str(description or "")
+    name = str(subject_name or "").strip()
+    if not name or not re.search(rf"(?i)(?<!\w){re.escape(name)}(?!\w)", text):
+        return set()
+    context = _subject_description_context(text, name)
+    absent = set()
+    for field, garment_pattern in _WARDROBE_COMPONENT_PATTERNS.items():
+        garment = garment_pattern.pattern.removeprefix("(?i)")
+        patterns = (
+            rf"(?i)\b(?:no|without)\b[^.!?;]{{0,50}}{garment}",
+            rf"(?i){garment}[^.!?;]{{0,40}}\b(?:absent|gone|missing|"
+            rf"removed|destroyed|discarded|torn\s+away)\b",
+            rf"(?i)\b(?:removes?|discards?|loses?)\b[^.!?;]{{0,50}}{garment}",
+        )
+        if any(re.search(pattern, context) for pattern in patterns):
+            absent.add(field)
+    return absent
+
+
+def _repair_candidate_wardrobe_extraction(
+    candidate,
+    committed_snapshot,
+    newest_description,
+):
+    """Complete explicit wardrobe extraction before snapshot normalization."""
+    subjects = candidate.get("subjects")
+    if not isinstance(subjects, dict):
+        return candidate
+    committed_subjects = committed_snapshot.get("subjects", {})
+    for raw_name, record in subjects.items():
+        if not isinstance(record, dict):
+            continue
+        name = str(record.get("name") or raw_name).strip()
+        wardrobe = _decompose_candidate_wardrobe(record.get("wardrobe"))
+        if not isinstance(wardrobe, dict):
+            continue
+        record["wardrobe"] = wardrobe
+        committed_wardrobe = committed_subjects.get(name, {}).get("wardrobe", {})
+        extracted = _explicit_wardrobe_from_description(
+            newest_description,
+            name,
+        )
+        for field, value in extracted.items():
+            current = _known_replacement_value(
+                wardrobe.get(field),
+                f"wardrobe.{field}",
+            )
+            previous = _known_replacement_value(
+                committed_wardrobe.get(field),
+                f"wardrobe.{field}",
+            )
+            if current is None or (previous is not None and current == previous):
+                wardrobe[field] = value
+
+        for field in _wardrobe_absence_fields(newest_description, name):
+            if field in extracted:
+                continue
+            current = _known_replacement_value(
+                wardrobe.get(field),
+                f"wardrobe.{field}",
+            )
+            previous = _known_replacement_value(
+                committed_wardrobe.get(field),
+                f"wardrobe.{field}",
+            )
+            if current is None or current == previous:
+                wardrobe[field] = "absent"
+    return candidate
+
+
+_CONTINUITY_FACT_STOPWORDS = frozenset({
+    "about", "after", "again", "against", "along", "also", "around",
+    "before", "being", "between", "camera", "continues", "current",
+    "during", "final", "frame", "from", "have", "into", "latest",
+    "near", "newest", "only", "other", "remains", "scene", "shot",
+    "state", "still", "subject", "their", "there", "these", "they",
+    "this", "through", "toward", "under", "visible", "where", "which",
+    "while", "with",
+})
+
+
+def _continuity_fact_tokens(value):
+    """Return lightweight comparison tokens for deterministic state cleanup."""
+    tokens = []
+    for raw_token in re.findall(r"[a-z0-9]+", str(value or "").casefold()):
+        if len(raw_token) < 3 or raw_token in _CONTINUITY_FACT_STOPWORDS:
+            continue
+        token = raw_token
+        if len(token) > 5 and token.endswith("ing"):
+            token = token[:-3]
+        elif len(token) > 4 and token.endswith("ed"):
+            token = token[:-2]
+        elif len(token) > 5 and token.endswith(("ches", "shes", "sses", "xes", "zes")):
+            token = token[:-2]
+        elif len(token) > 3 and token.endswith("s"):
+            token = token[:-1]
+        tokens.append(token)
+    return set(tokens)
+
+
+def _continuity_fact_is_grounded(fact, description, ignored_terms=None):
+    """Whether distinctive words from a proposed fact occur in source prose."""
+    fact_tokens = _continuity_fact_tokens(fact)
+    fact_tokens -= _continuity_fact_tokens(" ".join(ignored_terms or []))
+    if not fact_tokens:
+        return False
+    source_tokens = _continuity_fact_tokens(description)
+    return bool(fact_tokens & source_tokens)
+
+
+def _continuity_fact_is_well_grounded(fact, description, ignored_terms=None):
+    """Use a stricter match when deciding whether copied state is still true."""
+    fact_tokens = _continuity_fact_tokens(fact)
+    fact_tokens -= _continuity_fact_tokens(" ".join(ignored_terms or []))
+    if not fact_tokens:
+        return False
+    matches = fact_tokens & _continuity_fact_tokens(description)
+    required = 1 if len(fact_tokens) <= 2 else 2
+    return len(matches) >= required
+
+
+_TERMINAL_RESTORATION_RE = re.compile(
+    r"(?i)\b(?:restore[sd]?|restoring|replace[sd]?|replacing|"
+    r"reconstruct(?:s|ed|ing)?|rebuild(?:s|ing)?|rebuilt|"
+    r"regenerat(?:e|es|ed|ing)|reappear(?:s|ed|ing)?|return(?:s|ed|ing)?|"
+    r"reattach(?:es|ed|ing)?|reinstall(?:s|ed|ing)?|"
+    r"repair(?:s|ed|ing)?|renew(?:s|ed|ing)?|"
+    r"put(?:s|ting)? on|don(?:s|ned|ning)?|equip(?:s|ped|ping)?|"
+    r"acquir(?:e|es|ed|ing)|receiv(?:e|es|ed|ing)|fit(?:s|ted|ting)?)\b"
+)
+_TERMINAL_GENERIC_TOKENS = frozenset({
+    "absent", "destroy", "gone", "missing", "present", "remove",
+    "state", "current", "remain",
+})
+
+
+def _terminal_state_target_tokens(value, field_name=""):
+    """Return stable target words for matching an explicit restoration beat."""
+    label = _terminal_state_label(value)
+    source = label or str(value or "")
+    tokens = _continuity_fact_tokens(source) - _TERMINAL_GENERIC_TOKENS
+    if field_name.startswith("wardrobe."):
+        garment = field_name.partition(".")[2]
+        tokens.update(_continuity_fact_tokens(f"{garment} garment"))
+    return tokens
+
+
+def _active_beat_explicitly_restores(
+    active_beat_text,
+    committed_value,
+    candidate_value,
+    field_name="",
+):
+    """Require both a restoration action and its target in the ACTIVE beat."""
+    beat = str(active_beat_text or "")
+    if not beat.strip() or _TERMINAL_RESTORATION_RE.search(beat) is None:
+        return False
+    beat_tokens = _continuity_fact_tokens(beat)
+    target_tokens = _terminal_state_target_tokens(committed_value, field_name)
+    target_tokens.update(
+        _terminal_state_target_tokens(candidate_value, field_name)
+    )
+    return bool(beat_tokens & target_tokens)
+
+
+def _authoritative_terminal_replacement(
+    committed_value,
+    candidate_value,
+    field_name,
+    active_beat_text,
+):
+    """Keep terminal state unless the ACTIVE beat explicitly reverses it."""
+    committed_clauses = [
+        clause.strip(" ,;:-")
+        for clause in re.split(r"\s*(?:;|\n+)\s*", str(committed_value or ""))
+        if clause.strip(" ,;:-")
+    ]
+    candidate_clauses = [
+        clause.strip(" ,;:-")
+        for clause in re.split(r"\s*(?:;|\n+)\s*", str(candidate_value or ""))
+        if clause.strip(" ,;:-")
+    ]
+    if len(committed_clauses) > 1 and any(
+        _terminal_state_status(clause) is not None
+        for clause in committed_clauses
+    ):
+        return "; ".join(_preserve_terminal_list_items(
+            candidate_clauses,
+            committed_clauses,
+            field_name,
+            active_beat_text,
+        ))
+    old_status = _terminal_state_status(committed_value)
+    if old_status is None or candidate_value is None:
+        return candidate_value
+    new_status = _terminal_state_status(candidate_value)
+    if new_status == old_status:
+        return candidate_value
+    if old_status == "destroyed" and new_status == "absent":
+        return candidate_value
+    if _active_beat_explicitly_restores(
+        active_beat_text,
+        committed_value,
+        candidate_value,
+        field_name,
+    ):
+        return candidate_value
+    return _known_replacement_value(committed_value, field_name)
+
+
+def _preserve_terminal_list_items(
+    candidate_items,
+    committed_items,
+    field_name,
+    active_beat_text,
+):
+    """Carry authoritative terminal list facts across non-restoration beats."""
+    result = list(candidate_items)
+    for old_item in committed_items or []:
+        if _terminal_state_status(old_item) is None:
+            continue
+        related_candidates = [
+            item for item in result
+            if _terminal_state_target_tokens(old_item, field_name)
+            & _terminal_state_target_tokens(item, field_name)
+        ]
+        if any(
+            _active_beat_explicitly_restores(
+                active_beat_text,
+                old_item,
+                item,
+                field_name,
+            )
+            for item in related_candidates
+        ):
+            result = [item for item in result if item != old_item]
+            continue
+        result = [
+            item for item in result
+            if item not in related_candidates
+            or _terminal_state_status(item) is not None
+        ]
+        if not any(
+            str(item).casefold() == str(old_item).casefold()
+            for item in result
+        ):
+            result.append(old_item)
+    return list(dict.fromkeys(result))
+
+
+def _current_scalar_replacement(value, committed_value, field_name, description):
+    """Collapse obvious copy-forward-plus-append output to its newest clause.
+
+    Singular current-state fields are especially prone to an LLM returning
+    ``old value; new value``.  Only remove the old clause when it is reproduced
+    verbatim and a later clause is grounded in the newest final-frame prose.
+    """
+    replacement = _known_replacement_value(value, field_name)
+    previous = _known_replacement_value(committed_value, field_name)
+    if replacement is None or previous is None or replacement == previous:
+        return replacement
+
+    clauses = [
+        clause.strip(" ,;:-")
+        for clause in re.split(r"\s*(?:;|\n+)\s*", replacement)
+        if clause.strip(" ,;:-")
+    ]
+    if len(clauses) < 2:
+        return replacement
+
+    previous_folded = previous.casefold().strip(" ,;:-")
+    old_clause_indexes = {
+        index
+        for index, clause in enumerate(clauses)
+        if clause.casefold().strip(" ,;:-") == previous_folded
+    }
+    if not old_clause_indexes:
+        return replacement
+
+    final_excerpt = extract_final_timeline_excerpt(description)
+    newer = [
+        clause for index, clause in enumerate(clauses)
+        if index not in old_clause_indexes
+        and _continuity_fact_is_grounded(clause, final_excerpt)
+    ]
+    if not newer:
+        return replacement
+    cleaned = re.sub(
+        r"(?i)^(?:and\s+)?(?:now|then|currently|instead)\s*[:, -]?\s*",
+        "",
+        newer[-1],
+    ).strip(" ,;:-")
+    return cleaned or replacement
+
+
+def _remove_grounded_copied_prefix(value, committed_value, description):
+    """Remove an exact committed prefix at a scene replacement boundary."""
+    replacement = str(value or "").strip()
+    previous = str(committed_value or "").strip()
+    if not replacement or not previous:
+        return replacement
+    match = re.match(
+        rf"(?is)^{re.escape(previous)}\s*(?:;|\n+|\bthen\b|\band\s+now\b)\s*(.+)$",
+        replacement,
+    )
+    if not match:
+        return replacement
+    suffix = match.group(1).strip(" ,;:-")
+    return (
+        suffix
+        if suffix and _continuity_fact_is_grounded(suffix, description)
+        else replacement
+    )
+
+
+_LOCATION_TRANSITION_RE = re.compile(
+    r"(?i)\b(?:"
+    r"enter(?:s|ed|ing)?|exit(?:s|ed|ing)?|leav(?:e|es|ing)|left|arriv(?:e|es|ed|ing)|"
+    r"transport(?:s|ed|ing)?|teleport(?:s|ed|ing)?|swallow(?:s|ed|ing)?|"
+    r"emerg(?:e|es|ed|ing)|board(?:s|ed|ing)?|disembark(?:s|ed|ing)?|"
+    r"cross(?:es|ed|ing)?\s+(?:into|through)|pass(?:es|ed|ing)?\s+through|"
+    r"step(?:s|ped|ping)?\s+(?:inside|into|through)|"
+    r"(?:pull(?:s|ed|ing)?|drag(?:s|ged|ging)?|carr(?:y|ies|ied|ying)|"
+    r"tak(?:e|es|en|ing)|draw(?:s|n|ing)?)\s+[^.!?]{0,80}\binto|"
+    r"(?:scene|view|shot)\s+(?:shifts?|cuts?)\s+to"
+    r")\b"
+)
+
+
+def _location_transition_is_grounded(old_location, new_location, description):
+    """Detect a clear boundary into a fundamentally different environment."""
+    old_value = _known_replacement_value(old_location, "environment.location")
+    new_value = _known_replacement_value(new_location, "environment.location")
+    if old_value is None or new_value is None:
+        return False
+    if old_value.casefold() == new_value.casefold():
+        return False
+
+    final_excerpt = extract_final_timeline_excerpt(description)
+    if not (
+        _continuity_fact_is_well_grounded(new_value, final_excerpt)
+        or _continuity_fact_is_well_grounded(new_value, description)
+    ):
+        return False
+
+    old_tokens = _continuity_fact_tokens(old_value)
+    new_tokens = _continuity_fact_tokens(new_value)
+    location_descriptors = {
+        "aboard", "above", "below", "inside", "interior", "outside",
+        "exterior", "within",
+    }
+    old_tokens -= location_descriptors
+    new_tokens -= location_descriptors
+    old_containment = bool(re.search(r"(?i)\b(?:outside|exterior|open air)\b", old_value))
+    new_containment = bool(re.search(r"(?i)\b(?:inside|interior|within|aboard)\b", new_value))
+    containment_flip = old_containment and new_containment
+    distinct_places = bool(old_tokens and new_tokens and old_tokens.isdisjoint(new_tokens))
+    explicit_boundary = _LOCATION_TRANSITION_RE.search(str(description or "")) is not None
+    newest_marker = re.search(
+        r"(?i)\b(?:now|currently|by the final frame|at the final frame)\b",
+        final_excerpt,
+    ) is not None
+    return containment_flip or (distinct_places and (explicit_boundary or newest_marker))
+
+
+def _subject_description_context(newest_description, subject_name=None):
+    """Limit removal evidence to sentences about the affected Subject."""
     text = str(newest_description or "")
+    name = str(subject_name or "").strip()
+    if not text.strip() or not name:
+        return text
+    sentences = [
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.!?])\s+|\n+", text)
+        if sentence.strip()
+    ]
+    matching = [
+        sentence for sentence in sentences
+        if re.search(rf"(?i)(?<!\w){re.escape(name)}(?!\w)", sentence)
+    ]
+    return " ".join(matching) if matching else text
+
+
+def _explicit_list_clear_is_grounded(
+    field_name,
+    newest_description,
+    subject_name=None,
+):
+    """Require field-specific visible evidence before [] erases old state."""
+    text = (
+        str(newest_description or "")
+        if field_name == "spatial_relationships"
+        else _subject_description_context(newest_description, subject_name)
+    )
     if not text.strip():
         return False
     patterns = {
@@ -8410,7 +9865,8 @@ def _explicit_list_clear_is_grounded(field_name, newest_description):
         ),
         "attached_objects": (
             r"(?i)\b(?:remove[sd]?|removing|detach(?:es|ed|ing)?|unfasten(?:s|ed|ing)?|"
-            r"disconnect(?:s|ed|ing)?|pull(?:s|ed|ing)? off)\b"
+            r"disconnect(?:s|ed|ing)?|pull(?:s|ed|ing)? off|"
+            r"pull(?:s|ed|ing)?\b[^.!?]{0,80}\bout)\b"
         ),
         "injuries": (
             r"(?i)\b(?:heals?|healed|healing|wounds? close[sd]?|fully recovered)\b"
@@ -8420,15 +9876,220 @@ def _explicit_list_clear_is_grounded(field_name, newest_description):
             r"clean(?:s|ed|ing)? (?:off|away)|rinse[sd]? off)\b"
         ),
         "persistent_effects": (
-            r"(?i)\b(?:stops?|ceases?|ends?|fades? away|dissipat(?:es|ed|ing)|"
-            r"goes? dark|stops? glowing)\b"
+            r"(?i)\b(?:stops?|stopp(?:ed|ing)|ceases?|ends?|fades? away|"
+            r"dissipat(?:es|ed|ing)|goes? dark|stops? glowing)\b"
         ),
-        # Spatial relationships change frequently, but an empty candidate is too
-        # ambiguous to erase all of them safely. A non-empty candidate replaces
-        # the current relationship list normally.
-        "spatial_relationships": r"(?!)",
+        "spatial_relationships": (
+            r"(?i)\b(?:leav(?:e|es|ing)|left|depart(?:s|ed|ing)?|exit(?:s|ed|ing)?|"
+            r"move(?:s|d|ing)? away|separat(?:e|es|ed|ing)|alone|"
+            r"no longer (?:near|beside|behind|ahead|with|inside|under|above))\b"
+        ),
     }
     return re.search(patterns.get(field_name, r"(?!x)x"), text) is not None
+
+
+def _explicit_scalar_clear_is_grounded(
+    field_name,
+    committed_value,
+    newest_description,
+    subject_name=None,
+):
+    """Allow N/A to clear a known scalar only when the prose proves it ended."""
+    text = _subject_description_context(newest_description, subject_name)
+    if not text.strip() or _known_replacement_value(committed_value, field_name) is None:
+        return False
+    patterns = {
+        "topology": r"(?i)\b(?:separat(?:e|es|ed|ing)|unfused|restored|returns? to normal)\b",
+        "body_state": r"(?i)\b(?:restored|returns? to normal|regains?|reverts?|no longer)\b",
+        "physical_condition": r"(?i)\b(?:calms?|composes?|recovers?|relaxes?|dries?|cleans? up|no longer)\b",
+        "pose_action": r"(?i)\b(?:stops?|stopp(?:ed|ing)|ceases?|comes? to rest|stands? still|lies? still|motionless)\b",
+    }
+    return re.search(patterns.get(field_name, r"(?!x)x"), text) is not None
+
+
+def _transient_clear_is_grounded(
+    field_name,
+    committed_value,
+    newest_description,
+    subject_names=None,
+):
+    """Recognize an explicit newest-frame replacement when the LLM says N/A."""
+    previous = _known_replacement_value(committed_value, field_name)
+    if previous is None:
+        return False
+    final_excerpt = extract_final_timeline_excerpt(newest_description)
+    if _continuity_fact_is_grounded(
+        previous,
+        final_excerpt,
+        ignored_terms=subject_names,
+    ):
+        return False
+    patterns = {
+        "camera": (
+            r"(?i)\b(?:camera|shot|close-up|closeup|wide|medium|overhead|"
+            r"tracking|static|pan(?:s|ned|ning)?|tilt(?:s|ed|ing)?|zoom(?:s|ed|ing)?)\b"
+        ),
+        "ongoing_action": (
+            r"(?i)\b(?:stops?|stopp(?:ed|ing)|ceases?|ends?|finishes?|comes? to rest|"
+            r"stands?|sits?|kneels?|lies?|rests?|motionless)\b"
+        ),
+        "ongoing_audio": (
+            r"(?i)\b(?:falls? silent|silence|quiet|stops?|stopp(?:ed|ing)|ceases?|ends?|"
+            r"hum(?:s|ming)?|buzz(?:es|ing)?|music|voice|sound|noise|echo(?:es|ing)?)\b"
+        ),
+    }
+    return re.search(patterns.get(field_name, r"(?!x)x"), final_excerpt) is not None
+
+
+def _environment_clear_is_grounded(committed_value, newest_description):
+    """Allow an unknown candidate to remove explicitly ended scene activity."""
+    previous = _known_replacement_value(
+        committed_value,
+        "environment.persistent_state",
+    )
+    if previous is None:
+        return False
+    text = str(newest_description or "")
+    if not _continuity_fact_is_grounded(previous, text):
+        return False
+    return re.search(
+        r"(?i)\b(?:stops?|stopp(?:ed|ing)|ceases?|ends?|shuts? down|powers? down|turns? off|"
+        r"goes? dark|falls? still|settles?|dissipat(?:es|ed|ing)|"
+        r"fades? away|is no longer)\b",
+        text,
+    ) is not None
+
+
+def _current_list_replacement(
+    cleaned,
+    committed_items,
+    field_name,
+    newest_description,
+    subject_name,
+    all_subject_names,
+    location_transition=False,
+):
+    """Drop obvious copied-forward obsolete entries from current list fields."""
+    if not cleaned:
+        return cleaned
+    committed_by_folded = {
+        str(item).casefold(): str(item)
+        for item in committed_items or []
+    }
+    has_new_fact = any(item.casefold() not in committed_by_folded for item in cleaned)
+    if not has_new_fact and not location_transition:
+        return cleaned
+
+    final_excerpt = extract_final_timeline_excerpt(newest_description)
+    if field_name == "spatial_relationships":
+        return [
+            item for item in cleaned
+            if item.casefold() not in committed_by_folded
+            or _continuity_fact_is_well_grounded(
+                item,
+                final_excerpt,
+                ignored_terms=all_subject_names,
+            )
+        ]
+
+    if not (
+        has_new_fact
+        and _explicit_list_clear_is_grounded(
+            field_name,
+            newest_description,
+            subject_name=subject_name,
+        )
+    ):
+        return cleaned
+
+    ignored_tokens = _continuity_fact_tokens(" ".join(all_subject_names))
+    new_items = [
+        item for item in cleaned
+        if item.casefold() not in committed_by_folded
+    ]
+
+    def copied_item_was_replaced(item):
+        item_tokens = _continuity_fact_tokens(item) - ignored_tokens
+        return any(
+            item_tokens & (_continuity_fact_tokens(new_item) - ignored_tokens)
+            for new_item in new_items
+        )
+
+    return [
+        item for item in cleaned
+        if item.casefold() not in committed_by_folded
+        or not copied_item_was_replaced(item)
+    ]
+
+
+_MAJOR_CONFIGURATION_TRANSITION_RE = re.compile(
+    r"(?i)\b(?:becomes?\s+(?:absent|missing)|no\s+longer\s+present|"
+    r"detach(?:es|ed|ing)?|disconnect(?:s|ed|ing)?|separat(?:es|ed|ing)|"
+    r"break(?:s|ing)?\s+away|come(?:s|ing)?\s+off|fall(?:s|ing)?\s+away|"
+    r"rip(?:s|ped|ping)?\s+free|tear(?:s|ing)?\s+free|"
+    r"fully\s+dissolv(?:e|es|ed|ing)|fully\s+disintegrat(?:e|es|ed|ing)|"
+    r"collaps(?:e|es|ed|ing)|reconfigur(?:e|es|ed|ing)|"
+    r"reduc(?:e|es|ed|ing)\s+to|replac(?:e|es|ed|ing)\s+by)\b"
+)
+
+
+def _description_has_major_configuration_change(subject_name, description):
+    """Return whether newest prose clearly establishes a durable configuration change."""
+    source = " ".join(str(description or "").split())
+    if not source or _MAJOR_CONFIGURATION_TRANSITION_RE.search(source) is None:
+        return False
+
+    source_folded = source.casefold()
+    if not any(
+        _contains_structural_phrase(source_folded, phrase)
+        for phrase in _STRUCTURAL_REGION_PHRASES
+    ):
+        return False
+
+    name = str(subject_name or "").strip()
+    if not name:
+        return True
+    name_match = re.search(re.escape(name), source, re.I)
+    if name_match is None:
+        return False
+
+    # Keep the structural cue reasonably close to the named Subject so a change
+    # affecting another entity cannot accidentally disable this Subject's
+    # pristine reference.
+    for transition in _MAJOR_CONFIGURATION_TRANSITION_RE.finditer(source):
+        if abs(transition.start() - name_match.start()) <= 420:
+            return True
+    return False
+
+
+def _new_terminal_persistent_fact(record, committed_record):
+    """Detect a newly established terminal fact outside topology/body_state."""
+    if not isinstance(record, dict):
+        return False
+    committed_record = committed_record if isinstance(committed_record, dict) else {}
+
+    physical = _known_replacement_value(record.get("physical_condition"), "physical_condition")
+    committed_physical = _known_replacement_value(
+        committed_record.get("physical_condition", "N/A"),
+        "physical_condition",
+    )
+    if physical and physical != committed_physical and _terminal_state_status(physical):
+        return True
+
+    committed_injuries = {
+        str(item).strip().casefold()
+        for item in committed_record.get("injuries", [])
+        if str(item).strip()
+    }
+    for raw_item in record.get("injuries", []):
+        item = _continuity_item_text(raw_item, "injuries")
+        if (
+            item
+            and item.casefold() not in committed_injuries
+            and _terminal_state_status(item)
+        ):
+            return True
+    return False
 
 
 def normalize_structured_continuity_state(
@@ -8452,7 +10113,7 @@ def normalize_structured_continuity_state(
         "physical_condition",
     )
     wardrobe_fields = ("upper", "lower", "footwear", "other")
-    subject_list_fields = (*PERSISTENT_SUBJECT_LIST_FIELDS, "held_props")
+    subject_list_fields = SUBJECT_LIST_FIELDS
 
     committed_snapshot = continuity_state_for_registry(
         subject_definitions,
@@ -8462,6 +10123,11 @@ def normalize_structured_continuity_state(
     candidate = _complete_partial_continuity_candidate(
         candidate,
         committed_snapshot,
+    )
+    candidate = _repair_candidate_wardrobe_extraction(
+        candidate,
+        committed_snapshot,
+        newest_description,
     )
 
     candidate_subjects = candidate.get("subjects")
@@ -8535,6 +10201,11 @@ def normalize_structured_continuity_state(
             name.casefold(): name
             for name in committed_snapshot.get("subjects", {})
         }
+        known_by_identity_key = {
+            _subject_identity_key(name): name
+            for name in committed_snapshot.get("subjects", {})
+            if _subject_identity_key(name)
+        }
         known_by_id = {
             str(record.get("subject_id")): name
             for name, record in committed_snapshot.get("subjects", {}).items()
@@ -8544,16 +10215,22 @@ def normalize_structured_continuity_state(
         for raw_name, record in subjects.items():
             raw_text = str(raw_name).strip()
             resolved_name = known_by_folded_name.get(raw_text.casefold())
+            if resolved_name is None:
+                resolved_name = known_by_identity_key.get(
+                    _subject_identity_key(raw_text)
+                )
             if resolved_name is None and raw_text.isdigit():
                 resolved_name = known_by_id.get(raw_text)
             if resolved_name is None:
                 candidate_name = str(record.get("name", "")).strip()
                 resolved_name = known_by_folded_name.get(candidate_name.casefold())
+                if resolved_name is None:
+                    resolved_name = known_by_identity_key.get(
+                        _subject_identity_key(candidate_name)
+                    )
             if resolved_name is None:
                 resolved_name = known_by_id.get(str(record.get("subject_id")))
             if resolved_name is not None:
-                if resolved_name in supplied_known_names:
-                    return f"duplicate record for known Subject {resolved_name}"
                 supplied_known_names.add(resolved_name)
         missing_subjects = sorted(
             set(committed_snapshot.get("subjects", {})) - supplied_known_names
@@ -8593,46 +10270,64 @@ def normalize_structured_continuity_state(
         if record.get("subject_id") is not None
     }
 
-    # Final-frame transient values may legitimately end. Camera is retained on
-    # an unknown response because losing framing information is never useful.
-    camera = _known_replacement_value(candidate.get("camera"), "camera")
-    if camera is not None:
-        state["camera"] = camera
-    for field in ("ongoing_action", "ongoing_audio"):
-        value = _known_replacement_value(candidate.get(field), field)
-        state[field] = value if value is not None else "N/A"
-    for field in ("location", "persistent_state"):
-        value = _known_replacement_value(
-            candidate["environment"].get(field),
-            f"environment.{field}",
+    committed_environment = committed_snapshot.get("environment", {})
+    candidate_location = _current_scalar_replacement(
+        candidate["environment"].get("location"),
+        committed_environment.get("location", "N/A"),
+        "environment.location",
+        newest_description,
+    )
+    if candidate_location is not None:
+        state["environment"]["location"] = candidate_location
+
+    location_transition = _location_transition_is_grounded(
+        committed_environment.get("location", "N/A"),
+        candidate_location,
+        newest_description,
+    )
+
+    # These fields describe only the newest final frame. Unknown or absent
+    # values intentionally replace the prior segment instead of inheriting it.
+    state["environment"]["persistent_state"] = (
+        _current_frame_replacement_value(
+            candidate["environment"].get("persistent_state"),
+            "environment.persistent_state",
         )
-        if value is not None:
-            state["environment"][field] = value
+    )
+    for field in ("camera", "ongoing_action", "ongoing_audio"):
+        state[field] = _current_frame_replacement_value(
+            candidate.get(field),
+            field,
+        )
 
     def resolve_subject_name(raw_name, record):
-        if raw_name in state["subjects"]:
-            return raw_name
+        proposed_name = str(record.get("name", raw_name)).strip()
+        resolved = _find_existing_subject_name(
+            state["subjects"],
+            proposed_name or raw_name,
+        )
+        if resolved is not None:
+            return resolved
         raw_text = str(raw_name)
         if raw_text.isdigit():
             mapped = id_to_name.get(raw_text)
             if mapped:
                 return mapped
-        proposed_name = str(record.get("name", raw_name)).strip()
         if not proposed_name or proposed_name.isdigit():
             return None
-        return next(
-            (
-                current_name for current_name in state["subjects"]
-                if current_name.casefold() == proposed_name.casefold()
-            ),
-            None,
-        )
+        return None
 
     for raw_name, record in candidate["subjects"].items():
         name = resolve_subject_name(raw_name, record)
         if name is None:
             proposed_name = str(record.get("name", raw_name)).strip()
             if not proposed_name or proposed_name.isdigit():
+                continue
+            if not _subject_name_is_promotable(proposed_name):
+                print(
+                    "WARNING: Ignoring anonymous, collective, or temporary "
+                    f"video-only subject {proposed_name!r}."
+                )
                 continue
             if not _new_subject_is_animate(record):
                 print(
@@ -8668,9 +10363,12 @@ def normalize_structured_continuity_state(
                 record.get("speaker_id"),
             )
             try:
-                created_in_segment = int(record.get("origin_segment", origin_segment))
+                created_in_segment = int(origin_segment)
             except (TypeError, ValueError):
-                created_in_segment = origin_segment
+                try:
+                    created_in_segment = int(record.get("origin_segment"))
+                except (TypeError, ValueError):
+                    created_in_segment = None
             name = proposed_name
             state["subjects"][name] = new_subject_continuity_record({
                 "subject_id": proposed_id,
@@ -8694,15 +10392,41 @@ def normalize_structured_continuity_state(
         if committed_record:
             for identity_field in (
                 "subject_id", "name", "gender", "picture_ids", "picture_id",
-                "speaker_id", "origin_segment",
+                "speaker_id", "origin_segment", "persistent_structural_change",
             ):
                 if identity_field in committed_record:
                     target[identity_field] = copy.deepcopy(committed_record[identity_field])
 
-        for field in subject_scalar_fields:
+        for field in CURRENT_SUBJECT_SCALAR_FIELDS:
+            target[field] = _current_frame_replacement_value(
+                record.get(field),
+                field,
+            )
+
+        for field in PERSISTENT_SUBJECT_SCALAR_FIELDS:
             value = _known_replacement_value(record.get(field), field)
             if value is None:
+                if _explicit_scalar_clear_is_grounded(
+                    field,
+                    committed_record.get(field, "N/A"),
+                    newest_description,
+                    subject_name=name,
+                ):
+                    target[field] = "N/A"
                 continue
+            value = _current_scalar_replacement(
+                value,
+                committed_record.get(field, "N/A"),
+                field,
+                newest_description,
+            )
+            if field in {"topology", "body_state"}:
+                value = _authoritative_terminal_replacement(
+                    committed_record.get(field, "N/A"),
+                    value,
+                    field,
+                    active_beat_text,
+                )
             if (
                 committed_record
                 and CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES
@@ -8721,23 +10445,61 @@ def normalize_structured_continuity_state(
                     f"change for {name} ({field}): {value!r}"
                 )
                 continue
+            previous_value = _known_replacement_value(
+                committed_record.get(field, "N/A"),
+                field,
+            )
             target[field] = value
+            if (
+                field in {"topology", "body_state"}
+                and value != previous_value
+            ):
+                target["persistent_structural_change"] = True
 
         wardrobe = record.get("wardrobe", {})
         for garment in wardrobe_fields:
+            wardrobe_field = f"wardrobe.{garment}"
             value = _known_replacement_value(
                 wardrobe.get(garment),
-                f"wardrobe.{garment}",
+                wardrobe_field,
             )
             if value is not None:
+                value = _authoritative_terminal_replacement(
+                    committed_record.get("wardrobe", {}).get(garment, "N/A"),
+                    value,
+                    wardrobe_field,
+                    active_beat_text,
+                )
                 target["wardrobe"][garment] = value
 
-        for field in subject_list_fields:
+        for field in CURRENT_SUBJECT_LIST_FIELDS:
+            target[field] = list(dict.fromkeys(
+                item
+                for raw_item in record.get(field, [])
+                if (item := _continuity_item_text(raw_item, field))
+            ))
+
+        for field in (*PERSISTENT_SUBJECT_LIST_FIELDS, "held_props"):
             cleaned = list(dict.fromkeys(
                 item
                 for raw_item in record.get(field, [])
                 if (item := _continuity_item_text(raw_item, field))
             ))
+            cleaned = _current_list_replacement(
+                cleaned,
+                committed_record.get(field, []),
+                field,
+                newest_description,
+                name,
+                state["subjects"].keys(),
+                location_transition=location_transition,
+            )
+            cleaned = _preserve_terminal_list_items(
+                cleaned,
+                committed_record.get(field, []),
+                field,
+                active_beat_text,
+            )
             if cleaned:
                 # A non-empty candidate is treated as the model's complete
                 # current list, preventing indefinite historical accumulation.
@@ -8745,10 +10507,32 @@ def normalize_structured_continuity_state(
             elif target.get(field) and _explicit_list_clear_is_grounded(
                 field,
                 newest_description,
+                subject_name=name,
             ):
                 target[field] = []
             # Otherwise [] means "no reliable update" and the committed list
-            # survives. This prevents silent loss of injuries/props/relations.
+            # survives. This prevents silent loss of lasting physical state.
+
+        # topology/body_state remain the preferred canonical location for durable
+        # configuration. This conservative fallback covers imperfect continuity
+        # extraction when the same lasting result was placed only in another
+        # persistent field or was unambiguously established by the newest prompt.
+        if (
+            not target.get("persistent_structural_change", False)
+            and (
+                _new_terminal_persistent_fact(record, committed_record)
+                or _description_has_major_configuration_change(
+                    name,
+                    newest_description,
+                )
+            )
+        ):
+            target["persistent_structural_change"] = True
+            print(
+                "[Continuity] persistent structural change detected for "
+                f"{name}; pristine Picture conditioning will be disabled on "
+                "later continuation segments."
+            )
 
     state["version"] = CONTINUITY_STATE_VERSION
     state = scrub_continuity_state(state)
@@ -8758,6 +10542,12 @@ def normalize_structured_continuity_state(
         return rendered if len(rendered) <= 120 else rendered[:117] + "..."
 
     print("[Continuity] copy-forward patch accepted")
+    if location_transition:
+        print(
+            "[Continuity] location transition cleanup: "
+            f"{brief(committed_environment.get('location', 'N/A'))} -> "
+            f"{brief(state['environment']['location'])}"
+        )
     for field in ("camera", "ongoing_action", "ongoing_audio"):
         old_value = committed_snapshot.get(field, "N/A")
         if old_value != state[field]:
@@ -8939,8 +10729,8 @@ def build_segment_request(
     else:
         continuation = (
             "MiniMax does NOT receive previous latent context. It receives the exact "
-            "final rendered frame of the preceding segment as first_frame plus the "
-            "clean registered subject reference images. Treat that first frame as "
+            "final rendered frame of the preceding segment as first_frame plus any "
+            "compatible registered subject reference images. Treat that first frame as "
             "authoritative for opening composition, pose, placement, lighting, color, "
             "and visible appearance. Use AUTHORITATIVE OPENING STATE primarily for "
             "persistent facts that a still image may not communicate reliably, such "
@@ -9674,6 +11464,332 @@ def deduplicate_adjacent_picture_tags(value):
     )
 
 
+_H3_COLLECTION_PLACEHOLDER = (
+    r"(?:(?:[\"']\s*)?(?:N\s*/?\s*A|null|none|unknown|unspecified)"
+    r"(?:\s*[\"'])?|[\"']\s*[\"'])"
+)
+_H3_EMPTY_COLLECTION_RE = re.compile(
+    rf"(?:\[\s*(?:{_H3_COLLECTION_PLACEHOLDER}\s*"
+    rf"(?:,\s*{_H3_COLLECTION_PLACEHOLDER}\s*)*)?\]|\{{\s*\}})",
+    flags=re.IGNORECASE,
+)
+_H3_PLACEHOLDER_VALUE_RE = re.compile(
+    r"(?ix)^\s*(?:"
+    r"N\s*/?\s*A|none|null|nil|unknown|unspecified|undetermined|"
+    r"not\s+(?:applicable|available|provided|specified|known)|"
+    r"no\s+(?:data|value|information)|TBD|TODO|empty|"
+    r"\[\s*\]|\{\s*\}|[\"']\s*[\"']|[-\u2013\u2014]+"
+    r")(?:\s*\([^\r\n]*\))?\s*[.,;:-]*\s*$"
+)
+_H3_INLINE_PLACEHOLDER_FIELD_RE = re.compile(
+    r"(?ix)"
+    r"(?P<lead>(?:^|[,;.])\s*)"
+    r"(?P<label>[\"']?[a-z][a-z0-9_ ./-]{0,40}[\"']?\s*[:=]\s*)"
+    r"(?:N\s*/?\s*A|none|null|nil|unknown|unspecified|undetermined|"
+    r"not\s+(?:applicable|available|provided|specified|known)|"
+    r"no\s+(?:data|value|information)|TBD|TODO|empty|"
+    r"\[\s*\]|\{\s*\}|[\"']\s*[\"'])"
+    r"(?:\s*\([^,;\r\n]*\))?\s*"
+    r"(?P<trail>[,;.]*\s*)"
+)
+
+
+def _is_h3_placeholder_value(value):
+    return _H3_PLACEHOLDER_VALUE_RE.fullmatch(str(value or "")) is not None
+
+
+def _clean_h3_list_literal(match):
+    """Remove placeholder members and collapse a now-empty flat list."""
+    items = []
+    for raw_item in match.group(1).split(","):
+        item = raw_item.strip()
+        unquoted = item
+        if (
+            len(item) >= 2
+            and item[0] in {"\"", "'"}
+            and item[-1] == item[0]
+        ):
+            unquoted = item[1:-1].strip()
+        if not _is_h3_placeholder_value(unquoted):
+            items.append(item)
+    return "[" + ", ".join(items) + "]" if items else ""
+
+
+def sanitize_h3_prompt_component(value):
+    """Remove storage placeholders from one H3-only prompt component.
+
+    This function never mutates continuity or generation state.  It operates on
+    the strings assembled for H3 so checkpoint serialization retains its full
+    schema and sentinel values.
+    """
+    if not isinstance(value, str):
+        return ""
+    text = value.replace("\r\n", "\n").replace("\r", "\n")
+    cleaned_lines = []
+    for raw_line in text.split("\n"):
+        line = raw_line.rstrip()
+        stripped = line.strip()
+        if not stripped:
+            cleaned_lines.append("")
+            continue
+        if _is_h3_placeholder_value(re.sub(r"^\s*[-*]\s*", "", stripped)):
+            continue
+
+        label_match = re.match(
+            r"^(?P<indent>\s*(?:[-*]\s*)?)"
+            r"(?P<label>[\"']?[^:]{1,80}[\"']?\s*:)"
+            r"(?P<value>.*)$",
+            line,
+        )
+        simple_label = (
+            label_match
+            and ". " not in label_match.group("label")
+            and not label_match.group("label").lstrip().startswith("[")
+        )
+        if simple_label and _is_h3_placeholder_value(label_match.group("value")):
+            continue
+
+        before_inline_cleanup = line
+        line = re.sub(r"\[([^\[\]]*)\]", _clean_h3_list_literal, line)
+        line = _H3_INLINE_PLACEHOLDER_FIELD_RE.sub(
+            lambda match: (
+                ". "
+                if "." in (match.group("lead") + match.group("trail"))
+                else (
+                    "; "
+                    if ";" in (match.group("lead") + match.group("trail"))
+                    else (
+                        ", "
+                        if "," in (match.group("lead") + match.group("trail"))
+                        else ""
+                    )
+                )
+            ),
+            line,
+        )
+        line = re.sub(r"(?i)(?<!\w)N\s*/?\s*A(?!\w)", "", line)
+        line = _H3_EMPTY_COLLECTION_RE.sub("", line)
+        line = re.sub(
+            r"\[\s*(?:(?:[\"']\s*[\"'])?\s*,?\s*)*\]",
+            "",
+            line,
+        )
+        if line != before_inline_cleanup:
+            line = re.sub(
+                r"(?ix)(?:^|(?<=[,;.]))\s*"
+                r"[a-z][a-z0-9_ /.-]{0,40}:\s*(?=$|[,;.])",
+                "",
+                line,
+            )
+        line = re.sub(r"\.{2,}", ".", line)
+        line = re.sub(r"\s+([,;:.])", r"\1", line)
+        line = re.sub(r"([,;])\s*([,;])", r"\2", line)
+        line = re.sub(r"\(\s*\)", "", line)
+        line = re.sub(r"[ \t]{2,}", " ", line).strip()
+        line = line.strip(" ,;")
+        if not line or _is_h3_placeholder_value(line):
+            continue
+        cleaned_lines.append(line)
+
+    # Remove empty colon-only headings, such as a summary block whose only
+    # content was N/A, while retaining headings that still introduce real text.
+    keep = [True] * len(cleaned_lines)
+    for index, line in enumerate(cleaned_lines):
+        stripped = line.strip()
+        if not re.fullmatch(r"[^.!?\r\n]{1,80}:", stripped):
+            continue
+        next_text = next(
+            (
+                candidate.strip()
+                for candidate in cleaned_lines[index + 1:]
+                if candidate.strip()
+            ),
+            "",
+        )
+        if not next_text or re.fullmatch(r"[^.!?\r\n]{1,80}:", next_text):
+            keep[index] = False
+    cleaned_lines = [
+        line for index, line in enumerate(cleaned_lines) if keep[index]
+    ]
+    cleaned = "\n".join(cleaned_lines)
+    cleaned = re.sub(r"\n[ \t]+\n", "\n\n", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
+def _append_h3_prompt_section(sections, label, value):
+    cleaned = sanitize_h3_prompt_component(value)
+    if cleaned:
+        sections.append(f"{label}: {cleaned}")
+
+
+def _replace_excluded_picture_tags_for_h3(
+    value,
+    conditioning_mode,
+    excluded_picture_ids=None,
+):
+    """Redirect incompatible continuation Picture tags to video continuity."""
+    text = str(value or "")
+    excluded = {
+        int(item)
+        for item in (excluded_picture_ids or ())
+        if isinstance(item, int) or str(item).isdigit()
+    }
+    if conditioning_mode not in {"clean_refresh", "latent_continuation"} or not excluded or not text:
+        return text
+
+    pattern = re.compile(
+        r"(?i)<Picture\s+(%s)>" % "|".join(
+            str(number) for number in sorted(excluded)
+        )
+    )
+    return pattern.sub("<Video 1>", text)
+
+
+def _h3_subject_definitions_for_conditioning(
+    subject_definitions,
+    conditioning_mode,
+    excluded_picture_ids=None,
+):
+    """Remove incompatible Picture conditioning from continuation subject text."""
+    text = str(subject_definitions or "")
+    excluded = {
+        int(value)
+        for value in (excluded_picture_ids or ())
+        if isinstance(value, int) or str(value).isdigit()
+    }
+    if conditioning_mode not in {"clean_refresh", "latent_continuation"} or not excluded or not text.strip():
+        return text
+
+    try:
+        registry = parse_subject_registry(text)
+    except ValueError:
+        registry = {}
+
+    rendered = []
+    replaced_subject_ids = set()
+    for line in text.splitlines():
+        subject_match = re.match(
+            r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+(?:is\s+)?"
+            r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)",
+            line,
+        )
+        legacy_match = re.match(
+            r"(?i)^\s*(?:<\s*)?Picture\s+(?P<picture>\d+)\s*(?:>\s*)?"
+            r"(?:\(from\s+Shot\s+\d+\)\s+)?is\s+"
+            r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)",
+            line,
+        )
+
+        subject_id = None
+        name = None
+        if subject_match is not None:
+            subject_id = int(subject_match.group("subject"))
+            name = subject_match.group("name").strip()
+        elif legacy_match is not None:
+            subject_id = int(legacy_match.group("picture"))
+            name = legacy_match.group("name").strip()
+
+        if subject_id is None:
+            rendered.append(line)
+            continue
+
+        record = registry.get(subject_id, {})
+        picture_ids = {
+            int(value)
+            for value in record.get("picture_ids", [])
+            if isinstance(value, int) or str(value).isdigit()
+        }
+        if not picture_ids and legacy_match is not None:
+            picture_ids = {subject_id}
+
+        if picture_ids & excluded:
+            if subject_id not in replaced_subject_ids:
+                rendered.append(
+                    f"<Subject {subject_id}> is {name}, continued from <Video 1>."
+                )
+                replaced_subject_ids.add(subject_id)
+            continue
+        rendered.append(line)
+
+    return "\n".join(rendered)
+
+
+def format_h3_current_appearance_continuity(
+    state,
+    subject_definitions="",
+):
+    """Render compact current appearance facts for latent continuation.
+
+    The preceding AV latent remains the primary continuity source. This block
+    only reinforces visible appearance facts that are easy for a video model to
+    drift while avoiding scene history, camera state, actions, or spatial prose.
+    """
+    if not isinstance(state, dict):
+        return ""
+
+    normalized = continuity_state_for_registry(
+        subject_definitions,
+        copy.deepcopy(state),
+    )
+    rendered_subjects = []
+
+    for subject_id, name, record in _ordered_continuity_subjects(normalized):
+        facts = []
+
+        wardrobe = record.get("wardrobe")
+        if isinstance(wardrobe, dict):
+            for field in ("upper", "lower", "footwear", "other"):
+                value = _known_continuity_value(wardrobe.get(field))
+                if value:
+                    facts.append(
+                        f"{_WARDROBE_CONTINUITY_LABELS[field]}: {value}"
+                    )
+
+        for field, label in (
+            ("topology", "structural configuration"),
+            ("body_state", "persistent body state"),
+        ):
+            value = _known_continuity_value(record.get(field))
+            if value:
+                facts.append(f"{label}: {value}")
+
+        for field, label in (
+            ("attached_objects", "attached item"),
+            ("held_props", "held item"),
+        ):
+            values = [
+                cleaned
+                for item in record.get(field, [])
+                if (cleaned := _continuity_item_text(item, field))
+            ]
+            facts.extend(f"{label}: {value}" for value in values)
+
+        facts = list(dict.fromkeys(facts))
+        if not facts:
+            continue
+
+        lines = [f"<Subject {subject_id}> {name}:"]
+        lines.extend(f"- {fact}" for fact in facts)
+        rendered_subjects.append("\n".join(lines))
+
+    if not rendered_subjects:
+        return ""
+    return "CURRENT APPEARANCE CONTINUITY:\n" + "\n".join(rendered_subjects)
+
+
+def format_h3_structural_continuity_guard():
+    """Return a compact generic guard against unintended persistent reconfiguration."""
+    return (
+        "STRUCTURAL CONTINUITY:\n"
+        "Preserve each visible Subject's current configuration at frame 0. "
+        "Do not add, remove, duplicate, restore, or reconfigure persistent visible "
+        "features unless detailed_description explicitly requires that change during "
+        "this segment. Do not infer a persistent configuration change merely from "
+        "camera motion, occlusion, contact, or temporary deformation."
+    )
+
+
 def build_h3_prompt(
     llm_result,
     subject_definitions,
@@ -9681,6 +11797,9 @@ def build_h3_prompt(
     previous_state="",
     segment_number=None,
     ff=False,
+    conditioning_mode=None,
+    excluded_picture_ids=None,
+    continuity_state=None,
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -9706,6 +11825,22 @@ def build_h3_prompt(
         "non_diegetic_music"
     )
 
+    integrated = _replace_excluded_picture_tags_for_h3(
+        integrated,
+        conditioning_mode,
+        excluded_picture_ids,
+    )
+    soundscape = _replace_excluded_picture_tags_for_h3(
+        soundscape,
+        conditioning_mode,
+        excluded_picture_ids,
+    )
+    music = _replace_excluded_picture_tags_for_h3(
+        music,
+        conditioning_mode,
+        excluded_picture_ids,
+    )
+
     if ff and segment_number == 1:
         integrated = re.sub(
             r"^\s*\[\s*Shot\s+1\s*\]\s*",
@@ -9721,7 +11856,11 @@ def build_h3_prompt(
             + (f"\n{integrated}" if integrated else "")
         )
 
-    subject_text = subject_definitions.strip() or "N/A"
+    subject_text = _h3_subject_definitions_for_conditioning(
+        subject_definitions,
+        conditioning_mode,
+        excluded_picture_ids=excluded_picture_ids,
+    ).strip()
     if ff and segment_number == 1:
         subject_text += (
             "\n\n<Picture 1> is the opening-frame reference for the target video.\n\n"
@@ -9757,17 +11896,31 @@ def build_h3_prompt(
         and not is_reference_continuation
     ):
         previous_state_text += "\n" + hard_cut_clothing_reiteration
-    previous_state_section = (
-        f"{previous_state_text}\n\n"
-        if previous_state_text is not None else ""
-    )
-    return (
-        f"subject_definitions: {subject_text}\n\n"
-        + previous_state_section
-        + f"detailed_description: {integrated}\n\n"
-        + f"overall_soundscape: {soundscape}\n\n"
-        + f"non_diegetic_music: {music}"
-    )
+    # Normal continuation already supplies H3 with the preceding AV latent and
+    # pinned final frame. Avoid competing with that visual conditioning by only
+    # adding textual opening-state guidance for initial/refresh-style prompts.
+    sections = []
+    _append_h3_prompt_section(sections, "subject_definitions", subject_text)
+    if conditioning_mode == "latent_continuation":
+        appearance_state = format_h3_current_appearance_continuity(
+            continuity_state,
+            subject_definitions,
+        )
+        if appearance_state:
+            sections.append(appearance_state)
+    if (
+        previous_state_text is not None
+        and conditioning_mode != "latent_continuation"
+    ):
+        cleaned_previous_state = sanitize_h3_prompt_component(previous_state_text)
+        if cleaned_previous_state:
+            sections.append(cleaned_previous_state)
+    if segment_number is not None and int(segment_number) > 1:
+        sections.append(format_h3_structural_continuity_guard())
+    _append_h3_prompt_section(sections, "detailed_description", integrated)
+    _append_h3_prompt_section(sections, "overall_soundscape", soundscape)
+    _append_h3_prompt_section(sections, "non_diegetic_music", music)
+    return "\n\n".join(sections)
 
 
 # ============================================================
@@ -10125,6 +12278,7 @@ def render_segment_with_retries(
     render_started_event=None,
     refresh_interval=None,
     refresh_input_directory=None,
+    continuity_state=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     if lora_override is not None:
@@ -10194,6 +12348,7 @@ def render_segment_with_retries(
                 segment,
                 steps,
                 **lora_kwargs,
+                continuity_state=continuity_state,
             )
         else:
             workflow = prepare_append_workflow(
@@ -10204,6 +12359,7 @@ def render_segment_with_retries(
                 steps,
                 **lora_kwargs,
                 context_frames=context_frames,
+                continuity_state=continuity_state,
             )
 
         try:
@@ -10367,6 +12523,8 @@ def prepare_refresh_workflow(
     loras=None,
     lora_override=None,
     reference_workflow=None,
+    continuity_state=None,
+    excluded_picture_ids=None,
 ):
     """Prepare a fresh reference-to-video segment from the prior last frame."""
 
@@ -10383,6 +12541,17 @@ def prepare_refresh_workflow(
     if reference_workflow is None:
         reference_workflow = load_workflow(INITIAL_WORKFLOW_FILE)
     copy_reference_image_inputs(reference_workflow, workflow, label)
+    incompatible_picture_ids = set(excluded_picture_ids or ())
+    incompatible_picture_ids.update(
+        get_refresh_incompatible_picture_ids(continuity_state)
+    )
+    disconnect_reference_images(
+        workflow,
+        label,
+        "refresh",
+        incompatible_picture_ids,
+        reason="an active persistent structural change",
+    )
     prune_missing_reference_images(workflow, label, "refresh")
 
     set_node_input(
@@ -10707,6 +12876,8 @@ def prepare_append_workflow(
     loras=None,
     lora_override=None,
     context_frames=DEFAULT_CONTEXT_FRAMES,
+    continuity_state=None,
+    excluded_picture_ids=None,
 ):
     if lora_override is not None:
         if loras:
@@ -10715,7 +12886,18 @@ def prepare_append_workflow(
     workflow = load_workflow(APPEND_WORKFLOW_FILE)
     label = f"append workflow '{APPEND_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=True)
-    prune_missing_reference_images(workflow, label, "append")
+    incompatible_picture_ids = set(excluded_picture_ids or ())
+    incompatible_picture_ids.update(
+        get_refresh_incompatible_picture_ids(continuity_state)
+    )
+    if incompatible_picture_ids:
+        disconnect_append_reference_batch(
+            workflow,
+            label,
+            reason="an active persistent structural change",
+        )
+    else:
+        prune_missing_reference_images(workflow, label, "append")
 
     if not os.path.exists(previous_video_path):
         raise FileNotFoundError(
@@ -10932,10 +13114,12 @@ def repair_existing_segment(
         historical_subject_definitions,
         copy.deepcopy(repair["previous_record"]["continuity_state"]),
     )
+    excluded_picture_ids = get_refresh_incompatible_picture_ids(opening_state)
     h3_opening_summary = format_authoritative_opening_state(
         opening_state,
         historical_subject_definitions,
         include_camera=False,
+        excluded_picture_ids=excluded_picture_ids,
     )
     director_opening_summary = format_authoritative_opening_state(
         opening_state,
@@ -11052,6 +13236,9 @@ def repair_existing_segment(
         h3_opening_summary,
         segment_number,
         ff=False,
+        conditioning_mode=conditioning_mode,
+        excluded_picture_ids=excluded_picture_ids,
+        continuity_state=opening_state,
     )
 
     loras = beat_loras(beats, segment_number, global_loras)
@@ -11122,14 +13309,267 @@ def repair_existing_segment(
     }
 
 
+DIRECTOR_CONTINUITY_ISSUE_TYPES = (
+    "absent_state_reintroduction",
+    "persistent_transition_replay",
+    "incompatible_state_restoration",
+    "unsupported_persistent_change",
+)
+
+DIRECTOR_CONTINUITY_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_continuity_validation",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "valid": {"type": "boolean"},
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": list(DIRECTOR_CONTINUITY_ISSUE_TYPES),
+                            },
+                            "problem": {"type": "string", "minLength": 1},
+                        },
+                        "required": ["type", "problem"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "required": ["valid", "issues"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
+def _director_continuity_validation_state(opening_state):
+    """Return only persistent facts needed to validate a Director candidate."""
+    state = migrate_continuity_state(copy.deepcopy(opening_state))
+    payload = {
+        "environment": {
+            "location": state.get("environment", {}).get("location", "N/A"),
+        },
+        "subjects": {},
+    }
+    for name, record in state.get("subjects", {}).items():
+        if not isinstance(record, dict):
+            continue
+        payload["subjects"][name] = {
+            "subject_id": record.get("subject_id"),
+            "persistent_structural_change": bool(
+                record.get("persistent_structural_change", False)
+            ),
+            "wardrobe": copy.deepcopy(record.get("wardrobe", {})),
+            "topology": record.get("topology", "N/A"),
+            "body_state": record.get("body_state", "N/A"),
+            "physical_condition": record.get("physical_condition", "N/A"),
+            "attached_objects": copy.deepcopy(record.get("attached_objects", [])),
+            "injuries": copy.deepcopy(record.get("injuries", [])),
+            "substances": copy.deepcopy(record.get("substances", [])),
+            "persistent_effects": copy.deepcopy(record.get("persistent_effects", [])),
+            "held_props": copy.deepcopy(record.get("held_props", [])),
+        }
+    return payload
+
+
+def build_director_continuity_validation_messages(
+    opening_state,
+    active_beat_text,
+    detailed_description,
+    segment_number,
+):
+    """Build a narrow semantic check between committed state and Director prose."""
+    validation_state = _director_continuity_validation_state(opening_state)
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a narrow final continuity gate for one generated video "
+                "segment. Check only concrete persistent-state contradictions. "
+                "Do not critique style, pacing, camera choices, temporary motion, "
+                "or dramatic intensity. Return only the requested JSON object."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Validate the candidate Director description for Segment {segment_number}.
+
+AUTHORITY
+- COMMITTED OPENING STATE is already true at frame 0.
+- ACTIVE BEAT is the only story progression this segment is required to perform.
+- CANDIDATE DESCRIPTION may change persistent state only when that change is a
+  reasonable direct execution of ACTIVE BEAT.
+
+FAIL only for a concrete violation of one of these rules:
+1. An item/component explicitly absent in COMMITTED OPENING STATE is presented
+   as currently intact/present again without ACTIVE BEAT explicitly restoring or
+   replacing it. Clearly described fragments, residue, or debris are not the
+   intact item and should not fail this rule.
+2. The candidate replays an irreversible transition that COMMITTED OPENING STATE
+   already records as completed.
+3. The candidate restores a prior incompatible persistent configuration without
+   ACTIVE BEAT explicitly establishing restoration/replacement.
+4. The candidate invents a NEW major persistent configuration change that ACTIVE
+   BEAT does not require. Contact, impact, danger, camera motion, occlusion, pose,
+   or temporary deformation alone do not justify a new lasting configuration.
+
+Use issue types narrowly:
+- absent_state_reintroduction
+- persistent_transition_replay
+- incompatible_state_restoration
+- unsupported_persistent_change
+
+Do NOT fail because the candidate merely shows an already-existing persistent
+condition. Do NOT demand exact wording. Do NOT infer a violation from ambiguity.
+If no concrete contradiction exists, return valid=true.
+
+COMMITTED OPENING STATE
+{json.dumps(validation_state, ensure_ascii=False, indent=2)}
+
+ACTIVE BEAT
+{active_beat_text or 'N/A'}
+
+CANDIDATE DESCRIPTION
+{detailed_description}
+
+Return only JSON with exactly valid and issues.
+""".strip(),
+        },
+    ]
+
+
+def parse_director_continuity_validation(raw_result, formatter=None):
+    """Parse the post-Director continuity gate response."""
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate)
+        except json.JSONDecodeError as error:
+            raise ValueError(
+                "The Director continuity validation response must be valid JSON."
+            ) from error
+    if (
+        isinstance(candidate, dict)
+        and set(candidate) == {"validation"}
+        and isinstance(candidate["validation"], dict)
+    ):
+        candidate = candidate["validation"]
+    if not isinstance(candidate, dict) or set(candidate) != {"valid", "issues"}:
+        raise ValueError(
+            "The Director continuity validation response must contain only "
+            "'valid' and 'issues'."
+        )
+    valid = candidate["valid"]
+    issues = candidate["issues"]
+    if not isinstance(valid, bool):
+        raise ValueError("Director continuity validation 'valid' must be boolean.")
+    if not isinstance(issues, list):
+        raise ValueError("Director continuity validation 'issues' must be an array.")
+    normalized = []
+    for issue in issues:
+        if not isinstance(issue, dict) or set(issue) != {"type", "problem"}:
+            raise ValueError(
+                "Each Director continuity issue must contain exactly type and problem."
+            )
+        issue_type = issue["type"]
+        problem = issue["problem"]
+        if issue_type not in DIRECTOR_CONTINUITY_ISSUE_TYPES:
+            raise ValueError(
+                "Unknown Director continuity issue type: " + str(issue_type)
+            )
+        if not isinstance(problem, str) or not problem.strip():
+            raise ValueError("Director continuity issue problem must be non-empty.")
+        normalized.append({
+            "type": issue_type,
+            "problem": " ".join(problem.split()),
+        })
+    if valid != (not normalized):
+        raise ValueError(
+            "Director continuity validation 'valid' must be true exactly when "
+            "issues is empty."
+        )
+    return {"valid": valid, "issues": normalized}
+
+
+def validate_director_continuity_candidate(
+    opening_state,
+    active_beat_text,
+    detailed_description,
+    segment_number,
+    history_metadata=None,
+    llm_request=None,
+):
+    """Semantically reject a Director prompt that contradicts committed state."""
+    llm_request = llm_request or ask_llm
+    messages = build_director_continuity_validation_messages(
+        opening_state,
+        active_beat_text,
+        detailed_description,
+        segment_number,
+    )
+    request_kwargs = {
+        "response_format": DIRECTOR_CONTINUITY_RESPONSE_FORMAT,
+        "temperature": 0.05,
+    }
+    if history_metadata:
+        request_kwargs["history_metadata"] = history_metadata
+    raw_result = llm_request(messages, **request_kwargs)
+    return parse_director_continuity_validation(raw_result)
+
+
+def format_director_continuity_correction(validation):
+    """Turn continuity-gate issues into concise Director regeneration feedback."""
+    bullets = "\n".join(
+        f"- {issue['type']}: {issue['problem']}"
+        for issue in validation.get("issues", [])
+    )
+    return (
+        "DIRECTOR CONTINUITY CORRECTION\n\n"
+        "The previous candidate contradicted the committed opening state or "
+        "introduced an unsupported persistent change:\n"
+        f"{bullets}\n\n"
+        "Regenerate the segment from the same frame-0 state. Execute only the "
+        "ACTIVE beat. Preserve explicit absences and completed persistent "
+        "transitions unless the ACTIVE beat itself requires a new change."
+    )
+
+
+def _director_messages_with_correction(messages, correction):
+    """Append regeneration feedback without changing LM Studio role alternation."""
+    revised = copy.deepcopy(messages)
+    if correction and revised:
+        revised[-1]["content"] = (
+            str(revised[-1].get("content", ""))
+            + "\n\n"
+            + str(correction).strip()
+        )
+    return revised
+
+
 def request_segment_llm(bundle, beats, run_id, run_config):
-    """Request a segment prompt, falling back to the fifth incomplete result."""
+    """Request a segment prompt and reject concrete continuity contradictions."""
 
     active_beat_id = bundle.get("active_beat_id")
+    active_beat_text = bundle["ministral_context"].get("current_beat_text", "")
     llm_result = None
+    continuity_correction = ""
+
     for director_attempt in range(1, DIRECTOR_BEAT_COMPLETION_ATTEMPTS + 1):
-        llm_result = request_valid_ministral_prompt(
+        director_messages = _director_messages_with_correction(
             bundle["messages"],
+            continuity_correction,
+        )
+        llm_result = request_valid_ministral_prompt(
+            director_messages,
             bundle["ministral_context"],
             history_metadata={
                 "run_id": run_id,
@@ -11162,27 +13602,71 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 f"{DIRECTOR_BEAT_COMPLETION_ATTEMPTS} attempts: "
                 f"{rendered_repeats}"
             )
-        if active_beat_id is None or get_accepted_reported_beat_ids(
-            beats,
-            bundle["ministral_context"].get("completed_beat_ids", []),
-            llm_result.get("completed_beat_ids", []),
-        ):
-            break
-        if director_attempt < DIRECTOR_BEAT_COMPLETION_ATTEMPTS:
-            print(
-                f"Director result confirmed Beat {active_beat_id} is not "
-                f"complete; re-querying the LLM before rendering "
-                f"({director_attempt}/{DIRECTOR_BEAT_COMPLETION_ATTEMPTS})."
-            )
-        else:
+
+        beat_complete = (
+            active_beat_id is None
+            or bool(get_accepted_reported_beat_ids(
+                beats,
+                bundle["ministral_context"].get("completed_beat_ids", []),
+                llm_result.get("completed_beat_ids", []),
+            ))
+        )
+        if not beat_complete:
+            if director_attempt < DIRECTOR_BEAT_COMPLETION_ATTEMPTS:
+                print(
+                    f"Director result confirmed Beat {active_beat_id} is not "
+                    f"complete; re-querying the LLM before rendering "
+                    f"({director_attempt}/{DIRECTOR_BEAT_COMPLETION_ATTEMPTS})."
+                )
+                continue
             llm_result = dict(llm_result)
             llm_result["completed_beat_ids"] = [int(active_beat_id)]
             print(
                 f"WARNING: Director did not return a prompt that completes Beat "
                 f"{active_beat_id} after {DIRECTOR_BEAT_COMPLETION_ATTEMPTS} "
-                "attempts; continuing with the latest result and marking the "
-                "assigned beat complete."
+                "attempts; marking the assigned beat complete before continuity "
+                "validation."
             )
+
+        # Segment 1 has no committed previous-video state to contradict. Every
+        # continuation candidate must pass this semantic gate before H3 sees it.
+        if int(bundle["segment"]) > 1:
+            validation = validate_director_continuity_candidate(
+                bundle.get("opening_state"),
+                active_beat_text,
+                get_detailed_description(llm_result, ""),
+                bundle["segment"],
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": run_config["source_sha256"],
+                    "purpose": "director_continuity_validation",
+                    "segment": bundle["segment"],
+                    "attempt": director_attempt,
+                    "conditioning_mode": bundle["conditioning_mode"],
+                    "opening_state_sha256": bundle["opening_state_sha256"],
+                },
+            )
+            if not validation["valid"]:
+                continuity_correction = format_director_continuity_correction(
+                    validation
+                )
+                rendered_issues = "; ".join(
+                    issue["problem"] for issue in validation["issues"]
+                )
+                if director_attempt < DIRECTOR_BEAT_COMPLETION_ATTEMPTS:
+                    print(
+                        "Director continuity gate rejected the candidate: "
+                        f"{rendered_issues}. Re-querying the LLM "
+                        f"({director_attempt}/{DIRECTOR_BEAT_COMPLETION_ATTEMPTS})."
+                    )
+                    continue
+                raise RuntimeError(
+                    "Director continuity gate rejected every candidate after "
+                    f"{DIRECTOR_BEAT_COMPLETION_ATTEMPTS} attempts: "
+                    f"{rendered_issues}"
+                )
+        break
+
     payload = dict(bundle)
     payload["llm_result"] = llm_result
     return payload
@@ -11332,7 +13816,7 @@ def _run_main(
             else "disabled"
         )
     )
-    print("Runtime validation:   disabled (beat-plan creation only)")
+    print("Runtime validation:   Director continuity gate enabled")
     if beats:
         print(f"Story beats:          {len(beats)}")
         print("Persistent state:     generation_state.json")
@@ -11447,11 +13931,19 @@ def _run_main(
             )
             if segment_number > 1 else ""
         )
+        excluded_picture_ids = (
+            get_conditioning_excluded_picture_ids(
+                opening_state,
+                conditioning_mode,
+            )
+            if conditioning_mode != "initial" else set()
+        )
         h3_opening_summary = (
             format_authoritative_opening_state(
                 opening_state,
                 subject_definitions,
                 include_camera=False,
+                excluded_picture_ids=excluded_picture_ids,
             )
             if segment_number > 1 else ""
         )
@@ -11494,6 +13986,7 @@ def _run_main(
             "opening_state": opening_state,
             "opening_summary": opening_summary,
             "h3_opening_summary": h3_opening_summary,
+            "excluded_picture_ids": sorted(excluded_picture_ids),
             "dialogue_exclusions": list(dialogue_exclusions),
             "opening_state_sha256": continuity_state_sha(opening_state),
             "fingerprint": build_segment_fingerprint(
@@ -11666,6 +14159,9 @@ def _run_main(
             payload["h3_opening_summary"],
             segment,
             ff=args.ff,
+            conditioning_mode=segment_bundle["conditioning_mode"],
+            excluded_picture_ids=segment_bundle.get("excluded_picture_ids"),
+            continuity_state=continuity_state,
         )
         candidate_future = summary_executor.submit(
             request_structured_continuity_state,
@@ -11720,6 +14216,7 @@ def _run_main(
             ),
             render_started_event=render_started,
             refresh_interval=refresh_interval,
+            continuity_state=continuity_state,
         )
         while not render_started.wait(0.05):
             if render_future.done():

@@ -237,6 +237,39 @@ def _next_beat_id(context: Mapping[str, Any]) -> int | None:
 def _subject_records(context: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
     definitions = str(context.get("subject_definitions", "") or "")
     records: dict[str, dict[str, Any]] = {}
+    # Parse canonical <Subject N> definitions independently of their descriptive
+    # prose. The definition may contain substantial text after its Picture mapping.
+    for match in re.finditer(
+        r"(?im)^\s*<Subject\s+(?P<subject>\d+)>\s*(?:is\s+)?"
+        r"(?P<name>[A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*)\s*,"
+        r"(?P<details>.*)$",
+        definitions,
+    ):
+        subject_id = int(match.group("subject"))
+        name = match.group("name").strip()
+        details = match.group("details")
+
+        picture_ids = list(dict.fromkeys(
+            int(value)
+            for value in re.findall(
+                r"(?i)<Picture\s+(\d+)>",
+                details,
+            )
+        ))
+
+        speaker_match = re.search(r"(?i)\(S(\d+)\)", details)
+        speaker_id = (
+            f"S{speaker_match.group(1)}"
+            if speaker_match
+            else f"S{subject_id}"
+        )
+
+        records[name] = {
+            "subject_id": subject_id,
+            "picture_ids": picture_ids,
+            "picture_id": picture_ids[0] if picture_ids else None,
+            "speaker_id": speaker_id,
+        }
     for match in re.finditer(
         r"(?im)^\s*<Subject\s+(?P<subject>\d+)>\s*(?:is\s+)?"
         r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)\s*,\s*"

@@ -217,6 +217,44 @@ class AutoRefreshTests(unittest.TestCase):
         self.assertEqual(latent_save["inputs"]["clip_index"], 5)
         self.assertEqual(save_video["inputs"]["filename_prefix"], "video/segment_0005")
 
+    def test_refresh_omits_only_reference_incompatible_subject_pictures(self):
+        refresh = copy.deepcopy(self.refresh)
+        initial = copy.deepcopy(self.initial)
+        definitions = (
+            "<Subject 1> is Alpha, referenced in <Picture 1>.\n"
+            "<Subject 2> is Beta, referenced in <Picture 2>."
+        )
+        state = minimax.continuity_state_for_registry(definitions)
+        state["subjects"]["Alpha"]["persistent_structural_change"] = True
+
+        with mock.patch(
+            "minimax.load_workflow",
+            return_value=refresh,
+        ), mock.patch("minimax.prune_missing_reference_images"):
+            prepared = minimax.prepare_refresh_workflow(
+                6.0,
+                0.4,
+                "refresh prompt",
+                "refresh_frame.png",
+                5,
+                reference_workflow=initial,
+                continuity_state=state,
+            )
+
+        _, conditioning = minimax.find_workflow_node(
+            prepared,
+            minimax.REFRESH_CONDITIONING_NODE_NAME,
+            "prepared refresh workflow",
+        )
+        self.assertNotIn(
+            "ref_images.ref_image_0",
+            conditioning["inputs"],
+        )
+        self.assertIn(
+            "ref_images.ref_image_1",
+            conditioning["inputs"],
+        )
+
     def test_scheduled_segment_uses_refresh_then_next_segment_uses_append(self):
         common_patches = (
             mock.patch("minimax.extract_refresh_first_frame", return_value="frame.png"),

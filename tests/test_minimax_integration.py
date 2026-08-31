@@ -1115,7 +1115,60 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertNotIn("completed_beat_ids", prompt)
         self.assertEqual(prompt.count("detailed_description:"), 1)
         self.assertEqual(prompt.count("overall_soundscape:"), 1)
-        self.assertEqual(prompt.count("non_diegetic_music:"), 1)
+        self.assertEqual(prompt.count("non_diegetic_music:"), 0)
+
+    def test_h3_prompt_omits_placeholders_without_mutating_source_values(self):
+        formatted = {
+            "detailed_description": (
+                "[Shot 2] Mark watches an unknown craft settle nearby.\n"
+                "- obsolete_camera: N/A\n"
+                "- unused_props: [N/A, null, \"\"]"
+            ),
+            "overall_soundscape": "N/A",
+            "non_diegetic_music": "none",
+            "completed_beat_ids": [],
+        }
+        definitions = (
+            "<Subject 1> is Mark, gender: N/A, referenced in <Picture 1>.\n"
+            "unused_picture_ids: []"
+        )
+        previous_state = "\n".join((
+            "- Location/environment: inside the spacecraft",
+            "- Character positions: N/A",
+            "- Character appearance/physical condition: []",
+            "- Clothing: red jacket",
+            "- Props/objects: silver key in Mark's hand",
+            "- Camera/framing: unspecified",
+            "- Ongoing physical action: Mark watches the unknown craft",
+            "- Ongoing audio: null",
+        ))
+        original_formatted = json.loads(json.dumps(formatted))
+
+        prompt = minimax.build_h3_prompt(
+            formatted,
+            definitions,
+            previous_state=previous_state,
+            segment_number=2,
+        )
+
+        self.assertNotRegex(prompt, r"(?i)(?<!\w)N\s*/?\s*A(?!\w)")
+        self.assertNotRegex(prompt, r"\[\s*\]")
+        self.assertNotIn("obsolete_camera", prompt)
+        self.assertNotIn("unused_props", prompt)
+        self.assertNotIn("unused_picture_ids", prompt)
+        self.assertNotIn("overall_soundscape:", prompt)
+        self.assertNotIn("non_diegetic_music:", prompt)
+        self.assertNotIn("Character positions:", prompt)
+        self.assertNotIn("Character appearance/physical condition:", prompt)
+        self.assertNotIn("Camera/framing:", prompt)
+        self.assertNotIn("Ongoing audio:", prompt)
+        self.assertIn("unknown craft", prompt)
+        self.assertIn("inside the spacecraft", prompt)
+        self.assertIn("red jacket", prompt)
+        self.assertIn("silver key in Mark's hand", prompt)
+        self.assertEqual(formatted, original_formatted)
+        self.assertIn("N/A", previous_state)
+        self.assertIn("[]", previous_state)
 
     def test_hard_cut_injects_each_subjects_latest_clothing_into_h3_prompt(self):
         prior_records = [
