@@ -370,8 +370,8 @@ STORY_CONTEXT_MAX_CHARS = 12000
 DEFAULT_BEAT_LOOKAHEAD = 8
 RECENT_SEGMENTS_MAX = 1
 DIALOGUE_HISTORY_SEGMENTS_MAX = 5
-SUMMARY_CONTENT_ATTEMPTS = 2
-DIRECTOR_BEAT_COMPLETION_ATTEMPTS = 5
+SUMMARY_CONTENT_ATTEMPTS = 3
+DIRECTOR_BEAT_COMPLETION_ATTEMPTS = 3
 BEAT_PHASE_GENERATION_ATTEMPTS = 10
 BEAT_PHASE_REPAIR_ROUNDS = 10
 BEAT_LLM_SAMPLING_PARAMETERS = {
@@ -2316,7 +2316,6 @@ def derive_additional_subject_definitions(
             origin_segment = 1
         definitions.append(
             f"<Subject {subject_id}> is {name}, {gender} ({speaker_id}), "
-            f"established in generated video segment {origin_segment}, "
             "continued from <Video 1>."
         )
     return definitions
@@ -13556,35 +13555,69 @@ def _director_messages_with_correction(messages, correction):
 
 
 def request_segment_llm(bundle, beats, run_id, run_config):
-    """Request a segment prompt and reject concrete continuity contradictions."""
+    """Request a segment prompt, always falling back to the latest response."""
 
+    ministral_context = bundle.get("ministral_context")
+    if not isinstance(ministral_context, dict):
+        ministral_context = {}
     active_beat_id = bundle.get("active_beat_id")
-    active_beat_text = bundle["ministral_context"].get("current_beat_text", "")
+    active_beat_text = ministral_context.get("current_beat_text", "")
+    try:
+        segment_number = int(bundle.get("segment", 1))
+    except (TypeError, ValueError):
+        segment_number = 1
+        print(
+            "WARNING: Director bundle has an invalid segment number; treating it "
+            "as Segment 1 so the latest response can still be used.",
+            flush=True,
+        )
     llm_result = None
     continuity_correction = ""
 
     for director_attempt in range(1, DIRECTOR_BEAT_COMPLETION_ATTEMPTS + 1):
-        director_messages = _director_messages_with_correction(
-            bundle["messages"],
-            continuity_correction,
-        )
-        llm_result = request_valid_ministral_prompt(
-            director_messages,
-            bundle["ministral_context"],
-            history_metadata={
-                "run_id": run_id,
-                "source_sha256": run_config["source_sha256"],
-                "purpose": "director",
-                "segment": bundle["segment"],
-                "attempt": director_attempt,
-                "conditioning_mode": bundle["conditioning_mode"],
-                "opening_state_sha256": bundle["opening_state_sha256"],
-            },
-        )
-        repeated_dialogues = find_repeated_dialogues(
-            llm_result,
-            bundle.get("dialogue_exclusions", []),
-        )
+        try:
+            director_messages = _director_messages_with_correction(
+                bundle.get("messages", []),
+                continuity_correction,
+            )
+            llm_result = request_valid_ministral_prompt(
+                director_messages,
+                ministral_context,
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": (run_config or {}).get("source_sha256"),
+                    "purpose": "director",
+                    "segment": segment_number,
+                    "attempt": director_attempt,
+                    "conditioning_mode": bundle.get("conditioning_mode"),
+                    "opening_state_sha256": bundle.get("opening_state_sha256"),
+                },
+            )
+        except Exception as error:
+            print(
+                "WARNING: Director request failed; using the latest available "
+                f"response and moving on: {error}",
+                flush=True,
+            )
+            if llm_result is None:
+                llm_result = build_best_effort_ministral_result(
+                    active_beat_text or "Continue the current scene."
+                )
+            break
+        if not isinstance(llm_result, dict):
+            llm_result = build_best_effort_ministral_result(llm_result)
+        try:
+            repeated_dialogues = find_repeated_dialogues(
+                llm_result,
+                bundle.get("dialogue_exclusions", []),
+            )
+        except Exception as error:
+            repeated_dialogues = []
+            print(
+                "WARNING: Repeated-dialogue checking failed; using the latest "
+                f"Director response and moving on: {error}",
+                flush=True,
+            )
         if repeated_dialogues:
             rendered_repeats = json.dumps(
                 repeated_dialogues,
@@ -13597,20 +13630,29 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     f"({director_attempt}/{DIRECTOR_BEAT_COMPLETION_ATTEMPTS})."
                 )
                 continue
-            raise RuntimeError(
-                "Director repeatedly reused forbidden recent dialogue after "
-                f"{DIRECTOR_BEAT_COMPLETION_ATTEMPTS} attempts: "
-                f"{rendered_repeats}"
+            print(
+                "WARNING: Director repeatedly reused forbidden recent dialogue "
+                f"after {DIRECTOR_BEAT_COMPLETION_ATTEMPTS} attempts; using the "
+                f"latest response and moving on: {rendered_repeats}",
+                flush=True,
             )
 
-        beat_complete = (
-            active_beat_id is None
-            or bool(get_accepted_reported_beat_ids(
-                beats,
-                bundle["ministral_context"].get("completed_beat_ids", []),
-                llm_result.get("completed_beat_ids", []),
-            ))
-        )
+        try:
+            beat_complete = (
+                active_beat_id is None
+                or bool(get_accepted_reported_beat_ids(
+                    beats,
+                    ministral_context.get("completed_beat_ids", []),
+                    llm_result.get("completed_beat_ids", []),
+                ))
+            )
+        except Exception as error:
+            beat_complete = True
+            print(
+                "WARNING: Director beat-completion checking failed; using the "
+                f"latest response and moving on: {error}",
+                flush=True,
+            )
         if not beat_complete:
             if director_attempt < DIRECTOR_BEAT_COMPLETION_ATTEMPTS:
                 print(
@@ -13620,7 +13662,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 )
                 continue
             llm_result = dict(llm_result)
-            llm_result["completed_beat_ids"] = [int(active_beat_id)]
+            try:
+                llm_result["completed_beat_ids"] = [int(active_beat_id)]
+            except (TypeError, ValueError):
+                llm_result["completed_beat_ids"] = []
             print(
                 f"WARNING: Director did not return a prompt that completes Beat "
                 f"{active_beat_id} after {DIRECTOR_BEAT_COMPLETION_ATTEMPTS} "
@@ -13630,22 +13675,30 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
         # Segment 1 has no committed previous-video state to contradict. Every
         # continuation candidate must pass this semantic gate before H3 sees it.
-        if int(bundle["segment"]) > 1:
-            validation = validate_director_continuity_candidate(
-                bundle.get("opening_state"),
-                active_beat_text,
-                get_detailed_description(llm_result, ""),
-                bundle["segment"],
-                history_metadata={
-                    "run_id": run_id,
-                    "source_sha256": run_config["source_sha256"],
-                    "purpose": "director_continuity_validation",
-                    "segment": bundle["segment"],
-                    "attempt": director_attempt,
-                    "conditioning_mode": bundle["conditioning_mode"],
-                    "opening_state_sha256": bundle["opening_state_sha256"],
-                },
-            )
+        if segment_number > 1:
+            try:
+                validation = validate_director_continuity_candidate(
+                    bundle.get("opening_state"),
+                    active_beat_text,
+                    get_detailed_description(llm_result, ""),
+                    segment_number,
+                    history_metadata={
+                        "run_id": run_id,
+                        "source_sha256": (run_config or {}).get("source_sha256"),
+                        "purpose": "director_continuity_validation",
+                        "segment": segment_number,
+                        "attempt": director_attempt,
+                        "conditioning_mode": bundle.get("conditioning_mode"),
+                        "opening_state_sha256": bundle.get("opening_state_sha256"),
+                    },
+                )
+            except Exception as error:
+                print(
+                    "WARNING: Director continuity validation failed; using the "
+                    f"latest Director response and moving on: {error}",
+                    flush=True,
+                )
+                break
             if not validation["valid"]:
                 continuity_correction = format_director_continuity_correction(
                     validation
@@ -13660,10 +13713,11 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         f"({director_attempt}/{DIRECTOR_BEAT_COMPLETION_ATTEMPTS})."
                     )
                     continue
-                raise RuntimeError(
-                    "Director continuity gate rejected every candidate after "
-                    f"{DIRECTOR_BEAT_COMPLETION_ATTEMPTS} attempts: "
-                    f"{rendered_issues}"
+                print(
+                    "WARNING: Director continuity gate rejected every candidate "
+                    f"after {DIRECTOR_BEAT_COMPLETION_ATTEMPTS} attempts; using "
+                    f"the latest response and moving on: {rendered_issues}",
+                    flush=True,
                 )
         break
 

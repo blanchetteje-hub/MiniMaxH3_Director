@@ -302,23 +302,23 @@
         "114",
         0
       ],
-      "image_2": [
+	  "image_2": [
         "116",
         0
       ],
-      "image_3": [
+	  "image_3": [
         "120",
         0
       ],
-      "image_4": [
+	  "image_4": [
         "137",
         0
       ],
-      "image_5": [
+	  "image_5": [
         "144",
         0
       ],
-      "image_6": [
+	  "image_6": [
         "145",
         0
       ]
@@ -397,7 +397,7 @@
         1
       ],
       "context_frames": 7,
-      "pin_last_frame": false,
+      "pin_last_frame": true,
       "ref_image_size": "max",
       "clip": [
         "77",

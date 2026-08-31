@@ -16,10 +16,11 @@ def segment_bundle():
 
 
 class DirectorBeatCompletionRetryTests(unittest.TestCase):
-    def test_fifth_incomplete_result_is_used_instead_of_raising(self):
+    def test_final_incomplete_result_is_used_instead_of_raising(self):
+        attempt_limit = minimax.DIRECTOR_BEAT_COMPLETION_ATTEMPTS
         results = [
             {"completed_beat_ids": [], "iteration": attempt}
-            for attempt in range(1, 6)
+            for attempt in range(1, attempt_limit + 1)
         ]
 
         with mock.patch(
@@ -33,8 +34,8 @@ class DirectorBeatCompletionRetryTests(unittest.TestCase):
                 {"source_sha256": "source-hash"},
             )
 
-        self.assertEqual(request.call_count, 5)
-        self.assertEqual(payload["llm_result"]["iteration"], 5)
+        self.assertEqual(request.call_count, attempt_limit)
+        self.assertEqual(payload["llm_result"]["iteration"], attempt_limit)
         self.assertEqual(payload["llm_result"]["completed_beat_ids"], [1])
         self.assertEqual(
             minimax.apply_reported_beat_completions(
@@ -50,12 +51,176 @@ class DirectorBeatCompletionRetryTests(unittest.TestCase):
                 call.kwargs["history_metadata"]["attempt"]
                 for call in request.call_args_list
             ],
-            [1, 2, 3, 4, 5],
+            list(range(1, attempt_limit + 1)),
         )
         self.assertTrue(any(
-            "continuing with the latest result and marking" in str(call)
+            "marking the assigned beat complete" in str(call)
             for call in output.call_args_list
         ))
+
+    def test_final_repeated_dialogue_response_is_used_instead_of_raising(self):
+        attempt_limit = minimax.DIRECTOR_BEAT_COMPLETION_ATTEMPTS
+        results = [
+            {
+                "detailed_description": (
+                    "[Shot 1] <Subject 1> Amy (S1) says: "
+                    "<d>[English] Repeated line.</d>"
+                ),
+                "overall_soundscape": "Room tone.",
+                "non_diegetic_music": "N/A",
+                "completed_beat_ids": [1],
+                "iteration": attempt,
+            }
+            for attempt in range(1, attempt_limit + 1)
+        ]
+        bundle = segment_bundle()
+        bundle["dialogue_exclusions"] = ["Repeated line."]
+
+        with mock.patch(
+            "minimax.request_valid_ministral_prompt",
+            side_effect=results,
+        ) as request, mock.patch("builtins.print") as output:
+            payload = minimax.request_segment_llm(
+                bundle,
+                ["Beat one"],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
+
+        self.assertEqual(request.call_count, attempt_limit)
+        self.assertEqual(payload["llm_result"]["iteration"], attempt_limit)
+        self.assertTrue(any(
+            "using the latest response and moving on" in str(call)
+            for call in output.call_args_list
+        ))
+
+    def test_final_continuity_rejection_is_used_instead_of_raising(self):
+        attempt_limit = minimax.DIRECTOR_BEAT_COMPLETION_ATTEMPTS
+        results = [
+            {
+                "detailed_description": f"Candidate {attempt}.",
+                "overall_soundscape": "Room tone.",
+                "non_diegetic_music": "N/A",
+                "completed_beat_ids": [1],
+                "iteration": attempt,
+            }
+            for attempt in range(1, attempt_limit + 1)
+        ]
+        bundle = segment_bundle()
+        bundle.update({
+            "segment": 2,
+            "conditioning_mode": "latent_continuation",
+            "opening_state": {},
+        })
+        rejected = {
+            "valid": False,
+            "issues": [{
+                "type": "persistent_transition_replay",
+                "problem": "The candidate repeats a completed transition.",
+            }],
+        }
+
+        with mock.patch(
+            "minimax.request_valid_ministral_prompt",
+            side_effect=results,
+        ) as request, mock.patch(
+            "minimax.validate_director_continuity_candidate",
+            return_value=rejected,
+        ) as validate, mock.patch("builtins.print") as output:
+            payload = minimax.request_segment_llm(
+                bundle,
+                ["Beat one"],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
+
+        self.assertEqual(request.call_count, attempt_limit)
+        self.assertEqual(validate.call_count, attempt_limit)
+        self.assertEqual(payload["llm_result"]["iteration"], attempt_limit)
+        self.assertTrue(any(
+            "using the latest response and moving on" in str(call)
+            for call in output.call_args_list
+        ))
+
+    def test_continuity_validation_error_uses_latest_response(self):
+        latest = {
+            "detailed_description": "Use this latest candidate.",
+            "overall_soundscape": "Room tone.",
+            "non_diegetic_music": "N/A",
+            "completed_beat_ids": [1],
+        }
+        bundle = segment_bundle()
+        bundle.update({
+            "segment": 2,
+            "conditioning_mode": "latent_continuation",
+            "opening_state": {},
+        })
+
+        with mock.patch(
+            "minimax.request_valid_ministral_prompt",
+            return_value=latest,
+        ), mock.patch(
+            "minimax.validate_director_continuity_candidate",
+            side_effect=ValueError("invalid validator response"),
+        ), mock.patch("builtins.print") as output:
+            payload = minimax.request_segment_llm(
+                bundle,
+                ["Beat one"],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
+
+        self.assertIs(payload["llm_result"], latest)
+        self.assertTrue(any(
+            "continuity validation failed" in str(call)
+            for call in output.call_args_list
+        ))
+
+    def test_director_request_error_uses_previous_response(self):
+        previous = {
+            "detailed_description": "Use this previous candidate.",
+            "overall_soundscape": "Room tone.",
+            "non_diegetic_music": "N/A",
+            "completed_beat_ids": [],
+        }
+
+        with mock.patch(
+            "minimax.request_valid_ministral_prompt",
+            side_effect=[previous, RuntimeError("transport failed")],
+        ) as request, mock.patch("builtins.print") as output:
+            payload = minimax.request_segment_llm(
+                segment_bundle(),
+                ["Beat one"],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
+
+        self.assertEqual(request.call_count, 2)
+        self.assertIs(payload["llm_result"], previous)
+        self.assertTrue(any(
+            "using the latest available response and moving on" in str(call)
+            for call in output.call_args_list
+        ))
+
+    def test_first_director_request_error_uses_best_effort_fallback(self):
+        bundle = segment_bundle()
+        bundle["ministral_context"]["current_beat_text"] = "Amy opens the gate."
+
+        with mock.patch(
+            "minimax.request_valid_ministral_prompt",
+            side_effect=RuntimeError("transport failed"),
+        ), mock.patch("builtins.print"):
+            payload = minimax.request_segment_llm(
+                bundle,
+                ["Amy opens the gate."],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
+
+        self.assertEqual(
+            payload["llm_result"]["detailed_description"],
+            "Amy opens the gate.",
+        )
 
     def test_retry_loop_stops_as_soon_as_active_beat_is_completed(self):
         incomplete = {"completed_beat_ids": [], "iteration": 1}
