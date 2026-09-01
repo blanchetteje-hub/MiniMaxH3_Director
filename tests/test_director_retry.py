@@ -16,6 +16,62 @@ def segment_bundle():
 
 
 class DirectorBeatCompletionRetryTests(unittest.TestCase):
+    def test_validation_prompt_checks_scope_creep_into_exact_next_beat(self):
+        messages = minimax.build_director_continuity_validation_messages(
+            opening_state={},
+            active_beat_text="Amy opens the gate.",
+            detailed_description="Amy opens the gate and enters the vault.",
+            segment_number=1,
+            next_beat_text="Amy enters the vault.",
+        )
+
+        combined = "\n".join(message["content"] for message in messages)
+        self.assertIn("NEXT BEAT\nAmy enters the vault.", combined)
+        self.assertIn("next_beat_scope_creep", combined)
+        self.assertIn("materially performs, begins, reveals", combined)
+
+        parsed = minimax.parse_director_continuity_validation({
+            "valid": False,
+            "issues": [{
+                "type": "next_beat_scope_creep",
+                "problem": "The candidate enters the vault one beat early.",
+            }],
+        })
+        self.assertEqual(parsed["issues"][0]["type"], "next_beat_scope_creep")
+
+    def test_first_segment_candidate_is_checked_when_next_beat_exists(self):
+        result = {
+            "detailed_description": "Amy opens the gate.",
+            "overall_soundscape": "The gate creaks.",
+            "non_diegetic_music": "N/A",
+            "completed_beat_ids": [1],
+        }
+        bundle = segment_bundle()
+        bundle["ministral_context"].update({
+            "current_beat_text": "Amy opens the gate.",
+            "later_beat_texts": ["Amy enters the vault.", "Amy finds the key."],
+        })
+
+        with mock.patch(
+            "minimax.request_valid_ministral_prompt",
+            return_value=result,
+        ), mock.patch(
+            "minimax.validate_director_continuity_candidate",
+            return_value={"valid": True, "issues": []},
+        ) as validate:
+            payload = minimax.request_segment_llm(
+                bundle,
+                ["Amy opens the gate.", "Amy enters the vault."],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
+
+        self.assertIs(payload["llm_result"], result)
+        self.assertEqual(
+            validate.call_args.kwargs["next_beat_text"],
+            "Amy enters the vault.",
+        )
+
     def test_final_incomplete_result_is_used_instead_of_raising(self):
         attempt_limit = minimax.DIRECTOR_BEAT_COMPLETION_ATTEMPTS
         results = [

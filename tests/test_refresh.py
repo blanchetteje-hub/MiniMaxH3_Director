@@ -34,6 +34,12 @@ class AutoRefreshTests(unittest.TestCase):
         self.assertFalse(minimax.is_refresh_segment(1, 1))
         self.assertTrue(minimax.is_refresh_segment(2, 1))
 
+    def test_refresh_defaults_to_every_sixth_segment(self):
+        args = minimax.parse_args(["5", "50", "0.5"])
+
+        self.assertEqual(args.refresh, 6)
+        self.assertTrue(minimax.is_refresh_segment(6, args.refresh))
+
     def test_conditioning_mode_uses_the_refresh_schedule_as_source_of_truth(self):
         self.assertEqual(
             minimax.conditioning_mode_for_segment(1, 5),

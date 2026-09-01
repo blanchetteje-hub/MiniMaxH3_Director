@@ -1,3 +1,4 @@
+import base64
 import copy
 import json
 import os
@@ -6,6 +7,12 @@ import unittest
 from unittest import mock
 
 import minimax
+
+
+VALID_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8A"
+    "AQUBAScY42YAAAAASUVORK5CYII="
+)
 
 
 def load_json(path):
@@ -285,7 +292,8 @@ class WorkflowNameResolutionTests(unittest.TestCase):
     def test_reference_images_match_and_are_verified_in_both_workflows(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             image_name = "opening.png"
-            open(os.path.join(temp_dir, image_name), "wb").close()
+            with open(os.path.join(temp_dir, image_name), "wb") as image:
+                image.write(VALID_PNG)
             initial = copy.deepcopy(self.initial)
             append = copy.deepcopy(self.append)
             for workflow in (initial, append):
@@ -302,7 +310,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
                 minimax.verify_reference_images(initial, append, temp_dir)
 
             self.assertEqual(print_mock.call_count, 6)
-            print_mock.assert_any_call("Image opening.png verified.")
+            print_mock.assert_any_call("Image opening.png decoded and verified.")
 
     def test_reference_image_mapping_must_match_between_workflows(self):
         initial = copy.deepcopy(self.initial)
@@ -319,7 +327,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             minimax.verify_reference_images(initial, append, tempfile.gettempdir())
         print_mock.assert_any_call(
             "WARNING: Reference Image 1 differs between workflows: "
-            "'0.png' vs 'different.png'."
+            "'alice.jpg' vs 'different.png'."
         )
 
     def test_unconnected_reference_image_slot_is_skipped(self):
@@ -333,11 +341,21 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         del initial_target["inputs"]["ref_images.ref_image_3"]
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            open(os.path.join(temp_dir, "0.png"), "wb").close()
+            for workflow in (initial, append):
+                for image_number in range(1, 7):
+                    _, node = minimax.find_workflow_node(
+                        workflow,
+                        f"Reference Image {image_number}",
+                        "test workflow",
+                        "LoadImage",
+                    )
+                    node["inputs"]["image"] = "opening.png"
+            with open(os.path.join(temp_dir, "opening.png"), "wb") as image:
+                image.write(VALID_PNG)
             with mock.patch("builtins.print") as print_mock:
                 minimax.verify_reference_images(initial, append, temp_dir)
 
-        print_mock.assert_any_call("Image 0.png verified.")
+        print_mock.assert_any_call("Image opening.png decoded and verified.")
         self.assertFalse(
             any(
                 "ref_images.ref_image_3" in call.args[0]

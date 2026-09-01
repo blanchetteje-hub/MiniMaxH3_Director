@@ -8,8 +8,8 @@ prompts/
 # Local creative inputs / generated planning
 story.txt
 beats.txt
-story_arc.txt
-story_arc.txt.sha256
+story_arc.json
+story_arc.json.sha256
 subjects.txt
 fix.py
 

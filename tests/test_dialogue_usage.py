@@ -169,6 +169,158 @@ class DialogueUsageStateTests(unittest.TestCase):
 
 
 class DialogueUsagePromptTests(unittest.TestCase):
+    def test_formatter_does_not_insert_subject_tags_inside_dialogue(self):
+        definitions = (
+            "<Subject 1> is Alice, referenced in <Picture 1>.\n"
+            "<Subject 2> is White Rabbit, referenced in <Picture 2>."
+        )
+        context = minimax.build_ministral_context(
+            segment_number=10,
+            segment_duration=5,
+            beats=[],
+            completed_beat_ids=set(),
+            subject_definitions=definitions,
+            story="",
+        )
+        raw = {
+            "detailed_description": (
+                "[Shot 10] White Rabbit (S2) asks: "
+                "<d>[English] Alice? Are you down there?</d>"
+            ),
+            "overall_soundscape": "Water drips in the cavern.",
+            "non_diegetic_music": "N/A",
+            "completed_beat_ids": [],
+        }
+
+        formatted = minimax.format_ministral_prompt(raw, context)
+
+        self.assertIn(
+            "<d>[English] Alice? Are you down there?</d>",
+            formatted["detailed_description"],
+        )
+        self.assertNotIn(
+            "<d>[English] <Subject 1>",
+            formatted["detailed_description"],
+        )
+        self.assertEqual(
+            minimax.validate_h3_dialogue_format(formatted, context),
+            [],
+        )
+
+    def test_dialogue_gate_accepts_multiple_tagged_lines_and_visible_text(self):
+        valid = {
+            "detailed_description": (
+                "[Shot 2] Ada (S1) says: <d>[English] Go now.</d> "
+                "Ben (S2) replies: <d>[English] I am coming.</d> "
+                "A sign says \"EXIT\" above them."
+            ),
+            "overall_soundscape": "Room tone.",
+            "non_diegetic_music": "N/A",
+            "completed_beat_ids": [],
+        }
+
+        self.assertEqual(
+            minimax.validate_h3_dialogue_format(valid, {}),
+            [],
+        )
+
+    def test_director_retries_subject_tagged_quoted_dialogue(self):
+        malformed = {
+            "detailed_description": (
+                "[Shot 10] <Subject 2> White Rabbit peers through a crevice. "
+                "His voice carries through the tunnel in a whisper: "
+                "\u2018<Subject 1> Alice? Are you down there?\u2019"
+            ),
+            "overall_soundscape": "Water drips in the cavern.",
+            "non_diegetic_music": "N/A",
+            "completed_beat_ids": [],
+        }
+        corrected = {
+            **malformed,
+            "detailed_description": (
+                "[Shot 10] White Rabbit (S2) asks: "
+                "<d>[English] Alice? Are you down there?</d>"
+            ),
+        }
+        bundle = {
+            "segment": 10,
+            "active_beat_id": None,
+            "conditioning_mode": "latent_continuation",
+            "messages": [{"role": "user", "content": "Direct segment 10."}],
+            "ministral_context": {},
+            "dialogue_exclusions": [],
+            "opening_state_sha256": "state-hash",
+        }
+
+        with mock.patch(
+            "minimax.request_valid_ministral_prompt",
+            side_effect=[malformed, corrected],
+        ) as director:
+            payload = minimax.request_segment_llm(
+                bundle,
+                [],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
+
+        self.assertEqual(director.call_count, 2)
+        correction_prompt = director.call_args_list[1].args[0][-1]["content"]
+        self.assertIn("DIRECTOR DIALOGUE FORMAT CORRECTION", correction_prompt)
+        self.assertEqual(payload["llm_result"], corrected)
+
+    def test_director_uses_latest_malformed_dialogue_without_exiting(self):
+        malformed = {
+            "detailed_description": (
+                "[Shot 2] Ada's voice calls: \u2018<Subject 2> Ben?\u2019"
+            ),
+            "overall_soundscape": "Room tone.",
+            "non_diegetic_music": "N/A",
+            "completed_beat_ids": [],
+        }
+        bundle = {
+            "segment": 2,
+            "active_beat_id": None,
+            "conditioning_mode": "latent_continuation",
+            "messages": [{"role": "user", "content": "Direct segment 2."}],
+            "ministral_context": {},
+            "dialogue_exclusions": [],
+            "opening_state_sha256": "state-hash",
+        }
+
+        with mock.patch(
+            "minimax.request_valid_ministral_prompt",
+            return_value=malformed,
+        ) as director, mock.patch("builtins.print") as output:
+            payload = minimax.request_segment_llm(
+                bundle,
+                [],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
+
+        self.assertEqual(
+            director.call_count,
+            minimax.DIRECTOR_BEAT_COMPLETION_ATTEMPTS,
+        )
+        self.assertEqual(payload["llm_result"], malformed)
+        self.assertTrue(any(
+            "latest best-effort response and moving on" in str(call)
+            for call in output.call_args_list
+        ))
+
+    def test_director_rules_distinguish_subject_tags_from_speaker_ids(self):
+        rules = minimax.build_director_rules(
+            total_length=10,
+            segment_length=5,
+            total_segments=2,
+            subject_definitions=SUBJECTS,
+            segment_number=2,
+            conditioning_mode="latent_continuation",
+        )
+
+        self.assertIn("NEVER put `<Subject N>` inside spoken words", rules)
+        self.assertIn("White Rabbit (S2) asks: <d>[English] Alice?", rules)
+
     def test_repeated_dialogue_is_rejected_and_director_is_retried(self):
         repeated = result_with_dialogues("Do not repeat me!")
         fresh = result_with_dialogues("A genuinely new line.")

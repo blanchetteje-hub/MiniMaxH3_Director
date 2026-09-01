@@ -166,6 +166,130 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertNotIn("\n[Shot 1]", opening)
         self.assertNotIn("opening-frame reference", later)
 
+    def test_append_h3_prompt_keeps_subject_definitions_without_disabled_suffix(self):
+        result = response("[Shot 2] Mark and Jill continue walking.", [])
+
+        prompt = minimax.build_h3_prompt(
+            result,
+            SUBJECTS,
+            segment_number=2,
+            conditioning_mode="latent_continuation",
+            excluded_picture_ids={1, 2},
+            previous_visible_subject_ids={1},
+        )
+
+        subject_text = prompt.split(
+            "subject_definitions: ", 1
+        )[1].split("\n\n", 1)[0]
+        self.assertIn(
+            "<Subject 1> is Mark, referenced in <Picture 1>.",
+            subject_text,
+        )
+        self.assertIn(
+            "<Subject 2> is Jill, referenced in <Picture 2>.",
+            subject_text,
+        )
+        self.assertNotIn("Mark's pose", subject_text)
+        self.assertNotIn("Jill's pose", subject_text)
+
+    def test_previous_visible_subject_ids_use_only_immediately_previous_segment(self):
+        recent_results = [
+            (1, response("[Shot 1] <Subject 1> Mark waits.", [])),
+            (2, response("[Shot 2] <Subject 2> Jill enters.", [])),
+        ]
+
+        self.assertEqual(
+            minimax.extract_previous_visible_subject_ids(recent_results, 3),
+            {2},
+        )
+        self.assertEqual(
+            minimax.extract_previous_visible_subject_ids(recent_results[:1], 3),
+            set(),
+        )
+
+    def test_absent_video_only_subject_does_not_claim_video_one_continuity(self):
+        definitions = (
+            SUBJECTS + "\n"
+            "<Subject 3> is New Guard, male (S3), created in generated video "
+            "segment 1 and continued from <Video 1>."
+        )
+        prompt = minimax.build_h3_prompt(
+            response("[Shot 3] <Subject 3> New Guard re-enters.", []),
+            definitions,
+            segment_number=3,
+            conditioning_mode="latent_continuation",
+            previous_visible_subject_ids={1},
+        )
+        subject_text = prompt.split(
+            "subject_definitions: ", 1
+        )[1].split("\n\n", 1)[0]
+
+        self.assertIn(
+            "<Subject 3> is New Guard, male (S3), created in generated video "
+            "segment 1.",
+            subject_text,
+        )
+        self.assertNotIn("<Video 1>", subject_text.split("<Subject 3>", 1)[1])
+
+    def test_visible_video_only_subject_keeps_definition_without_disabled_suffix(self):
+        definitions = (
+            SUBJECTS + "\n"
+            "<Subject 3> is New Guard, male (S3), continued from <Video 1>."
+        )
+        prompt = minimax.build_h3_prompt(
+            response("[Shot 3] <Subject 3> New Guard remains on guard.", []),
+            definitions,
+            segment_number=3,
+            conditioning_mode="latent_continuation",
+            previous_visible_subject_ids={3},
+        )
+
+        self.assertIn(
+            "<Subject 3> is New Guard, male (S3), continued from <Video 1>.",
+            prompt,
+        )
+        self.assertNotIn("New Guard's pose", prompt)
+
+    def test_non_append_h3_prompts_do_not_add_video_one_subject_suffix(self):
+        result = response("[Shot 1] Mark and Jill walk together.", [])
+        suffix_fragment = (
+            "pose, clothing condition, position, and physical state at the "
+            "beginning of the target video come from <Video 1>."
+        )
+
+        initial = minimax.build_h3_prompt(
+            result,
+            SUBJECTS,
+            segment_number=1,
+            conditioning_mode="initial",
+        )
+        refresh = minimax.build_h3_prompt(
+            result,
+            SUBJECTS,
+            segment_number=5,
+            conditioning_mode="clean_refresh",
+        )
+
+        self.assertNotIn(suffix_fragment, initial)
+        self.assertNotIn(suffix_fragment, refresh)
+
+    def test_initial_h3_subject_definitions_never_mention_video_one(self):
+        definitions = (
+            SUBJECTS + "\n"
+            "<Subject 3> is New Guard, male (S3), continued from <Video 1>."
+        )
+        prompt = minimax.build_h3_prompt(
+            response("[Shot 1] <Subject 3> New Guard enters.", []),
+            definitions,
+            segment_number=1,
+            conditioning_mode="initial",
+        )
+        subject_text = prompt.split(
+            "subject_definitions: ", 1
+        )[1].split("\n\n", 1)[0]
+
+        self.assertNotIn("<Video 1>", subject_text)
+
     def test_h3_prompt_collapses_adjacent_duplicate_picture_tags(self):
         result = response(
             "[Shot 1] A close-up shows Ben <Picture 2> <Picture 2> "
@@ -1169,6 +1293,25 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertEqual(formatted, original_formatted)
         self.assertIn("N/A", previous_state)
         self.assertIn("[]", previous_state)
+
+    def test_h3_prompt_spells_out_currency_for_dynamic_prompts(self):
+        formatted = response(
+            "[Shot 1] A sign reads $14.99, another reads $1.01, "
+            "and a clearance sticker reads $0.50.",
+            [],
+        )
+        formatted["overall_soundscape"] = (
+            "A clerk announces $1,299 and then references ${future_price}."
+        )
+
+        prompt = minimax.build_h3_prompt(formatted, SUBJECTS)
+
+        self.assertIn("14 dollars and 99 cents", prompt)
+        self.assertIn("1 dollar and 1 cent", prompt)
+        self.assertIn("50 cents", prompt)
+        self.assertIn("1,299 dollars", prompt)
+        self.assertIn("${future_price}", prompt)
+        self.assertNotIn("$14.99", prompt)
 
     def test_hard_cut_injects_each_subjects_latest_clothing_into_h3_prompt(self):
         prior_records = [

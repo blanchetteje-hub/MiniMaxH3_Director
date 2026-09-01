@@ -20,7 +20,8 @@ regenerating completed clips.
 
 ## What the pipeline does
 
-1. Reads `story.txt`, `beats.txt`, and optional `subjects.txt`.
+1. Reads `story.txt`, `beats.txt`, and optional `subjects.txt` and
+   `phrase_exclusions.txt`.
 2. Requests a structured shot description from an LM Studio model.
 3. Normalizes and validates that description locally with deterministic Python
    rules, then inserts it into the correct ComfyUI API workflow.
@@ -61,7 +62,8 @@ Complete these once, in order:
 6. Load an LLM in LM Studio and start its local API server.
 7. Set connection and output-path environment variables if their defaults do
    not match your system.
-8. Create `story.txt`, `beats.txt`, and optionally `subjects.txt`.
+8. Create `story.txt`, `beats.txt`, and optionally `subjects.txt` and
+   `phrase_exclusions.txt`.
 9. Add the custom node supplied in this repo
 10. Run the preflight commands, then start a short test generation.
 
@@ -91,10 +93,10 @@ Verify the installation:
 
 ```powershell
 python --version
-python -c "import requests; print(requests.__version__)"
+python -c "import requests; from PIL import Image; print(requests.__version__, Image.__version__)"
 ```
 
-Only the `requests` package is required by `minimax.py`.
+The Python packages required by `minimax.py` are `requests` and `Pillow`.
 
 ### Linux
 
@@ -270,11 +272,12 @@ consistent between the initial and append workflow:
 | `<Picture 5>` | `ref_images.ref_image_4` | `Image Batch Multi.image_5` |
 | `<Picture 6>` | `ref_images.ref_image_5` | `Image Batch Multi.image_6` |
 
-The checked-in workflows currently use `0.png` as a placeholder in the
-reference `Load Image` nodes. Before any workflow is queued, the program checks
-each configured image against the ComfyUI input folder and disconnects missing
-slots. A missing image is therefore omitted from MiniMax H3 instead of causing
-the workflow to fail. For real identity continuity:
+Before any workflow is queued, the program opens and verifies each configured
+image from the ComfyUI input folder. It restores every valid `Load Image`
+connection to its exact numbered destination and disconnects missing or
+undecodable slots. The append workflow uses its reference batch only when the
+valid slots form an ordered, gap-free sequence, preventing later Picture IDs
+from being silently renumbered. For real identity continuity:
 
 1. Copy up to six reference images into `ComfyUI/input`.
 2. In the initial and append workflows, assign them to the clearly titled
@@ -432,6 +435,15 @@ candidate beats before they are saved. Python also verifies common explicit
 constraints such as exact phrase placement/count, prohibited words, required
 phrases, and an exact final sentence; failed checks trigger another correction.
 
+### `phrase_exclusions.txt` — optional beat exclusions
+
+Put one word or phrase per line. When this file exists, its nonblank entries are
+added to every beat-writing prompt and are prohibited in both generated and
+hand-authored beats. Matching is case-insensitive and uses complete word or
+phrase boundaries, so an excluded word such as `art` does not reject `cart`.
+Duplicate entries are ignored. After reference-image verification, startup
+prints that the file was found and reports the number of loaded entries.
+
 ### `beats.txt` — optional beat tracking
 
 Write one required story event per non-empty line, in chronological order.
@@ -477,8 +489,8 @@ have not yet passed continue through targeted repair. If only previously passed
 beats are challenged, the phase passes.
 
 Each valid macro arc returned by LM Studio is written as formatted JSON to
-`story_arc.txt`, overwriting the previous contents. Its SHA-256 source hash is
-written alongside it in `story_arc.txt.sha256`. When beats need to be generated,
+`story_arc.json`, overwriting the previous contents. Its SHA-256 source hash is
+written alongside it in `story_arc.json.sha256`. When beats need to be generated,
 the saved arc is reused only when that sidecar matches the current `story.txt`
 source and the arc validates against the current segment count. A missing,
 malformed, or mismatched hash triggers generation of a new arc and overwrites
@@ -639,7 +651,7 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
 | `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
 | `--context-frames FRAMES` | Latent frames retained by `MiniMaxH3VideoExtendPatched`; defaults to `8` and supports values such as `2`, `4`, `8`, or `12`. |
-| `--refresh SEGMENTS` | Enable auto refresh on every Nth segment using `Minimax_auto_refresh_API.json`; disabled by default. |
+| `--refresh SEGMENTS` | Auto refresh on every Nth segment using `Minimax_auto_refresh_API.json`; defaults to every `6` segments. |
 | `--model {ministral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `ministral`. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |
 | `ff` or `--ff` | Add opening-frame instructions for `<Picture 1>` when generating segment 1; defaults to disabled. |
@@ -734,6 +746,10 @@ workflow, preserve these titles or update the matching constants in
   MiniMax H3 prompt expresses it as a `<Video 1>` continuation block with
   `summary` and `retention_analysis` sections. It omits internal field labels
   and unknown `N/A` values.
+- While ComfyUI renders the current segment, the completed next-segment
+  director prefetch is immediately checkpointed in `generation_state.json` as
+  `prefetched_next_prompt` with its segment number, input-state fingerprint,
+  and structured LLM result.
 - Prompt authority is ordered: BEAT STATE controls plot progression;
   AUTHORITATIVE OPENING STATE controls current physical continuity; SUBJECT
   REGISTRY controls identity and Picture mappings; recent generated segments
@@ -770,8 +786,9 @@ For the initial workflow, each retry lowers the requested resolution by `0.02`
 megapixels, for a maximum total reduction of `0.20` megapixels. The workflow
 is rebuilt for every attempt, including a fresh random seed. Append segments
 retry at the inherited resolution because their workflow has no resolution
-selector. Failed attempts do not update `generation_state.json`; only a
-successful render is checkpointed.
+selector. Failed attempts never add a completed-segment record. Working
+continuity and a completed next-prompt prefetch may be checkpointed while a
+render is still pending; only a verified render marks the segment resumable.
 
 ## Troubleshooting
 
@@ -858,9 +875,10 @@ MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
 | `Minimax_auto_append_API.json` | Video-continuation API workflow. |
 | `Minimax_auto_refresh_API.json` | Auto-refresh reference-to-video workflow used by `--refresh`. |
 | `story.txt` | Source story or creative brief. |
-| `story_arc.txt` | Persisted macro story arc reused by automatic beat generation when nonblank. |
-| `story_arc.txt.sha256` | SHA-256 of the `story.txt` source associated with the persisted arc. |
+| `story_arc.json` | Persisted macro story arc reused by automatic beat generation when valid. |
+| `story_arc.json.sha256` | SHA-256 of the `story.txt` source associated with the persisted arc. |
 | `beats.txt` | Ordered story events; blank triggers automatic beat generation. |
+| `phrase_exclusions.txt` | Optional newline-delimited words and phrases prohibited in beats. |
 | `subjects.txt` | Optional subject/reference definitions. |
 | `stitch.bat` | Optional Windows-only FFmpeg concat helper. |
 | `requirements.txt` | Python package requirements. |

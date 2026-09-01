@@ -294,6 +294,17 @@
       "title": "MiniMax H3 Reference to Video"
     }
   },
+  "118": {
+    "inputs": {
+      "text": "",
+      "seed": 922,
+      "autorefresh": "No"
+    },
+    "class_type": "DPRandomGenerator",
+    "_meta": {
+      "title": "Prompt"
+    }
+  },
   "114": {
     "inputs": {
       "image": "0.png"
@@ -310,17 +321,6 @@
     "class_type": "LoadImage",
     "_meta": {
       "title": "Reference Image 2"
-    }
-  },
-  "118": {
-    "inputs": {
-      "text": "",
-      "seed": 922,
-      "autorefresh": "No"
-    },
-    "class_type": "DPRandomGenerator",
-    "_meta": {
-      "title": "Prompt"
     }
   },
   "120": {

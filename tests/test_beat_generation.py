@@ -9,6 +9,31 @@ import minimax
 
 
 class BeatGenerationTests(unittest.TestCase):
+    def test_default_story_arc_path_uses_json_filename(self):
+        with tempfile.TemporaryDirectory() as directory:
+            beats_path = os.path.join(directory, "beats.txt")
+            arc_path = minimax.get_story_arc_path(beats_path)
+
+        self.assertEqual(arc_path, os.path.join(directory, "story_arc.json"))
+        self.assertEqual(
+            minimax.get_story_arc_hash_path(arc_path),
+            os.path.join(directory, "story_arc.json.sha256"),
+        )
+
+    def test_phrase_exclusions_file_loads_nonblank_distinct_lines(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "phrase_exclusions.txt")
+            self.assertEqual(minimax.load_phrase_exclusions(path), [])
+            with open(path, "w", encoding="utf-8") as exclusion_file:
+                exclusion_file.write(
+                    "red fox\n\n  storm   cloud  \nRED FOX\n"
+                )
+
+            self.assertEqual(
+                minimax.load_phrase_exclusions(path),
+                ["red fox", "storm cloud"],
+            )
+
     def test_macro_arc_prompt_lists_only_subject_names(self):
         subjects = (
             "- Marc is a 40-year-old man.\n"
@@ -71,6 +96,46 @@ class BeatGenerationTests(unittest.TestCase):
             },
         )
         self.assertNotIn("segment_start", phase_schema["properties"])
+
+    def test_macro_arc_fidelity_requires_first_phase_clothing_for_human_subjects(self):
+        subjects = (
+            "- Amy is a courier.\n"
+            "- Bolt is explicitly a non-human maintenance robot.\n"
+            "- June is a main character."
+        )
+        macro_arc = {
+            "phases": [
+                {
+                    "phase_number": 1,
+                    "beat_start": 1,
+                    "beat_end": 2,
+                    "narrative_purpose": "Begin the delivery.",
+                    "broad_progression": "Amy and June collect the package.",
+                    "characters_introduced": ["Amy", "June", "Bolt"],
+                    "location": "Depot",
+                    "required_end_state": "The delivery begins.",
+                }
+            ]
+        }
+
+        messages = minimax.build_beat_arc_fidelity_messages(
+            "A courier and her companions begin a delivery.",
+            macro_arc,
+            subject_information=subjects,
+        )
+        prompt = messages[1]["content"]
+
+        self.assertIn(subjects, prompt)
+        self.assertIn(
+            "assume every defined Subject is human unless that Subject's\n"
+            "definition explicitly identifies it as non-human",
+            prompt,
+        )
+        self.assertIn("animal, robot,\ncreature, or object", prompt)
+        self.assertIn("give that named defined Subject appropriate clothing", prompt)
+        self.assertIn("clothing must appear in phase 1", prompt)
+        self.assertIn("put the\nclothing in phase 1's broad_progression", prompt)
+        minimax.verify_subjects_in_beat_messages(messages, subjects)
 
     def test_macro_arc_parser_and_batches_preserve_phase_boundaries(self):
         arc = minimax.parse_beat_arc_plan(
@@ -308,13 +373,13 @@ class BeatGenerationTests(unittest.TestCase):
                 audit_attempts=1,
             )
             with open(
-                os.path.join(directory, "story_arc.txt"),
+                os.path.join(directory, "story_arc.json"),
                 "r",
                 encoding="utf-8",
             ) as arc_file:
                 saved_arc = json.load(arc_file)
             with open(
-                os.path.join(directory, "story_arc.txt.sha256"),
+                os.path.join(directory, "story_arc.json.sha256"),
                 "r",
                 encoding="utf-8",
             ) as hash_file:
@@ -343,7 +408,7 @@ class BeatGenerationTests(unittest.TestCase):
             minimax.hash_story_arc_source(story_source),
         )
 
-    def test_existing_story_arc_is_used_without_requesting_a_new_arc(self):
+    def test_existing_story_arc_skips_phase_validation_and_repair_requests(self):
         macro_arc = {
             "phases": [
                 {
@@ -394,7 +459,7 @@ class BeatGenerationTests(unittest.TestCase):
         ):
             story_source = "A courier completes a mountain delivery."
             beats_path = os.path.join(directory, "beats.txt")
-            arc_path = os.path.join(directory, "story_arc.txt")
+            arc_path = os.path.join(directory, "story_arc.json")
             with open(beats_path, "w", encoding="utf-8") as beat_file:
                 beat_file.write("")
             minimax.save_story_arc(macro_arc, story_source, arc_path)
@@ -419,8 +484,10 @@ class BeatGenerationTests(unittest.TestCase):
         )
         self.assertEqual(
             purposes,
-            ["beat_generation", "beat_phase_validation", "beat_plan_audit"],
+            ["beat_generation", "beat_plan_audit"],
         )
+        self.assertNotIn("beat_phase_validation", purposes)
+        self.assertNotIn("beat_phase_repair", purposes)
         self.assertEqual(preserved_arc_text, original_arc_text)
 
     def test_story_arc_hash_mismatch_regenerates_and_overwrites_arc(self):
@@ -493,7 +560,7 @@ class BeatGenerationTests(unittest.TestCase):
             old_story = "A sailor completes a sea voyage."
             new_story = "A pilot delivers medicine to a mountain airfield."
             beats_path = os.path.join(directory, "beats.txt")
-            arc_path = os.path.join(directory, "story_arc.txt")
+            arc_path = os.path.join(directory, "story_arc.json")
             with open(beats_path, "w", encoding="utf-8") as beat_file:
                 beat_file.write("")
             minimax.save_story_arc(old_arc, old_story, arc_path)
@@ -681,7 +748,7 @@ class BeatGenerationTests(unittest.TestCase):
             "builtins.print"
         ):
             beats_path = os.path.join(directory, "beats.txt")
-            arc_path = os.path.join(directory, "story_arc.txt")
+            arc_path = os.path.join(directory, "story_arc.json")
             with open(arc_path, "w", encoding="utf-8") as arc_file:
                 json.dump(macro_arc, arc_file)
             beats = minimax.generate_beats_from_story(
@@ -755,6 +822,24 @@ class BeatGenerationTests(unittest.TestCase):
         self.assertIn(
             "One concise, complete sentence",
             item["properties"]["beat_text"]["description"],
+        )
+
+    def test_generation_prompt_includes_optional_phrase_exclusions(self):
+        prompt = minimax.build_beat_generation_messages(
+            "A courier crosses the city.",
+            2,
+            phrase_exclusions=["red fox", "thunder"],
+        )[1]["content"]
+
+        self.assertIn("WORDS AND PHRASES NOT ALLOWED IN BEATS", prompt)
+        self.assertIn('"red fox"', prompt)
+        self.assertIn('"thunder"', prompt)
+        self.assertNotIn(
+            "WORDS AND PHRASES NOT ALLOWED IN BEATS",
+            minimax.build_beat_generation_messages(
+                "A courier crosses the city.",
+                2,
+            )[1]["content"],
         )
 
     def test_later_phase_prompt_includes_all_earlier_beats_as_state_authority(self):
@@ -1559,6 +1644,35 @@ class BeatGenerationTests(unittest.TestCase):
                 3,
             )
 
+    def test_phrase_exclusion_validator_uses_case_insensitive_word_boundaries(self):
+        issues = minimax.validate_generated_beat_exclusions(
+            [
+                "The cart rolls safely past the gate.",
+                "A RED FOX appears beside the road.",
+                "The thunder cracks overhead.",
+            ],
+            ["art", "red fox", "thunder"],
+            beat_start=8,
+        )
+
+        self.assertEqual(
+            issues,
+            [
+                "Beat 9 contains prohibited word or phrase 'red fox'.",
+                "Beat 10 contains prohibited word or phrase 'thunder'.",
+            ],
+        )
+
+    def test_parser_never_bypasses_phrase_exclusions(self):
+        with self.assertRaisesRegex(ValueError, r"Beat 4.*red fox"):
+            minimax.parse_generated_beats(
+                {"beats": ["A red fox enters the clearing."]},
+                1,
+                expected_start=4,
+                enforce_content_validation=False,
+                phrase_exclusions=["red fox"],
+            )
+
     def test_parser_accepts_numbered_single_sentences_and_rejects_two(self):
         with self.assertRaisesRegex(ValueError, "exactly one complete sentence"):
             minimax.parse_generated_beats(
@@ -2134,6 +2248,24 @@ class BeatGenerationTests(unittest.TestCase):
         self.assertEqual(preserved, original)
         llm_request.assert_not_called()
 
+    def test_nonempty_beats_file_is_checked_against_phrase_exclusions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "beats.txt")
+            with open(path, "w", encoding="utf-8") as beat_file:
+                beat_file.write("1. The red fox enters.\n2. Everyone leaves.\n")
+
+            with self.assertRaisesRegex(
+                ValueError,
+                r"beats\.txt violates phrase_exclusions\.txt.*red fox",
+            ):
+                minimax.load_or_generate_beats(
+                    path,
+                    "A short story.",
+                    2,
+                    llm_request=mock.Mock(),
+                    phrase_exclusions=["red fox"],
+                )
+
     def test_comment_only_beats_file_triggers_generation(self):
         generated = ["A distinct opening.", "A conclusive ending."]
         llm_request = mock.Mock(return_value={"beats": generated})
@@ -2224,6 +2356,8 @@ class BeatGenerationTests(unittest.TestCase):
                     "<Subject 1> is Marc, a 40-year-old man referenced in "
                     "<Picture 1>."
                 )
+            if path == minimax.PHRASE_EXCLUSIONS_FILE:
+                return "red fox\nstorm cloud"
             return ""
 
         with mock.patch("minimax.parse_args", return_value=args), mock.patch(
@@ -2232,6 +2366,9 @@ class BeatGenerationTests(unittest.TestCase):
         ), mock.patch("minimax.reset_prompt_history"), mock.patch(
             "minimax.load_or_generate_beats",
             generated,
+        ), mock.patch(
+            "minimax.os.path.isfile",
+            side_effect=lambda path: path == minimax.PHRASE_EXCLUSIONS_FILE,
         ), mock.patch("minimax.validate_runtime_environment", runtime):
             with self.assertRaisesRegex(RuntimeError, "ordering check"):
                 minimax._run_main(mock.Mock())
@@ -2260,6 +2397,63 @@ class BeatGenerationTests(unittest.TestCase):
             "beat_instructions: [Make the middle beat surprising.]\n"
             "A three-part story.",
         )
+        self.assertEqual(
+            generated.call_args.kwargs["phrase_exclusions"],
+            ["red fox", "storm cloud"],
+        )
+
+    def test_phrase_exclusions_found_message_follows_image_verification(self):
+        args = SimpleNamespace(
+            segment_length=5.0,
+            total_length=5.0,
+            megapixels=0.5,
+            resume=1,
+            steps=6,
+            ff=False,
+        )
+        events = []
+
+        def fake_load(path, required=True):
+            del required
+            if path == minimax.STORY_FILE:
+                return "A one-beat story."
+            if path == minimax.PHRASE_EXCLUSIONS_FILE:
+                return "red fox"
+            return ""
+
+        def record_print(*values, **_kwargs):
+            message = " ".join(str(value) for value in values)
+            if message.startswith("Phrase exclusions file found:"):
+                events.append("found")
+
+        def stop_after_loras(_loras):
+            events.append("loras")
+            raise RuntimeError("stop after phrase-exclusion ordering check")
+
+        with mock.patch("minimax.parse_args", return_value=args), mock.patch(
+            "minimax.load_text_file",
+            side_effect=fake_load,
+        ), mock.patch(
+            "minimax.os.path.isfile",
+            side_effect=lambda path: path == minimax.PHRASE_EXCLUSIONS_FILE,
+        ), mock.patch("minimax.reset_prompt_history"), mock.patch(
+            "minimax.load_or_generate_beats",
+            return_value=["The story concludes."],
+        ), mock.patch("minimax.load_story_arc", return_value=None), mock.patch(
+            "minimax.validate_runtime_environment"
+        ), mock.patch("minimax.load_workflow", return_value={}), mock.patch(
+            "minimax.validate_workflow"
+        ), mock.patch(
+            "minimax.verify_reference_images",
+            side_effect=lambda *_args, **_kwargs: events.append("images"),
+        ), mock.patch(
+            "minimax.verify_global_loras",
+            side_effect=stop_after_loras,
+        ), mock.patch("builtins.print", side_effect=record_print):
+            with self.assertRaisesRegex(RuntimeError, "ordering check"):
+                minimax._run_main(mock.Mock())
+
+        self.assertEqual(events, ["images", "found", "loras"])
 
     def test_invalid_subjects_stop_startup_before_beat_generation(self):
         args = SimpleNamespace(

@@ -1,7 +1,9 @@
 import json
 import os
 import tempfile
+import threading
 import unittest
+from unittest import mock
 
 import minimax
 
@@ -18,6 +20,67 @@ def formatted_result(shot):
 
 
 class ResumeTests(unittest.TestCase):
+    def test_resume_waits_for_an_in_flight_final_checkpoint_commit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = os.path.join(directory, "generation_state.json")
+            state = minimax.new_generation_state(
+                minimax.build_run_config(5, 15, 0.5, 3)
+            )
+            video_paths = {}
+            latent_paths = {}
+            for segment in (1, 2):
+                video_path = os.path.join(directory, f"segment_{segment:04d}.mp4")
+                latent_path = os.path.join(directory, f"latent_{segment:04d}")
+                with open(video_path, "wb") as video_file:
+                    video_file.write(b"video")
+                with open(latent_path, "wb") as latent_file:
+                    latent_file.write(b"latent")
+                video_paths[segment] = video_path
+                latent_paths[segment] = latent_path
+
+            minimax.record_completed_segment(
+                state,
+                1,
+                video_paths[1],
+                formatted_result(1),
+                [1],
+            )
+            minimax.save_generation_state(state, checkpoint)
+
+            def finish_segment_two():
+                threading.Event().wait(0.05)
+                minimax.record_completed_segment(
+                    state,
+                    2,
+                    video_paths[2],
+                    formatted_result(2),
+                    [1, 2],
+                )
+                minimax.save_generation_state(state, checkpoint)
+
+            writer = threading.Thread(target=finish_segment_two)
+            writer.start()
+            try:
+                with mock.patch(
+                    "minimax.get_h3_latent_path",
+                    side_effect=lambda segment: latent_paths[segment],
+                ):
+                    restored = minimax.restore_generation_state(
+                        3,
+                        ["First", "Second", "Third"],
+                        checkpoint,
+                        checkpoint_wait_timeout=1,
+                        checkpoint_poll_interval=0.01,
+                    )
+            finally:
+                writer.join()
+
+            self.assertEqual(
+                [record["segment_number"] for record in restored["state"]["segments"]],
+                [1, 2],
+            )
+            self.assertEqual(restored["previous_video_path"], video_paths[2])
+
     def test_generation_state_contains_migratable_structured_continuity_state(self):
         state = minimax.new_generation_state(
             minimax.build_run_config(5, 10, 0.5, 2)

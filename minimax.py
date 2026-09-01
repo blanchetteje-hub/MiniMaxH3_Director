@@ -27,11 +27,13 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
+from PIL import Image, UnidentifiedImageError
 
 from ministral_formatter import (
     MinistralFormatter,
     extract_inline_dialogue_subjects,
     normalize_summary_subject_references,
+    validate_h3_dialogue_format,
 )
 from qwen_formatter import QwenFormatter
 
@@ -137,9 +139,10 @@ INITIAL_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_API.json")
 APPEND_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_append_API.json")
 REFRESH_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_refresh_API.json")
 STORY_FILE = os.path.join(SCRIPT_DIR, "story.txt")
-STORY_ARC_FILE = os.path.join(SCRIPT_DIR, "story_arc.txt")
+STORY_ARC_FILE = os.path.join(SCRIPT_DIR, "story_arc.json")
 STORY_ARC_HASH_FILE = STORY_ARC_FILE + ".sha256"
 BEATS_FILE = os.path.join(SCRIPT_DIR, "beats.txt")
+PHRASE_EXCLUSIONS_FILE = os.path.join(SCRIPT_DIR, "phrase_exclusions.txt")
 SUBJECT_DEFINITIONS_FILE = os.path.join(SCRIPT_DIR, "subjects.txt")
 GENERATION_STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
 PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
@@ -334,6 +337,8 @@ COMFY_HISTORY_RETRY_DELAY = 10
 COMFY_RENDER_TIMEOUT = 15 * 60
 COMFY_RENDER_RETRIES = 10
 COMFY_RETRY_MEGAPIXEL_STEP = 0.02
+RESUME_CHECKPOINT_WAIT_SECONDS = 30
+RESUME_CHECKPOINT_POLL_SECONDS = 0.25
 CONTINUITY_STATE_VERSION = 5
 
 PERSISTENT_SUBJECT_LIST_FIELDS = (
@@ -374,6 +379,11 @@ SUMMARY_CONTENT_ATTEMPTS = 3
 DIRECTOR_BEAT_COMPLETION_ATTEMPTS = 3
 BEAT_PHASE_GENERATION_ATTEMPTS = 10
 BEAT_PHASE_REPAIR_ROUNDS = 10
+# The post-generation semantic phase check adds two large LLM requests
+# (beat_phase_validation and, on failure, beat_phase_repair) without improving
+# the locally valid beat list reliably. Keep the implementation available for
+# now, but do not invoke either request during normal beat generation.
+ENABLE_BEAT_PHASE_LLM_VALIDATION = False
 BEAT_LLM_SAMPLING_PARAMETERS = {
     "temperature": 0.65,
     "top_p": 0.90,
@@ -476,11 +486,11 @@ def parse_args(arguments=None):
     parser.add_argument(
         "--refresh",
         type=int,
-        default=None,
+        default=6,
         metavar="SEGMENTS",
         help=(
             "regenerate from the preceding segment's last frame on every "
-            "SEGMENTS-th segment"
+            "SEGMENTS-th segment (default: 6)"
         ),
     )
     parser.add_argument(
@@ -671,6 +681,20 @@ def load_text_file(path, required=True):
         return ""
 
 
+def load_phrase_exclusions(path=PHRASE_EXCLUSIONS_FILE):
+    """Load distinct, nonblank newline-delimited beat exclusions."""
+    raw = load_text_file(path, required=False)
+    exclusions = []
+    seen = set()
+    for raw_line in raw.splitlines():
+        exclusion = " ".join(raw_line.split()).strip()
+        key = exclusion.casefold()
+        if exclusion and key not in seen:
+            exclusions.append(exclusion)
+            seen.add(key)
+    return exclusions
+
+
 def load_workflow(path):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -731,23 +755,34 @@ def _resolve_comfy_input_image(image_name, input_directory):
     return os.path.abspath(os.path.join(input_directory, cleaned))
 
 
-def prune_missing_reference_images(
-    workflow,
-    workflow_label,
-    workflow_kind,
-    input_directory=None,
-):
-    """Disconnect missing LoadImage references before queueing a workflow."""
+def _validate_comfy_input_image(image_name, input_directory):
+    """Return a resolved path and a decode error for a ComfyUI image input."""
 
-    input_directory = os.path.abspath(input_directory or COMFY_INPUT)
+    image_path = _resolve_comfy_input_image(image_name, input_directory)
+    if not image_path or not os.path.isfile(image_path):
+        return image_path, "file was not found"
+    try:
+        with Image.open(image_path) as image:
+            image.verify()
+    except (OSError, SyntaxError, UnidentifiedImageError, ValueError) as error:
+        return image_path, f"image decoder rejected the file: {error}"
+    return image_path, None
+
+
+def _reference_destination(workflow, workflow_label, workflow_kind):
+    """Return the reference target node and its six exact input names."""
+
     if workflow_kind == "append":
         destination_name = IMAGE_BATCH_NODE_NAME
+        destination_class = "ImageBatchMulti"
         input_names = [f"image_{number}" for number in range(1, 7)]
     elif workflow_kind == "initial":
         destination_name = INITIAL_REFERENCE_CONDITIONING_NODE_NAME
+        destination_class = "MiniMaxH3ReferenceToVideo"
         input_names = [f"ref_images.ref_image_{number}" for number in range(6)]
     elif workflow_kind == "refresh":
         destination_name = REFRESH_CONDITIONING_NODE_NAME
+        destination_class = "MiniMaxH3HybridRefAndKeyframe"
         input_names = [f"ref_images.ref_image_{number}" for number in range(6)]
     else:
         raise ValueError(f"Unknown workflow kind: {workflow_kind!r}")
@@ -756,20 +791,86 @@ def prune_missing_reference_images(
         workflow,
         destination_name,
         workflow_label,
+        destination_class,
+    )
+    return destination_name, destination, input_names
+
+
+def _reference_input_container(destination, input_name):
+    """Return the actual input mapping and key for flat or nested API JSON."""
+
+    inputs = destination["inputs"]
+    if input_name in inputs or "." not in input_name:
+        return inputs, input_name
+    container_name, leaf_name = input_name.split(".", 1)
+    nested = inputs.get(container_name)
+    if isinstance(nested, dict):
+        return nested, leaf_name
+    return inputs, input_name
+
+
+def _synchronize_append_reference_batch(workflow, workflow_label, destination):
+    """Connect only an ordered, gap-free image batch to the append model."""
+
+    connected_slots = [
+        number
+        for number in range(1, 7)
+        if isinstance(destination["inputs"].get(f"image_{number}"), list)
+        and len(destination["inputs"][f"image_{number}"]) == 2
+    ]
+    contiguous_slots = list(range(1, len(connected_slots) + 1))
+    if not connected_slots or connected_slots != contiguous_slots:
+        disconnect_append_reference_batch(
+            workflow,
+            workflow_label,
+            reason=(
+                "a missing reference would renumber later Picture slots "
+                f"({connected_slots or 'no valid images'})"
+            ),
+        )
+        return False
+
+    batch_id, _ = find_workflow_node(
+        workflow,
+        IMAGE_BATCH_NODE_NAME,
+        workflow_label,
+        "ImageBatchMulti",
+    )
+    _, extend_node = find_workflow_node(
+        workflow,
+        VIDEO_EXTEND_NODE_NAME,
+        workflow_label,
+        "MiniMaxH3VideoExtendPatched",
+    )
+    expected_connection = [batch_id, 0]
+    if extend_node["inputs"].get("ref_images") != expected_connection:
+        extend_node["inputs"]["ref_images"] = expected_connection
+        print(
+            f"{workflow_label} connected the valid ordered reference-image "
+            "batch to the video extender."
+        )
+    return True
+
+
+def prune_missing_reference_images(
+    workflow,
+    workflow_label,
+    workflow_kind,
+    input_directory=None,
+):
+    """Connect decodable references and disconnect unusable ones before queueing."""
+
+    input_directory = os.path.abspath(input_directory or COMFY_INPUT)
+    destination_name, destination, input_names = _reference_destination(
+        workflow,
+        workflow_label,
+        workflow_kind,
     )
     removed = []
     for image_number, (node_name, input_name) in enumerate(
         zip(REFERENCE_IMAGE_NODE_NAMES, input_names),
         start=1,
     ):
-        matches = [
-            (node_id, node)
-            for node_id, node in workflow.items()
-            if isinstance(node, dict)
-            and node.get("_meta", {}).get("title") == node_name
-        ]
-        if not matches:
-            continue
         node_id, image_node = find_workflow_node(
             workflow,
             node_name,
@@ -777,33 +878,32 @@ def prune_missing_reference_images(
             "LoadImage",
         )
         image_name = image_node["inputs"].get("image")
-        image_path = _resolve_comfy_input_image(image_name, input_directory)
-        if image_path and os.path.isfile(image_path):
+        image_path, decode_error = _validate_comfy_input_image(
+            image_name,
+            input_directory,
+        )
+        container, leaf_name = _reference_input_container(destination, input_name)
+        if decode_error is None:
+            expected_connection = [node_id, 0]
+            if container.get(leaf_name) != expected_connection:
+                container[leaf_name] = expected_connection
+                print(
+                    f"{workflow_label} connected Reference Image {image_number} "
+                    f"to '{destination_name}.{input_name}'."
+                )
             continue
 
-        inputs = destination["inputs"]
-        container = inputs
-        leaf_name = input_name
-        if input_name not in inputs and "." in input_name:
-            container_name, leaf_name = input_name.split(".", 1)
-            nested = inputs.get(container_name)
-            if not isinstance(nested, dict):
-                continue
-            container = nested
         connection = container.get(leaf_name)
-        if not (
-            isinstance(connection, list)
-            and len(connection) == 2
-            and str(connection[0]) == str(node_id)
-        ):
-            continue
-        del container[leaf_name]
+        if connection is not None:
+            del container[leaf_name]
         removed.append(image_number)
         print(
             f"WARNING: {workflow_label} disconnected Reference Image "
-            f"{image_number} because it was not found: "
-            f"{image_path or image_name!r}"
+            f"{image_number} from '{destination_name}.{input_name}' because "
+            f"{decode_error}: {image_path or image_name!r}"
         )
+    if workflow_kind == "append":
+        _synchronize_append_reference_batch(workflow, workflow_label, destination)
     return removed
 
 
@@ -1013,15 +1113,18 @@ def verify_reference_images(
         )
         if image_name is None:
             continue
-        image_path = os.path.join(input_directory, image_name)
-        if not os.path.isfile(image_path):
+        image_path, decode_error = _validate_comfy_input_image(
+            image_name,
+            input_directory,
+        )
+        if decode_error is not None:
             print(
                 f"WARNING: Image {image_name} for reference slot "
-                f"{image_number} was not found and will be disconnected "
-                f"before queueing: {image_path}"
+                f"{image_number} is invalid ({decode_error}) and will be "
+                f"disconnected before queueing: {image_path}"
             )
             continue
-        print(f"Image {image_name} verified.")
+        print(f"Image {image_name} decoded and verified.")
 
 
 def verify_global_loras(global_loras, lora_directory=None):
@@ -2600,6 +2703,58 @@ def load_generation_state(path=GENERATION_STATE_FILE):
     return state
 
 
+def wait_for_resume_checkpoint(
+    state,
+    resume_segment,
+    path=GENERATION_STATE_FILE,
+    timeout=RESUME_CHECKPOINT_WAIT_SECONDS,
+    poll_interval=RESUME_CHECKPOINT_POLL_SECONDS,
+):
+    """Reload a checkpoint while the immediately preceding segment commits.
+
+    ComfyUI writes the video before the main thread can validate its path and
+    atomically append the completed-segment record.  A resume process started
+    in that small window used to reject a valid ``--resume N`` request after a
+    single stale read.  Only wait when exactly that final required record is
+    missing; older or more severely incomplete checkpoints still fail fast.
+    """
+
+    required_count = resume_segment - 1
+    records = state.get("segments")
+    if (
+        not isinstance(records, list)
+        or len(records) != required_count - 1
+        or timeout <= 0
+    ):
+        return state
+
+    print(
+        f"Checkpoint currently has {len(records)}/{required_count} required "
+        f"segment records; waiting up to {timeout:g} seconds for segment "
+        f"{required_count} to finish committing.",
+        flush=True,
+    )
+    deadline = time.monotonic() + timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return state
+        time.sleep(min(poll_interval, remaining))
+        reloaded = load_generation_state(path)
+        reloaded_records = reloaded.get("segments")
+        if (
+            isinstance(reloaded_records, list)
+            and len(reloaded_records) >= required_count
+        ):
+            print(
+                f"Segment {required_count} checkpoint commit detected; "
+                "continuing resume.",
+                flush=True,
+            )
+            return reloaded
+        state = reloaded
+
+
 def save_generation_state(state, path=GENERATION_STATE_FILE):
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
@@ -2751,6 +2906,8 @@ def restore_generation_state(
     beats,
     path=GENERATION_STATE_FILE,
     base_subject_definitions="",
+    checkpoint_wait_timeout=None,
+    checkpoint_poll_interval=RESUME_CHECKPOINT_POLL_SECONDS,
 ):
     state = load_generation_state(path)
     if state.get("version") != 1:
@@ -2762,6 +2919,26 @@ def restore_generation_state(
         raise RuntimeError("Generation checkpoint has no valid segment records.")
 
     required_count = resume_segment - 1
+    if checkpoint_wait_timeout is None:
+        checkpoint_wait_timeout = (
+            RESUME_CHECKPOINT_WAIT_SECONDS
+            if os.path.abspath(path) == os.path.abspath(GENERATION_STATE_FILE)
+            else 0
+        )
+    state = wait_for_resume_checkpoint(
+        state,
+        resume_segment,
+        path,
+        timeout=checkpoint_wait_timeout,
+        poll_interval=checkpoint_poll_interval,
+    )
+    if state.get("version") != 1:
+        raise RuntimeError(
+            "Generation checkpoint version is unsupported; start at segment 1."
+        )
+    records = state.get("segments")
+    if not isinstance(records, list):
+        raise RuntimeError("Generation checkpoint has no valid segment records.")
     if len(records) < required_count:
         raise RuntimeError(
             f"Cannot resume at segment {resume_segment}: checkpoint contains "
@@ -4386,7 +4563,7 @@ For every phase provide:
 - beat_start and beat_end, both inclusive;
 - narrative_purpose;
 - broad_progression: one abstract summary of the source-derived progression;
-- required_end_state: one broad source-derived state that the next phase begins from.
+- required_end_state: one simple state that the next phase begins from.
 - characters_introduced: array of characters introduced in this phase
 - location: the location of the phase
 - phase_number: the phase number
@@ -4620,13 +4797,19 @@ def build_phase_generation_batches(
     return batches
 
 
-def build_beat_arc_fidelity_messages(story, macro_arc):
+def build_beat_arc_fidelity_messages(
+    story,
+    macro_arc,
+    subject_information="",
+):
+    subject_text = str(subject_information or "").strip() or "N/A"
     return [
         {
             "role": "system",
             "content": (
                 "You are a narrow macro-story fidelity checker. Evaluate only "
-                "major source fidelity and return only the requested JSON object."
+                "major source fidelity and required opening wardrobe coverage, "
+                "then return only the requested JSON object."
             ),
         },
         {
@@ -4636,12 +4819,25 @@ Check the proposed MACRO STORY ARC before any individual beats are generated.
 Answer only whether the macro arc:
 1. preserves the source premise;
 2. preserves required major events, their required order, and the required outcome;
-3. avoids unsupported major premise changes or invented mythology.
+3. avoids unsupported major premise changes or invented mythology;
+4. specifies concrete clothing in phase 1 for every defined human Subject.
+
+For rule 4, assume every defined Subject is human unless that Subject's
+definition explicitly identifies it as non-human, such as an animal, robot,
+creature, or object. Ignore those explicitly non-human Subjects for the clothing
+requirement. The clothing must appear in phase 1 of the PROPOSED MACRO STORY ARC;
+clothing shown only in a reference picture or mentioned only in a Subject
+definition does not satisfy the requirement. If an applicable Subject's clothing
+is missing, set valid=false and write an issue that explicitly instructs the
+planner to give that named defined Subject appropriate clothing in phase 1. The
+arc schema has no separate clothing field, so instruct the planner to put the
+clothing in phase 1's broad_progression without adding a new field.
 
 Do not critique pacing, wording, detail level, phase boundaries, or screenplay
-quality. Set valid=false only for a major source-fidelity failure and describe
-each such failure concisely in issues. Otherwise return valid=true with an empty
-issues array.
+quality beyond the phase-1 clothing requirement above. Set valid=false only for
+a major source-fidelity failure or missing required phase-1 clothing, and
+describe each such failure concisely in issues. Otherwise return valid=true with
+an empty issues array.
 
 Unsupported new characters, doppelgangers/copies, loops or resurrection, secret
 mythology, flashback frameworks, rituals, and existential mechanics are major
@@ -4652,6 +4848,9 @@ SOURCE STORY
 --- STORY START ---
 {story}
 --- STORY END ---
+
+DEFINED SUBJECTS
+{subject_text}
 
 PROPOSED MACRO STORY ARC
 {json.dumps(macro_arc, ensure_ascii=False, indent=2)}
@@ -5091,6 +5290,26 @@ def beat_phase_validation_repair_ranges(validation):
     ]
 
 
+def format_phrase_exclusions_section(phrase_exclusions):
+    """Format the optional hard exclusion list for a beat-writing prompt."""
+    exclusions = [
+        " ".join(str(value).split()).strip()
+        for value in (phrase_exclusions or [])
+        if str(value).strip()
+    ]
+    if not exclusions:
+        return ""
+    return (
+        "\n\nWORDS AND PHRASES NOT ALLOWED IN BEATS\n"
+        "Do not use any of the following words or phrases in any beat. "
+        "Matching is case-insensitive and applies to complete words or phrases:\n"
+        + "\n".join(
+            f"- {json.dumps(value, ensure_ascii=False)}"
+            for value in exclusions
+        )
+    )
+
+
 def build_beat_phase_repair_messages(
     phase_beats,
     current_phase,
@@ -5099,6 +5318,7 @@ def build_beat_phase_repair_messages(
     previous_phase=None,
     previous_beats=None,
     correction="",
+    phrase_exclusions=(),
 ):
     """Build a repair request containing only the validator-cited beat IDs."""
     beat_start = int(current_phase["beat_start"])
@@ -5143,6 +5363,7 @@ YOUR PREVIOUS REPAIR RESPONSE WAS INVALID
 {correction}
 Return all and only the same requested beat IDs again.
 """
+    phrase_exclusions_text = format_phrase_exclusions_section(phrase_exclusions)
 
     return [
         {
@@ -5190,6 +5411,7 @@ FOLLOWING PHASE
 
 CURRENT-PHASE BEATS
 {phase_text}
+{phrase_exclusions_text}
 {correction_text}
 
 Return only a JSON object with a beats array. Each item must contain exactly
@@ -5639,6 +5861,7 @@ def build_beat_plan_repair_messages(
     subject_information="",
     beat_instructions="",
     correction="",
+    phrase_exclusions=(),
 ):
     requested_ids = beat_ids_for_repair_ranges(repair_ranges)
     if requested_ids[-1] > len(beats):
@@ -5646,6 +5869,7 @@ def build_beat_plan_repair_messages(
     range_label = format_beat_plan_repair_ranges(repair_ranges)
     subject_text = str(subject_information or "").strip() or "N/A"
     instruction_text = str(beat_instructions or "").strip() or "N/A"
+    phrase_exclusions_text = format_phrase_exclusions_section(phrase_exclusions)
     numbered_beats = "\n".join(
         f"Beat {number}: {beat}" for number, beat in enumerate(beats, start=1)
     )
@@ -5736,6 +5960,7 @@ SOURCE STORY
 
 ADDITIONAL BEAT INSTRUCTIONS FROM STORY.TXT
 {instruction_text}
+{phrase_exclusions_text}
 
 MAIN CHARACTERS FROM SUBJECTS.TXT
 {subject_text}
@@ -6113,6 +6338,7 @@ def build_beat_generation_messages(
     macro_arc=None,
     current_phase=None,
     audit_correction="",
+    phrase_exclusions=(),
 ):
     batch_start = 1 if batch_start is None else int(batch_start)
     batch_end = total_segments if batch_end is None else int(batch_end)
@@ -6198,6 +6424,9 @@ def build_beat_generation_messages(
             "Before returning JSON, silently audit every beat against all of "
             "these additional instructions and correct any violation."
         )
+    phrase_exclusions_section = format_phrase_exclusions_section(phrase_exclusions)
+    if phrase_exclusions_section:
+        supplemental_sections.append(phrase_exclusions_section.strip())
     if audit_correction:
         supplemental_sections.append(
             "WHOLE-PLAN AUDIT CORRECTIONS\n"
@@ -6232,6 +6461,7 @@ def build_beat_generation_messages(
 Create exactly {batch_size} ordered story beats for phase {phase_number} of the MACRO STORY ARC. Do not improvise a different story.
 
 Requirements:
+- Keep it simple with one or two actions.
 - Return exactly {batch_size} beats in chronological story order.
 - Follow these priorities in order:
 (1) faithfulness to the SOURCE STORY.
@@ -6320,6 +6550,7 @@ def build_beat_instruction_review_messages(
     complete_beats=None,
     macro_arc=None,
     current_phase=None,
+    phrase_exclusions=(),
 ):
     batch_start = 1 if batch_start is None else int(batch_start)
     batch_end = total_segments if batch_end is None else int(batch_end)
@@ -6327,6 +6558,7 @@ def build_beat_instruction_review_messages(
     complete_beats = list(complete_beats or beats)
     macro_arc = macro_arc or {"phases": []}
     current_phase = current_phase or {}
+    phrase_exclusions_text = format_phrase_exclusions_section(phrase_exclusions)
     correction_text = ""
     if correction:
         correction_text = (
@@ -6393,6 +6625,7 @@ required_end_state. Its broad_progression is abstract guidance, not a literal
 per-beat checklist.
 Do not mention any MACRO STORY ARC location or character before the beat_start
 of the phase where that location or characters_introduced entry first appears.
+{phrase_exclusions_text}
 
 CANDIDATE BEATS
 {json.dumps({"beats": beats}, ensure_ascii=False, indent=2)}
@@ -6609,12 +6842,50 @@ def validate_generated_beat_instructions(beats, beat_instructions):
     return list(dict.fromkeys(issues))
 
 
+def validate_generated_beat_exclusions(beats, phrase_exclusions, beat_start=1):
+    """Report excluded whole words or phrases found in beat text."""
+    if (
+        isinstance(beat_start, bool)
+        or not isinstance(beat_start, int)
+        or beat_start <= 0
+    ):
+        raise ValueError("Beat exclusion validation requires a positive beat_start.")
+
+    exclusions = []
+    seen = set()
+    for raw_exclusion in phrase_exclusions or []:
+        exclusion = " ".join(str(raw_exclusion).split()).strip()
+        key = exclusion.casefold()
+        if not exclusion or key in seen:
+            continue
+        exclusions.append((exclusion, key))
+        seen.add(key)
+
+    issues = []
+    for offset, raw_beat in enumerate(beats or []):
+        beat = " ".join(str(raw_beat).split()).casefold()
+        for exclusion, key in exclusions:
+            parts = key.split(" ")
+            expression = r"\s+".join(re.escape(part) for part in parts)
+            if key[0].isalnum() or key[0] == "_":
+                expression = r"(?<!\w)" + expression
+            if key[-1].isalnum() or key[-1] == "_":
+                expression += r"(?!\w)"
+            if re.search(expression, beat):
+                issues.append(
+                    f"Beat {beat_start + offset} contains prohibited word or "
+                    f"phrase {exclusion!r}."
+                )
+    return issues
+
+
 def parse_generated_beats(
     raw_result,
     total_segments,
     formatter=None,
     expected_start=1,
     enforce_content_validation=True,
+    phrase_exclusions=(),
 ):
     if total_segments <= 0:
         raise ValueError("Beat generation requires at least one segment.")
@@ -6713,6 +6984,13 @@ def parse_generated_beats(
     normalized = [beat.casefold() for beat in beats]
     if enforce_content_validation and len(set(normalized)) != len(normalized):
         raise ValueError("Generated beats must not contain duplicates.")
+    exclusion_issues = validate_generated_beat_exclusions(
+        beats,
+        phrase_exclusions,
+        beat_start=expected_start,
+    )
+    if exclusion_issues:
+        raise ValueError(" ".join(exclusion_issues))
     return beats
 
 
@@ -6789,12 +7067,12 @@ def print_generated_beats(beats):
 
 
 def get_story_arc_path(beats_path=BEATS_FILE, story_arc_path=None):
-    """Return the explicit arc path or the story_arc.txt beside beats.txt."""
+    """Return the explicit arc path or the story_arc.json beside beats.txt."""
     if story_arc_path is not None:
         return os.path.abspath(os.fspath(story_arc_path))
     return os.path.join(
         os.path.dirname(os.path.abspath(os.fspath(beats_path))),
-        "story_arc.txt",
+        "story_arc.json",
     )
 
 
@@ -6968,6 +7246,7 @@ def generate_beats_from_story(
     repair_rounds=None,
     story_arc_path=None,
     story_arc_source=None,
+    phrase_exclusions=(),
 ):
     if llm_request is None:
         llm_request = ask_llm
@@ -6976,9 +7255,9 @@ def generate_beats_from_story(
     # These former configurable attempt-limit arguments remain accepted so
     # existing callers do not break. Starting with the tenth phase-generation
     # response, the first structurally usable beat list is accepted even when
-    # content validation still fails. Phase-targeted semantic repair is capped
-    # at ten rounds, while malformed repair responses and other audit loops keep
-    # retrying until they receive structurally usable responses.
+    # content validation still fails. Post-generation phase LLM validation and
+    # repair are disabled; local structural/content checks and the later audit
+    # behavior remain unchanged.
     del (
         content_attempts,
         instruction_review_attempts,
@@ -7002,7 +7281,7 @@ def generate_beats_from_story(
             attempt += 1
             print(
                 f"Requesting global beat macro arc (attempt {attempt}; "
-                "unlimited until successful or Ctrl+Q).",
+                "10 times then best effort or Ctrl+Q).",
                 flush=True,
             )
             messages = build_beat_arc_plan_messages(
@@ -7047,12 +7326,17 @@ def generate_beats_from_story(
             print(
                 f"Requesting macro-arc fidelity check for macro attempt "
                 f"{macro_attempt} (response attempt {response_attempt}; "
-                "unlimited until successful or Ctrl+Q).",
+                "10 times then best effort or Ctrl+Q).",
                 flush=True,
             )
             messages = build_beat_arc_fidelity_messages(
                 story,
                 macro_arc,
+                subject_information=subject_information,
+            )
+            verify_subjects_in_beat_messages(
+                messages,
+                subject_information,
             )
             if last_error:
                 messages[-1]["content"] += (
@@ -7199,7 +7483,7 @@ def generate_beats_from_story(
                 f"{'' if len(repair_ids) == 1 else 's'} "
                 + ", ".join(str(beat_id) for beat_id in repair_ids)
                 + f" (repair round {repair_round}, response attempt "
-                f"{response_attempt}; unlimited until successful or Ctrl+Q).",
+                f"{response_attempt}; 10 times then best effort or Ctrl+Q).",
                 flush=True,
             )
             messages = build_beat_phase_repair_messages(
@@ -7210,6 +7494,7 @@ def generate_beats_from_story(
                 previous_phase=previous_phase,
                 previous_beats=previous_beats,
                 correction=correction,
+                phrase_exclusions=phrase_exclusions,
             )
             raw_repair = llm_request(
                 messages,
@@ -7254,6 +7539,13 @@ def generate_beats_from_story(
                         "Targeted phase repair violates macro introduction timing: "
                         + " ".join(introduction_issues)
                     )
+                exclusion_issues = validate_generated_beat_exclusions(
+                    repaired_phase,
+                    phrase_exclusions,
+                    beat_start=current_phase["beat_start"],
+                )
+                if exclusion_issues:
+                    raise ValueError(" ".join(exclusion_issues))
                 return repaired_phase
             except ValueError as error:
                 correction = str(error)
@@ -7312,6 +7604,7 @@ def generate_beats_from_story(
                     macro_arc=macro_arc,
                     current_phase=current_phase,
                     audit_correction=audit_correction,
+                    phrase_exclusions=phrase_exclusions,
                 )
                 verify_subjects_in_beat_messages(
                     messages,
@@ -7336,6 +7629,7 @@ def generate_beats_from_story(
                         raw_result,
                         batch_size,
                         expected_start=batch_start,
+                        phrase_exclusions=phrase_exclusions,
                     )
                     prior_normalized = {
                         " ".join(previous.split()).casefold()
@@ -7375,6 +7669,7 @@ def generate_beats_from_story(
                                 batch_size,
                                 expected_start=batch_start,
                                 enforce_content_validation=False,
+                                phrase_exclusions=phrase_exclusions,
                             )
                         except ValueError as fallback_error:
                             batch_beats = None
@@ -7399,6 +7694,8 @@ def generate_beats_from_story(
                             f"corrected list: {last_error}"
                         )
                         continue
+                if not ENABLE_BEAT_PHASE_LLM_VALIDATION:
+                    break
                 phase_repair_round = 0
                 passed_phase_beat_ids = set()
                 while True:
@@ -7507,7 +7804,7 @@ def generate_beats_from_story(
                     print(
                         f"Requesting beat-instruction review for batch "
                         f"{batch_start}-{batch_end} (pass {review_pass}, attempt "
-                        f"{review_attempt}; unlimited until successful or Ctrl+Q).",
+                        f"{review_attempt}; 10 times then best effort or Ctrl+Q).",
                         flush=True,
                     )
                     review_messages = build_beat_instruction_review_messages(
@@ -7521,6 +7818,7 @@ def generate_beats_from_story(
                         complete_beats=original_beats,
                         macro_arc=macro_arc,
                         current_phase=current_phase,
+                        phrase_exclusions=phrase_exclusions,
                     )
                     verify_subjects_in_beat_messages(
                         review_messages,
@@ -7549,6 +7847,7 @@ def generate_beats_from_story(
                             reviewed_raw,
                             batch_size,
                             expected_start=batch_start,
+                            phrase_exclusions=phrase_exclusions,
                         )
                         introduction_issues = (
                             validate_generated_beat_macro_introductions(
@@ -7580,6 +7879,7 @@ def generate_beats_from_story(
             reviewed_beats = parse_generated_beats(
                 {"beats": reviewed_beats},
                 total_segments,
+                phrase_exclusions=phrase_exclusions,
             )
             compliance_issues = validate_generated_beat_instructions(
                 reviewed_beats,
@@ -7593,7 +7893,7 @@ def generate_beats_from_story(
             )
             print(
                 f"{compliance_error} Starting another review pass; attempts are "
-                "unlimited until successful or Ctrl+Q.",
+                "10 times then best effort or Ctrl+Q.",
                 flush=True,
             )
 
@@ -7611,7 +7911,7 @@ def generate_beats_from_story(
             print(
                 f"Requesting global beat-plan audit for plan attempt "
                 f"{plan_attempt} (response attempt {audit_content_attempt}; "
-                "unlimited until successful or Ctrl+Q).",
+                "10 times then best effort or Ctrl+Q).",
                 flush=True,
             )
             audit_messages = build_beat_plan_audit_messages(
@@ -7676,7 +7976,7 @@ def generate_beats_from_story(
                 f"Verifying {len(pending_issue_ids)} frozen beat-plan blocker"
                 f"{'' if len(pending_issue_ids) == 1 else 's'} "
                 f"(round {verification_round}, response attempt "
-                f"{response_attempt}; unlimited until successful or Ctrl+Q).",
+                f"{response_attempt}; 10 times then best effort or Ctrl+Q).",
                 flush=True,
             )
             messages = build_beat_plan_verification_messages(
@@ -7748,6 +8048,7 @@ def generate_beats_from_story(
             subject_information=subject_information,
             beat_instructions=beat_instructions,
             correction=correction,
+            phrase_exclusions=phrase_exclusions,
         )
         verify_subjects_in_beat_messages(
             repair_messages,
@@ -7782,6 +8083,12 @@ def generate_beats_from_story(
         )
 
     def accept_plan(beats, audit, plan_attempt, completed_repair_rounds):
+        exclusion_issues = validate_generated_beat_exclusions(
+            beats,
+            phrase_exclusions,
+        )
+        if exclusion_issues:
+            raise ValueError(" ".join(exclusion_issues))
         if audit["warnings"]:
             print(
                 "Global beat-plan audit warnings (accepted): "
@@ -7995,13 +8302,19 @@ def generate_beats_from_story(
                                     "instructions: "
                                     + " ".join(instruction_issues)
                                 )
+                            exclusion_issues = validate_generated_beat_exclusions(
+                                repaired_beats,
+                                phrase_exclusions,
+                            )
+                            if exclusion_issues:
+                                raise ValueError(" ".join(exclusion_issues))
                         except Exception as error:
                             correction = str(error)
                             repaired_beats = None
                             print(
                                 f"Repair round {repair_round} response failed "
                                 f"validation (attempt {response_attempt}; "
-                                "unlimited until successful or Ctrl+Q): "
+                                "10 times then best effort or Ctrl+Q): "
                                 f"{error}",
                                 flush=True,
                             )
@@ -8071,10 +8384,20 @@ def load_or_generate_beats(
     subject_information="",
     story_arc_path=None,
     story_arc_source=None,
+    phrase_exclusions=(),
 ):
     raw = load_text_file(path, required=True)
     beats, lora_directive = parse_beats_content(raw)
     if beats:
+        exclusion_issues = validate_generated_beat_exclusions(
+            beats,
+            phrase_exclusions,
+        )
+        if exclusion_issues:
+            raise ValueError(
+                f"{path} violates phrase_exclusions.txt: "
+                + " ".join(exclusion_issues)
+            )
         return beats
     print(
         f"{path} is empty; asking LM Studio to create {total_segments} "
@@ -8091,6 +8414,7 @@ def load_or_generate_beats(
         lora_directive=lora_directive,
         story_arc_path=story_arc_path,
         story_arc_source=story_arc_source,
+        phrase_exclusions=phrase_exclusions,
     )
 
 
@@ -8285,6 +8609,8 @@ AUTHORITY
 3. SUBJECT REGISTRY controls identity and Picture mappings.
 4. RECENT GENERATED SEGMENTS provide secondary dialogue/cinematic context.
 5. SOURCE STORY supplies tone, setting, and connective detail.
+6. ACTION SIMPLICITY encourages keeping each segment focused on one or two key actions.
+7. ALL ACTIONS must have their own unique timestamp specifying when they happened.
 
 BEAT CONTRACT
 - Segment N executes Beat N, and no other beat.
@@ -8389,7 +8715,10 @@ TIMING
 
 DIALOGUE
 
--NEVER use dialogue that is not in <d></d> tags.
+- NEVER use dialogue that is not in <d></d> tags.
+- NEVER put `<Subject N>` inside spoken words or use it in place of the `(SN)`
+  speaker ID. `<Subject N>` is for visual identity in scene prose; `(SN)` is for
+  dialogue attribution.
 
 `REQUIRED DIALOGUE FORMAT: Character Name (SN) says: <d>[English] Exact spoken words.</d>`
 
@@ -8403,13 +8732,19 @@ Example:
 - Keep each Subject's registered Subject number, name, and speaker ID unchanged.
 - Put only `[Language] Exact spoken words.` inside `<d>...</d>`.
 - Put actions, delivery, identity, and voice descriptions outside `<d>...</d>`.
-- If an unregistered character speaks, first promote it to a new `<Subject N>`
-  with a unique `(SN)`, then use the same required dialogue format.
+- If an unregistered character speaks, give it a stable Character Name and a
+  unique `(SN)`, then use the same required dialogue format. Do not write a
+  `<Subject N>` tag in its dialogue attribution; Python performs promotion.
 - Never end the segment in the middle of dialogue.
+- Before returning JSON, scan every exact spoken utterance. Reject and rewrite
+  the response unless every utterance is inside `<d>...</d>` and immediately
+  preceded by `Character Name (SN) says:` or an equivalent speech verb.
+- Invalid: `His voice whispers: '<Subject 1> Alice? Are you down there?'`
+- Valid: `White Rabbit (S2) asks: <d>[English] Alice? Are you down there?</d>`
 
 VOICEOVER:
 Use:
-`<Subject N> Character Name (SN) says in an off-screen voiceover: <d>[English] Exact spoken words.</d>`
+`Character Name (SN) says in an off-screen voiceover: <d>[English] Exact spoken words.</d>`
 Immediately after the dialogue, state that the corresponding on-screen
 character's lips remain completely closed.
 
@@ -11492,9 +11827,31 @@ _H3_INLINE_PLACEHOLDER_FIELD_RE = re.compile(
     r"(?P<trail>[,;.]*\s*)"
 )
 
+_H3_DOLLAR_AMOUNT_RE = re.compile(
+    r"\$(?P<dollars>(?:\d{1,3}(?:,\d{3})+|\d+))"
+    r"(?:\.(?P<cents>\d{1,2}))?(?!\d|\.\d)"
+)
+
 
 def _is_h3_placeholder_value(value):
     return _H3_PLACEHOLDER_VALUE_RE.fullmatch(str(value or "")) is not None
+
+
+def _spell_out_h3_dollar_amount(match):
+    """Render currency without the dollar-sign syntax reserved by Dynamic Prompts."""
+    dollars_text = match.group("dollars")
+    dollars = int(dollars_text.replace(",", ""))
+    cents_text = match.group("cents")
+    cents = int(cents_text.ljust(2, "0")) if cents_text is not None else 0
+
+    parts = []
+    if dollars or not cents:
+        parts.append(
+            f"{dollars_text} {'dollar' if dollars == 1 else 'dollars'}"
+        )
+    if cents:
+        parts.append(f"{cents} {'cent' if cents == 1 else 'cents'}")
+    return " and ".join(parts)
 
 
 def _clean_h3_list_literal(match):
@@ -11524,6 +11881,10 @@ def sanitize_h3_prompt_component(value):
     if not isinstance(value, str):
         return ""
     text = value.replace("\r\n", "\n").replace("\r", "\n")
+    # DPRandomGenerator reserves ``$`` for variable access/assignment. Convert
+    # ordinary currency while leaving valid future syntax such as ``${name}``
+    # untouched.
+    text = _H3_DOLLAR_AMOUNT_RE.sub(_spell_out_h3_dollar_amount, text)
     cleaned_lines = []
     for raw_line in text.split("\n"):
         line = raw_line.rstrip()
@@ -11714,6 +12075,91 @@ def _h3_subject_definitions_for_conditioning(
     return "\n".join(rendered)
 
 
+def extract_previous_visible_subject_ids(recent_results, segment_number):
+    """Return Subject IDs tagged in the immediately preceding Director result."""
+    if not recent_results or segment_number is None:
+        return set()
+    previous_segment, previous_result = recent_results[-1]
+    try:
+        is_immediately_previous = int(previous_segment) == int(segment_number) - 1
+    except (TypeError, ValueError):
+        return set()
+    if not is_immediately_previous or not isinstance(previous_result, dict):
+        return set()
+    description = previous_result.get("detailed_description")
+    if not isinstance(description, str):
+        return set()
+    return {
+        int(subject_id)
+        for subject_id in re.findall(r"(?i)<Subject\s+(\d+)>", description)
+    }
+
+
+def _remove_video_origin_from_h3_subject_line(line):
+    """Remove the canonical video-only origin clause from one H3 definition."""
+    cleaned = re.sub(
+        r"(?i)(?:,\s*|\s+(?:and\s+)?)(?:(?:continued\s+from)|"
+        r"(?:(?:created|established)\s+by))\s+<Video\s+1>\s*\.?,?",
+        ".",
+        str(line or ""),
+    )
+    return re.sub(r"\.{2,}", ".", cleaned).strip()
+
+
+def _append_video_origin_to_h3_subject_definitions(
+    subject_definitions,
+    previous_visible_subject_ids=(),
+):
+    """Point only Subjects visible in the prior segment to Video 1."""
+    text = str(subject_definitions or "")
+    if not text.strip():
+        return text
+
+    previous_visible = {
+        int(value)
+        for value in (previous_visible_subject_ids or ())
+        if isinstance(value, int) or str(value).isdigit()
+    }
+
+    try:
+        registry = parse_subject_registry(text)
+    except ValueError:
+        registry = {}
+
+    suffix_template = (
+        "{name}'s pose, clothing condition, position, and physical state at the "
+        "beginning of the target video come from <Video 1>."
+    )
+    rendered = []
+    for line in text.splitlines():
+        subject_match = re.match(r"(?i)^\s*<Subject\s+(\d+)>", line)
+        legacy_match = re.match(
+            r"(?i)^\s*(?:<\s*)?Picture\s+(\d+)\s*(?:>\s*)?",
+            line,
+        )
+        match = subject_match or legacy_match
+        subject = registry.get(int(match.group(1))) if match is not None else None
+        if subject is None:
+            rendered.append(line)
+            continue
+
+        subject_id = int(match.group(1))
+        if subject_id not in previous_visible:
+            rendered.append(_remove_video_origin_from_h3_subject_line(line))
+            continue
+
+        stripped_line = line.rstrip()
+        # Disabled because this opening-state sentence was doing more harm than
+        # good in append-workflow H3 prompts. Keep the implementation available
+        # for easy restoration if later testing supports it.
+        # suffix = suffix_template.format(name=subject["name"])
+        # if suffix not in stripped_line:
+        #     separator = " " if stripped_line.endswith((".", "!", "?")) else ". "
+        #     stripped_line += separator + suffix
+        rendered.append(stripped_line)
+    return "\n".join(rendered)
+
+
 def format_h3_current_appearance_continuity(
     state,
     subject_definitions="",
@@ -11799,6 +12245,7 @@ def build_h3_prompt(
     conditioning_mode=None,
     excluded_picture_ids=None,
     continuity_state=None,
+    previous_visible_subject_ids=None,
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -11855,11 +12302,22 @@ def build_h3_prompt(
             + (f"\n{integrated}" if integrated else "")
         )
 
-    subject_text = _h3_subject_definitions_for_conditioning(
-        subject_definitions,
-        conditioning_mode,
-        excluded_picture_ids=excluded_picture_ids,
-    ).strip()
+    if conditioning_mode == "latent_continuation":
+        subject_text = _append_video_origin_to_h3_subject_definitions(
+            str(subject_definitions or "").strip(),
+            previous_visible_subject_ids,
+        )
+    else:
+        subject_text = _h3_subject_definitions_for_conditioning(
+            subject_definitions,
+            conditioning_mode,
+            excluded_picture_ids=excluded_picture_ids,
+        ).strip()
+        if conditioning_mode == "initial":
+            subject_text = "\n".join(
+                _remove_video_origin_from_h3_subject_line(line)
+                for line in subject_text.splitlines()
+            )
     if ff and segment_number == 1:
         subject_text += (
             "\n\n<Picture 1> is the opening-frame reference for the target video.\n\n"
@@ -12544,6 +13002,7 @@ def prepare_refresh_workflow(
     incompatible_picture_ids.update(
         get_refresh_incompatible_picture_ids(continuity_state)
     )
+    prune_missing_reference_images(workflow, label, "refresh")
     disconnect_reference_images(
         workflow,
         label,
@@ -12551,7 +13010,6 @@ def prepare_refresh_workflow(
         incompatible_picture_ids,
         reason="an active persistent structural change",
     )
-    prune_missing_reference_images(workflow, label, "refresh")
 
     set_node_input(
         workflow,
@@ -13313,6 +13771,7 @@ DIRECTOR_CONTINUITY_ISSUE_TYPES = (
     "persistent_transition_replay",
     "incompatible_state_restoration",
     "unsupported_persistent_change",
+    "next_beat_scope_creep",
 )
 
 DIRECTOR_CONTINUITY_RESPONSE_FORMAT = {
@@ -13382,15 +13841,17 @@ def build_director_continuity_validation_messages(
     active_beat_text,
     detailed_description,
     segment_number,
+    next_beat_text="",
 ):
-    """Build a narrow semantic check between committed state and Director prose."""
+    """Build a narrow continuity and next-beat check for Director prose."""
     validation_state = _director_continuity_validation_state(opening_state)
     return [
         {
             "role": "system",
             "content": (
                 "You are a narrow final continuity gate for one generated video "
-                "segment. Check only concrete persistent-state contradictions. "
+                "segment. Check only concrete persistent-state contradictions "
+                "and material scope creep into the supplied NEXT BEAT. "
                 "Do not critique style, pacing, camera choices, temporary motion, "
                 "or dramatic intensity. Return only the requested JSON object."
             ),
@@ -13403,6 +13864,7 @@ Validate the candidate Director description for Segment {segment_number}.
 AUTHORITY
 - COMMITTED OPENING STATE is already true at frame 0.
 - ACTIVE BEAT is the only story progression this segment is required to perform.
+- NEXT BEAT, when supplied, is reserved for the next segment.
 - CANDIDATE DESCRIPTION may change persistent state only when that change is a
   reasonable direct execution of ACTIVE BEAT.
 
@@ -13418,12 +13880,17 @@ FAIL only for a concrete violation of one of these rules:
 4. The candidate invents a NEW major persistent configuration change that ACTIVE
    BEAT does not require. Contact, impact, danger, camera motion, occlusion, pose,
    or temporary deformation alone do not justify a new lasting configuration.
+5. The candidate materially performs, begins, reveals, resolves, or establishes a
+   distinctive story event or outcome reserved for NEXT BEAT. Shared characters,
+   setting, props, connective motion, active-beat consequences, or reasonable
+   preparation that does not itself enact the next event are not scope creep.
 
 Use issue types narrowly:
 - absent_state_reintroduction
 - persistent_transition_replay
 - incompatible_state_restoration
 - unsupported_persistent_change
+- next_beat_scope_creep
 
 Do NOT fail because the candidate merely shows an already-existing persistent
 condition. Do NOT demand exact wording. Do NOT infer a violation from ambiguity.
@@ -13434,6 +13901,9 @@ COMMITTED OPENING STATE
 
 ACTIVE BEAT
 {active_beat_text or 'N/A'}
+
+NEXT BEAT
+{next_beat_text or 'N/A (this is the final beat)'}
 
 CANDIDATE DESCRIPTION
 {detailed_description}
@@ -13506,14 +13976,16 @@ def validate_director_continuity_candidate(
     segment_number,
     history_metadata=None,
     llm_request=None,
+    next_beat_text="",
 ):
-    """Semantically reject a Director prompt that contradicts committed state."""
+    """Reject continuity contradictions and scope creep into the next beat."""
     llm_request = llm_request or ask_llm
     messages = build_director_continuity_validation_messages(
         opening_state,
         active_beat_text,
         detailed_description,
         segment_number,
+        next_beat_text=next_beat_text,
     )
     request_kwargs = {
         "response_format": DIRECTOR_CONTINUITY_RESPONSE_FORMAT,
@@ -13534,11 +14006,27 @@ def format_director_continuity_correction(validation):
     return (
         "DIRECTOR CONTINUITY CORRECTION\n\n"
         "The previous candidate contradicted the committed opening state or "
-        "introduced an unsupported persistent change:\n"
+        "introduced an unsupported persistent change or next-beat scope creep:\n"
         f"{bullets}\n\n"
         "Regenerate the segment from the same frame-0 state. Execute only the "
-        "ACTIVE beat. Preserve explicit absences and completed persistent "
-        "transitions unless the ACTIVE beat itself requires a new change."
+        "ACTIVE beat and leave the NEXT beat unperformed. Preserve explicit "
+        "absences and completed persistent transitions unless the ACTIVE beat "
+        "itself requires a new change."
+    )
+
+
+def format_director_dialogue_correction(issues):
+    """Return strict regeneration feedback for malformed H3 dialogue."""
+    bullets = "\n".join(f"- {issue}" for issue in issues)
+    return (
+        "DIRECTOR DIALOGUE FORMAT CORRECTION\n\n"
+        "The previous candidate violates the required H3 dialogue syntax:\n"
+        f"{bullets}\n\n"
+        "Regenerate the complete segment. Every exact spoken utterance must use "
+        "`Character Name (SN) says: <d>[English] exact words</d>` (or an "
+        "equivalent speech verb). Never place spoken words in quotation marks, "
+        "never leave spoken words outside <d>...</d>, and never put <Subject N> "
+        "inside spoken text or use it instead of (SN)."
     )
 
 
@@ -13555,13 +14043,19 @@ def _director_messages_with_correction(messages, correction):
 
 
 def request_segment_llm(bundle, beats, run_id, run_config):
-    """Request a segment prompt, always falling back to the latest response."""
+    """Request a segment prompt, retrying malformed dialogue without aborting."""
 
     ministral_context = bundle.get("ministral_context")
     if not isinstance(ministral_context, dict):
         ministral_context = {}
     active_beat_id = bundle.get("active_beat_id")
     active_beat_text = ministral_context.get("current_beat_text", "")
+    later_beat_texts = ministral_context.get("later_beat_texts", [])
+    next_beat_text = (
+        str(later_beat_texts[0])
+        if isinstance(later_beat_texts, (list, tuple)) and later_beat_texts
+        else ""
+    )
     try:
         segment_number = int(bundle.get("segment", 1))
     except (TypeError, ValueError):
@@ -13572,13 +14066,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             flush=True,
         )
     llm_result = None
-    continuity_correction = ""
+    director_correction = ""
 
     for director_attempt in range(1, DIRECTOR_BEAT_COMPLETION_ATTEMPTS + 1):
         try:
             director_messages = _director_messages_with_correction(
                 bundle.get("messages", []),
-                continuity_correction,
+                director_correction,
             )
             llm_result = request_valid_ministral_prompt(
                 director_messages,
@@ -13606,6 +14100,28 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             break
         if not isinstance(llm_result, dict):
             llm_result = build_best_effort_ministral_result(llm_result)
+        dialogue_issues = validate_h3_dialogue_format(
+            llm_result,
+            ministral_context,
+        )
+        if dialogue_issues:
+            director_correction = format_director_dialogue_correction(
+                dialogue_issues
+            )
+            rendered_issues = "; ".join(dialogue_issues)
+            if director_attempt < DIRECTOR_BEAT_COMPLETION_ATTEMPTS:
+                print(
+                    "Director dialogue gate rejected the candidate: "
+                    f"{rendered_issues}. Re-querying the LLM "
+                    f"({director_attempt}/{DIRECTOR_BEAT_COMPLETION_ATTEMPTS})."
+                )
+                continue
+            print(
+                "WARNING: Director dialogue gate rejected every candidate after "
+                f"{DIRECTOR_BEAT_COMPLETION_ATTEMPTS} attempts; using the latest "
+                f"best-effort response and moving on: {rendered_issues}",
+                flush=True,
+            )
         try:
             repeated_dialogues = find_repeated_dialogues(
                 llm_result,
@@ -13673,15 +14189,16 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 "validation."
             )
 
-        # Segment 1 has no committed previous-video state to contradict. Every
-        # continuation candidate must pass this semantic gate before H3 sees it.
-        if segment_number > 1:
+        # Segment 1 has no prior continuity to contradict, but it can still creep
+        # into Beat 2. Run the gate whenever either check has applicable context.
+        if segment_number > 1 or next_beat_text:
             try:
                 validation = validate_director_continuity_candidate(
                     bundle.get("opening_state"),
                     active_beat_text,
                     get_detailed_description(llm_result, ""),
                     segment_number,
+                    next_beat_text=next_beat_text,
                     history_metadata={
                         "run_id": run_id,
                         "source_sha256": (run_config or {}).get("source_sha256"),
@@ -13700,7 +14217,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 )
                 break
             if not validation["valid"]:
-                continuity_correction = format_director_continuity_correction(
+                director_correction = format_director_continuity_correction(
                     validation
                 )
                 rendered_issues = "; ".join(
@@ -13770,6 +14287,12 @@ def _run_main(
     )
     subject_definitions = base_subject_definitions
     subject_information = format_beat_generation_subjects(subject_definitions)
+    phrase_exclusions_found = os.path.isfile(PHRASE_EXCLUSIONS_FILE)
+    phrase_exclusions = (
+        load_phrase_exclusions(PHRASE_EXCLUSIONS_FILE)
+        if phrase_exclusions_found
+        else []
+    )
     if resume_segment == 1:
         reset_prompt_history()
     beats = load_or_generate_beats(
@@ -13781,6 +14304,7 @@ def _run_main(
         subject_information=subject_information,
         story_arc_path=STORY_ARC_FILE,
         story_arc_source=story_source,
+        phrase_exclusions=phrase_exclusions,
     )
     if beats and len(beats) != total_segments:
         raise ValueError(
@@ -13846,6 +14370,16 @@ def _run_main(
         continuity_summary_pending = restored["continuity_summary_pending"]
         generation_state.pop("additional_subject_definitions", None)
 
+    # A prefetched prompt belongs to a live executor/Future. It cannot be
+    # trusted after process restart unless that Future is restored as well.
+    generation_state.pop("prefetched_next_prompt", None)
+    generation_state_lock = threading.RLock()
+
+    def checkpoint_generation_state():
+        """Serialize the shared checkpoint without racing a prefetch worker."""
+        with generation_state_lock:
+            save_generation_state(generation_state)
+
     print()
     print("=" * 64)
     print("H3 AUTOMATED DIRECTOR")
@@ -13910,10 +14444,18 @@ def _run_main(
         append_test,
         refresh_workflow=refresh_test,
     )
+    if phrase_exclusions_found:
+        exclusion_count_label = (
+            "entry" if len(phrase_exclusions) == 1 else "entries"
+        )
+        print(
+            f"Phrase exclusions file found: {PHRASE_EXCLUSIONS_FILE} "
+            f"({len(phrase_exclusions)} {exclusion_count_label})."
+        )
     verify_global_loras(global_loras)
     print("Workflow validation passed.")
     if resume_segment == 1:
-        save_generation_state(generation_state)
+        checkpoint_generation_state()
 
 
     def continuity_state_sha(state):
@@ -14058,6 +14600,23 @@ def _run_main(
         payload = request_segment_llm(bundle, beats, run_id, run_config)
         if cancellation_event.is_set():
             raise RuntimeError("prefetched director request was cancelled")
+        prefetched_checkpoint = {
+            "segment_number": int(payload["segment"]),
+            "fingerprint": payload["fingerprint"],
+            "llm_result": copy.deepcopy(payload["llm_result"]),
+        }
+        with generation_state_lock:
+            # Recheck under the same lock used by render-failure cleanup so a
+            # cancelled prefetch cannot be written back after being discarded.
+            if cancellation_event.is_set():
+                raise RuntimeError("prefetched director request was cancelled")
+            generation_state["prefetched_next_prompt"] = prefetched_checkpoint
+            save_generation_state(generation_state)
+        print(
+            f"Prefetched prompt for segment {payload['segment']} saved to "
+            "generation_state.json while ComfyUI is rendering.",
+            flush=True,
+        )
         return payload
 
     run_start_time = time.perf_counter()
@@ -14093,6 +14652,13 @@ def _run_main(
                 prefetched_next["cancellation_event"].set()
                 if not prefetched_next["future"].done():
                     prefetched_next["future"].cancel()
+                with generation_state_lock:
+                    removed_prefetch = generation_state.pop(
+                        "prefetched_next_prompt",
+                        None,
+                    )
+                    if removed_prefetch is not None:
+                        save_generation_state(generation_state)
                 prefetched_next = None
 
         print()
@@ -14130,6 +14696,13 @@ def _run_main(
                     f"{error}. Regenerating now."
                 )
             finally:
+                with generation_state_lock:
+                    removed_prefetch = generation_state.pop(
+                        "prefetched_next_prompt",
+                        None,
+                    )
+                    if removed_prefetch is not None:
+                        save_generation_state(generation_state)
                 prefetched_next = None
         if payload is None:
             payload = request_segment_llm(
@@ -14206,6 +14779,10 @@ def _run_main(
                 llm_result,
                 continuity_state,
             )
+        previous_visible_subject_ids = extract_previous_visible_subject_ids(
+            recent_results,
+            segment,
+        )
         h3_prompt = build_h3_prompt(
             llm_result,
             subject_definitions,
@@ -14216,6 +14793,7 @@ def _run_main(
             conditioning_mode=segment_bundle["conditioning_mode"],
             excluded_picture_ids=segment_bundle.get("excluded_picture_ids"),
             continuity_state=continuity_state,
+            previous_visible_subject_ids=previous_visible_subject_ids,
         )
         candidate_future = summary_executor.submit(
             request_structured_continuity_state,
@@ -14353,7 +14931,7 @@ def _run_main(
         # render response.  The completed-segment record is deliberately added
         # only after ComfyUI returns a verified video path, so an interrupted or
         # failed render is never advertised as resumable.
-        save_generation_state(generation_state)
+        checkpoint_generation_state()
         print(
             f"Continuity state saved before the ComfyUI response for "
             f"segment {segment}."
@@ -14410,6 +14988,9 @@ def _run_main(
                 prefetched_next["cancellation_event"].set()
                 if not prefetched_next["future"].done():
                     prefetched_next["future"].cancel()
+                with generation_state_lock:
+                    generation_state.pop("prefetched_next_prompt", None)
+                    save_generation_state(generation_state)
             print(
                 f"Segment {segment} render failed; its LLM-returned working state "
                 "was saved, but the segment was not marked complete."
@@ -14426,23 +15007,26 @@ def _run_main(
         previous_video_path = video_path
 
         # Commit the rendered video and structured continuity state together.
-        record_completed_segment(
-            generation_state,
-            segment,
-            video_path,
-            llm_result,
-            completed_beat_ids,
-            "",
-            continuity_state=candidate_state,
-            continuity_summary_pending=False,
-        )
-        if beats:
-            generation_state["beat_progress"] = {
-                "completed_beat_ids": sorted(completed_beat_ids),
-                "last_segment_number": segment,
-                "newly_completed_beat_ids": prompt_completed_beat_ids,
-            }
-        save_generation_state(generation_state)
+        # The lock also prevents a just-completed prompt prefetch from
+        # serializing this dictionary halfway through the commit.
+        with generation_state_lock:
+            record_completed_segment(
+                generation_state,
+                segment,
+                video_path,
+                llm_result,
+                completed_beat_ids,
+                "",
+                continuity_state=candidate_state,
+                continuity_summary_pending=False,
+            )
+            if beats:
+                generation_state["beat_progress"] = {
+                    "completed_beat_ids": sorted(completed_beat_ids),
+                    "last_segment_number": segment,
+                    "newly_completed_beat_ids": prompt_completed_beat_ids,
+                }
+            save_generation_state(generation_state)
         print(f"Completed segment {segment} committed with its rendered video.")
 
         elapsed_seconds = time.perf_counter() - run_start_time

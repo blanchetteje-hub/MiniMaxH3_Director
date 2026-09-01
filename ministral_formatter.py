@@ -832,6 +832,24 @@ def _repair_camera(result: dict[str, Any], context: Mapping[str, Any]) -> None:
 
 
 
+def _protect_dialogue_blocks(text: str) -> tuple[str, list[str]]:
+    """Temporarily hide dialogue bodies from visual-identity normalization."""
+    blocks: list[str] = []
+
+    def replace(match: re.Match[str]) -> str:
+        token = f"\x00H3DIALOGUE{len(blocks)}\x00"
+        blocks.append(match.group(0))
+        return token
+
+    return re.sub(r"<d>.*?</d>", replace, text, flags=re.I | re.S), blocks
+
+
+def _restore_dialogue_blocks(text: str, blocks: list[str]) -> str:
+    for index, block in enumerate(blocks):
+        text = text.replace(f"\x00H3DIALOGUE{index}\x00", block)
+    return text
+
+
 def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     """Canonicalize ordinary character identity references to <Subject N>.
 
@@ -884,10 +902,11 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
             str(record["speaker_id"]).casefold(), record["name"].casefold()
         ) == record["name"].casefold()
     }
+    text, dialogue_blocks = _protect_dialogue_blocks(result[DESCRIPTION])
     text = re.sub(
         r"\s*\(\s*Subject\s+\d+\s*\)",
         "",
-        result[DESCRIPTION],
+        text,
         flags=re.I,
     )
 
@@ -986,7 +1005,9 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
             flags=re.I,
         )
 
-    result[DESCRIPTION] = _clean_space(text)
+    result[DESCRIPTION] = _clean_space(
+        _restore_dialogue_blocks(text, dialogue_blocks)
+    )
 
 def _canonicalize_compound_ids(text: str, id_map: Mapping[int, int]) -> str:
     def replace(match: re.Match[str]) -> str:
@@ -1376,7 +1397,7 @@ def _repair_canonical_subject_tags(
     """
     records = _subject_records(context)
     subject_pictures = _subject_picture_map(context)
-    text = result[DESCRIPTION]
+    text, dialogue_blocks = _protect_dialogue_blocks(result[DESCRIPTION])
 
     for name, record in sorted(records.items(), key=lambda item: -len(item[0])):
         subject_id = record.get("subject_id")
@@ -1449,7 +1470,9 @@ def _repair_canonical_subject_tags(
             flags=re.I,
         )
 
-    result[DESCRIPTION] = _clean_space(text)
+    result[DESCRIPTION] = _clean_space(
+        _restore_dialogue_blocks(text, dialogue_blocks)
+    )
 
 
 def _validate_non_speaking_ids(
@@ -1897,6 +1920,12 @@ def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) ->
             issues.append("Every dialogue block must begin with [English].")
         if re.match(r"\s*\[English\]\s*\[[^\]]+\]", block, re.I):
             issues.append("Non-language delivery cues must appear outside <d> dialogue text.")
+        if re.search(r"<Subject\s+\d+>", block, re.I):
+            issues.append(
+                "HARD_DIALOGUE_FORMAT: Never put <Subject N> inside spoken text; "
+                "use the character's plain name inside <d>...</d> and use (SN) "
+                "only in the attribution."
+            )
     for name, record in records.items():
         speaker_id = record.get("speaker_id")
         if speaker_id and re.search(
@@ -1906,34 +1935,77 @@ def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) ->
             re.I,
         ):
             issues.append(f"{name} must consistently use speaker ID ({speaker_id}).")
-     # Any apparent spoken quotation outside <d> is invalid dialogue formatting.
+    # Any apparent spoken quotation or colon-led utterance outside <d> is
+    # invalid dialogue formatting. Voice-led prose such as "His voice carries
+    # ... in a whisper: 'Alice?'" must not bypass the explicit speech verbs.
     without_blocks = re.sub(
         r"<d>.*?</d>",
-        "",
+        "<DIALOGUE_BLOCK>",
         text,
         flags=re.I | re.S,
     )
 
-    quoted_speech = re.search(
-        r"\b(?:says|asks|answers|replies|shouts|whispers|yells|tells|"
-        r"exclaims|yelps|cries|calls|murmurs|mutters|growls|screams)\b"
-        r"[^.!?\n]{0,120}"
-        r"(?:"
-        r"\"[^\"\n]+\""          # straight double quotes
-        r"|“[^”\n]+”"            # curly double quotes
-        r"|‘[^’\n]+’"            # curly single quotes
-        r")",
+    quote_pattern = re.compile(
+        r'"[^"\n]+"'
+        r"|\u201c[^\u201d\n]+\u201d"
+        r"|\u2018[^\u2019\n]+\u2019"
+        r"|(?<!\w)'[^'\n]{2,}'(?!\w)"
+    )
+    speech_cue = re.compile(
+        r"(?i)\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"tells?|exclaims?|yelps?|cries|calls|murmurs?|mutters?|growls?|"
+        r"screams?|voice|spoken\s+words?|dialogue)\b"
+    )
+    quoted_speech = None
+    for quote in quote_pattern.finditer(without_blocks):
+        prefix = without_blocks[max(0, quote.start() - 220):quote.start()]
+        boundary = max(
+            prefix.rfind(". "),
+            prefix.rfind("! "),
+            prefix.rfind("? "),
+            prefix.rfind("\n"),
+            prefix.rfind("<DIALOGUE_BLOCK>"),
+        )
+        local_prefix = prefix[boundary + 1:]
+        visible_text_cue = re.search(
+            r"(?i)\b(?:sign|banner|label|subtitle|screen|caption|written\s+text)\b",
+            local_prefix,
+        )
+        if (
+            re.search(r"<Subject\s+\d+>", quote.group(0), re.I)
+            or (speech_cue.search(local_prefix) and visible_text_cue is None)
+        ):
+            quoted_speech = quote
+            break
+
+    untagged_colon_speech = re.search(
+        r"(?i)(?:"
+        r"\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"tells?|exclaims?|yelps?|cries|calls|murmurs?|mutters?|growls?|"
+        r"screams?)\b[^:.!?\n]{0,120}"
+        r"|\bvoice\b[^:.!?\n]{0,160}"
+        r"):\s*(?!<DIALOGUE_BLOCK>)(?:[\"'\u2018\u201c]|<Subject\s+\d+>|[A-Za-z])",
         without_blocks,
-        re.I,
     )
 
-    if quoted_speech:
+    if quoted_speech or untagged_colon_speech:
         issues.append(
             "HARD_DIALOGUE_FORMAT: Spoken dialogue must use "
             "`Character Name (SN) says: <d>[English] exact words</d>`. "
-            "Never put spoken words in quotation marks or embed them in prose."
+            "Never put spoken words in quotation marks or embed them in prose, "
+            "and never use <Subject N> in place of (SN)."
         )
     return issues
+
+
+def validate_h3_dialogue_format(
+    result: Mapping[str, Any],
+    context: Mapping[str, Any] | None,
+) -> list[str]:
+    """Return only hard H3 dialogue-contract violations."""
+    if not isinstance(result, Mapping):
+        return ["Formatted Director result must be an object."]
+    return list(dict.fromkeys(_validate_dialogue(result, context or {})))
 
 
 def _validate_visible_text(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
@@ -2138,5 +2210,6 @@ __all__ = [
     "RULE_REGISTRY",
     "extract_inline_dialogue_subjects",
     "format_ministral_prompt",
+    "validate_h3_dialogue_format",
     "validate_ministral_prompt",
 ]
