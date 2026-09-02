@@ -435,6 +435,21 @@ candidate beats before they are saved. Python also verifies common explicit
 constraints such as exact phrase placement/count, prohibited words, required
 phrases, and an exact final sentence; failed checks trigger another correction.
 
+An optional `gen_rules` directive supplies rules for every H3 segment-generation
+request. Put a one-line rule on its own line after the directive:
+
+```text
+gen_rules: Never show on-screen text. Keep all camera movement slow and steady.
+```
+
+Square brackets may be used, as with `beat_instructions`, when the rules need to
+span multiple lines.
+
+The directive is removed from the source-story text before that text is used for
+beat planning or Director context. Its contents are placed near the top of each
+Director request as `IMPORTANT: ...` and are also supplied to the final H3-content
+validation gate. Only one `gen_rules` directive is allowed.
+
 ### `phrase_exclusions.txt` — optional beat exclusions
 
 Put one word or phrase per line. When this file exists, its nonblank entries are

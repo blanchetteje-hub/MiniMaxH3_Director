@@ -852,11 +852,80 @@ def _synchronize_append_reference_batch(workflow, workflow_label, destination):
     return True
 
 
+def _pack_append_reference_images(
+    workflow,
+    workflow_label,
+    destination,
+    input_directory,
+    excluded_picture_ids=None,
+):
+    """Pack compatible canonical Pictures into dense append-only H3 slots."""
+
+    excluded = {
+        int(value)
+        for value in (excluded_picture_ids or ())
+        if (isinstance(value, int) or str(value).isdigit())
+        and 1 <= int(value) <= 6
+    }
+    compatible = []
+    removed = []
+    for picture_id, node_name in enumerate(REFERENCE_IMAGE_NODE_NAMES, start=1):
+        node_id, image_node = find_workflow_node(
+            workflow,
+            node_name,
+            workflow_label,
+            "LoadImage",
+        )
+        image_name = image_node["inputs"].get("image")
+        image_path, decode_error = _validate_comfy_input_image(
+            image_name,
+            input_directory,
+        )
+        if picture_id in excluded:
+            removed.append(picture_id)
+            print(
+                f"{workflow_label} excluded canonical Picture {picture_id} "
+                "from append H3 reference conditioning."
+            )
+        elif decode_error is not None:
+            removed.append(picture_id)
+            print(
+                f"WARNING: {workflow_label} excluded canonical Picture "
+                f"{picture_id} from append H3 reference conditioning because "
+                f"{decode_error}: {image_path or image_name!r}"
+            )
+        else:
+            compatible.append((picture_id, node_id))
+
+    inputs = destination["inputs"]
+    for slot_number in range(1, 7):
+        inputs.pop(f"image_{slot_number}", None)
+    for packed_slot, (picture_id, node_id) in enumerate(compatible, start=1):
+        inputs[f"image_{packed_slot}"] = [node_id, 0]
+        if packed_slot != picture_id:
+            print(
+                f"{workflow_label} packed canonical Picture {picture_id} into "
+                f"append H3 <Picture {packed_slot}>."
+            )
+
+    _synchronize_append_reference_batch(workflow, workflow_label, destination)
+    picture_slot_map = {
+        picture_id: packed_slot
+        for packed_slot, (picture_id, _node_id) in enumerate(
+            compatible,
+            start=1,
+        )
+    }
+    return removed, picture_slot_map
+
+
 def prune_missing_reference_images(
     workflow,
     workflow_label,
     workflow_kind,
     input_directory=None,
+    excluded_picture_ids=None,
+    return_picture_slot_map=False,
 ):
     """Connect decodable references and disconnect unusable ones before queueing."""
 
@@ -866,6 +935,18 @@ def prune_missing_reference_images(
         workflow_label,
         workflow_kind,
     )
+    if workflow_kind == "append":
+        removed, picture_slot_map = _pack_append_reference_images(
+            workflow,
+            workflow_label,
+            destination,
+            input_directory,
+            excluded_picture_ids=excluded_picture_ids,
+        )
+        if return_picture_slot_map:
+            return removed, picture_slot_map
+        return removed
+
     removed = []
     for image_number, (node_name, input_name) in enumerate(
         zip(REFERENCE_IMAGE_NODE_NAMES, input_names),
@@ -902,8 +983,6 @@ def prune_missing_reference_images(
             f"{image_number} from '{destination_name}.{input_name}' because "
             f"{decode_error}: {image_path or image_name!r}"
         )
-    if workflow_kind == "append":
-        _synchronize_append_reference_batch(workflow, workflow_label, destination)
     return removed
 
 
@@ -972,10 +1051,9 @@ def disconnect_append_reference_batch(
 ):
     """Disconnect the optional append ref_images batch as one atomic input.
 
-    ImageBatchMulti requires image_1 and emits a dense batch. Removing an
-    individual slot can therefore fail validation or renumber later Picture
-    references. MiniMaxH3VideoExtendPatched accepts ref_images as optional, so
-    incompatible pristine references are disabled as a whole for append mode.
+    ImageBatchMulti requires image_1. Compatible Pictures are packed densely
+    before this point, so this is used only when no usable Picture remains or a
+    malformed batch cannot safely be sent to MiniMaxH3VideoExtendPatched.
     """
     _, extend_node = find_workflow_node(
         workflow,
@@ -1162,6 +1240,7 @@ def build_run_config(
     subject_definitions="",
     global_loras=None,
     refresh_interval=None,
+    gen_rules="",
 ):
     # Auto-discovered video subjects are durable continuity metadata, not a
     # user edit to the creative source. Excluding those appended lines keeps a
@@ -1181,6 +1260,7 @@ def build_run_config(
             "beats": serialize_beats(beats),
             "global_loras": [list(lora) for lora in (global_loras or ())],
             "refresh_interval": refresh_interval,
+            "gen_rules": str(gen_rules or ""),
             "subject_definitions": source_subject_definitions,
         },
         ensure_ascii=False,
@@ -1408,8 +1488,9 @@ def new_subject_continuity_record(subject):
             )
         ),
         "origin_segment": subject.get("origin_segment"),
-        # Once generated video establishes a major persistent structural change,
-        # a pristine identity reference can become incompatible with later refreshes.
+        # Once generated video establishes a persistent change to the Subject's
+        # own physical/topological configuration, a pristine identity reference
+        # can become incompatible with later refreshes.
         "persistent_structural_change": bool(
             subject.get("persistent_structural_change", False)
         ),
@@ -1421,9 +1502,9 @@ def new_subject_continuity_record(subject):
             "footwear": "N/A",
             "other": "N/A",
         },
-        # Persistent structural relationships belong here instead of being
-        # mixed into transient pose/action prose. Examples include a cable
-        # connected to a rear port or an accessory removed from a costume.
+        # Persistent structural relationships of the Subject itself belong here
+        # instead of being mixed into transient pose/action prose. Wardrobe,
+        # accessories, held props, and garment condition do not.
         "topology": "N/A",
         "body_state": "N/A",
         "physical_condition": "N/A",
@@ -1970,16 +2051,11 @@ def get_continuity_picture_ids(continuity_state):
 def get_conditioning_excluded_picture_ids(continuity_state, conditioning_mode):
     """Return Picture IDs omitted from H3 text/reference conditioning.
 
-    Clean refresh can omit incompatible named slots individually. Latent
-    continuation uses one dense ImageBatchMulti batch, so deleting a slot can
-    invalidate image_1 or silently renumber later Pictures. Once any pristine
-    Picture becomes structurally incompatible, omit the entire append reference
-    batch and let the authoritative AV latent carry identity and current state.
+    Canonical Picture IDs remain stable in continuity and Director context. Both
+    clean refresh and latent continuation exclude only Pictures whose Subjects
+    have become structurally incompatible; append H3 packing handles any gaps.
     """
-    incompatible = get_refresh_incompatible_picture_ids(continuity_state)
-    if conditioning_mode == "latent_continuation" and incompatible:
-        return get_continuity_picture_ids(continuity_state)
-    return incompatible
+    return get_refresh_incompatible_picture_ids(continuity_state)
 
 
 def _known_continuity_value(value):
@@ -2189,6 +2265,77 @@ def _ordered_continuity_subjects(state):
     return sorted(subjects, key=lambda item: (item[0], item[1].lower()))
 
 
+def _remove_absent_subject_mentions_from_h3_value(value, absent_names):
+    """Drop continuity facts that explicitly name an off-camera Subject."""
+    if isinstance(value, str):
+        if any(
+            re.search(
+                rf"(?i)(?<!\w){re.escape(name)}(?!\w)",
+                value,
+            )
+            for name in absent_names
+            if str(name).strip()
+        ):
+            return ""
+        return value
+    if isinstance(value, list):
+        return [
+            cleaned
+            for item in value
+            if (
+                cleaned := _remove_absent_subject_mentions_from_h3_value(
+                    item,
+                    absent_names,
+                )
+            )
+        ]
+    if isinstance(value, dict):
+        return {
+            key: _remove_absent_subject_mentions_from_h3_value(
+                item,
+                absent_names,
+            )
+            for key, item in value.items()
+        }
+    return value
+
+
+def _h3_continuity_state_for_visible_subjects(state, visible_subject_ids):
+    """Return an H3-only copy without cross-references to absent Subjects."""
+    visible = {
+        int(value)
+        for value in (visible_subject_ids or ())
+        if isinstance(value, int) or str(value).isdigit()
+    }
+    rendered = copy.deepcopy(state)
+    ordered = _ordered_continuity_subjects(rendered)
+    absent_names = [name for subject_id, name, _ in ordered if subject_id not in visible]
+    if not absent_names:
+        return rendered
+
+    for subject_id, _, record in ordered:
+        if subject_id not in visible:
+            continue
+        for field in (
+            *CURRENT_SUBJECT_SCALAR_FIELDS,
+            *PERSISTENT_SUBJECT_SCALAR_FIELDS,
+            *SUBJECT_LIST_FIELDS,
+            "wardrobe",
+        ):
+            if field in record:
+                record[field] = _remove_absent_subject_mentions_from_h3_value(
+                    record[field],
+                    absent_names,
+                )
+    for field in ("environment", "camera", "ongoing_action", "ongoing_audio"):
+        if field in rendered:
+            rendered[field] = _remove_absent_subject_mentions_from_h3_value(
+                rendered[field],
+                absent_names,
+            )
+    return rendered
+
+
 _EXPLICIT_REMOVAL_RE = re.compile(
     r"(?i)\b(?:remove[sd]?|removing|"
     r"pull(?:s|ed|ing)?(?:\s+\S+){0,8}?\s+out|"
@@ -2226,6 +2373,7 @@ def format_authoritative_opening_state(
     subject_definitions="",
     include_camera=True,
     excluded_picture_ids=None,
+    visible_subject_ids=None,
 ):
     """Render continuation/reference guidance, optionally including camera state."""
     state = continuity_state_for_registry(subject_definitions, state)
@@ -2234,21 +2382,45 @@ def format_authoritative_opening_state(
         for value in (excluded_picture_ids or ())
         if isinstance(value, int) or str(value).isdigit()
     }
-    subjects = _ordered_continuity_subjects(state)
-    if not subjects:
-        raise RuntimeError(
-            "Cannot render authoritative continuation guidance: no subjects "
-            "were available."
+    visible_ids = (
+        None
+        if visible_subject_ids is None
+        else {
+            int(value)
+            for value in visible_subject_ids
+            if isinstance(value, int) or str(value).isdigit()
+        }
+    )
+    if visible_ids is not None:
+        state = _h3_continuity_state_for_visible_subjects(
+            state,
+            visible_ids,
         )
+    subjects = [
+        subject
+        for subject in _ordered_continuity_subjects(state)
+        if visible_ids is None or subject[0] in visible_ids
+    ]
+    if not subjects:
+        if visible_ids is None:
+            raise RuntimeError(
+                "Cannot render authoritative continuation guidance: no subjects "
+                "were available."
+            )
 
     location = _known_continuity_value(state["environment"].get("location"))
     location_text = location or "environment"
+    continuation_details = (
+        "lighting, spatial layout, subject positions, wardrobe condition, "
+        "physical states, props, and environmental continuity"
+        if subjects
+        else "lighting, spatial layout, and environmental continuity"
+    )
     lines = [
         "<Video 1> is the immediately preceding successfully rendered video "
         "and provides the authoritative continuation starting point. Preserve "
-        f"its {location_text}, lighting, spatial layout, subject positions, "
-        "wardrobe condition, physical states, props, and environmental "
-        "continuity until an action in this target video visibly changes them.",
+        f"its {location_text}, {continuation_details} until an action in this "
+        "target video visibly changes them.",
         "",
         "summary:",
         "",
@@ -2341,13 +2513,20 @@ def format_authoritative_opening_state(
         video_details.append(f"ongoing action: {ongoing_action}")
     if ongoing_audio:
         video_details.append(f"ongoing audio: {ongoing_audio}")
-    subject_names = _english_join(name for _, name, _ in subjects)
-    video_line = (
-        f"<Video 1>: fully_preserved - Preserve the {location_text}, lighting, "
-        f"spatial layout, positions of {subject_names}, wardrobe condition, "
-        "physical states, props, and immediate physical continuity from the "
-        "final frame of the preceding video."
-    )
+    if subjects:
+        subject_names = _english_join(name for _, name, _ in subjects)
+        video_line = (
+            f"<Video 1>: fully_preserved - Preserve the {location_text}, lighting, "
+            f"spatial layout, positions of {subject_names}, wardrobe condition, "
+            "physical states, props, and immediate physical continuity from the "
+            "final frame of the preceding video."
+        )
+    else:
+        video_line = (
+            f"<Video 1>: fully_preserved - Preserve the {location_text}, lighting, "
+            "spatial layout, and immediate environmental continuity from the final "
+            "frame of the preceding video."
+        )
     if video_details:
         result_constraints = [
             detail for detail in video_details
@@ -6313,6 +6492,12 @@ _BEAT_INSTRUCTIONS = re.compile(
     r"(?P<instructions>.*?)\][ \t]*(?:\n|$)"
 )
 
+_GEN_RULES = re.compile(
+    r"(?ims)^[ \t]*gen_rules[ \t]*:[ \t]*"
+    r"(?:\[(?P<bracketed_rules>.*?)\]|(?P<inline_rules>[^\r\n]*))"
+    r"[ \t]*(?:\r?\n|$)"
+)
+
 
 def parse_story_beat_instructions(story):
     story = str(story or "")
@@ -6324,6 +6509,22 @@ def parse_story_beat_instructions(story):
     match = matches[0]
     narrative = (story[:match.start()] + story[match.end():]).strip()
     return narrative, match.group("instructions")
+
+
+def parse_story_gen_rules(story):
+    """Extract optional H3-generation rules from story.txt metadata."""
+    story = str(story or "")
+    matches = list(_GEN_RULES.finditer(story))
+    if len(matches) > 1:
+        raise ValueError("story.txt contains more than one gen_rules directive.")
+    if not matches:
+        return story.strip(), ""
+    match = matches[0]
+    narrative = (story[:match.start()] + story[match.end():]).strip()
+    rules = match.group("bracketed_rules")
+    if rules is None:
+        rules = match.group("inline_rules").strip()
+    return narrative, rules
 
 
 def build_beat_generation_messages(
@@ -8494,6 +8695,7 @@ def build_director_rules(
     segment_number,
     beats_enabled=True,
     conditioning_mode=None,
+    gen_rules="",
 ):
     subject_context = subject_definitions or "N/A"
     conditioning_mode = validate_conditioning_mode(
@@ -8638,10 +8840,16 @@ BEAT CONTRACT
 #- Always return completed_beat_ids as an empty array because beat tracking is disabled.
 #""".strip()
 
+    important_gen_rules = (
+        f"IMPORTANT: {str(gen_rules).strip()}\n\n"
+        if str(gen_rules or "").strip()
+        else ""
+    )
+
     return f"""
 You are directing an automatically generated movie {role_description}.
 
-The movie is approximately {total_length:g} seconds long, divided into
+{important_gen_rules}The movie is approximately {total_length:g} seconds long, divided into
 {total_segments} sequential segments of approximately {segment_length:g} seconds.
 Generate exactly ONE MiniMax H3 segment description at a time.
 
@@ -8767,6 +8975,11 @@ overall_soundscape: Write 1-4 English sentences in one paragraph containing
 only ambience, physical action sounds, and non-verbal human sounds. Do not
 duplicate dialogue, singing, or music. Use N/A only for explicitly requested
 complete silence.
+
+Do not invent background murmur, chatter, conversation, or voices unless the
+ACTIVE beat or IMPORTANT generation rules require human speech. Preserve
+legitimate ambient non-speech audio such as environmental and physical action
+sounds; the absence of required speech does not imply complete silence.
 
 non_diegetic_music: Use N/A when there is no audience-only score. Otherwise
 write 1-3 English sentences about instrumentation, tempo, rhythm, and dynamics;
@@ -9117,8 +9330,10 @@ wardrobe, body_state,
 physical_condition, attached_objects, injuries, substances,
 spatial_relationships, persistent_effects, held_props.
 
-- persistent_structural_change is host-maintained continuity metadata. Copy its
-  committed boolean value exactly; do not infer or clear it.
+- persistent_structural_change is host-maintained continuity metadata for a
+  durable change to the Subject's own physical/topological configuration. Copy
+  its committed boolean value exactly; do not infer or clear it. Wardrobe,
+  accessories, held props, pose, exposure, and garment condition never count.
 
 - position: physical location only.
 - pose_action: final visible pose/action.
@@ -9128,7 +9343,8 @@ spatial_relationships, persistent_effects, held_props.
   also describe the visible result. Do not leave topology/body_state as N/A after
   the newest segment clearly establishes such a durable configuration change.
   injuries may describe damage, but they do not substitute for topology/body_state
-  when the Subject's persistent configuration itself has changed.
+  when the Subject's persistent configuration itself has changed. Do not put
+  garments, accessories, held props, pose, exposure, or clothing condition here.
 - wardrobe: current garments and visible garment damage.
   Treat upper, lower, footwear, and other as independent slots. Inspect the
   entire newest segment and decompose every clearly visible outfit component
@@ -10356,76 +10572,6 @@ def _current_list_replacement(
     ]
 
 
-_MAJOR_CONFIGURATION_TRANSITION_RE = re.compile(
-    r"(?i)\b(?:becomes?\s+(?:absent|missing)|no\s+longer\s+present|"
-    r"detach(?:es|ed|ing)?|disconnect(?:s|ed|ing)?|separat(?:es|ed|ing)|"
-    r"break(?:s|ing)?\s+away|come(?:s|ing)?\s+off|fall(?:s|ing)?\s+away|"
-    r"rip(?:s|ped|ping)?\s+free|tear(?:s|ing)?\s+free|"
-    r"fully\s+dissolv(?:e|es|ed|ing)|fully\s+disintegrat(?:e|es|ed|ing)|"
-    r"collaps(?:e|es|ed|ing)|reconfigur(?:e|es|ed|ing)|"
-    r"reduc(?:e|es|ed|ing)\s+to|replac(?:e|es|ed|ing)\s+by)\b"
-)
-
-
-def _description_has_major_configuration_change(subject_name, description):
-    """Return whether newest prose clearly establishes a durable configuration change."""
-    source = " ".join(str(description or "").split())
-    if not source or _MAJOR_CONFIGURATION_TRANSITION_RE.search(source) is None:
-        return False
-
-    source_folded = source.casefold()
-    if not any(
-        _contains_structural_phrase(source_folded, phrase)
-        for phrase in _STRUCTURAL_REGION_PHRASES
-    ):
-        return False
-
-    name = str(subject_name or "").strip()
-    if not name:
-        return True
-    name_match = re.search(re.escape(name), source, re.I)
-    if name_match is None:
-        return False
-
-    # Keep the structural cue reasonably close to the named Subject so a change
-    # affecting another entity cannot accidentally disable this Subject's
-    # pristine reference.
-    for transition in _MAJOR_CONFIGURATION_TRANSITION_RE.finditer(source):
-        if abs(transition.start() - name_match.start()) <= 420:
-            return True
-    return False
-
-
-def _new_terminal_persistent_fact(record, committed_record):
-    """Detect a newly established terminal fact outside topology/body_state."""
-    if not isinstance(record, dict):
-        return False
-    committed_record = committed_record if isinstance(committed_record, dict) else {}
-
-    physical = _known_replacement_value(record.get("physical_condition"), "physical_condition")
-    committed_physical = _known_replacement_value(
-        committed_record.get("physical_condition", "N/A"),
-        "physical_condition",
-    )
-    if physical and physical != committed_physical and _terminal_state_status(physical):
-        return True
-
-    committed_injuries = {
-        str(item).strip().casefold()
-        for item in committed_record.get("injuries", [])
-        if str(item).strip()
-    }
-    for raw_item in record.get("injuries", []):
-        item = _continuity_item_text(raw_item, "injuries")
-        if (
-            item
-            and item.casefold() not in committed_injuries
-            and _terminal_state_status(item)
-        ):
-            return True
-    return False
-
-
 def normalize_structured_continuity_state(
     candidate,
     subject_definitions,
@@ -10847,27 +10993,6 @@ def normalize_structured_continuity_state(
             # Otherwise [] means "no reliable update" and the committed list
             # survives. This prevents silent loss of lasting physical state.
 
-        # topology/body_state remain the preferred canonical location for durable
-        # configuration. This conservative fallback covers imperfect continuity
-        # extraction when the same lasting result was placed only in another
-        # persistent field or was unambiguously established by the newest prompt.
-        if (
-            not target.get("persistent_structural_change", False)
-            and (
-                _new_terminal_persistent_fact(record, committed_record)
-                or _description_has_major_configuration_change(
-                    name,
-                    newest_description,
-                )
-            )
-        ):
-            target["persistent_structural_change"] = True
-            print(
-                "[Continuity] persistent structural change detected for "
-                f"{name}; pristine Picture conditioning will be disabled on "
-                "later continuation segments."
-            )
-
     state["version"] = CONTINUITY_STATE_VERSION
     state = scrub_continuity_state(state)
 
@@ -11046,7 +11171,13 @@ def build_segment_request(
     if conditioning_mode == "initial":
         continuation = (
             "This is the first generated clip. Begin with the story's opening "
-            "scene and opening clothing. There is no previous-video context."
+            "scene and opening clothing. There is no previous-video context. "
+            "Every Picture-referenced Subject required in this segment must already "
+            "occupy a defined position in the opening composition. Do not describe "
+            "such a Subject as entering frame, walking into frame, emerging into "
+            "view, appearing from off-camera, or otherwise being instantiated from "
+            "outside the shot. Begin the Subject's action from that already-visible "
+            "opening position; for example, 'John walks toward the rack.'"
         )
     elif conditioning_mode == "latent_continuation":
         continuation = (
@@ -11644,13 +11775,13 @@ def build_hard_cut_subject_continuity(
         return ""
 
     current_description = get_detailed_description(current_result)
+    visible_subject_ids = extract_current_visible_subject_ids(
+        current_description
+    )
     subjects = [
         (subject_number, subject_name)
         for subject_number, subject_name in subjects
-        if re.search(
-            rf"(?i)<Subject\s+{subject_number}>|\b{re.escape(subject_name)}\b",
-            current_description
-        )
+        if subject_number in visible_subject_ids
     ]
     if not subjects:
         return ""
@@ -11730,18 +11861,13 @@ def build_hard_cut_subject_continuity_from_state(
     """Build hard-cut reminders only from the last committed structured state."""
     registry = parse_subject_registry(subject_definitions)
     current_description = get_detailed_description(current_result)
+    visible_subject_ids = extract_current_visible_subject_ids(
+        current_description
+    )
     state = continuity_state_for_registry(subject_definitions, continuity_state)
     clauses = []
     for subject_id, subject in registry.items():
-        picture_ids = subject.get("picture_ids", [subject["picture_id"]])
-        if not re.search(
-            rf"(?i)(?:" + "|".join(
-                rf"<Picture\s+{picture}>" for picture in picture_ids
-            ) + r")|"
-            rf"<Subject\s+{subject_id}>|"
-            rf"\b{re.escape(subject['name'])}\b",
-            current_description,
-        ):
+        if subject_id not in visible_subject_ids:
             continue
         record = state["subjects"].get(subject["name"], {})
         location = record.get("position", "N/A")
@@ -12006,6 +12132,51 @@ def _replace_excluded_picture_tags_for_h3(
     return pattern.sub("<Video 1>", text)
 
 
+def _remap_append_picture_tags_for_h3(value, picture_slot_map=None):
+    """Remap canonical Picture tags to dense append batch slots in H3 text only."""
+
+    text = str(value or "")
+    packed_slots = {
+        int(canonical_id): int(packed_slot)
+        for canonical_id, packed_slot in (picture_slot_map or {}).items()
+        if (isinstance(canonical_id, int) or str(canonical_id).isdigit())
+        and (isinstance(packed_slot, int) or str(packed_slot).isdigit())
+    }
+
+    def replace(match):
+        canonical_id = int(match.group("picture"))
+        packed_slot = packed_slots.get(canonical_id)
+        return (
+            f"<Picture {packed_slot}>"
+            if packed_slot is not None
+            else match.group(0)
+        )
+
+    return re.sub(
+        r"(?i)<Picture\s+(?P<picture>\d+)>",
+        replace,
+        text,
+    )
+
+
+def _condition_append_prompt_for_h3(
+    h3_prompt,
+    excluded_picture_ids,
+    picture_slot_map,
+):
+    """Apply append-only Picture exclusion and packing at the H3 boundary."""
+
+    conditioned = _replace_excluded_picture_tags_for_h3(
+        h3_prompt,
+        "latent_continuation",
+        excluded_picture_ids,
+    )
+    return _remap_append_picture_tags_for_h3(
+        conditioned,
+        picture_slot_map,
+    )
+
+
 def _h3_subject_definitions_for_conditioning(
     subject_definitions,
     conditioning_mode,
@@ -12095,6 +12266,37 @@ def extract_previous_visible_subject_ids(recent_results, segment_number):
     }
 
 
+def extract_current_visible_subject_ids(detailed_description):
+    """Return the Subject IDs explicitly tagged in the target Director prose."""
+    return {
+        int(subject_id)
+        for subject_id in re.findall(
+            r"(?i)<Subject\s+(\d+)>",
+            str(detailed_description or ""),
+        )
+    }
+
+
+def _filter_h3_subject_definitions(subject_definitions, visible_subject_ids):
+    """Keep identity/reference definitions only for target-visible Subjects."""
+    visible = {
+        int(value)
+        for value in (visible_subject_ids or ())
+        if isinstance(value, int) or str(value).isdigit()
+    }
+    rendered = []
+    for line in str(subject_definitions or "").splitlines():
+        subject_match = re.match(r"(?i)^\s*<Subject\s+(\d+)>", line)
+        legacy_match = re.match(
+            r"(?i)^\s*(?:<\s*)?Picture\s+(\d+)\s*(?:>\s*)?",
+            line,
+        )
+        match = subject_match or legacy_match
+        if match is not None and int(match.group(1)) in visible:
+            rendered.append(line)
+    return "\n".join(rendered)
+
+
 def _remove_video_origin_from_h3_subject_line(line):
     """Remove the canonical video-only origin clause from one H3 definition."""
     cleaned = re.sub(
@@ -12163,6 +12365,7 @@ def _append_video_origin_to_h3_subject_definitions(
 def format_h3_current_appearance_continuity(
     state,
     subject_definitions="",
+    visible_subject_ids=None,
 ):
     """Render compact current appearance facts for latent continuation.
 
@@ -12177,9 +12380,25 @@ def format_h3_current_appearance_continuity(
         subject_definitions,
         copy.deepcopy(state),
     )
+    visible_ids = (
+        None
+        if visible_subject_ids is None
+        else {
+            int(value)
+            for value in visible_subject_ids
+            if isinstance(value, int) or str(value).isdigit()
+        }
+    )
+    if visible_ids is not None:
+        normalized = _h3_continuity_state_for_visible_subjects(
+            normalized,
+            visible_ids,
+        )
     rendered_subjects = []
 
     for subject_id, name, record in _ordered_continuity_subjects(normalized):
+        if visible_ids is not None and subject_id not in visible_ids:
+            continue
         facts = []
 
         wardrobe = record.get("wardrobe")
@@ -12235,6 +12454,19 @@ def format_h3_structural_continuity_guard():
     )
 
 
+def format_h3_spoken_dialogue_constraint(detailed_description):
+    """Return the deterministic H3 speech constraint for one segment."""
+    if _DIALOGUE_BLOCK_PATTERN.search(str(detailed_description or "")):
+        return (
+            "SPOKEN DIALOGUE: English only. Only the exact words inside "
+            "<d>...</d> are spoken. Do not generate additional dialogue."
+        )
+    return (
+        "SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized "
+        "language, or singing occur in this segment."
+    )
+
+
 def build_h3_prompt(
     llm_result,
     subject_definitions,
@@ -12270,6 +12502,7 @@ def build_h3_prompt(
         llm_result["non_diegetic_music"],
         "non_diegetic_music"
     )
+    current_visible_subject_ids = extract_current_visible_subject_ids(integrated)
 
     integrated = _replace_excluded_picture_tags_for_h3(
         integrated,
@@ -12318,6 +12551,10 @@ def build_h3_prompt(
                 _remove_video_origin_from_h3_subject_line(line)
                 for line in subject_text.splitlines()
             )
+    subject_text = _filter_h3_subject_definitions(
+        subject_text,
+        current_visible_subject_ids,
+    )
     if ff and segment_number == 1:
         subject_text += (
             "\n\n<Picture 1> is the opening-frame reference for the target video.\n\n"
@@ -12348,6 +12585,18 @@ def build_h3_prompt(
         )
     )
     if (
+        segment_number != 1
+        and conditioning_mode == "clean_refresh"
+        and isinstance(continuity_state, dict)
+    ):
+        previous_state_text = format_authoritative_opening_state(
+            copy.deepcopy(continuity_state),
+            subject_definitions,
+            include_camera=False,
+            excluded_picture_ids=excluded_picture_ids,
+            visible_subject_ids=current_visible_subject_ids,
+        )
+    if (
         hard_cut_clothing_reiteration
         and previous_state_text is not None
         and not is_reference_continuation
@@ -12362,6 +12611,7 @@ def build_h3_prompt(
         appearance_state = format_h3_current_appearance_continuity(
             continuity_state,
             subject_definitions,
+            visible_subject_ids=current_visible_subject_ids,
         )
         if appearance_state:
             sections.append(appearance_state)
@@ -12377,6 +12627,7 @@ def build_h3_prompt(
     _append_h3_prompt_section(sections, "detailed_description", integrated)
     _append_h3_prompt_section(sections, "overall_soundscape", soundscape)
     _append_h3_prompt_section(sections, "non_diegetic_music", music)
+    sections.append(format_h3_spoken_dialogue_constraint(description))
     return "\n\n".join(sections)
 
 
@@ -13347,14 +13598,18 @@ def prepare_append_workflow(
     incompatible_picture_ids.update(
         get_refresh_incompatible_picture_ids(continuity_state)
     )
-    if incompatible_picture_ids:
-        disconnect_append_reference_batch(
-            workflow,
-            label,
-            reason="an active persistent structural change",
-        )
-    else:
-        prune_missing_reference_images(workflow, label, "append")
+    removed_picture_ids, picture_slot_map = prune_missing_reference_images(
+        workflow,
+        label,
+        "append",
+        excluded_picture_ids=incompatible_picture_ids,
+        return_picture_slot_map=True,
+    )
+    h3_prompt = _condition_append_prompt_for_h3(
+        h3_prompt,
+        removed_picture_ids,
+        picture_slot_map,
+    )
 
     if not os.path.exists(previous_video_path):
         raise FileNotFoundError(
@@ -13592,9 +13847,14 @@ def repair_existing_segment(
             f"contains only {len(beats)} beat(s)."
         )
     story_source = load_text_file(story_path, required=True)
-    story, _beat_instructions = parse_story_beat_instructions(story_source)
+    story_without_gen_rules, gen_rules = parse_story_gen_rules(story_source)
+    story, _beat_instructions = parse_story_beat_instructions(
+        story_without_gen_rules
+    )
     if not story:
-        raise ValueError("story.txt contains no story after beat_instructions metadata.")
+        raise ValueError(
+            "story.txt contains no story after beat_instructions/gen_rules metadata."
+        )
 
     conditioning_mode = "clean_refresh"
     segment_length = float(repair["config"]["segment_length"])
@@ -13618,6 +13878,7 @@ def repair_existing_segment(
         segment_number,
         beats_enabled=True,
         conditioning_mode=conditioning_mode,
+        gen_rules=gen_rules,
     )
     messages, _estimated_tokens, _recent_count = build_generation_messages(
         director_rules=director_rules,
@@ -13651,7 +13912,9 @@ def repair_existing_segment(
         "conditioning_mode": conditioning_mode,
         "messages": messages,
         "ministral_context": ministral_context,
+        "opening_state": opening_state,
         "dialogue_exclusions": dialogue_exclusions,
+        "gen_rules": gen_rules,
         "opening_state_sha256": hashlib.sha256(
             json.dumps(
                 opening_state,
@@ -13772,6 +14035,7 @@ DIRECTOR_CONTINUITY_ISSUE_TYPES = (
     "incompatible_state_restoration",
     "unsupported_persistent_change",
     "next_beat_scope_creep",
+    "important_generation_rules_violation",
 )
 
 DIRECTOR_CONTINUITY_RESPONSE_FORMAT = {
@@ -13842,18 +14106,24 @@ def build_director_continuity_validation_messages(
     detailed_description,
     segment_number,
     next_beat_text="",
+    gen_rules="",
+    overall_soundscape="",
+    non_diegetic_music="",
 ):
-    """Build a narrow continuity and next-beat check for Director prose."""
+    """Build the final continuity, scope, and custom-rule check for H3 content."""
     validation_state = _director_continuity_validation_state(opening_state)
+    rendered_gen_rules = str(gen_rules or "").strip() or "N/A"
     return [
         {
             "role": "system",
             "content": (
                 "You are a narrow final continuity gate for one generated video "
-                "segment. Check only concrete persistent-state contradictions "
-                "and material scope creep into the supplied NEXT BEAT. "
+                "segment. Check concrete persistent-state contradictions, "
+                "material scope creep into the supplied NEXT BEAT, and compliance "
+                "with any IMPORTANT GENERATION RULES. "
                 "Do not critique style, pacing, camera choices, temporary motion, "
-                "or dramatic intensity. Return only the requested JSON object."
+                "or dramatic intensity unless an IMPORTANT GENERATION RULE explicitly "
+                "governs it. Return only the requested JSON object."
             ),
         },
         {
@@ -13884,6 +14154,9 @@ FAIL only for a concrete violation of one of these rules:
    distinctive story event or outcome reserved for NEXT BEAT. Shared characters,
    setting, props, connective motion, active-beat consequences, or reasonable
    preparation that does not itself enact the next event are not scope creep.
+6. The candidate concretely violates an IMPORTANT GENERATION RULE. Judge all three
+   candidate fields together. Do not invent requirements beyond the supplied rules,
+   and do not fail a rule whose compliance cannot be determined from the text.
 
 Use issue types narrowly:
 - absent_state_reintroduction
@@ -13891,10 +14164,14 @@ Use issue types narrowly:
 - incompatible_state_restoration
 - unsupported_persistent_change
 - next_beat_scope_creep
+- important_generation_rules_violation
 
 Do NOT fail because the candidate merely shows an already-existing persistent
 condition. Do NOT demand exact wording. Do NOT infer a violation from ambiguity.
-If no concrete contradiction exists, return valid=true.
+If no concrete contradiction or generation-rule violation exists, return valid=true.
+
+HARD CONSTRAINTS:
+{rendered_gen_rules}
 
 COMMITTED OPENING STATE
 {json.dumps(validation_state, ensure_ascii=False, indent=2)}
@@ -13905,8 +14182,10 @@ ACTIVE BEAT
 NEXT BEAT
 {next_beat_text or 'N/A (this is the final beat)'}
 
-CANDIDATE DESCRIPTION
-{detailed_description}
+CANDIDATE H3 CONTENT
+detailed_description: {detailed_description}
+overall_soundscape: {overall_soundscape}
+non_diegetic_music: {non_diegetic_music}
 
 Return only JSON with exactly valid and issues.
 """.strip(),
@@ -13966,6 +14245,12 @@ def parse_director_continuity_validation(raw_result, formatter=None):
             "Director continuity validation 'valid' must be true exactly when "
             "issues is empty."
         )
+    if not valid:
+        print("Director continuity validation failed with the following issues:", flush=True)
+        for issue in normalized:
+            print(f"{issue['problem']}\n", flush=True)
+    else:
+        print("Director continuity validation passed with no issues.", flush=True)
     return {"valid": valid, "issues": normalized}
 
 
@@ -13977,8 +14262,11 @@ def validate_director_continuity_candidate(
     history_metadata=None,
     llm_request=None,
     next_beat_text="",
+    gen_rules="",
+    overall_soundscape="",
+    non_diegetic_music="",
 ):
-    """Reject continuity contradictions and scope creep into the next beat."""
+    """Reject continuity, scope, and custom generation-rule violations."""
     llm_request = llm_request or ask_llm
     messages = build_director_continuity_validation_messages(
         opening_state,
@@ -13986,6 +14274,9 @@ def validate_director_continuity_candidate(
         detailed_description,
         segment_number,
         next_beat_text=next_beat_text,
+        gen_rules=gen_rules,
+        overall_soundscape=overall_soundscape,
+        non_diegetic_music=non_diegetic_music,
     )
     request_kwargs = {
         "response_format": DIRECTOR_CONTINUITY_RESPONSE_FORMAT,
@@ -13997,21 +14288,27 @@ def validate_director_continuity_candidate(
     return parse_director_continuity_validation(raw_result)
 
 
-def format_director_continuity_correction(validation):
-    """Turn continuity-gate issues into concise Director regeneration feedback."""
+def format_director_continuity_correction(validation, gen_rules=""):
+    """Turn final-gate issues into concise Director regeneration feedback."""
     bullets = "\n".join(
         f"- {issue['type']}: {issue['problem']}"
         for issue in validation.get("issues", [])
     )
     return (
         "DIRECTOR CONTINUITY CORRECTION\n\n"
-        "The previous candidate contradicted the committed opening state or "
-        "introduced an unsupported persistent change or next-beat scope creep:\n"
+        "The previous candidate contradicted the committed opening state, "
+        "introduced an unsupported persistent change or next-beat scope creep, "
+        "or violated an IMPORTANT generation rule:\n"
         f"{bullets}\n\n"
         "Regenerate the segment from the same frame-0 state. Execute only the "
         "ACTIVE beat and leave the NEXT beat unperformed. Preserve explicit "
         "absences and completed persistent transitions unless the ACTIVE beat "
         "itself requires a new change."
+        + (
+            f"\n\nIMPORTANT: {str(gen_rules).strip()}"
+            if str(gen_rules or "").strip()
+            else ""
+        )
     )
 
 
@@ -14056,6 +14353,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         if isinstance(later_beat_texts, (list, tuple)) and later_beat_texts
         else ""
     )
+    gen_rules = str(bundle.get("gen_rules", "") or "").strip()
     try:
         segment_number = int(bundle.get("segment", 1))
     except (TypeError, ValueError):
@@ -14190,8 +14488,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             )
 
         # Segment 1 has no prior continuity to contradict, but it can still creep
-        # into Beat 2. Run the gate whenever either check has applicable context.
-        if segment_number > 1 or next_beat_text:
+        # into Beat 2 or violate a custom generation rule. Run the gate whenever
+        # any check has applicable context.
+        if segment_number > 1 or next_beat_text or gen_rules:
             try:
                 validation = validate_director_continuity_candidate(
                     bundle.get("opening_state"),
@@ -14199,6 +14498,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     get_detailed_description(llm_result, ""),
                     segment_number,
                     next_beat_text=next_beat_text,
+                    gen_rules=gen_rules,
+                    overall_soundscape=llm_result.get("overall_soundscape", ""),
+                    non_diegetic_music=llm_result.get("non_diegetic_music", ""),
                     history_metadata={
                         "run_id": run_id,
                         "source_sha256": (run_config or {}).get("source_sha256"),
@@ -14218,7 +14520,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 break
             if not validation["valid"]:
                 director_correction = format_director_continuity_correction(
-                    validation
+                    validation,
+                    gen_rules=gen_rules,
                 )
                 rendered_issues = "; ".join(
                     issue["problem"] for issue in validation["issues"]
@@ -14278,9 +14581,14 @@ def _run_main(
     )
 
     story_source = load_text_file(STORY_FILE, required=True)
-    story, beat_instructions = parse_story_beat_instructions(story_source)
+    story_without_gen_rules, gen_rules = parse_story_gen_rules(story_source)
+    story, beat_instructions = parse_story_beat_instructions(
+        story_without_gen_rules
+    )
     if not story:
-        raise ValueError("story.txt contains no story after beat_instructions metadata.")
+        raise ValueError(
+            "story.txt contains no story after beat_instructions/gen_rules metadata."
+        )
     base_subject_definitions = load_text_file(
         SUBJECT_DEFINITIONS_FILE,
         required=False,
@@ -14303,7 +14611,7 @@ def _run_main(
         beat_instructions=beat_instructions,
         subject_information=subject_information,
         story_arc_path=STORY_ARC_FILE,
-        story_arc_source=story_source,
+        story_arc_source=story_without_gen_rules,
         phrase_exclusions=phrase_exclusions,
     )
     if beats and len(beats) != total_segments:
@@ -14314,7 +14622,7 @@ def _run_main(
     macro_arc = load_story_arc(
         STORY_ARC_FILE,
         total_segments,
-        story_source,
+        story_without_gen_rules,
     )
 
     # Beat generation deliberately happens before external runtime and workflow
@@ -14331,6 +14639,7 @@ def _run_main(
         subject_definitions,
         global_loras,
         refresh_interval,
+        gen_rules=gen_rules,
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
@@ -14487,6 +14796,9 @@ def _run_main(
                 ),
                 "recent_results": list(recent_items),
                 "dialogue_exclusions": list(dialogue_exclusions),
+                "gen_rules_sha256": hashlib.sha256(
+                    str(gen_rules or "").encode("utf-8")
+                ).hexdigest(),
                 "opening_state_sha256": continuity_state_sha(opening_state),
                 "subject_definitions_sha256": hashlib.sha256(
                     str(subject_definitions or "").encode("utf-8")
@@ -14518,6 +14830,7 @@ def _run_main(
             segment_number,
             beats_enabled=bool(beats),
             conditioning_mode=conditioning_mode,
+            gen_rules=gen_rules,
         )
         opening_summary = (
             format_authoritative_opening_state(
@@ -14584,6 +14897,7 @@ def _run_main(
             "h3_opening_summary": h3_opening_summary,
             "excluded_picture_ids": sorted(excluded_picture_ids),
             "dialogue_exclusions": list(dialogue_exclusions),
+            "gen_rules": gen_rules,
             "opening_state_sha256": continuity_state_sha(opening_state),
             "fingerprint": build_segment_fingerprint(
                 segment_number,
@@ -14623,8 +14937,8 @@ def _run_main(
     prefetched_next = None
     for segment in segments_to_generate:
         if is_new_phase_start(beats, segment):
-            # Dynamic Subject cleanup at phase boundaries is intentionally
-            # disabled so Subjects established in earlier phases persist.
+            #Dynamic Subject cleanup at phase boundaries is intentionally
+            #disabled so Subjects established in earlier phases persist.
             # continuity_state, removed_subject_names = (
             #     reset_generation_state_subjects_for_new_phase(
             #         generation_state,

@@ -401,6 +401,48 @@ class DialogueUsagePromptTests(unittest.TestCase):
         self.assertNotIn("dialogue_exclusions", prompt)
         self.assertNotIn("dialogue_exclusion_rule", prompt)
 
+    def test_final_h3_prompt_forbids_spoken_language_without_dialogue_blocks(self):
+        result = result_with_dialogues()
+        result["overall_soundscape"] = (
+            "Rain taps the roof while a loose shutter knocks in the wind."
+        )
+
+        prompt = minimax.build_h3_prompt(result, SUBJECTS)
+
+        self.assertIn(result["overall_soundscape"], prompt)
+        self.assertTrue(prompt.endswith(
+            "SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized "
+            "language, or singing occur in this segment."
+        ))
+
+    def test_final_h3_prompt_limits_speech_to_exact_dialogue_block_words(self):
+        result = result_with_dialogues("Keep the existing formatting intact.")
+        original_description = result["detailed_description"]
+
+        prompt = minimax.build_h3_prompt(result, SUBJECTS)
+
+        self.assertIn(original_description, prompt)
+        self.assertTrue(prompt.endswith(
+            "SPOKEN DIALOGUE: English only. Only the exact words inside "
+            "<d>...</d> are spoken. Do not generate additional dialogue."
+        ))
+
+    def test_director_rules_do_not_invent_background_speech_like_ambience(self):
+        rules = minimax.build_director_rules(
+            total_length=10,
+            segment_length=5,
+            total_segments=2,
+            subject_definitions=SUBJECTS,
+            segment_number=1,
+        )
+
+        self.assertIn(
+            "Do not invent background murmur, chatter, conversation, or voices",
+            rules,
+        )
+        self.assertIn("ACTIVE beat or IMPORTANT generation rules", rules)
+        self.assertIn("legitimate ambient non-speech audio", rules)
+
 
 if __name__ == "__main__":
     unittest.main()

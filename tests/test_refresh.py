@@ -109,6 +109,28 @@ class AutoRefreshTests(unittest.TestCase):
         self.assertIn("plus its pinned final frame", after_refresh)
         self.assertNotIn("does NOT receive previous latent context", after_refresh)
 
+    def test_picture_referenced_subjects_start_visible_only_for_initial_generation(self):
+        initial = minimax.build_segment_request(1, 6, 6, 36, [], "initial")
+        refresh = minimax.build_segment_request(5, 6, 6, 36, [], "clean_refresh")
+        continuation = minimax.build_segment_request(
+            6,
+            6,
+            6,
+            36,
+            [],
+            "latent_continuation",
+        )
+
+        self.assertIn(
+            "Every Picture-referenced Subject required in this segment must already "
+            "occupy a defined position in the opening composition",
+            initial,
+        )
+        self.assertIn("Do not describe such a Subject as entering frame", initial)
+        self.assertIn("Terri walks toward the rack", initial)
+        self.assertNotIn("Every Picture-referenced Subject required", refresh)
+        self.assertNotIn("Every Picture-referenced Subject required", continuation)
+
     def test_refresh_argument_must_be_positive(self):
         with self.assertRaises(SystemExit):
             minimax.parse_args(["5", "50", "0.5", "--refresh", "0"])

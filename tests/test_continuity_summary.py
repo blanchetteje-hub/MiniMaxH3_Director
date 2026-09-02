@@ -569,12 +569,19 @@ class ContinuitySummaryTests(unittest.TestCase):
             combined,
             previous_state=opening,
             segment_number=2,
+            conditioning_mode="clean_refresh",
+            continuity_state=state,
         )
 
         self.assertEqual(added_names, ["New Guard"])
         self.assertEqual(len(added_lines), 1)
         self.assertIn("<Subject 3> is New Guard", prompt)
-        self.assertIn("wearing green sweater", prompt)
+        self.assertNotIn("Connie", prompt)
+        self.assertNotIn("green sweater", prompt)
+        self.assertEqual(
+            state["subjects"]["Connie"]["wardrobe"]["upper"],
+            "green sweater",
+        )
 
     def test_continuity_request_retries_invalid_json_and_accepts_partial_update(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
@@ -734,6 +741,49 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
         self.assertTrue(
             copied["subjects"]["Unit"]["persistent_structural_change"]
+        )
+
+    def test_clothing_removal_does_not_mark_persistent_structural_change(self):
+        committed = minimax.continuity_state_for_registry(self.SUBJECTS)
+        committed["subjects"]["Connie"]["wardrobe"]["upper"] = "red blouse"
+        snapshot = canonical_candidate(self.SUBJECTS, committed)
+        snapshot["subjects"]["Connie"]["wardrobe"]["upper"] = "absent"
+
+        changed = minimax.normalize_structured_continuity_state(
+            snapshot,
+            self.SUBJECTS,
+            committed,
+            newest_description=(
+                "Connie's red blouse detaches at her chest and falls away, "
+                "its sleeve sliding over her arm and waist before leaving her "
+                "upper body exposed."
+            ),
+        )
+
+        connie = changed["subjects"]["Connie"]
+        self.assertEqual(connie["wardrobe"]["upper"], "absent")
+        self.assertFalse(connie["persistent_structural_change"])
+
+    def test_topology_change_marks_persistent_structural_change(self):
+        definitions = "<Subject 1> is Unit, referenced in <Picture 1>."
+        committed = minimax.continuity_state_for_registry(definitions)
+        snapshot = canonical_candidate(definitions, committed)
+        snapshot["subjects"]["Unit"]["topology"] = (
+            "left mechanical arm permanently detached from torso"
+        )
+
+        changed = minimax.normalize_structured_continuity_state(
+            snapshot,
+            definitions,
+            committed,
+            newest_description=(
+                "Unit's left mechanical arm is permanently detached from its "
+                "torso in the final frame."
+            ),
+        )
+
+        self.assertTrue(
+            changed["subjects"]["Unit"]["persistent_structural_change"]
         )
 
     def test_structured_candidate_replaces_explicit_final_frame_state(self):

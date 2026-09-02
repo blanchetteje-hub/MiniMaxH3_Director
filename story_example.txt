@@ -1,1 +1,4 @@
 Mark, Jill, and their family are enjoying a busy theme park when aliens start abducting people.
+
+gen_rules: Mark and Jill are running when abducted.
+The aliens use green beams.

@@ -365,28 +365,21 @@ _DIALOGUE_ATTRIBUTION = (
     r"says?|asks?|answers?|repl(?:y|ies)|shouts?|whispers?|yells?|tells?|"
     r"exclaims?|narrates?"
 )
-_DIALOGUE_NAME_WORD = r"[A-Za-z][\w'\u2019-]*"
-_DIALOGUE_ROLE = (
-    rf"(?:the|a|an)\s+{_DIALOGUE_NAME_WORD}"
-    rf"(?:\s+(?!(?:and|{_DIALOGUE_ATTRIBUTION})\b){_DIALOGUE_NAME_WORD}){{0,3}}"
-)
 _DIALOGUE_PROPER_NAME = (
     rf"[A-Z][\w'\u2019-]*"
-    rf"(?:\s+(?!(?:and|{_DIALOGUE_ATTRIBUTION})\b){_DIALOGUE_NAME_WORD}){{0,3}}"
+    rf"(?:\s+(?!(?:and|(?i:{_DIALOGUE_ATTRIBUTION}))\b)"
+    rf"[A-Z][\w'\u2019-]*){{0,3}}"
 )
 _DIALOGUE_SPEAKER_PHRASE = (
-    rf"(?:{_DIALOGUE_ROLE}|{_DIALOGUE_PROPER_NAME})"
-    rf"(?:\s+and\s+(?:{_DIALOGUE_ROLE}|{_DIALOGUE_PROPER_NAME}))?"
+    rf"{_DIALOGUE_PROPER_NAME}"
+    rf"(?:\s+and\s+{_DIALOGUE_PROPER_NAME})?"
 )
 
 
 def _canonical_dialogue_subject_name(value: str) -> str:
-    """Return a stable parser-compatible name for a newly speaking role."""
+    """Normalize spacing without manufacturing capitalization for a name."""
 
-    return " ".join(
-        word[:1].upper() + word[1:]
-        for word in _clean_space(value).split()
-    )
+    return _clean_space(value)
 
 
 def _next_dialogue_identity_number(
@@ -424,7 +417,7 @@ def _assign_unknown_dialogue_subjects(
     text: str,
     context: Mapping[str, Any],
 ) -> str:
-    """Promote every explicit, unregistered dialogue speaker to a Subject.
+    """Promote explicitly named, unregistered dialogue speakers to Subjects.
 
     The allocation is local and deterministic. The continuity updater later
     reads the inline ``<Subject N> Name (SN)`` declaration and persists it for
@@ -501,12 +494,6 @@ def _assign_unknown_dialogue_subjects(
         else:
             colon = re.search(r":\s*$", before)
             if not colon:
-                anonymous = render_names(resolve_names(["Unidentified Speaker"]))
-                text = (
-                    text[:block.start()]
-                    + anonymous + " says: "
-                    + text[block.start():]
-                )
                 continue
             bare_colon = True
             speaker_prefix = before[:colon.start()]
@@ -519,18 +506,35 @@ def _assign_unknown_dialogue_subjects(
             speaker_prefix,
             flags=re.I,
         )
-        phrase_match = re.search(
-            rf"(?P<phrase>{_DIALOGUE_SPEAKER_PHRASE})\s*$",
-            without_id,
-            re.I,
+        # Registered identities remain case-insensitive, but an unregistered
+        # identity must already be written as an explicit proper name.  Do not
+        # let IGNORECASE turn trailing prose into a name and then capitalize it.
+        registered_names = sorted(records, key=len, reverse=True)
+        registered_pattern = "|".join(
+            re.escape(name) for name in registered_names
         )
-        if not phrase_match:
-            anonymous = render_names(resolve_names(["Unidentified Speaker"]))
-            text = (
-                text[:block.start()]
-                + anonymous + " says: "
-                + text[block.start():]
+        phrase_match = None
+        if registered_pattern:
+            phrase_match = re.search(
+                rf"(?P<phrase>(?:{registered_pattern})"
+                rf"(?:\s+and\s+(?:{registered_pattern}))?)\s*$",
+                without_id,
+                re.I,
             )
+        if phrase_match is None:
+            candidate = re.search(
+                rf"(?P<phrase>{_DIALOGUE_SPEAKER_PHRASE})\s*$",
+                without_id,
+            )
+            if candidate is not None:
+                leading = without_id[:candidate.start("phrase")]
+                clear_boundary = (
+                    not leading.strip()
+                    or re.search(r"(?:[.!?;:,]|\]|>)\s*$", leading) is not None
+                )
+                if clear_boundary:
+                    phrase_match = candidate
+        if not phrase_match:
             continue
         raw_phrase = phrase_match.group("phrase")
         if re.search(
@@ -538,19 +542,12 @@ def _assign_unknown_dialogue_subjects(
             raw_phrase,
         ):
             # A structural/camera label ending in a colon is not a speaker.
-            anonymous = render_names(resolve_names(["Unidentified Speaker"]))
-            text = (
-                text[:block.start()]
-                + anonymous + " says: "
-                + text[block.start():]
-            )
             continue
-        raw_names = re.split(r"\s+and\s+", raw_phrase, flags=re.I)
+        raw_names = re.split(r"\s+and\s+", raw_phrase)
         if any(name.strip().casefold() in {"he", "she", "they", "it"} for name in raw_names):
-            # A pronoun is not a stable identity, but every dialogue block must
-            # still have one. Use an explicit unresolved Subject instead of
-            # guessing which registered person the pronoun means.
-            raw_names = ["Unidentified Speaker"]
+            # A pronoun is not a stable identity. Leave it unresolved instead
+            # of registering a manufactured Subject.
+            continue
 
         rendered = render_names(resolve_names(raw_names))
 
@@ -574,23 +571,21 @@ def extract_inline_dialogue_subjects(text: str) -> list[dict[str, Any]]:
         if prior_block >= 0:
             before = before[prior_block + len("</d>"):]
         attribution = re.search(
-            rf"(?P<subjects>(?:<Subject\s+\d+>\s+"
+            rf"(?P<subjects>(?:(?i:<Subject)\s+\d+>\s+"
             rf"[A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*"
-            rf"(?:\s+and\s+)?)+)\s+"
-            rf"\((?P<speakers>S\d+(?:,S\d+)*)\)"
-            rf"[^.!?]{{0,140}}(?:{_DIALOGUE_ATTRIBUTION})"
+            rf"(?:\s+(?i:and)\s+)?)+)\s+"
+            rf"\((?P<speakers>(?i:S)\d+(?:,(?i:S)\d+)*)\)"
+            rf"[^.!?]{{0,140}}(?i:{_DIALOGUE_ATTRIBUTION})"
             rf"[^.!?]{{0,100}}:?\s*$",
             before,
-            re.I,
         )
         if not attribution:
             continue
         subjects = list(re.finditer(
-            r"<Subject\s+(?P<subject>\d+)>\s+"
+            r"(?i:<Subject)\s+(?P<subject>\d+)>\s+"
             r"(?P<name>[A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*)"
-            r"(?=\s+and\s+<Subject|\s*$)",
+            r"(?=\s+(?i:and)\s+(?i:<Subject)|\s*$)",
             attribution.group("subjects"),
-            re.I,
         ))
         speakers = [
             int(value) for value in re.findall(
@@ -1457,11 +1452,12 @@ def _repair_canonical_subject_tags(
             flags=re.I,
         )
 
-        # Dialogue speaker IDs already provide stable H3 identity. Do not retain
-        # redundant <Subject N> tags directly on dialogue attributions.
+        # A registered speaker's ID is sufficient in an attribution. Keep
+        # inline declarations for newly allocated Subjects, which are not yet
+        # present in ``records`` and must survive for continuity updates.
         text = re.sub(
-            r"<Subject\s+\d+>\s+"
-            r"(?P<name>[A-Z][\w'\u2019-]*(?:\s+[A-Z][\w'\u2019-]*)*)"
+            rf"<Subject\s+{subject_id}>\s+"
+            rf"(?P<name>{re.escape(name)})"
             r"(?=\s+\(S\d+\)\s+"
             r"(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
             r"tells?|exclaims?|narrates?))",

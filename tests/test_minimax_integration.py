@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 import tempfile
@@ -167,7 +168,10 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertNotIn("opening-frame reference", later)
 
     def test_append_h3_prompt_keeps_subject_definitions_without_disabled_suffix(self):
-        result = response("[Shot 2] Mark and Jill continue walking.", [])
+        result = response(
+            "[Shot 2] <Subject 1> Mark and <Subject 2> Jill continue walking.",
+            [],
+        )
 
         prompt = minimax.build_h3_prompt(
             result,
@@ -191,6 +195,164 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
         self.assertNotIn("Mark's pose", subject_text)
         self.assertNotIn("Jill's pose", subject_text)
+
+    def test_append_h3_boundary_remaps_first_and_middle_picture_exclusions(self):
+        definitions = (
+            "<Subject 1> is Alpha, referenced in <Picture 1>.\n"
+            "<Subject 2> is Beta, referenced in <Picture 2>.\n"
+            "<Subject 3> is Gamma, referenced in <Picture 3>."
+        )
+        canonical_prompt = (
+            f"subject_definitions: {definitions}\n\n"
+            "detailed_description: [Shot 2] <Subject 1> Alpha <Picture 1>, "
+            "<Subject 2> Beta <Picture 2>, and <Subject 3> Gamma <Picture 3> wait."
+        )
+
+        cases = (
+            (
+                {1},
+                {2: 1, 3: 2},
+                (
+                    "<Subject 1> is Alpha, referenced in <Video 1>.",
+                    "<Subject 2> is Beta, referenced in <Picture 1>.",
+                    "<Subject 3> is Gamma, referenced in <Picture 2>.",
+                ),
+            ),
+            (
+                {2},
+                {1: 1, 3: 2},
+                (
+                    "<Subject 1> is Alpha, referenced in <Picture 1>.",
+                    "<Subject 2> is Beta, referenced in <Video 1>.",
+                    "<Subject 3> is Gamma, referenced in <Picture 2>.",
+                ),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            previous_video = os.path.join(temp_dir, "previous.mp4")
+            with open(previous_video, "wb") as video:
+                video.write(b"video")
+
+            for excluded, picture_slot_map, expected_lines in cases:
+                with self.subTest(excluded=excluded):
+                    workflow = minimax.load_workflow(minimax.APPEND_WORKFLOW_FILE)
+                    with mock.patch(
+                        "minimax.load_workflow",
+                        return_value=workflow,
+                    ), mock.patch(
+                        "minimax.prune_missing_reference_images",
+                        return_value=(sorted(excluded), picture_slot_map),
+                    ):
+                        prepared = minimax.prepare_append_workflow(
+                            6.0,
+                            canonical_prompt,
+                            previous_video,
+                            2,
+                            excluded_picture_ids=excluded,
+                        )
+
+                    _, prompt_node = minimax.find_workflow_node(
+                        prepared,
+                        minimax.PROMPT_NODE_NAME,
+                        "prepared append workflow",
+                    )
+                    h3_facing_prompt = prompt_node["inputs"]["text"]
+                    for expected in expected_lines:
+                        self.assertIn(expected, h3_facing_prompt)
+                    self.assertEqual(
+                        canonical_prompt,
+                        f"subject_definitions: {definitions}\n\n"
+                        "detailed_description: [Shot 2] <Subject 1> Alpha "
+                        "<Picture 1>, <Subject 2> Beta <Picture 2>, and "
+                        "<Subject 3> Gamma <Picture 3> wait.",
+                    )
+
+    def test_append_exclusion_keeps_canonical_continuity_and_director_ids(self):
+        definitions = (
+            "<Subject 1> is Alpha, referenced in <Picture 1>.\n"
+            "<Subject 2> is Beta, referenced in <Picture 2>.\n"
+            "<Subject 3> is Gamma, referenced in <Picture 3>."
+        )
+        state = minimax.continuity_state_for_registry(definitions)
+        state["subjects"]["Alpha"]["persistent_structural_change"] = True
+
+        excluded = minimax.get_conditioning_excluded_picture_ids(
+            state,
+            "latent_continuation",
+        )
+        director_rules = minimax.build_director_rules(
+            12.0,
+            6.0,
+            2,
+            definitions,
+            2,
+            conditioning_mode="latent_continuation",
+        )
+
+        self.assertEqual(excluded, {1})
+        self.assertEqual(state["subjects"]["Alpha"]["picture_ids"], [1])
+        self.assertEqual(state["subjects"]["Beta"]["picture_ids"], [2])
+        self.assertEqual(state["subjects"]["Gamma"]["picture_ids"], [3])
+        self.assertIn("<Picture 1>", director_rules)
+        self.assertIn("<Picture 2>", director_rules)
+        self.assertIn("<Picture 3>", director_rules)
+
+    def test_h3_continuity_sections_only_include_currently_tagged_subject(self):
+        definitions = (
+            "<Subject 1> is Alice, referenced in <Picture 1>.\n"
+            "<Subject 2> is Beth, referenced in <Picture 2>.\n"
+            "<Subject 3> is Cara, referenced in <Picture 3>."
+        )
+        state = minimax.continuity_state_for_registry(definitions)
+        for name, position, garment in (
+            ("Alice", "at the scarlet arch", "scarlet coat"),
+            ("Beth", "beside the cobalt door", "cobalt jacket"),
+            ("Cara", "under the amber lamp", "amber sweater"),
+        ):
+            state["subjects"][name]["position"] = position
+            state["subjects"][name]["wardrobe"]["upper"] = garment
+        state["subjects"]["Beth"]["spatial_relationships"] = [
+            "holding Alice's hand",
+            "beside the cobalt control panel",
+        ]
+        state["environment"]["persistent_state"] = (
+            "Cara waits beyond the sealed bulkhead"
+        )
+        committed_state = copy.deepcopy(state)
+        result = response(
+            "[Shot 4] <Subject 2> Beth opens the cobalt door.",
+            [],
+        )
+        full_opening_state = minimax.format_authoritative_opening_state(
+            state,
+            definitions,
+            include_camera=False,
+        )
+
+        for mode in ("latent_continuation", "clean_refresh"):
+            with self.subTest(conditioning_mode=mode):
+                prompt = minimax.build_h3_prompt(
+                    result,
+                    definitions,
+                    previous_state=full_opening_state,
+                    segment_number=4,
+                    conditioning_mode=mode,
+                    continuity_state=state,
+                )
+
+                self.assertIn("<Subject 2> is Beth", prompt)
+                self.assertIn("cobalt jacket", prompt)
+                self.assertNotIn("<Subject 1>", prompt)
+                self.assertNotIn("<Subject 3>", prompt)
+                self.assertNotIn("Alice", prompt)
+                self.assertNotIn("Cara", prompt)
+                self.assertNotIn("scarlet coat", prompt)
+                self.assertNotIn("amber sweater", prompt)
+                if mode == "clean_refresh":
+                    self.assertIn("beside the cobalt door", prompt)
+
+        self.assertEqual(state, committed_state)
+        self.assertEqual(set(state["subjects"]), {"Alice", "Beth", "Cara"})
 
     def test_previous_visible_subject_ids_use_only_immediately_previous_segment(self):
         recent_results = [
@@ -1228,8 +1390,8 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
     def test_serializer_has_no_language_suffix_or_completion_metadata(self):
         formatted = response(
-            "[Shot 1] Live-action, cinematic, Mark, Jill, and Mark's family "
-            "stand together at the theme park.",
+            "[Shot 1] Live-action, cinematic, <Subject 1> Mark, "
+            "<Subject 2> Jill, and Mark's family stand together at the theme park.",
             [1]
         )
         prompt = minimax.build_h3_prompt(formatted, SUBJECTS)
@@ -1386,7 +1548,8 @@ class LmStudioIntegrationTests(unittest.TestCase):
             },
         })
         current = response(
-            "[Shot 3] Camera cuts to a new shot: Mark and Jill sit together.",
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Mark and "
+            "<Subject 2> Jill sit together.",
             [],
         )
 

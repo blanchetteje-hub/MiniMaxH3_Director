@@ -395,7 +395,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
         self.assertNotRegex(description, r"\bS[56]\b")
 
-    def test_speaking_undefined_son_becomes_a_subject_with_unique_id(self) -> None:
+    def test_descriptive_speaking_role_does_not_become_a_subject(self) -> None:
         malformed = response(
             "[Shot 3] Mark's unidentified son shouts: "
             "<d>[English] They're right above us!</d> while Mark and Jill turn around."
@@ -406,31 +406,28 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         description = formatted[DESCRIPTION]
         issues = validate_ministral_prompt(formatted, context)
 
-        self.assertIn(
-            "<Subject 3> Mark's Unidentified Son (S3) shouts: "
-            "<d>[English] They're right above us!</d>",
-            description,
-        )
-        self.assertEqual(issues, [])
+        self.assertNotIn("<Subject 3>", description)
+        self.assertNotIn("Mark's Unidentified Son", description)
+        self.assertTrue(any("HARD_DIALOGUE_FORMAT" in issue for issue in issues))
 
-    def test_multiple_unknown_speakers_get_distinct_stable_ids(self) -> None:
+    def test_multiple_proper_name_speakers_get_distinct_stable_ids(self) -> None:
         malformed = response(
-            "[Shot 3] The guard says: <d>[English] Stop.</d> "
-            "A red door whispers: <d>[English] Come closer.</d> "
-            "The guard replies: <d>[English] I heard that.</d>"
+            "[Shot 3] Nora Vale says: <d>[English] Stop.</d> "
+            "Eli Stone whispers: <d>[English] Come closer.</d> "
+            "Nora Vale replies: <d>[English] I heard that.</d>"
         )
 
         context = context_for(3, next_beat_id=None, hard_cut_required=True)
         formatted = format_ministral_prompt(malformed, context)
         description = formatted[DESCRIPTION]
 
-        self.assertEqual(description.count("<Subject 3> The Guard (S3)"), 2)
-        self.assertIn("<Subject 4> A Red Door (S4) whispers:", description)
+        self.assertEqual(description.count("<Subject 3> Nora Vale (S3)"), 2)
+        self.assertIn("<Subject 4> Eli Stone (S4) whispers:", description)
         self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
     def test_joint_registered_and_unknown_speakers_each_have_subject_identity(self) -> None:
         malformed = response(
-            "[Shot 3] Mark and a guard shout together: "
+            "[Shot 3] Mark and Nora Vale shout together: "
             "<d>[English] Get down!</d>"
         )
         context = context_for(3, next_beat_id=None, hard_cut_required=True)
@@ -439,36 +436,53 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         description = formatted[DESCRIPTION]
 
         self.assertIn(
-            "<Subject 1> Mark and <Subject 3> A Guard (S1,S3) shout together:",
+            "<Subject 1> Mark and <Subject 3> Nora Vale (S1,S3) shout together:",
             description,
         )
-        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+
+    def test_registered_mark_says_remains_valid_without_new_subject(self) -> None:
+        malformed = response(
+            "[Shot 3] Mark says: <d>[English] Stay behind me.</d>"
+        )
+        context = context_for(3, next_beat_id=None, hard_cut_required=True)
+
+        formatted = format_ministral_prompt(malformed, context)
+
+        self.assertIn(
+            "Mark (S1) says: <d>[English] Stay behind me.</d>",
+            formatted[DESCRIPTION],
+        )
+        self.assertNotIn("<Subject 3>", formatted[DESCRIPTION])
+        self.assertFalse(any(
+            "HARD_DIALOGUE_FORMAT" in issue
+            for issue in validate_ministral_prompt(formatted, context)
+        ))
 
     def test_unknown_speaker_cannot_reuse_registered_generated_id(self) -> None:
         malformed = response(
-            "[Shot 3] The guard (S1) says: <d>[English] Stop.</d>"
+            "[Shot 3] Nora Vale (S1) says: <d>[English] Stop.</d>"
         )
         context = context_for(3, next_beat_id=None, hard_cut_required=True)
 
         description = format_ministral_prompt(malformed, context)[DESCRIPTION]
 
-        self.assertIn("<Subject 3> The Guard (S3) says:", description)
-        self.assertNotIn("The Guard (S1)", description)
+        self.assertIn("<Subject 3> Nora Vale (S3) says:", description)
+        self.assertNotIn("Nora Vale (S1)", description)
 
     def test_inline_unknown_subject_with_colliding_id_is_remapped(self) -> None:
         malformed = response(
-            "[Shot 3] <Subject 3> The Guard (S1) says: "
+            "[Shot 3] <Subject 3> Nora Vale (S1) says: "
             "<d>[English] Stop.</d>"
         )
         context = context_for(3, next_beat_id=None, hard_cut_required=True)
 
         formatted = format_ministral_prompt(malformed, context)
 
-        self.assertIn("<Subject 3> The Guard (S3) says:", formatted[DESCRIPTION])
-        self.assertNotIn("The Guard (S1)", formatted[DESCRIPTION])
+        self.assertIn("<Subject 3> Nora Vale (S3) says:", formatted[DESCRIPTION])
+        self.assertNotIn("Nora Vale (S1)", formatted[DESCRIPTION])
         self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
-    def test_unattributed_dialogue_gets_an_explicit_fallback_subject(self) -> None:
+    def test_unattributed_dialogue_does_not_manufacture_a_subject(self) -> None:
         malformed = response(
             "[Shot 3] A voice comes from the darkness. "
             "<d>[English] Do not turn around.</d>"
@@ -477,12 +491,12 @@ class LiveDialogueRegressionTests(unittest.TestCase):
 
         formatted = format_ministral_prompt(malformed, context)
 
-        self.assertIn(
-            "<Subject 3> Unidentified Speaker (S3) says: "
-            "<d>[English] Do not turn around.</d>",
-            formatted[DESCRIPTION],
-        )
-        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+        self.assertNotIn("<Subject 3>", formatted[DESCRIPTION])
+        self.assertNotIn("Unidentified Speaker", formatted[DESCRIPTION])
+        self.assertTrue(any(
+            "HARD_DIALOGUE_FORMAT" in issue
+            for issue in validate_ministral_prompt(formatted, context)
+        ))
 
     def test_dynamic_speaker_is_allocated_after_all_defined_subject_ids(self) -> None:
         context = context_for(
@@ -496,18 +510,17 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             hard_cut_required=True,
         )
         malformed = response(
-            "[Shot 3] A scream comes from off-screen. "
-            "<d>[English] AHHH!</d>"
+            "[Shot 3] Nora Vale says: <d>[English] AHHH!</d>"
         )
 
         formatted = format_ministral_prompt(malformed, context)
 
         self.assertIn(
-            "<Subject 5> Unidentified Speaker (S5) says: "
+            "<Subject 5> Nora Vale (S5) says: "
             "<d>[English] AHHH!</d>",
             formatted[DESCRIPTION],
         )
-        self.assertNotIn("<Subject 1> Unidentified Speaker", formatted[DESCRIPTION])
+        self.assertNotIn("<Subject 1> Nora Vale", formatted[DESCRIPTION])
 
     def test_raw_subject_tags_reserve_ids_even_when_definition_prose_is_unparsed(self) -> None:
         context = context_for(
@@ -517,14 +530,48 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             next_beat_id=None,
             hard_cut_required=True,
         )
-        malformed = response("[Shot 3] <d>[English] AHHH!</d>")
+        malformed = response(
+            "[Shot 3] Nora Vale says: <d>[English] AHHH!</d>"
+        )
 
         formatted = format_ministral_prompt(malformed, context)
 
         self.assertIn(
-            "<Subject 8> Unidentified Speaker (S8) says:",
+            "<Subject 8> Nora Vale (S8) says:",
             formatted[DESCRIPTION],
         )
+
+    def test_prose_fragments_near_dialogue_cannot_become_subjects(self) -> None:
+        cases = (
+            (
+                "[Shot 3] Mark studies Jill in the mirror as she says: "
+                "<d>[English] Look at me.</d>",
+                "In The Mirror As She",
+            ),
+            (
+                "[Shot 3] Mark faces Jill, her voice rising with challenge: "
+                "<d>[English] Answer me.</d>",
+                "Her Voice Rising With Challenge",
+            ),
+        )
+        context = context_for(3, next_beat_id=None, hard_cut_required=True)
+
+        for malformed_description, manufactured_name in cases:
+            with self.subTest(manufactured_name=manufactured_name):
+                formatted = format_ministral_prompt(
+                    response(malformed_description), context
+                )
+
+                self.assertNotIn("<Subject 3>", formatted[DESCRIPTION])
+                self.assertNotIn(manufactured_name, formatted[DESCRIPTION])
+
+    def test_lowercase_inline_prose_is_not_extracted_as_a_subject(self) -> None:
+        text = (
+            "<Subject 3> her voice rising with challenge (S3) says: "
+            "<d>[English] Answer me.</d>"
+        )
+
+        self.assertEqual(formatter.extract_inline_dialogue_subjects(text), [])
 
     def test_stray_closed_lips_clause_without_voiceover_is_rejected(self) -> None:
         malformed = response(

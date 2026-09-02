@@ -1585,6 +1585,38 @@ class BeatGenerationTests(unittest.TestCase):
         )
         self.assertNotIn("beat_instructions", narrative)
 
+    def test_story_gen_rules_are_extracted_verbatim(self):
+        rules = "Never show captions.  Keep  camera motion slow!"
+        narrative, parsed = minimax.parse_story_gen_rules(
+            "Opening premise.\n"
+            f"gen_rules: {rules}\n"
+            "The protagonist returns home."
+        )
+
+        self.assertEqual(parsed, rules)
+        self.assertEqual(
+            narrative,
+            "Opening premise.\nThe protagonist returns home.",
+        )
+        self.assertNotIn("gen_rules", narrative)
+
+    def test_story_gen_rules_support_bracketed_multiline_content(self):
+        narrative, parsed = minimax.parse_story_gen_rules(
+            "A story.\n"
+            "gen_rules: [First rule.\nSecond rule.]\n"
+        )
+
+        self.assertEqual(narrative, "A story.")
+        self.assertEqual(parsed, "First rule.\nSecond rule.")
+
+    def test_story_rejects_multiple_gen_rules_directives(self):
+        with self.assertRaisesRegex(ValueError, "more than one gen_rules"):
+            minimax.parse_story_gen_rules(
+                "gen_rules: [First rule.]\n"
+                "A story.\n"
+                "gen_rules: [Second rule.]"
+            )
+
     def test_numbered_plain_text_beats_are_parsed_and_normalized(self):
         raw = "\n".join(
             f"B{number:03d}: Distinct event {number} moves the story forward."

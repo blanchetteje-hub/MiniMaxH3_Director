@@ -16,6 +16,93 @@ def segment_bundle():
 
 
 class DirectorBeatCompletionRetryTests(unittest.TestCase):
+    def test_gen_rules_are_near_top_of_director_prompt(self):
+        rules = minimax.build_director_rules(
+            total_length=6,
+            segment_length=6,
+            total_segments=1,
+            subject_definitions="",
+            segment_number=1,
+            gen_rules="Never show on-screen text.",
+        )
+
+        self.assertIn("IMPORTANT: Never show on-screen text.", rules)
+        self.assertLess(
+            rules.index("IMPORTANT: Never show on-screen text."),
+            rules.index("The movie is approximately"),
+        )
+
+    def test_validation_prompt_checks_gen_rules_across_h3_fields(self):
+        messages = minimax.build_director_continuity_validation_messages(
+            opening_state={},
+            active_beat_text="Amy opens the gate.",
+            detailed_description="Amy opens the gate beneath a title card.",
+            segment_number=1,
+            gen_rules="Never show on-screen text and never use music.",
+            overall_soundscape="The gate creaks.",
+            non_diegetic_music="A string theme rises.",
+        )
+
+        combined = "\n".join(message["content"] for message in messages)
+        self.assertIn(
+            "IMPORTANT GENERATION RULES\n"
+            "Never show on-screen text and never use music.",
+            combined,
+        )
+        self.assertIn("overall_soundscape: The gate creaks.", combined)
+        self.assertIn("non_diegetic_music: A string theme rises.", combined)
+        self.assertIn("generation_rule_violation", combined)
+
+        parsed = minimax.parse_director_continuity_validation({
+            "valid": False,
+            "issues": [{
+                "type": "generation_rule_violation",
+                "problem": "The candidate uses music despite the custom rule.",
+            }],
+        })
+        self.assertEqual(
+            parsed["issues"][0]["type"],
+            "generation_rule_violation",
+        )
+
+    def test_gen_rules_trigger_validation_for_final_first_segment(self):
+        result = {
+            "detailed_description": "Amy opens the gate.",
+            "overall_soundscape": "The gate creaks.",
+            "non_diegetic_music": "N/A",
+            "completed_beat_ids": [1],
+        }
+        bundle = segment_bundle()
+        bundle["gen_rules"] = "Never show on-screen text."
+        bundle["ministral_context"]["current_beat_text"] = "Amy opens the gate."
+
+        with mock.patch(
+            "minimax.request_valid_ministral_prompt",
+            return_value=result,
+        ), mock.patch(
+            "minimax.validate_director_continuity_candidate",
+            return_value={"valid": True, "issues": []},
+        ) as validate:
+            minimax.request_segment_llm(
+                bundle,
+                ["Amy opens the gate."],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
+
+        self.assertEqual(
+            validate.call_args.kwargs["gen_rules"],
+            "Never show on-screen text.",
+        )
+        self.assertEqual(
+            validate.call_args.kwargs["overall_soundscape"],
+            "The gate creaks.",
+        )
+        self.assertEqual(
+            validate.call_args.kwargs["non_diegetic_music"],
+            "N/A",
+        )
+
     def test_validation_prompt_checks_scope_creep_into_exact_next_beat(self):
         messages = minimax.build_director_continuity_validation_messages(
             opening_state={},
