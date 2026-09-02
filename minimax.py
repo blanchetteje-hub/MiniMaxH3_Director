@@ -8947,8 +8947,8 @@ Example:
 - Before returning JSON, scan every exact spoken utterance. Reject and rewrite
   the response unless every utterance is inside `<d>...</d>` and immediately
   preceded by `Character Name (SN) says:` or an equivalent speech verb.
-- Invalid: `His voice whispers: '<Subject 1> Alice? Are you down there?'`
-- Valid: `White Rabbit (S2) asks: <d>[English] Alice? Are you down there?</d>`
+- Invalid: `His voice whispers: '<Subject 1> Amy? Are you down there?'`
+- Valid: `Mark (S2) asks: <d>[English] Amy? Are you down there?</d>`
 
 VOICEOVER:
 Use:

@@ -36,9 +36,6 @@ _ALIGNMENT = re.compile(
     r"is fully referenced\.|How the reference pictures align with the target "
     r"video.*?(?:\.|\n))\s*"
 )
-_OPENING_TIME = re.compile(
-    r"(?i)^\s*(?:At\s+)?(?:00?:)?00(?:\.0+)?(?:\s*seconds?)?\s*[,;:\-]?\s*"
-)
 _ANY_LOCAL_TIME = re.compile(
     r"(?i)^\s*(?:At\s+)?\d{1,2}:\d{2}(?:\.\d+)?\s*[,;:\-]?\s*"
 )
@@ -73,6 +70,40 @@ _TRAILING_PARENTHESIZED_TIME = re.compile(
     re.IGNORECASE,
 )
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+_DIALOGUE_BLOCK = re.compile(
+    r"<d>.*?</d>",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_SPEECH_LIKE_AUDIO = re.compile(
+    r"(?i)\b(?:"
+    r"chatt(?:er|ering|ers?)|"
+    r"convers(?:ation|ations|ing)|"
+    r"voices?|vocals?|"
+    r"murmur(?:s|ed|ing)?|"
+    r"talk(?:s|ed|ing)?|"
+    r"whisper(?:s|ed|ing)?|"
+    r"shout(?:s|ed|ing)?|"
+    r"yell(?:s|ed|ing)?|"
+    r"speech|spoken\s+(?:words?|language|dialogue)|dialogue|"
+    r"sing(?:s|ing|ers?)?|humming|chants?|chanting|"
+    r"pa\s+announcements?|vendor\s+calls?"
+    r")\b"
+)
+
+_SPEECH_AMBIENCE_SPLIT = re.compile(
+    r"(?i)\s*(?:"
+    r"[,;]|"
+    r"\band\b|"
+    r"\balongside\b|"
+    r"\bplus\b|"
+    r"\bmixed\s+with\b|"
+    r"\bblended\s+with\b|"
+    r"\btogether\s+with\b|"
+    r"\baccompanied\s+by\b"
+    r")\s*"
+)
+
 _ABSOLUTE_SEGMENT_REFERENCE = re.compile(
     r"(?i)(?<![\w<])(?:generated\s+video\s+|video\s+)?"
     r"segment\s+(?:#\s*)?(?:\d+|N)\b"
@@ -1531,39 +1562,96 @@ def _limit_sentences(value: str, maximum: int) -> str:
     tail = "; ".join(part.rstrip(".!?") for part in parts[maximum - 1:]) + "."
     return " ".join(kept + [tail])
 
+def _strip_unrequested_speech_ambience(value: str) -> str:
+    """Remove speech-like ambience while preserving non-vocal sounds."""
 
-def _repair_soundscape(result: dict[str, Any], context: Mapping[str, Any]) -> None:
+    rebuilt_sentences = []
+
+    for sentence in _sentences(value):
+        if not _SPEECH_LIKE_AUDIO.search(sentence):
+            rebuilt_sentences.append(sentence)
+            continue
+
+        fragments = [
+            fragment.strip(" ,;")
+            for fragment in _SPEECH_AMBIENCE_SPLIT.split(sentence)
+            if fragment.strip(" ,;")
+        ]
+
+        kept = [
+            fragment
+            for fragment in fragments
+            if not _SPEECH_LIKE_AUDIO.search(fragment)
+        ]
+
+        if not kept:
+            continue
+
+        rebuilt = ", ".join(kept).strip()
+
+        if (
+            sentence.rstrip().endswith((".", "!", "?"))
+            and not rebuilt.endswith((".", "!", "?"))
+        ):
+            rebuilt += "."
+
+        rebuilt_sentences.append(rebuilt)
+
+    return _clean_space(" ".join(rebuilt_sentences))
+
+def _repair_soundscape(
+    result: dict[str, Any],
+    context: Mapping[str, Any],
+) -> None:
     del context
+
     value = result[SOUNDSCAPE]
     value = re.sub(r"<d>.*?</d>", "", value, flags=re.I | re.S)
+
+    # No authored dialogue means no speech-like ambient audio either.
+    if not _DIALOGUE_BLOCK.search(result[DESCRIPTION]):
+        value = _strip_unrequested_speech_ambience(value)
+
     kept: list[str] = []
+
     for sentence in _sentences(value):
         lower = sentence.lower()
+
         if "all language is in english" in lower:
             continue
+
         if re.search(
-            r"[\"“”]|\b(?:says|asks|replies|shouts?|yells?|spoken dialogue|sings?|"
-            r"announces?|pa announcements?|vendor calls?)\b",
+            r"[\"“”]|\b(?:"
+            r"says|asks|replies|shouts?|yells?|spoken dialogue|"
+            r"sings?|announces?|pa announcements?|vendor calls?"
+            r")\b",
             sentence,
             re.I,
         ):
             continue
+
         music = re.search(
-            r"\b(?:non[- ]diegetic|diegetic|music|score|melody|piano|guitar|brass|"
-            r"violins?|calliope)\b|"
-            r"\bstrings\s+(?:play|sustain|swell)|\bdrums?\s+(?:play|enter|pulse)",
+            r"\b(?:non[- ]diegetic|diegetic|music|score|melody|piano|guitar|"
+            r"brass|violins?|calliope)\b|"
+            r"\bstrings\s+(?:play|sustain|swell)|"
+            r"\bdrums?\s+(?:play|enter|pulse)",
             lower,
         )
+
         if music:
             continue
-        kept.append(sentence)
-    result[SOUNDSCAPE] = _limit_sentences(" ".join(kept), 4)
 
+        kept.append(sentence)
+
+    result[SOUNDSCAPE] = _limit_sentences(
+        " ".join(kept),
+        4,
+    )
 
 _NA = re.compile(
-    r"(?i)^\s*(?:n\s*[./]?\s*a\.?|none\.?|no\s+(?:non[- ]diegetic\s+)?music\.?)\s*$"
+    r"(?i)^\s*(?:n\s*[./]?\s*a\.?|none\.?|"
+    r"no\s+(?:non[- ]diegetic\s+)?music\.?)\s*$"
 )
-
 
 def _repair_music(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     del context
@@ -1933,7 +2021,7 @@ def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) ->
             issues.append(f"{name} must consistently use speaker ID ({speaker_id}).")
     # Any apparent spoken quotation or colon-led utterance outside <d> is
     # invalid dialogue formatting. Voice-led prose such as "His voice carries
-    # ... in a whisper: 'Alice?'" must not bypass the explicit speech verbs.
+    # ... in a whisper: 'Amy?'" must not bypass the explicit speech verbs.
     without_blocks = re.sub(
         r"<d>.*?</d>",
         "<DIALOGUE_BLOCK>",
@@ -2039,6 +2127,16 @@ def _validate_soundscape(result: Mapping[str, Any], context: Mapping[str, Any]) 
         value,
     ):
         issues.append("overall_soundscape must not contain diegetic or non-diegetic music.")
+    description = str(result.get(DESCRIPTION, ""))
+
+    if (
+        not _DIALOGUE_BLOCK.search(description)
+        and _SPEECH_LIKE_AUDIO.search(value)
+    ):
+        issues.append(
+            "overall_soundscape contains speech-like human ambience even though "
+            "the segment contains no authored dialogue."
+        )
     return issues
 
 

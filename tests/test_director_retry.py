@@ -394,7 +394,7 @@ class DirectorBeatCompletionRetryTests(unittest.TestCase):
     ):
         result = {
             "detailed_description": (
-                "[Shot 1] Alice enters and reacts to the environment without "
+                "[Shot 1] Mark enters and reacts to the environment without "
                 "performing the active beat's listed events."
             ),
             "overall_soundscape": "Room ambience continues.",
@@ -406,7 +406,7 @@ class DirectorBeatCompletionRetryTests(unittest.TestCase):
 
         payload = minimax.request_segment_llm(
             segment_bundle(),
-            ["Alice confronts the Duchess, Cook, piglets, and Cheshire Cat."],
+            ["Mark confronts the Duchess, Cook, piglets, and Cheshire Cat."],
             "run-id",
             {"source_sha256": "source-hash"},
         )

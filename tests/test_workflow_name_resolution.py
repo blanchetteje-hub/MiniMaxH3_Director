@@ -140,13 +140,13 @@ class WorkflowNameResolutionTests(unittest.TestCase):
 
     def test_video_created_subject_definition_has_no_picture_mapping(self):
         definitions = (
-            "<Subject 3> is spider-alien, created in generated video "
+            "<Subject 3> is Jenny, female, created in generated video "
             "segment 2 and continued from <Video 1>."
         )
 
         registry = minimax.parse_subject_registry(definitions)
 
-        self.assertEqual(registry[3]["name"], "spider-alien")
+        self.assertEqual(registry[3]["name"], "Jenny")
         self.assertEqual(registry[3]["gender"], "female")
         self.assertEqual(registry[3]["picture_ids"], [])
         self.assertIsNone(registry[3]["picture_id"])
@@ -154,15 +154,16 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         self.assertEqual(registry[3]["origin_segment"], 2)
         self.assertEqual(
             minimax.parse_defined_subjects(definitions),
-            [(3, "spider-alien")],
+            [(3, "Jenny")],
         )
 
     def test_new_video_subject_is_registered_internally_once(self):
         definitions = "<Subject 1> is Amy, referenced in <Picture 1>."
         state = minimax.continuity_state_for_registry(definitions)
-        state["subjects"]["spider-alien"] = {
+        state["subjects"]["Jenny"] = {
             "subject_id": 2,
-            "name": "spider-alien",
+            "name": "Jenny",
+            "gender": "female",
             "picture_ids": [],
             "picture_id": None,
             "speaker_id": None,
@@ -197,7 +198,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         )
 
         expected = (
-            "<Subject 2> is spider-alien, female (S2), continued from <Video 1>."
+            "<Subject 2> is Jenny, female (S2), continued from <Video 1>."
         )
         self.assertEqual(added, [expected])
         self.assertEqual(additional, [expected])
@@ -214,7 +215,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             {
                 "detailed_description": (
                     "[Shot 5] Camera continues from the previous shot. "
-                    "The spider-alien moves above Amy."
+                    "Jenny moves above Amy."
                 ),
                 "overall_soundscape": "Metal machinery hums.",
                 "non_diegetic_music": "N/A",
@@ -315,6 +316,13 @@ class WorkflowNameResolutionTests(unittest.TestCase):
     def test_reference_image_mapping_must_match_between_workflows(self):
         initial = copy.deepcopy(self.initial)
         append = copy.deepcopy(self.append)
+        _, initial_node = minimax.find_workflow_node(
+            initial,
+            "Reference Image 1",
+            "initial workflow",
+            "LoadImage",
+        )
+        initial_image = initial_node["inputs"]["image"]
         _, node = minimax.find_workflow_node(
             append,
             "Reference Image 1",
@@ -327,7 +335,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             minimax.verify_reference_images(initial, append, tempfile.gettempdir())
         print_mock.assert_any_call(
             "WARNING: Reference Image 1 differs between workflows: "
-            "'alice.jpg' vs 'different.png'."
+            f"'{initial_image}' vs 'different.png'."
         )
 
     def test_unconnected_reference_image_slot_is_skipped(self):

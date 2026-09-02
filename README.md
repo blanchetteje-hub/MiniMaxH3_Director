@@ -96,7 +96,41 @@ python --version
 python -c "import requests; from PIL import Image; print(requests.__version__, Image.__version__)"
 ```
 
-The Python packages required by `minimax.py` are `requests` and `Pillow`.
+The Python packages required by the project are `requests`, `Pillow`, and
+`pywebview` (for the optional desktop interface).
+
+## Desktop React interface
+
+The desktop control panel is a thin wrapper around the existing command-line
+program. React calls a local Python bridge supplied by pywebview; the bridge
+starts `minimax.py` as a subprocess and captures its console output. Production
+does not start Flask, FastAPI, a REST endpoint, or any other HTTP backend.
+
+Build the interface once, then launch it from the project directory:
+
+```powershell
+cd frontend
+npm install
+npm run build
+cd ..
+python -m pip install -r requirements.txt
+python desktop_app.py
+```
+
+`python desktop_app.py` loads the static `frontend/dist/index.html` build
+directly, so Node, Vite, and a browser do not need to remain running. During
+frontend development, `npm run dev` is also available; a normal browser will
+show that the desktop bridge is unavailable and will keep generation controls
+disabled.
+
+The file editor intentionally exposes only the fixed project files already
+used by `minimax.py`. Story, beats, subjects, and phrase exclusions are
+editable; workflow JSON and `generation_state.json` are read-only. Editing is
+disabled while generation is running.
+
+On Linux, pywebview also requires a supported native GUI backend such as GTK or
+Qt; install the matching `pywebview[gtk]` or `pywebview[qt]` extra and system
+packages for your distribution.
 
 ### Linux
 
@@ -550,7 +584,7 @@ Only after that segment renders successfully, Python registers an internal
 definition like this:
 
 ```text
-<Subject 3> is spider-alien, female (S3), continued from <Video 1>.
+<Subject 3> is New Guard, male (S3), continued from <Video 1>.
 ```
 
 Every new Subject is recorded as `male` or `female` (unknown defaults to
@@ -651,7 +685,7 @@ initial clip.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--context-frames FRAMES] [--refresh SEGMENTS] [--model {ministral,qwen}] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--context-frames FRAMES] [--refresh SEGMENTS] [--repair SEGMENT] [--model {ministral,qwen}] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -665,8 +699,9 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `MEGAPIXELS` | Initial and refresh workflow resolution target; must be greater than zero. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
 | `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
-| `--context-frames FRAMES` | Latent frames retained by `MiniMaxH3VideoExtendPatched`; defaults to `8` and supports values such as `2`, `4`, `8`, or `12`. |
+| `--context-frames FRAMES` | Latent frames retained by `MiniMaxH3VideoExtendPatched`; defaults to `7`. |
 | `--refresh SEGMENTS` | Auto refresh on every Nth segment using `Minimax_auto_refresh_API.json`; defaults to every `6` segments. |
+| `--repair SEGMENT` | Rerender one existing middle segment using its checkpoint and neighboring clips; cannot be combined with a resume segment other than `1`. |
 | `--model {ministral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `ministral`. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |
 | `ff` or `--ff` | Add opening-frame instructions for `<Picture 1>` when generating segment 1; defaults to disabled. |

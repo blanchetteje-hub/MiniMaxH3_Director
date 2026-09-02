@@ -100,7 +100,7 @@ class ResumeTests(unittest.TestCase):
 
     def test_internal_subject_definitions_are_restored_from_segment_checkpoint(self):
         definition = (
-            "<Subject 2> is spider-alien, created in generated video "
+            "<Subject 2> is Jenny, created in generated video "
             "segment 1 and continued from <Video 1>."
         )
         with tempfile.TemporaryDirectory() as directory:
@@ -551,7 +551,7 @@ class ResumeTests(unittest.TestCase):
         )
         expanded_subjects = (
             original_subjects
-            + "\n<Subject 2> is spider-alien, created in generated "
+            + "\n<Subject 2> is Jenny, created in generated "
             "video segment 3 and continued from <Video 1>."
         )
 

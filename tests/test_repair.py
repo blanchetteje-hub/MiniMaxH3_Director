@@ -9,7 +9,7 @@ from unittest import mock
 import minimax
 
 
-SUBJECTS = "<Subject 1> is Alice, female (S1), referenced in <Picture 1>."
+SUBJECTS = "<Subject 1> is Mark, female (S1), referenced in <Picture 1>."
 
 
 def director_result(segment):

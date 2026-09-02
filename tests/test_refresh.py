@@ -127,7 +127,7 @@ class AutoRefreshTests(unittest.TestCase):
             initial,
         )
         self.assertIn("Do not describe such a Subject as entering frame", initial)
-        self.assertIn("Terri walks toward the rack", initial)
+        self.assertIn("John walks toward the rack", initial)
         self.assertNotIn("Every Picture-referenced Subject required", refresh)
         self.assertNotIn("Every Picture-referenced Subject required", continuation)
 

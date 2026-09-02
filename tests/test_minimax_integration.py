@@ -299,20 +299,20 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
     def test_h3_continuity_sections_only_include_currently_tagged_subject(self):
         definitions = (
-            "<Subject 1> is Alice, referenced in <Picture 1>.\n"
-            "<Subject 2> is Beth, referenced in <Picture 2>.\n"
+            "<Subject 1> is Mark, referenced in <Picture 1>.\n"
+            "<Subject 2> is Amy, referenced in <Picture 2>.\n"
             "<Subject 3> is Cara, referenced in <Picture 3>."
         )
         state = minimax.continuity_state_for_registry(definitions)
         for name, position, garment in (
-            ("Alice", "at the scarlet arch", "scarlet coat"),
-            ("Beth", "beside the cobalt door", "cobalt jacket"),
+            ("Mark", "at the scarlet arch", "scarlet coat"),
+            ("Amy", "beside the cobalt door", "cobalt jacket"),
             ("Cara", "under the amber lamp", "amber sweater"),
         ):
             state["subjects"][name]["position"] = position
             state["subjects"][name]["wardrobe"]["upper"] = garment
-        state["subjects"]["Beth"]["spatial_relationships"] = [
-            "holding Alice's hand",
+        state["subjects"]["Amy"]["spatial_relationships"] = [
+            "holding Mark's hand",
             "beside the cobalt control panel",
         ]
         state["environment"]["persistent_state"] = (
@@ -320,7 +320,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
         committed_state = copy.deepcopy(state)
         result = response(
-            "[Shot 4] <Subject 2> Beth opens the cobalt door.",
+            "[Shot 4] <Subject 2> Amy opens the cobalt door.",
             [],
         )
         full_opening_state = minimax.format_authoritative_opening_state(
@@ -340,11 +340,11 @@ class LmStudioIntegrationTests(unittest.TestCase):
                     continuity_state=state,
                 )
 
-                self.assertIn("<Subject 2> is Beth", prompt)
+                self.assertIn("<Subject 2> is Amy", prompt)
                 self.assertIn("cobalt jacket", prompt)
                 self.assertNotIn("<Subject 1>", prompt)
                 self.assertNotIn("<Subject 3>", prompt)
-                self.assertNotIn("Alice", prompt)
+                self.assertNotIn("Mark", prompt)
                 self.assertNotIn("Cara", prompt)
                 self.assertNotIn("scarlet coat", prompt)
                 self.assertNotIn("amber sweater", prompt)
@@ -352,7 +352,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
                     self.assertIn("beside the cobalt door", prompt)
 
         self.assertEqual(state, committed_state)
-        self.assertEqual(set(state["subjects"]), {"Alice", "Beth", "Cara"})
+        self.assertEqual(set(state["subjects"]), {"Mark", "Amy", "Cara"})
 
     def test_previous_visible_subject_ids_use_only_immediately_previous_segment(self):
         recent_results = [
@@ -1647,9 +1647,9 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
     def test_hard_cut_never_uses_vague_continuity_when_clothing_is_unknown(self):
-        definitions = "<Subject 1> is Connie, referenced in <Picture 1>."
+        definitions = "<Subject 1> is Mark, referenced in <Picture 1>."
         result = response(
-            "[Shot 3] Camera cuts to a new shot: <Subject 1> Connie enters.",
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Mark enters.",
             []
         )
 
@@ -1666,17 +1666,17 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
     def test_hard_cut_extracts_exact_appositive_and_still_in_clothing(self):
         definitions = (
-            "<Subject 1> is Connie, referenced in <Picture 1>.\n"
+            "<Subject 1> is Mark, referenced in <Picture 1>.\n"
             "<Subject 2> is Frank, referenced in <Picture 2>."
         )
         result = response(
-            "[Shot 3] Camera cuts to a new shot: <Subject 1> Connie and "
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Mark and "
             "<Subject 2> Frank wait beside the road.",
             []
         )
         prior_records = [{
             "llm_result": response(
-                        "[Shot 2] Connie is at the roadside, wearing a faded green "
+                        "[Shot 2] Mark is at the roadside, wearing a faded green "
                         "jacket over a white shirt and black jeans; her clothes are "
                         "clean. Frank is beside the road, wearing a blue polo, "
                         "khaki trousers, and brown shoes; his clothes are dry.",
@@ -1691,7 +1691,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
         self.assertIn(
-            "<Subject 1> Connie is at roadside, wearing a faded green jacket "
+            "<Subject 1> Mark is at roadside, wearing a faded green jacket "
             "over a white shirt and black jeans, with clothing state: clean",
             clothing
         )
@@ -1702,9 +1702,9 @@ class LmStudioIntegrationTests(unittest.TestCase):
         )
 
     def test_hard_cut_can_recover_exact_clothing_from_continuity_summary(self):
-        definitions = "<Subject 1> is Connie, referenced in <Picture 1>."
+        definitions = "<Subject 1> is Mark, referenced in <Picture 1>."
         result = response(
-            "[Shot 3] Camera cuts to a new shot: <Subject 1> Connie enters.",
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Mark enters.",
             []
         )
 
@@ -1712,25 +1712,25 @@ class LmStudioIntegrationTests(unittest.TestCase):
             definitions,
             result,
             [],
-            "- Connie is at the arcade entrance, wearing a burgundy coat and "
+            "- Mark is at the arcade entrance, wearing a burgundy coat and "
             "black boots; her coat is wet."
         )
 
         self.assertIn(
-            "<Subject 1> Connie is at arcade entrance, wearing a burgundy coat "
+            "<Subject 1> Mark is at arcade entrance, wearing a burgundy coat "
             "and black boots, with clothing state: wet",
             clothing
         )
 
     def test_hard_cut_prefers_latest_summary_over_older_clothing(self):
-        definitions = "<Subject 1> is Connie, referenced in <Picture 1>."
+        definitions = "<Subject 1> is Mark, referenced in <Picture 1>."
         result = response(
-            "[Shot 4] Camera cuts to a new shot: <Subject 1> Connie enters.",
+            "[Shot 4] Camera cuts to a new shot: <Subject 1> Mark enters.",
             []
         )
         prior_records = [{
             "llm_result": response(
-                "[Shot 1] Connie wears a red shirt and blue jeans.",
+                "[Shot 1] Mark wears a red shirt and blue jeans.",
                 []
             )
         }]
@@ -1739,28 +1739,28 @@ class LmStudioIntegrationTests(unittest.TestCase):
             definitions,
             result,
             prior_records,
-            "- Connie is now at the arcade entrance, wearing a burgundy coat "
+            "- Mark is now at the arcade entrance, wearing a burgundy coat "
             "and black boots; her coat is wet."
         )
 
         self.assertIn(
-            "<Subject 1> Connie is at arcade entrance, wearing a burgundy coat "
+            "<Subject 1> Mark is at arcade entrance, wearing a burgundy coat "
             "and black boots, with clothing state: wet",
             clothing
         )
         self.assertNotIn("red shirt", clothing)
 
     def test_hard_cut_includes_latest_location_clothing_and_state_after_subjects(self):
-        definitions = "<Subject 1> is Connie, referenced in <Picture 1>."
+        definitions = "<Subject 1> is Mark, referenced in <Picture 1>."
         result = response(
-            "[Shot 3] Camera cuts to a new shot: <Subject 1> Connie enters.",
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Mark enters.",
             []
         )
         continuity = minimax.build_hard_cut_subject_continuity(
             definitions,
             result,
             [],
-            "- Connie is at the arcade entrance, wearing a burgundy coat and "
+            "- Mark is at the arcade entrance, wearing a burgundy coat and "
             "black boots; the coat is wet and torn."
         )
 
@@ -1775,15 +1775,15 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertIn("clothing state: wet and torn", continuity)
 
     def test_hard_cut_llm_fallback_is_structured_and_filtered(self):
-        definitions = "<Subject 1> is Connie, referenced in <Picture 1>."
+        definitions = "<Subject 1> is Mark, referenced in <Picture 1>."
         result = response(
-            "[Shot 3] Camera cuts to a new shot: <Subject 1> Connie enters.",
+            "[Shot 3] Camera cuts to a new shot: <Subject 1> Mark enters.",
             []
         )
         llm_request = mock.Mock(return_value={
             "subjects": [{
                 "subject_number": 1,
-                "name": "Connie",
+                "name": "Mark",
                 "location": "the arcade entrance",
                 "clothing": "a burgundy coat and black boots",
                 "clothing_state": "wet and torn",
@@ -1804,7 +1804,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             llm_request=llm_request,
         )
 
-        self.assertIn("Connie", continuity)
+        self.assertIn("Mark", continuity)
         self.assertIn("arcade entrance", continuity)
         self.assertNotIn("Undefined", continuity)
         llm_request.assert_called_once()

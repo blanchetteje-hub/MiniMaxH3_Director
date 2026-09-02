@@ -171,8 +171,8 @@ class DialogueUsageStateTests(unittest.TestCase):
 class DialogueUsagePromptTests(unittest.TestCase):
     def test_formatter_does_not_insert_subject_tags_inside_dialogue(self):
         definitions = (
-            "<Subject 1> is Alice, referenced in <Picture 1>.\n"
-            "<Subject 2> is White Rabbit, referenced in <Picture 2>."
+            "<Subject 1> is Mark, referenced in <Picture 1>.\n"
+            "<Subject 2> is Amy, referenced in <Picture 2>."
         )
         context = minimax.build_ministral_context(
             segment_number=10,
@@ -184,8 +184,8 @@ class DialogueUsagePromptTests(unittest.TestCase):
         )
         raw = {
             "detailed_description": (
-                "[Shot 10] White Rabbit (S2) asks: "
-                "<d>[English] Alice? Are you down there?</d>"
+                "[Shot 10] Amy (S2) asks: "
+                "<d>[English] Mark? Are you down there?</d>"
             ),
             "overall_soundscape": "Water drips in the cavern.",
             "non_diegetic_music": "N/A",
@@ -195,7 +195,7 @@ class DialogueUsagePromptTests(unittest.TestCase):
         formatted = minimax.format_ministral_prompt(raw, context)
 
         self.assertIn(
-            "<d>[English] Alice? Are you down there?</d>",
+            "<d>[English] Mark? Are you down there?</d>",
             formatted["detailed_description"],
         )
         self.assertNotIn(
@@ -227,9 +227,9 @@ class DialogueUsagePromptTests(unittest.TestCase):
     def test_director_retries_subject_tagged_quoted_dialogue(self):
         malformed = {
             "detailed_description": (
-                "[Shot 10] <Subject 2> White Rabbit peers through a crevice. "
+                "[Shot 10] <Subject 2> Amy peers through a crevice. "
                 "His voice carries through the tunnel in a whisper: "
-                "\u2018<Subject 1> Alice? Are you down there?\u2019"
+                "\u2018<Subject 1> Mark? Are you down there?\u2019"
             ),
             "overall_soundscape": "Water drips in the cavern.",
             "non_diegetic_music": "N/A",
@@ -238,8 +238,8 @@ class DialogueUsagePromptTests(unittest.TestCase):
         corrected = {
             **malformed,
             "detailed_description": (
-                "[Shot 10] White Rabbit (S2) asks: "
-                "<d>[English] Alice? Are you down there?</d>"
+                "[Shot 10] Amy (S2) asks: "
+                "<d>[English] Mark? Are you down there?</d>"
             ),
         }
         bundle = {
@@ -319,7 +319,7 @@ class DialogueUsagePromptTests(unittest.TestCase):
         )
 
         self.assertIn("NEVER put `<Subject N>` inside spoken words", rules)
-        self.assertIn("White Rabbit (S2) asks: <d>[English] Alice?", rules)
+        self.assertIn("Amy (S2) asks: <d>[English] Mark?", rules)
 
     def test_repeated_dialogue_is_rejected_and_director_is_retried(self):
         repeated = result_with_dialogues("Do not repeat me!")

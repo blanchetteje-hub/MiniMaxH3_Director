@@ -76,23 +76,23 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         context = context_for(
             1,
             subject_definitions=(
-                "<Subject 1> is Connie, referenced in <Picture 1>."
+                "<Subject 1> is Mark, referenced in <Picture 1>."
             ),
-            current_beat_text="Show Connie walking down the road.",
+            current_beat_text="Show Mark walking down the road.",
             next_beat_id=1,
             beat_deadline_required=False,
         )
         for annotation in ("(Subject 1)", "(subject 9)"):
             with self.subTest(annotation=annotation):
                 malformed = response(
-                    f"[Shot 1] <Subject 1> Connie {annotation} walks down the road.",
+                    f"[Shot 1] <Subject 1> Mark {annotation} walks down the road.",
                     completed=[1],
                 )
 
                 formatted = format_ministral_prompt(malformed, context)
                 description = formatted[DESCRIPTION]
 
-                self.assertIn("<Subject 1> Connie", description)
+                self.assertIn("<Subject 1> Mark", description)
                 self.assertNotRegex(description, r"(?i)\(\s*Subject\s+\d+\s*\)")
                 self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
@@ -170,17 +170,17 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         context = context_for(
             1,
             subject_definitions=(
-                "<Subject 1> is Connie, referenced in <Picture 1>.\n"
-                "<Subject 2> is Beth, referenced in <Picture 2>."
+                "<Subject 1> is Mark, referenced in <Picture 1>.\n"
+                "<Subject 2> is Amy, referenced in <Picture 2>."
             ),
-            known_subjects={"Connie": 1, "Beth": 2},
-            current_beat_text="Show Connie speaking softly to Beth.",
+            known_subjects={"Mark": 1, "Amy": 2},
+            current_beat_text="Show Mark speaking softly to Amy.",
             next_beat_id=1,
             beat_deadline_required=False,
         )
         malformed = response(
-            "[Shot 1] Connie ( ) says in a softer voice directed at "
-            "Beth ( ): <d>[English] Alright.</d>",
+            "[Shot 1] Mark ( ) says in a softer voice directed at "
+            "Amy ( ): <d>[English] Alright.</d>",
             completed=[1],
         )
 
@@ -188,12 +188,12 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         description = formatted[DESCRIPTION]
 
         self.assertIn(
-            "<Subject 1> Connie (S1) says in a softer voice directed at "
-            "<Subject 2> Beth: <d>[English] Alright.</d>",
+            "<Subject 1> Mark (S1) says in a softer voice directed at "
+            "<Subject 2> Amy: <d>[English] Alright.</d>",
             description,
         )
         self.assertNotRegex(description, r"\(\s*\)")
-        self.assertNotIn("<Subject 2> Beth (S2)", description)
+        self.assertNotIn("<Subject 2> Amy (S2)", description)
         self.assertEqual(validate_ministral_prompt(formatted, context), [])
 
     def test_speaker_ids_are_removed_from_purely_visual_roles(self) -> None:
@@ -219,15 +219,15 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         context = context_for(
             1,
             subject_definitions=(
-                "<Subject 1> is Connie, referenced in <Picture 1>."
+                "<Subject 1> is Mark, referenced in <Picture 1>."
             ),
-            known_subjects={"Connie": 1},
-            current_beat_text="Show Connie replying immediately.",
+            known_subjects={"Mark": 1},
+            current_beat_text="Show Mark replying immediately.",
             next_beat_id=1,
             beat_deadline_required=False,
         )
         malformed = response(
-            "[Shot 1] Connie (, S1) replies immediately: "
+            "[Shot 1] Mark (, S1) replies immediately: "
             "<d>[English] I will! We’re gonna have so much fun!</d>",
             completed=[1],
         )
@@ -236,7 +236,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         description = formatted[DESCRIPTION]
 
         self.assertIn(
-            "<Subject 1> Connie (S1) replies immediately: "
+            "<Subject 1> Mark (S1) replies immediately: "
             "<d>[English] I will! We’re gonna have so much fun!</d>",
             description,
         )
@@ -247,22 +247,22 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         context = context_for(
             1,
             subject_definitions=(
-                "<Subject 1> is Beth, referenced in <Picture 1>."
+                "<Subject 1> is Amy, referenced in <Picture 1>."
             ),
-            current_beat_text="Show Beth speaking.",
+            current_beat_text="Show Amy speaking.",
             next_beat_id=1,
             beat_deadline_required=False,
         )
 
         for malformed, expected in (
             (
-                "[Shot 1] Beth (S2) saysagain, louder and more emphatic."
+                "[Shot 1] Amy (S2) saysagain, louder and more emphatic."
                 " She turns toward the crowd.",
-                "<Subject 1> Beth says again, louder and more emphatic.",
+                "<Subject 1> Amy says again, louder and more emphatic.",
             ),
             (
-                "[Shot 1] Beth (S2) saysfirmly while focusing on the road.",
-                "<Subject 1> Beth says firmly while focusing on the road.",
+                "[Shot 1] Amy (S2) saysfirmly while focusing on the road.",
+                "<Subject 1> Amy says firmly while focusing on the road.",
             ),
         ):
             with self.subTest(malformed=malformed):
@@ -325,11 +325,11 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         def test_subject_maps_do_not_fabricate_mark_or_jill(self):
             names, subjects, pictures = formatter._subject_maps({
                 "subject_definitions": (
-                    "<Subject 7> is Connie, referenced in <Picture 4>."
+                    "<Subject 7> is Mark, referenced in <Picture 4>."
                 )
             })
 
-            self.assertEqual(names, {"Connie": 7})
+            self.assertEqual(names, {"Mark": 7})
             self.assertEqual(subjects, {7})
             self.assertEqual(pictures, {4})
 
@@ -632,18 +632,18 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
         context = context_for(
             2,
             subject_definitions=(
-                "<Subject 1> is Terri, referenced in <Picture 1>."
+                "<Subject 1> is Amy, referenced in <Picture 1>."
             ),
-            known_subjects={"Terri": 1},
-            current_beat_text="Show Terri lying prone in the pod.",
+            known_subjects={"Amy": 1},
+            current_beat_text="Show Amy lying prone in the pod.",
         )
         suffix = (
-            "\u2019s final frame with a slow push-in toward Terri\u2019s torso "
+            "\u2019s final frame with a slow push-in toward Amy\u2019s torso "
             "as she lies prone in the pod, her hand still hovering near her cheek."
         )
 
         for identity_tag, expected_anchor in (
-            ("<Subject 1>", "<Subject 1> Terri\u2019s final frame"),
+            ("<Subject 1>", "<Subject 1> Amy\u2019s final frame"),
             ("<Picture 1>", "<Picture 1>\u2019s final frame"),
         ):
             with self.subTest(identity_tag=identity_tag):
@@ -673,17 +673,17 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
         )
         self.assertIn(
             "The camera resumes from the previous final frame with "
-            "a slow push-in toward <Subject 1> Terri",
+            "a slow push-in toward <Subject 1> Amy",
             formatted[DESCRIPTION],
         )
         self.assertNotIn("previous shot. \u2019s", formatted[DESCRIPTION])
 
         video_only_context = dict(context)
         video_only_context["subject_definitions"] = (
-            "<Subject 3> is Terri, created in generated video segment 1 "
+            "<Subject 3> is Amy, created in generated video segment 1 "
             "and continued from <Video 1>."
         )
-        video_only_context["known_subjects"] = {"Terri": 3}
+        video_only_context["known_subjects"] = {"Amy": 3}
         formatted = format_ministral_prompt(
             response(
                 "[Shot 2] Camera continues from the previous shot. "
@@ -692,7 +692,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
             video_only_context,
         )
         self.assertIn(
-            "<Subject 3> Terri\u2019s final frame",
+            "<Subject 3> Amy\u2019s final frame",
             formatted[DESCRIPTION],
         )
 
@@ -705,7 +705,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
         )
         self.assertIn(
             "The camera resumes from the previous final frame with "
-            "a slow push-in toward <Subject 1> Terri",
+            "a slow push-in toward <Subject 1> Amy",
             formatted[DESCRIPTION],
         )
         self.assertNotRegex(
