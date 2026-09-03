@@ -7,6 +7,7 @@ handling as the single source of truth.
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import re
@@ -24,6 +25,24 @@ from typing import Any
 PROJECT_DIR = Path(__file__).resolve().parent
 MINIMAX_SCRIPT = PROJECT_DIR / "minimax.py"
 FRONTEND_INDEX = PROJECT_DIR / "frontend" / "dist" / "index.html"
+SETTINGS_FILE = PROJECT_DIR / "gui_settings.json"
+
+DEFAULT_SETTINGS = {
+    "comfyui_url": "http://127.0.0.1:8188",
+    "lm_studio_url": "http://127.0.0.1:1234",
+    "defined_images": [],
+    "segment_length": "",
+    "total_length": "",
+    "megapixels": "",
+    "resume": "1",
+    "steps": "6",
+    "context_frames": "7",
+    "refresh": "6",
+    "repair": "",
+    "model": "ministral",
+    "first_frame": False,
+    "loras": [],
+}
 
 
 FILE_DEFINITIONS = {
@@ -101,6 +120,10 @@ class MiniMaxBridge:
         self.script_path = Path(script_path).resolve()
         self.python_executable = python_executable
         self._lock = threading.RLock()
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUTF8"] = "1"
+        self._env = env
         self._process: subprocess.Popen[str] | None = None
         self._logs: list[str] = []
         self._status: dict[str, Any] = {
@@ -116,6 +139,56 @@ class MiniMaxBridge:
             "started_at": None,
             "ended_at": None,
         }
+
+    @staticmethod
+    def _load_settings() -> dict[str, Any]:
+        if SETTINGS_FILE.is_file():
+            try:
+                content = SETTINGS_FILE.read_text(encoding="utf-8")
+                saved = json.loads(content)
+                if isinstance(saved, dict):
+                    return {**DEFAULT_SETTINGS, **saved}
+            except (OSError, ValueError):
+                pass
+        return dict(DEFAULT_SETTINGS)
+
+    @staticmethod
+    def _save_settings(settings: dict[str, Any]) -> bool:
+        try:
+            content = json.dumps(settings, indent=2)
+            SETTINGS_FILE.write_text(content, encoding="utf-8")
+            return True
+        except (OSError, ValueError):
+            return False
+
+    def get_settings(self) -> dict[str, Any]:
+        return self._load_settings()
+
+    def save_settings(self, settings: Any) -> dict[str, Any]:
+        if not isinstance(settings, dict):
+            return {"ok": False, "error": "Settings must be an object."}
+
+        unknown_fields = settings.keys() - DEFAULT_SETTINGS.keys()
+        if unknown_fields:
+            return {
+                "ok": False,
+                "error": f"Unknown settings: {', '.join(sorted(unknown_fields))}",
+            }
+
+        if "defined_images" in settings and not isinstance(
+            settings["defined_images"], list
+        ):
+            return {"ok": False, "error": "Defined images must be a list."}
+
+        if "loras" in settings and not isinstance(settings["loras"], list):
+            return {"ok": False, "error": "LoRAs must be a list."}
+
+        with self._lock:
+            merged_settings = {**self._load_settings(), **settings}
+            saved = self._save_settings(merged_settings)
+        if saved:
+            return {"ok": True, "settings": merged_settings}
+        return {"ok": False, "error": "Failed to save settings."}
 
     @staticmethod
     def _validate_settings(settings: Any) -> dict[str, Any]:

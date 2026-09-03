@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Configuration from './components/Configuration.jsx'
 import FileSettings from './components/FileSettings.jsx'
 import GenerationForm from './components/GenerationForm.jsx'
 import LogViewer from './components/LogViewer.jsx'
@@ -131,6 +132,7 @@ export default function App() {
       {bridgeError && <div className="bridge-banner">{bridgeError}</div>}
 
       <main>
+        <Configuration />
         <div className="dashboard-grid">
           <GenerationForm disabled={!ready || running} onGenerate={startGeneration} />
           <StatusPanel bridgeState={bridgeState} status={status} onStop={stopGeneration} />

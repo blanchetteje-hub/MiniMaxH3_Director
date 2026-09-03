@@ -147,7 +147,8 @@ main {
 
 .settings-panel,
 .status-panel,
-.files-panel {
+.files-panel,
+.config-panel {
   padding: 18px;
 }
 
@@ -761,4 +762,65 @@ button:disabled {
   .status-panel {
     padding: 13px;
   }
+}
+
+.config-panel {
+  width: 100%;
+}
+
+.config-section {
+  margin-bottom: 18px;
+}
+
+.config-section .field {
+  margin-bottom: 14px;
+}
+
+.config-section .field:last-child {
+  margin-bottom: 0;
+}
+
+.images-list {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.image-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #0a1016;
+  font-size: 12px;
+}
+
+.image-item span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-item .icon-button.delete {
+  flex-shrink: 0;
+}
+
+.add-image-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.config-panel.loading {
+  display: grid;
+  place-items: center;
+  min-height: 80px;
+  color: var(--muted);
+  font-size: 12px;
 }

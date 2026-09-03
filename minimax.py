@@ -2955,6 +2955,47 @@ def save_generation_state(state, path=GENERATION_STATE_FILE):
             os.remove(temporary_path)
 
 
+def find_repair_segment_video(records, segment_number):
+    """Return the newest generated clip for a segment missing from checkpoint."""
+
+    directories = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        video_path = record.get("video_path")
+        if isinstance(video_path, str) and video_path:
+            directory = os.path.dirname(os.path.abspath(video_path))
+            if directory not in directories:
+                directories.append(directory)
+    if VIDEO_OUTPUT not in directories:
+        directories.append(VIDEO_OUTPUT)
+
+    prefix = f"segment_{segment_number:04d}"
+    candidates = []
+    for directory in directories:
+        try:
+            entries = os.scandir(directory)
+        except OSError:
+            continue
+        with entries:
+            for entry in entries:
+                if (
+                    entry.is_file()
+                    and entry.name.lower().endswith(".mp4")
+                    and entry.name.startswith(prefix)
+                    and entry.name[len(prefix):].startswith(("_", "."))
+                ):
+                    try:
+                        stat = entry.stat()
+                    except OSError:
+                        continue
+                    if stat.st_size > 0:
+                        candidates.append((stat.st_mtime_ns, entry.path))
+    if not candidates:
+        return None
+    return os.path.abspath(max(candidates)[1])
+
+
 def validate_repair_checkpoint(state, segment_number):
     """Validate and return the checkpoint records needed for an isolated repair."""
 
@@ -2990,6 +3031,7 @@ def validate_repair_checkpoint(state, segment_number):
         )
 
     required = {}
+    checkpointed_segments = set()
     for required_segment in (
         segment_number - 1,
         segment_number,
@@ -2997,19 +3039,29 @@ def validate_repair_checkpoint(state, segment_number):
     ):
         record_index = required_segment - 1
         if record_index >= len(records):
-            raise RuntimeError(
-                f"Cannot repair segment {segment_number}: checkpoint record for "
-                f"segment {required_segment} is missing."
+            print(
+                f"WARNING: checkpoint record for segment {required_segment} is "
+                "missing; continuing repair using the generated video artifact.",
+                flush=True,
             )
-        record = records[record_index]
-        if (
-            not isinstance(record, dict)
-            or record.get("segment_number") != required_segment
-        ):
-            raise RuntimeError(
-                f"Cannot repair segment {segment_number}: checkpoint record for "
-                f"segment {required_segment} is missing or out of order."
-            )
+            record = {
+                "segment_number": required_segment,
+                "video_path": find_repair_segment_video(
+                    records,
+                    required_segment,
+                ),
+            }
+        else:
+            record = records[record_index]
+            if (
+                not isinstance(record, dict)
+                or record.get("segment_number") != required_segment
+            ):
+                raise RuntimeError(
+                    f"Cannot repair segment {segment_number}: checkpoint record for "
+                    f"segment {required_segment} is missing or out of order."
+                )
+            checkpointed_segments.add(required_segment)
         video_path = record.get("video_path")
         if (
             not isinstance(video_path, str)
@@ -3024,11 +3076,45 @@ def validate_repair_checkpoint(state, segment_number):
 
     previous_record = required[segment_number - 1]
     target_record = required[segment_number]
-    if not isinstance(target_record.get("llm_result"), dict):
+    if (
+        segment_number in checkpointed_segments
+        and not isinstance(target_record.get("llm_result"), dict)
+    ):
         raise RuntimeError(
             f"Cannot repair segment {segment_number}: its saved Director result "
             "is missing."
         )
+    if segment_number - 1 not in checkpointed_segments:
+        context_record = next(
+            (
+                record
+                for record in reversed(records)
+                if (
+                    isinstance(record, dict)
+                    and isinstance(record.get("llm_result"), dict)
+                    and isinstance(record.get("segment_number"), int)
+                    and record["segment_number"] < segment_number
+                )
+            ),
+            None,
+        )
+        if context_record is not None:
+            previous_record["llm_result"] = copy.deepcopy(
+                context_record["llm_result"]
+            )
+            if isinstance(context_record.get("continuity_state"), dict):
+                previous_record["continuity_state"] = copy.deepcopy(
+                    context_record["continuity_state"]
+                )
+        if not isinstance(previous_record.get("llm_result"), dict):
+            previous_record["llm_result"] = {}
+        if not isinstance(previous_record.get("continuity_state"), dict):
+            fallback_continuity = state.get("continuity_state")
+            previous_record["continuity_state"] = copy.deepcopy(
+                fallback_continuity
+                if isinstance(fallback_continuity, dict)
+                else new_continuity_state()
+            )
     if not isinstance(previous_record.get("continuity_state"), dict):
         raise RuntimeError(
             f"Cannot repair segment {segment_number}: segment {segment_number - 1} "
@@ -3041,6 +3127,7 @@ def validate_repair_checkpoint(state, segment_number):
         "previous_record": previous_record,
         "target_record": target_record,
         "next_record": required[segment_number + 1],
+        "target_record_checkpointed": segment_number in checkpointed_segments,
     }
 
 
@@ -14014,11 +14101,12 @@ def repair_existing_segment(
     # Repair preserves the checkpointed story/continuity semantics, but the
     # newly rendered clip may contain different spoken words. Commit that
     # dialogue-only state so later repairs/resumes exclude what is now audible.
-    repair["target_record"]["dialogues"] = extract_spoken_dialogues(llm_result)
-    generation_state["recent_dialogues"] = collect_recent_dialogues(
-        repair["records"]
-    )
-    save_generation_state(generation_state, generation_state_path)
+    if repair["target_record_checkpointed"]:
+        repair["target_record"]["dialogues"] = extract_spoken_dialogues(llm_result)
+        generation_state["recent_dialogues"] = collect_recent_dialogues(
+            repair["records"]
+        )
+        save_generation_state(generation_state, generation_state_path)
 
     print("Repaired video clip saved, you can run stitch.bat to combine them.")
     return {

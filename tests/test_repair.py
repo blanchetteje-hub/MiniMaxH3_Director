@@ -89,6 +89,32 @@ class RepairModeTests(unittest.TestCase):
                     ):
                         minimax.validate_repair_checkpoint(damaged, 2)
 
+    def test_repair_warns_and_uses_video_when_trailing_records_are_missing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state, _ = make_checkpoint(directory)
+            state["segments"] = state["segments"][:1]
+
+            with mock.patch("builtins.print") as output:
+                repair = minimax.validate_repair_checkpoint(state, 2)
+
+            warnings = [
+                call.args[0]
+                for call in output.call_args_list
+                if call.args and call.args[0].startswith("WARNING:")
+            ]
+            self.assertEqual(len(warnings), 2)
+            self.assertIn("checkpoint record for segment 2 is missing", warnings[0])
+            self.assertIn("checkpoint record for segment 3 is missing", warnings[1])
+            self.assertEqual(
+                repair["target_record"]["video_path"],
+                os.path.join(directory, "segment_0002.mp4"),
+            )
+            self.assertEqual(
+                repair["next_record"]["video_path"],
+                os.path.join(directory, "segment_0003.mp4"),
+            )
+            self.assertFalse(repair["target_record_checkpointed"])
+
     def test_repair_anchor_extraction_uses_visible_neighbor_frames(self):
         with tempfile.TemporaryDirectory() as directory:
             previous_video = os.path.join(directory, "previous.mp4")

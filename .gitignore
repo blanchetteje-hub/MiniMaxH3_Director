@@ -21,3 +21,5 @@ prompt_history.txt
 *.mp4
 *.safetensors
 refresh_first_frame*
+desktop_app.py
+frontend/dist/assets/*

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
+import { invokeBridge } from '../lib/pywebview.js'
 
 const INITIAL_SETTINGS = {
   segment_length: '',
@@ -29,6 +30,42 @@ export default function GenerationForm({ disabled, onGenerate }) {
   const [mode, setMode] = useState('new')
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedSettings = await invokeBridge('get_settings')
+        setSettings((current) => ({
+          ...current,
+          segment_length: savedSettings.segment_length ?? current.segment_length,
+          total_length: savedSettings.total_length ?? current.total_length,
+          megapixels: savedSettings.megapixels ?? current.megapixels,
+          resume: savedSettings.resume ?? current.resume,
+          steps: savedSettings.steps ?? current.steps,
+          context_frames: savedSettings.context_frames ?? current.context_frames,
+          refresh: savedSettings.refresh ?? current.refresh,
+          repair: savedSettings.repair ?? current.repair,
+          model: savedSettings.model ?? current.model,
+          first_frame: savedSettings.first_frame ?? current.first_frame,
+          loras: Array.isArray(savedSettings.loras) ? savedSettings.loras : current.loras,
+        }))
+      } catch (err) {
+        // Silently fall back to defaults if settings can't be loaded
+      }
+    }
+    loadSettings()
+  }, [])
+
+  const saveSettings = useCallback(
+    async (updatedSettings) => {
+      try {
+        await invokeBridge('save_settings', updatedSettings)
+      } catch (err) {
+        // Silently ignore save errors - user can still generate
+      }
+    },
+    [],
+  )
+
   const totalSegments = useMemo(() => {
     const segment = Number(settings.segment_length)
     const total = Number(settings.total_length)
@@ -36,25 +73,37 @@ export default function GenerationForm({ disabled, onGenerate }) {
   }, [settings.segment_length, settings.total_length])
 
   const setField = (field, value) => {
-    setSettings((current) => ({ ...current, [field]: value }))
+    setSettings((current) => {
+      const updated = { ...current, [field]: value }
+      saveSettings({ [field]: value })
+      return updated
+    })
   }
 
   const changeMode = (nextMode) => {
     setMode(nextMode)
-    setSettings((current) => ({
-      ...current,
-      resume: nextMode === 'resume' ? current.resume : '1',
-      repair: nextMode === 'repair' ? current.repair : '',
-    }))
+    setSettings((current) => {
+      const updated = {
+        ...current,
+        resume: nextMode === 'resume' ? current.resume : '1',
+        repair: nextMode === 'repair' ? current.repair : '',
+      }
+      saveSettings({ resume: updated.resume, repair: updated.repair })
+      return updated
+    })
   }
 
   const updateLora = (index, field, value) => {
-    setSettings((current) => ({
-      ...current,
-      loras: current.loras.map((lora, itemIndex) =>
-        itemIndex === index ? { ...lora, [field]: value } : lora,
-      ),
-    }))
+    setSettings((current) => {
+      const updated = {
+        ...current,
+        loras: current.loras.map((lora, itemIndex) =>
+          itemIndex === index ? { ...lora, [field]: value } : lora,
+        ),
+      }
+      saveSettings({ loras: updated.loras })
+      return updated
+    })
   }
 
   const submit = (event) => {
@@ -249,12 +298,16 @@ export default function GenerationForm({ disabled, onGenerate }) {
             <button
               className="secondary-button compact"
               type="button"
-              onClick={() =>
-                setSettings((current) => ({
-                  ...current,
-                  loras: [...current.loras, { name: '', strength: '1' }],
-                }))
-              }
+              onClick={() => {
+                setSettings((current) => {
+                  const updated = {
+                    ...current,
+                    loras: [...current.loras, { name: '', strength: '1' }],
+                  }
+                  saveSettings({ loras: updated.loras })
+                  return updated
+                })
+              }}
               disabled={disabled}
             >
               + Add LoRA
@@ -281,12 +334,16 @@ export default function GenerationForm({ disabled, onGenerate }) {
                 className="icon-button"
                 type="button"
                 aria-label={`Remove LoRA ${index + 1}`}
-                onClick={() =>
-                  setSettings((current) => ({
-                    ...current,
-                    loras: current.loras.filter((_, itemIndex) => itemIndex !== index),
-                  }))
-                }
+                onClick={() => {
+                  setSettings((current) => {
+                    const updated = {
+                      ...current,
+                      loras: current.loras.filter((_, itemIndex) => itemIndex !== index),
+                    }
+                    saveSettings({ loras: updated.loras })
+                    return updated
+                  })
+                }}
                 disabled={disabled}
               >
                 ×

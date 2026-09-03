@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import signal
 import subprocess
@@ -102,6 +103,29 @@ class DesktopBridgeTests(unittest.TestCase):
             ["style.safetensors:0.7", "motion.safetensors:-0.25"],
         )
         self.assertEqual(command[command.index("--model") + 1], "qwen")
+
+    def test_partial_settings_save_persists_loras_and_preserves_configuration(self):
+        bridge = self.make_bridge()
+        with tempfile.TemporaryDirectory() as directory:
+            settings_path = Path(directory) / "gui_settings.json"
+            settings_path.write_text(
+                '{"comfyui_url": "http://comfy.test", "defined_images": ["hero.png"]}',
+                encoding="utf-8",
+            )
+            loras = [
+                {"name": "style.safetensors", "strength": "0.7"},
+                {"name": "motion.safetensors", "strength": "-0.25"},
+            ]
+
+            with mock.patch.object(desktop_app, "SETTINGS_FILE", settings_path):
+                result = bridge.save_settings({"loras": loras})
+                persisted = json.loads(settings_path.read_text(encoding="utf-8"))
+
+            self.assertTrue(result["ok"])
+            self.assertEqual(persisted["loras"], loras)
+            self.assertEqual(persisted["comfyui_url"], "http://comfy.test")
+            self.assertEqual(persisted["defined_images"], ["hero.png"])
+            self.assertEqual(persisted["steps"], "6")
 
     def test_repair_rejects_non_default_resume(self):
         settings = dict(BASE_SETTINGS, repair="3", resume="2")
