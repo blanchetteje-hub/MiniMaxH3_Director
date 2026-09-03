@@ -91,6 +91,56 @@ class StitchingTests(unittest.TestCase):
         )
         self.assertEqual(captured["contents"].count("trimmed_"), 2)
 
+    def test_successful_stitch_deletes_created_trimmed_videos(self):
+        with tempfile.TemporaryDirectory() as directory:
+            video_paths = [
+                os.path.join(directory, "segment_0001.mp4"),
+                os.path.join(directory, "segment_0002.mp4"),
+                os.path.join(directory, "segment_0003.mp4"),
+            ]
+            trimmed_paths = [
+                os.path.join(directory, "trimmed_segment_0002.mp4"),
+                os.path.join(directory, "trimmed_segment_0003.mp4"),
+            ]
+
+            def create_trimmed_video(_input_path, output_path, _trim_seconds):
+                with open(output_path, "wb") as trimmed_video:
+                    trimmed_video.write(b"trimmed")
+
+            with mock.patch.object(minimax, "VIDEO_OUTPUT", directory), mock.patch.object(
+                minimax, "FINAL_VIDEO", os.path.join(directory, "final.mp4")
+            ), mock.patch(
+                "minimax.trim_video_start", side_effect=create_trimmed_video
+            ), mock.patch("minimax.subprocess.run"):
+                minimax.stitch_videos(video_paths)
+
+            for trimmed_path in trimmed_paths:
+                self.assertFalse(os.path.exists(trimmed_path))
+
+    def test_failed_final_stitch_keeps_created_trimmed_videos(self):
+        with tempfile.TemporaryDirectory() as directory:
+            video_paths = [
+                os.path.join(directory, "segment_0001.mp4"),
+                os.path.join(directory, "segment_0002.mp4"),
+            ]
+            trimmed_path = os.path.join(directory, "trimmed_segment_0002.mp4")
+
+            def create_trimmed_video(_input_path, output_path, _trim_seconds):
+                with open(output_path, "wb") as trimmed_video:
+                    trimmed_video.write(b"trimmed")
+
+            with mock.patch.object(minimax, "VIDEO_OUTPUT", directory), mock.patch.object(
+                minimax, "FINAL_VIDEO", os.path.join(directory, "final.mp4")
+            ), mock.patch(
+                "minimax.trim_video_start", side_effect=create_trimmed_video
+            ), mock.patch(
+                "minimax.subprocess.run", side_effect=RuntimeError("final stitch failed")
+            ):
+                with self.assertRaisesRegex(RuntimeError, "final stitch failed"):
+                    minimax.stitch_videos(video_paths)
+
+            self.assertTrue(os.path.exists(trimmed_path))
+
 
 if __name__ == "__main__":
     unittest.main()

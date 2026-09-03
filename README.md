@@ -1,6 +1,63 @@
-# MiniMax H3 Continuous Video Automation
+# MiniMax H3 Continuous Video Automation (MCVA)
 
 Generate a continuous, story-driven video as a sequence of MiniMax H3 clips.
+The desktop GUI is the primary way to run the project. It brings generation
+controls, project-file editing, live progress, logs, and stop controls into one
+window. The command line remains available as an alternative for scripting,
+automation, and remote shells.
+
+## Recommended Requirements
+- 1 computer with a video card with 32GB VRAM and 80GB RAM
+- OR 2 computers with video cards with 16GB VRAM and 40GB RAM each
+
+## Minimum Requirements
+- computer(s) that can run ComfyUI and host an LLM
+
+## Desktop GUI (primary interface)
+
+![MiniMax H3 desktop GUI showing service configuration, generation controls, and runtime status](docs/images/minimaxH3Director.png)
+
+## Overview
+
+Minimax H3 is the first local model that is truly reliable with generating videos accurately and pays attention to timestamps, making it the first candidate worth trying to make full length short films.
+
+This program is primarily a director, but it also has the ability to be the writer and editor.  It gives you exactly as much control as you want to have.
+
+**The only hard requirement is story.txt have text in it.**
+
+***MCVA Process:***
+
+**WRITER**
+- *MCVA* will take the story and the number of beats desired and create an over-arching story arc (story_arc.json)
+- The Story Arc contains 'phases' which will incorporate a range of beats. The LLM will determine the number of beats per phase based on the story. The story arc has defining start/end beat requirements to keep consistency.
+- After the story arc is generated, the beat list will then be generated per phase.
+- When all beats have been filled, they are saved to beats.txt
+
+**EDITOR**
+- After every process, there is a validator (editor) that runs that validates:
+  - Each story arc phases are true to the story.txt
+  - Beats are true to the phases in the story arc
+  - Global validation of all phases
+  - Global validation of all beats
+- Every validator runs 10 times to try and correct any problems. After the tenth time, it will use the 10th results and move on. This is for long generations to support "fire and walk away".
+
+**DIRECTOR**
+- Every COMFYUI MiniMax H3 Prompt is validated that the prompt follows the corresponding beat
+
+## GUI Launch
+
+After completing the setup below, start the application from the project
+directory:
+
+```powershell
+python desktop_app.py
+```
+
+Use the GUI to prepare project files, configure a new run or resume/repair an
+existing one, start and stop generation, and follow segment progress without
+constructing command-line arguments. See [Run from the desktop app](#run-from-the-desktop-app-recommended)
+for the complete workflow.
+
 The program uses:
 
 - **LM Studio** to turn a story and ordered beat list into one directed shot at
@@ -49,11 +106,11 @@ You need:
 The model downloads are large. Confirm that the drive containing
 `ComfyUI/models` has substantial free space before starting.
 
-## Quick-start checklist
+## Quick-start checklist (desktop GUI)
 
 Complete these once, in order:
 
-1. Install Python and this project's Python dependency.
+1. Install Python and the project dependencies.
 2. Install or update ComfyUI.
 3. Install the six required custom-node packages.
 4. Download the seven model/LoRA files selected by the supplied workflows.
@@ -61,15 +118,16 @@ Complete these once, in order:
    files to use them.
 6. Load an LLM in LM Studio and start its local API server.
 7. Set connection and output-path environment variables if their defaults do
-   not match your system.
-8. Create `story.txt`, `beats.txt`, and optionally `subjects.txt` and
-   `phrase_exclusions.txt`.
-9. Add the custom node supplied in this repo
-10. Run the preflight commands, then start a short test generation.
+   not match your system, then launch `desktop_app.py`.
+8. Use **Files & configuration** in the GUI to create `story.txt`, `beats.txt`,
+   and optionally `subjects.txt` and `phrase_exclusions.txt`.
+9. Add the custom node supplied in this repo.
+10. Complete the preflight checks, enter a short test run in **Generation
+    settings**, and select **Generate**.
 
 The following sections explain each step.
 
-## 1. Set up Python
+## 1. Set up Python and launch the desktop app
 
 Run these commands from the project directory.
 
@@ -97,40 +155,7 @@ python -c "import requests; from PIL import Image; print(requests.__version__, I
 ```
 
 The Python packages required by the project are `requests`, `Pillow`, and
-`pywebview` (for the optional desktop interface).
-
-## Desktop React interface
-
-The desktop control panel is a thin wrapper around the existing command-line
-program. React calls a local Python bridge supplied by pywebview; the bridge
-starts `minimax.py` as a subprocess and captures its console output. Production
-does not start Flask, FastAPI, a REST endpoint, or any other HTTP backend.
-
-Build the interface once, then launch it from the project directory:
-
-```powershell
-cd frontend
-npm install
-npm run build
-cd ..
-python -m pip install -r requirements.txt
-python desktop_app.py
-```
-
-`python desktop_app.py` loads the static `frontend/dist/index.html` build
-directly, so Node, Vite, and a browser do not need to remain running. During
-frontend development, `npm run dev` is also available; a normal browser will
-show that the desktop bridge is unavailable and will keep generation controls
-disabled.
-
-The file editor intentionally exposes only the fixed project files already
-used by `minimax.py`. Story, beats, subjects, and phrase exclusions are
-editable; workflow JSON and `generation_state.json` are read-only. Editing is
-disabled while generation is running.
-
-On Linux, pywebview also requires a supported native GUI backend such as GTK or
-Qt; install the matching `pywebview[gtk]` or `pywebview[qt]` extra and system
-packages for your distribution.
+`pywebview`.
 
 ### Linux
 
@@ -148,6 +173,43 @@ python -m pip install -r requirements.txt
 ```
 
 Use your distribution's equivalent package names when necessary.
+
+Pywebview also requires a supported native GUI backend on Linux. Install the
+matching `pywebview[gtk]` or `pywebview[qt]` extra and the system packages for
+your distribution.
+
+### Launch the GUI
+
+With the Python environment active, run this from the project directory:
+
+```powershell
+python desktop_app.py
+```
+
+The checked-in production interface is loaded directly from
+`frontend/dist/index.html`; no browser or web server is started. The GUI then
+runs `minimax.py` as a subprocess, shows its live console output and segment
+progress, and exposes an emergency **Stop generation** control. Closing the
+window also stops an active local process. Work already queued on a remote
+ComfyUI server may still need to be cancelled in ComfyUI.
+
+The **Files & configuration** editor lets you edit the story, beats, subjects,
+and phrase-exclusion files. Workflow JSON and `generation_state.json` are
+available there as read-only references, and file editing is disabled during
+generation.
+
+Node and npm are needed only when changing the React frontend. To rebuild it:
+
+```powershell
+cd frontend
+npm install
+npm run build
+cd ..
+```
+
+During frontend development, `npm run dev` is also available. A normal browser
+does not have the pywebview bridge, so generation controls remain disabled
+there.
 
 ## 2. Install and update ComfyUI
 
@@ -338,15 +400,16 @@ that beat is active. Every option requires the exact
 `[lora_name]:[strength]` form. There is no fallback LoRA and
 `default.safetensors` is not required.
 
-Repeat `--lora [lora_name]:[strength]` on the command line to apply any number
-of global LoRAs to every beat. Beat-specific LoRAs are appended after the
-global LoRAs in the order written; duplicate names are preserved. For each
-segment, the program removes the workflow's blank placeholder when the merged
-list is empty, reuses it for the first LoRA, and adds/chains as many additional
-`LoraLoaderModelOnly` nodes as needed in both API workflows. These specific LoRAs are
-looked for in the constant LORA_DIRECTORY.
+Use **Global LoRAs** in the desktop app to apply any number of LoRAs to every
+beat. On the command line, repeat `--lora [lora_name]:[strength]` for the same
+result. Beat-specific LoRAs are appended after the global LoRAs in the order
+written; duplicate names are preserved. For each segment, the program removes
+the workflow's blank placeholder when the merged list is empty, reuses it for
+the first LoRA, and adds/chains as many additional `LoraLoaderModelOnly` nodes
+as needed in both API workflows. These specific LoRAs are looked for in the
+constant `LORA_DIRECTORY`.
 
-At startup, each command-line LoRA is verified under
+At startup, each global LoRA is verified under
 `MINIMAX_COMFYUI_ROOT/models/loras` immediately after the reference images are
 checked. Every verified LoRA and its strength are printed before generation.
 
@@ -401,11 +464,12 @@ Invoke-RestMethod http://127.0.0.1:1234/v1/models
 For remote LM Studio hosts, enable network serving in LM Studio, use the host
 computer's LAN IP, and allow the port through its firewall.
 
-## 7. Configure URLs and paths
+## 7. Configure connections and paths
 
-Configuration uses environment variables, so you do not need to edit Python.
-Linux defaults to `~/ComfyUI` and `~/ComfyUI/output`. The original Windows
-defaults are retained. Override any value that differs on your computer.
+Set connection and filesystem overrides in the terminal before launching the
+desktop app; the generator inherits them. This avoids editing Python. Linux
+defaults to `~/ComfyUI` and `~/ComfyUI/output`. The original Windows defaults
+are retained. Override any value that differs on your computer.
 
 Linux (`bash` or `zsh`):
 
@@ -451,18 +515,14 @@ required for normal runs.
 Project inputs and workflows resolve relative to `minimax.py`, so the program
 can be launched from another working directory.
 
+For normal use, open **Files & configuration** in the desktop app, choose a
+file in the left column, edit it, and select **Save**. The same files can also
+be edited directly in a text editor when the generator is not running.
+
 ### `story.txt` — required
 
 Write the source story or creative brief. It can include setting, characters,
 tone, dialogue, clothing, and desired camera behavior.
-
-An optional `beat_instructions` directive supplies extra instructions verbatim
-when LM Studio generates beats. Put it on its own line; it is removed from the
-narrative before normal story generation:
-
-```text
-beat_instructions: [Make the midpoint a surprising silent reveal.]
-```
 
 When this directive is present, a separate compliance-edit request audits the
 candidate beats before they are saved. Python also verifies common explicit
@@ -475,9 +535,6 @@ request. Put a one-line rule on its own line after the directive:
 ```text
 gen_rules: Never show on-screen text. Keep all camera movement slow and steady.
 ```
-
-Square brackets may be used, as with `beat_instructions`, when the rules need to
-span multiple lines.
 
 The directive is removed from the source-story text before that text is used for
 beat planning or Director context. Its contents are placed near the top of each
@@ -671,16 +728,60 @@ Confirm all of the following:
 - `story.txt` is non-empty. `beats.txt` either contains ordered beats or is blank
   so LM Studio can generate one beat per segment before startup continues.
 
-For the first test, use a short run and low resolution:
+For the first test, use the desktop app's **New run** mode with:
+
+| GUI field | Test value |
+|---|---:|
+| Segment duration | `5` |
+| Total duration | `10` |
+| Megapixels | `0.2` |
+
+Keep the default pipeline controls, select **Generate**, and follow the
+**Status** and **Live output** panels. This requests two five-second segments
+at approximately 0.2 megapixels for the initial clip.
+
+The equivalent command-line test is:
 
 ```powershell
 python minimax.py 5 10 0.2
 ```
 
-This requests two five-second segments at approximately 0.2 megapixels for the
-initial clip.
+## Run from the desktop app (recommended)
 
-## Running the program
+The GUI is the main control surface:
+
+1. Start ComfyUI and start the LM Studio local API server with a model loaded.
+2. Launch the app with `python desktop_app.py`.
+3. Confirm or edit the project sources under **Files & configuration**.
+4. Set **Segment duration**, **Total duration**, and **Megapixels**.
+5. Choose **New run**, **Resume**, or **Repair**.
+6. Adjust **Pipeline controls** or add ordered global LoRAs if needed.
+7. Select **Generate** and monitor **Status** and **Live output**.
+
+Settings are saved in `gui_settings.json` for the next launch. The GUI exposes
+the same generation options as the CLI:
+
+| GUI control | Purpose |
+|---|---|
+| **New run** | Start at segment 1 with a new checkpoint and reset beat progress. |
+| **Resume** | Continue at a one-based segment recorded in `generation_state.json`. |
+| **Repair** | Rerender an existing middle segment that has clips on both sides. |
+| **Steps** | Set BasicScheduler sampling steps for all workflows. |
+| **Context frames** | Set latent frames retained during video extension. |
+| **Refresh interval** | Use the refresh workflow on every Nth segment. |
+| **Formatter** | Match either the Ministral or Qwen response format to the model loaded in LM Studio. |
+| **First-frame instructions** | Add opening-frame instructions for `<Picture 1>` on segment 1. |
+| **Global LoRAs** | Apply any number of named LoRAs, in order, to every beat. |
+
+Resume with the same segment duration, total duration, and megapixel values as
+the interrupted run. If `story.txt`, `beats.txt`, or `subjects.txt` changed
+after the checkpoint, restore the original inputs or start a new run.
+
+## Command-line alternative
+
+Use the CLI for automation, remote shells, or direct scripting. It runs the
+same generator and writes the same checkpoints and output files as the desktop
+app.
 
 The three main settings are positional arguments:
 
@@ -920,7 +1021,11 @@ MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
 
 | File | Purpose |
 |---|---|
-| `minimax.py` | Main automation program. |
+| `desktop_app.py` | Recommended pywebview desktop launcher and Python bridge. |
+| `frontend/` | React desktop interface source and checked-in production build. |
+| `docs/images/minimaxH3Director.png` | Desktop GUI screenshot used in this README. |
+| `gui_settings.json` | Settings saved by the desktop interface. |
+| `minimax.py` | Generation engine and command-line interface. |
 | `Minimax_auto_API.json` | Initial reference-to-video API workflow. |
 | `Minimax_auto_append_API.json` | Video-continuation API workflow. |
 | `Minimax_auto_refresh_API.json` | Auto-refresh reference-to-video workflow used by `--refresh`. |

@@ -456,9 +456,9 @@ def parse_args(arguments=None):
     parser = argparse.ArgumentParser(
         description="Generate a complete video story using LM Studio + ComfyUI."
     )
-    parser.add_argument("segment_length", type=float)
-    parser.add_argument("total_length", type=float)
-    parser.add_argument("megapixels", type=float)
+    parser.add_argument("segment_length", type=float, nargs="?")
+    parser.add_argument("total_length", type=float, nargs="?")
+    parser.add_argument("megapixels", type=float, nargs="?")
     parser.add_argument(
         "--resume",
         type=int,
@@ -501,6 +501,16 @@ def parse_args(arguments=None):
         help="rerender only this existing one-based middle segment",
     )
     parser.add_argument(
+        "--generate-beats",
+        type=int,
+        default=None,
+        metavar="COUNT",
+        help=(
+            "write COUNT story beats and story_arc.json from story.txt, then "
+            "exit without running H3 or ComfyUI"
+        ),
+    )
+    parser.add_argument(
         "--model",
         choices=tuple(FORMATTER_CLASSES),
         default="ministral",
@@ -537,6 +547,29 @@ def parse_args(arguments=None):
     args = parser.parse_args(normalize_command_line(arguments))
     args.ff = args.ff == "ff" or args.first_frame
 
+    if args.generate_beats is not None:
+        if args.generate_beats <= 0:
+            parser.error("--generate-beats must be greater than zero.")
+        if args.repair is not None:
+            parser.error("--generate-beats cannot be combined with --repair.")
+        if any(
+            value is not None
+            for value in (args.segment_length, args.total_length, args.megapixels)
+        ):
+            parser.error(
+                "--generate-beats accepts only its COUNT argument, not video "
+                "generation positionals."
+            )
+        return args
+
+    if any(
+        value is None
+        for value in (args.segment_length, args.total_length, args.megapixels)
+    ):
+        parser.error(
+            "segment_length, total_length, and megapixels are required unless "
+            "--generate-beats COUNT is used."
+        )
     if args.segment_length <= 0:
         parser.error("segment_length must be greater than 0.")
     if args.total_length <= 0:
@@ -7535,6 +7568,7 @@ def generate_beats_from_story(
     story_arc_path=None,
     story_arc_source=None,
     phrase_exclusions=(),
+    reuse_story_arc=True,
 ):
     if llm_request is None:
         llm_request = ask_llm
@@ -7556,20 +7590,34 @@ def generate_beats_from_story(
     story_arc_path = get_story_arc_path(path, story_arc_path)
     if story_arc_source is None:
         story_arc_source = story
-    saved_macro_arc = load_story_arc(
-        story_arc_path,
-        total_segments,
-        story_arc_source,
-    )
+    saved_macro_arc = None
+    if reuse_story_arc:
+        saved_macro_arc = load_story_arc(
+            story_arc_path,
+            total_segments,
+            story_arc_source,
+        )
 
-    def request_macro_arc(correction=""):
+    def request_macro_arc(correction="", combined_attempt=1, max_attempts=10):
+        """Request a macro arc from LLM; returns (macro_arc, success).
+        
+        Args:
+            correction: Initial correction message or empty string
+            combined_attempt: Current attempt in the combined macro_arc + fidelity loop
+            max_attempts: Maximum attempts for this macro arc generation
+            
+        Returns:
+            (macro_arc, success) tuple. Success is False if max_attempts reached.
+        """
         last_error = None
         attempt = 0
-        while True:
+        last_macro_arc = None
+        
+        while attempt < max_attempts:
             attempt += 1
             print(
-                f"Requesting global beat macro arc (attempt {attempt}; "
-                "10 times then best effort or Ctrl+Q).",
+                f"Requesting global beat macro arc (combined attempt {combined_attempt}, "
+                f"response attempt {attempt}/{max_attempts}).",
                 flush=True,
             )
             messages = build_beat_arc_plan_messages(
@@ -7598,23 +7646,43 @@ def generate_beats_from_story(
                 macro_arc = parse_beat_arc_plan(raw_arc, total_segments)
                 save_story_arc(macro_arc, story_arc_source, story_arc_path)
                 print(f"Saved story arc to {story_arc_path}.", flush=True)
-                return macro_arc
+                return (macro_arc, True)
             except ValueError as error:
                 last_error = error
+                last_macro_arc = None  # Only save if we get a parseable result
                 print(
                     "LM Studio returned an invalid macro arc; requesting a "
                     f"corrected arc: {last_error}"
                 )
+        
+        # Max attempts reached; return None as best effort
+        print(
+            f"Global beat macro arc generation reached maximum attempts ({max_attempts}); "
+            "accepting best effort result.",
+            flush=True,
+        )
+        return (None, False)
 
-    def request_macro_arc_fidelity(macro_arc, macro_attempt):
+    def request_macro_arc_fidelity(macro_arc, combined_attempt, max_attempts=10):
+        """Request fidelity check for a macro arc; returns (fidelity, success).
+        
+        Args:
+            macro_arc: The macro arc to validate
+            combined_attempt: Current attempt in the combined macro_arc + fidelity loop
+            max_attempts: Maximum attempts for parsing fidelity response
+            
+        Returns:
+            (fidelity_dict, success) tuple. Success is False if max_attempts reached.
+        """
         last_error = None
         response_attempt = 0
-        while True:
+        last_fidelity = None
+        
+        while response_attempt < max_attempts:
             response_attempt += 1
             print(
-                f"Requesting macro-arc fidelity check for macro attempt "
-                f"{macro_attempt} (response attempt {response_attempt}; "
-                "10 times then best effort or Ctrl+Q).",
+                f"Requesting macro-arc fidelity check (combined attempt {combined_attempt}, "
+                f"response attempt {response_attempt}/{max_attempts}).",
                 flush=True,
             )
             messages = build_beat_arc_fidelity_messages(
@@ -7637,45 +7705,111 @@ def generate_beats_from_story(
                 history_metadata={
                     **(history_metadata or {}),
                     "purpose": "beat_arc_fidelity",
-                    "attempt": macro_attempt,
+                    "attempt": combined_attempt,
                     "response_attempt": response_attempt,
                     "total_segments": total_segments,
                 },
                 **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
             )
             try:
-                return parse_beat_arc_fidelity(raw_fidelity)
+                fidelity = parse_beat_arc_fidelity(raw_fidelity)
+                return (fidelity, True)
             except ValueError as error:
                 last_error = error
+                last_fidelity = None  # Only track if we get valid fidelity
                 print(
                     "LM Studio returned an invalid macro-arc fidelity response; "
                     f"requesting another response: {last_error}"
                 )
+        
+        # Max attempts reached; return empty fidelity as best effort
+        print(
+            f"Macro-arc fidelity check parsing reached maximum attempts ({max_attempts}); "
+            "accepting best effort result.",
+            flush=True,
+        )
+        return ({"valid": False, "issues": ["Fidelity parsing failed after max attempts"]}, False)
 
-    def request_valid_macro_arc(correction=""):
+    def request_valid_macro_arc(correction="", max_attempts=10):
+        """Request a valid macro arc with fidelity checks; returns (macro_arc, success).
+        
+        Combines macro arc generation and fidelity validation with a shared attempt limit.
+        Both macro arc failures and fidelity check failures count toward the same limit.
+        
+        Args:
+            correction: Initial correction message or empty string
+            max_attempts: Maximum combined attempts for macro_arc + fidelity validation
+            
+        Returns:
+            (macro_arc, success) tuple. Success is True only if fidelity passes.
+            If max_attempts reached, returns (last_macro_arc, False) as best effort.
+        """
         fidelity_correction = correction
-        macro_attempt = 0
-        while True:
-            macro_attempt += 1
-            macro_arc = request_macro_arc(fidelity_correction)
-            fidelity = request_macro_arc_fidelity(macro_arc, macro_attempt)
-            if fidelity["valid"]:
-                print(
-                    f"Macro-arc fidelity check passed on macro attempt "
-                    f"{macro_attempt}.",
-                    flush=True,
-                )
-                return macro_arc
-            fidelity_correction = (
-                "The low-temperature macro fidelity check rejected the previous "
-                "arc: " + " ".join(fidelity["issues"])
-            )
+        combined_attempt = 0
+        last_macro_arc = None
+        
+        while combined_attempt < max_attempts:
+            combined_attempt += 1
             print(
-                f"Macro-arc fidelity check failed on macro attempt "
-                f"{macro_attempt}; requesting another macro arc: "
-                + " ".join(fidelity["issues"]),
+                f"\n--- Combined macro arc generation attempt {combined_attempt}/{max_attempts} ---",
                 flush=True,
             )
+            
+            # Request macro arc
+            macro_arc, arc_success = request_macro_arc(
+                fidelity_correction, 
+                combined_attempt=combined_attempt,
+                max_attempts=3  # Allow 3 parsing attempts per combined attempt
+            )
+            
+            if not arc_success or macro_arc is None:
+                print(
+                    f"Macro arc generation failed on combined attempt {combined_attempt}; "
+                    "requesting another macro arc.",
+                    flush=True,
+                )
+                fidelity_correction = (
+                    "The previous macro arc generation attempt failed; "
+                    "please generate a new macro arc."
+                )
+                continue
+            
+            # Check fidelity
+            fidelity, fidelity_success = request_macro_arc_fidelity(
+                macro_arc, 
+                combined_attempt=combined_attempt,
+                max_attempts=3  # Allow 3 parsing attempts per combined attempt
+            )
+            
+            if fidelity_success and fidelity.get("valid"):
+                print(
+                    f"Macro-arc fidelity check passed on combined attempt "
+                    f"{combined_attempt}.",
+                    flush=True,
+                )
+                return (macro_arc, True)
+            
+            # Fidelity failed; prepare correction for next iteration
+            last_macro_arc = macro_arc
+            issues = fidelity.get("issues", ["Unknown fidelity issue"])
+            fidelity_correction = (
+                "The low-temperature macro fidelity check rejected the previous "
+                "arc: " + " ".join(issues)
+            )
+            print(
+                f"Macro-arc fidelity check failed on combined attempt "
+                f"{combined_attempt}; requesting another macro arc: "
+                + " ".join(issues),
+                flush=True,
+            )
+        
+        # Max combined attempts reached
+        print(
+            f"Macro arc validation reached maximum combined attempts ({max_attempts}); "
+            "accepting best effort result.",
+            flush=True,
+        )
+        return (last_macro_arc, False)
 
     def request_phase_validation(
         phase_beats,
@@ -8410,7 +8544,56 @@ def generate_beats_from_story(
         macro_arc = saved_macro_arc
         print(f"Using existing story arc from {story_arc_path}.", flush=True)
     else:
-        macro_arc = request_valid_macro_arc()
+        # Outer process loop: try up to 10 times, regenerating story_arc.json on each failure
+        macro_arc = None
+        process_attempt = 0
+        max_process_attempts = 10
+        
+        while process_attempt < max_process_attempts:
+            process_attempt += 1
+            print(
+                f"\n=== Global beat macro arc process attempt {process_attempt}/{max_process_attempts} ===",
+                flush=True,
+            )
+            
+            # Delete story_arc files to force regeneration
+            hash_path = get_story_arc_hash_path(story_arc_path)
+            if os.path.exists(story_arc_path):
+                os.remove(story_arc_path)
+                print(f"Deleted cached story arc: {story_arc_path}", flush=True)
+            if os.path.exists(hash_path):
+                os.remove(hash_path)
+                print(f"Deleted cache hash: {hash_path}", flush=True)
+            
+            # Request macro arc with validation
+            macro_arc, validation_success = request_valid_macro_arc(max_attempts=10)
+            
+            if validation_success and macro_arc is not None:
+                print(
+                    f"Macro arc validation succeeded on process attempt {process_attempt}.",
+                    flush=True,
+                )
+                break
+            
+            # Validation failed but we have a macro_arc as best effort
+            if process_attempt < max_process_attempts:
+                print(
+                    f"Macro arc validation failed on process attempt {process_attempt}; "
+                    f"restarting macro arc generation (process attempt {process_attempt + 1}/{max_process_attempts}).",
+                    flush=True,
+                )
+            else:
+                print(
+                    f"Macro arc process reached maximum attempts ({max_process_attempts}); "
+                    "accepting best effort result.",
+                    flush=True,
+                )
+        
+        if macro_arc is None:
+            raise ValueError(
+                "Failed to generate a valid macro arc after "
+                f"{max_process_attempts} process attempts."
+            )
     audit_correction = ""
     last_audit = None
     plan_attempt = 0
@@ -8421,13 +8604,71 @@ def generate_beats_from_story(
             and last_audit
             and not last_audit["macro_arc_consistent_with_source"]
         ):
-            macro_arc = request_valid_macro_arc(
+            # Outer process loop for audit-triggered regeneration
+            audit_macro_arc = None
+            audit_process_attempt = 0
+            audit_max_process_attempts = 10
+            audit_correction = (
                 "The global audit found the macro arc inconsistent with the "
                 "source story: "
                 + format_beat_plan_blocking_issues(
                     last_audit["blocking_issues"]
                 )
             )
+            
+            while audit_process_attempt < audit_max_process_attempts:
+                audit_process_attempt += 1
+                print(
+                    f"\n=== Audit-triggered macro arc process attempt "
+                    f"{audit_process_attempt}/{audit_max_process_attempts} ===",
+                    flush=True,
+                )
+                
+                # Delete story_arc files to force regeneration
+                hash_path = get_story_arc_hash_path(story_arc_path)
+                if os.path.exists(story_arc_path):
+                    os.remove(story_arc_path)
+                    print(f"Deleted cached story arc: {story_arc_path}", flush=True)
+                if os.path.exists(hash_path):
+                    os.remove(hash_path)
+                    print(f"Deleted cache hash: {hash_path}", flush=True)
+                
+                # Request macro arc with validation and audit correction
+                audit_macro_arc, audit_validation_success = request_valid_macro_arc(
+                    correction=audit_correction,
+                    max_attempts=10
+                )
+                
+                if audit_validation_success and audit_macro_arc is not None:
+                    print(
+                        f"Audit-triggered macro arc validation succeeded on "
+                        f"process attempt {audit_process_attempt}.",
+                        flush=True,
+                    )
+                    macro_arc = audit_macro_arc
+                    break
+                
+                # Validation failed but we have a macro_arc as best effort
+                if audit_process_attempt < audit_max_process_attempts:
+                    print(
+                        f"Audit-triggered macro arc validation failed on process attempt "
+                        f"{audit_process_attempt}; restarting macro arc generation "
+                        f"(process attempt {audit_process_attempt + 1}/{audit_max_process_attempts}).",
+                        flush=True,
+                    )
+                else:
+                    print(
+                        f"Audit-triggered macro arc process reached maximum attempts "
+                        f"({audit_max_process_attempts}); accepting best effort result.",
+                        flush=True,
+                    )
+                    macro_arc = audit_macro_arc
+            
+            if macro_arc is None:
+                raise ValueError(
+                    "Failed to generate a valid macro arc for audit correction after "
+                    f"{audit_max_process_attempts} process attempts."
+                )
         beats = generate_batches(macro_arc, audit_correction=audit_correction)
         beats = review_explicit_instructions(beats, macro_arc)
         audit = request_plan_audit(beats, macro_arc, plan_attempt)
@@ -8673,10 +8914,16 @@ def load_or_generate_beats(
     story_arc_path=None,
     story_arc_source=None,
     phrase_exclusions=(),
+    force_generate=False,
 ):
-    raw = load_text_file(path, required=True)
-    beats, lora_directive = parse_beats_content(raw)
-    if beats:
+    raw = load_text_file(path, required=not force_generate)
+    try:
+        beats, lora_directive = parse_beats_content(raw)
+    except ValueError:
+        if not force_generate:
+            raise
+        beats, lora_directive = [], ""
+    if beats and not force_generate:
         exclusion_issues = validate_generated_beat_exclusions(
             beats,
             phrase_exclusions,
@@ -8687,10 +8934,16 @@ def load_or_generate_beats(
                 + " ".join(exclusion_issues)
             )
         return beats
-    print(
-        f"{path} is empty; asking LM Studio to create {total_segments} "
-        "creative story beats before generation starts."
-    )
+    if force_generate:
+        print(
+            f"Asking LM Studio to replace {path} with {total_segments} creative "
+            "story beats."
+        )
+    else:
+        print(
+            f"{path} is empty; asking LM Studio to create {total_segments} "
+            "creative story beats before generation starts."
+        )
     return generate_beats_from_story(
         story,
         total_segments,
@@ -8703,6 +8956,7 @@ def load_or_generate_beats(
         story_arc_path=story_arc_path,
         story_arc_source=story_arc_source,
         phrase_exclusions=phrase_exclusions,
+        reuse_story_arc=not force_generate,
     )
 
 
@@ -13801,6 +14055,7 @@ def stitch_videos(video_paths):
 
     os.makedirs(VIDEO_OUTPUT, exist_ok=True)
     stitch_paths = []
+    trimmed_paths = []
     for index, video_path in enumerate(video_paths):
         video_path = os.path.abspath(video_path)
         if index == 0:
@@ -13821,6 +14076,7 @@ def stitch_videos(video_paths):
             TRIM_SECONDS_AFTER_FIRST,
         )
         stitch_paths.append(trimmed_path)
+        trimmed_paths.append(trimmed_path)
 
     list_path = None
     try:
@@ -13854,6 +14110,14 @@ def stitch_videos(video_paths):
                 os.remove(list_path)
             except OSError:
                 pass
+
+    for trimmed_path in trimmed_paths:
+        try:
+            os.remove(trimmed_path)
+        except FileNotFoundError:
+            pass
+        except OSError as error:
+            print(f"Warning: could not delete trimmed video {trimmed_path}: {error}")
 
     print(f"Stitching complete: {FINAL_VIDEO}")
 
@@ -14644,6 +14908,13 @@ def _run_main(
     render_executor=None,
 ):
     args = parse_args()
+    generate_beats_count = getattr(args, "generate_beats", None)
+    generate_beats_only = generate_beats_count is not None
+    if generate_beats_only:
+        print(
+            "Generating the story arc and beats based on story.txt",
+            flush=True,
+        )
     configure_formatter(getattr(args, "model", "ministral"))
     global_loras = normalize_lora_list(getattr(args, "lora", ()))
     repair_segment = getattr(args, "repair", None)
@@ -14657,26 +14928,27 @@ def _run_main(
         )
     run_id = str(uuid.uuid4())
 
-    segment_length = args.segment_length
-    total_length = args.total_length
-    megapixels = args.megapixels
+    segment_length = getattr(args, "segment_length", None)
+    total_length = getattr(args, "total_length", None)
+    megapixels = getattr(args, "megapixels", None)
     refresh_interval = getattr(args, "refresh", None)
-    total_segments = math.ceil(total_length / segment_length)
-    resume_segment = args.resume
-    segments_to_generate = get_segments_to_generate(
-        resume_segment,
-        total_segments,
+    total_segments = (
+        int(generate_beats_count)
+        if generate_beats_only
+        else math.ceil(total_length / segment_length)
     )
+    resume_segment = args.resume
 
-    story_source = load_text_file(STORY_FILE, required=True)
+    story_source = load_text_file(
+        STORY_FILE,
+        required=not generate_beats_only,
+    )
     story_without_gen_rules, gen_rules = parse_story_gen_rules(story_source)
     story, beat_instructions = parse_story_beat_instructions(
         story_without_gen_rules
     )
     if not story:
-        raise ValueError(
-            "story.txt contains no story after beat_instructions/gen_rules metadata."
-        )
+        raise ValueError("story.txt must have a story defined.")
     base_subject_definitions = load_text_file(
         SUBJECT_DEFINITIONS_FILE,
         required=False,
@@ -14701,12 +14973,21 @@ def _run_main(
         story_arc_path=STORY_ARC_FILE,
         story_arc_source=story_without_gen_rules,
         phrase_exclusions=phrase_exclusions,
+        force_generate=generate_beats_only,
     )
     if beats and len(beats) != total_segments:
         raise ValueError(
             f"One-beat-per-segment requires exactly {total_segments} beats for "
             f"{total_segments} segments, but beats.txt contains {len(beats)} beats."
         )
+    if generate_beats_only:
+        print("Story arc and beats generated successfully.", flush=True)
+        return
+
+    segments_to_generate = get_segments_to_generate(
+        resume_segment,
+        total_segments,
+    )
     macro_arc = load_story_arc(
         STORY_ARC_FILE,
         total_segments,

@@ -42,6 +42,7 @@ DEFAULT_SETTINGS = {
     "model": "ministral",
     "first_frame": False,
     "loras": [],
+    "beat_count": "",
 }
 
 
@@ -57,6 +58,11 @@ FILE_DEFINITIONS = {
     "generation_state": (
         "Generation state",
         PROJECT_DIR / "generation_state.json",
+        False,
+    ),
+    "story_arc": (
+        "Story arc",
+        PROJECT_DIR / "story_arc.json",
         False,
     ),
     "initial_workflow": (
@@ -258,8 +264,29 @@ class MiniMaxBridge:
         validated["loras"] = loras
         return validated
 
-    def build_command(self, settings: Any) -> list[str]:
+    def build_command(
+        self,
+        settings: Any,
+        generate_beats: bool = False,
+    ) -> list[str]:
         """Build the exact argv shape consumed by ``minimax.py``."""
+
+        if generate_beats:
+            if not isinstance(settings, dict):
+                raise ValueError("Generation settings must be an object.")
+            beat_count = _positive_int(settings.get("beat_count"), "Story beats")
+            model = str(settings.get("model", "ministral")).strip().lower()
+            if model not in {"ministral", "qwen"}:
+                raise ValueError("Model formatter must be 'ministral' or 'qwen'.")
+            return [
+                self.python_executable,
+                "-u",
+                str(self.script_path),
+                "--generate-beats",
+                str(beat_count),
+                "--model",
+                model,
+            ]
 
         values = self._validate_settings(settings)
         command = [
@@ -288,7 +315,11 @@ class MiniMaxBridge:
             command.extend(("--lora", f"{name}:{_number_argument(strength)}"))
         return command
 
-    def start_generation(self, settings: Any) -> dict[str, Any]:
+    def start_generation(
+        self,
+        settings: Any,
+        generate_beats: bool = False,
+    ) -> dict[str, Any]:
         """Start ``minimax.py`` without blocking the pywebview UI thread."""
 
         with self._lock:
@@ -301,8 +332,13 @@ class MiniMaxBridge:
             self._status.update(
                 {
                     "state": "starting",
-                    "message": "Starting generation",
+                    "message": (
+                        "Starting story generation"
+                        if generate_beats
+                        else "Starting generation"
+                    ),
                     "running": True,
+                    "operation": "story" if generate_beats else "video",
                     "return_code": None,
                     "current_segment": None,
                     "total_segments": None,
@@ -311,7 +347,15 @@ class MiniMaxBridge:
             )
 
         try:
-            command = self.build_command(settings)
+            if generate_beats:
+                _label, story_path, _editable = self._get_file_definition("story")
+                try:
+                    story_source = story_path.read_text(encoding="utf-8")
+                except FileNotFoundError:
+                    story_source = ""
+                if not story_source.strip():
+                    raise ValueError("story.txt must have a story defined.")
+            command = self.build_command(settings, generate_beats=generate_beats)
             if not self.script_path.is_file():
                 raise FileNotFoundError(f"Generator not found: {self.script_path}")
 
@@ -355,8 +399,13 @@ class MiniMaxBridge:
             self._logs.append(f"[desktop] Starting: {display}\n")
             self._status = {
                 "state": "running",
-                "message": "Generation is running",
+                "message": (
+                    "Story generation is running"
+                    if generate_beats
+                    else "Generation is running"
+                ),
                 "running": True,
+                "operation": "story" if generate_beats else "video",
                 "pid": process.pid,
                 "return_code": None,
                 "current_segment": None,
@@ -434,7 +483,12 @@ class MiniMaxBridge:
                 return
             prior_state = self._status["state"]
             if return_code == 0:
-                state, message = "succeeded", "Generation completed"
+                state = "succeeded"
+                message = (
+                    "Story generation completed"
+                    if self._status.get("operation") == "story"
+                    else "Generation completed"
+                )
             elif prior_state == "stopping":
                 state, message = "cancelled", "Generation stopped"
             else:
@@ -634,6 +688,7 @@ def main() -> None:
         height=820,
         min_size=(820, 620),
         background_color="#0b1017",
+        text_select=True,
     )
     window.events.closed += bridge.shutdown
     try:

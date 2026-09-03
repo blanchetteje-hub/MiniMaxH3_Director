@@ -93,6 +93,19 @@ export default function App() {
     }
   }
 
+  const startStoryGeneration = async (settings) => {
+    try {
+      const result = await invokeBridge('start_generation', settings, true)
+      setStatus(result.status)
+      if (!result.ok) setBridgeError(result.error)
+      else setBridgeError('')
+      return result
+    } catch (error) {
+      setBridgeError(error.message)
+      return { ok: false, error: error.message }
+    }
+  }
+
   const stopGeneration = async () => {
     try {
       const result = await invokeBridge('stop_generation')
@@ -134,7 +147,11 @@ export default function App() {
       <main>
         <Configuration />
         <div className="dashboard-grid">
-          <GenerationForm disabled={!ready || running} onGenerate={startGeneration} />
+          <GenerationForm
+            disabled={!ready || running}
+            onGenerate={startGeneration}
+            onGenerateStory={startStoryGeneration}
+          />
           <StatusPanel bridgeState={bridgeState} status={status} onStop={stopGeneration} />
         </div>
         <LogViewer output={logOutput} state={status.state} onClear={clearLog} />

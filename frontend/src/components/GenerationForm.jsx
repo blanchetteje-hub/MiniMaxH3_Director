@@ -13,6 +13,7 @@ const INITIAL_SETTINGS = {
   model: 'ministral',
   first_frame: false,
   loras: [],
+  beat_count: '',
 }
 
 function NumberField({ label, help, ...props }) {
@@ -25,7 +26,7 @@ function NumberField({ label, help, ...props }) {
   )
 }
 
-export default function GenerationForm({ disabled, onGenerate }) {
+export default function GenerationForm({ disabled, onGenerate, onGenerateStory }) {
   const [settings, setSettings] = useState(INITIAL_SETTINGS)
   const [mode, setMode] = useState('new')
   const [error, setError] = useState('')
@@ -47,6 +48,7 @@ export default function GenerationForm({ disabled, onGenerate }) {
           model: savedSettings.model ?? current.model,
           first_frame: savedSettings.first_frame ?? current.first_frame,
           loras: Array.isArray(savedSettings.loras) ? savedSettings.loras : current.loras,
+          beat_count: savedSettings.beat_count ?? current.beat_count,
         }))
       } catch (err) {
         // Silently fall back to defaults if settings can't be loaded
@@ -139,6 +141,17 @@ export default function GenerationForm({ disabled, onGenerate }) {
       resume: mode === 'resume' ? settings.resume : '1',
       repair: mode === 'repair' ? settings.repair : null,
     })
+  }
+
+  const generateStory = async () => {
+    setError('')
+    const beatCount = Number(settings.beat_count)
+    if (!(beatCount > 0) || !Number.isInteger(beatCount)) {
+      setError('Story beats must be a whole number greater than zero.')
+      return
+    }
+    const result = await onGenerateStory(settings)
+    if (result && !result.ok) setError(result.error)
   }
 
   return (
@@ -353,9 +366,32 @@ export default function GenerationForm({ disabled, onGenerate }) {
         </div>
 
         {error && <p className="form-error">{error}</p>}
-        <button className="primary-button generate-button" type="submit" disabled={disabled}>
-          <span className="play-icon">▶</span> Generate
-        </button>
+        <div className="generation-actions">
+          <button className="primary-button generate-button" type="submit" disabled={disabled}>
+            <span className="play-icon">▶</span> Generate
+          </button>
+          <div className="story-generation-action">
+            <button
+              className="secondary-button generate-story-button"
+              type="button"
+              title="Will write story arc and beats based on story.txt"
+              onClick={generateStory}
+              disabled={disabled}
+            >
+              Generate Story
+            </button>
+            <NumberField
+              label="Beats"
+              value={settings.beat_count}
+              onChange={(event) => setField('beat_count', event.target.value)}
+              placeholder="12"
+              title="Number of story beats to write"
+              min="1"
+              step="1"
+              disabled={disabled}
+            />
+          </div>
+        </div>
       </form>
     </section>
   )

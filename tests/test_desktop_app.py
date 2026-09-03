@@ -207,6 +207,19 @@ class DesktopBridgeTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Unknown project file"):
                     bridge.read_file("../../outside")
 
+    def test_story_arc_is_available_as_a_read_only_project_file(self):
+        bridge = self.make_bridge()
+
+        story_arc = next(
+            item
+            for item in bridge.get_file_settings()
+            if item["key"] == "story_arc"
+        )
+
+        self.assertEqual(story_arc["label"], "Story arc")
+        self.assertFalse(story_arc["editable"])
+        self.assertEqual(Path(story_arc["path"]), desktop_app.PROJECT_DIR / "story_arc.json")
+
     def test_shutdown_stops_an_active_generation(self):
         bridge = self.make_bridge()
         with mock.patch.object(bridge, "is_running", return_value=True), mock.patch.object(
@@ -243,6 +256,7 @@ class DesktopBridgeTests(unittest.TestCase):
         create_kwargs = fake_webview.create_window.call_args.kwargs
         self.assertEqual(create_kwargs["url"], index_path.as_uri())
         self.assertIsInstance(create_kwargs["js_api"], desktop_app.MiniMaxBridge)
+        self.assertTrue(create_kwargs["text_select"])
         self.assertEqual(closed.handlers, [create_kwargs["js_api"].shutdown])
         fake_webview.start.assert_called_once()
 
