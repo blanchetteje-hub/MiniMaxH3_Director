@@ -115,6 +115,22 @@ def _number_argument(value: float) -> str:
     return format(value, ".15g")
 
 
+def _defined_images(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ValueError("Defined images must be a list.")
+    if len(value) > 6:
+        raise ValueError("At most six defined images can be used.")
+
+    images = []
+    for index, item in enumerate(value, start=1):
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError(f"Defined image {index} must be a non-empty path.")
+        images.append(item.strip())
+    return images
+
+
 class MiniMaxBridge:
     """Thread-safe API exposed to React through ``window.pywebview.api``."""
 
@@ -181,10 +197,14 @@ class MiniMaxBridge:
                 "error": f"Unknown settings: {', '.join(sorted(unknown_fields))}",
             }
 
-        if "defined_images" in settings and not isinstance(
-            settings["defined_images"], list
-        ):
-            return {"ok": False, "error": "Defined images must be a list."}
+        if "defined_images" in settings:
+            try:
+                settings = dict(settings)
+                settings["defined_images"] = _defined_images(
+                    settings["defined_images"]
+                )
+            except ValueError as error:
+                return {"ok": False, "error": str(error)}
 
         if "loras" in settings and not isinstance(settings["loras"], list):
             return {"ok": False, "error": "LoRAs must be a list."}
@@ -262,6 +282,9 @@ class MiniMaxBridge:
                 raise ValueError(f"LoRA {index} strength must be finite.")
             loras.append((name, strength))
         validated["loras"] = loras
+        validated["defined_images"] = _defined_images(
+            settings.get("defined_images", [])
+        )
         return validated
 
     def build_command(
@@ -313,6 +336,11 @@ class MiniMaxBridge:
             command.append("--ff")
         for name, strength in values["loras"]:
             command.extend(("--lora", f"{name}:{_number_argument(strength)}"))
+        for image_number, image_path in enumerate(
+            values["defined_images"],
+            start=1,
+        ):
+            command.extend((f"--image{image_number}", image_path))
         return command
 
     def start_generation(
@@ -355,7 +383,15 @@ class MiniMaxBridge:
                     story_source = ""
                 if not story_source.strip():
                     raise ValueError("story.txt must have a story defined.")
-            command = self.build_command(settings, generate_beats=generate_beats)
+            effective_settings = (
+                {**self._load_settings(), **settings}
+                if isinstance(settings, dict)
+                else settings
+            )
+            command = self.build_command(
+                effective_settings,
+                generate_beats=generate_beats,
+            )
             if not self.script_path.is_file():
                 raise FileNotFoundError(f"Generator not found: {self.script_path}")
 
@@ -681,7 +717,7 @@ def main() -> None:
 
     bridge = MiniMaxBridge()
     window = webview.create_window(
-        "MiniMax H3",
+        "MiniMax H3 Video Automation",
         url=FRONTEND_INDEX.as_uri(),
         js_api=bridge,
         width=1180,

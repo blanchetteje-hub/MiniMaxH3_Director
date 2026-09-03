@@ -54,6 +54,10 @@ export default function Configuration({ onSettingsLoaded }) {
       setError('Image name cannot be empty.')
       return
     }
+    if (settings.defined_images.length >= 6) {
+      setError('At most six reference images can be defined.')
+      return
+    }
     const updated = {
       ...settings,
       defined_images: [...settings.defined_images, newImageName.trim()],
@@ -113,7 +117,7 @@ export default function Configuration({ onSettingsLoaded }) {
         <div className="subheading-row">
           <div>
             <h3>Defined Images</h3>
-            <p>Reference images for generation workflows (unlimited).</p>
+            <p>Up to six ordered reference images for all generation workflows.</p>
           </div>
         </div>
 

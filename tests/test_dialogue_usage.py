@@ -415,17 +415,26 @@ class DialogueUsagePromptTests(unittest.TestCase):
             "language, or singing occur in this segment."
         ))
 
-    def test_final_h3_prompt_limits_speech_to_exact_dialogue_block_words(self):
+    def test_dialogue_constraint_is_upstream_not_in_final_h3_prompt(self):
         result = result_with_dialogues("Keep the existing formatting intact.")
         original_description = result["detailed_description"]
 
         prompt = minimax.build_h3_prompt(result, SUBJECTS)
+        rules = minimax.build_director_rules(
+            total_length=10,
+            segment_length=5,
+            total_segments=2,
+            subject_definitions=SUBJECTS,
+            segment_number=1,
+        )
 
         self.assertIn(original_description, prompt)
-        self.assertTrue(prompt.endswith(
+        constraint = (
             "SPOKEN DIALOGUE: English only. Only the exact words inside "
             "<d>...</d> are spoken. Do not generate additional dialogue."
-        ))
+        )
+        self.assertNotIn(constraint, prompt)
+        self.assertIn(constraint, rules)
 
     def test_director_rules_do_not_invent_background_speech_like_ambience(self):
         rules = minimax.build_director_rules(

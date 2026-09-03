@@ -241,6 +241,22 @@ class ResumeTests(unittest.TestCase):
 
         self.assertEqual(args.model, "qwen")
 
+    def test_parse_args_accepts_six_reference_image_overrides(self):
+        arguments = ["5", "20", ".5"]
+        for image_number in range(1, 7):
+            arguments.extend((
+                f"--image{image_number}",
+                f"H:\\Images\\input\\reference {image_number}.png",
+            ))
+
+        args = minimax.parse_args(arguments)
+
+        for image_number in range(1, 7):
+            self.assertEqual(
+                getattr(args, f"image{image_number}"),
+                f"H:\\Images\\input\\reference {image_number}.png",
+            )
+
     def test_parse_args_rejects_unknown_model(self):
         with self.assertRaises(SystemExit):
             minimax.parse_args(["5", "20", ".5", "--model", "unknown"])

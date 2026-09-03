@@ -104,6 +104,35 @@ class DesktopBridgeTests(unittest.TestCase):
         )
         self.assertEqual(command[command.index("--model") + 1], "qwen")
 
+    def test_build_command_maps_defined_images_to_numbered_arguments(self):
+        settings = dict(
+            BASE_SETTINGS,
+            defined_images=[
+                r"H:\Images\input\hero one.png",
+                r"H:\Images\input\hero_two.png",
+            ],
+        )
+
+        command = self.make_bridge().build_command(settings)
+
+        self.assertEqual(
+            command[command.index("--image1") + 1],
+            r"H:\Images\input\hero one.png",
+        )
+        self.assertEqual(
+            command[command.index("--image2") + 1],
+            r"H:\Images\input\hero_two.png",
+        )
+
+    def test_more_than_six_defined_images_are_rejected(self):
+        settings = dict(
+            BASE_SETTINGS,
+            defined_images=[f"reference_{index}.png" for index in range(7)],
+        )
+
+        with self.assertRaisesRegex(ValueError, "At most six"):
+            self.make_bridge().build_command(settings)
+
     def test_partial_settings_save_persists_loras_and_preserves_configuration(self):
         bridge = self.make_bridge()
         with tempfile.TemporaryDirectory() as directory:
@@ -164,6 +193,36 @@ class DesktopBridgeTests(unittest.TestCase):
             self.assertEqual(kwargs["creationflags"], subprocess.CREATE_NEW_PROCESS_GROUP)
         else:
             self.assertTrue(kwargs["start_new_session"])
+
+    @mock.patch("desktop_app.subprocess.Popen")
+    def test_start_uses_defined_images_saved_by_configuration_panel(self, popen):
+        popen.return_value = _CompletedProcess()
+        bridge = self.make_bridge()
+
+        with tempfile.TemporaryDirectory() as directory:
+            settings_path = Path(directory) / "gui_settings.json"
+            settings_path.write_text(
+                json.dumps({
+                    "defined_images": [
+                        r"H:\Images\input\configured hero.png",
+                        r"H:\Images\input\configured_detail.png",
+                    ]
+                }),
+                encoding="utf-8",
+            )
+            with mock.patch.object(desktop_app, "SETTINGS_FILE", settings_path):
+                result = bridge.start_generation(BASE_SETTINGS)
+
+        command = popen.call_args.args[0]
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            command[command.index("--image1") + 1],
+            r"H:\Images\input\configured hero.png",
+        )
+        self.assertEqual(
+            command[command.index("--image2") + 1],
+            r"H:\Images\input\configured_detail.png",
+        )
 
     @mock.patch("desktop_app.subprocess.Popen")
     def test_second_run_is_rejected_and_stop_is_cancelled(self, popen):

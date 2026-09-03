@@ -772,6 +772,7 @@ the same generation options as the CLI:
 | **Formatter** | Match either the Ministral or Qwen response format to the model loaded in LM Studio. |
 | **First-frame instructions** | Add opening-frame instructions for `<Picture 1>` on segment 1. |
 | **Global LoRAs** | Apply any number of named LoRAs, in order, to every beat. |
+| **Defined Images** | Map up to six ordered paths to `--image1` through `--image6` and override the matching reference node in all three workflows. |
 
 Resume with the same segment duration, total duration, and megapixel values as
 the interrupted run. If `story.txt`, `beats.txt`, or `subjects.txt` changed
@@ -786,7 +787,7 @@ app.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--context-frames FRAMES] [--refresh SEGMENTS] [--repair SEGMENT] [--model {ministral,qwen}] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--context-frames FRAMES] [--refresh SEGMENTS] [--repair SEGMENT] [--model {ministral,qwen}] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -804,6 +805,7 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `--refresh SEGMENTS` | Auto refresh on every Nth segment using `Minimax_auto_refresh_API.json`; defaults to every `6` segments. |
 | `--repair SEGMENT` | Rerender one existing middle segment using its checkpoint and neighboring clips; cannot be combined with a resume segment other than `1`. |
 | `--model {ministral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `ministral`. |
+| `--image1 PATH` through `--image6 PATH` | Override the corresponding numbered reference image in the initial, append, and refresh workflows. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |
 | `ff` or `--ff` | Add opening-frame instructions for `<Picture 1>` when generating segment 1; defaults to disabled. |
 

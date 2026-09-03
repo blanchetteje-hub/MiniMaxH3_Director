@@ -427,6 +427,7 @@ REFERENCE_IMAGE_NODE_NAMES = tuple(
     f"Reference Image {image_number}"
     for image_number in range(1, 7)
 )
+REFERENCE_IMAGE_OVERRIDES = {}
 
 
 def generate_random_seed():
@@ -516,6 +517,16 @@ def parse_args(arguments=None):
         default="ministral",
         help="select the response formatter (default: ministral)",
     )
+    for image_number in range(1, 7):
+        parser.add_argument(
+            f"--image{image_number}",
+            default=None,
+            metavar="PATH",
+            help=(
+                f"override Reference Image {image_number} in the initial, "
+                "append, and refresh workflows"
+            ),
+        )
     parser.add_argument(
         "--lora",
         action="append",
@@ -743,6 +754,39 @@ def load_workflow(path):
     if not isinstance(workflow, dict):
         raise RuntimeError(f"Workflow must contain a JSON object: {path}")
 
+    apply_reference_image_overrides(workflow, f"workflow '{path}'")
+    return workflow
+
+
+def configure_reference_image_overrides(arguments):
+    """Set the six optional command-line image overrides for this process."""
+
+    global REFERENCE_IMAGE_OVERRIDES
+    overrides = {}
+    for image_number in range(1, 7):
+        value = getattr(arguments, f"image{image_number}", None)
+        if value is None:
+            continue
+        value = str(value).strip()
+        if not value:
+            raise ValueError(f"--image{image_number} must not be empty.")
+        overrides[image_number] = value
+    REFERENCE_IMAGE_OVERRIDES = overrides
+    return dict(overrides)
+
+
+def apply_reference_image_overrides(workflow, workflow_label):
+    """Apply configured CLI image paths to named LoadImage nodes."""
+
+    for image_number, image_path in REFERENCE_IMAGE_OVERRIDES.items():
+        node_name = f"Reference Image {image_number}"
+        _, image_node = find_workflow_node(
+            workflow,
+            node_name,
+            workflow_label,
+            "LoadImage",
+        )
+        image_node.setdefault("inputs", {})["image"] = image_path
     return workflow
 
 
@@ -5106,9 +5150,10 @@ def build_beat_arc_fidelity_messages(
         {
             "role": "system",
             "content": (
-                "You are a narrow macro-story fidelity checker. Evaluate only "
-                "major source fidelity and required opening wardrobe coverage, "
-                "then return only the requested JSON object."
+                "You are an extremely conservative macro-story fidelity checker. "
+                "Validate only whether the fundamental story is preserved. Return "
+                "valid=false ONLY for blocking failures that materially threaten "
+                "the story. Return only the requested JSON object."
             ),
         },
         {
@@ -5138,10 +5183,26 @@ a major source-fidelity failure or missing required phase-1 clothing, and
 describe each such failure concisely in issues. Otherwise return valid=true with
 an empty issues array.
 
-Unsupported new characters, doppelgangers/copies, loops or resurrection, secret
-mythology, flashback frameworks, rituals, and existential mechanics are major
-premise changes unless story.txt explicitly supports them. In particular, a
-repeating Amy/doppelganger cycle must fail when it is not present in the source.
+MAJOR SOURCE-FIDELITY FAILURES include only:
+- Central premise or core conflict changes
+- Entire major story events omitted
+- Required order of major events reversed
+- Required final outcome changed
+- Genuinely new major characters, mythology, timelines, or plot mechanics
+  unsupported by the source
+- Direct contradiction of explicit source facts that materially changes the story
+
+ACCEPTED DIFFERENCES include:
+- Omission of minor visual details (props, colors, poses, room details)
+- Differences in wording or specificity
+- Broad phase summaries
+- Phase boundaries or pacing choices
+- Source details appearing in different phase fields
+- Bookkeeping labels for unnamed source-supported participants
+- Characters in characters_introduced without proper names
+- Absence of details the source itself never specifies
+
+When uncertain whether a difference threatens the story, return valid=true.
 
 SOURCE STORY
 --- STORY START ---
@@ -6782,7 +6843,7 @@ def build_beat_generation_messages(
 Create exactly {batch_size} ordered story beats for phase {phase_number} of the MACRO STORY ARC. Do not improvise a different story.
 
 Requirements:
-- Keep it simple with one or two actions.
+- IMPORTANT: Keep it simple with a direct action and a direct outcome of the action.
 - Return exactly {batch_size} beats in chronological story order.
 - Follow these priorities in order:
 (1) faithfulness to the SOURCE STORY.
@@ -9264,6 +9325,7 @@ TIMING
 
 DIALOGUE
 
+- SPOKEN DIALOGUE: English only. Only the exact words inside <d>...</d> are spoken. Do not generate additional dialogue.
 - NEVER use dialogue that is not in <d></d> tags.
 - NEVER put `<Subject N>` inside spoken words or use it in place of the `(SN)`
   speaker ID. `<Subject N>` is for visual identity in scene prose; `(SN)` is for
@@ -12798,10 +12860,7 @@ def format_h3_structural_continuity_guard():
 def format_h3_spoken_dialogue_constraint(detailed_description):
     """Return the deterministic H3 speech constraint for one segment."""
     if _DIALOGUE_BLOCK_PATTERN.search(str(detailed_description or "")):
-        return (
-            "SPOKEN DIALOGUE: English only. Only the exact words inside "
-            "<d>...</d> are spoken. Do not generate additional dialogue."
-        )
+        return ""
     return (
         "SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized "
         "language, or singing occur in this segment."
@@ -12968,7 +13027,9 @@ def build_h3_prompt(
     _append_h3_prompt_section(sections, "detailed_description", integrated)
     _append_h3_prompt_section(sections, "overall_soundscape", soundscape)
     _append_h3_prompt_section(sections, "non_diegetic_music", music)
-    sections.append(format_h3_spoken_dialogue_constraint(description))
+    spoken_dialogue_constraint = format_h3_spoken_dialogue_constraint(description)
+    if spoken_dialogue_constraint:
+        sections.append(spoken_dialogue_constraint)
     return "\n\n".join(sections)
 
 
@@ -14908,6 +14969,7 @@ def _run_main(
     render_executor=None,
 ):
     args = parse_args()
+    configure_reference_image_overrides(args)
     generate_beats_count = getattr(args, "generate_beats", None)
     generate_beats_only = generate_beats_count is not None
     if generate_beats_only:

@@ -61,6 +61,37 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             is_append=False
         )
 
+    def test_cli_image_overrides_are_applied_when_all_three_workflows_load(self):
+        overrides = {
+            image_number: f"H:\\Images\\input\\reference_{image_number}.png"
+            for image_number in range(1, 7)
+        }
+        arguments = ["5", "20", ".5"]
+        for image_number, image_path in overrides.items():
+            arguments.extend((f"--image{image_number}", image_path))
+        parsed = minimax.parse_args(arguments)
+        original_overrides = minimax.REFERENCE_IMAGE_OVERRIDES
+
+        try:
+            minimax.configure_reference_image_overrides(parsed)
+            workflows = [
+                minimax.load_workflow(minimax.INITIAL_WORKFLOW_FILE),
+                minimax.load_workflow(minimax.APPEND_WORKFLOW_FILE),
+                minimax.load_workflow(minimax.REFRESH_WORKFLOW_FILE),
+            ]
+        finally:
+            minimax.REFERENCE_IMAGE_OVERRIDES = original_overrides
+
+        for workflow in workflows:
+            for image_number, expected_path in overrides.items():
+                _, image_node = minimax.find_workflow_node(
+                    workflow,
+                    f"Reference Image {image_number}",
+                    "test workflow",
+                    "LoadImage",
+                )
+                self.assertEqual(image_node["inputs"]["image"], expected_path)
+
     def test_picture_sentence_assigns_subject_number_from_picture_number(self):
         definitions = (
             "Picture 1 (from Shot 1) is Amy and aligns with the "
