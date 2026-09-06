@@ -37,7 +37,6 @@ def make_checkpoint(directory, total_segments=4):
             director_result(segment),
             range(1, segment + 1),
             continuity_state=continuity,
-            additional_subject_definitions=[],
         )
     checkpoint = os.path.join(directory, "generation_state.json")
     minimax.save_generation_state(state, checkpoint)
@@ -252,21 +251,8 @@ class RepairModeTests(unittest.TestCase):
         )
 
     def test_repair_keeps_checkpoint_and_original_target_file_untouched(self):
-        previous_dynamic = (
-            "<Subject 2> is Guard, male (S2), created in generated video "
-            "segment 1 and continued from <Video 1>."
-        )
-        future_dynamic = (
-            "<Subject 3> is Pilot, female (S3), created in generated video "
-            "segment 2 and continued from <Video 1>."
-        )
         with tempfile.TemporaryDirectory() as directory:
             state, checkpoint = make_checkpoint(directory)
-            state["segments"][0]["additional_subject_definitions"] = [
-                previous_dynamic
-            ]
-            state["segments"][1]["additional_subject_definitions"] = [future_dynamic]
-            state["additional_subject_definitions"] = [future_dynamic]
             minimax.save_generation_state(state, checkpoint)
             before = copy.deepcopy(state)
             subjects_path = os.path.join(directory, "subjects.txt")
@@ -328,8 +314,7 @@ class RepairModeTests(unittest.TestCase):
                 )
 
             historical_subjects = continuity.call_args.args[0]
-            self.assertIn(previous_dynamic, historical_subjects)
-            self.assertNotIn(future_dynamic, historical_subjects)
+            self.assertEqual(historical_subjects, SUBJECTS)
             self.assertEqual(
                 continuity.call_args.args[1],
                 before["segments"][0]["continuity_state"],

@@ -95,7 +95,7 @@ class BeatPlanRepairHelperTests(unittest.TestCase):
     def test_audit_parser_discards_bad_ranges_but_keeps_valid_siblings(self):
         parsed = minimax.parse_beat_plan_audit(
             audit_result(
-                "legacy blocker",
+                "existing blocker",
                 blocker(0, 2),
                 blocker(3, 4, problem="  A real   problem remains. "),
                 blocker(9, 10),

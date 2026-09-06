@@ -1502,7 +1502,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             []
         )
 
-        clothing = minimax.build_hard_cut_clothing_reiteration(
+        clothing = minimax.build_hard_cut_subject_continuity(
             SUBJECTS,
             hard_cut_result,
             prior_records
@@ -1535,7 +1535,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertIn("<Subject 1> Mark", integrated)
         self.assertIn("<Subject 2> Jill", integrated)
 
-    def test_structured_hard_cut_continuity_ignores_legacy_summary_text(self):
+    def test_structured_hard_cut_continuity_ignores_unstructured_summary_text(self):
         state = minimax.continuity_state_for_registry(SUBJECTS)
         state["subjects"]["Mark"].update({
             "position": "left side of the bed",
@@ -1653,7 +1653,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             []
         )
 
-        clothing = minimax.build_hard_cut_clothing_reiteration(
+        clothing = minimax.build_hard_cut_subject_continuity(
             definitions,
             result,
             []
@@ -1684,7 +1684,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             )
         }]
 
-        clothing = minimax.build_hard_cut_clothing_reiteration(
+        clothing = minimax.build_hard_cut_subject_continuity(
             definitions,
             result,
             prior_records
@@ -1708,7 +1708,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             []
         )
 
-        clothing = minimax.build_hard_cut_clothing_reiteration(
+        clothing = minimax.build_hard_cut_subject_continuity(
             definitions,
             result,
             [],
@@ -1735,7 +1735,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             )
         }]
 
-        clothing = minimax.build_hard_cut_clothing_reiteration(
+        clothing = minimax.build_hard_cut_subject_continuity(
             definitions,
             result,
             prior_records,
@@ -1820,7 +1820,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             []
         )
 
-        clothing = minimax.build_hard_cut_clothing_reiteration(
+        clothing = minimax.build_hard_cut_subject_continuity(
             SUBJECTS,
             result,
             []

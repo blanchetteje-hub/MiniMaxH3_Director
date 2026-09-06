@@ -81,7 +81,7 @@ class ResumeTests(unittest.TestCase):
             )
             self.assertEqual(restored["previous_video_path"], video_paths[2])
 
-    def test_generation_state_contains_migratable_structured_continuity_state(self):
+    def test_generation_state_contains_normalized_structured_continuity_state(self):
         state = minimax.new_generation_state(
             minimax.build_run_config(5, 10, 0.5, 2)
         )
@@ -90,57 +90,12 @@ class ResumeTests(unittest.TestCase):
             state["continuity_state"]["version"],
             minimax.CONTINUITY_STATE_VERSION,
         )
-        migrated = minimax.migrate_continuity_state({
-            "environment": "hallway",
-            "subjects": {"1": {"position": "left"}},
-        })
-        self.assertEqual(migrated["environment"]["location"], "hallway")
-        self.assertEqual(migrated["subjects"]["1"]["position"], "left")
-        self.assertEqual(state["additional_subject_definitions"], [])
-
-    def test_internal_subject_definitions_are_restored_from_segment_checkpoint(self):
-        definition = (
-            "<Subject 2> is Jenny, created in generated video "
-            "segment 1 and continued from <Video 1>."
-        )
-        with tempfile.TemporaryDirectory() as directory:
-            video_path = os.path.join(directory, "segment_0001.mp4")
-            with open(video_path, "wb") as video_file:
-                video_file.write(b"video")
-            checkpoint = os.path.join(directory, "generation_state.json")
-            config = minimax.build_run_config(5, 10, 0.5, 2)
-            state = minimax.new_generation_state(config)
-            minimax.record_completed_segment(
-                state,
-                1,
-                video_path,
-                formatted_result(1),
-                [],
-                additional_subject_definitions=[definition],
-            )
-            minimax.save_generation_state(state, checkpoint)
-
-            restored = minimax.restore_generation_state(
-                2,
-                [],
-                checkpoint,
-            )
-
-        self.assertEqual(restored["additional_subject_definitions"], [definition])
-        self.assertEqual(
-            restored["state"]["additional_subject_definitions"],
-            [definition],
-        )
-        self.assertEqual(
-            restored["state"]["segments"][0]["additional_subject_definitions"],
-            [definition],
-        )
+        current = minimax.new_continuity_state()
+        current["environment"]["location"] = "hallway"
+        normalized = minimax.normalize_continuity_state(current)
+        self.assertEqual(normalized["environment"]["location"], "hallway")
 
     def test_new_subject_identity_is_saved_in_generation_state_json(self):
-        definition = (
-            "<Subject 2> is New Guard, male (S2), created in generated video "
-            "segment 1 and continued from <Video 1>."
-        )
         continuity = minimax.new_continuity_state()
         continuity["subjects"]["New Guard"] = (
             minimax.new_subject_continuity_record({
@@ -160,7 +115,6 @@ class ResumeTests(unittest.TestCase):
                 minimax.build_run_config(5, 10, 0.5, 2)
             )
             state["continuity_state"] = continuity
-            state["additional_subject_definitions"] = [definition]
             minimax.save_generation_state(state, checkpoint)
             saved = minimax.load_generation_state(checkpoint)
 
@@ -168,7 +122,7 @@ class ResumeTests(unittest.TestCase):
         self.assertEqual(subject["subject_id"], 2)
         self.assertEqual(subject["gender"], "male")
         self.assertEqual(subject["speaker_id"], "S2")
-        self.assertEqual(saved["additional_subject_definitions"], [definition])
+        self.assertNotIn("additional_subject_definitions", saved)
 
     def test_beat_progress_is_kept_in_generation_state(self):
         config = minimax.build_run_config(5, 20, 0.5, 4)
@@ -583,17 +537,16 @@ class ResumeTests(unittest.TestCase):
             expanded["source_sha256"],
         )
 
-    def test_resume_allows_checkpoint_without_run_config(self):
+    def test_resume_rejects_checkpoint_without_current_continuity_schema(self):
         with tempfile.TemporaryDirectory() as directory:
             checkpoint = os.path.join(directory, "generation_state.json")
             state = {"version": 1, "segments": []}
             minimax.save_generation_state(state, checkpoint)
-            config = minimax.build_run_config(5, 10, 0.5, 2)
-
-            restored = minimax.restore_generation_state(1, [], checkpoint)
-
-            self.assertEqual(restored["video_paths"], [])
-            self.assertIsNone(restored["previous_video_path"])
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "unsupported continuity schema version",
+            ):
+                minimax.restore_generation_state(1, [], checkpoint)
 
     def test_resume_rejects_missing_prior_video_or_director_result(self):
         with tempfile.TemporaryDirectory() as directory:

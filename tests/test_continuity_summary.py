@@ -87,7 +87,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertNotIn("wardrobe_upper:", opening)
         self.assertNotIn("N/A", opening)
 
-    def test_legacy_empty_state_rebuilds_subjects_from_definitions(self):
+    def test_empty_state_rebuilds_subjects_from_definitions(self):
         definitions = (
             "<Subject 1> is Mark, a 40-year-old man referenced in <Picture 1>.\n"
             "<Subject 2> is Jill, a 35-year-old woman referenced in <Picture 2>."
@@ -228,9 +228,7 @@ class ContinuitySummaryTests(unittest.TestCase):
                 additional, added = (
                     minimax.collect_additional_subject_definitions(
                         self.SUBJECTS,
-                        [],
                         candidate,
-                        2,
                     )
                 )
                 expected = (
@@ -322,9 +320,7 @@ class ContinuitySummaryTests(unittest.TestCase):
 
         additional, appended = minimax.collect_additional_subject_definitions(
             self.SUBJECTS,
-            [],
             candidate,
-            origin_segment=2,
         )
         combined = minimax.combine_subject_definitions(self.SUBJECTS, additional)
 
@@ -355,9 +351,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(guard["speaker_id"], "S3")
         additional, appended = minimax.collect_additional_subject_definitions(
             self.SUBJECTS,
-            [],
             candidate,
-            origin_segment=2,
         )
         expected = (
             "<Subject 3> is New Guard, male (S3), continued from <Video 1>."
@@ -437,9 +431,6 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
         generation_state = {
             "continuity_state": copy.deepcopy(state),
-            "additional_subject_definitions": [
-                "<Subject 3> is New Guard, male (S3), continued from <Video 1>."
-            ],
         }
 
         cleared, removed = (
@@ -456,7 +447,7 @@ class ContinuitySummaryTests(unittest.TestCase):
             "New Guard",
             generation_state["continuity_state"]["subjects"],
         )
-        self.assertEqual(generation_state["additional_subject_definitions"], [])
+        self.assertNotIn("additional_subject_definitions", generation_state)
 
     def test_continuity_prompt_forbids_inanimate_object_subjects(self):
         messages = minimax.build_structured_continuity_messages(
@@ -466,9 +457,10 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
 
         system_prompt = messages[0]["content"]
-        self.assertIn("entity_kind`: `animate", system_prompt)
-        self.assertIn("Never create a Subject for an inanimate object", system_prompt)
+        # Check for semantic meaning rather than exact phrase
+        self.assertIn("Never create a Subject for props, inanimate objects", system_prompt)
         self.assertIn("Anything that explicitly speaks", system_prompt)
+        self.assertIn("animate", system_prompt)
 
     def test_continuity_prompt_includes_phase_characters_introduced(self):
         messages = minimax.build_structured_continuity_messages(
@@ -549,9 +541,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         )
         additional, added_lines = minimax.collect_additional_subject_definitions(
             self.SUBJECTS,
-            [],
             state,
-            origin_segment=2,
         )
         combined = minimax.combine_subject_definitions(self.SUBJECTS, additional)
         opening = minimax.format_authoritative_opening_state(

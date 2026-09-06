@@ -423,7 +423,7 @@ allowed):
 
 The directive is metadata, not a story beat. The program treats the file as empty,
 generates the required number of beats, and appends the directive to every saved
-beat. This legacy file-level metadata form also requires an explicit strength.
+beat. This file-level form requires an explicit strength.
 
 ## 6. Set up LM Studio
 
@@ -604,8 +604,8 @@ both files. Clear either file to request a new arc on the next automatic beat
 generation.
 
 Automatically generated beat files include `# Phase N` markers. Video-created
-Subjects and `additional_subject_definitions` are retained when a later phase
-starts. Prefetch remains skipped across phase boundaries so each new phase begins
+Subjects are retained in structured continuity state when a later phase starts.
+Prefetch remains skipped across phase boundaries so each new phase begins
 with a fresh director request. Manually authored beat files can use the same
 markers.
 
@@ -668,9 +668,9 @@ a main character. Immediately before each beat-generation or compliance-review
 request, the program also verifies that the complete formatted subject list is
 present in the LLM prompt.
 
-Generated prose uses `Name <Picture N>` for visual identity and
-`Name <Picture N> (S1) says:` for dialogue. Legacy `<Subject N>` forms are
-accepted while older checkpoints are migrated.
+Generated scene prose uses `<Subject N> Name` for visual identity and
+`Name (SN) says: <d>[English] ...</d>` for dialogue. `<Picture N>` is reserved
+for explicit reference-frame or composition anchors.
 The filename is `subjects.txt`, not `subject_definitions.txt`.
 
 ### Continuity safeguards
@@ -914,11 +914,10 @@ workflow, preserve these titles or update the matching constants in
   around the active beat, nearby lookahead, and registered subjects. When no
   reliable match exists, a bounded fallback is used without giving the source
   ending disproportionate authority.
-- New checkpoints include a versioned `continuity_state` envelope alongside
+- Checkpoints include a versioned `continuity_state` envelope alongside
   independently addressable environment, camera, subject position, pose,
   wardrobe, condition, props, ongoing action, audio, video-only subject ID, and
-  subject-origin fields. Older
-  checkpoints without that envelope are migrated automatically during resume.
+  subject-origin fields. Resume rejects unsupported checkpoint schema versions.
 - Continuity updates are candidates while a segment renders. They are committed
   only after the render succeeds; failed renders discard the candidate and keep
   the last successful segment's opening state.

@@ -29,12 +29,13 @@ class BeatPlanPrintTests(unittest.TestCase):
     def test_prints_all_beats_completed_by_prompt_and_the_following_beat(self):
         result, output = self.capture_plan(BEATS, {1}, [2, 3])
 
-        self.assertEqual(result, ([2, 3], 4))
+        # With ACTIVE + NEXT lookahead, only beat 2 is in the lookahead window
+        self.assertEqual(result, ([2], 3))
         self.assertIn("Completing in this prompt:", output)
         self.assertIn("B002: Show the saucers overhead.", output)
-        self.assertIn("B003: Have Mark and Jill discuss the saucers.", output)
+        self.assertNotIn("B003:", output)  # B003 is beyond ACTIVE+NEXT window
         self.assertIn("Next required after this prompt:", output)
-        self.assertIn("B004: Show the family's abduction.", output)
+        self.assertIn("B003: Have Mark and Jill discuss the saucers.", output)
 
     def test_out_of_order_claim_is_not_printed_as_a_completion(self):
         result, output = self.capture_plan(BEATS, {1}, [3])

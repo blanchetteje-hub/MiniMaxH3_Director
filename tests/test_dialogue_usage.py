@@ -118,19 +118,6 @@ class DialogueUsageStateTests(unittest.TestCase):
             contains_line(saved["segments"][0]["dialogues"], "persist this line")
         )
 
-    def test_old_records_without_dialogue_field_are_migrated_from_llm_result(self):
-        records = [{
-            "segment_number": 1,
-            "llm_result": result_with_dialogues("recover this old line"),
-        }]
-
-        recent = minimax.collect_recent_dialogues(records)
-
-        self.assertTrue(contains_line(recent, "recover this old line"))
-        self.assertTrue(
-            contains_line(records[0]["dialogues"], "recover this old line")
-        )
-
     def test_resume_rebuilds_dialogues_from_only_the_retained_records(self):
         with tempfile.TemporaryDirectory() as directory:
             checkpoint = os.path.join(directory, "generation_state.json")
@@ -318,8 +305,8 @@ class DialogueUsagePromptTests(unittest.TestCase):
             conditioning_mode="latent_continuation",
         )
 
-        self.assertIn("NEVER put `<Subject N>` inside spoken words", rules)
-        self.assertIn("Amy (S2) asks: <d>[English] Mark?", rules)
+        self.assertIn("Do not add a `<Subject N>` tag to the dialogue attribution", rules)
+        self.assertIn("Amy (S1) says: <d>[English] We need to leave now.</d>", rules)
 
     def test_repeated_dialogue_is_rejected_and_director_is_retried(self):
         repeated = result_with_dialogues("Do not repeat me!")
@@ -429,10 +416,7 @@ class DialogueUsagePromptTests(unittest.TestCase):
         )
 
         self.assertIn(original_description, prompt)
-        constraint = (
-            "SPOKEN DIALOGUE: English only. Only the exact words inside "
-            "<d>...</d> are spoken. Do not generate additional dialogue."
-        )
+        constraint = "English only. Only words inside <d>...</d> are spoken."
         self.assertNotIn(constraint, prompt)
         self.assertIn(constraint, rules)
 

@@ -56,13 +56,13 @@ class ContinuityReplacementTests(unittest.TestCase):
             newest_description=description,
         )
 
-    def test_na_does_not_lazily_erase_old_ongoing_action(self):
+    def test_na_replaces_old_ongoing_action_in_new_final_frame(self):
         old = committed_state()
         old["ongoing_action"] = "Amy is being dragged"
 
         result = self.normalize(old, complete_candidate(old))
 
-        self.assertEqual(result["ongoing_action"], "Amy is being dragged")
+        self.assertEqual(result["ongoing_action"], "N/A")
 
     def test_current_ongoing_action_replaces_na(self):
         old = committed_state()
@@ -255,7 +255,7 @@ class ContinuityReplacementTests(unittest.TestCase):
         self.assertIn("navy jacket", opening_state)
         self.assertNotIn("N/A", opening_state)
 
-    def test_replacement_survives_registry_migration_and_checkpoint(self):
+    def test_replacement_survives_registry_normalization_and_checkpoint(self):
         old = committed_state(
             injuries=["old shoulder wound"],
             substances=["old black residue"],
@@ -269,7 +269,7 @@ class ContinuityReplacementTests(unittest.TestCase):
             SUBJECTS,
             normalized,
         )
-        migrated = minimax.migrate_continuity_state(registered)
+        normalized_state = minimax.normalize_continuity_state(registered)
         generation_state = {}
         record = minimax.record_completed_segment(
             generation_state,
@@ -277,12 +277,12 @@ class ContinuityReplacementTests(unittest.TestCase):
             "segment_001.mp4",
             {"detailed_description": "Amy lowers her empty hand."},
             [1],
-            continuity_state=migrated,
+            continuity_state=normalized_state,
         )
 
         for state in (
             registered,
-            migrated,
+            normalized_state,
             record["continuity_state"],
             generation_state["continuity_state"],
         ):
