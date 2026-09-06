@@ -99,8 +99,8 @@ if os.name == "nt":
     DEFAULT_COMFY_OUTPUT = r"H:\images\output"
     DEFAULT_COMFY_INPUT = r"H:\images\input"
 else:
-    DEFAULT_COMFY_OUTPUT = os.path.expanduser("~/ComfyUI/output")
-    DEFAULT_COMFY_INPUT = os.path.expanduser("~/ComfyUI/input")
+    DEFAULT_COMFY_OUTPUT = os.path.expanduser("~/AI/ComfyUI/output")
+    DEFAULT_COMFY_INPUT = os.path.expanduser("~/AI/ComfyUI/input")
 
 COMFY_OUTPUT = os.path.abspath(
     os.path.expandvars(
