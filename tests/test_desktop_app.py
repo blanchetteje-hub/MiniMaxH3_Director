@@ -153,6 +153,18 @@ class DesktopBridgeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "between 0 and 1"):
             self.make_bridge().build_command(settings)
 
+    def test_build_command_includes_identity_threshold_and_margin(self):
+        settings = dict(
+            BASE_SETTINGS,
+            identity_confidence="0.52",
+            identity_margin="0.07",
+        )
+
+        command = self.make_bridge().build_command(settings)
+
+        self.assertEqual(command[command.index("--identity-confidence") + 1], "0.52")
+        self.assertEqual(command[command.index("--identity-margin") + 1], "0.07")
+
     def test_more_than_six_defined_images_are_rejected(self):
         settings = dict(
             BASE_SETTINGS,

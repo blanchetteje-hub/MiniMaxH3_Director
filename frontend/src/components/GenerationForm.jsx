@@ -19,6 +19,8 @@ const INITIAL_SETTINGS = {
   dino_crop_padding_x: '0.12',
   dino_crop_padding_y: '0.12',
   dino_min_bbox_area_ratio: '0.01',
+  identity_confidence: '0.48',
+  identity_margin: '0.05',
   repair: '',
   model: 'ministral',
   first_frame: false,
@@ -65,6 +67,8 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
           dino_crop_padding_x: savedSettings.dino_crop_padding_x ?? current.dino_crop_padding_x,
           dino_crop_padding_y: savedSettings.dino_crop_padding_y ?? current.dino_crop_padding_y,
           dino_min_bbox_area_ratio: savedSettings.dino_min_bbox_area_ratio ?? current.dino_min_bbox_area_ratio,
+          identity_confidence: savedSettings.identity_confidence ?? current.identity_confidence,
+          identity_margin: savedSettings.identity_margin ?? current.identity_margin,
           repair: savedSettings.repair ?? current.repair,
           model: savedSettings.model ?? current.model,
           first_frame: savedSettings.first_frame ?? current.first_frame,
@@ -163,6 +167,20 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
     )
     if (invalidDinoRatio) {
       setError(`${invalidDinoRatio[1]} must be between 0 and 1.`)
+      return
+    }
+    if (
+      settings.identity_confidence === ''
+      || !(Number(settings.identity_confidence) >= -1 && Number(settings.identity_confidence) <= 1)
+    ) {
+      setError('Identity confidence must be between -1 and 1.')
+      return
+    }
+    if (
+      settings.identity_margin === ''
+      || !(Number(settings.identity_margin) >= 0 && Number(settings.identity_margin) <= 2)
+    ) {
+      setError('Identity margin must be between 0 and 2.')
       return
     }
     const dinoIntegerFields = [
@@ -449,6 +467,26 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               min="0"
               max="1"
               step="0.001"
+              disabled={disabled || settings.dino_skip}
+            />
+            <NumberField
+              label="Identity confidence"
+              help="ArcFace cosine threshold; default: 0.48"
+              value={settings.identity_confidence}
+              onChange={(event) => setField('identity_confidence', event.target.value)}
+              min="-1"
+              max="1"
+              step="0.01"
+              disabled={disabled || settings.dino_skip}
+            />
+            <NumberField
+              label="Identity margin"
+              help="Minimum winner gap over the next candidate"
+              value={settings.identity_margin}
+              onChange={(event) => setField('identity_margin', event.target.value)}
+              min="0"
+              max="2"
+              step="0.01"
               disabled={disabled || settings.dino_skip}
             />
           </div>

@@ -50,6 +50,8 @@ DEFAULT_SETTINGS = {
     "dino_crop_padding_x": "0.12",
     "dino_crop_padding_y": "0.12",
     "dino_min_bbox_area_ratio": "0.01",
+    "identity_confidence": "0.48",
+    "identity_margin": "0.05",
     "repair": "",
     "model": "ministral",
     "first_frame": False,
@@ -142,14 +144,20 @@ def _number_argument(value: float) -> str:
     return format(value, ".15g")
 
 
-def _ratio(value: Any, label: str) -> float:
+def _bounded_float(value: Any, label: str, lower: float, upper: float) -> float:
     try:
         parsed = float(value)
     except (TypeError, ValueError) as error:
-        raise ValueError(f"{label} must be a number between 0 and 1.") from error
-    if not math.isfinite(parsed) or not 0 <= parsed <= 1:
-        raise ValueError(f"{label} must be between 0 and 1.")
+        raise ValueError(
+            f"{label} must be a number between {lower:g} and {upper:g}."
+        ) from error
+    if not math.isfinite(parsed) or not lower <= parsed <= upper:
+        raise ValueError(f"{label} must be between {lower:g} and {upper:g}.")
     return parsed
+
+
+def _ratio(value: Any, label: str) -> float:
+    return _bounded_float(value, label, 0.0, 1.0)
 
 
 def _defined_images(value: Any) -> list[str]:
@@ -310,6 +318,18 @@ class MiniMaxBridge:
                 settings.get("dino_min_bbox_area_ratio", "0.01"),
                 "DINO minimum bbox area ratio",
             ),
+            "identity_confidence": _bounded_float(
+                settings.get("identity_confidence", "0.48"),
+                "Identity confidence",
+                -1.0,
+                1.0,
+            ),
+            "identity_margin": _bounded_float(
+                settings.get("identity_margin", "0.05"),
+                "Identity margin",
+                0.0,
+                2.0,
+            ),
             "resume": _positive_int(
                 settings.get("resume", 1), "Resume segment"
             ),
@@ -417,6 +437,10 @@ class MiniMaxBridge:
             _number_argument(values["dino_crop_padding_y"]),
             "--dino-min-bbox-area-ratio",
             _number_argument(values["dino_min_bbox_area_ratio"]),
+            "--identity-confidence",
+            _number_argument(values["identity_confidence"]),
+            "--identity-margin",
+            _number_argument(values["identity_margin"]),
             "--model",
             values["model"],
         ]

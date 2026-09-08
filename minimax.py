@@ -37,6 +37,7 @@ from ministral_formatter import (
     validate_h3_dialogue_format,
 )
 from qwen_formatter import QwenFormatter
+from subject_registry import SubjectRegistry, parse_subject_registry as _parse_subject_registry
 from dino_continuity import (
     DEFAULT_CROP_PADDING_X,
     DEFAULT_CROP_PADDING_Y,
@@ -44,6 +45,8 @@ from dino_continuity import (
     DEFAULT_DINO_CONFIDENCE,
     DEFAULT_DINO_TEXT_THRESHOLD,
     DEFAULT_FRAME_SEARCH_INTERVAL,
+    DEFAULT_IDENTITY_CONFIDENCE,
+    DEFAULT_IDENTITY_MARGIN,
     DEFAULT_MAX_CANDIDATE_FRAMES,
     DEFAULT_MIN_BBOX_AREA_RATIO,
     ContinuityReferenceConfig,
@@ -516,6 +519,8 @@ REFERENCE_IMAGE_NODE_NAMES = tuple(
     for image_number in range(1, 7)
 )
 REFERENCE_IMAGE_OVERRIDES = {}
+IDENTITY_REFERENCE_OVERRIDES = {}
+DINO_QUERY_RULES = {}
 
 
 def generate_random_seed():
@@ -689,6 +694,46 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
+        "--identity-confidence",
+        type=float,
+        default=DEFAULT_IDENTITY_CONFIDENCE,
+        metavar="FLOAT",
+        help=(
+            "minimum ArcFace cosine similarity for an identity match "
+            f"(default: {DEFAULT_IDENTITY_CONFIDENCE:.2f})"
+        ),
+    )
+    parser.add_argument(
+        "--identity-margin",
+        type=float,
+        default=DEFAULT_IDENTITY_MARGIN,
+        metavar="FLOAT",
+        help=(
+            "minimum ArcFace winner margin over the second candidate "
+            f"(default: {DEFAULT_IDENTITY_MARGIN:.2f})"
+        ),
+    )
+    parser.add_argument(
+        "--identity-reference",
+        action="append",
+        default=[],
+        metavar="SUBJECT=PATH",
+        help=(
+            "canonical identity image; repeat for multiple subjects, e.g. "
+            "subject_name=/path/to/reference.jpg"
+        ),
+    )
+    parser.add_argument(
+        "--dino-query-rule",
+        action="append",
+        default=[],
+        metavar="PHRASE=QUERY",
+        help=(
+            "custom case-insensitive DINO query rule; repeat for multiple "
+            "rules, e.g. 'anthropomorphic wolf=werewolf'"
+        ),
+    )
+    parser.add_argument(
         "--repair",
         type=int,
         default=None,
@@ -811,6 +856,10 @@ def parse_args(arguments=None):
         value = getattr(args, name)
         if not 0.0 <= value <= 1.0:
             parser.error(f"--{name.replace('_', '-')} must be between 0 and 1.")
+    if not -1.0 <= args.identity_confidence <= 1.0:
+        parser.error("--identity-confidence must be between -1 and 1.")
+    if not 0.0 <= args.identity_margin <= 2.0:
+        parser.error("--identity-margin must be between 0 and 2.")
     if args.dino_frame_interval <= 0:
         parser.error("--dino-frame-interval must be greater than zero.")
     if args.dino_max_candidates <= 0:
@@ -1021,6 +1070,104 @@ def configure_reference_image_overrides(arguments):
         overrides[image_number] = value
     REFERENCE_IMAGE_OVERRIDES = overrides
     return dict(overrides)
+
+
+def configure_identity_reference_overrides(arguments):
+    """Set explicit ``Subject=path`` canonical identity image mappings."""
+
+    global IDENTITY_REFERENCE_OVERRIDES
+    overrides = {}
+    for raw_spec in getattr(arguments, "identity_reference", ()) or ():
+        spec = str(raw_spec or "").strip()
+        subject, separator, path = spec.partition("=")
+        subject = subject.strip()
+        path = path.strip()
+        if not separator or not subject or not path:
+            raise ValueError(
+                f"Invalid --identity-reference {raw_spec!r}; expected SUBJECT=PATH."
+            )
+        overrides[_subject_identity_key(subject)] = os.path.abspath(
+            os.path.expanduser(os.path.expandvars(path))
+        )
+    IDENTITY_REFERENCE_OVERRIDES = overrides
+    return dict(overrides)
+
+
+def configure_dino_query_rules(arguments):
+    """Set repeatable case-insensitive phrase-to-query rules."""
+
+    global DINO_QUERY_RULES
+    rules = {}
+    for raw_spec in getattr(arguments, "dino_query_rule", ()) or ():
+        spec = str(raw_spec or "").strip()
+        phrase, separator, query = spec.partition("=")
+        phrase = phrase.strip()
+        query = query.strip()
+        if not separator or not phrase or not query:
+            raise ValueError(
+                f"Invalid --dino-query-rule {raw_spec!r}; expected PHRASE=QUERY."
+            )
+        rules[phrase.casefold()] = query
+    DINO_QUERY_RULES = rules
+    return dict(rules)
+
+
+def _resolve_dino_query_with_llm(subject_definition):
+    """Ask the existing local LLM for one concise non-human DINO query."""
+
+    return ask_llm(
+        [{
+            "role": "user",
+            "content": (
+                "In the most minimal, succinct sense, what is this definition "
+                "in one word (or two words hyphenated)?\n"
+                f"'{str(subject_definition or '').strip()}'.\n"
+                "Return a one-word response."
+            ),
+        }],
+        response_format=None,
+        temperature=0.10,
+        max_tokens=8,
+        history_metadata={"purpose": "dino_query_resolution"},
+    )
+
+
+def _canonical_reference_for_subject(subject):
+    """Resolve a subject's canonical image without mutating its state record."""
+
+    if not isinstance(subject, dict):
+        return None
+    name = str(subject.get("name") or "").strip()
+    explicit = (
+        subject.get("canonical_reference")
+        or subject.get("identity_reference")
+    )
+    reference = explicit
+    if not reference and name:
+        reference = IDENTITY_REFERENCE_OVERRIDES.get(_subject_identity_key(name))
+    picture_ids = subject.get("picture_ids") or [subject.get("picture_id")]
+    for picture_id in picture_ids:
+        try:
+            picture_id = int(picture_id)
+        except (TypeError, ValueError):
+            continue
+        if not reference:
+            reference = REFERENCE_IMAGE_OVERRIDES.get(picture_id)
+        if reference:
+            break
+    if not reference:
+        return None
+    reference = os.path.abspath(
+        os.path.expanduser(os.path.expandvars(os.fspath(reference)))
+    )
+    if os.path.isfile(reference):
+        return reference
+    # ComfyUI workflows commonly use a basename in its input directory while
+    # CLI overrides may provide that basename or an absolute path.
+    input_reference = os.path.join(COMFY_INPUT, os.path.basename(reference))
+    if os.path.isfile(input_reference):
+        return os.path.abspath(input_reference)
+    return reference
 
 
 def apply_reference_image_overrides(workflow, workflow_label):
@@ -1713,87 +1860,14 @@ def _find_existing_subject_name(subjects, proposed_name, subject_id=None, speake
     return None
 
 
-def parse_subject_registry(subject_definitions):
-    """Parse independent name, gender, Picture, and speaker mappings."""
-    registry = {}
-    raw_lines = [
-        line.strip() for line in str(subject_definitions or "").splitlines()
-        if line.strip() and not line.strip().startswith("#")
-    ]
-    for line in raw_lines:
-        video_origin = False
-        match = re.match(
-            r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+is\s+"
-            r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*?)\s*,\s+",
-            line,
-        )
-        if match is None:
-            match = re.match(
-                r"(?i)^\s*(?:<\s*)?Picture\s+(?P<picture>\d+)\s*(?:>\s*)?"
-                r"(?:\(from\s+Shot\s+\d+\)\s+)?is\s+"
-                r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*)"
-                r"(?:\s+and\s+aligns\s+with\s+the\s+\d+(?:\.\d+)?-second\s+"
-                r"mark\s+of\s+the\s+target\s+video)?\.\s*$",
-                line,
-            )
-            if match is not None:
-                subject_id = int(match.group("picture"))
-                name = match.group("name").strip()
-                picture_ids = [subject_id]
-                speaker_id = f"S{subject_id}"
-        else:
-            subject_id = int(match.group("subject"))
-            name = match.group("name").strip()
-            picture_ids = [
-                int(value)
-                for value in re.findall(r"(?i)<Picture\s+(\d+)>", line)
-            ]
-            picture_ids = list(dict.fromkeys(picture_ids))
-            video_origin = bool(re.search(
-                r"(?i)(?:\b(?:created|established)\s+(?:by\s+<Video\s+1>|"
-                r"in\s+generated\s+video\s+segment\s+\d+)|"
-                r"\bcontinued\s+from\s+<Video\s+1>)",
-                line,
-            ))
-            speaker_id = (
-                f"S{speaker}"
-                if (speaker := next(iter(re.findall(r"(?i)\(S(\d+)\)", line)), None))
-                else f"S{subject_id}"
-            )
-        if match is None:
-            continue
-        if not picture_ids and not video_origin:
-            continue
-        picture_ids = list(dict.fromkeys(picture_ids))
-        if subject_id in registry:
-            raise ValueError(f"Duplicate subject ID: {subject_id}")
-        if any(item["name"].lower() == name.lower() for item in registry.values()):
-            raise ValueError(f"Duplicate subject name: {name}")
-        if speaker_id and any(
-            item.get("speaker_id") == speaker_id for item in registry.values()
-        ):
-            raise ValueError(f"Duplicate speaker ID: {speaker_id}")
-        registry_record = {
-            "name": name,
-            "gender": infer_subject_gender(line),
-            "picture_ids": picture_ids,
-            "picture_id": picture_ids[0] if picture_ids else None,
-            "speaker_id": speaker_id,
-        }
-        origin_match = re.search(
-            r"(?i)\b(?:created|established)\s+in\s+generated\s+video\s+"
-            r"segment\s+(\d+)",
-            line,
-        )
-        if origin_match:
-            registry_record["origin_segment"] = int(origin_match.group(1))
-        registry[subject_id] = registry_record
-    #if len(registry) != len(raw_lines):
-    #    raise ValueError(
-    #        "Every subject definition must declare one <Subject N> and "
-    #        "one <Picture N> mapping."
-    #    )
-    return registry
+def parse_subject_registry(subject_definitions, query_resolver=None):
+    """Compatibility facade for the canonical shared SubjectRegistry."""
+
+    return _parse_subject_registry(
+        subject_definitions,
+        query_rules=DINO_QUERY_RULES,
+        query_resolver=query_resolver,
+    )
 
 
 def new_subject_continuity_record(subject):
@@ -1820,6 +1894,13 @@ def new_subject_continuity_record(subject):
             )
         ),
         "origin_segment": subject.get("origin_segment"),
+        "canonical_reference": subject.get("canonical_reference"),
+        "identity_reference": subject.get("identity_reference"),
+        "current_state_reference": subject.get("current_state_reference"),
+        "dino_query": subject.get("dino_query") or "person",
+        "dino_query_explicit": bool(subject.get("dino_query_explicit", False)),
+        "subject_definition": subject.get("subject_definition"),
+        "identity_backend": subject.get("identity_backend") or "insightface",
         # Once generated video establishes a persistent change to the Subject's
         # own physical/topological configuration, a pristine identity reference
         # can become incompatible with later refreshes.
@@ -1849,10 +1930,14 @@ def new_subject_continuity_record(subject):
     }
 
 
-def continuity_state_for_registry(subject_definitions, state=None):
+def continuity_state_for_registry(
+    subject_definitions,
+    state=None,
+    query_resolver=None,
+):
     """Return state with registered identities plus stable video-only subjects."""
     current = migrate_continuity_state(state) if state else new_continuity_state()
-    registry = parse_subject_registry(subject_definitions)
+    registry = parse_subject_registry(subject_definitions, query_resolver=query_resolver)
     if isinstance(current.get("subjects"), dict):
         normalized_subjects = {}
         for key, record in current["subjects"].items():
@@ -1910,6 +1995,29 @@ def continuity_state_for_registry(subject_definitions, state=None):
     def copy_continuity_fields(record, existing):
         if not isinstance(existing, dict):
             return
+        for field in (
+            "canonical_reference",
+            "identity_reference",
+            "current_state_reference",
+        ):
+            if isinstance(existing.get(field), str) and existing[field].strip():
+                record[field] = existing[field].strip()
+        existing_definition = existing.get("subject_definition")
+        current_definition = record.get("subject_definition")
+        if (
+            isinstance(existing.get("dino_query"), str)
+            and existing["dino_query"].strip()
+            and (
+                bool(existing.get("dino_query_explicit"))
+                or not existing_definition
+                or not current_definition
+                or existing_definition == current_definition
+            )
+        ):
+            record["dino_query"] = existing["dino_query"].strip()
+            record["dino_query_explicit"] = bool(
+                existing.get("dino_query_explicit", False)
+            )
         record["persistent_structural_change"] = bool(
             existing.get("persistent_structural_change", False)
         )
@@ -14193,10 +14301,18 @@ def update_dino_continuity_references(
     )
     if not isinstance(subjects, dict) or not subjects:
         return {}
+    identity_registry = SubjectRegistry.from_records(subjects)
+    for name, record in identity_registry.items():
+        if isinstance(record, dict):
+            canonical_reference = _canonical_reference_for_subject(
+                {**record, "name": record.get("name") or name}
+            )
+            if canonical_reference:
+                record["canonical_reference"] = canonical_reference
     try:
         results = update_subject_references(
             video_path,
-            subjects,
+            identity_registry,
             output_directory,
             config=config,
             frame_count_fn=get_video_frame_count,
@@ -14222,12 +14338,28 @@ def update_dino_continuity_references(
     for name, result in results.items():
         serialized[name] = result.to_dict()
         if result.found:
-            print(
+            # The registry is the only mutable subject representation used by
+            # the extractor. Persist its successful current-state path back to
+            # the existing H3 state record; failed searches leave it untouched.
+            original = subjects.get(name)
+            if isinstance(original, dict):
+                updated = identity_registry.get_subject(name)
+                if isinstance(updated, dict):
+                    original["current_state_reference"] = updated.get(
+                        "current_state_reference"
+                    )
+            message = (
                 f"DINO continuity reference saved for {name}: "
                 f"{result.output_path} "
                 f"(confidence={result.confidence:.2f}, "
                 f"frame={result.frame_index})"
             )
+            if result.identity_status:
+                message += (
+                    f" identity={result.identity_status}"
+                    f" similarity={result.identity_similarity:.3f}"
+                )
+            print(message)
         else:
             print(
                 f"DINO continuity reference not updated for {name}: "
@@ -16287,6 +16419,8 @@ def _run_main(
 ):
     args = parse_args()
     configure_reference_image_overrides(args)
+    configure_identity_reference_overrides(args)
+    configure_dino_query_rules(args)
     generate_beats_count = getattr(args, "generate_beats", None)
     generate_beats_only = generate_beats_count is not None
     if generate_beats_only:
@@ -16321,6 +16455,10 @@ def _run_main(
             args, "dino_min_bbox_area_ratio", DINO_MIN_BBOX_AREA_RATIO
         ),
         frame_rate=FRAME_RATE,
+        identity_confidence=getattr(
+            args, "identity_confidence", DEFAULT_IDENTITY_CONFIDENCE
+        ),
+        identity_margin=getattr(args, "identity_margin", DEFAULT_IDENTITY_MARGIN),
     )
     dino_reference_output = os.path.abspath(
         os.path.expandvars(
@@ -16432,6 +16570,7 @@ def _run_main(
         continuity_state = continuity_state_for_registry(
             subject_definitions,
             new_continuity_state(),
+            query_resolver=_resolve_dino_query_with_llm,
         )
         generation_state["subject_registry_state"] = migrate_continuity_state(
             continuity_state
@@ -16470,6 +16609,7 @@ def _run_main(
         continuity_state = continuity_state_for_registry(
             subject_definitions,
             restored["subject_registry_state"],
+            query_resolver=_resolve_dino_query_with_llm,
         )
         continuity_summary_pending = restored["continuity_summary_pending"]
         generation_state.pop("additional_subject_definitions", None)
@@ -16533,6 +16673,10 @@ def _run_main(
             f"up to {dino_reference_config.max_candidate_frames} candidates"
         )
         print(f"DINO reference dir:   {dino_reference_output}")
+        print(
+            f"Identity threshold:   {dino_reference_config.identity_confidence:.2f} "
+            f"(margin {dino_reference_config.identity_margin:.2f})"
+        )
     print("Director prompting:    2-stage raw scene -> H3 formatter")
     if beats:
         print(f"Story beats:          {len(beats)}")

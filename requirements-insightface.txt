@@ -1,0 +1,5 @@
+# Optional ArcFace/InsightFace identity verification dependencies.
+# The GPU wheel includes CPUExecutionProvider as a fallback. Its runtime
+# initialization preloads CUDA/cuDNN libraries from Python NVIDIA packages.
+insightface
+onnxruntime-gpu

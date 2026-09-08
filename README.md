@@ -46,6 +46,27 @@ is enabled by default and writes subject references under
 path, or adjust its confidence, thresholds, backward search, padding, and
 minimum-area settings with the `--dino-*` options.
 
+## Optional ArcFace identity verification
+
+Install the optional InsightFace dependencies with:
+
+```bash
+python -m pip install -r requirements-insightface.txt
+```
+
+InsightFace lazily initializes the `buffalo_l` model pack and uses its normal
+local model cache; missing model files are downloaded by InsightFace on first
+use. On Linux, initialization calls ONNX Runtime's
+`preload_dlls(directory="")` before InsightFace creates sessions, allowing
+CUDA/cuDNN libraries from Python NVIDIA packages to be used without relying on
+the host `/usr/local/cuda` installation. The validator prefers CUDA through
+ONNX Runtime when available and falls back to CPU. Give a subject a canonical
+reference explicitly with, for example,
+`--identity-reference subject_name=/path/to/reference.jpg`; existing `--imageN`
+overrides are also used for subjects mapped to the corresponding Picture.
+Identity selection uses `--identity-confidence` (default `0.48`) and
+`--identity-margin` (default `0.05`), kept separate from DINO confidence.
+
 ## Desktop GUI (primary interface)
 
 ![MiniMax H3 desktop GUI showing service configuration, generation controls, and runtime status](docs/images/minimaxH3Director.png)

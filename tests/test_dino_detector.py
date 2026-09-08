@@ -92,6 +92,7 @@ def test_missing_standard_model_downloads_into_configured_cache(tmp_path, monkey
         destination.write_bytes(b"model")
 
     monkeypatch.setenv("GROUNDING_DINO_MODEL_DIR", str(tmp_path / "dino"))
+    monkeypatch.setattr(dino_detector, "_candidate_comfy_roots", lambda: [])
     monkeypatch.setattr(dino_detector, "_download_file", fake_download)
 
     config, checkpoint = dino_detector._find_model_paths(None, None)

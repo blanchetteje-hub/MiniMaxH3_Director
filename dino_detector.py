@@ -341,7 +341,13 @@ def _find_local_package_parent() -> Optional[Path]:
             root / "custom_nodes (2)" / "ComfyUI_LayerStyle_Advance" / "py",
         ]
         for candidate in candidates:
-            if (candidate / package_name / "__init__.py").is_file():
+            # Some ComfyUI custom nodes vendor this implementation as a
+            # namespace package without ``local_groundingdino/__init__.py``.
+            # Its real package markers are the datasets/models subpackages.
+            if (
+                (candidate / package_name / "datasets").is_dir()
+                and (candidate / package_name / "models").is_dir()
+            ):
                 return candidate
 
     installed = importlib.util.find_spec(package_name)
@@ -371,6 +377,24 @@ class _LocalGroundingDINOBackend:
         package_parent = _find_local_package_parent()
         if package_parent and str(package_parent) not in sys.path:
             sys.path.insert(0, str(package_parent))
+
+        # A few CPU/nightly Torch builds ship a torchvision wheel whose C++
+        # extension does not register these operators, while torchvision's
+        # Python import unconditionally registers their fake implementations.
+        # Grounding DINO only needs torchvision transforms here, so define the
+        # schemas when they are absent and let the rest of torchvision import.
+        torchvision_compat_library = None
+        for operator in ("nms", "qnms"):
+            try:
+                getattr(torch.ops.torchvision, operator)
+            except (AttributeError, RuntimeError):
+                if torchvision_compat_library is None:
+                    torchvision_compat_library = torch.library.Library(
+                        "torchvision", "DEF"
+                    )
+                torchvision_compat_library.define(
+                    f"{operator}(Tensor boxes, Tensor scores, float iou_threshold) -> Tensor"
+                )
 
         try:
             from local_groundingdino.datasets import transforms as transforms
@@ -406,6 +430,7 @@ class _LocalGroundingDINOBackend:
         state_dict = checkpoint.get("model", checkpoint)
         model.load_state_dict(clean_state_dict(state_dict), strict=False)
         self._torch = torch
+        self._torchvision_compat_library = torchvision_compat_library
         self._transforms = transforms
         self._get_phrases_from_posmap = get_phrases_from_posmap
         self.model = model.to(device).eval()

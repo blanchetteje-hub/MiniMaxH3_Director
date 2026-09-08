@@ -8,7 +8,9 @@ import minimax
 from dino_continuity import (
     ContinuityReferenceConfig,
     search_and_save_reference,
+    update_subject_references,
 )
+from identity_validator import IdentitySelectionResult, IdentityValidator
 
 FIXTURE_DIR = Path(__file__).parent
 
@@ -26,6 +28,49 @@ class FakeDetector:
         )
 
 
+class FakeIdentityValidator:
+    def __init__(self, matched=True, candidate_index=1, reason="identity_match"):
+        self.matched = matched
+        self.candidate_index = candidate_index
+        self.reason = reason
+        self.prepare_calls = []
+        self.selection_calls = []
+
+    def prepare_canonical(self, subject, reference):
+        self.prepare_calls.append((subject, reference))
+        return SimpleNamespace(
+            matched=True,
+            reason="canonical_loaded",
+            to_dict=lambda: {"reason": "canonical_loaded"},
+        )
+
+    def select_candidate(
+        self,
+        subject,
+        reference,
+        candidates,
+        identity_threshold,
+        identity_margin,
+    ):
+        self.selection_calls.append((subject, reference, tuple(candidates)))
+        selected = next(
+            (item for item in candidates if item.candidate_index == self.candidate_index),
+            candidates[0],
+        )
+        return IdentitySelectionResult(
+            evaluated=True,
+            matched=self.matched,
+            reason=self.reason,
+            canonical_subject=subject,
+            identity_similarity=0.82 if self.matched else 0.22,
+            identity_threshold=identity_threshold,
+            identity_margin=identity_margin,
+            candidate_index=selected.candidate_index,
+            face_bbox=[20, 10, 40, 40],
+            candidates=tuple(),
+        )
+
+
 def detection(confidence, bbox, phrase="woman"):
     return SimpleNamespace(
         confidence=confidence,
@@ -34,7 +79,20 @@ def detection(confidence, bbox, phrase="woman"):
     )
 
 
-def run_search(tmp_path, detections_by_frame, config=None, fixture_name="sadie.jpg"):
+def marked_image(marker):
+    image = Image.new("RGB", (100, 80), "black")
+    image.putpixel((0, 0), (marker, 0, 0))
+    return image
+
+
+def run_search(
+    tmp_path,
+    detections_by_frame,
+    config=None,
+    fixture_name="sadie.jpg",
+    identity_validator=None,
+    canonical_reference=None,
+):
     video_path = tmp_path / "segment.mp4"
     video_path.write_bytes(b"video")
     output_path = tmp_path / "Amy_current.png"
@@ -61,6 +119,9 @@ def run_search(tmp_path, detections_by_frame, config=None, fixture_name="sadie.j
         ),
         frame_count_fn=frame_count,
         frame_extractor=extract_frame,
+        identity_validator=identity_validator,
+        canonical_reference=canonical_reference,
+        subject_identifier="Amy",
     )
     return result, output_path, detector
 
@@ -169,6 +230,130 @@ def test_bottom_right_bbox_padding_is_clamped(tmp_path):
         assert image.size == (24, 36)
 
 
+def test_identity_selects_candidate_by_similarity_not_dino_confidence(tmp_path):
+    identity = FakeIdentityValidator(matched=True, candidate_index=1)
+    result, output_path, _ = run_search(
+        tmp_path,
+        {
+            24: [
+                detection(0.99, [5, 5, 45, 75]),
+                detection(0.81, [55, 5, 95, 75]),
+            ]
+        },
+        config=ContinuityReferenceConfig(
+            frame_search_interval=5,
+            max_candidate_frames=1,
+            identity_confidence=0.48,
+            identity_margin=0.05,
+        ),
+        identity_validator=identity,
+        canonical_reference="sadie.jpg",
+    )
+
+    assert result.found is True
+    assert result.identity_status == "identity_match"
+    assert result.identity_candidate_index == 1
+    assert result.confidence == 0.81
+    assert output_path.is_file()
+    assert identity.prepare_calls == [("Amy", "sadie.jpg")]
+    assert len(identity.selection_calls) == 1
+
+
+def test_identity_mismatch_preserves_existing_reference(tmp_path):
+    identity = FakeIdentityValidator(
+        matched=False,
+        candidate_index=0,
+        reason="identity_mismatch",
+    )
+    output_path = tmp_path / "Amy_current.png"
+    previous_bytes = b"previous-valid-reference"
+    output_path.write_bytes(previous_bytes)
+
+    result, _, _ = run_search(
+        tmp_path,
+        {24: [detection(0.91, [10, 10, 90, 70])]},
+        identity_validator=identity,
+        canonical_reference="sadie.jpg",
+    )
+
+    assert result.found is False
+    assert result.reason == "identity_mismatch"
+    assert output_path.read_bytes() == previous_bytes
+
+
+def test_shared_query_runs_dino_once_and_updates_subjects_independently(tmp_path):
+    video_path = tmp_path / "segment.mp4"
+    video_path.write_bytes(b"video")
+    class SharedDetector:
+        def __init__(self):
+            self.calls = []
+
+        def detect(self, image, query, box_threshold, text_threshold):
+            self.calls.append((image.getpixel((0, 0))[0], query, box_threshold, text_threshold))
+            return SimpleNamespace(detections=[
+                detection(0.91, [0, 0, 50, 80]),
+                detection(0.89, [50, 0, 100, 80]),
+            ])
+
+    detector = SharedDetector()
+    identity_backend = FakeDetector({})
+    identity_backend.get = lambda image: [SimpleNamespace(
+        bbox=[10, 10, 40, 60],
+        embedding=(
+            [1, 0]
+            if image[0, 0, 2] in {1, 10}
+            else [0, 1]
+        ),
+    )]
+    identity = IdentityValidator(backend=identity_backend)
+    canonical_amy = marked_image(10)
+    canonical_beth = marked_image(20)
+
+    def frame_count(_video_path):
+        return 1
+
+    def extract_frame(_video_path, frame_name, input_directory, **_kwargs):
+        image = Image.new("RGB", (100, 80), "black")
+        image.putpixel((0, 0), (1, 0, 0))
+        image.putpixel((50, 0), (2, 0, 0))
+        image.save(Path(input_directory) / frame_name)
+        return frame_name
+
+    results = update_subject_references(
+        str(video_path),
+        {
+            "amy": {
+                "name": "amy",
+                "gender": "female",
+                "canonical_reference": canonical_amy,
+            },
+            "beth": {
+                "name": "beth",
+                "gender": "female",
+                "canonical_reference": canonical_beth,
+            },
+        },
+        str(tmp_path / "references"),
+        detector=detector,
+        identity_validator=identity,
+        config=ContinuityReferenceConfig(
+            crop_padding_x=0,
+            crop_padding_y=0,
+            max_candidate_frames=1,
+        ),
+        frame_count_fn=frame_count,
+        frame_extractor=extract_frame,
+    )
+
+    assert detector.calls == [(1, "woman", 0.35, 0.25)]
+    assert results["amy"].found is True
+    assert results["amy"].identity_candidate_index == 0
+    assert results["beth"].found is True
+    assert results["beth"].identity_candidate_index == 1
+    assert Path(results["amy"].output_path).is_file()
+    assert Path(results["beth"].output_path).is_file()
+
+
 def test_tiny_distant_subject_is_rejected(tmp_path):
     result, output_path, _ = run_search(
         tmp_path,
@@ -230,3 +415,21 @@ def test_minimax_can_skip_dino_entirely():
     args = minimax.parse_args(["5", "20", ".5", "--dino-skip"])
 
     assert args.dino_skip is True
+
+
+def test_minimax_exposes_identity_threshold_margin_and_reference_mapping():
+    args = minimax.parse_args([
+        "5",
+        "20",
+        ".5",
+        "--identity-confidence",
+        ".52",
+        "--identity-margin",
+        ".07",
+        "--identity-reference",
+        "Amy=/tmp/Amy.jpg",
+    ])
+
+    assert args.identity_confidence == 0.52
+    assert args.identity_margin == 0.07
+    assert args.identity_reference == ["Amy=/tmp/Amy.jpg"]
