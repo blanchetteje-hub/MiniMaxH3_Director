@@ -37,6 +37,18 @@ from ministral_formatter import (
     validate_h3_dialogue_format,
 )
 from qwen_formatter import QwenFormatter
+from dino_continuity import (
+    DEFAULT_CROP_PADDING_X,
+    DEFAULT_CROP_PADDING_Y,
+    DEFAULT_DINO_BOX_THRESHOLD,
+    DEFAULT_DINO_CONFIDENCE,
+    DEFAULT_DINO_TEXT_THRESHOLD,
+    DEFAULT_FRAME_SEARCH_INTERVAL,
+    DEFAULT_MAX_CANDIDATE_FRAMES,
+    DEFAULT_MIN_BBOX_AREA_RATIO,
+    ContinuityReferenceConfig,
+    update_subject_references,
+)
 
 
 FORMATTER_CLASSES = {
@@ -157,6 +169,7 @@ GENERATION_STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
 PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
 FINAL_VIDEO = os.path.join(VIDEO_OUTPUT, "final.mp4")
 VISION_FRAME_OUTPUT = os.path.join(VIDEO_OUTPUT, "vision_frames")
+DINO_REFERENCE_OUTPUT = os.path.join(VIDEO_OUTPUT, "subject_references")
 PROMPT_HISTORY_LOCK = threading.Lock()
 _WINDOWS_CONSOLE_HANDLER = None
 _WINDOWS_JOB_HANDLE = None
@@ -408,6 +421,11 @@ CONTINUITY_STATE_VERSION = 5
 VISION_END_FRAME_OFFSETS = (8, 4, 0)
 VISION_REQUEST_RETRIES = 3
 VISION_REQUEST_MAX_TOKENS = 2500
+DINO_FRAME_SEARCH_INTERVAL = DEFAULT_FRAME_SEARCH_INTERVAL
+DINO_MAX_CANDIDATE_FRAMES = DEFAULT_MAX_CANDIDATE_FRAMES
+DINO_CROP_PADDING_X = DEFAULT_CROP_PADDING_X
+DINO_CROP_PADDING_Y = DEFAULT_CROP_PADDING_Y
+DINO_MIN_BBOX_AREA_RATIO = DEFAULT_MIN_BBOX_AREA_RATIO
 
 PERSISTENT_SUBJECT_LIST_FIELDS = (
     "attached_objects",
@@ -577,6 +595,100 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
+        "--dino-skip",
+        action="store_true",
+        help="skip Grounding DINO continuity-reference detection entirely",
+    )
+    parser.add_argument(
+        "--dino-confidence",
+        type=float,
+        default=DEFAULT_DINO_CONFIDENCE,
+        metavar="FLOAT",
+        help=(
+            "minimum Grounding DINO confidence for a continuity reference "
+            f"(default: {DEFAULT_DINO_CONFIDENCE:.2f})"
+        ),
+    )
+    parser.add_argument(
+        "--dino-box-threshold",
+        type=float,
+        default=DEFAULT_DINO_BOX_THRESHOLD,
+        metavar="FLOAT",
+        help=(
+            "Grounding DINO box threshold, separate from dino-confidence "
+            f"(default: {DEFAULT_DINO_BOX_THRESHOLD:.2f})"
+        ),
+    )
+    parser.add_argument(
+        "--dino-text-threshold",
+        type=float,
+        default=DEFAULT_DINO_TEXT_THRESHOLD,
+        metavar="FLOAT",
+        help=(
+            "Grounding DINO text threshold, separate from dino-confidence "
+            f"(default: {DEFAULT_DINO_TEXT_THRESHOLD:.2f})"
+        ),
+    )
+    parser.add_argument(
+        "--dino-frame-interval",
+        type=int,
+        default=DINO_FRAME_SEARCH_INTERVAL,
+        metavar="FRAMES",
+        help=(
+            "search backward by this many decoded frames per candidate "
+            f"(default: {DINO_FRAME_SEARCH_INTERVAL})"
+        ),
+    )
+    parser.add_argument(
+        "--dino-max-candidates",
+        type=int,
+        default=DINO_MAX_CANDIDATE_FRAMES,
+        metavar="COUNT",
+        help=(
+            "maximum number of backward DINO candidates per subject "
+            f"(default: {DINO_MAX_CANDIDATE_FRAMES})"
+        ),
+    )
+    parser.add_argument(
+        "--dino-crop-padding-x",
+        type=float,
+        default=DINO_CROP_PADDING_X,
+        metavar="RATIO",
+        help=(
+            "horizontal crop padding as a bbox-width ratio "
+            f"(default: {DINO_CROP_PADDING_X:.2f})"
+        ),
+    )
+    parser.add_argument(
+        "--dino-crop-padding-y",
+        type=float,
+        default=DINO_CROP_PADDING_Y,
+        metavar="RATIO",
+        help=(
+            "vertical crop padding as a bbox-height ratio "
+            f"(default: {DINO_CROP_PADDING_Y:.2f})"
+        ),
+    )
+    parser.add_argument(
+        "--dino-min-bbox-area-ratio",
+        type=float,
+        default=DINO_MIN_BBOX_AREA_RATIO,
+        metavar="RATIO",
+        help=(
+            "minimum detection area as a fraction of the frame "
+            f"(default: {DINO_MIN_BBOX_AREA_RATIO:.3f})"
+        ),
+    )
+    parser.add_argument(
+        "--dino-reference-dir",
+        default=DINO_REFERENCE_OUTPUT,
+        metavar="DIRECTORY",
+        help=(
+            "directory for <subject>_current.png references "
+            f"(default: {DINO_REFERENCE_OUTPUT})"
+        ),
+    )
+    parser.add_argument(
         "--repair",
         type=int,
         default=None,
@@ -688,6 +800,21 @@ def parse_args(arguments=None):
         parser.error("--refresh must be greater than zero.")
     if args.vision_continuity < 0:
         parser.error("--vision-continuity must be zero or a positive integer.")
+    for name in (
+        "dino_confidence",
+        "dino_box_threshold",
+        "dino_text_threshold",
+        "dino_crop_padding_x",
+        "dino_crop_padding_y",
+        "dino_min_bbox_area_ratio",
+    ):
+        value = getattr(args, name)
+        if not 0.0 <= value <= 1.0:
+            parser.error(f"--{name.replace('_', '-')} must be between 0 and 1.")
+    if args.dino_frame_interval <= 0:
+        parser.error("--dino-frame-interval must be greater than zero.")
+    if args.dino_max_candidates <= 0:
+        parser.error("--dino-max-candidates must be greater than zero.")
     if args.repair is not None and args.repair <= 0:
         parser.error("--repair must be a positive one-based segment number.")
     if args.repair == 1:
@@ -3724,6 +3851,7 @@ def record_completed_segment(
     additional_subject_definitions=None,
     continuity_opening_state="",
     subject_registry_state=None,
+    dino_continuity_references=None,
 ):
     records = state.setdefault("segments", [])
     if continuity_state is None:
@@ -3756,6 +3884,10 @@ def record_completed_segment(
         "subject_registry_state": migrate_continuity_state(subject_registry_state),
         "continuity_summary_pending": bool(continuity_summary_pending),
     }
+    if dino_continuity_references is not None:
+        record["dino_continuity_references"] = copy.deepcopy(
+            dino_continuity_references
+        )
     records.append(record)
     state["recent_dialogues"] = collect_recent_dialogues(records)
     state["beat_progress"] = {
@@ -14046,6 +14178,64 @@ def get_video_frame_count(video_path):
     raise RuntimeError(f"ffprobe could not determine frame count for {video_path!r}.")
 
 
+def update_dino_continuity_references(
+    video_path,
+    continuity_state,
+    config,
+    output_directory,
+):
+    """Update current-state crops after a validated render, without failing H3."""
+
+    subjects = (
+        continuity_state.get("subjects", {})
+        if isinstance(continuity_state, dict)
+        else {}
+    )
+    if not isinstance(subjects, dict) or not subjects:
+        return {}
+    try:
+        results = update_subject_references(
+            video_path,
+            subjects,
+            output_directory,
+            config=config,
+            frame_count_fn=get_video_frame_count,
+            frame_extractor=extract_video_frame,
+        )
+    except Exception as error:
+        print(
+            f"WARNING: Grounding DINO continuity references for {video_path} "
+            f"could not run: {error}"
+        )
+        return {
+            str(name): {
+                "found": False,
+                "ambiguous": False,
+                "reason": "detector_unavailable",
+                "error": str(error),
+                "output_path": None,
+            }
+            for name in subjects
+        }
+
+    serialized = {}
+    for name, result in results.items():
+        serialized[name] = result.to_dict()
+        if result.found:
+            print(
+                f"DINO continuity reference saved for {name}: "
+                f"{result.output_path} "
+                f"(confidence={result.confidence:.2f}, "
+                f"frame={result.frame_index})"
+            )
+        else:
+            print(
+                f"DINO continuity reference not updated for {name}: "
+                f"{result.reason}"
+            )
+    return serialized
+
+
 def extract_visual_end_frames(
     video_path,
     segment_number,
@@ -16115,6 +16305,31 @@ def _run_main(
             steps=args.steps,
             global_loras=global_loras,
         )
+    dino_reference_config = ContinuityReferenceConfig(
+        dino_confidence=getattr(args, "dino_confidence", DEFAULT_DINO_CONFIDENCE),
+        box_threshold=getattr(args, "dino_box_threshold", DEFAULT_DINO_BOX_THRESHOLD),
+        text_threshold=getattr(args, "dino_text_threshold", DEFAULT_DINO_TEXT_THRESHOLD),
+        frame_search_interval=getattr(
+            args, "dino_frame_interval", DINO_FRAME_SEARCH_INTERVAL
+        ),
+        max_candidate_frames=getattr(
+            args, "dino_max_candidates", DINO_MAX_CANDIDATE_FRAMES
+        ),
+        crop_padding_x=getattr(args, "dino_crop_padding_x", DINO_CROP_PADDING_X),
+        crop_padding_y=getattr(args, "dino_crop_padding_y", DINO_CROP_PADDING_Y),
+        min_bbox_area_ratio=getattr(
+            args, "dino_min_bbox_area_ratio", DINO_MIN_BBOX_AREA_RATIO
+        ),
+        frame_rate=FRAME_RATE,
+    )
+    dino_reference_output = os.path.abspath(
+        os.path.expandvars(
+            os.path.expanduser(
+                getattr(args, "dino_reference_dir", DINO_REFERENCE_OUTPUT)
+            )
+        )
+    )
+    dino_skip = bool(getattr(args, "dino_skip", False))
     run_id = str(uuid.uuid4())
 
     segment_length = getattr(args, "segment_length", None)
@@ -16306,6 +16521,18 @@ def _run_main(
             )
         )
     )
+    print(
+        "DINO continuity:      "
+        + ("skipped" if dino_skip else "enabled")
+    )
+    if not dino_skip:
+        print(f"DINO confidence:      {dino_reference_config.dino_confidence:.2f}")
+        print(
+            "DINO frame search:    "
+            f"every {dino_reference_config.frame_search_interval} frames, "
+            f"up to {dino_reference_config.max_candidate_frames} candidates"
+        )
+        print(f"DINO reference dir:   {dino_reference_output}")
     print("Director prompting:    2-stage raw scene -> H3 formatter")
     if beats:
         print(f"Story beats:          {len(beats)}")
@@ -16518,6 +16745,19 @@ def _run_main(
     prefetched_next = None
     pending_previous_render_future = None
     render_futures_by_segment = {}
+    dino_reference_lock = threading.Lock()
+
+    def run_dino_reference_update(video_path, subject_state):
+        if dino_skip:
+            return {}
+        with dino_reference_lock:
+            return update_dino_continuity_references(
+                video_path,
+                {"subjects": subject_state},
+                dino_reference_config,
+                dino_reference_output,
+            )
+
     # Set by finalize_skipped_vision_segment once it has finished appending a
     # non-final segment's video path to generated_video_paths. The final
     # segment is always drained synchronously below, so this event is only
@@ -16937,7 +17177,16 @@ def _run_main(
             skipped_registry_state = migrate_continuity_state(continuity_state)
             skipped_prompt_completed_beat_ids = list(prompt_completed_beat_ids)
 
-            def finalize_skipped_vision_segment(future):
+            skipped_dino_subject_state = copy.deepcopy(
+                skipped_registry_state.get("subjects", {})
+                if isinstance(skipped_registry_state, dict)
+                else {}
+            )
+
+            def finalize_skipped_vision_segment(
+                future,
+                skipped_subject_state=skipped_dino_subject_state,
+            ):
                 nonlocal previous_video_path, pending_previous_render_future
                 try:
                     (
@@ -16968,6 +17217,10 @@ def _run_main(
                 generated_video_paths.append(previous_video_path)
                 pending_previous_render_future = None
                 pending_render_finalized.set()
+                dino_references = run_dino_reference_update(
+                    video_path,
+                    skipped_subject_state,
+                )
                 reduced_continuity_state = copy.deepcopy(skipped_prompt_state)
                 continuity_summary = request_continuity_opening_state(
                     reduced_continuity_state,
@@ -16994,6 +17247,7 @@ def _run_main(
                         continuity_summary_pending=False,
                         continuity_opening_state=continuity_summary,
                         subject_registry_state=skipped_registry_state,
+                        dino_continuity_references=dino_references,
                     )
                     completed_record["continuity_prompt_state"] = copy.deepcopy(
                         skipped_prompt_state
@@ -17044,6 +17298,8 @@ def _run_main(
             f"({width * height / 1_000_000:.3f} MP; "
             f"target {rendered_megapixels:.2f} MP)"
         )
+
+        dino_references = run_dino_reference_update(video_path, continuity_state)
 
         # Rendered pixels are authoritative for fields they clearly show. The
         # prompt-derived Phase 1 state remains the fallback for occluded/unknown
@@ -17144,6 +17400,7 @@ def _run_main(
                 continuity_summary_pending=False,
                 continuity_opening_state=continuity_summary,
                 subject_registry_state=continuity_state,
+                dino_continuity_references=dino_references,
             )
             completed_record["continuity_prompt_state"] = copy.deepcopy(
                 prompt_reduced_continuity_state

@@ -10,6 +10,15 @@ const INITIAL_SETTINGS = {
   context_frames: '7',
   refresh: '6',
   vision_continuity: '0',
+  dino_skip: false,
+  dino_confidence: '0.80',
+  dino_box_threshold: '0.35',
+  dino_text_threshold: '0.25',
+  dino_frame_interval: '8',
+  dino_max_candidates: '12',
+  dino_crop_padding_x: '0.12',
+  dino_crop_padding_y: '0.12',
+  dino_min_bbox_area_ratio: '0.01',
   repair: '',
   model: 'ministral',
   first_frame: false,
@@ -47,6 +56,15 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
           context_frames: savedSettings.context_frames ?? current.context_frames,
           refresh: savedSettings.refresh ?? current.refresh,
           vision_continuity: savedSettings.vision_continuity ?? current.vision_continuity,
+          dino_skip: savedSettings.dino_skip ?? current.dino_skip,
+          dino_confidence: savedSettings.dino_confidence ?? current.dino_confidence,
+          dino_box_threshold: savedSettings.dino_box_threshold ?? current.dino_box_threshold,
+          dino_text_threshold: savedSettings.dino_text_threshold ?? current.dino_text_threshold,
+          dino_frame_interval: savedSettings.dino_frame_interval ?? current.dino_frame_interval,
+          dino_max_candidates: savedSettings.dino_max_candidates ?? current.dino_max_candidates,
+          dino_crop_padding_x: savedSettings.dino_crop_padding_x ?? current.dino_crop_padding_x,
+          dino_crop_padding_y: savedSettings.dino_crop_padding_y ?? current.dino_crop_padding_y,
+          dino_min_bbox_area_ratio: savedSettings.dino_min_bbox_area_ratio ?? current.dino_min_bbox_area_ratio,
           repair: savedSettings.repair ?? current.repair,
           model: savedSettings.model ?? current.model,
           first_frame: savedSettings.first_frame ?? current.first_frame,
@@ -130,6 +148,32 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
     }
     if (settings.vision_continuity === '' || !/^\d+$/.test(settings.vision_continuity)) {
       setError('Vision continuity must be a whole number (0 disables it).')
+      return
+    }
+    const dinoRatioFields = [
+      ['dino_confidence', 'DINO confidence'],
+      ['dino_box_threshold', 'DINO box threshold'],
+      ['dino_text_threshold', 'DINO text threshold'],
+      ['dino_crop_padding_x', 'DINO horizontal crop padding'],
+      ['dino_crop_padding_y', 'DINO vertical crop padding'],
+      ['dino_min_bbox_area_ratio', 'DINO minimum bbox area ratio'],
+    ]
+    const invalidDinoRatio = dinoRatioFields.find(
+      ([key]) => settings[key] === '' || !(Number(settings[key]) >= 0 && Number(settings[key]) <= 1),
+    )
+    if (invalidDinoRatio) {
+      setError(`${invalidDinoRatio[1]} must be between 0 and 1.`)
+      return
+    }
+    const dinoIntegerFields = [
+      ['dino_frame_interval', 'DINO frame interval'],
+      ['dino_max_candidates', 'DINO maximum candidates'],
+    ]
+    const invalidDinoInteger = dinoIntegerFields.find(
+      ([key]) => !/^\d+$/.test(settings[key]) || Number(settings[key]) <= 0,
+    )
+    if (invalidDinoInteger) {
+      setError(`${invalidDinoInteger[1]} must be a whole number greater than zero.`)
       return
     }
     if (mode === 'resume' && !(Number(settings.resume) > 0)) {
@@ -323,6 +367,99 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
             <span>
               Add first-frame instructions to segment 1 <code>--ff</code>
             </span>
+          </label>
+        </details>
+
+        <details className="advanced">
+          <summary>Grounding DINO continuity</summary>
+          <div className="field-grid">
+            <NumberField
+              label="Confidence"
+              help="Minimum detection confidence; default: 0.80"
+              value={settings.dino_confidence}
+              onChange={(event) => setField('dino_confidence', event.target.value)}
+              min="0"
+              max="1"
+              step="0.01"
+              disabled={disabled || settings.dino_skip}
+            />
+            <NumberField
+              label="Box threshold"
+              help="Grounding DINO box threshold"
+              value={settings.dino_box_threshold}
+              onChange={(event) => setField('dino_box_threshold', event.target.value)}
+              min="0"
+              max="1"
+              step="0.01"
+              disabled={disabled || settings.dino_skip}
+            />
+            <NumberField
+              label="Text threshold"
+              help="Grounding DINO text threshold"
+              value={settings.dino_text_threshold}
+              onChange={(event) => setField('dino_text_threshold', event.target.value)}
+              min="0"
+              max="1"
+              step="0.01"
+              disabled={disabled || settings.dino_skip}
+            />
+            <NumberField
+              label="Frame interval"
+              help="Search backward every N frames"
+              value={settings.dino_frame_interval}
+              onChange={(event) => setField('dino_frame_interval', event.target.value)}
+              min="1"
+              step="1"
+              disabled={disabled || settings.dino_skip}
+            />
+            <NumberField
+              label="Maximum candidates"
+              help="Maximum frames searched per subject"
+              value={settings.dino_max_candidates}
+              onChange={(event) => setField('dino_max_candidates', event.target.value)}
+              min="1"
+              step="1"
+              disabled={disabled || settings.dino_skip}
+            />
+            <NumberField
+              label="Horizontal padding"
+              help="Proportional padding around the full bbox"
+              value={settings.dino_crop_padding_x}
+              onChange={(event) => setField('dino_crop_padding_x', event.target.value)}
+              min="0"
+              max="1"
+              step="0.01"
+              disabled={disabled || settings.dino_skip}
+            />
+            <NumberField
+              label="Vertical padding"
+              help="Proportional padding around the full bbox"
+              value={settings.dino_crop_padding_y}
+              onChange={(event) => setField('dino_crop_padding_y', event.target.value)}
+              min="0"
+              max="1"
+              step="0.01"
+              disabled={disabled || settings.dino_skip}
+            />
+            <NumberField
+              label="Minimum bbox area"
+              help="Minimum bbox area as a fraction of the frame"
+              value={settings.dino_min_bbox_area_ratio}
+              onChange={(event) => setField('dino_min_bbox_area_ratio', event.target.value)}
+              min="0"
+              max="1"
+              step="0.001"
+              disabled={disabled || settings.dino_skip}
+            />
+          </div>
+          <label className="checkbox-field">
+            <input
+              type="checkbox"
+              checked={settings.dino_skip}
+              onChange={(event) => setField('dino_skip', event.target.checked)}
+              disabled={disabled}
+            />
+            <span>Skip Grounding DINO continuity detection (<code>--dino-skip</code>)</span>
           </label>
         </details>
 

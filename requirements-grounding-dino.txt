@@ -1,0 +1,11 @@
+# Optional dependencies for dino_detector.py.  Keep these separate from the
+# H3 automation requirements; the detector can reuse an existing ComfyUI
+# environment instead.
+torch
+torchvision
+numpy
+transformers>=4.45.0
+timm
+addict
+yapf
+PyYAML

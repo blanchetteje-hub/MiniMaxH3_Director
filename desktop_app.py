@@ -41,6 +41,15 @@ DEFAULT_SETTINGS = {
     "context_frames": "7",
     "refresh": "6",
     "vision_continuity": "0",
+    "dino_skip": False,
+    "dino_confidence": "0.80",
+    "dino_box_threshold": "0.35",
+    "dino_text_threshold": "0.25",
+    "dino_frame_interval": "8",
+    "dino_max_candidates": "12",
+    "dino_crop_padding_x": "0.12",
+    "dino_crop_padding_y": "0.12",
+    "dino_min_bbox_area_ratio": "0.01",
     "repair": "",
     "model": "ministral",
     "first_frame": False,
@@ -131,6 +140,16 @@ def _non_negative_int(value: Any, label: str) -> int:
 
 def _number_argument(value: float) -> str:
     return format(value, ".15g")
+
+
+def _ratio(value: Any, label: str) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"{label} must be a number between 0 and 1.") from error
+    if not math.isfinite(parsed) or not 0 <= parsed <= 1:
+        raise ValueError(f"{label} must be between 0 and 1.")
+    return parsed
 
 
 def _defined_images(value: Any) -> list[str]:
@@ -259,6 +278,38 @@ class MiniMaxBridge:
             "vision_continuity": _non_negative_int(
                 settings.get("vision_continuity", 0), "Vision continuity"
             ),
+            "dino_skip": bool(settings.get("dino_skip", False)),
+            "dino_confidence": _ratio(
+                settings.get("dino_confidence", "0.80"), "DINO confidence"
+            ),
+            "dino_box_threshold": _ratio(
+                settings.get("dino_box_threshold", "0.35"),
+                "DINO box threshold",
+            ),
+            "dino_text_threshold": _ratio(
+                settings.get("dino_text_threshold", "0.25"),
+                "DINO text threshold",
+            ),
+            "dino_frame_interval": _positive_int(
+                settings.get("dino_frame_interval", "8"),
+                "DINO frame interval",
+            ),
+            "dino_max_candidates": _positive_int(
+                settings.get("dino_max_candidates", "12"),
+                "DINO maximum candidates",
+            ),
+            "dino_crop_padding_x": _ratio(
+                settings.get("dino_crop_padding_x", "0.12"),
+                "DINO horizontal crop padding",
+            ),
+            "dino_crop_padding_y": _ratio(
+                settings.get("dino_crop_padding_y", "0.12"),
+                "DINO vertical crop padding",
+            ),
+            "dino_min_bbox_area_ratio": _ratio(
+                settings.get("dino_min_bbox_area_ratio", "0.01"),
+                "DINO minimum bbox area ratio",
+            ),
             "resume": _positive_int(
                 settings.get("resume", 1), "Resume segment"
             ),
@@ -350,9 +401,27 @@ class MiniMaxBridge:
             str(values["refresh"]),
             "--vision-continuity",
             str(values["vision_continuity"]),
+            "--dino-confidence",
+            _number_argument(values["dino_confidence"]),
+            "--dino-box-threshold",
+            _number_argument(values["dino_box_threshold"]),
+            "--dino-text-threshold",
+            _number_argument(values["dino_text_threshold"]),
+            "--dino-frame-interval",
+            str(values["dino_frame_interval"]),
+            "--dino-max-candidates",
+            str(values["dino_max_candidates"]),
+            "--dino-crop-padding-x",
+            _number_argument(values["dino_crop_padding_x"]),
+            "--dino-crop-padding-y",
+            _number_argument(values["dino_crop_padding_y"]),
+            "--dino-min-bbox-area-ratio",
+            _number_argument(values["dino_min_bbox_area_ratio"]),
             "--model",
             values["model"],
         ]
+        if values["dino_skip"]:
+            command.append("--dino-skip")
         if values["repair"] is not None:
             command.extend(("--repair", str(values["repair"])))
         if values["first_frame"]:

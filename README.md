@@ -13,6 +13,39 @@ automation, and remote shells.
 ## Minimum Requirements
 - computer(s) that can run ComfyUI and host an LLM
 
+## Optional Grounding DINO detector
+
+`dino_detector.py` provides local, text-conditioned subject detection without
+using an LLM or changing the H3 automation loop. It accepts an image path (or
+PIL image) and a query, returns every matching detection plus `best_match`, and
+keeps its model loaded between calls.
+
+Install its isolated dependencies with:
+
+```bash
+python -m pip install -r requirements-grounding-dino.txt
+```
+
+Then run:
+
+```bash
+python dino_detector.py --image /path/to/frame.png --query "woman"
+```
+
+Existing standard files in `ComfyUI/models/grounding-dino` are reused. If they
+are absent, the default Grounding DINO Swin-T config and checkpoint are
+downloaded on the first detection into that directory, or into
+`~/.cache/grounding-dino` when no ComfyUI installation is found. The BERT
+tokenizer/model is downloaded by Transformers into its normal local cache when
+needed. Set `GROUNDING_DINO_MODEL_DIR` to choose the download/cache directory,
+or pass `--no-download` for offline operation.
+
+During a normal generation run, the high-confidence continuity-reference path
+is enabled by default and writes subject references under
+`video_output/subject_references`. Use `--dino-skip` to disable that entire
+path, or adjust its confidence, thresholds, backward search, padding, and
+minimum-area settings with the `--dino-*` options.
+
 ## Desktop GUI (primary interface)
 
 ![MiniMax H3 desktop GUI showing service configuration, generation controls, and runtime status](docs/images/minimaxH3Director.png)

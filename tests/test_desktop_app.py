@@ -124,6 +124,35 @@ class DesktopBridgeTests(unittest.TestCase):
             r"H:\Images\input\hero_two.png",
         )
 
+    def test_build_command_includes_dino_settings_and_skip_flag(self):
+        settings = dict(
+            BASE_SETTINGS,
+            dino_skip=True,
+            dino_confidence="0.86",
+            dino_box_threshold="0.31",
+            dino_text_threshold="0.21",
+            dino_frame_interval="6",
+            dino_max_candidates="9",
+            dino_crop_padding_x="0.14",
+            dino_crop_padding_y="0.11",
+            dino_min_bbox_area_ratio="0.02",
+        )
+
+        command = self.make_bridge().build_command(settings)
+
+        self.assertIn("--dino-skip", command)
+        self.assertEqual(command[command.index("--dino-confidence") + 1], "0.86")
+        self.assertEqual(command[command.index("--dino-box-threshold") + 1], "0.31")
+        self.assertEqual(command[command.index("--dino-text-threshold") + 1], "0.21")
+        self.assertEqual(command[command.index("--dino-frame-interval") + 1], "6")
+        self.assertEqual(command[command.index("--dino-max-candidates") + 1], "9")
+
+    def test_invalid_dino_ratio_is_rejected(self):
+        settings = dict(BASE_SETTINGS, dino_confidence="1.1")
+
+        with self.assertRaisesRegex(ValueError, "between 0 and 1"):
+            self.make_bridge().build_command(settings)
+
     def test_more_than_six_defined_images_are_rejected(self):
         settings = dict(
             BASE_SETTINGS,
