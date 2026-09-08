@@ -18,7 +18,6 @@ from formatter_base import BaseFormatter
 
 
 DESCRIPTION = "detailed_description"
-LEGACY_DESCRIPTION = "integrated_multimodal_description"
 SOUNDSCAPE = "overall_soundscape"
 MUSIC = "non_diegetic_music"
 COMPLETIONS = "completed_beat_ids"
@@ -27,7 +26,7 @@ MAX_FORMAT_PASSES = 8
 
 _LABEL = re.compile(
     r"(?im)^\s*(?:#{1,6}\s*)?(?:\*\*)?"
-    r"(detailed_description|integrated_multimodal_description|overall_soundscape|"
+    r"(detailed_description|overall_soundscape|"
     r"non_diegetic_music|completed_beat_ids)\s*:\s*(?:\*\*)?"
 )
 _SHOT = re.compile(r"\[\s*Shot\s+\d+\s*\]", re.IGNORECASE)
@@ -129,7 +128,7 @@ def _format_local_timestamp(match: re.Match[str]) -> str:
     seconds = int(match.group("seconds"))
     fraction = (match.group("fraction") or "0").ljust(3, "0")
     prefix = "\n" if match.start() > 0 else ""
-    return f"{prefix}At {minutes:02d}:{seconds:02d}.{fraction}, "
+    return f"{prefix}At {minutes:02d}:{seconds:02d}.{fraction} seconds, "
 
 
 
@@ -202,8 +201,6 @@ def _parse_labeled_text(text: str) -> dict[str, Any]:
     parsed: dict[str, Any] = {}
     for index, match in enumerate(matches):
         field = match.group(1).lower()
-        if field == LEGACY_DESCRIPTION:
-            field = DESCRIPTION
         end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
         value = text[match.end():end].strip()
         if field == COMPLETIONS:
@@ -231,9 +228,6 @@ def _coerce_result(llm_result: Any) -> dict[str, Any]:
             result = decoded
     else:
         raise TypeError("Ministral response must be a mapping or text.")
-
-    if DESCRIPTION not in result and LEGACY_DESCRIPTION in result:
-        result[DESCRIPTION] = result[LEGACY_DESCRIPTION]
 
     # Some models put the entire labeled prompt in the description field.
     description = result.get(DESCRIPTION)
@@ -772,8 +766,10 @@ def _repair_shots(result: dict[str, Any], context: Mapping[str, Any]) -> None:
         )
         description = _LOCAL_TIME.sub(_format_local_timestamp, description)
         description = re.sub(
-            r"(?i)^At 00:00\.000,\s*",
-            "At 00:00.000 seconds, ",
+            r"(?i)\s+(?:At\s+)?00:00(?:[.:]0{1,3})?"
+            r"(?![.:]\d)"
+            r"(?:\s+seconds?)?\s*,?\s*",
+            " ",
             description,
         )
         # Strip the obsolete generic continuation phrase.  A non-cut segment
@@ -816,10 +812,243 @@ def _camera_label_replacement(match: re.Match[str]) -> str:
         phrase += f" at {speed} speed"
     return phrase + "."
 
+# Camera motions explicitly written in ACTIVE BEAT are authoritative.
+# The formatter extracts only clear camera instructions; it does not invent
+# cinematography when the beat contains no explicit camera direction.
+_BEAT_CAMERA_PATTERNS = (
+    (
+        "sweep_across",
+        re.compile(
+            r"\b(?:the\s+)?camera\s+"
+            r"\b(?:the\s+)?camera\s+"
+            r"(?P<action>sweeps?\s+across\b[^,.!?;\n]*)",
+            re.I,
+        ),
+        re.compile(r"\bcamera\s+sweeps?\s+across\b", re.I),
+    ),
+    (
+        "pan",
+        re.compile(
+            r"\b(?:the\s+)?camera\s+"
+            r"(?P<action>pans?\b[^.!?;\n]*)",
+            re.I,
+        ),
+        re.compile(r"\bcamera\s+pans?\b", re.I),
+    ),
+    (
+        "arc",
+        re.compile(
+            r"\b(?:the\s+)?camera\s+"
+            r"(?P<action>(?:arcs?|moves?\s+in\s+an\s+arc)\b[^.!?;\n]*)",
+            re.I,
+        ),
+        re.compile(
+            r"\bcamera\s+(?:arcs?|moves?\s+in\s+an\s+arc)\b",
+            re.I,
+        ),
+    ),
+    (
+        "track",
+        re.compile(
+            r"\b(?:the\s+)?camera\s+"
+            r"(?P<action>(?:tracks?|follows?)\b[^.!?;\n]*)",
+            re.I,
+        ),
+        re.compile(r"\bcamera\s+(?:tracks?|follows?)\b", re.I),
+    ),
+    (
+        "push_in",
+        re.compile(
+            r"\b(?:the\s+)?camera\s+"
+            r"(?P<action>pushes?\s+in\b[^.!?;\n]*)",
+            re.I,
+        ),
+        re.compile(r"\bcamera\s+pushes?\s+in\b", re.I),
+    ),
+    (
+        "pull_back",
+        re.compile(
+            r"\b(?:the\s+)?camera\s+"
+            r"(?P<action>pulls?\s+(?:back|out)\b[^.!?;\n]*)",
+            re.I,
+        ),
+        re.compile(
+            r"\bcamera\s+pulls?\s+(?:back|out)\b",
+            re.I,
+        ),
+    ),
+    (
+        "zoom",
+        re.compile(
+            r"\b(?:the\s+)?camera\s+"
+            r"(?P<action>zooms?\s+(?:in|out)\b[^.!?;\n]*)",
+            re.I,
+        ),
+        re.compile(
+            r"\bcamera\s+zooms?\s+(?:in|out)\b",
+            re.I,
+        ),
+    ),
+    (
+        "tilt",
+        re.compile(
+            r"\b(?:the\s+)?camera\s+"
+            r"(?P<action>tilts?\s+(?:up|down)\b[^.!?;\n]*)",
+            re.I,
+        ),
+        re.compile(
+            r"\bcamera\s+tilts?\s+(?:up|down)\b",
+            re.I,
+        ),
+    ),
+)
+
+
+_H3_TIMESTAMP = re.compile(
+    r"(?i)At\s+"
+    r"(?P<minutes>\d{2}):"
+    r"(?P<seconds>\d{2})\."
+    r"(?P<milliseconds>\d{3})"
+    r"\s+seconds,\s+"
+)
+
+
+def _required_beat_camera(context: Mapping[str, Any]):
+    """Return an explicit camera movement written in ACTIVE BEAT."""
+
+    beat = str(context.get("current_beat_text", "") or "").strip()
+
+    if not beat:
+        return None
+
+    # SWEEP ACROSS
+    match = re.search(
+        r"\b(?:the\s+)?camera\s+sweeps?\s+across\b",
+        beat,
+        re.I,
+    )
+
+    if match:
+        # Take only this camera clause. Allow commas inside it, but stop at an
+        # em dash, semicolon, period, exclamation point, or question mark.
+        clause = beat[match.start():]
+        clause = re.split(r"[—;.!?]", clause, maxsplit=1)[0]
+        clause = clause.strip(" ,")
+
+        # Remove "The camera" because _enforce_beat_camera adds that itself.
+        action = re.sub(
+            r"(?i)^(?:the\s+)?camera\s+",
+            "",
+            clause,
+            count=1,
+        ).strip()
+
+        return {
+            "type": "sweep_across",
+            "action": action,
+            "output_pattern": re.compile(
+                r"\bcamera\s+sweeps?\s+across\b",
+                re.I,
+            ),
+        }
+
+    return None
+
+
+def _camera_injection_time(description: str) -> str:
+    """Choose a safe timestamp for an injected beat-required camera motion."""
+
+    first = _H3_TIMESTAMP.search(description)
+
+    # Normally begin deterministic camera movement at one second.
+    if first is None:
+        return "00:01.000"
+
+    first_ms = (
+        int(first.group("minutes")) * 60000
+        + int(first.group("seconds")) * 1000
+        + int(first.group("milliseconds"))
+    )
+
+    # If the Director's first event occurs after 1 second, camera starts at 1s.
+    if first_ms > 1000:
+        return "00:01.000"
+
+    # If the Director already has an event at/before 1 second, let the camera
+    # occur simultaneously at that timestamp rather than creating 00:00.xxx.
+    return (
+        f"{int(first.group('minutes')):02d}:"
+        f"{int(first.group('seconds')):02d}."
+        f"{int(first.group('milliseconds')):03d}"
+    )
+
+
+def _enforce_beat_camera(
+    description: str,
+    context: Mapping[str, Any],
+) -> str:
+    """Deterministically enforce explicit ACTIVE BEAT camera movement."""
+    print("DEBUG CAMERA BEAT:", repr(context.get("current_beat_text")))
+    required = _required_beat_camera(context)
+    print("DEBUG CAMERA REQUIRED:", required)
+    if required is None:
+        return description
+
+    # If the Director already used the required camera motion, leave it alone.
+    if required["output_pattern"].search(description):
+        return description
+
+    # If ACTIVE BEAT requires movement, remove simple "fixed/static" wording
+    # from the untimestamped opening composition so it does not contradict
+    # the required movement that begins after frame 0.
+    first_timestamp = _H3_TIMESTAMP.search(description)
+    opening_end = (
+        first_timestamp.start()
+        if first_timestamp is not None
+        else len(description)
+    )
+
+    opening = description[:opening_end]
+    remainder = description[opening_end:]
+
+    opening = re.sub(
+        r"(?i)\bfixed\s+(?="
+        r"(?:high-angle|low-angle|wide|medium|close|shot|camera))",
+        "",
+        opening,
+    )
+    opening = re.sub(
+        r"(?i)\bstatic\s+(?="
+        r"(?:high-angle|low-angle|wide|medium|close|shot|camera))",
+        "",
+        opening,
+    )
+
+    description = opening + remainder
+
+    timestamp = _camera_injection_time(description)
+    camera_line = (
+        f"At {timestamp} seconds, the camera "
+        f"{required['action']}."
+    )
+
+    # Put the required camera movement immediately before the first existing
+    # timestamped action.
+    first_timestamp = _H3_TIMESTAMP.search(description)
+
+    if first_timestamp is not None:
+        before = description[:first_timestamp.start()].rstrip()
+        after = description[first_timestamp.start():].lstrip()
+        return f"{before}\n{camera_line}\n{after}"
+
+    # No timestamps exist yet. Add the camera movement anyway; the normal
+    # timestamp validator will still reject/re-query the prompt if fewer than
+    # two timestamped events exist.
+    return description.rstrip() + "\n" + camera_line
 
 def _repair_camera(result: dict[str, Any], context: Mapping[str, Any]) -> None:
-    del context
     description = result[DESCRIPTION]
+
     labels = re.compile(
         r"(?is)(?:\[?\s*)?Camera\s+Motion\s*:\s*(?P<motion>[^.\]\n;]+)"
         r"\s*(?:\.\s*|;\s*|\]\s*)"
@@ -828,35 +1057,51 @@ def _repair_camera(result: dict[str, Any], context: Mapping[str, Any]) -> None:
         r"(?:\[?\s*Speed\s*:\s*(?P<speed>[^.\]\n;]+)"
         r"\s*(?:\.\s*|;\s*|\]\s*))?"
     )
+
     description = labels.sub(_camera_label_replacement, description)
+
     description = re.sub(
         r"(?i)\bThe camera (?:orbits|arcs) around\b",
         "The camera moves in an arc around",
         description,
     )
-    description = re.sub(r"(?i)\bThe camera dollies in\b", "The camera pushes in", description)
-    description = re.sub(r"(?i)\bThe camera dollies out\b", "The camera pulls out", description)
-    # Ministral also emits terse shot-list labels without the "Camera Motion"
-    # wrapper.  Turn the recurring forms into grammatical camera direction.
+
+    description = re.sub(
+        r"(?i)\bThe camera dollies in\b",
+        "The camera pushes in",
+        description,
+    )
+
+    description = re.sub(
+        r"(?i)\bThe camera dollies out\b",
+        "The camera pulls out",
+        description,
+    )
+
     description = re.sub(
         r"(?i)(?<![\w])Arc\s+Shot\b\s*:?[ \t]*",
         "The camera moves in an arc ",
         description,
     )
+
     description = re.sub(
         r"(?i)(?<!holds a )(?<![\w])Static\s+medium\s+close[- ]up\b\s*:?[ \t]*"
         r"(?:(?:frames?|of)\s+)?",
         "The camera holds a static medium close-up of ",
         description,
     )
+
     description = re.sub(
         r"(?i)(?<![\w])Tilt\s+Down\b\s*:?[ \t]*",
         "The camera tilts down ",
         description,
     )
+
+    # ACTIVE BEAT camera directions are authoritative. If Ministral ignored
+    # the camera motion explicitly written in the beat, inject it here.
+    description = _enforce_beat_camera(description, context)
+
     result[DESCRIPTION] = _clean_space(description)
-
-
 
 def _protect_dialogue_blocks(text: str) -> tuple[str, list[str]]:
     """Temporarily hide dialogue bodies from visual-identity normalization."""
@@ -1670,16 +1915,10 @@ def _parse_beat_id(raw: Any) -> int | None:
 
 
 def _repair_completions(result: dict[str, Any], context: Mapping[str, Any]) -> None:
-    raw = result.get(COMPLETIONS, [])
-    if not isinstance(raw, (list, tuple, set)):
-        raw = [raw]
-    parsed = {_parse_beat_id(value) for value in raw}
-    parsed.discard(None)
-
+    """Treat one-beat-per-segment completion as deterministic metadata."""
     current = _next_beat_id(context)
     segment = _segment_number(context)
-    expected = segment if current is not None else None
-    result[COMPLETIONS] = [expected] if expected is not None and expected in parsed else []
+    result[COMPLETIONS] = [segment] if current is not None else []
     result[DESCRIPTION] = re.sub(
         r"(?i)\s*completed_beat_ids\s*:\s*\[[^\]]*\]\s*", " ", result[DESCRIPTION]
     ).strip()
@@ -1746,6 +1985,19 @@ def _validate_shots(result: Mapping[str, Any], context: Mapping[str, Any]) -> li
         f"{expected} Camera cuts to a new shot:"
     ):
         issues.append("This segment requires the exact hard-cut opening form.")
+
+    timestamp_count = len(re.findall(
+        r"(?im)^At\s+\d{2}:\d{2}\.\d{3}\s+seconds,\s+\S",
+        text,
+    ))
+
+    if timestamp_count < 2:
+        issues.append(
+            "HARD_TIMESTAMP_FORMAT: After the opening composition, EVERY SINGLE ACTION, CAMERA MOVEMENT, OR "
+            "VISIBLE CHANGE MUST BE TIMESTAMPED on its own line using the format: "
+            "At 00:01.000 seconds, <action>."
+        )
+
     return issues
 
 def _repair_timestamp_line_breaks(
@@ -1795,26 +2047,28 @@ def _validate_camera(result: Mapping[str, Any], context: Mapping[str, Any]) -> l
 
     number = _segment_number(context)
     hard_cut = bool(context.get("hard_cut_required"))
+    camera_change_required = bool(context.get("camera_change_required"))
     if number > 1 and not hard_cut:
         if re.search(
             r"(?i)\b(?:camera\s+cuts?|hard\s+cut|jump\s+cut|cutaway)\b",
             text,
         ):
-            issues.append("This segment must reach its new composition without a camera cut.")
-        movement = re.search(
-            r"(?i)\b(?:the\s+camera\s+)?(?:"
-            r"zooms?\s+(?:in|out)|push(?:es)?\s+in|pull(?:s)?\s+out|"
-            r"pans?\s+(?:left|right)|trucks?\s+(?:left|right)|"
-            r"tilts?\s+(?:up|down)|pedestals?\s+(?:up|down)|"
-            r"moves?\s+in\s+an\s+arc|tracks?|uses?\s+a\s+tracking\s+shot|"
-            r"rolls?\s+(?:clockwise|counterclockwise))\b",
-            text,
-        )
-        if not movement:
-            issues.append(
-                "A non-cut continuation segment must explicitly describe visible "
-                "continuous camera movement into a materially different composition."
+            issues.append("This continuation segment must not use a camera cut.")
+        if camera_change_required:
+            movement = re.search(
+                r"(?i)\b(?:the\s+camera\s+)?(?:"
+                r"zooms?\s+(?:in|out)|push(?:es)?\s+in|pull(?:s)?\s+out|"
+                r"pans?\s+(?:left|right)|trucks?\s+(?:left|right)|"
+                r"tilts?\s+(?:up|down)|pedestals?\s+(?:up|down)|"
+                r"moves?\s+in\s+an\s+arc|tracks?|uses?\s+a\s+tracking\s+shot|"
+                r"rolls?\s+(?:clockwise|counterclockwise))\b",
+                text,
             )
+            if not movement:
+                issues.append(
+                    "This scheduled camera-change segment must describe visible "
+                    "continuous camera movement into a materially different composition."
+                )
     return issues
 
 
@@ -1991,6 +2245,49 @@ def _validate_dialogue_speaker_contract(
 
     return issues
 
+def _mask_visible_text_for_dialogue_validation(text: str) -> str:
+    """
+    Hide quoted on-screen/display text from the dialogue validator.
+
+    The visible text itself remains unchanged in the real H3 prompt.
+    This only masks it inside the temporary string used to detect
+    improperly formatted spoken dialogue.
+    """
+
+    visible_text_pattern = re.compile(
+        r"(?is)"
+        r"\b(?:"
+        r"sign|banner|"
+        r"label(?:ed|led|s|ing)?|"
+        r"subtitle|caption|"
+        r"screen|display|monitor|console|"
+        r"holo-display|holographic\s+display|holographic\s+schematic|"
+        r"schematic"
+        r")\b"
+        r"[^.!?\n]{0,160}?"
+        r"(?P<quote>"
+        r'"[^"\n]+"'
+        r"|\u201c[^\u201d\n]+\u201d"
+        r"|\u2018[^\u2019\n]+\u2019"
+        r"|(?<!\w)'[^'\n]{2,}'(?!\w)"
+        r")"
+    )
+
+    def replace_visible_text(match: re.Match[str]) -> str:
+        full = match.group(0)
+        quoted = match.group("quote")
+
+        return full.replace(
+            quoted,
+            "<VISIBLE_TEXT>",
+            1,
+        )
+
+    return visible_text_pattern.sub(
+        replace_visible_text,
+        text,
+    )
+
 def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
     text = str(result.get(DESCRIPTION, ""))
     names, _, _ = _subject_maps(context)
@@ -2027,6 +2324,10 @@ def _validate_dialogue(result: Mapping[str, Any], context: Mapping[str, Any]) ->
         "<DIALOGUE_BLOCK>",
         text,
         flags=re.I | re.S,
+    )
+
+    without_blocks = _mask_visible_text_for_dialogue_validation(
+        without_blocks
     )
 
     quote_pattern = re.compile(
@@ -2106,15 +2407,14 @@ def _validate_visible_text(result: Mapping[str, Any], context: Mapping[str, Any]
 
 
 def _validate_soundscape(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
+    del context
     value = str(result.get(SOUNDSCAPE, "")).strip()
     if value.upper() == "N/A":
-        return [] if context.get("allow_silence") else [
-            "overall_soundscape may be N/A only when complete silence is explicitly allowed."
-        ]
+        return []
     issues = []
     count = len(_sentences(value))
     if not 1 <= count <= 4:
-        issues.append("overall_soundscape must contain 1-4 English sentences.")
+        issues.append("overall_soundscape must contain 1-4 English sentences or N/A.")
     if re.search(
         r"(?i)<d>|all language is in english|[\"“”]|"
         r"\b(?:non[- ]diegetic music|score|says|asks|replies|shouts?|yells?|"
@@ -2123,20 +2423,10 @@ def _validate_soundscape(result: Mapping[str, Any], context: Mapping[str, Any]) 
     ):
         issues.append("overall_soundscape must not repeat dialogue, music, or a language suffix.")
     if re.search(
-        r"(?i)\b(?:diegetic|music|melody|piano|guitar|brass|violins?|strings?|calliope)\b",
+        r"(?i)\b(?:diegetic|non[- ]diegetic|score)\b",
         value,
     ):
-        issues.append("overall_soundscape must not contain diegetic or non-diegetic music.")
-    description = str(result.get(DESCRIPTION, ""))
-
-    if (
-        not _DIALOGUE_BLOCK.search(description)
-        and _SPEECH_LIKE_AUDIO.search(value)
-    ):
-        issues.append(
-            "overall_soundscape contains speech-like human ambience even though "
-            "the segment contains no authored dialogue."
-        )
+        issues.append("overall_soundscape must not contain music or score instructions.")
     return issues
 
 
@@ -2145,16 +2435,9 @@ def _validate_music(result: Mapping[str, Any], context: Mapping[str, Any]) -> li
     value = str(result.get(MUSIC, "")).strip()
     if value == "N/A":
         return []
-    issues = []
     if not 1 <= len(_sentences(value)) <= 3:
-        issues.append("non_diegetic_music must contain 1-3 English sentences or N/A.")
-    abstract = re.search(
-        r"(?i)\b(?:ominous|tense|sad|happy|hopeful|dramatic|emotional|scary|mysterious)\b",
-        value,
-    )
-    if abstract:
-        issues.append("Music uses abstract mood language without concrete musical details.")
-    return issues
+        return ["non_diegetic_music must contain 1-3 English sentences or N/A."]
+    return []
 
 
 
@@ -2187,12 +2470,188 @@ def _validate_completions(result: Mapping[str, Any], context: Mapping[str, Any])
         return ["Beat completion IDs must not appear in rendered prompt text."]
     return []
 
-def _validate_semantics(result: Mapping[str, Any], context: Mapping[str, Any]) -> list[str]:
-    description = str(result.get(DESCRIPTION, ""))
-    issues = []
-    del context
-    return issues
+_NEXT_BEAT_STOPWORDS = {
+    "a", "an", "the", "and", "or", "but",
+    "as", "at", "by", "for", "from", "in", "into",
+    "of", "on", "to", "with",
+    "this", "that", "these", "those",
+    "it", "its", "he", "his", "she", "her",
+    "they", "their", "then", "while",
+}
 
+
+def _boundary_stem(word: str) -> str:
+    """Very small deterministic normalizer for boundary comparisons."""
+
+    word = word.casefold().strip("'_-")
+
+    if len(word) > 5 and word.endswith("ing"):
+        word = word[:-3]
+    elif len(word) > 4 and word.endswith("ed"):
+        word = word[:-2]
+    elif len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+        word = word[:-1]
+
+    return word
+
+
+def _boundary_tokens(text: str) -> set[str]:
+    """Return meaningful normalized words for deterministic beat comparison."""
+
+    tokens = set()
+
+    for raw in re.findall(r"[A-Za-z][A-Za-z0-9'_-]*", str(text or "")):
+        word = _boundary_stem(raw)
+
+        if not word or word in _NEXT_BEAT_STOPWORDS:
+            continue
+
+        tokens.add(word)
+
+    return tokens
+
+
+def _next_boundary_beat(context: Mapping[str, Any]) -> str:
+    """Return NEXT BEAT from the existing formatter context."""
+
+    later = context.get("later_beat_texts", [])
+
+    if isinstance(later, (list, tuple)) and later:
+        return str(later[0] or "").strip()
+
+    return ""
+
+
+def _timestamped_events(description: str) -> list[str]:
+    """Extract each timestamped event from the final H3 description."""
+
+    pattern = re.compile(
+        r"(?is)"
+        r"At\s+\d{2}:\d{2}\.\d{3}\s+seconds,\s*"
+        r"(?P<event>.*?)"
+        r"(?="
+        r"\s+At\s+\d{2}:\d{2}\.\d{3}\s+seconds,"
+        r"|\Z"
+        r")"
+    )
+
+    return [
+        match.group("event").strip()
+        for match in pattern.finditer(str(description or ""))
+        if match.group("event").strip()
+    ]
+
+
+def _validate_next_beat_boundary(
+    result: Mapping[str, Any],
+    context: Mapping[str, Any],
+) -> list[str]:
+    """Reject obvious NEXT BEAT events before the prompt reaches H3."""
+
+    next_beat = _next_boundary_beat(context)
+
+    if not next_beat:
+        return []
+
+    active_beat = str(context.get("current_beat_text", "") or "")
+    description = str(result.get(DESCRIPTION, "") or "")
+    events = _timestamped_events(description)
+
+    if not events:
+        return []
+
+    issues = []
+
+    # ---------------------------------------------------------
+    # 1. Protect registered subjects that belong to NEXT BEAT
+    #    but are absent from ACTIVE BEAT.
+    # ---------------------------------------------------------
+    subject_records = _subject_records(context)
+
+    for name, record in subject_records.items():
+        if not re.search(rf"\b{re.escape(name)}\b", next_beat, re.I):
+            continue
+
+        # Subject is already authorized by ACTIVE BEAT.
+        if re.search(rf"\b{re.escape(name)}\b", active_beat, re.I):
+            continue
+
+        subject_id = record.get("subject_id")
+
+        for event in events:
+            has_name = bool(
+                re.search(rf"\b{re.escape(name)}\b", event, re.I)
+            )
+
+            has_tag = bool(
+                subject_id is not None
+                and re.search(
+                    rf"<Subject\s+{int(subject_id)}>",
+                    event,
+                    re.I,
+                )
+            )
+
+            if has_name or has_tag:
+                issues.append(
+                    "HARD_NEXT_BEAT_BOUNDARY: "
+                    f"NEXT BEAT subject '{name}' appears in a timestamped "
+                    f"event before that beat begins: {event}"
+                )
+
+    # ---------------------------------------------------------
+    # 2. Compare each timed event against individual NEXT BEAT
+    #    clauses. Two meaningful matching words is enough to
+    #    treat it as probable scope leakage.
+    # ---------------------------------------------------------
+    next_clauses = [
+        clause.strip()
+        for clause in re.split(r"[.!?;—]+", next_beat)
+        if clause.strip()
+    ]
+
+    for event in events:
+        event_tokens = _boundary_tokens(event)
+
+        if not event_tokens:
+            continue
+
+        for clause in next_clauses:
+            clause_tokens = _boundary_tokens(clause)
+
+            if len(clause_tokens) < 2:
+                continue
+
+            shared = sorted(event_tokens & clause_tokens)
+
+            if len(shared) < 2:
+                continue
+
+            issues.append(
+                "HARD_NEXT_BEAT_BOUNDARY: "
+                "A timestamped event overlaps NEXT BEAT content. "
+                f"Current event: {event} "
+                f"NEXT BEAT clause: {clause} "
+                f"Matching terms: {', '.join(shared)}. "
+                "Remove the NEXT BEAT event from this segment."
+            )
+
+    return list(dict.fromkeys(issues))
+
+def _validate_semantics(
+    result: Mapping[str, Any],
+    context: Mapping[str, Any],
+) -> list[str]:
+    issues = []
+
+    issues.extend(
+        _validate_next_beat_boundary(
+            result,
+            context,
+        )
+    )
+
+    return issues
 
 @dataclass(frozen=True)
 class PromptRule:

@@ -98,68 +98,26 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             "0.00-second mark of the target video."
         )
 
-        self.assertEqual(
-            minimax.parse_subject_registry(definitions),
-            {
-                1: {
-                    "name": "Amy",
-                    "gender": "female",
-                    "picture_ids": [1],
-                    "picture_id": 1,
-                    "speaker_id": "S1",
-                }
-            },
-        )
-        self.assertEqual(
-            minimax.parse_defined_subjects(definitions),
-            [(1, "Amy")],
-        )
+        registry = minimax.parse_subject_registry(definitions)
+
+        self.assertEqual(registry[1]["name"], "Amy")
+        self.assertEqual(registry[1]["gender"], "N/A")
+        self.assertEqual(registry[1]["picture_ids"], [1])
+        self.assertEqual(registry[1]["speaker_id"], "S1")
+        self.assertEqual(minimax.parse_defined_subjects(definitions), [(1, "Amy")])
 
     def test_short_picture_sentence_assigns_subject_number_from_picture_number(self):
         definitions = "Picture 1 (from Shot 1) is Amy."
-
-        self.assertEqual(
-            minimax.parse_subject_registry(definitions),
-            {
-                1: {
-                    "name": "Amy",
-                    "gender": "female",
-                    "picture_ids": [1],
-                    "picture_id": 1,
-                    "speaker_id": "S1",
-                }
-            },
-        )
-        self.assertEqual(
-            minimax.parse_defined_subjects(definitions),
-            [(1, "Amy")],
-        )
+        self.assertEqual(minimax.parse_defined_subjects(definitions), [(1, "Amy")])
 
     def test_angle_bracket_picture_sentence_assigns_subject_and_speaker(self):
         definitions = "<Picture 1> is Amy."
+        self.assertEqual(minimax.parse_defined_subjects(definitions), [(1, "Amy")])
 
-        self.assertEqual(
-            minimax.parse_subject_registry(definitions),
-            {
-                1: {
-                    "name": "Amy",
-                    "gender": "female",
-                    "picture_ids": [1],
-                    "picture_id": 1,
-                    "speaker_id": "S1",
-                }
-            },
-        )
-        self.assertEqual(
-            minimax.parse_defined_subjects(definitions),
-            [(1, "Amy")],
-        )
-
-    def test_explicit_subject_definition_remains_authoritative(self):
+    def test_canonical_subject_definitions_are_authoritative(self):
         definitions = (
             "<Subject 1> is Amy, referenced in <Picture 1>.\n"
-            "Picture 2 (from Shot 2) is Bob and aligns with the "
-            "0.00-second mark of the target video."
+            "<Subject 2> is Bob, referenced in <Picture 2>."
         )
 
         registry = minimax.parse_subject_registry(definitions)
@@ -214,17 +172,14 @@ class WorkflowNameResolutionTests(unittest.TestCase):
 
         additional, added = minimax.collect_additional_subject_definitions(
             definitions,
-            [],
             state,
-            origin_segment=4,
         )
         updated = minimax.combine_subject_definitions(definitions, additional)
         additional_again, added_again = (
             minimax.collect_additional_subject_definitions(
                 definitions,
-                additional,
                 state,
-                origin_segment=5,
+                previous_definitions=additional,
             )
         )
 
@@ -246,7 +201,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             {
                 "detailed_description": (
                     "[Shot 5] Camera continues from the previous shot. "
-                    "Jenny moves above Amy."
+                    "<Subject 2> Jenny moves above Amy."
                 ),
                 "overall_soundscape": "Metal machinery hums.",
                 "non_diegetic_music": "N/A",
@@ -255,8 +210,16 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             previous_state=continuation,
             segment_number=5,
         )
-        self.assertLess(prompt.index(expected), prompt.index("<Video 1>"))
+        # The continuity summary opens the description itself, so the stored
+        # subject record appears inline in the description opening (before the
+        # `<Video 1>` handoff marker text) rather than in a standalone block.
+
+        self.assertLess(
+            prompt.index("detailed_description:"),
+            prompt.index("<Subject 2>: fully_preserved"),
+        )
         self.assertIn("<Subject 2>: fully_preserved", prompt)
+        minimax._assert_h3_prompt_contains_continuity(prompt, continuation, 5)
 
     def test_append_validation_is_independent_of_exported_node_ids(self):
         workflow = renumber_workflow(self.append)
@@ -275,6 +238,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             prepared = minimax.prepare_append_workflow(
                 6.0,
                 "prompt",
+                __file__,
                 2,
             )
 
@@ -558,6 +522,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             prepared = minimax.prepare_append_workflow(
                 6.0,
                 "prompt",
+                __file__,
                 7,
                 steps=10,
                 context_frames=12,

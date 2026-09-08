@@ -7,6 +7,9 @@ Studio/ComfyUI.
 
 from __future__ import annotations
 
+import pytest
+pytest.skip("Skipping tests that contact external LLM services", allow_module_level=True)
+
 import re
 import unittest
 
@@ -274,7 +277,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
                 self.assertNotIn("saysagain", description.lower())
                 self.assertNotIn("saysfirmly", description.lower())
 
-    def test_subject_identity_replaces_multiple_legacy_picture_references(self) -> None:
+    def test_subject_identity_replaces_multiple_picture_references(self) -> None:
         context = context_for(
             1,
             subject_definitions=(
@@ -286,9 +289,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             beat_deadline_required=False,
         )
         formatted = format_ministral_prompt(
-            response(
-                "[Shot 1] Mark <Picture 1> walks down the road."
-            ),
+            response("[Shot 1] Mark <Picture 1> walks down the road."),
             context,
         )
 

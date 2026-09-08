@@ -9,11 +9,13 @@ const INITIAL_SETTINGS = {
   steps: '6',
   context_frames: '7',
   refresh: '6',
+  vision_continuity: '0',
   repair: '',
   model: 'ministral',
   first_frame: false,
   loras: [],
   beat_count: '',
+  lora_dir: '',
 }
 
 function NumberField({ label, help, ...props }) {
@@ -44,11 +46,13 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
           steps: savedSettings.steps ?? current.steps,
           context_frames: savedSettings.context_frames ?? current.context_frames,
           refresh: savedSettings.refresh ?? current.refresh,
+          vision_continuity: savedSettings.vision_continuity ?? current.vision_continuity,
           repair: savedSettings.repair ?? current.repair,
           model: savedSettings.model ?? current.model,
           first_frame: savedSettings.first_frame ?? current.first_frame,
           loras: Array.isArray(savedSettings.loras) ? savedSettings.loras : current.loras,
           beat_count: savedSettings.beat_count ?? current.beat_count,
+          lora_dir: savedSettings.lora_dir ?? current.lora_dir,
         }))
       } catch (err) {
         // Silently fall back to defaults if settings can't be loaded
@@ -122,6 +126,10 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
     const invalid = positiveFields.find(([key]) => !(Number(settings[key]) > 0))
     if (invalid) {
       setError(`${invalid[1]} must be greater than zero.`)
+      return
+    }
+    if (settings.vision_continuity === '' || !/^\d+$/.test(settings.vision_continuity)) {
+      setError('Vision continuity must be a whole number (0 disables it).')
       return
     }
     if (mode === 'resume' && !(Number(settings.resume) > 0)) {
@@ -275,6 +283,22 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               onChange={(event) => setField('refresh', event.target.value)}
               min="1"
               step="1"
+              disabled={disabled}
+            />
+            <NumberField
+              label="Vision continuity"
+              help="Rendered-frame check cadence; 0 disables it, 1 checks every segment (requires ComfyUI to return before executing)"
+              value={settings.vision_continuity}
+              onChange={(event) => setField('vision_continuity', event.target.value)}
+              min="0"
+              step="1"
+              disabled={disabled}
+            />
+            <NumberField
+              label="LoRA Path"
+              help="Directory containing LoRA files (overrides default)"
+              value={settings.lora_dir}
+              onChange={(event) => setField('lora_dir', event.target.value)}
               disabled={disabled}
             />
             <label className="field">
