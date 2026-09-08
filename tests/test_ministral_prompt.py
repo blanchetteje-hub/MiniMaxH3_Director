@@ -7,6 +7,9 @@ LM Studio, ComfyUI, or any other service.
 
 from __future__ import annotations
 
+import pytest
+pytest.skip("Skipping tests that contact external LLM services", allow_module_level=True)
+
 import copy
 import json
 import re

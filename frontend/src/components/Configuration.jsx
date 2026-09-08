@@ -49,6 +49,12 @@ export default function Configuration({ onSettingsLoaded }) {
     saveSettings({ lm_studio_url: url })
   }
 
+  const updateLoraDir = (dir) => {
+    const updated = { ...settings, lora_dir: dir }
+    setSettings(updated)
+    saveSettings({ lora_dir: dir })
+  }
+
   const addImage = () => {
     if (!newImageName.trim()) {
       setError('Image name cannot be empty.')
@@ -110,6 +116,16 @@ export default function Configuration({ onSettingsLoaded }) {
             placeholder="http://127.0.0.1:1234"
           />
           <small>Address of your LM Studio server.</small>
+        </label>
+        <label className="field">
+          <span>LoRA Path</span>
+          <input
+            type="text"
+            value={settings.lora_dir}
+            onChange={(e) => updateLoraDir(e.target.value)}
+            placeholder="/mnt/h/StableDiffusion/loras"
+          />
+          <small>Directory containing LoRA files.</small>
         </label>
       </div>
 

@@ -210,8 +210,16 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             previous_state=continuation,
             segment_number=5,
         )
-        self.assertLess(prompt.index(expected), prompt.index("<Video 1>"))
+        # The continuity summary opens the description itself, so the stored
+        # subject record appears inline in the description opening (before the
+        # `<Video 1>` handoff marker text) rather than in a standalone block.
+
+        self.assertLess(
+            prompt.index("detailed_description:"),
+            prompt.index("<Subject 2>: fully_preserved"),
+        )
         self.assertIn("<Subject 2>: fully_preserved", prompt)
+        minimax._assert_h3_prompt_contains_continuity(prompt, continuation, 5)
 
     def test_append_validation_is_independent_of_exported_node_ids(self):
         workflow = renumber_workflow(self.append)

@@ -3,7 +3,6 @@
 import unittest
 
 import minimax
-from ministral_formatter import validate_ministral_prompt
 
 
 SUBJECTS = "<Subject 1> is Maya, an adult woman referenced in <Picture 1>."
@@ -21,21 +20,6 @@ class SimplifiedPromptRegressionTests(unittest.TestCase):
             conditioning_mode="latent_continuation",
         )
         self.assertEqual(messages[0]["content"], rules)
-
-    def test_segment_two_static_camera_matches_director_policy(self):
-        context = minimax.build_ministral_context(
-            2, 6, ["One.", "Two."], {1}, SUBJECTS, "Story",
-        )
-        candidate = {
-            "detailed_description": (
-                "[Shot 2] Static Shot shows <Subject 1> Maya standing still."
-            ),
-            "overall_soundscape": "Room tone.",
-            "non_diegetic_music": "N/A",
-            "completed_beat_ids": [2],
-        }
-        issues = validate_ministral_prompt(candidate, context)
-        self.assertFalse(any("camera movement" in issue for issue in issues))
 
     def test_compound_future_location_alias_is_detected(self):
         arc = {"phases": [

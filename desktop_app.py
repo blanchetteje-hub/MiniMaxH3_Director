@@ -21,6 +21,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from minimax import LORA_DIRECTORY
+
 
 PROJECT_DIR = Path(__file__).resolve().parent
 MINIMAX_SCRIPT = PROJECT_DIR / "minimax.py"
@@ -38,11 +40,13 @@ DEFAULT_SETTINGS = {
     "steps": "6",
     "context_frames": "7",
     "refresh": "6",
+    "vision_continuity": "0",
     "repair": "",
     "model": "ministral",
     "first_frame": False,
     "loras": [],
     "beat_count": "",
+    "lora_dir": LORA_DIRECTORY,
 }
 
 
@@ -108,6 +112,20 @@ def _positive_int(value: Any, label: str) -> int:
         ) from error
     if parsed <= 0:
         raise ValueError(f"{label} must be greater than zero.")
+    return parsed
+
+
+def _non_negative_int(value: Any, label: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be a whole number zero or greater.")
+    try:
+        parsed = int(str(value).strip())
+    except (TypeError, ValueError) as error:
+        raise ValueError(
+            f"{label} must be a whole number zero or greater."
+        ) from error
+    if parsed < 0:
+        raise ValueError(f"{label} must be zero or greater.")
     return parsed
 
 
@@ -238,6 +256,9 @@ class MiniMaxBridge:
             "refresh": _positive_int(
                 settings.get("refresh", 6), "Refresh interval"
             ),
+            "vision_continuity": _non_negative_int(
+                settings.get("vision_continuity", 0), "Vision continuity"
+            ),
             "resume": _positive_int(
                 settings.get("resume", 1), "Resume segment"
             ),
@@ -327,6 +348,8 @@ class MiniMaxBridge:
             str(values["context_frames"]),
             "--refresh",
             str(values["refresh"]),
+            "--vision-continuity",
+            str(values["vision_continuity"]),
             "--model",
             values["model"],
         ]
@@ -334,6 +357,9 @@ class MiniMaxBridge:
             command.extend(("--repair", str(values["repair"])))
         if values["first_frame"]:
             command.append("--ff")
+        lora_dir = values.get("lora_dir", LORA_DIRECTORY)
+        if lora_dir:
+            command.extend(("--lora_dir", str(lora_dir)))
         for name, strength in values["loras"]:
             command.extend(("--lora", f"{name}:{_number_argument(strength)}"))
         for image_number, image_path in enumerate(

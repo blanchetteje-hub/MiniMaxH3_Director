@@ -23,3 +23,6 @@ prompt_history.txt
 refresh_first_frame*
 desktop_app.py
 frontend/dist/assets/*
+CLAUDE.md
+tests/requirements-test.txt
+.vscode/settings.json

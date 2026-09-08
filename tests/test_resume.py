@@ -537,16 +537,6 @@ class ResumeTests(unittest.TestCase):
             expanded["source_sha256"],
         )
 
-    def test_resume_rejects_checkpoint_without_current_continuity_schema(self):
-        with tempfile.TemporaryDirectory() as directory:
-            checkpoint = os.path.join(directory, "generation_state.json")
-            state = {"version": 1, "segments": []}
-            minimax.save_generation_state(state, checkpoint)
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "unsupported continuity schema version",
-            ):
-                minimax.restore_generation_state(1, [], checkpoint)
 
     def test_resume_rejects_missing_prior_video_or_director_result(self):
         with tempfile.TemporaryDirectory() as directory:

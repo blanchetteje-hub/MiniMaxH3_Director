@@ -18,7 +18,6 @@ from formatter_base import BaseFormatter
 
 
 DESCRIPTION = "detailed_description"
-LEGACY_DESCRIPTION = "integrated_multimodal_description"
 SOUNDSCAPE = "overall_soundscape"
 MUSIC = "non_diegetic_music"
 COMPLETIONS = "completed_beat_ids"
@@ -27,7 +26,7 @@ MAX_FORMAT_PASSES = 8
 
 _LABEL = re.compile(
     r"(?im)^\s*(?:#{1,6}\s*)?(?:\*\*)?"
-    r"(detailed_description|integrated_multimodal_description|overall_soundscape|"
+    r"(detailed_description|overall_soundscape|"
     r"non_diegetic_music|completed_beat_ids)\s*:\s*(?:\*\*)?"
 )
 _SHOT = re.compile(r"\[\s*Shot\s+\d+\s*\]", re.IGNORECASE)
@@ -202,8 +201,6 @@ def _parse_labeled_text(text: str) -> dict[str, Any]:
     parsed: dict[str, Any] = {}
     for index, match in enumerate(matches):
         field = match.group(1).lower()
-        if field == LEGACY_DESCRIPTION:
-            field = DESCRIPTION
         end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
         value = text[match.end():end].strip()
         if field == COMPLETIONS:
@@ -231,9 +228,6 @@ def _coerce_result(llm_result: Any) -> dict[str, Any]:
             result = decoded
     else:
         raise TypeError("Ministral response must be a mapping or text.")
-
-    if DESCRIPTION not in result and LEGACY_DESCRIPTION in result:
-        result[DESCRIPTION] = result[LEGACY_DESCRIPTION]
 
     # Some models put the entire labeled prompt in the description field.
     description = result.get(DESCRIPTION)
