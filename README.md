@@ -41,10 +41,18 @@ needed. Set `GROUNDING_DINO_MODEL_DIR` to choose the download/cache directory,
 or pass `--no-download` for offline operation.
 
 During a normal generation run, the high-confidence continuity-reference path
-is enabled by default and writes subject references under
-`video_output/subject_references`. Use `--dino-skip` to disable that entire
-path, or adjust its confidence, thresholds, backward search, padding, and
-minimum-area settings with the `--dino-*` options.
+is enabled by default on every segment and writes subject references under
+`video_output/subject_references`. The `--vision-continuity N` option controls
+the shared continuity cadence for DINO: `1` checks every segment, `0` disables
+the cadence, and values greater than `1` check every Nth segment (with a check
+before a clean refresh). Use `--dino-skip` to disable DINO explicitly, or adjust
+its confidence, thresholds, backward search, padding, and minimum-area settings
+with the `--dino-*` options. Use
+`--disable-onnx-dino` to bypass the complete ONNX/DINO visual-continuity
+pipeline, including shared detection, identity assignment, backward search,
+and the vision fallback. Each successful DINO subject match also saves the
+accepted padded crop to `videos/vision_frames` as
+`segment_####_subject_####_frame_########.png`.
 
 ## Optional ArcFace identity verification
 
@@ -825,6 +833,7 @@ the same generation options as the CLI:
 | **Refresh interval** | Use the refresh workflow on every Nth segment. |
 | **Formatter** | Match either the Ministral or Qwen response format to the model loaded in LM Studio. |
 | **First-frame instructions** | Add opening-frame instructions for `<Picture 1>` on segment 1. |
+| **Disable ONNX/DINO visual continuity** | Bypass shared detection, identity assignment, backward search, and vision fallback updates. |
 | **Global LoRAs** | Apply any number of named LoRAs, in order, to every beat. |
 | **Defined Images** | Map up to six ordered paths to `--image1` through `--image6` and override the matching reference node in all three workflows. |
 
@@ -857,10 +866,15 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
 | `--context-frames FRAMES` | Latent frames retained by `MiniMaxH3VideoExtendPatched`; defaults to `7`. |
 | `--refresh SEGMENTS` | Auto refresh on every Nth segment using `Minimax_auto_refresh_API.json`; defaults to every `6` segments. |
+| `--vision-continuity N` | Shared DINO continuity cadence; `1` checks every segment by default, `0` disables it, and larger values check every Nth segment. |
+| `--dino-device {cpu,cuda}` | Grounding DINO continuity device; defaults to `cpu` so ComfyUI/H3 retains the render GPU. CUDA is opt-in. |
+| `--identity-device {cpu,cuda}` | InsightFace continuity device; defaults to `cpu` so identity inference does not compete with ComfyUI/H3. CUDA is opt-in. |
+| `--dino-max-state-age SECONDS` | Restrict rendered-state search to the final number of seconds of each segment; defaults to `1.0`. |
 | `--repair SEGMENT` | Rerender one existing middle segment using its checkpoint and neighboring clips; cannot be combined with a resume segment other than `1`. |
 | `--model {ministral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `ministral`. |
 | `--image1 PATH` through `--image6 PATH` | Override the corresponding numbered reference image in the initial, append, and refresh workflows. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |
+| `--disable-onnx-dino` | Bypass the ONNX/DINO visual-continuity pipeline, including identity and vision fallback updates. |
 | `ff` or `--ff` | Add opening-frame instructions for `<Picture 1>` when generating segment 1; defaults to disabled. |
 
 For example, this applies two global LoRAs to every segment; any LoRAs declared

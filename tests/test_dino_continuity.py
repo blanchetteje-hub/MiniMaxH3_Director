@@ -393,6 +393,8 @@ def test_minimax_exposes_separate_dino_configuration_values():
         "6",
         "--dino-max-candidates",
         "9",
+        "--dino-max-state-age",
+        "1.25",
         "--dino-crop-padding-x",
         ".14",
         "--dino-crop-padding-y",
@@ -406,6 +408,7 @@ def test_minimax_exposes_separate_dino_configuration_values():
     assert args.dino_text_threshold == 0.21
     assert args.dino_frame_interval == 6
     assert args.dino_max_candidates == 9
+    assert args.dino_max_state_age == 1.25
     assert args.dino_crop_padding_x == 0.14
     assert args.dino_crop_padding_y == 0.11
     assert args.dino_min_bbox_area_ratio == 0.02
@@ -415,6 +418,42 @@ def test_minimax_can_skip_dino_entirely():
     args = minimax.parse_args(["5", "20", ".5", "--dino-skip"])
 
     assert args.dino_skip is True
+
+
+def test_continuity_cadence_defaults_to_every_segment():
+    args = minimax.parse_args(["5", "20", ".5"])
+
+    assert args.vision_continuity == 1
+    assert minimax.should_run_vision_continuity(
+        1,
+        args.vision_continuity,
+    ) is True
+
+
+def test_continuity_cadence_is_shared_by_dino_schedule():
+    assert minimax.should_run_vision_continuity(1, 2) is False
+    assert minimax.should_run_vision_continuity(2, 2) is True
+
+
+def test_minimax_can_disable_onnx_dino_pipeline():
+    args = minimax.parse_args(["5", "20", ".5", "--disable-onnx-dino"])
+
+    assert args.disable_onnx_dino is True
+
+
+def test_disable_onnx_dino_returns_before_continuity_work(monkeypatch, tmp_path):
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("disabled continuity must not initialize the registry")
+
+    monkeypatch.setattr(minimax.SubjectRegistry, "from_records", fail_if_called)
+
+    assert minimax.update_dino_continuity_references(
+        "missing.mp4",
+        {"subjects": {"Amy": {"name": "Amy"}}},
+        object(),
+        tmp_path,
+        disable_onnx_dino=True,
+    ) == {}
 
 
 def test_minimax_exposes_identity_threshold_margin_and_reference_mapping():

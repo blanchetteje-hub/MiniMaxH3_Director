@@ -25,10 +25,12 @@ import tempfile
 import threading
 import time
 import uuid
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 
 import requests
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageDraw, UnidentifiedImageError
 
 from ministral_formatter import (
     MinistralFormatter,
@@ -38,6 +40,8 @@ from ministral_formatter import (
 )
 from qwen_formatter import QwenFormatter
 from subject_registry import SubjectRegistry, parse_subject_registry as _parse_subject_registry
+from dino_detector import get_detector
+from identity_validator import get_identity_validator
 from dino_continuity import (
     DEFAULT_CROP_PADDING_X,
     DEFAULT_CROP_PADDING_Y,
@@ -48,8 +52,20 @@ from dino_continuity import (
     DEFAULT_IDENTITY_CONFIDENCE,
     DEFAULT_IDENTITY_MARGIN,
     DEFAULT_MAX_CANDIDATE_FRAMES,
+    DEFAULT_MAX_STATE_AGE_SECONDS,
     DEFAULT_MIN_BBOX_AREA_RATIO,
     ContinuityReferenceConfig,
+    DinoCandidate,
+    SubjectReferenceUpdateResult,
+    _frame_image,
+    _backward_frame_indices,
+    _commit_current_state_crop,
+    _CurrentStateRegistryUpdateError,
+    _canonical_subject_key,
+    detect_shared_candidates,
+    filter_candidates_to_state_recency_window,
+    state_recency_boundary,
+    search_and_update_current_states,
     update_subject_references,
 )
 
@@ -171,8 +187,13 @@ SUBJECT_DEFINITIONS_FILE = os.path.join(SCRIPT_DIR, "subjects.txt")
 GENERATION_STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
 PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
 FINAL_VIDEO = os.path.join(VIDEO_OUTPUT, "final.mp4")
-VISION_FRAME_OUTPUT = os.path.join(VIDEO_OUTPUT, "vision_frames")
+# DINO source frames are kept with the project so they remain easy to inspect
+# even when rendered videos are redirected to another ComfyUI output folder.
+VISION_FRAME_OUTPUT = os.path.abspath(os.path.join(SCRIPT_DIR, "videos", "vision_frames"))
 DINO_REFERENCE_OUTPUT = os.path.join(VIDEO_OUTPUT, "subject_references")
+# Persistent copies of every image submitted to the Step 7 vision request.
+# ``VIDEO_OUTPUT`` already points at the configured ``.../video`` directory.
+STEP7_FRAME_OUTPUT = os.path.join(VIDEO_OUTPUT, "step7_frames")
 PROMPT_HISTORY_LOCK = threading.Lock()
 _WINDOWS_CONSOLE_HANDLER = None
 _WINDOWS_JOB_HANDLE = None
@@ -185,7 +206,7 @@ def cleanup_generated_frames(
     input_directory=None,
     vision_segment=None,
 ):
-    """Remove temporary frames created by visual continuity and auto-refresh.
+    """Remove temporary frames created by continuity fallback and auto-refresh.
 
     Only paths created by this application are accepted here.  Missing files
     are harmless so cleanup can safely run after a failed render or request.
@@ -424,8 +445,13 @@ CONTINUITY_STATE_VERSION = 5
 VISION_END_FRAME_OFFSETS = (8, 4, 0)
 VISION_REQUEST_RETRIES = 3
 VISION_REQUEST_MAX_TOKENS = 2500
+# Keep fallback evidence within the existing practical multimodal image-size
+# envelope while giving each candidate a readable tile.
+VISION_FALLBACK_CONTACT_SHEET_MAX_DIMENSION = 1024
+VISION_FALLBACK_CONTACT_SHEET_COLUMNS = 2
 DINO_FRAME_SEARCH_INTERVAL = DEFAULT_FRAME_SEARCH_INTERVAL
 DINO_MAX_CANDIDATE_FRAMES = DEFAULT_MAX_CANDIDATE_FRAMES
+DINO_MAX_STATE_AGE_SECONDS = DEFAULT_MAX_STATE_AGE_SECONDS
 DINO_CROP_PADDING_X = DEFAULT_CROP_PADDING_X
 DINO_CROP_PADDING_Y = DEFAULT_CROP_PADDING_Y
 DINO_MIN_BBOX_AREA_RATIO = DEFAULT_MIN_BBOX_AREA_RATIO
@@ -590,11 +616,11 @@ def parse_args(arguments=None):
     parser.add_argument(
         "--vision-continuity",
         type=int,
-        default=0,
+        default=1,
         metavar="N",
         help=(
-            "run rendered-frame vision continuity on a cadence: 0 disables it "
-            "entirely (default), 1 checks every segment, and values > 1 "
+            "run continuity processing, including DINO, on a cadence: 0 "
+            "disables it, 1 checks every segment (default), and values > 1 "
             "check every Nth segment with a forced check before every clean "
             "refresh"
         ),
@@ -603,6 +629,33 @@ def parse_args(arguments=None):
         "--dino-skip",
         action="store_true",
         help="skip Grounding DINO continuity-reference detection entirely",
+    )
+    parser.add_argument(
+        "--dino-device",
+        default="cpu",
+        choices=("cpu", "cuda"),
+        help=(
+            "device for Grounding DINO continuity inference; CPU is the "
+            "default so ComfyUI/H3 retains the render GPU"
+        ),
+    )
+    parser.add_argument(
+        "--identity-device",
+        default="cpu",
+        choices=("cpu", "cuda"),
+        help=(
+            "InsightFace continuity device; CPU is the default so identity "
+            "inference does not compete with ComfyUI/H3"
+        ),
+    )
+    parser.add_argument(
+        "--disable-onnx-dino",
+        action="store_true",
+        help=(
+            "disable the ONNX/DINO visual-continuity pipeline, including "
+            "shared detection, identity assignment, backward search, and "
+            "vision fallback"
+        ),
     )
     parser.add_argument(
         "--dino-confidence",
@@ -652,6 +705,16 @@ def parse_args(arguments=None):
         help=(
             "maximum number of backward DINO candidates per subject "
             f"(default: {DINO_MAX_CANDIDATE_FRAMES})"
+        ),
+    )
+    parser.add_argument(
+        "--dino-max-state-age",
+        type=float,
+        default=DINO_MAX_STATE_AGE_SECONDS,
+        metavar="SECONDS",
+        help=(
+            "limit rendered-state search to the final SECONDS of the segment "
+            f"(default: {DINO_MAX_STATE_AGE_SECONDS:.1f})"
         ),
     )
     parser.add_argument(
@@ -864,6 +927,8 @@ def parse_args(arguments=None):
         parser.error("--dino-frame-interval must be greater than zero.")
     if args.dino_max_candidates <= 0:
         parser.error("--dino-max-candidates must be greater than zero.")
+    if not math.isfinite(args.dino_max_state_age) or args.dino_max_state_age <= 0:
+        parser.error("--dino-max-state-age must be greater than zero.")
     if args.repair is not None and args.repair <= 0:
         parser.error("--repair must be a positive one-based segment number.")
     if args.repair == 1:
@@ -894,7 +959,7 @@ def is_refresh_segment(segment_number, refresh_interval):
 
 
 def should_run_vision_continuity(segment_number, cadence, refresh_interval=None):
-    """Return whether the rendered-frame visual continuity gate should run."""
+    """Return whether shared continuity processing should run this segment."""
 
     segment_number = int(segment_number)
     if segment_number < 1:
@@ -984,7 +1049,7 @@ RESPONSE_FORMAT = {
     }
 }
 
-# The combined continuity call intentionally uses a flexible/arbitrary JSON
+# The text continuity call intentionally uses a flexible/arbitrary JSON
 # shape, so a fixed JSON schema is inappropriate. JSON-object mode still
 # constrains LM Studio to syntactically valid JSON without dictating
 # continuity fields.
@@ -1120,9 +1185,12 @@ def _resolve_dino_query_with_llm(subject_definition):
             "role": "user",
             "content": (
                 "In the most minimal, succinct sense, what is this definition "
-                "in one word (or two words hyphenated)?\n"
+                "in one word (or two words hyphenated)? "
+                "- Note: If the subject name itself is already a concise, "
+                "common visual object/category description, return it unchanged. Do not replace it with synonyms.\n"
+                "-Do NOT replace a literal visual term with: synonyms, literary terms, taxonomic terms, descriptive abstractions.\n"
                 f"'{str(subject_definition or '').strip()}'.\n"
-                "Return a one-word response."
+                "Return a one-word response that is all lowercase."
             ),
         }],
         response_format=None,
@@ -1168,6 +1236,430 @@ def _canonical_reference_for_subject(subject):
     if os.path.isfile(input_reference):
         return os.path.abspath(input_reference)
     return reference
+
+
+def _visible_subject_ids_for_segment(
+    subject_definitions,
+    detailed_description,
+    registry=None,
+):
+    """Return subject IDs visibly used by one Director description."""
+
+    registry = registry or parse_subject_registry(subject_definitions)
+    visible = {
+        int(subject_id)
+        for subject_id in re.findall(
+            r"(?i)<Subject\s+(\d+)>",
+            str(detailed_description or ""),
+        )
+    }
+    description = str(detailed_description or "")
+    for subject_key, record in registry.items():
+        name = str(record.get("name") or "").strip()
+        if name and re.search(r"\b" + re.escape(name) + r"\b", description):
+            try:
+                subject_id = int(record.get("subject_id", subject_key))
+            except (TypeError, ValueError):
+                continue
+            visible.add(subject_id)
+    return visible, registry
+
+
+def _segment_subject_registry(subject_definitions, stored_records):
+    """Return the authoritative registry for a segment reference request.
+
+    Subject definitions describe the original/canonical story vocabulary, but
+    the persisted continuity registry also contains subjects discovered during
+    the story and their latest rendered-state paths.  H3 allocation must see
+    both collections, with the persisted record winning for mutable reference
+    fields.
+    """
+
+    if isinstance(subject_definitions, SubjectRegistry):
+        registry = subject_definitions
+    else:
+        registry = parse_subject_registry(
+            subject_definitions,
+            stored_records=stored_records,
+        )
+    if not isinstance(stored_records, Mapping):
+        return registry
+
+    persisted = SubjectRegistry.from_records(
+        stored_records,
+        query_rules=DINO_QUERY_RULES,
+    )
+    for key, persisted_record in persisted.items():
+        existing = registry.get_subject(persisted_record.get("subject_id"))
+        if existing is None:
+            existing = registry.get_subject(persisted_record.get("name"))
+        if existing is None:
+            registry[key] = persisted_record
+            continue
+        # Keep parsed definitions/picture IDs intact, while taking all mutable
+        # reference state from the authoritative persisted record.
+        for field_name in (
+            "canonical_reference",
+            "identity_reference",
+            "current_state_reference",
+        ):
+            if field_name in persisted_record:
+                existing[field_name] = persisted_record.get(field_name)
+    return registry
+
+
+def _segment_canonical_reference(record, picture_id, input_directory):
+    """Resolve one optional canonical reference for a manifest slot."""
+
+    source = (
+        record.get("canonical_reference")
+        or record.get("identity_reference")
+        or IDENTITY_REFERENCE_OVERRIDES.get(
+            _subject_identity_key(record.get("name"))
+        )
+        or REFERENCE_IMAGE_OVERRIDES.get(picture_id)
+    )
+    if not source:
+        return "", ""
+
+    source = os.path.expanduser(os.path.expandvars(os.fspath(source)))
+    if not os.path.isabs(source):
+        input_candidate = os.path.join(input_directory, source)
+        if os.path.isfile(input_candidate):
+            source = input_candidate
+        else:
+            source = os.path.abspath(source)
+    else:
+        source = os.path.abspath(source)
+
+    if os.path.isfile(source):
+        try:
+            return _materialize_reference_image(source, input_directory), source
+        except OSError as error:
+            print(
+                f"WARNING: canonical image {source!r} for subject "
+                f"{record.get('name') or record.get('subject_id')} could not "
+                f"be copied for H3: {error}; preserving workflow behavior.",
+                flush=True,
+            )
+    # Preserve an explicitly configured missing path so the normal workflow
+    # validation/pruning path can report it; an unspecified canonical image
+    # leaves the workflow's established default untouched.
+    return os.path.basename(source), source
+
+
+def _materialize_reference_image(source_path, input_directory):
+    """Make an external reference available to ComfyUI by basename."""
+
+    source_path = os.path.abspath(os.fspath(source_path))
+    input_directory = os.path.abspath(input_directory or COMFY_INPUT)
+    os.makedirs(input_directory, exist_ok=True)
+    destination = os.path.join(input_directory, os.path.basename(source_path))
+    if source_path != os.path.abspath(destination):
+        shutil.copy2(source_path, destination)
+    return os.path.basename(destination)
+
+
+def build_segment_reference_manifest(
+    subject_definitions,
+    continuity_state,
+    detailed_description,
+    segment_number,
+    previous_video_path=None,
+    input_directory=None,
+):
+    """Resolve and validate current-state references for one H3 request.
+
+    Canonical picture IDs remain owned by the subject definitions. Rendered
+    current-state images are assigned to free H3 picture slots and are never
+    written back into the persisted canonical ``picture_ids`` field.
+    """
+
+    input_directory = os.path.abspath(input_directory or COMFY_INPUT)
+    stored_records = (
+        continuity_state.get("subjects", {})
+        if isinstance(continuity_state, dict)
+        else None
+    )
+    registry = _segment_subject_registry(subject_definitions, stored_records)
+    visible_ids, _ = _visible_subject_ids_for_segment(
+        subject_definitions,
+        detailed_description,
+        registry=registry,
+    )
+    manifest = SegmentReferenceManifest(
+        segment_number=int(segment_number),
+        visible_subject_ids=visible_ids,
+        video_reference=os.path.abspath(previous_video_path)
+        if previous_video_path
+        else "",
+    )
+
+    # Keep canonical picture IDs reserved even when this segment does not show
+    # that subject. Existing workflows may still carry those references and
+    # replacing one would change established canonical behavior.
+    canonical_subjects = {}
+    for subject_id, record in registry.items():
+        try:
+            normalized_subject_id = int(subject_id)
+        except (TypeError, ValueError):
+            normalized_subject_id = int(record.get("subject_id") or 0)
+        if normalized_subject_id <= 0:
+            continue
+        name = str(record.get("name") or subject_id).strip()
+        for raw_picture_id in record.get("picture_ids", []) or []:
+            try:
+                picture_id = int(raw_picture_id)
+            except (TypeError, ValueError):
+                continue
+            if not 1 <= picture_id <= len(REFERENCE_IMAGE_NODE_NAMES):
+                continue
+            canonical_subjects.setdefault(picture_id, (normalized_subject_id, name))
+
+    for picture_id, (subject_id, name) in sorted(canonical_subjects.items()):
+        record = registry.get_subject(subject_id) or {}
+        image_name, source_path = _segment_canonical_reference(
+            record,
+            picture_id,
+            input_directory,
+        )
+        manifest.picture_references.append(
+            SegmentPictureReference(
+                picture_id=picture_id,
+                subject_id=subject_id,
+                subject_name=name,
+                role="canonical_identity",
+                source="canonical",
+                image_name=image_name,
+                source_path=source_path,
+            )
+        )
+
+    used_picture_ids = set(canonical_subjects)
+    def _subject_sort_key(item):
+        try:
+            return (0, int(item[1].get("subject_id", item[0])))
+        except (TypeError, ValueError):
+            return (1, str(item[0]))
+
+    for subject_key, _ in sorted(registry.items(), key=_subject_sort_key):
+        # Always re-read the authoritative record at allocation time. In
+        # particular, a story-only subject may have entered the persisted
+        # registry after the canonical definition text was authored.
+        record = registry.get_subject(subject_key)
+        if not isinstance(record, Mapping):
+            continue
+        try:
+            normalized_subject_id = int(record.get("subject_id", subject_key))
+        except (TypeError, ValueError):
+            continue
+        if normalized_subject_id not in visible_ids:
+            continue
+        source = record.get("current_state_reference")
+        if not source:
+            continue
+        source = os.path.expanduser(os.fspath(source))
+        source = (
+            _resolve_comfy_input_image(source, input_directory)
+            if not os.path.isabs(source)
+            else os.path.abspath(source)
+        )
+        resolved_path, decode_error = _validate_comfy_input_image(
+            source,
+            input_directory,
+        )
+        if decode_error is not None:
+            print(
+                f"WARNING: current-state image {source!r} for subject "
+                f"{record.get('name') or subject_key} was not connected for "
+                f"segment {segment_number}: {decode_error}; preserving "
+                "canonical reference behavior.",
+                flush=True,
+            )
+            continue
+        available = next(
+            (
+                picture_id
+                for picture_id in range(1, len(REFERENCE_IMAGE_NODE_NAMES) + 1)
+                if picture_id not in used_picture_ids
+            ),
+            None,
+        )
+        if available is None:
+            print(
+                f"WARNING: no available H3 picture slot for current-state "
+                f"image {source!r} ({record.get('name') or subject_key}) in "
+                f"segment {segment_number}; preserving canonical references.",
+                flush=True,
+            )
+            continue
+        try:
+            image_name = _materialize_reference_image(
+                resolved_path,
+                input_directory,
+            )
+        except OSError as error:
+            print(
+                f"WARNING: current-state image {source!r} for subject "
+                f"{record.get('name') or subject_key} could not be copied to "
+                f"ComfyUI input for segment {segment_number}: {error}; "
+                "preserving canonical reference behavior.",
+                flush=True,
+            )
+            continue
+        used_picture_ids.add(available)
+        name = str(record.get("name") or subject_key).strip()
+        manifest.picture_references.append(
+            SegmentPictureReference(
+                picture_id=available,
+                subject_id=normalized_subject_id,
+                subject_name=name,
+                role="rendered_current_state",
+                source="current_state",
+                image_name=image_name,
+                source_path=resolved_path,
+            )
+        )
+        print(
+            f"Image {os.path.basename(resolved_path)} decoded and verified "
+            f"for segment {segment_number}.",
+            flush=True,
+        )
+
+    manifest.picture_references.sort(key=lambda item: item.picture_id)
+    manifest.effective_picture_slot_map = {
+        reference.picture_id: reference.picture_id
+        for reference in manifest.picture_references
+    }
+    return manifest
+
+
+def _apply_segment_reference_manifest(workflow, workflow_label, manifest):
+    """Apply manifest images to their assigned LoadImage nodes."""
+
+    if manifest is None:
+        return workflow
+    for reference in manifest.picture_references:
+        if not reference.image_name:
+            continue
+        node_name = f"Reference Image {reference.picture_id}"
+        _, image_node = find_workflow_node(
+            workflow,
+            node_name,
+            workflow_label,
+            "LoadImage",
+        )
+        image_node.setdefault("inputs", {})["image"] = reference.image_name
+    return workflow
+
+
+def _render_segment_reference_text(manifest, subject_definitions, segment_number):
+    """Describe only current-state pictures actually present in the manifest."""
+
+    if manifest is None:
+        return ""
+    current = manifest.current_state_references()
+    if not current:
+        return ""
+    lines = []
+    existing_ids = {
+        int(match.group(1))
+        for match in re.finditer(
+            r"(?im)^\s*<Subject\s+(\d+)>\s+is\s+",
+            str(subject_definitions or ""),
+        )
+    }
+    grouped = {}
+    for reference in current:
+        grouped.setdefault(reference.subject_id, []).append(reference)
+    for subject_id, references in sorted(grouped.items()):
+        name = references[0].subject_name
+        canonical = [
+            reference
+            for reference in manifest.picture_references
+            if (
+                reference.subject_id == subject_id
+                and reference.role == "canonical_identity"
+            )
+            and reference.picture_id not in manifest.excluded_picture_ids
+        ]
+        if canonical:
+            canonical_tags = _english_join(
+                f"<Picture {reference.picture_id}>"
+                for reference in canonical
+            )
+            lines.append(
+                f"{canonical_tags} defines {name}'s canonical identity and "
+                "permanent design."
+            )
+        picture_tags = _english_join(
+            f"<Picture {reference.picture_id}>"
+            for reference in references
+        )
+        if subject_id not in existing_ids or not canonical:
+            lines.append(
+                f"<Subject {subject_id}> is {name}, story-defined. "
+                f"{picture_tags} defines {name}'s most recent rendered "
+                "appearance and persistent visible configuration."
+            )
+        else:
+            lines.append(
+                f"{picture_tags} defines {name}'s most recent rendered "
+                "appearance and persistent visible configuration, including "
+                "visible clothing condition and other persistent visible "
+                "changes."
+            )
+        if int(segment_number) > 1:
+            lines.append(
+                f"<Video 1> defines {name}'s immediate pose, position, motion, "
+                "and spatial continuity where visible."
+            )
+    return "\n".join(lines)
+
+
+def _log_segment_reference_mapping(workflow, workflow_kind, manifest, label):
+    """Log the final logical-to-workflow picture mapping before queueing."""
+
+    if manifest is None:
+        return
+    print(f"[H3 references] Segment {manifest.segment_number}", flush=True)
+    for reference in manifest.picture_references:
+        logical_id = reference.picture_id
+        if logical_id in manifest.excluded_picture_ids:
+            continue
+        effective_id = manifest.effective_picture_slot_map.get(
+            logical_id,
+            logical_id,
+        )
+        node_name = f"Reference Image {logical_id}"
+        image_name = reference.image_name
+        try:
+            _, image_node = find_workflow_node(
+                workflow,
+                node_name,
+                label,
+                "LoadImage",
+            )
+            image_name = image_node.get("inputs", {}).get("image") or image_name
+        except (KeyError, RuntimeError):
+            pass
+        print(
+            f"  Picture {effective_id} -> {image_name or node_name}\n"
+            f"      subject={reference.subject_name}\n"
+            f"      role={reference.role}",
+            flush=True,
+        )
+        print(
+            f"[H3 references] connected Picture {effective_id} -> "
+            f"{workflow_kind} {node_name}",
+            flush=True,
+        )
+    if manifest.video_reference:
+        print(
+            f"  Video 1 -> {os.path.basename(manifest.video_reference)}\n"
+            "      role=continuation_video",
+            flush=True,
+        )
 
 
 def apply_reference_image_overrides(workflow, workflow_label):
@@ -1233,12 +1725,71 @@ def _validate_comfy_input_image(image_name, input_directory):
     image_path = _resolve_comfy_input_image(image_name, input_directory)
     if not image_path or not os.path.isfile(image_path):
         return image_path, "file was not found"
+    if os.path.getsize(image_path) <= 0:
+        return image_path, "file is empty"
     try:
         with Image.open(image_path) as image:
             image.verify()
-    except (OSError, SyntaxError, UnidentifiedImageError, ValueError) as error:
+        # ``verify`` checks the container but does not necessarily decode all
+        # pixel data. Re-open and load the image so dynamic DINO crops receive
+        # the same useful validation as ordinary ComfyUI references.
+        with Image.open(image_path) as image:
+            if image.width <= 0 or image.height <= 0:
+                return image_path, "image dimensions are invalid"
+            image.load()
+    except (
+        OSError,
+        SyntaxError,
+        UnidentifiedImageError,
+        ValueError,
+        Image.DecompressionBombError,
+    ) as error:
         return image_path, f"image decoder rejected the file: {error}"
     return image_path, None
+
+
+@dataclass(frozen=True)
+class SegmentPictureReference:
+    """One logical H3 picture reference for a single segment."""
+
+    picture_id: int
+    subject_id: int
+    subject_name: str
+    role: str
+    source: str
+    image_name: str
+    source_path: str = ""
+
+
+@dataclass
+class SegmentReferenceManifest:
+    """Authoritative prompt/workflow mapping for one H3 segment."""
+
+    segment_number: int
+    picture_references: list[SegmentPictureReference] = field(default_factory=list)
+    visible_subject_ids: set[int] = field(default_factory=set)
+    excluded_picture_ids: set[int] = field(default_factory=set)
+    effective_picture_slot_map: dict[int, int] = field(default_factory=dict)
+    video_reference: str = ""
+
+    def current_state_references(self):
+        return [
+            reference
+            for reference in self.picture_references
+            if reference.role == "rendered_current_state"
+        ]
+
+    def canonical_picture_ids(self):
+        return {
+            reference.picture_id
+            for reference in self.picture_references
+            if reference.role == "canonical_identity"
+        }
+
+    def all_picture_ids(self):
+        return {
+            reference.picture_id for reference in self.picture_references
+        }
 
 
 def _reference_destination(workflow, workflow_label, workflow_kind):
@@ -1832,7 +2383,19 @@ def _subject_identity_key(name):
     """Return a conservative key for matching harmless Subject name variants."""
     normalized = re.sub(r"[^a-z0-9]+", " ", str(name or "").casefold())
     normalized = re.sub(r"^(?:a|an|the)\s+", "", normalized.strip())
-    return " ".join(normalized.split())
+    normalized = " ".join(normalized.split())
+    return "" if normalized in {"a", "an", "the"} else normalized
+
+
+def _normalize_subject_discovery_name(name):
+    """Remove a prose article before promoting a discovered Subject name."""
+    normalized = " ".join(str(name or "").split()).strip(" ,.;:-")
+    normalized = re.sub(
+        r"(?i)^(?:the|a|an)\s+",
+        "",
+        normalized,
+    ).strip(" ,.;:-")
+    return normalized
 
 
 def _find_existing_subject_name(subjects, proposed_name, subject_id=None, speaker_id=None):
@@ -1860,13 +2423,18 @@ def _find_existing_subject_name(subjects, proposed_name, subject_id=None, speake
     return None
 
 
-def parse_subject_registry(subject_definitions, query_resolver=None):
+def parse_subject_registry(
+    subject_definitions,
+    query_resolver=None,
+    stored_records=None,
+):
     """Compatibility facade for the canonical shared SubjectRegistry."""
 
     return _parse_subject_registry(
         subject_definitions,
         query_rules=DINO_QUERY_RULES,
         query_resolver=query_resolver,
+        stored_records=stored_records,
     )
 
 
@@ -1937,7 +2505,11 @@ def continuity_state_for_registry(
 ):
     """Return state with registered identities plus stable video-only subjects."""
     current = migrate_continuity_state(state) if state else new_continuity_state()
-    registry = parse_subject_registry(subject_definitions, query_resolver=query_resolver)
+    registry = parse_subject_registry(
+        subject_definitions,
+        query_resolver=query_resolver,
+        stored_records=current.get("subjects"),
+    )
     if isinstance(current.get("subjects"), dict):
         normalized_subjects = {}
         for key, record in current["subjects"].items():
@@ -3427,19 +3999,18 @@ def new_generation_state(run_config):
         "recent_dialogues": [],
         # Continuity sources are preserved separately for debugging.
         # continuity_prompt_state is the combined call's prompt-derived
-        # prediction. continuity_state is the authoritative merged state after
-        # visible rendered facts have overlaid that prediction.
+        # prediction, and continuity_state is the state handed to H3.
         "continuity_prompt_state": {},
         "continuity_state": {
             "version": CONTINUITY_STATE_VERSION,
         },
         "continuity_opening_state": "",
         "continuity_summary": "",
-        # Visual observer output records what the rendered pixels actually show.
-        "visual_raw_end_state": {},
-        "visual_end_state": {},
-        "visual_end_frame_paths": [],
         "subject_registry_state": new_continuity_state(),
+        "scene_presence": {
+            "scene_present_subjects": [],
+            "last_processed_beat_id": 0,
+        },
         "continuity_summary_pending": False,
         "beat_progress": {
             "completed_beat_ids": [],
@@ -3830,6 +4401,12 @@ def restore_generation_state(
             raise RuntimeError(
                 "Generation checkpoint segment records are missing or out of order."
             )
+        recorded_beat_id = record.get("beat_id", expected_segment)
+        if _identity_number(recorded_beat_id) != expected_segment:
+            raise RuntimeError(
+                f"Generation checkpoint maps segment {expected_segment} to "
+                f"Beat {recorded_beat_id}; expected Beat {expected_segment}."
+            )
         latent_path = get_h3_latent_path(expected_segment)
 
         if not os.path.isfile(latent_path):
@@ -3861,6 +4438,33 @@ def restore_generation_state(
 
     state["segments"] = restored_records
     state["recent_dialogues"] = collect_recent_dialogues(restored_records)
+    persisted_scene_presence = None
+    if restored_records and isinstance(restored_records[-1], dict):
+        persisted_scene_presence = restored_records[-1].get("scene_presence")
+    if not isinstance(persisted_scene_presence, dict):
+        persisted_scene_presence = state.get("scene_presence")
+    if isinstance(persisted_scene_presence, dict):
+        state["scene_presence"] = normalize_scene_presence_state(
+            persisted_scene_presence
+        )
+    else:
+        completed_through = len(completed_beat_ids)
+        fallback_presence = ()
+        if (
+            completed_through
+            and any(
+                getattr(beat, "subject_metadata_present", False)
+                for beat in beats[:completed_through]
+            )
+        ):
+            fallback_states = scene_presence_for_beats(
+                beats[:completed_through]
+            )
+            fallback_presence = fallback_states[-1] if fallback_states else ()
+        state["scene_presence"] = {
+            "scene_present_subjects": list(fallback_presence),
+            "last_processed_beat_id": completed_through,
+        }
     if restored_records:
         state["beat_progress"] = {
             "completed_beat_ids": sorted(completed_beat_ids),
@@ -3939,6 +4543,10 @@ def restore_generation_state(
         "subject_registry_state": migrate_continuity_state(
             state.get("subject_registry_state")
         ),
+        "scene_presence": copy.deepcopy(state.get(
+            "scene_presence",
+            {"scene_present_subjects": [], "last_processed_beat_id": 0},
+        )),
         "continuity_summary_pending": state.get(
             "continuity_summary_pending", False
         ),
@@ -3960,6 +4568,8 @@ def record_completed_segment(
     continuity_opening_state="",
     subject_registry_state=None,
     dino_continuity_references=None,
+    scene_presence_state=None,
+    beat_id=None,
 ):
     records = state.setdefault("segments", [])
     if continuity_state is None:
@@ -3973,7 +4583,33 @@ def record_completed_segment(
             "subject_registry_state",
             new_continuity_state(),
         )
+    if scene_presence_state is None:
+        scene_presence_state = state.get(
+            "scene_presence",
+            {"scene_present_subjects": [], "last_processed_beat_id": 0},
+        )
+    if not isinstance(scene_presence_state, dict):
+        raise ValueError("scene_presence_state must be a mapping")
+    scene_presence_state = {
+        "scene_present_subjects": list(dict.fromkeys(
+            scene_presence_state.get("scene_present_subjects", [])
+        )),
+        "last_processed_beat_id": int(
+            scene_presence_state.get("last_processed_beat_id", 0)
+        ),
+    }
     del additional_subject_definitions
+    if beat_id is None:
+        beat_id = segment_number
+    try:
+        beat_id = int(beat_id)
+    except (TypeError, ValueError):
+        raise ValueError("beat_id must be an integer when recording a segment.") from None
+    if beat_id != int(segment_number):
+        raise RuntimeError(
+            f"Cannot checkpoint segment {segment_number} with Beat {beat_id}; "
+            "the one-beat-per-segment contract requires matching identities."
+        )
     expected_segment = len(records) + 1
     if segment_number != expected_segment:
         raise RuntimeError(
@@ -3982,6 +4618,7 @@ def record_completed_segment(
         )
     record = {
         "segment_number": segment_number,
+        "beat_id": beat_id,
         "video_path": os.path.abspath(video_path),
         "llm_result": llm_result,
         "dialogues": extract_spoken_dialogues(llm_result),
@@ -3990,6 +4627,7 @@ def record_completed_segment(
         "continuity_state": copy.deepcopy(continuity_state),
         "continuity_opening_state": continuity_opening_state,
         "subject_registry_state": migrate_continuity_state(subject_registry_state),
+        "scene_presence": copy.deepcopy(scene_presence_state),
         "continuity_summary_pending": bool(continuity_summary_pending),
     }
     if dino_continuity_references is not None:
@@ -4009,6 +4647,7 @@ def record_completed_segment(
     state["subject_registry_state"] = migrate_continuity_state(
         subject_registry_state
     )
+    state["scene_presence"] = copy.deepcopy(scene_presence_state)
     state["continuity_summary_pending"] = bool(
         continuity_summary_pending
     )
@@ -4379,6 +5018,10 @@ PHASE_DIRECTIVE_PATTERN = re.compile(
 BEAT_NUMBER_PATTERN = re.compile(
     r"^(?P<number>\d+)\.\s+(?P<text>.+)$",
 )
+BEAT_METADATA_PATTERN = re.compile(
+    r"^#\s*beat[_ ]?metadata\s+(?P<number>\d+)\s+(?P<payload>\{.*\})\s*$",
+    re.IGNORECASE,
+)
 
 
 class BeatDefinition(str):
@@ -4388,6 +5031,10 @@ class BeatDefinition(str):
         loras=None,
         phase_number=None,
         phase_start=False,
+        visible_subjects=None,
+        enters=None,
+        exits=None,
+        subject_metadata_present=None,
     ):
         beat = super().__new__(cls, text)
         beat.loras = tuple(loras or ())
@@ -4395,6 +5042,18 @@ class BeatDefinition(str):
             int(phase_number) if str(phase_number or "").isdigit() else None
         )
         beat.phase_start = bool(phase_start)
+        beat.visible_subjects = tuple(visible_subjects or ())
+        beat.enters = tuple(enters or ())
+        beat.exits = tuple(exits or ())
+        beat.subject_metadata_present = (
+            bool(subject_metadata_present)
+            if subject_metadata_present is not None
+            else any(value is not None for value in (
+                visible_subjects,
+                enters,
+                exits,
+            ))
+        )
         # Retain the old scalar attributes for callers that inspect beats made
         # with exactly one LoRA. New code should use ``beat.loras``.
         beat.lora_name = beat.loras[0][0] if len(beat.loras) == 1 else None
@@ -4406,6 +5065,115 @@ class BeatDefinition(str):
         if len(self.loras) != 1:
             return None
         return self.loras[0]
+
+
+def resolve_execution_target(beats, segment_number):
+    """Resolve the immutable story target for one segment traversal.
+
+    The caller owns the segment being traversed.  This deliberately does not
+    derive a beat from completed-count state: a prefetch must keep using the
+    target resolved by its caller even if completion state advances before the
+    worker finishes.
+    """
+    try:
+        segment_number = int(segment_number)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid execution segment: {segment_number!r}.") from None
+    if segment_number <= 0:
+        raise ValueError("Execution segments are one-based.")
+    if not beats:
+        return {
+            "segment_number": segment_number,
+            "beat_id": None,
+            "beat": None,
+        }
+    if segment_number > len(beats):
+        raise ValueError(
+            f"Segment {segment_number} has no corresponding beat; "
+            f"the run has {len(beats)} beat(s)."
+        )
+    return {
+        "segment_number": segment_number,
+        "beat_id": segment_number,
+        "beat": beats[segment_number - 1],
+    }
+
+
+def _identity_number(value):
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def prefetched_response_matches_target(
+    prefetched,
+    current_segment_number,
+    authoritative_beat_id,
+):
+    """Return whether a prefetched response belongs to the current target."""
+    if not isinstance(prefetched, Mapping):
+        return False
+    prefetched_segment = _identity_number(
+        prefetched.get("segment_number", prefetched.get("segment"))
+    )
+    prefetched_beat = _identity_number(
+        prefetched.get(
+            "beat_id",
+            prefetched.get(
+                "target_beat_id",
+                prefetched.get("active_beat_id"),
+            ),
+        )
+    )
+    return (
+        prefetched_segment == _identity_number(current_segment_number)
+        and prefetched_beat == _identity_number(authoritative_beat_id)
+    )
+
+
+def describe_prefetch_identity(prefetched):
+    """Return checkpoint identity values for diagnostics."""
+    if not isinstance(prefetched, Mapping):
+        return None, None
+    return (
+        _identity_number(prefetched.get("segment_number", prefetched.get("segment"))),
+        _identity_number(
+            prefetched.get(
+                "beat_id",
+                prefetched.get(
+                    "target_beat_id",
+                    prefetched.get("active_beat_id"),
+                ),
+            )
+        ),
+    )
+
+
+def prefetched_response_is_usable(
+    prefetched_handle,
+    response,
+    current_segment_number,
+    authoritative_beat_id,
+    expected_fingerprint=None,
+):
+    """Gate a prefetched response before any downstream render is queued."""
+    if not prefetched_response_matches_target(
+        prefetched_handle,
+        current_segment_number,
+        authoritative_beat_id,
+    ) or not prefetched_response_matches_target(
+        response,
+        current_segment_number,
+        authoritative_beat_id,
+    ):
+        return False
+    return (
+        expected_fingerprint is None
+        or response.get("fingerprint") == expected_fingerprint
+    )
 
 
 def parse_lora_spec(raw_spec):
@@ -4466,9 +5234,33 @@ def parse_beats_content(raw):
     global_lora_directive = ""
     current_phase = None
     pending_phase_start = False
+    metadata_by_number = {}
     for line in raw.splitlines():
         beat = line.strip()
         if not beat:
+            continue
+        metadata_match = BEAT_METADATA_PATTERN.fullmatch(beat)
+        if metadata_match is not None:
+            beat_number = int(metadata_match.group("number"))
+            if beat_number in metadata_by_number:
+                raise ValueError(
+                    f"Duplicate metadata for beat {beat_number}."
+                )
+            try:
+                metadata = json.loads(metadata_match.group("payload"))
+            except json.JSONDecodeError as error:
+                raise ValueError(
+                    f"Invalid metadata for beat {beat_number}."
+                ) from error
+            if not isinstance(metadata, dict):
+                raise ValueError(f"Metadata for beat {beat_number} must be an object.")
+            allowed = {"visible_subjects", "enters", "exits"}
+            if set(metadata) != allowed:
+                raise ValueError(
+                    f"Metadata for beat {beat_number} must contain exactly "
+                    "visible_subjects, enters, and exits."
+                )
+            metadata_by_number[beat_number] = metadata
             continue
         phase_match = PHASE_DIRECTIVE_PATTERN.fullmatch(beat)
         if phase_match is not None:
@@ -4516,6 +5308,27 @@ def parse_beats_content(raw):
         ))
         pending_phase_start = False
 
+    normalized_beats = []
+    for beat_number, beat in enumerate(beats, start=1):
+        metadata = metadata_by_number.get(beat_number, {})
+        normalized_beats.append(BeatDefinition(
+            str(beat),
+            beat.loras,
+            phase_number=beat.phase_number,
+            phase_start=beat.phase_start,
+            visible_subjects=metadata.get("visible_subjects", ()),
+            enters=metadata.get("enters", ()),
+            exits=metadata.get("exits", ()),
+            subject_metadata_present=beat_number in metadata_by_number,
+        ))
+    beats = normalized_beats
+
+    if any(
+        beat_number <= 0 or beat_number > len(beats)
+        for beat_number in metadata_by_number
+    ):
+        raise ValueError("Beat metadata references a beat outside the beat list.")
+
     if global_lora is not None:
         beats = [
             BeatDefinition(
@@ -4523,6 +5336,10 @@ def parse_beats_content(raw):
                 (global_lora, *beat.loras),
                 phase_number=beat.phase_number,
                 phase_start=beat.phase_start,
+                visible_subjects=beat.visible_subjects,
+                enters=beat.enters,
+                exits=beat.exits,
+                subject_metadata_present=beat.subject_metadata_present,
             )
             for beat in beats
         ]
@@ -4554,6 +5371,12 @@ def serialize_beats(beats):
             "loras": [list(lora) for lora in getattr(beat, "loras", ())],
             "phase_number": getattr(beat, "phase_number", None),
             "phase_start": bool(getattr(beat, "phase_start", False)),
+            "visible_subjects": list(getattr(beat, "visible_subjects", ())),
+            "enters": list(getattr(beat, "enters", ())),
+            "exits": list(getattr(beat, "exits", ())),
+            "subject_metadata_present": bool(
+                getattr(beat, "subject_metadata_present", False)
+            ),
         }
         for beat in beats or []
     ]
@@ -4687,20 +5510,52 @@ def get_last_checkpoint_beat_update(state, beats):
     )
 
 
-def print_minimax_beat_plan(beats, completed_beat_ids, reported_beat_ids):
+def print_minimax_beat_plan(
+    beats,
+    completed_beat_ids,
+    reported_beat_ids,
+    authoritative_beat_id=None,
+    authoritative_beat=None,
+):
     if not beats:
         return [], None
 
-    accepted = get_accepted_reported_beat_ids(
-        beats,
-        completed_beat_ids,
-        reported_beat_ids
-    )
+    if authoritative_beat_id is not None:
+        try:
+            authoritative_beat_id = int(authoritative_beat_id)
+        except (TypeError, ValueError):
+            raise ValueError("authoritative_beat_id must be an integer.") from None
+        reported = {
+            int(raw_id)
+            for raw_id in (reported_beat_ids or ())
+            if not isinstance(raw_id, bool)
+            and str(raw_id).lstrip("-").isdigit()
+        }
+        accepted = (
+            [authoritative_beat_id]
+            if authoritative_beat_id in reported
+            else []
+        )
+    else:
+        accepted = get_accepted_reported_beat_ids(
+            beats,
+            completed_beat_ids,
+            reported_beat_ids
+        )
     projected_completed = set(
         normalize_completed_beat_ids(beats, completed_beat_ids)
     )
     projected_completed.update(accepted)
-    next_id = get_next_beat_id(beats, projected_completed)
+    if authoritative_beat_id is not None:
+        next_id = (
+            authoritative_beat_id + 1
+            if accepted
+            else authoritative_beat_id
+        )
+        if next_id > len(beats):
+            next_id = None
+    else:
+        next_id = get_next_beat_id(beats, projected_completed)
 
     print()
     print("=" * 64)
@@ -4709,12 +5564,26 @@ def print_minimax_beat_plan(beats, completed_beat_ids, reported_beat_ids):
     print("Beat assigned to this prompt:")
     if accepted:
         for beat_id in accepted:
-            print(f"  Beat {beat_id}: {beats[beat_id - 1]}")
+            beat = (
+                authoritative_beat
+                if authoritative_beat_id == beat_id and authoritative_beat is not None
+                else beats[beat_id - 1]
+            )
+            print(f"  Beat {beat_id}: {beat}")
     else:
-        current_id = get_next_beat_id(beats, completed_beat_ids)
+        current_id = (
+            int(authoritative_beat_id)
+            if authoritative_beat_id is not None
+            else get_next_beat_id(beats, completed_beat_ids)
+        )
         print("  None reported complete by the formatted prompt.")
         if current_id is not None:
-            print(f"  Still targeting Beat {current_id}: {beats[current_id - 1]}")
+            beat = (
+                authoritative_beat
+                if authoritative_beat_id == current_id and authoritative_beat is not None
+                else beats[current_id - 1]
+            )
+            print(f"  Still targeting Beat {current_id}: {beat}")
     print("Next required after this prompt:")
     if next_id is None:
         print("  All required beats would be complete.")
@@ -4728,13 +5597,18 @@ def apply_reported_beat_completions(
     beats,
     completed_beat_ids,
     reported_beat_ids,
-    segment_number
+    segment_number,
+    authoritative_beat_id=None,
 ):
     """Apply the active beat only when the returned director result reports it."""
     completed = normalize_completed_beat_ids(beats, completed_beat_ids)
     if not beats:
         return completed
-    expected_id = int(segment_number)
+    expected_id = int(
+        segment_number
+        if authoritative_beat_id is None
+        else authoritative_beat_id
+    )
     if not 1 <= expected_id <= len(beats):
         raise RuntimeError(
             f"Segment {segment_number} has no corresponding beat; "
@@ -5238,8 +6112,38 @@ def build_beats_response_format(total_segments, beat_start=1):
                                         "One concise, complete sentence."
                                     ),
                                 },
+                                "visible_subjects": {
+                                    "type": "array",
+                                    "items": {"type": "string", "minLength": 1},
+                                    "description": (
+                                        "Subjects expected to be visually observable "
+                                        "during this beat."
+                                    ),
+                                },
+                                "enters": {
+                                    "type": "array",
+                                    "items": {"type": "string", "minLength": 1},
+                                    "description": (
+                                        "Subjects becoming present in the scene "
+                                        "starting with this beat."
+                                    ),
+                                },
+                                "exits": {
+                                    "type": "array",
+                                    "items": {"type": "string", "minLength": 1},
+                                    "description": (
+                                        "Subjects intentionally leaving the scene "
+                                        "by the end of this beat."
+                                    ),
+                                },
                             },
-                            "required": ["beat_number", "beat_text"],
+                            "required": [
+                                "beat_number",
+                                "beat_text",
+                                "visible_subjects",
+                                "enters",
+                                "exits",
+                            ],
                             "additionalProperties": False,
                         },
                         "minItems": total_segments,
@@ -5520,8 +6424,26 @@ def build_beat_plan_repair_response_format(repair_ranges, beat_end=None):
                                     "enum": expected_ids,
                                 },
                                 "text": {"type": "string", "minLength": 1},
+                                "visible_subjects": {
+                                    "type": "array",
+                                    "items": {"type": "string", "minLength": 1},
+                                },
+                                "enters": {
+                                    "type": "array",
+                                    "items": {"type": "string", "minLength": 1},
+                                },
+                                "exits": {
+                                    "type": "array",
+                                    "items": {"type": "string", "minLength": 1},
+                                },
                             },
-                            "required": ["beat_id", "text"],
+                            "required": [
+                                "beat_id",
+                                "text",
+                                "visible_subjects",
+                                "enters",
+                                "exits",
+                            ],
                             "additionalProperties": False,
                         },
                     },
@@ -6430,8 +7352,10 @@ CURRENT-PHASE BEATS
 {correction_text}
 
 Return only a JSON object with a beats array. Each item must contain exactly
-beat_id and text. Include Beat IDs {', '.join(str(beat_id) for beat_id in requested_ids)}
-and no others.
+beat_id, text, visible_subjects, enters, and exits. The three arrays are
+presence metadata only: use existing subject names/IDs, keep enters inside
+visible_subjects, and preserve valid metadata for the repaired beat. Include
+Beat IDs {', '.join(str(beat_id) for beat_id in requested_ids)} and no others.
 """.strip(),
         },
     ]
@@ -6881,7 +7805,9 @@ COMPLETE CURRENT BEAT PLAN
 {correction_text}
 
 Return only a JSON object with a beats array. Each item must contain exactly
-beat_id and text, with one item for every requested beat ID and no others.
+beat_id, text, visible_subjects, enters, and exits, with one item for every
+requested beat ID and no others. The three arrays are presence metadata only;
+use existing subject names/IDs and keep enters inside visible_subjects.
 """.strip(),
         },
     ]
@@ -7167,10 +8093,21 @@ def parse_beat_plan_repair(
         )
     by_id = {}
     for item_number, item in enumerate(replacements, start=1):
-        if not isinstance(item, dict) or set(item) != {"beat_id", "text"}:
+        allowed_legacy = {"beat_id", "text"}
+        allowed_current = {
+            "beat_id",
+            "text",
+            "visible_subjects",
+            "enters",
+            "exits",
+        }
+        if not isinstance(item, dict) or set(item) not in (
+            allowed_legacy,
+            allowed_current,
+        ):
             raise ValueError(
-                f"Repaired beat item {item_number} must contain exactly beat_id "
-                "and text."
+                f"Repaired beat item {item_number} must contain beat_id, text, "
+                "visible_subjects, enters, and exits."
             )
         beat_id = item["beat_id"]
         if isinstance(beat_id, bool) or not isinstance(beat_id, int):
@@ -7179,7 +8116,25 @@ def parse_beat_plan_repair(
             raise ValueError(f"Unexpected repaired beat ID {beat_id}.")
         if beat_id in by_id:
             raise ValueError(f"Duplicate repaired beat ID {beat_id}.")
-        by_id[beat_id] = item["text"]
+        if set(item) == allowed_current:
+            for field in ("visible_subjects", "enters", "exits"):
+                if not isinstance(item[field], list):
+                    raise ValueError(
+                        f"Repaired beat item {item_number} field {field} "
+                        "must be an array."
+                    )
+            by_id[beat_id] = {
+                "beat_number": beat_id,
+                "beat_text": item["text"],
+                "visible_subjects": item["visible_subjects"],
+                "enters": item["enters"],
+                "exits": item["exits"],
+            }
+        else:
+            # Accept old repair responses so existing saved conversations can
+            # still be recovered.  Splicing preserves the original metadata
+            # for this legacy form below.
+            by_id[beat_id] = item["text"]
     missing_ids = [beat_id for beat_id in expected_ids if beat_id not in by_id]
     if missing_ids:
         raise ValueError(
@@ -7187,12 +8142,15 @@ def parse_beat_plan_repair(
             + ", ".join(str(beat_id) for beat_id in missing_ids)
             + "."
         )
-    normalized_texts = parse_generated_beats(
-        {"beats": [by_id[beat_id] for beat_id in expected_ids]},
-        len(expected_ids),
-        formatter=formatter,
-    )
-    return dict(zip(expected_ids, normalized_texts))
+    normalized = {}
+    for beat_id in expected_ids:
+        normalized[beat_id] = parse_generated_beats(
+            {"beats": [by_id[beat_id]]},
+            1,
+            formatter=formatter,
+            expected_start=beat_id,
+        )[0]
+    return normalized
 
 
 def splice_beat_plan_repair(
@@ -7213,7 +8171,43 @@ def splice_beat_plan_repair(
         )
     repaired = list(original)
     for beat_id in expected_ids:
-        repaired[beat_id - 1] = replacement_beats[beat_id]
+        replacement = replacement_beats[beat_id]
+        original_beat = original[beat_id - 1]
+        if isinstance(original_beat, BeatDefinition) and isinstance(
+            replacement,
+            BeatDefinition,
+        ):
+            preserve_metadata = (
+                replacement.subject_metadata_present
+                or not original_beat.subject_metadata_present
+            )
+            replacement = BeatDefinition(
+                str(replacement),
+                getattr(original_beat, "loras", ()),
+                phase_number=getattr(original_beat, "phase_number", None),
+                phase_start=getattr(original_beat, "phase_start", False),
+                visible_subjects=getattr(
+                    replacement if preserve_metadata else original_beat,
+                    "visible_subjects",
+                    (),
+                ),
+                enters=getattr(
+                    replacement if preserve_metadata else original_beat,
+                    "enters",
+                    (),
+                ),
+                exits=getattr(
+                    replacement if preserve_metadata else original_beat,
+                    "exits",
+                    (),
+                ),
+                subject_metadata_present=(
+                    replacement.subject_metadata_present
+                    if preserve_metadata
+                    else original_beat.subject_metadata_present
+                ),
+            )
+        repaired[beat_id - 1] = replacement
     validated = parse_generated_beats({"beats": repaired}, len(original))
     requested = set(expected_ids)
     for beat_id, original_text in enumerate(original, start=1):
@@ -7352,7 +8346,13 @@ def build_beat_generation_messages(
     )
 
     response_shape = json.dumps(
-        {"beats": [{"beat_number": batch_start, "beat_text": "..."}]},
+        {"beats": [{
+            "beat_number": batch_start,
+            "beat_text": "...",
+            "visible_subjects": ["Amy"],
+            "enters": ["Amy"],
+            "exits": [],
+        }]},
         ensure_ascii=False,
     )
     return [
@@ -7372,13 +8372,17 @@ Write exactly {batch_size} beats for Phase {phase_number}, global Beats
 {batch_start}-{batch_end}.
 
 Each beat is an EXECUTION TARGET for one H3 video clip, not prose and not a
-miniature screenplay. Use 1 concise sentence. Give the Director only the
-concrete visible action that must happen in this clip and the visible physical
-result that must be true when the clip ends.
+miniature screenplay. Use exactly 1 concise sentence per beat. Give the Director
+only the concrete visible action that must happen in this clip and the visible
+physical result that must be true when the clip ends.
 
 AUTHORIZED-EVENT TEST — APPLY THIS TO EVERY BEAT
-Before writing a beat, ask: "What SOURCE STORY or CURRENT PHASE requirement
-actually authorizes this event?" If there is no answer, do not write the event.
+
+Before writing a beat, ask:
+
+"What SOURCE STORY or CURRENT PHASE requirement actually authorizes this event?"
+
+If there is no answer, do not write the event.
 
 Specificity is not invention:
 - Specificity may describe HOW an already-authorized action happens.
@@ -7392,13 +8396,14 @@ Specificity is not invention:
 - Preserve source-established setup details unless the source explicitly requires
   them to change. Do not spend beats dismantling setup merely to create action.
 
-Beat-writing rules:
+BEAT-WRITING RULES
+
 - Follow SOURCE STORY first and CURRENT PHASE second.
-- Continue naturally from PREVIOUS PHASE END STATE and recent accepted beats.
+- Continue naturally from PREVIOUS PHASE END STATE and RECENT ACCEPTED BEATS.
 - Progress chronologically; do not repeat or restage an earlier beat.
 - Center each beat on ONE primary physical operation or one tightly coupled
-  cause -> action -> visible result. If several distinct operations are needed,
-  split them across separate beats.
+  cause -> action -> visible result.
+- If several distinct operations are needed, split them across separate beats.
 - When the source requires a repeated remove/replace, destroy/rebuild, or other
   paired process for each item, keep the pair local: establish the removal/change
   and its corresponding replacement/result before moving to an unrelated item,
@@ -7407,9 +8412,9 @@ Beat-writing rules:
 - Preserve lasting results of earlier removals, destruction, replacements, or
   other irreversible changes unless the story explicitly restores them.
 - If SOURCE STORY does not specify a tool or mechanism, use the minimum generic
-  mechanism needed to make the authorized action visually executable. Do not
-  invent elaborate tool systems, implants, powers, internal mechanisms, or new
-  transformations.
+  mechanism needed to make the authorized action visually executable.
+- Do not invent elaborate tool systems, implants, powers, internal mechanisms,
+  or new transformations.
 - Do not invent dialogue or reactions unless SOURCE STORY or explicit beat
   instructions require them.
 - Do not include camera directions unless SOURCE STORY explicitly requires a
@@ -7419,12 +8424,174 @@ Beat-writing rules:
   physical action.
 - Use the beat budget to EXPAND required source events into clear visible steps,
   never to manufacture additional events.
-- Only create one sentence per beat.
 - Reach CURRENT PHASE.required_end_state by the final beat of this phase.
 - NEXT PHASE is boundary context only; do not perform its progression early.
 - Return exactly {batch_size} ordered beats with the requested global numbers.
 - Beat strings contain no numbering, labels, Markdown, comments, or --lora data.
-- Return only JSON shaped exactly as {response_shape}.
+- Also return visible_subjects, enters, and exits for every beat.
+
+SUBJECT PRESENCE METADATA — CLASSIFY AFTER WRITING EACH BEAT
+
+After writing the beat sentence, classify visible_subjects, enters, and exits
+from the literal physical content of that beat.
+
+Do NOT derive presence metadata from:
+- SOURCE STORY membership
+- CURRENT PHASE membership
+- subject mentions
+- subject names appearing in the sentence
+- possession or ownership words
+- implied proximity
+- knowledge that a subject exists nearby
+
+Use only the subject IDs already defined by the supplied subject information.
+Do not invent subjects while producing presence metadata.
+
+VISIBLE_SUBJECTS
+
+visible_subjects contains only subjects whose physical body, physical form, or
+an identifiable physical part of that body/form is directly depicted on-screen
+during this beat.
+
+For each subject, imagine the rendered clip with ALL AUDIO MUTED and with NO
+STORY CONTEXT.
+
+Ask:
+
+"Can a viewer directly point to some visible physical part of this subject in
+the image?"
+
+YES:
+    include the subject in visible_subjects.
+
+NO:
+    do not include the subject.
+
+A subject is NOT visible merely because the beat contains their name.
+
+The following do NOT make a subject visible by themselves:
+- speech
+- growling
+- snarling
+- breathing
+- footsteps
+- screaming
+- any other sound
+- being mentioned or referred to
+- being nearby
+- approaching from offscreen
+- pursuing someone while remaining unseen
+- being pursued while remaining unseen
+- moving foliage caused by an unseen subject
+- branches shaking because of an unseen subject
+- a sound becoming louder or closer
+- another character looking toward or reacting to the subject
+- a shadow cast by an unseen subject
+- environmental effects attributed to the subject
+- implied presence behind an object or outside the frame
+
+Phrases such as these are strong evidence that the subject is NOT visible:
+- "off-screen"
+- "offscreen"
+- "out of sight"
+- "unseen"
+- "hidden from view"
+- "somewhere beyond the frame"
+- "heard nearby"
+- "behind the foliage" when no body part is actually shown
+
+Do not include such a subject unless another clause in the same beat explicitly
+shows part of the subject's physical body/form.
+
+Examples:
+
+"Amy presses against the tree while the werewolf snarls just out of sight."
+    visible_subjects = [Amy]
+    The werewolf is NOT visible.
+
+"A huge shadow from the unseen werewolf crosses Amy."
+    visible_subjects = [Amy]
+    The werewolf is NOT visible.
+
+"Branches shake as the werewolf approaches from offscreen."
+    visible_subjects = []
+    The werewolf is NOT visible.
+
+"Amy hears Beth screaming from another room."
+    visible_subjects = [Amy]
+    Beth is NOT visible.
+
+"The werewolf emerges through the foliage behind Amy."
+    visible_subjects = [Amy, werewolf]
+
+"The werewolf's muzzle pushes through the foliage."
+    visible_subjects = [werewolf]
+
+"Two glowing eyes belonging to the werewolf appear between the trees."
+    visible_subjects = [werewolf]
+    The eyes are a directly visible physical part of the werewolf.
+
+IMPORTANT:
+
+Do NOT reason:
+    "The werewolf is involved in this beat, therefore the werewolf is visible."
+
+Do NOT reason:
+    "The sentence says 'werewolf', therefore the werewolf is visible."
+
+Presence metadata describes what the rendered CAMERA CAN ACTUALLY SEE, not what
+the audience knows, hears, suspects, or understands to be nearby.
+
+ENTERS
+
+A subject belongs in enters only when this beat begins a new directly visible
+presence for that subject in the current scene.
+
+Hearing, mentioning, sensing, implying, or foreshadowing a subject does NOT
+count as entering.
+
+A subject listed in enters must also be listed in visible_subjects.
+
+Example:
+
+Beat 1:
+"Amy runs through the forest while a werewolf growls somewhere behind her."
+    visible_subjects = [Amy]
+    enters = [Amy] if this is Amy's first visible presence in the scene
+    The werewolf does NOT enter.
+
+Beat 2:
+"The werewolf bursts through the brush behind Amy."
+    visible_subjects = [Amy, werewolf]
+    enters = [werewolf]
+
+EXITS
+
+A subject belongs in exits only when the subject physically leaves the current
+scene by the end of the beat.
+
+Do NOT mark a subject as exited merely because:
+- the camera cuts away
+- the subject becomes temporarily hidden
+- the subject becomes occluded
+- the subject moves outside the frame while remaining part of the same active
+  scene
+- the next beat focuses on another subject
+
+A subject may appear in both visible_subjects and exits on the same beat.
+
+PRESENCE METADATA RESTRICTIONS
+
+- Phase-level character membership does not imply visibility in every beat.
+- Mentioned, heard, remembered, implied, offscreen, or fully occluded subjects
+  are not automatically visible.
+- visible_subjects, enters, and exits are presence metadata only.
+- Do not include clothing, damage, pose, expression, location, or detailed visual
+  continuity state in these arrays.
+- First write the beat sentence, THEN classify its presence metadata from what
+  that sentence literally shows.
+
+Return only JSON shaped exactly as {response_shape}.
 {supplemental_text}
 
 MAIN CHARACTER(S)
@@ -7567,7 +8734,8 @@ SOURCE STORY
 --- STORY END ---
 
 Return only a JSON object shaped exactly as
-{{"beats": [{{"beat_number": {batch_start}, "beat_text": "..."}}]}}.
+{{"beats": [{{"beat_number": {batch_start}, "beat_text": "...",
+"visible_subjects": [], "enters": [], "exits": []}}]}}.
 """.strip(),
         },
     ]
@@ -7870,11 +9038,27 @@ def parse_generated_beats(
     beats = []
     for index, raw_beat in enumerate(candidate["beats"], start=1):
         expected_beat_number = expected_start + index - 1
+        metadata = {
+            "visible_subjects": getattr(raw_beat, "visible_subjects", ()),
+            "enters": getattr(raw_beat, "enters", ()),
+            "exits": getattr(raw_beat, "exits", ()),
+        }
+        metadata_present = bool(
+            getattr(raw_beat, "subject_metadata_present", False)
+        )
         if isinstance(raw_beat, dict):
-            if set(raw_beat) != {"beat_number", "beat_text"}:
+            allowed_legacy = {"beat_number", "beat_text"}
+            allowed_current = {
+                "beat_number",
+                "beat_text",
+                "visible_subjects",
+                "enters",
+                "exits",
+            }
+            if set(raw_beat) not in (allowed_legacy, allowed_current):
                 raise ValueError(
                     f"Generated beat {expected_beat_number} must contain exactly "
-                    "beat_number and beat_text."
+                    "beat_number, beat_text, visible_subjects, enters, and exits."
                 )
             returned_beat_number = raw_beat["beat_number"]
             if (
@@ -7886,6 +9070,18 @@ def parse_generated_beats(
                     f"Generated beat {index} must have beat_number "
                     f"{expected_beat_number}."
                 )
+            if set(raw_beat) == allowed_current:
+                metadata_present = True
+                metadata = {
+                    field: raw_beat[field]
+                    for field in ("visible_subjects", "enters", "exits")
+                }
+                for field, value in metadata.items():
+                    if not isinstance(value, list):
+                        raise ValueError(
+                            f"Generated beat {expected_beat_number} field "
+                            f"{field} must be an array."
+                        )
             raw_beat = raw_beat["beat_text"]
         if not isinstance(raw_beat, str):
             raise ValueError(
@@ -7917,7 +9113,13 @@ def parse_generated_beats(
         #        f"Generated beat {expected_beat_number} must contain exactly one "
         #        "complete sentence."
         #    )
-        beats.append(beat)
+        beats.append(BeatDefinition(
+            beat,
+            visible_subjects=metadata["visible_subjects"],
+            enters=metadata["enters"],
+            exits=metadata["exits"],
+            subject_metadata_present=metadata_present,
+        ))
 
     normalized = [beat.casefold() for beat in beats]
     if enforce_content_validation and len(set(normalized)) != len(normalized):
@@ -7930,6 +9132,483 @@ def parse_generated_beats(
     if exclusion_issues:
         raise ValueError(" ".join(exclusion_issues))
     return beats
+
+
+def _visibility_registry(subject_registry):
+    """Normalize the existing subject source for exact beat-reference lookup."""
+
+    if isinstance(subject_registry, SubjectRegistry):
+        return subject_registry
+    if isinstance(subject_registry, str):
+        return _parse_subject_registry(subject_registry)
+    if isinstance(subject_registry, Mapping):
+        return SubjectRegistry.from_records(subject_registry)
+    raise TypeError("subject_registry must be a SubjectRegistry or mapping")
+
+
+def _visibility_subject_lookup(subject_registry):
+    lookup = {}
+    for key, record in subject_registry.items():
+        values = (key, record.get("subject_id"), record.get("name"))
+        for value in values:
+            if value is None:
+                continue
+            token = str(value).strip().casefold()
+            if not token:
+                continue
+            previous = lookup.get(token)
+            if previous is not None and previous != key:
+                raise ValueError(
+                    f"Subject reference {value!r} is ambiguous in SubjectRegistry."
+                )
+            lookup[token] = key
+    return lookup
+
+
+def populate_story_subject_definitions(subject_definitions, story, beats):
+    """Add story-authoritative subjects referenced by beat metadata.
+
+    ``subjects.txt`` is optional, so a story can introduce a named subject
+    such as Werewolf without a picture-backed definition. Beat metadata is
+    only allowed to identify that subject when the exact name also occurs in
+    the authoritative story text. A beat-only name is never promoted.
+
+    The returned definitions are run-local and deterministic. They are
+    recomputed from the story and beats on resume rather than persisted as a
+    second alias/entity system.
+    """
+
+    source = str(subject_definitions or "").strip()
+    story_text = str(story or "")
+    metadata_references = []
+    seen_references = set()
+    for beat in beats or ():
+        for field_name in ("visible_subjects", "enters", "exits"):
+            raw_values = _beat_metadata_value(beat, field_name) or ()
+            if not isinstance(raw_values, (list, tuple)):
+                continue
+            for raw_value in raw_values:
+                if not isinstance(raw_value, str):
+                    continue
+                reference = _normalize_subject_discovery_name(raw_value)
+                token = reference.casefold()
+                if reference and token not in seen_references:
+                    seen_references.add(token)
+                    metadata_references.append(reference)
+
+    registry = parse_subject_registry(source)
+    lookup = _visibility_subject_lookup(registry)
+    used_ids = {
+        int(record.get("subject_id"))
+        for record in registry.values()
+        if isinstance(record, Mapping)
+        and str(record.get("subject_id", "")).isdigit()
+    }
+    next_id = max(used_ids, default=0) + 1
+    additions = []
+    added_names = set()
+
+    # Older generated beat files persisted only numeric keys. Recover those
+    # entries only when one unambiguous subject name is visible in the same
+    # beat text and appears exactly in the authoritative story. This is a
+    # migration for prior files, not permission to promote arbitrary metadata.
+    numeric_ids_by_beat = {}
+    for beat_number, beat in enumerate(beats or (), start=1):
+        for field_name in ("visible_subjects", "enters", "exits"):
+            raw_values = _beat_metadata_value(beat, field_name) or ()
+            if not isinstance(raw_values, (list, tuple)):
+                continue
+            for raw_value in raw_values:
+                if isinstance(raw_value, int) and not isinstance(raw_value, bool):
+                    if str(raw_value).casefold() not in lookup:
+                        numeric_ids_by_beat.setdefault(beat_number, set()).add(
+                            raw_value
+                        )
+
+    def recoverable_names(beat):
+        text = str(beat or "")
+        candidates = set()
+        for match in re.finditer(
+            r"\b(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b",
+            text,
+        ):
+            candidate = _normalize_subject_discovery_name(match.group(0))
+            if candidate:
+                candidates.add(candidate)
+        for match in re.finditer(
+            r"(?i)\b(?:the|a|an)\s+([A-Za-z][\w'-]*)",
+            text,
+        ):
+            candidate = _normalize_subject_discovery_name(match.group(0))
+            if candidate:
+                candidates.add(candidate)
+        return {
+            candidate
+            for candidate in candidates
+            if _subject_name_is_promotable(candidate)
+            and re.search(
+                rf"(?<![\w]){re.escape(candidate)}(?![\w])",
+                story_text,
+                flags=re.IGNORECASE,
+            ) is not None
+            and candidate.casefold() not in lookup
+        }
+
+    for subject_id in sorted({
+        subject_id
+        for ids in numeric_ids_by_beat.values()
+        for subject_id in ids
+    }):
+        candidates = set()
+        for beat_number, subject_ids in numeric_ids_by_beat.items():
+            if subject_id in subject_ids:
+                candidates.update(recoverable_names(beats[beat_number - 1]))
+        if len(candidates) != 1 or subject_id in used_ids:
+            continue
+        canonical_name = next(iter(candidates))
+        additions.append(
+            f"<Subject {subject_id}> is {canonical_name}, story-defined."
+        )
+        print(
+            "Recovered story-defined Subject from legacy beat metadata: "
+            f"<Subject {subject_id}> {canonical_name}",
+            flush=True,
+        )
+        used_ids.add(subject_id)
+        added_names.add(canonical_name.casefold())
+        lookup[str(subject_id).casefold()] = subject_id
+        lookup[canonical_name.casefold()] = subject_id
+
+    for reference in metadata_references:
+        if reference.casefold() in lookup:
+            continue
+        if not _subject_name_is_promotable(reference):
+            continue
+        if re.search(
+            rf"(?<![\w]){re.escape(reference)}(?![\w])",
+            story_text,
+            flags=re.IGNORECASE,
+        ) is None:
+            continue
+
+        canonical_name = reference
+        if canonical_name.islower():
+            canonical_name = " ".join(
+                word[:1].upper() + word[1:]
+                for word in canonical_name.split()
+            )
+        if canonical_name.casefold() in added_names:
+            continue
+        while next_id in used_ids:
+            next_id += 1
+        additions.append(
+            f"<Subject {next_id}> is {canonical_name}, story-defined."
+        )
+        print(
+            "Registered story-defined Subject before beat metadata validation: "
+            f"<Subject {next_id}> {canonical_name}",
+            flush=True,
+        )
+        used_ids.add(next_id)
+        added_names.add(canonical_name.casefold())
+        lookup[canonical_name.casefold()] = next_id
+        next_id += 1
+
+    return combine_subject_definitions(source, additions)
+
+
+def _beat_metadata_value(beat, field_name, default=()):
+    """Read beat metadata from either a BeatDefinition or a mapping."""
+
+    if isinstance(beat, Mapping):
+        if (
+            field_name == "subject_metadata_present"
+            and field_name not in beat
+        ):
+            return any(
+                name in beat
+                for name in ("visible_subjects", "enters", "exits")
+            )
+        return beat.get(field_name, default)
+    return getattr(beat, field_name, default)
+
+
+def _beat_text_value(beat):
+    if isinstance(beat, Mapping):
+        return beat.get("text", beat.get("beat_text", ""))
+    return str(beat)
+
+
+def _normalize_visibility_references(
+    raw_value,
+    field_name,
+    beat_number,
+    lookup,
+    issues,
+):
+    if raw_value is None:
+        return []
+    if not isinstance(raw_value, (list, tuple)):
+        issues.append(
+            f"Beat {beat_number} field {field_name} must be an array."
+        )
+        return []
+    normalized = []
+    seen = set()
+    for reference in raw_value:
+        if not isinstance(reference, (str, int)) or isinstance(reference, bool):
+            issues.append(
+                f"Beat {beat_number} field {field_name} contains an invalid "
+                f"subject reference: {reference!r}."
+            )
+            continue
+        token = str(reference).strip().casefold()
+        key = lookup.get(token)
+        if key is None:
+            issues.append(
+                f"Beat {beat_number} field {field_name} references unknown "
+                f"subject {reference!r}."
+            )
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(key)
+    return normalized
+
+
+def validate_beat_subject_metadata(
+    beats,
+    subject_registry,
+    *,
+    initial_scene_present_subjects=(),
+):
+    """Return normalized beats and deterministic presence-metadata issues.
+
+    Duplicate references and exact-name/case normalization are repaired. Any
+    unknown subject or invalid scene transition is returned as an issue so the
+    caller can reject the generated batch without mutating the registry.
+    """
+
+    registry = _visibility_registry(subject_registry)
+    lookup = _visibility_subject_lookup(registry)
+    issues = []
+    present = []
+    for reference in initial_scene_present_subjects or ():
+        token = str(reference).strip().casefold()
+        key = lookup.get(token)
+        if key is None:
+            issues.append(
+                f"Initial scene presence references unknown subject {reference!r}."
+            )
+            continue
+        if key not in present:
+            present.append(key)
+
+    normalized_beats = []
+    for offset, raw_beat in enumerate(beats or (), start=1):
+        visible = _normalize_visibility_references(
+            _beat_metadata_value(raw_beat, "visible_subjects"),
+            "visible_subjects",
+            offset,
+            lookup,
+            issues,
+        )
+        enters = _normalize_visibility_references(
+            _beat_metadata_value(raw_beat, "enters"),
+            "enters",
+            offset,
+            lookup,
+            issues,
+        )
+        exits = _normalize_visibility_references(
+            _beat_metadata_value(raw_beat, "exits"),
+            "exits",
+            offset,
+            lookup,
+            issues,
+        )
+        visible_set = set(visible)
+        present_before = set(present)
+        invalid_enters = [key for key in enters if key not in visible_set]
+        if invalid_enters:
+            issues.append(
+                f"Beat {offset} enters subjects not in visible_subjects: "
+                + ", ".join(map(str, invalid_enters))
+                + "."
+            )
+        repeated_enters = [key for key in enters if key in present_before]
+        if repeated_enters:
+            issues.append(
+                f"Beat {offset} repeatedly enters scene-present subjects: "
+                + ", ".join(map(str, repeated_enters))
+                + "."
+            )
+        overlap = sorted(set(enters).intersection(exits), key=str)
+        if overlap:
+            issues.append(
+                f"Beat {offset} cannot enter and exit the same subject: "
+                + ", ".join(map(str, overlap))
+                + "."
+            )
+        during = list(present)
+        for key in enters:
+            if key not in during:
+                during.append(key)
+        invalid_exits = [key for key in exits if key not in during]
+        if invalid_exits:
+            issues.append(
+                f"Beat {offset} exits subjects that are not scene-present: "
+                + ", ".join(map(str, invalid_exits))
+                + "."
+            )
+        normalized_beats.append(BeatDefinition(
+            str(_beat_text_value(raw_beat)),
+            _beat_metadata_value(raw_beat, "loras"),
+            phase_number=_beat_metadata_value(raw_beat, "phase_number", None),
+            phase_start=_beat_metadata_value(raw_beat, "phase_start", False),
+            visible_subjects=visible,
+            enters=enters,
+            exits=exits,
+            subject_metadata_present=_beat_metadata_value(
+                raw_beat,
+                "subject_metadata_present",
+                False,
+            ),
+        ))
+        present = [key for key in during if key not in exits]
+    return normalized_beats, list(dict.fromkeys(issues))
+
+
+def normalize_beat_subject_metadata(
+    beats,
+    subject_registry,
+    *,
+    initial_scene_present_subjects=(),
+):
+    """Normalize beat metadata or raise a clear validation error."""
+
+    normalized, issues = validate_beat_subject_metadata(
+        beats,
+        subject_registry,
+        initial_scene_present_subjects=initial_scene_present_subjects,
+    )
+    if issues:
+        raise ValueError("Invalid beat subject metadata: " + " ".join(issues))
+    return normalized
+
+
+def scene_presence_transition(
+    scene_present_subjects,
+    beat,
+):
+    """Return before/during/after ordered scene-presence tuples for one beat."""
+
+    before = list(dict.fromkeys(scene_present_subjects or ()))
+    enters = list(dict.fromkeys(_beat_metadata_value(beat, "enters") or ()))
+    exits = set(_beat_metadata_value(beat, "exits") or ())
+    during = list(before)
+    for subject_key in enters:
+        if subject_key not in during:
+            during.append(subject_key)
+    after = [subject_key for subject_key in during if subject_key not in exits]
+    return {
+        "before": tuple(before),
+        "during": tuple(during),
+        "after": tuple(after),
+    }
+
+
+def update_scene_presence(scene_present_subjects, beat):
+    """Apply one validated beat transition and return scene presence after it."""
+
+    return scene_presence_transition(scene_present_subjects, beat)["after"]
+
+
+def scene_presence_for_beats(beats, initial_scene_present_subjects=()):
+    """Return the scene-presence state after each beat in order."""
+
+    states = []
+    current = tuple(initial_scene_present_subjects or ())
+    for beat in beats or ():
+        current = update_scene_presence(current, beat)
+        states.append(current)
+    return tuple(states)
+
+
+def normalize_scene_presence_state(state=None):
+    """Return the small checkpoint-safe scene-presence state."""
+
+    state = state if isinstance(state, Mapping) else {}
+    subjects = state.get("scene_present_subjects", ())
+    if not isinstance(subjects, (list, tuple)):
+        subjects = ()
+    try:
+        last_beat = int(state.get("last_processed_beat_id", 0))
+    except (TypeError, ValueError):
+        last_beat = 0
+    return {
+        "scene_present_subjects": list(dict.fromkeys(subjects)),
+        "last_processed_beat_id": max(0, last_beat),
+    }
+
+
+def scene_presence_state_after_beat(state, beat, beat_id):
+    """Advance checkpointable scene presence through one accepted beat."""
+
+    normalized = normalize_scene_presence_state(state)
+    normalized["scene_present_subjects"] = list(
+        update_scene_presence(
+            normalized["scene_present_subjects"],
+            beat,
+        )
+    )
+    normalized["last_processed_beat_id"] = int(beat_id)
+    return normalized
+
+
+def expected_visible_subjects_for_segment(
+    beats,
+    segment_number,
+    *,
+    beat_ids=None,
+    beat=None,
+):
+    """Return an ordered visible-subject union for a rendered segment.
+
+    ``None`` means the selected legacy beats have no visibility metadata and
+    therefore cannot safely gate a visual search.
+    """
+
+    if beat is not None:
+        selected = [beat]
+    else:
+        if beat_ids is None:
+            beat_ids = [segment_number]
+        selected = []
+        for raw_id in beat_ids:
+            try:
+                beat_id = int(raw_id)
+            except (TypeError, ValueError):
+                raise ValueError(f"Invalid beat ID for segment: {raw_id!r}") from None
+            if beat_id <= 0 or beat_id > len(beats or ()):
+                raise ValueError(f"Segment references unknown beat {beat_id}.")
+            selected.append(beats[beat_id - 1])
+    if not selected:
+        return tuple()
+    if not any(
+        _beat_metadata_value(beat, "subject_metadata_present", False)
+        for beat in selected
+    ):
+        return None
+    ordered = []
+    seen = set()
+    for beat in selected:
+        for subject_key in _beat_metadata_value(beat, "visible_subjects") or ():
+            if subject_key not in seen:
+                seen.add(subject_key)
+                ordered.append(subject_key)
+    return tuple(ordered)
 
 
 _BEAT_SENTENCE_BREAK = re.compile(
@@ -8144,6 +9823,22 @@ def save_generated_beats(
     for beat_number, beat in enumerate(beats, start=1):
         if beat_number in phase_starts:
             saved_beats.append(f"# Phase {phase_starts[beat_number]}")
+        if getattr(beat, "subject_metadata_present", False):
+            saved_beats.append(
+                "# BeatMetadata "
+                f"{beat_number} "
+                + json.dumps(
+                    {
+                        "visible_subjects": list(
+                            getattr(beat, "visible_subjects", ())
+                        ),
+                        "enters": list(getattr(beat, "enters", ())),
+                        "exits": list(getattr(beat, "exits", ())),
+                    },
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                )
+            )
         saved_beats.append(
             f"{beat_number}. {beat} {lora_directive}"
             if lora_directive
@@ -8187,6 +9882,8 @@ def generate_beats_from_story(
     phrase_exclusions=(),
     reuse_story_arc=True,
     gen_rules="",
+    subject_definitions="",
+    resolved_subject_definitions=None,
 ):
     if llm_request is None:
         llm_request = ask_llm
@@ -9124,6 +10821,26 @@ def generate_beats_from_story(
         )
 
     def accept_plan(beats, audit, plan_attempt, completed_repair_rounds):
+        validation_subject_definitions = populate_story_subject_definitions(
+            subject_definitions,
+            story,
+            beats,
+        )
+        if isinstance(resolved_subject_definitions, dict):
+            resolved_subject_definitions["value"] = validation_subject_definitions
+        if any(
+            getattr(beat, "subject_metadata_present", False)
+            for beat in beats
+        ):
+            # Validate and canonicalize for the in-memory pipeline, but keep
+            # the authoritative subject names in beats.txt. Persisting only
+            # numeric registry keys would make a later process unable to
+            # reconstruct run-local story subjects that were not in
+            # subjects.txt.
+            normalize_beat_subject_metadata(
+                beats,
+                validation_subject_definitions,
+            )
         exclusion_issues = validate_generated_beat_exclusions(
             beats,
             phrase_exclusions,
@@ -9157,7 +10874,16 @@ def generate_beats_from_story(
             macro_arc=macro_arc,
         )
         print(f"Generated {len(beats)} story beats and saved them to {path}.")
-        return load_beats(path)
+        saved_beats = load_beats(path)
+        if any(
+            getattr(beat, "subject_metadata_present", False)
+            for beat in saved_beats
+        ):
+            return normalize_beat_subject_metadata(
+                saved_beats,
+                validation_subject_definitions,
+            )
+        return saved_beats
 
     if saved_macro_arc is not None:
         macro_arc = saved_macro_arc
@@ -9573,6 +11299,8 @@ def load_or_generate_beats(
     phrase_exclusions=(),
     force_generate=False,
     gen_rules="",
+    subject_definitions="",
+    resolved_subject_definitions=None,
 ):
     raw = load_text_file(path, required=not force_generate)
     try:
@@ -9582,6 +11310,21 @@ def load_or_generate_beats(
             raise
         beats, lora_directive = [], ""
     if beats and not force_generate:
+        validation_subject_definitions = populate_story_subject_definitions(
+            subject_definitions,
+            story,
+            beats,
+        )
+        if isinstance(resolved_subject_definitions, dict):
+            resolved_subject_definitions["value"] = validation_subject_definitions
+        if any(
+            getattr(beat, "subject_metadata_present", False)
+            for beat in beats
+        ):
+            beats = normalize_beat_subject_metadata(
+                beats,
+                validation_subject_definitions,
+            )
         exclusion_issues = validate_generated_beat_exclusions(
             beats,
             phrase_exclusions,
@@ -9602,7 +11345,7 @@ def load_or_generate_beats(
             f"{path} is empty; asking LM Studio to create {total_segments} "
             "creative story beats before generation starts."
         )
-    return generate_beats_from_story(
+    generated_beats = generate_beats_from_story(
         story,
         total_segments,
         path=path,
@@ -9616,7 +11359,27 @@ def load_or_generate_beats(
         phrase_exclusions=phrase_exclusions,
         reuse_story_arc=not force_generate,
         gen_rules=gen_rules,
+        subject_definitions=subject_definitions,
+        resolved_subject_definitions=resolved_subject_definitions,
     )
+    validation_subject_definitions = (
+        resolved_subject_definitions.get("value")
+        if isinstance(resolved_subject_definitions, dict)
+        else None
+    ) or populate_story_subject_definitions(
+        subject_definitions,
+        story,
+        generated_beats,
+    )
+    if any(
+        getattr(beat, "subject_metadata_present", False)
+        for beat in generated_beats
+    ):
+        generated_beats = normalize_beat_subject_metadata(
+            generated_beats,
+            validation_subject_definitions,
+        )
+    return generated_beats
 
 
 def build_story_context(
@@ -9858,6 +11621,8 @@ def build_h3_formatter_messages(
     mode,
     segment_seconds,
     continuity_summary="",
+    active_beat_id=None,
+    active_beat=None,
 ):
     """Build Request 2: a pure MiniMax H3 audiovisual formatting job."""
     mode = str(mode or "T2VA").strip().upper()
@@ -9869,7 +11634,13 @@ def build_h3_formatter_messages(
     user_content = (
         f"MODE: {mode}\n"
         f"DURATION: {float(segment_seconds):g} seconds \n\n"
-        f"{opening_block}\n\n"
+        + (
+            f"AUTHORITATIVE ASSIGNED BEAT: Beat {active_beat_id}: "
+            f"{str(active_beat).strip()}\n\n"
+            if active_beat_id is not None and active_beat is not None
+            else ""
+        )
+        + f"{opening_block}\n\n"
         "RAW SCENE:\n"
         f"{str(raw_scene or '').strip()}"
     )
@@ -10651,6 +12422,10 @@ def _subject_name_is_promotable(name):
         "anonymous", "background", "bystander", "crowd", "effect", "generic",
         "group", "incidental", "object", "passerby", "prop", "temporary",
         "unidentified", "unknown", "unnamed",
+        # These are common sentence-initial scene nouns, not tracked Subjects.
+        # Article removal above prevents the broader class of ``The X`` prose
+        # fragments from being registered as literal names.
+        "camera", "floor", "forest",
     }
     return not (set(normalized.split()) & disallowed_words)
 
@@ -10670,7 +12445,7 @@ def register_named_subject_hints(
     description = str(detailed_description or "")
     added_names = []
     for raw_name in subject_hints or []:
-        name = " ".join(str(raw_name).split()).strip(" ,.;:-")
+        name = _normalize_subject_discovery_name(raw_name)
         if not _subject_name_is_promotable(name):
             continue
         if _find_existing_subject_name(state["subjects"], name) is not None:
@@ -12219,7 +13994,7 @@ def normalize_structured_continuity_state(
     return state
 
 
-COMBINED_CONTINUITY_SYSTEM = (
+TEXT_CONTINUITY_SYSTEM = (
     "You are a state continuity maintainer and editor. You take the end state "
     "of characters and setting from a scene and output, in JSON format, the "
     "reduced continuity state needed to open the next segment of the same "
@@ -12251,7 +14026,7 @@ def _continuity_json_text(value):
 
 
 def _parse_continuity_json_result(raw_result, phase_name):
-    """Require a JSON object for the combined continuity call."""
+    """Require a JSON object for the text continuity call."""
     candidate = raw_result
     if isinstance(candidate, str):
         try:
@@ -12322,7 +14097,7 @@ def request_continuity_opening_state(
     return opening_state
 
 
-def request_combined_continuity(
+def request_text_continuity(
     h3_prompt,
     current_phase,
     llm_request=None,
@@ -12330,9 +14105,9 @@ def request_combined_continuity(
     content_attempts=SUMMARY_CONTENT_ATTEMPTS,
     defer_opening=False,
 ):
-    """Run the single combined continuity extraction/reduction call.
+    """Run the single text continuity extraction/reduction call.
 
-    The combined call is Phase 1: it reads the final H3 prompt and directly
+    The text call is Phase 1: it reads the final H3 prompt and directly
     returns the reduced continuity JSON needed for the next segment, replacing
     the former Phase 1 (full end state) and Phase 2 (reduction) pair. Phase 2
     (the H3 opening prose) is optionally deferred until rendered visual facts
@@ -12342,18 +14117,18 @@ def request_combined_continuity(
         llm_request = ask_llm
     attempts = max(1, int(content_attempts))
 
-    combined_messages = [
-        {"role": "system", "content": COMBINED_CONTINUITY_SYSTEM},
+    text_messages = [
+        {"role": "system", "content": TEXT_CONTINUITY_SYSTEM},
         {"role": "user", "content": str(h3_prompt or "").strip()},
     ]
     reduced_state = None
-    combined_error = None
+    text_error = None
     for attempt in range(1, attempts + 1):
         metadata = dict(history_metadata or {})
         metadata.update({"purpose": "continuity_combined_reduced_state", "content_attempt": attempt})
         try:
             raw = llm_request(
-                combined_messages,
+                text_messages,
                 response_format=None,
                 temperature=0.10,
                 top_p=0.90,
@@ -12363,12 +14138,12 @@ def request_combined_continuity(
             reduced_state = _parse_continuity_json_result(raw, "Continuity")
             break
         except Exception as error:
-            combined_error = error
+            text_error = error
             if attempt < attempts:
                 print(f"[Continuity] returned unusable JSON; retrying: {error}")
     if reduced_state is None:
-        raise RuntimeError(f"Continuity failed: {combined_error}")
-    _print_continuity_phase_result(1, "COMBINED CONTINUITY", reduced_state)
+        raise RuntimeError(f"Continuity failed: {text_error}")
+    _print_continuity_phase_result(1, "TEXT CONTINUITY", reduced_state)
 
     if defer_opening:
         return {
@@ -12583,6 +14358,7 @@ def build_segment_request(
     elapsed = (segment - 1) * segment_length
     current_duration = min(segment_length, total_length - elapsed)
 
+    execution_target = resolve_execution_target(beats, segment)
     if not beats:
         beat_text = "N/A"
         beat_id = None
@@ -12592,8 +14368,8 @@ def build_segment_request(
                 f"One-beat-per-segment requires exactly {total_segments} beats, "
                 f"but {len(beats)} are loaded."
             )
-        beat_id = int(segment)
-        beat_text = str(beats[beat_id - 1])
+        beat_id = execution_target["beat_id"]
+        beat_text = str(execution_target["beat"])
 
     if conditioning_mode == "initial":
         continuity = "Establish the opening composition; there is no prior clip."
@@ -12647,6 +14423,8 @@ def build_generation_messages(
     conditioning_mode=None,
     dialogue_exclusions=(),
     current_phase=None,
+    active_beat=None,
+    active_beat_id=None,
 ):
     """Build Request 1 of the two-stage Director micro-prompt pipeline."""
     del completed_beat_ids, recent_results, total_segments, total_length
@@ -12657,10 +14435,20 @@ def build_generation_messages(
         if isinstance(current_phase, dict) and current_phase
         else "N/A"
     )
+    if active_beat_id is None:
+        try:
+            active_beat_id = int(current_segment)
+        except (TypeError, ValueError):
+            active_beat_id = 1
+    if active_beat is None and beats:
+        if not 1 <= active_beat_id <= len(beats):
+            raise ValueError(f"Unknown active beat ID {active_beat_id}.")
+        active_beat = beats[active_beat_id - 1]
+    active_beat_text = str(active_beat or "N/A").strip()
     beats_for_phase = _phase_beats_text(
         beats,
         current_phase,
-        current_segment,
+        active_beat_id,
     )
     continuity_text = (
         str(continuity_summary or "").strip()
@@ -12680,6 +14468,9 @@ PHASE: {phase_text}
 BEATS: 
  
 {beats_for_phase}
+
+AUTHORITATIVE ACTIVE BEAT (execute this exact beat only):
+Beat {active_beat_id}: {active_beat_text}
  
 CONTINUITY STATE: 
 {continuity_text}"""
@@ -13779,6 +15570,7 @@ def build_h3_prompt(
     excluded_picture_ids=None,
     continuity_state=None,
     previous_visible_subject_ids=None,
+    segment_reference_manifest=None,
 ):
     description = get_detailed_description(llm_result, None)
     if not isinstance(description, str):
@@ -13866,6 +15658,17 @@ def build_h3_prompt(
     )
     if isinstance(maybe_modified_description, str) and maybe_modified_description:
         integrated = maybe_modified_description
+    segment_reference_text = _render_segment_reference_text(
+        segment_reference_manifest,
+        subject_definitions,
+        segment_number or 1,
+    )
+    if segment_reference_text:
+        subject_text = "\n".join(
+            item
+            for item in (subject_text.strip(), segment_reference_text.strip())
+            if item
+        )
     if ff and segment_number == 1:
         subject_text += (
             "\n\n<Picture 1> is the opening-frame reference for the target video.\n\n"
@@ -14291,8 +16094,24 @@ def update_dino_continuity_references(
     continuity_state,
     config,
     output_directory,
+    expected_visible_subjects=None,
+    scene_present_subjects=None,
+    *,
+    disable_onnx_dino=False,
+    detector=None,
+    identity_validator=None,
+    segment_number=None,
+    vision_frame_output_directory=None,
 ):
     """Update current-state crops after a validated render, without failing H3."""
+
+    if disable_onnx_dino:
+        print(
+            "[DINO continuity] disabled by --disable-onnx-dino; "
+            "skipping Steps 3-7",
+            flush=True,
+        )
+        return {}
 
     subjects = (
         continuity_state.get("subjects", {})
@@ -14300,7 +16119,18 @@ def update_dino_continuity_references(
         else {}
     )
     if not isinstance(subjects, dict) or not subjects:
+        print(
+            "[DINO continuity] no registered subjects; skipping Steps 3-7",
+            flush=True,
+        )
         return {}
+    print(
+        "[DINO continuity] segment update start "
+        f"video={video_path} subjects={len(subjects)} "
+        f"expected_visible={expected_visible_subjects if expected_visible_subjects is not None else 'legacy/all'} "
+        f"scene_present={scene_present_subjects if scene_present_subjects is not None else 'legacy/all'}",
+        flush=True,
+    )
     identity_registry = SubjectRegistry.from_records(subjects)
     for name, record in identity_registry.items():
         if isinstance(record, dict):
@@ -14310,14 +16140,54 @@ def update_dino_continuity_references(
             if canonical_reference:
                 record["canonical_reference"] = canonical_reference
     try:
-        results = update_subject_references(
+        # One detector and one identity runtime are shared by Step 6 and Step
+        # 7 for this update, and the factories reuse them across segments.
+        shared_detector = detector or get_detector(device=config.dino_device)
+        shared_identity_validator = identity_validator
+        if shared_identity_validator is None:
+            shared_identity_validator = get_identity_validator(
+                device=config.identity_device
+            )
+        search_kwargs = {}
+        fallback_evidence = (
+            {} if expected_visible_subjects is not None else None
+        )
+        if expected_visible_subjects is not None:
+            search_kwargs["update_subject_keys"] = tuple(
+                expected_visible_subjects
+            )
+            search_kwargs["identity_context_subject_keys"] = tuple(
+                scene_present_subjects
+                if scene_present_subjects is not None
+                else expected_visible_subjects
+            )
+        if fallback_evidence is not None:
+            search_kwargs["fallback_evidence"] = fallback_evidence
+        results = search_and_update_current_states(
             video_path,
             identity_registry,
             output_directory,
             config=config,
+            detector=shared_detector,
+            identity_validator=shared_identity_validator,
             frame_count_fn=get_video_frame_count,
             frame_extractor=extract_video_frame,
+            segment_number=segment_number,
+            vision_frame_output_directory=vision_frame_output_directory,
+            **search_kwargs,
         )
+        if expected_visible_subjects is not None:
+            results = resolve_unresolved_subjects_with_vision(
+                video_path,
+                identity_registry,
+                expected_visible_subjects,
+                results,
+                output_directory,
+                config=config,
+                detector=shared_detector,
+                fallback_evidence=fallback_evidence,
+                step7_frame_output_directory=STEP7_FRAME_OUTPUT,
+            )
     except Exception as error:
         print(
             f"WARNING: Grounding DINO continuity references for {video_path} "
@@ -14337,7 +16207,7 @@ def update_dino_continuity_references(
     serialized = {}
     for name, result in results.items():
         serialized[name] = result.to_dict()
-        if result.found:
+        if result.updated:
             # The registry is the only mutable subject representation used by
             # the extractor. Persist its successful current-state path back to
             # the existing H3 state record; failed searches leave it untouched.
@@ -14348,23 +16218,34 @@ def update_dino_continuity_references(
                     original["current_state_reference"] = updated.get(
                         "current_state_reference"
                     )
+            similarity = (
+                f"{result.identity_similarity:.3f}"
+                if result.identity_similarity is not None
+                else "n/a"
+            )
             message = (
                 f"DINO continuity reference saved for {name}: "
                 f"{result.output_path} "
-                f"(confidence={result.confidence:.2f}, "
+                f"(identity_similarity={similarity}, "
                 f"frame={result.frame_index})"
             )
-            if result.identity_status:
-                message += (
-                    f" identity={result.identity_status}"
-                    f" similarity={result.identity_similarity:.3f}"
-                )
+            if result.last_identity_status:
+                message += f" identity={result.last_identity_status}"
             print(message)
         else:
             print(
                 f"DINO continuity reference not updated for {name}: "
-                f"{result.reason}"
+                f"{result.status}"
             )
+        print(
+            f"[DINO continuity] subject={name!r} final_status={result.status} "
+            f"updated={result.updated}",
+            flush=True,
+        )
+    print(
+        f"[DINO continuity] segment update complete subjects={len(results)}",
+        flush=True,
+    )
     return serialized
 
 
@@ -14498,6 +16379,563 @@ def _vision_message_text(content):
     raise TypeError("Vision model returned non-text assistant content.")
 
 
+VISION_IDENTITY_FALLBACK_SYSTEM_PROMPT = (
+    "You identify one tracked subject in a rendered-video candidate contact "
+    "sheet. Use the reference image(s) only to identify the subject. Select "
+    "the newest usable matching candidate, or return no match. Return only "
+    "the requested JSON object with no explanation."
+)
+
+
+def build_vision_identity_fallback_response_format():
+    """Return the strict response schema for one fallback identity choice."""
+
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "vision_identity_fallback",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "matched": {"type": "boolean"},
+                    "frame_index": {"type": ["integer", "null"]},
+                    "candidate_index": {"type": ["integer", "null"]},
+                },
+                "required": [
+                    "matched",
+                    "frame_index",
+                    "candidate_index",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def _vision_fallback_log(message):
+    """Write one Step 7 event without logging image payloads."""
+
+    print(f"[DINO continuity] Step 7: {message}", flush=True)
+
+
+def _fallback_candidate_frame_index(candidate):
+    metadata = getattr(candidate, "source_metadata", {}) or {}
+    value = metadata.get("frame_index")
+    if isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _fallback_candidate_timestamp(candidate):
+    metadata = getattr(candidate, "source_metadata", {}) or {}
+    value = metadata.get("timestamp")
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_blank_decoded_frame(frame_image):
+    """Return whether ffmpeg yielded a blank padding/decoder frame."""
+
+    image = frame_image.convert("RGB")
+    if image.getbbox() is None:
+        return True
+    extrema = image.getextrema()
+    return all(high <= 2 for _low, high in extrema)
+
+
+def _fallback_candidate_key(candidate):
+    return (
+        _fallback_candidate_frame_index(candidate),
+        str(getattr(candidate, "dino_query", "")).strip(),
+        getattr(candidate, "candidate_index", None),
+    )
+
+
+def _deduplicate_fallback_candidates(candidates, query):
+    result = []
+    seen = set()
+    for candidate in candidates or ():
+        if not isinstance(candidate, DinoCandidate):
+            continue
+        if str(candidate.dino_query).strip() != str(query).strip():
+            continue
+        if _is_blank_decoded_frame(candidate.crop):
+            _vision_fallback_log(
+                f"discarded blank fallback candidate query={query!r} "
+                f"frame={_fallback_candidate_frame_index(candidate)} "
+                f"candidate={candidate.candidate_index}"
+            )
+            continue
+        key = _fallback_candidate_key(candidate)
+        if key in seen or key[0] is None:
+            continue
+        seen.add(key)
+        result.append(candidate)
+    return result
+
+
+def _fallback_contact_label(candidate):
+    frame_index = _fallback_candidate_frame_index(candidate)
+    if frame_index is None:
+        raise ValueError("fallback candidate is missing frame_index metadata")
+    return f"F{frame_index}-C{int(candidate.candidate_index)}"
+
+
+def _write_fallback_contact_sheet(candidates, output_path):
+    """Write a deterministic, readable labeled contact sheet with PIL."""
+
+    candidates = list(candidates or ())
+    if not candidates:
+        raise ValueError("cannot build an empty fallback contact sheet")
+    labels = [_fallback_contact_label(candidate) for candidate in candidates]
+    if len(labels) != len(set(labels)):
+        raise ValueError("fallback contact-sheet labels are not unique")
+
+    columns = min(
+        VISION_FALLBACK_CONTACT_SHEET_COLUMNS,
+        len(candidates),
+    )
+    rows = (len(candidates) + columns - 1) // columns
+    max_dimension = VISION_FALLBACK_CONTACT_SHEET_MAX_DIMENSION
+    # Use the full available width for two columns, then fit the rows within
+    # the same maximum dimension. This yields 1024x512 for two candidates,
+    # 1024x1024 for 3-4, and 1024x1023 for 5-6 (2x3 cells).
+    tile_width = max_dimension // columns
+    tile_height = min(tile_width, max_dimension // rows)
+    label_height = max(28, min(40, tile_height // 6))
+    sheet = Image.new(
+        "RGB",
+        (columns * tile_width, rows * tile_height),
+        (24, 24, 24),
+    )
+    draw = ImageDraw.Draw(sheet)
+    for index, (candidate, label) in enumerate(zip(candidates, labels)):
+        tile_x = (index % columns) * tile_width
+        tile_y = (index // columns) * tile_height
+        image = candidate.crop.convert("RGB").copy()
+        image.thumbnail((tile_width - 24, tile_height - label_height - 24))
+        paste_x = tile_x + (tile_width - image.width) // 2
+        paste_y = tile_y + (tile_height - label_height - image.height) // 2
+        sheet.paste(image, (paste_x, paste_y))
+        draw.rectangle(
+            (
+                tile_x,
+                tile_y + tile_height - label_height,
+                tile_x + tile_width,
+                tile_y + tile_height,
+            ),
+            fill=(0, 0, 0),
+        )
+        draw.text(
+            (tile_x + 6, tile_y + tile_height - label_height + 6),
+            label,
+            fill=(255, 255, 255),
+        )
+    sheet.save(output_path, format="PNG")
+    _vision_fallback_log(
+        f"contact sheet written path={output_path} candidates={len(candidates)}"
+    )
+    return {
+        label: {
+            "frame_index": _fallback_candidate_frame_index(candidate),
+            "dino_query": str(candidate.dino_query),
+            "candidate_index": int(candidate.candidate_index),
+        }
+        for candidate, label in zip(candidates, labels)
+    }
+
+
+def _materialize_fallback_reference(reference, temporary_directory, label):
+    if isinstance(reference, Image.Image):
+        path = os.path.join(temporary_directory, f"{label}.png")
+        reference.convert("RGB").save(path, format="PNG")
+        return path
+    if reference is None:
+        return None
+    path = os.path.abspath(
+        os.path.expanduser(os.path.expandvars(os.fspath(reference)))
+    )
+    if not os.path.isfile(path):
+        return None
+    try:
+        with Image.open(path) as image:
+            image.verify()
+    except (OSError, UnidentifiedImageError, Image.DecompressionBombError):
+        return None
+    return path
+
+
+def _step7_capture_slug(value):
+    """Return a stable filename component for a Step 7 capture."""
+
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value or "").strip())
+    return slug.strip("._") or "value"
+
+
+def _persist_step7_input_image(source_path, destination_path):
+    """Copy one validated Step 7 input into the persistent capture folder."""
+
+    source_path = os.path.abspath(os.fspath(source_path))
+    destination_path = os.path.abspath(os.fspath(destination_path))
+    os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+    if source_path != destination_path:
+        source_extension = os.path.splitext(source_path)[1].lower()
+        destination_extension = os.path.splitext(destination_path)[1].lower()
+        if source_extension == destination_extension:
+            shutil.copy2(source_path, destination_path)
+        else:
+            with Image.open(source_path) as image:
+                image.convert("RGB").save(destination_path, format="PNG")
+    _vision_fallback_log(
+        f"captured image path={destination_path} source={source_path}"
+    )
+    return destination_path
+
+
+def _fallback_reference_paths(registry, subject_key, temporary_directory):
+    record = registry.get_subject(subject_key)
+    if record is None:
+        raise KeyError(f"unknown fallback subject {subject_key!r}")
+    paths = []
+    canonical = record.get("canonical_reference") or record.get(
+        "identity_reference"
+    )
+    canonical_path = _materialize_fallback_reference(
+        canonical,
+        temporary_directory,
+        f"{subject_key}_canonical",
+    )
+    if canonical_path:
+        paths.append(("canonical reference", canonical_path))
+    current = record.get("current_state_reference")
+    current_path = _materialize_fallback_reference(
+        current,
+        temporary_directory,
+        f"{subject_key}_current",
+    )
+    if current_path and current_path not in {path for _label, path in paths}:
+        paths.append(("current-state reference", current_path))
+    return paths
+
+
+def _category_bootstrap_visual_descriptor(subject_record):
+    """Return descriptive words that can distinguish a bootstrap subject.
+
+    Names, the DINO query, and generic grammatical words are not visual
+    identity.  This keeps labels such as ``Werewolf A`` and ``Werewolf B``
+    from being treated as meaningful distinctions while allowing definitions
+    such as ``a werewolf with silver fur`` to guide the category check.
+    """
+
+    definition = str(
+        subject_record.get("subject_definition")
+        or subject_record.get("definition")
+        or ""
+    ).strip()
+    if not definition:
+        return ()
+    excluded = {
+        "a",
+        "an",
+        "and",
+        "called",
+        "character",
+        "creature",
+        "is",
+        "named",
+        "of",
+        "person",
+        "subject",
+        "the",
+        "thing",
+        "with",
+    }
+    for value in (
+        subject_record.get("name"),
+        subject_record.get("subject_id"),
+        subject_record.get("dino_query"),
+    ):
+        excluded.update(
+            token.casefold()
+            for token in re.findall(r"[A-Za-z0-9]+", str(value or ""))
+        )
+    return tuple(
+        token.casefold()
+        for token in re.findall(r"[A-Za-z0-9]+", definition)
+        if token.casefold() not in excluded
+        and not (len(token) == 1 and token.isalpha())
+        and not token.isdigit()
+    )
+
+
+def _category_bootstrap_subjects_are_distinguishable(records):
+    """Whether no-reference subjects can safely use category bootstrap."""
+
+    descriptors = [
+        _category_bootstrap_visual_descriptor(record)
+        for record in records
+    ]
+    return bool(descriptors) and all(descriptors) and len(set(descriptors)) == len(
+        descriptors
+    )
+
+
+def build_vision_identity_fallback_prompt(
+    subject_record,
+    candidates,
+    reference_labels,
+    mode=None,
+    newest_candidate_label=None,
+):
+    """Build the Step 7 prompt for identity matching or first appearance."""
+
+    name = str(
+        subject_record.get("name")
+        or subject_record.get("subject_id")
+        or "subject"
+    )
+    definition = str(
+        subject_record.get("subject_definition")
+        or subject_record.get("definition")
+        or ""
+    ).strip()
+    query = str(subject_record.get("dino_query") or "person").strip()
+    labels = ", ".join(
+        _fallback_contact_label(candidate) for candidate in candidates
+    )
+    references = ", ".join(reference_labels) if reference_labels else "none"
+    newest_label = newest_candidate_label or (
+        _fallback_contact_label(candidates[0]) if candidates else "none"
+    )
+    mode = mode or (
+        "visual_identity" if reference_labels else "category_bootstrap"
+    )
+    if mode == "category_bootstrap":
+        story_subject = definition or query or name
+        return f"""
+This is a first-appearance category check for the tracked story subject {name!r}.
+
+Story subject name: {name}
+Story subject definition: {story_subject}
+DINO category query: {query}
+No visual reference images are supplied because this subject has not appeared
+before.
+
+IMAGE ROLES:
+- REFERENCE IMAGE: not supplied; use the story subject definition only for the
+  category check.
+- CURRENT STATE IMAGE: not supplied.
+- NEWEST CANDIDATE: a separately supplied full-resolution crop labeled
+  {newest_label}; this is the preferred candidate if it depicts the subject.
+- CONTACT SHEET: the final supplied image, containing alternate candidate
+  crops ordered newest to oldest. Its tiles are labeled F<frame>-C<candidate>.
+
+Available labels: {labels}
+
+First determine whether the separately supplied newest candidate is the tracked
+subject.
+If it is a usable match, return that candidate.
+Only consider older candidates if the newest candidate is not a usable identity
+match.
+
+Select the NEWEST usable candidate that actually depicts the story subject
+described above. Confirm the category from the image itself; do not
+select a woman, ordinary wolf, tree, shadow, or unrelated object merely because
+Grounding DINO proposed it. If none of the candidates visibly depict the
+story subject, return matched=false.
+
+Return only:
+{{"matched": true, "frame_index": 118, "candidate_index": 1}}
+or:
+{{"matched": false, "frame_index": null, "candidate_index": null}}
+
+Do not return clothing, damage, pose, continuity prose, confidence, reasoning,
+bounding boxes, or any text outside the required JSON fields.
+""".strip()
+    if mode != "visual_identity":
+        raise ValueError(f"Unsupported Step 7 vision fallback mode: {mode!r}")
+    return f"""
+Identify the tracked subject {name!r} in the rendered candidates.
+
+Existing subject definition: {definition or 'none'}
+Existing DINO query: {query}
+
+IMAGE ROLES:
+- REFERENCE IMAGE: the canonical reference image, if supplied; it identifies
+  the tracked subject.
+- CURRENT STATE IMAGE: the most recent rendered appearance, if supplied among
+  the reference images above; use it as additional visual context.
+- NEWEST CANDIDATE: a separately supplied full-resolution crop labeled
+  {newest_label}; this is the preferred candidate if it depicts the same
+  subject.
+- CONTACT SHEET: the final supplied image, containing alternate candidate
+  crops ordered newest to oldest. Its tiles are labeled F<frame>-C<candidate>.
+
+Reference images supplied: {references}
+Available labels: {labels}
+
+First determine whether the separately supplied newest candidate is the tracked
+subject.
+If it is a usable match, return that candidate.
+Only consider older candidates if the newest candidate is not a usable identity
+match.
+
+Select the NEWEST candidate that visibly depicts the same tracked subject and
+is sufficiently usable as a visual continuity reference. Do not choose a
+different person or creature merely because it is clearer. Do not prefer an
+older candidate because it is sharper, more attractive, or more similar to the
+canonical reference when a newer candidate is already usable. If no candidate
+can be confidently identified as this subject, return matched=false.
+
+Return only:
+{{"matched": true, "frame_index": 118, "candidate_index": 1}}
+or:
+{{"matched": false, "frame_index": null, "candidate_index": null}}
+
+Do not infer identity or appearance from story/beat text. Do not return
+clothing, damage, pose, continuity prose, confidence, reasoning, bounding
+boxes, or any text outside the required JSON fields.
+""".strip()
+
+
+def ask_vision_identity_fallback(
+    image_paths,
+    prompt,
+    segment_number,
+    *,
+    vision_client=None,
+    max_retries=VISION_REQUEST_RETRIES,
+):
+    """Ask the existing multimodal client for one candidate selection."""
+
+    image_paths = [os.path.abspath(path) for path in image_paths]
+    _vision_fallback_log(
+        f"identity request start segment={segment_number} "
+        f"images={len(image_paths)} retries={max_retries}"
+    )
+    response_format = build_vision_identity_fallback_response_format()
+    user_content = [{"type": "text", "text": prompt}]
+    for image_path in image_paths:
+        user_content.append({
+            "type": "image_url",
+            "image_url": {"url": _vision_image_data_url(image_path)},
+        })
+    messages = [
+        {
+            "role": "system",
+            "content": VISION_IDENTITY_FALLBACK_SYSTEM_PROMPT,
+        },
+        {"role": "user", "content": user_content},
+    ]
+    history_metadata = {
+        "purpose": "vision_identity_fallback",
+        "segment": int(segment_number or 0),
+        "vision_model": VISION_MODEL or "LM Studio active model",
+    }
+    if vision_client is not None:
+        if hasattr(vision_client, "request_identity"):
+            result = vision_client.request_identity(
+                messages=messages,
+                response_format=response_format,
+                history_metadata=history_metadata,
+            )
+            _vision_fallback_log("identity request completed via injected client")
+            return result
+        if callable(vision_client):
+            result = vision_client(
+                messages=messages,
+                response_format=response_format,
+                history_metadata=history_metadata,
+            )
+            _vision_fallback_log("identity request completed via injected client")
+            return result
+        raise TypeError("vision_client must be callable or provide request_identity")
+
+    history_messages = [
+        {"role": "system", "content": VISION_IDENTITY_FALLBACK_SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": prompt + "\n\nVISION IMAGE PATHS:\n" + "\n".join(image_paths),
+        },
+    ]
+    payload = {
+        "messages": messages,
+        "temperature": 0.10,
+        "max_tokens": 300,
+        "response_format": response_format,
+    }
+    if VISION_MODEL:
+        payload["model"] = VISION_MODEL
+    last_error = None
+    for attempt in range(1, max(1, int(max_retries)) + 1):
+        append_prompt_history(
+            history_messages,
+            metadata={**history_metadata, "content_attempt": attempt, "entry_type": "request"},
+        )
+        try:
+            response = requests.post(
+                f"{VISION_LM_STUDIO_URL}/v1/chat/completions",
+                json=payload,
+                timeout=600,
+            )
+            try:
+                raise_for_lm_studio_status(response)
+            except requests.HTTPError:
+                if (
+                    getattr(response, "status_code", None) == 400
+                    and "response_format" in payload
+                ):
+                    retry_payload = dict(payload)
+                    retry_payload.pop("response_format")
+                    response = requests.post(
+                        f"{VISION_LM_STUDIO_URL}/v1/chat/completions",
+                        json=retry_payload,
+                        timeout=600,
+                    )
+                    raise_for_lm_studio_status(response)
+                else:
+                    raise
+            data = response.json()
+            choice = data["choices"][0]
+            text = _vision_message_text(choice["message"]["content"])
+            append_prompt_history(
+                [{"role": "assistant", "content": text}],
+                metadata={
+                    **history_metadata,
+                    "content_attempt": attempt,
+                    "entry_type": "response",
+                },
+            )
+            _vision_fallback_log(
+                f"identity request completed attempt={attempt}"
+            )
+            return parse_llm_json_content(text)
+        except (
+            requests.RequestException,
+            KeyError,
+            IndexError,
+            TypeError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            last_error = error
+            _vision_fallback_log(
+                f"identity request failed attempt={attempt}/{max_retries}: {error}"
+            )
+            if attempt < max_retries:
+                time.sleep(2)
+    raise RuntimeError(
+        f"Vision identity fallback request failed for segment {segment_number}: "
+        f"{last_error}"
+    ) from last_error
+
+
 def ask_vision_model(
     image_paths,
     subject_definitions,
@@ -14599,6 +17037,648 @@ def ask_vision_model(
     raise RuntimeError(
         f"Vision end-state request failed for segment {segment_number}: {last_error}"
     ) from last_error
+
+
+def _coerce_step6_result(subject_key, result, record):
+    if isinstance(result, SubjectReferenceUpdateResult):
+        return result
+    if isinstance(result, Mapping):
+        values = {
+            name: result.get(name)
+            for name in (
+                "updated",
+                "status",
+                "frame_index",
+                "timestamp_seconds",
+                "dino_query",
+                "candidate_index",
+                "identity_similarity",
+                "output_path",
+                "identity_backend",
+                "last_identity_status",
+                "resolution_method",
+                "attempted_frames",
+                "error",
+            )
+            if name in result
+        }
+        values.setdefault("updated", bool(result.get("found", False)))
+        values.setdefault("status", result.get("reason", "unknown"))
+        values.setdefault(
+            "dino_query",
+            str(record.get("dino_query") or "person").strip(),
+        )
+        values.setdefault(
+            "identity_backend",
+            record.get("identity_backend"),
+        )
+        values["subject_key"] = subject_key
+        return SubjectReferenceUpdateResult(**values)
+    return SubjectReferenceUpdateResult(
+        subject_key=subject_key,
+        updated=False,
+        status="vision_fallback_error",
+        dino_query=str(record.get("dino_query") or "person").strip(),
+        identity_backend=record.get("identity_backend"),
+        error="Step 6 did not return a subject result",
+    )
+
+
+def _parse_vision_fallback_selection(raw_result, candidates, query):
+    if isinstance(raw_result, str):
+        raw_result = parse_llm_json_content(raw_result)
+    if not isinstance(raw_result, Mapping) or set(raw_result) != {
+        "matched",
+        "frame_index",
+        "candidate_index",
+    }:
+        raise ValueError(
+            "Vision identity fallback must return exactly matched, frame_index, "
+            "and candidate_index."
+        )
+    matched = raw_result["matched"]
+    if not isinstance(matched, bool):
+        raise ValueError("Vision identity fallback matched must be boolean.")
+    frame_index = raw_result["frame_index"]
+    candidate_index = raw_result["candidate_index"]
+    if not matched:
+        if frame_index is not None or candidate_index is not None:
+            raise ValueError(
+                "An unmatched vision fallback response must use null identifiers."
+            )
+        return None
+    if (
+        isinstance(frame_index, bool)
+        or not isinstance(frame_index, int)
+        or isinstance(candidate_index, bool)
+        or not isinstance(candidate_index, int)
+    ):
+        raise ValueError(
+            "A matched vision fallback response must use integer identifiers."
+        )
+    matches = [
+        candidate
+        for candidate in candidates
+        if (
+            _fallback_candidate_frame_index(candidate) == frame_index
+            and str(candidate.dino_query).strip() == str(query).strip()
+            and int(candidate.candidate_index) == candidate_index
+        )
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            "Vision identity fallback selected a candidate that was not shown "
+            "exactly once."
+        )
+    return matches[0]
+
+
+def resolve_unresolved_subjects_with_vision(
+    video_path,
+    registry,
+    expected_visible_subjects,
+    step6_results,
+    output_directory,
+    *,
+    config=None,
+    vision_client=None,
+    frame_count_fn=None,
+    frame_extractor=None,
+    detector=None,
+    segment_number=None,
+    fallback_evidence=None,
+    step7_frame_output_directory=None,
+):
+    """Use one shared DINO evidence pass and one vision request per target."""
+
+    config = config or ContinuityReferenceConfig()
+    registry = (
+        registry
+        if isinstance(registry, SubjectRegistry)
+        else SubjectRegistry.from_records(registry)
+    )
+    expected = []
+    unknown = []
+    for subject_reference in expected_visible_subjects or ():
+        subject_key = _canonical_subject_key(registry, subject_reference)
+        if subject_key is None:
+            unknown.append(subject_reference)
+        elif subject_key not in expected:
+            expected.append(subject_key)
+    expected = tuple(expected)
+    if unknown:
+        raise ValueError(
+            "expected_visible_subjects contains unknown subject key(s): "
+            + ", ".join(repr(key) for key in unknown)
+        )
+    if not isinstance(step6_results, Mapping):
+        raise TypeError("step6_results must be a mapping")
+
+    results = {
+        subject_key: _coerce_step6_result(
+            subject_key,
+            step6_results.get(subject_key),
+            record,
+        )
+        for subject_key, record in registry.items()
+    }
+    targets = [
+        subject_key
+        for subject_key in expected
+        if not results[subject_key].updated
+    ]
+    _vision_fallback_log(
+        f"start segment={segment_number or 0} expected_targets={len(expected)} "
+        f"unresolved_targets={len(targets)}"
+    )
+    if not targets:
+        _vision_fallback_log("no unresolved expected-visible subjects; skipping")
+        return results
+
+    query_by_subject = {
+        subject_key: str(
+            registry.get_subject(subject_key).get("dino_query") or "person"
+        ).strip()
+        for subject_key in targets
+    }
+    target_queries = tuple(dict.fromkeys(query_by_subject.values()))
+    _vision_fallback_log(
+        f"Step 7: state recency window={config.max_state_age_seconds:.3f}s"
+    )
+    provided_frame_count_fn = frame_count_fn
+    frame_count_fn = frame_count_fn or get_video_frame_count
+    frame_extractor = frame_extractor or extract_video_frame
+    evidence_frame_count = None
+    if fallback_evidence and provided_frame_count_fn is not None:
+        evidence_frame_count = int(provided_frame_count_fn(os.fspath(video_path)))
+    evidence = {}
+    for query, candidates in (fallback_evidence or {}).items():
+        normalized_query = str(query).strip()
+        filtered_candidates = filter_candidates_to_state_recency_window(
+            candidates,
+            config,
+            frame_count=evidence_frame_count,
+        )
+        evidence[normalized_query] = _deduplicate_fallback_candidates(
+            filtered_candidates,
+            normalized_query,
+        )
+        if len(filtered_candidates) != len(candidates):
+            _vision_fallback_log(
+                f"Step 7: query={normalized_query!r} discarded "
+                f"{len(candidates) - len(filtered_candidates)} stale evidence candidate(s)"
+            )
+    missing_queries = tuple(
+        query for query in target_queries if not evidence.get(query)
+    )
+    _vision_fallback_log(
+        f"queries={target_queries} reused_evidence="
+        f"{tuple(query for query in target_queries if query not in missing_queries)} "
+        f"traverse_queries={missing_queries}"
+    )
+
+    search_limited = False
+    if missing_queries:
+        missing_keys = [
+            subject_key
+            for subject_key in targets
+            if query_by_subject[subject_key] in missing_queries
+        ]
+        missing_registry = registry.subset(missing_keys)
+        frame_count = int(frame_count_fn(os.fspath(video_path)))
+        video_end_seconds, oldest_allowed_seconds = state_recency_boundary(
+            frame_count,
+            config,
+        )
+        _vision_fallback_log(
+            f"Step 7: video_end={video_end_seconds:.3f}s "
+            f"oldest_allowed={oldest_allowed_seconds:.3f}s"
+        )
+        frame_indices, search_limited = _backward_frame_indices(
+            frame_count,
+            config.frame_search_interval,
+            config.max_candidate_frames,
+            config.frame_rate,
+            config.max_state_age_seconds,
+        )
+        _vision_fallback_log(
+            f"Step 7: planned newest-first frames={frame_indices}"
+        )
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix="dino_continuity_step7_frames_"
+            ) as temporary_directory:
+                for ordinal, frame_index in enumerate(frame_indices):
+                    frame_name = f"step7_{ordinal:04d}_frame_{frame_index:08d}.png"
+                    extracted = frame_extractor(
+                        os.fspath(video_path),
+                        frame_name,
+                        input_directory=temporary_directory,
+                        frame_index=frame_index,
+                        temporary_prefix=".dino_step7_",
+                        error_label=f"Grounding DINO Step 7 frame {frame_index}",
+                    )
+                    _vision_fallback_log(
+                        f"decoded evidence frame={frame_index} "
+                        f"queries={missing_queries}"
+                    )
+                    if isinstance(extracted, Image.Image):
+                        frame_image = extracted.convert("RGB")
+                    else:
+                        extracted_path = os.fspath(extracted)
+                        if not os.path.isabs(extracted_path):
+                            extracted_path = os.path.join(
+                                temporary_directory,
+                                extracted_path,
+                            )
+                        frame_image = _frame_image(extracted_path)
+                    if _is_blank_decoded_frame(frame_image):
+                        _vision_fallback_log(
+                            f"discarded blank decoded frame={frame_index}"
+                        )
+                        continue
+                    detected = detect_shared_candidates(
+                        frame_image,
+                        missing_registry,
+                        detector=detector,
+                        config=config,
+                        source_metadata={
+                            "video_path": os.fspath(video_path),
+                            "frame_index": frame_index,
+                            "timestamp": frame_index / float(config.frame_rate),
+                            "state_recency_video_end_seconds": video_end_seconds,
+                            "state_recency_oldest_allowed_seconds": oldest_allowed_seconds,
+                        },
+                        retain_fallback_evidence=True,
+                    )
+                    for query in missing_queries:
+                        group = detected.get(query)
+                        if group is not None:
+                            retained = tuple(
+                                getattr(group, "fallback_candidates", ())
+                            )
+                            evidence.setdefault(query, []).extend(retained)
+                            _vision_fallback_log(
+                                f"frame={frame_index} query={query!r} "
+                                f"retained_fallback_candidates={len(retained)}"
+                            )
+        except Exception as error:
+            _vision_fallback_log(f"evidence traversal failed: {error}")
+            for subject_key in targets:
+                if query_by_subject[subject_key] in missing_queries:
+                    previous = results[subject_key]
+                    results[subject_key] = SubjectReferenceUpdateResult(
+                        subject_key=subject_key,
+                        updated=False,
+                        status="vision_fallback_error",
+                        dino_query=query_by_subject[subject_key],
+                        identity_backend=previous.identity_backend,
+                        last_identity_status=previous.status,
+                        attempted_frames=previous.attempted_frames,
+                        error=str(error),
+                    )
+            return results
+
+    for query in tuple(evidence):
+        evidence[query] = _deduplicate_fallback_candidates(
+            evidence[query],
+            query,
+        )
+        _vision_fallback_log(
+            f"evidence ready query={query!r} candidates={len(evidence[query])}"
+        )
+    missing_by_query = {
+        query: search_limited
+        for query in missing_queries
+    }
+    selected = {}
+    selected_modes = {}
+    contact_sheets = {}
+    step7_capture_directory = os.path.abspath(
+        os.path.expanduser(
+            os.path.expandvars(
+                step7_frame_output_directory or STEP7_FRAME_OUTPUT
+            )
+        )
+    )
+    os.makedirs(step7_capture_directory, exist_ok=True)
+    _vision_fallback_log(
+        f"capture directory={step7_capture_directory}"
+    )
+    with tempfile.TemporaryDirectory(prefix="dino_continuity_step7_vision_") as temporary_directory:
+        reference_pairs_by_subject = {
+            subject_key: _fallback_reference_paths(
+                registry,
+                subject_key,
+                temporary_directory,
+            )
+            for subject_key in targets
+        }
+        category_bootstrap_blocked = set()
+        for query in target_queries:
+            no_reference_keys = [
+                subject_key
+                for subject_key in targets
+                if query_by_subject[subject_key] == query
+                and not reference_pairs_by_subject[subject_key]
+            ]
+            if len(no_reference_keys) > 1:
+                records = [
+                    registry.get_subject(subject_key)
+                    for subject_key in no_reference_keys
+                ]
+                if not _category_bootstrap_subjects_are_distinguishable(
+                    records
+                ):
+                    category_bootstrap_blocked.update(no_reference_keys)
+                    _vision_fallback_log(
+                        f"query={query!r} category bootstrap unresolved for "
+                        f"indistinguishable no-reference subjects={no_reference_keys}"
+                    )
+        for query in target_queries:
+            candidates = evidence.get(query, [])
+            subject_keys = [
+                subject_key
+                for subject_key in targets
+                if query_by_subject[subject_key] == query
+            ]
+            for subject_key in subject_keys:
+                record = registry.get_subject(subject_key)
+                reference_count = len(reference_pairs_by_subject[subject_key])
+                mode = (
+                    "visual_identity"
+                    if reference_count
+                    else "category_bootstrap"
+                )
+                display_name = (record or {}).get("name") or subject_key
+                _vision_fallback_log(
+                    f"subject={display_name!r} mode={mode} "
+                    f"visual_references={reference_count}"
+                )
+            if not candidates:
+                _vision_fallback_log(
+                    f"query={query!r} has no fallback candidates; "
+                    f"subjects={subject_keys}"
+                )
+                for subject_key in subject_keys:
+                    previous = results[subject_key]
+                    results[subject_key] = SubjectReferenceUpdateResult(
+                        subject_key=subject_key,
+                        updated=False,
+                        status="vision_fallback_no_candidates",
+                        dino_query=query,
+                        identity_backend=previous.identity_backend,
+                        last_identity_status=previous.status,
+                        attempted_frames=previous.attempted_frames,
+                        error=(
+                            "fallback evidence search was limited"
+                            if missing_by_query.get(query)
+                            else None
+                        ),
+                    )
+                continue
+            sheet_path = os.path.join(
+                step7_capture_directory,
+                (
+                    f"segment_{int(segment_number or 0):04d}_"
+                    f"query_{_step7_capture_slug(query)}_contact_sheet.png"
+                ),
+            )
+            label_map = _write_fallback_contact_sheet(candidates, sheet_path)
+            contact_sheets[query] = (sheet_path, label_map)
+            newest_candidate = candidates[0]
+            newest_candidate_label = _fallback_contact_label(newest_candidate)
+            newest_candidate_temp_path = _materialize_fallback_reference(
+                newest_candidate.crop,
+                temporary_directory,
+                f"{_step7_capture_slug(query)}_newest_candidate_"
+                f"{_step7_capture_slug(newest_candidate_label)}",
+            )
+            newest_candidate_path = _persist_step7_input_image(
+                newest_candidate_temp_path,
+                os.path.join(
+                    step7_capture_directory,
+                    (
+                        f"segment_{int(segment_number or 0):04d}_"
+                        f"query_{_step7_capture_slug(query)}_"
+                        f"newest_candidate_{_step7_capture_slug(newest_candidate_label)}.png"
+                    ),
+                ),
+            )
+            _vision_fallback_log(
+                f"query={query!r} evaluating subjects={subject_keys} "
+                f"candidate_labels={tuple(label_map)}"
+            )
+            for subject_key in subject_keys:
+                previous = results[subject_key]
+                record = registry.get_subject(subject_key)
+                reference_pairs = reference_pairs_by_subject[subject_key]
+                mode = (
+                    "visual_identity"
+                    if reference_pairs
+                    else "category_bootstrap"
+                )
+                if subject_key in category_bootstrap_blocked:
+                    results[subject_key] = SubjectReferenceUpdateResult(
+                        subject_key=subject_key,
+                        updated=False,
+                        status="vision_fallback_ambiguous",
+                        dino_query=query,
+                        identity_backend=previous.identity_backend,
+                        last_identity_status=previous.status,
+                        attempted_frames=previous.attempted_frames,
+                        error=(
+                            "category bootstrap cannot distinguish multiple "
+                            "no-reference subjects with the same DINO query"
+                        ),
+                    )
+                    continue
+                try:
+                    captured_reference_pairs = []
+                    subject_name = record.get("name") or subject_key
+                    for label, path in reference_pairs:
+                        extension = os.path.splitext(path)[1].lower()
+                        if extension not in {".jpg", ".jpeg", ".png"}:
+                            extension = ".png"
+                        captured_path = os.path.join(
+                            step7_capture_directory,
+                            (
+                                f"segment_{int(segment_number or 0):04d}_"
+                                f"query_{_step7_capture_slug(query)}_"
+                                f"subject_{_step7_capture_slug(subject_name)}_"
+                                f"{_step7_capture_slug(label)}{extension}"
+                            ),
+                        )
+                        captured_reference_pairs.append((
+                            label,
+                            _persist_step7_input_image(path, captured_path),
+                        ))
+                    image_paths = [
+                        path for _label, path in captured_reference_pairs
+                    ]
+                    image_paths.append(newest_candidate_path)
+                    image_paths.append(sheet_path)
+                    _vision_fallback_log(
+                        f"subject={subject_key!r} query={query!r} "
+                        f"sending {len(image_paths)} reference/newest/contact image(s)"
+                    )
+                    prompt = build_vision_identity_fallback_prompt(
+                        record,
+                        candidates,
+                        [label for label, _path in captured_reference_pairs],
+                        mode=mode,
+                        newest_candidate_label=newest_candidate_label,
+                    )
+                    raw_selection = ask_vision_identity_fallback(
+                        image_paths,
+                        prompt,
+                        segment_number or 0,
+                        vision_client=vision_client,
+                    )
+                    candidate = _parse_vision_fallback_selection(
+                        raw_selection,
+                        candidates,
+                        query,
+                    )
+                except Exception as error:
+                    _vision_fallback_log(
+                        f"subject={subject_key!r} query={query!r} "
+                        f"selection failed: {error}"
+                    )
+                    results[subject_key] = SubjectReferenceUpdateResult(
+                        subject_key=subject_key,
+                        updated=False,
+                        status="vision_fallback_error",
+                        dino_query=query,
+                        identity_backend=previous.identity_backend,
+                        last_identity_status=previous.status,
+                        attempted_frames=previous.attempted_frames,
+                        error=str(error),
+                    )
+                    continue
+                if candidate is None:
+                    _vision_fallback_log(
+                        f"subject={subject_key!r} query={query!r} "
+                        "vision found no match"
+                    )
+                    results[subject_key] = SubjectReferenceUpdateResult(
+                        subject_key=subject_key,
+                        updated=False,
+                        status="vision_fallback_no_match",
+                        dino_query=query,
+                        identity_backend=previous.identity_backend,
+                        last_identity_status=previous.status,
+                        attempted_frames=previous.attempted_frames,
+                    )
+                    continue
+                selected[subject_key] = candidate
+                selected_modes[subject_key] = mode
+                if mode == "category_bootstrap":
+                    _vision_fallback_log(
+                        f"subject={subject_key!r} bootstrap selected "
+                        f"frame={_fallback_candidate_frame_index(candidate)} "
+                        f"candidate={candidate.candidate_index}"
+                    )
+                else:
+                    _vision_fallback_log(
+                        f"subject={subject_key!r} selected "
+                        f"frame={_fallback_candidate_frame_index(candidate)} "
+                        f"candidate={candidate.candidate_index}"
+                    )
+
+        owners = {}
+        for subject_key, candidate in selected.items():
+            owners.setdefault(_fallback_candidate_key(candidate), []).append(
+                subject_key
+            )
+        for owner_keys in owners.values():
+            if len(owner_keys) < 2:
+                continue
+            shared_candidate_key = _fallback_candidate_key(
+                selected[owner_keys[0]]
+            )
+            _vision_fallback_log(
+                f"ambiguous shared selection candidate={shared_candidate_key} "
+                f"subjects={owner_keys}"
+            )
+            for subject_key in owner_keys:
+                previous = results[subject_key]
+                results[subject_key] = SubjectReferenceUpdateResult(
+                    subject_key=subject_key,
+                    updated=False,
+                    status="vision_fallback_ambiguous",
+                    dino_query=query_by_subject[subject_key],
+                    identity_backend=previous.identity_backend,
+                    last_identity_status=previous.status,
+                    attempted_frames=previous.attempted_frames,
+                    error="multiple fallback subjects selected one candidate",
+                )
+                selected.pop(subject_key, None)
+
+        for subject_key, candidate in selected.items():
+            previous = results[subject_key]
+            try:
+                output_path = _commit_current_state_crop(
+                    registry,
+                    subject_key,
+                    candidate.crop,
+                    output_directory,
+                )
+            except _CurrentStateRegistryUpdateError as error:
+                _vision_fallback_log(
+                    f"subject={subject_key!r} fallback registry commit failed: {error}"
+                )
+                status = "current_state_registry_update_failed"
+                results[subject_key] = SubjectReferenceUpdateResult(
+                    subject_key=subject_key,
+                    updated=False,
+                    status=status,
+                    dino_query=query_by_subject[subject_key],
+                    identity_backend=previous.identity_backend,
+                    last_identity_status=previous.status,
+                    attempted_frames=previous.attempted_frames,
+                    error=str(error),
+                )
+                continue
+            except Exception as error:
+                _vision_fallback_log(
+                    f"subject={subject_key!r} fallback image commit failed: {error}"
+                )
+                results[subject_key] = SubjectReferenceUpdateResult(
+                    subject_key=subject_key,
+                    updated=False,
+                    status="current_state_save_failed",
+                    dino_query=query_by_subject[subject_key],
+                    identity_backend=previous.identity_backend,
+                    last_identity_status=previous.status,
+                    attempted_frames=previous.attempted_frames,
+                    error=str(error),
+                )
+                continue
+            results[subject_key] = SubjectReferenceUpdateResult(
+                subject_key=subject_key,
+                updated=True,
+                status="vision_fallback_updated",
+                frame_index=_fallback_candidate_frame_index(candidate),
+                timestamp_seconds=_fallback_candidate_timestamp(candidate),
+                dino_query=query_by_subject[subject_key],
+                candidate_index=int(candidate.candidate_index),
+                output_path=output_path,
+                identity_backend=previous.identity_backend,
+                last_identity_status=previous.status,
+                resolution_method=(
+                    "vision_bootstrap"
+                    if selected_modes.get(subject_key) == "category_bootstrap"
+                    else "vision_fallback"
+                ),
+                attempted_frames=previous.attempted_frames,
+            )
+            _vision_fallback_log(
+                f"subject={subject_key!r} updated from fallback "
+                f"frame={results[subject_key].frame_index} "
+                f"candidate={results[subject_key].candidate_index}"
+            )
+    return results
 
 
 def _visual_string(value, default="unknown"):
@@ -14877,6 +17957,7 @@ def _render_segment_with_retries(
     refresh_input_directory=None,
     continuity_state=None,
     continuity_summary="",
+    segment_reference_manifest=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     if lora_override is not None:
@@ -14936,6 +18017,7 @@ def _render_segment_with_retries(
                 segment,
                 steps,
                 **lora_kwargs,
+                segment_reference_manifest=segment_reference_manifest,
             )
         elif refresh_segment:
             workflow = prepare_refresh_workflow(
@@ -14947,6 +18029,7 @@ def _render_segment_with_retries(
                 steps,
                 **lora_kwargs,
                 continuity_state=continuity_state,
+                segment_reference_manifest=segment_reference_manifest,
             )
         else:
             workflow = prepare_append_workflow(
@@ -14958,6 +18041,7 @@ def _render_segment_with_retries(
                 **lora_kwargs,
                 context_frames=context_frames,
                 continuity_state=continuity_state,
+                segment_reference_manifest=segment_reference_manifest,
             )
 
         try:
@@ -14965,6 +18049,17 @@ def _render_segment_with_retries(
                 h3_prompt,
                 continuity_summary,
                 segment,
+            )
+            _log_segment_reference_mapping(
+                workflow,
+                "initial" if segment == 1 else (
+                    "refresh" if refresh_segment else "append"
+                ),
+                segment_reference_manifest,
+                (
+                    f"{'initial' if segment == 1 else ('refresh' if refresh_segment else 'append')} "
+                    "workflow"
+                ),
             )
             prompt_id = queue_workflow(workflow)
             print(f"ComfyUI prompt ID: {prompt_id}")
@@ -15021,6 +18116,7 @@ def render_repair_segment_with_retries(
     steps,
     loras=None,
     continuity_summary="",
+    segment_reference_manifest=None,
 ):
     """Render an isolated two-keyframe bridge with normal ComfyUI retries."""
 
@@ -15045,12 +18141,19 @@ def render_repair_segment_with_retries(
             segment_number,
             steps=steps,
             loras=loras,
+            segment_reference_manifest=segment_reference_manifest,
         )
         try:
             _assert_h3_prompt_contains_continuity(
                 h3_prompt,
                 continuity_summary,
                 segment_number,
+            )
+            _log_segment_reference_mapping(
+                workflow,
+                "repair",
+                segment_reference_manifest,
+                "repair workflow",
             )
             prompt_id = queue_workflow(workflow)
             print(f"ComfyUI prompt ID: {prompt_id}")
@@ -15087,6 +18190,7 @@ def prepare_initial_workflow(
     steps=6,
     loras=None,
     lora_override=None,
+    segment_reference_manifest=None,
 ):
     if lora_override is not None:
         if loras:
@@ -15095,7 +18199,25 @@ def prepare_initial_workflow(
     workflow = load_workflow(INITIAL_WORKFLOW_FILE)
     label = f"initial workflow '{INITIAL_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=False)
-    prune_missing_reference_images(workflow, label, "initial")
+    _apply_segment_reference_manifest(
+        workflow,
+        label,
+        segment_reference_manifest,
+    )
+    removed_picture_ids = prune_missing_reference_images(
+        workflow,
+        label,
+        "initial",
+    )
+    if segment_reference_manifest is not None:
+        segment_reference_manifest.excluded_picture_ids.update(
+            removed_picture_ids
+        )
+        segment_reference_manifest.effective_picture_slot_map = {
+            picture_id: picture_id
+            for picture_id in segment_reference_manifest.all_picture_ids()
+            if picture_id not in segment_reference_manifest.excluded_picture_ids
+        }
 
     set_node_input(
         workflow,
@@ -15157,6 +18279,7 @@ def prepare_refresh_workflow(
     reference_workflow=None,
     continuity_state=None,
     excluded_picture_ids=None,
+    segment_reference_manifest=None,
 ):
     """Prepare a fresh reference-to-video segment from the prior last frame."""
 
@@ -15173,11 +18296,32 @@ def prepare_refresh_workflow(
     if reference_workflow is None:
         reference_workflow = load_workflow(INITIAL_WORKFLOW_FILE)
     copy_reference_image_inputs(reference_workflow, workflow, label)
+    _apply_segment_reference_manifest(
+        workflow,
+        label,
+        segment_reference_manifest,
+    )
     incompatible_picture_ids = set(excluded_picture_ids or ())
     incompatible_picture_ids.update(
         get_refresh_incompatible_picture_ids(continuity_state)
     )
-    prune_missing_reference_images(workflow, label, "refresh")
+    removed_picture_ids = prune_missing_reference_images(
+        workflow,
+        label,
+        "refresh",
+    )
+    if segment_reference_manifest is not None:
+        segment_reference_manifest.excluded_picture_ids.update(
+            removed_picture_ids
+        )
+        segment_reference_manifest.excluded_picture_ids.update(
+            incompatible_picture_ids
+        )
+        segment_reference_manifest.effective_picture_slot_map = {
+            picture_id: picture_id
+            for picture_id in segment_reference_manifest.all_picture_ids()
+            if picture_id not in segment_reference_manifest.excluded_picture_ids
+        }
     disconnect_reference_images(
         workflow,
         label,
@@ -15418,6 +18562,7 @@ def prepare_repair_workflow(
     loras=None,
     lora_override=None,
     reference_workflow=None,
+    segment_reference_manifest=None,
 ):
     """Prepare the refresh graph as an isolated first/last-keyframe bridge."""
 
@@ -15435,6 +18580,7 @@ def prepare_repair_workflow(
         loras=loras,
         lora_override=lora_override,
         reference_workflow=reference_workflow,
+        segment_reference_manifest=segment_reference_manifest,
     )
     label = f"repair workflow '{REFRESH_WORKFLOW_FILE}'"
     _, conditioning = find_workflow_node(
@@ -15510,6 +18656,7 @@ def prepare_append_workflow(
     context_frames=DEFAULT_CONTEXT_FRAMES,
     continuity_state=None,
     excluded_picture_ids=None,
+    segment_reference_manifest=None,
 ):
     if lora_override is not None:
         if loras:
@@ -15518,6 +18665,11 @@ def prepare_append_workflow(
     workflow = load_workflow(APPEND_WORKFLOW_FILE)
     label = f"append workflow '{APPEND_WORKFLOW_FILE}'"
     validate_workflow(workflow, label, is_append=True)
+    _apply_segment_reference_manifest(
+        workflow,
+        label,
+        segment_reference_manifest,
+    )
     incompatible_picture_ids = set(excluded_picture_ids or ())
     incompatible_picture_ids.update(
         get_refresh_incompatible_picture_ids(continuity_state)
@@ -15534,6 +18686,14 @@ def prepare_append_workflow(
         removed_picture_ids,
         picture_slot_map,
     )
+    if segment_reference_manifest is not None:
+        segment_reference_manifest.excluded_picture_ids.update(
+            removed_picture_ids
+        )
+        segment_reference_manifest.effective_picture_slot_map = {
+            int(picture_id): int(packed_slot)
+            for picture_id, packed_slot in picture_slot_map.items()
+        }
 
     if not os.path.exists(previous_video_path):
         raise FileNotFoundError(
@@ -15786,6 +18946,7 @@ def repair_existing_segment(
             f"Cannot repair segment {segment_number}: {os.path.basename(beats_path)} "
             f"contains only {len(beats)} beat(s)."
         )
+    execution_target = resolve_execution_target(beats, segment_number)
     story_source = load_text_file(story_path, required=True)
     story_without_gen_rules, gen_rules = parse_story_gen_rules(story_source)
     story, _beat_instructions = parse_story_beat_instructions(
@@ -15841,11 +19002,18 @@ def repair_existing_segment(
         conditioning_mode=conditioning_mode,
         dialogue_exclusions=dialogue_exclusions,
         current_phase=current_phase,
+        active_beat=execution_target["beat"],
+        active_beat_id=execution_target["beat_id"],
     )
     director_bundle = {
         "segment": segment_number,
+        "target_segment": execution_target["segment_number"],
+        "beat_id": execution_target["beat_id"],
+        "target_beat_id": execution_target["beat_id"],
+        "target_beat": execution_target["beat"],
+        "execution_target": copy.deepcopy(execution_target),
         "current_duration": duration,
-        "active_beat_id": segment_number,
+        "active_beat_id": execution_target["beat_id"],
         "conditioning_mode": conditioning_mode,
         "messages": messages,
         "opening_state": director_opening_summary,
@@ -15886,6 +19054,13 @@ def repair_existing_segment(
             llm_result,
             opening_state,
         )
+    segment_reference_manifest = build_segment_reference_manifest(
+        historical_subject_definitions,
+        opening_state,
+        get_detailed_description(llm_result, ""),
+        segment_number,
+        previous_video_path=repair["previous_record"].get("video_path"),
+    )
     h3_prompt = build_h3_prompt(
         llm_result,
         historical_subject_definitions,
@@ -15896,9 +19071,10 @@ def repair_existing_segment(
         conditioning_mode=conditioning_mode,
         excluded_picture_ids=excluded_picture_ids,
         continuity_state=opening_state,
+        segment_reference_manifest=segment_reference_manifest,
     )
 
-    loras = beat_loras(beats, segment_number, global_loras)
+    loras = beat_loras(beats, execution_target["beat_id"], global_loras)
 
     print()
     print("=" * 64)
@@ -15933,6 +19109,7 @@ def repair_existing_segment(
         steps,
         loras=loras,
         continuity_summary=director_opening_summary,
+        segment_reference_manifest=segment_reference_manifest,
     )
     repaired_video_path = os.path.abspath(repaired_video_path)
     if (
@@ -16292,10 +19469,29 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     """
     del beats
     try:
-        segment_number = int(bundle.get("segment", 1))
+        segment_number = int(
+            bundle.get("target_segment", bundle.get("segment", 1))
+        )
     except (TypeError, ValueError):
         segment_number = 1
-    active_beat_id = bundle.get("active_beat_id")
+    active_beat_id = bundle.get(
+        "target_beat_id",
+        bundle.get("beat_id", bundle.get("active_beat_id")),
+    )
+    if active_beat_id is not None:
+        try:
+            active_beat_id = int(active_beat_id)
+        except (TypeError, ValueError):
+            raise RuntimeError(
+                f"Segment {segment_number} has an invalid authoritative beat ID."
+            ) from None
+    if bundle.get("segment") is not None and int(bundle["segment"]) != segment_number:
+        raise RuntimeError("Director bundle segment identity is inconsistent.")
+    if (
+        bundle.get("active_beat_id") is not None
+        and active_beat_id != int(bundle["active_beat_id"])
+    ):
+        raise RuntimeError("Director bundle beat identity is inconsistent.")
     duration = float(bundle.get("current_duration") or 0)
     if duration <= 0:
         raise RuntimeError(
@@ -16309,6 +19505,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         "source_sha256": (run_config or {}).get("source_sha256"),
         "purpose": "director_raw_scene",
         "segment": segment_number,
+        "beat_id": active_beat_id,
         "attempt": 1,
         "conditioning_mode": conditioning_mode,
         "opening_state_sha256": bundle.get("opening_state_sha256"),
@@ -16336,12 +19533,15 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         continuity_summary=bundle.get("opening_state")
         or bundle.get("h3_opening_summary")
         or "",
+        active_beat_id=active_beat_id,
+        active_beat=bundle.get("target_beat", bundle.get("active_beat")),
     )
     request2_metadata = {
         "run_id": run_id,
         "source_sha256": (run_config or {}).get("source_sha256"),
         "purpose": "director_h3_formatter",
         "segment": segment_number,
+        "beat_id": active_beat_id,
         "attempt": 1,
         "conditioning_mode": conditioning_mode,
         "h3_mode": mode,
@@ -16402,6 +19602,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     print("=" * 64)
 
     payload = dict(bundle)
+    payload["segment"] = segment_number
+    payload["target_segment"] = segment_number
+    payload["active_beat_id"] = active_beat_id
+    payload["target_beat_id"] = active_beat_id
     payload["raw_scene"] = raw_scene
     payload["h3_mode"] = mode
     payload["llm_result"] = llm_result
@@ -16440,6 +19644,8 @@ def _run_main(
             global_loras=global_loras,
         )
     dino_reference_config = ContinuityReferenceConfig(
+        dino_device=getattr(args, "dino_device", "cpu"),
+        identity_device=getattr(args, "identity_device", "cpu"),
         dino_confidence=getattr(args, "dino_confidence", DEFAULT_DINO_CONFIDENCE),
         box_threshold=getattr(args, "dino_box_threshold", DEFAULT_DINO_BOX_THRESHOLD),
         text_threshold=getattr(args, "dino_text_threshold", DEFAULT_DINO_TEXT_THRESHOLD),
@@ -16448,6 +19654,9 @@ def _run_main(
         ),
         max_candidate_frames=getattr(
             args, "dino_max_candidates", DINO_MAX_CANDIDATE_FRAMES
+        ),
+        max_state_age_seconds=getattr(
+            args, "dino_max_state_age", DINO_MAX_STATE_AGE_SECONDS
         ),
         crop_padding_x=getattr(args, "dino_crop_padding_x", DINO_CROP_PADDING_X),
         crop_padding_y=getattr(args, "dino_crop_padding_y", DINO_CROP_PADDING_Y),
@@ -16467,7 +19676,18 @@ def _run_main(
             )
         )
     )
-    dino_skip = bool(getattr(args, "dino_skip", False))
+    disable_onnx_dino = bool(getattr(args, "disable_onnx_dino", False))
+    dino_skip = bool(getattr(args, "dino_skip", False)) or disable_onnx_dino
+    continuity_detector = (
+        get_detector(device=dino_reference_config.dino_device)
+        if not dino_skip
+        else None
+    )
+    continuity_identity_validator = (
+        get_identity_validator(device=dino_reference_config.identity_device)
+        if not dino_skip
+        else None
+    )
     run_id = str(uuid.uuid4())
 
     segment_length = getattr(args, "segment_length", None)
@@ -16503,6 +19723,7 @@ def _run_main(
         if phrase_exclusions_found
         else []
     )
+    resolved_subject_definitions = {}
     if resume_segment == 1:
         reset_prompt_history()
     beats = load_or_generate_beats(
@@ -16517,7 +19738,20 @@ def _run_main(
         phrase_exclusions=phrase_exclusions,
         force_generate=generate_beats_only,
         gen_rules=gen_rules,
+        subject_definitions=subject_definitions,
+        resolved_subject_definitions=resolved_subject_definitions,
     )
+    # Story-defined subjects are authoritative run-local registry entries. They
+    # must be present before later beat/scene validation and continuity setup.
+    base_subject_definitions = resolved_subject_definitions.get(
+        "value",
+        populate_story_subject_definitions(
+            base_subject_definitions,
+            story,
+            beats,
+        ),
+    )
+    subject_definitions = base_subject_definitions
     if beats and len(beats) != total_segments:
         raise ValueError(
             f"One-beat-per-segment requires exactly {total_segments} beats for "
@@ -16566,7 +19800,7 @@ def _run_main(
         prompt_reduced_continuity_state = {}
         reduced_continuity_state = {}
         # Keep the old structured object only as an internal Subject registry.
-        # Creative continuity now comes from the combined continuity LLM call.
+        # Creative continuity now comes from the text continuity LLM call.
         continuity_state = continuity_state_for_registry(
             subject_definitions,
             new_continuity_state(),
@@ -16614,6 +19848,11 @@ def _run_main(
         continuity_summary_pending = restored["continuity_summary_pending"]
         generation_state.pop("additional_subject_definitions", None)
 
+    scene_presence_state = normalize_scene_presence_state(
+        generation_state.get("scene_presence")
+    )
+    generation_state["scene_presence"] = copy.deepcopy(scene_presence_state)
+
     # A prefetched prompt belongs to a live executor/Future. It cannot be
     # trusted after process restart unless that Future is restored as well.
     generation_state.pop("prefetched_next_prompt", None)
@@ -16634,7 +19873,6 @@ def _run_main(
     print(f"Starting segment:     {resume_segment}")
     print(f"Initial megapixels:   {megapixels:g}")
     print(f"Steps:                {args.steps}")
-    print(f"Visual Continuity:    {args.vision_continuity == 0 and 'disabled' or args.vision_continuity == 1 and 'every segment' or f'every {args.vision_continuity} segments'}")
     print(
         "Extension context:    "
         f"{getattr(args, 'context_frames', DEFAULT_CONTEXT_FRAMES)} frames"
@@ -16650,7 +19888,7 @@ def _run_main(
         )
     )
     print(
-        "Vision continuity:    "
+        "Continuity cadence:   "
         + (
             "disabled"
             if args.vision_continuity == 0
@@ -16663,14 +19901,26 @@ def _run_main(
     )
     print(
         "DINO continuity:      "
-        + ("skipped" if dino_skip else "enabled")
+        + (
+            "skipped (--disable-onnx-dino)"
+            if disable_onnx_dino
+            else ("skipped" if dino_skip else "enabled")
+        )
     )
     if not dino_skip:
+        print(f"DINO device:           {dino_reference_config.dino_device}")
+        print(
+            f"Identity device:       {dino_reference_config.identity_device}"
+        )
         print(f"DINO confidence:      {dino_reference_config.dino_confidence:.2f}")
         print(
             "DINO frame search:    "
             f"every {dino_reference_config.frame_search_interval} frames, "
             f"up to {dino_reference_config.max_candidate_frames} candidates"
+        )
+        print(
+            "DINO state age:       "
+            f"final {dino_reference_config.max_state_age_seconds:.3f} seconds"
         )
         print(f"DINO reference dir:   {dino_reference_output}")
         print(
@@ -16747,6 +19997,7 @@ def _run_main(
         opening_state,
         opening_summary_text,
         dialogue_exclusions,
+        beat_id=None,
     ):
         conditioning_mode = conditioning_mode_for_segment(
             segment_number,
@@ -16755,6 +20006,9 @@ def _run_main(
         return json.dumps(
             {
                 "segment": int(segment_number),
+                "beat_id": (
+                    int(beat_id) if beat_id is not None else None
+                ),
                 "conditioning_mode": conditioning_mode,
                 "completed_beat_ids": sorted(
                     normalize_completed_beat_ids(beats, completed_ids)
@@ -16784,12 +20038,15 @@ def _run_main(
         opening_summary_text,
         dialogue_exclusions,
     ):
-        elapsed = (segment_number - 1) * segment_length
+        execution_target = resolve_execution_target(beats, segment_number)
+        target_segment = execution_target["segment_number"]
+        target_beat_id = execution_target["beat_id"]
+        target_beat = execution_target["beat"]
+        elapsed = (target_segment - 1) * segment_length
         current_duration = min(segment_length, total_length - elapsed)
-        active_beat_id = segment_number if beats else None
-        current_phase = story_arc_phase_for_beat(macro_arc, active_beat_id)
+        current_phase = story_arc_phase_for_beat(macro_arc, target_beat_id)
         conditioning_mode = conditioning_mode_for_segment(
-            segment_number,
+            target_segment,
             refresh_interval,
         )
         segment_director_rules = build_director_rules(
@@ -16797,7 +20054,7 @@ def _run_main(
             current_duration,
             total_segments,
             subject_definitions,
-            segment_number,
+            target_segment,
             beats_enabled=bool(beats),
             conditioning_mode=conditioning_mode,
             gen_rules=gen_rules,
@@ -16822,7 +20079,7 @@ def _run_main(
             beats=beats,
             completed_beat_ids=completed_ids,
             recent_results=recent_items,
-            current_segment=segment_number,
+            current_segment=target_segment,
             total_segments=total_segments,
             segment_length=segment_length,
             total_length=total_length,
@@ -16831,13 +20088,20 @@ def _run_main(
             conditioning_mode=conditioning_mode,
             dialogue_exclusions=dialogue_exclusions,
             current_phase=current_phase,
+            active_beat=target_beat,
+            active_beat_id=target_beat_id,
         )
         return {
-            "segment": segment_number,
+            "segment": target_segment,
+            "target_segment": target_segment,
+            "beat_id": target_beat_id,
+            "target_beat_id": target_beat_id,
+            "target_beat": target_beat,
+            "execution_target": copy.deepcopy(execution_target),
             "current_duration": current_duration,
-            "active_beat_id": active_beat_id,
+            "active_beat_id": target_beat_id,
             "conditioning_mode": conditioning_mode,
-            "loras": beat_loras(beats, active_beat_id, global_loras),
+            "loras": beat_loras(beats, target_beat_id, global_loras),
             "messages": messages,
             "estimated_tokens": estimated_tokens,
             "recent_count": recent_count,
@@ -16851,39 +20115,100 @@ def _run_main(
             "current_phase": copy.deepcopy(current_phase or {}),
             "opening_state_sha256": continuity_state_sha(opening_state),
             "fingerprint": build_segment_fingerprint(
-                segment_number,
+                target_segment,
                 completed_ids,
                 recent_items,
                 opening_state,
                 opening_summary,
                 dialogue_exclusions,
+                beat_id=target_beat_id,
             ),
         }
 
     def request_prefetched_segment(bundle, cancellation_event):
         if cancellation_event.is_set():
             raise RuntimeError("prefetched director request was cancelled")
+        target_segment = bundle.get("target_segment", bundle.get("segment"))
+        target_beat_id = bundle.get(
+            "target_beat_id",
+            bundle.get("beat_id", bundle.get("active_beat_id")),
+        )
         payload = request_segment_llm(bundle, beats, run_id, run_config)
         if cancellation_event.is_set():
             raise RuntimeError("prefetched director request was cancelled")
-        prefetched_checkpoint = {
-            "segment_number": int(payload["segment"]),
-            "fingerprint": payload["fingerprint"],
-            "llm_result": copy.deepcopy(payload["llm_result"]),
-        }
+        payload_matches_target = prefetched_response_matches_target(
+            payload,
+            target_segment,
+            target_beat_id,
+        )
+        prefetched_checkpoint = None
+        if payload_matches_target:
+            prefetched_checkpoint = {
+                "segment_number": int(payload["segment"]),
+                "beat_id": (
+                    int(payload["active_beat_id"])
+                    if payload["active_beat_id"] is not None
+                    else None
+                ),
+                "fingerprint": payload["fingerprint"],
+                "llm_result": copy.deepcopy(payload["llm_result"]),
+            }
         with generation_state_lock:
             # Recheck under the same lock used by render-failure cleanup so a
             # cancelled prefetch cannot be written back after being discarded.
             if cancellation_event.is_set():
                 raise RuntimeError("prefetched director request was cancelled")
-            generation_state["prefetched_next_prompt"] = prefetched_checkpoint
-            save_generation_state(generation_state)
+            if prefetched_checkpoint is not None:
+                generation_state["prefetched_next_prompt"] = prefetched_checkpoint
+                save_generation_state(generation_state)
         print(
-            f"Prefetched prompt for segment {payload['segment']} saved to "
-            "generation_state.json.",
+            (
+                f"Prefetched prompt for segment {payload['segment']} beat "
+                f"{payload.get('active_beat_id')} saved to generation_state.json."
+                if payload_matches_target
+                else (
+                    "[Prefetch] worker withheld a response with the wrong "
+                    f"target; requested segment={target_segment} beat={target_beat_id}."
+                )
+            ),
             flush=True,
         )
         return payload
+
+    def submit_director_prefetch(target, completed_ids, recent_items, opening_state,
+                                 opening_summary_text, dialogue_exclusions):
+        """Submit a Director request for an already-resolved exact target."""
+        target_segment = target["segment_number"]
+        target_beat_id = target["beat_id"]
+        target_beat = target["beat"]
+        next_bundle = build_segment_bundle(
+            target_segment,
+            completed_ids,
+            recent_items,
+            opening_state,
+            opening_summary_text,
+            dialogue_exclusions,
+        )
+        # Keep this assertion close to submission: the worker must never have
+        # to rediscover the target from mutable completion state.
+        if (
+            next_bundle.get("target_segment") != target_segment
+            or next_bundle.get("target_beat_id") != target_beat_id
+            or next_bundle.get("target_beat") is not target_beat
+        ):
+            raise RuntimeError("Resolved Director prefetch target changed before submission.")
+        prefetch_cancellation = threading.Event()
+        return {
+            "segment": target_segment,
+            "beat_id": target_beat_id,
+            "target": copy.deepcopy(target),
+            "cancellation_event": prefetch_cancellation,
+            "future": director_prefetch_executor.submit(
+                request_prefetched_segment,
+                next_bundle,
+                prefetch_cancellation,
+            ),
+        }
 
     run_start_time = time.perf_counter()
     prefetched_next = None
@@ -16891,24 +20216,95 @@ def _run_main(
     render_futures_by_segment = {}
     dino_reference_lock = threading.Lock()
 
-    def run_dino_reference_update(video_path, subject_state):
+    def run_dino_reference_update(
+        video_path,
+        subject_state,
+        segment_number=None,
+        expected_visible_subjects=None,
+        scene_present_subjects=None,
+        beat=None,
+    ):
         if dino_skip:
+            print(
+                f"[DINO continuity] segment={segment_number or 'unknown'} "
+                "skipped before frame processing",
+                flush=True,
+            )
             return {}
+        visibility_kwargs = {}
+        if beats and segment_number is not None:
+            expected_visible = (
+                expected_visible_subjects
+                if expected_visible_subjects is not None
+                else expected_visible_subjects_for_segment(
+                    beats,
+                    segment_number,
+                    beat=beat,
+                )
+            )
+            if expected_visible is None:
+                # Text-only legacy beats do not safely say who should be
+                # visible.  Preserve current states rather than searching all
+                # registry subjects by default.
+                expected_visible = ()
+                scene_present = ()
+            else:
+                if scene_present_subjects is not None:
+                    scene_present = tuple(scene_present_subjects)
+                else:
+                    previous_states = scene_presence_for_beats(
+                        beats[: max(0, int(segment_number) - 1)]
+                    )
+                    scene_before = (
+                        previous_states[-1] if previous_states else ()
+                    )
+                    scene_present = scene_presence_transition(
+                        scene_before,
+                        beats[int(segment_number) - 1],
+                    )["during"]
+            visibility_kwargs = {
+                "expected_visible_subjects": expected_visible,
+                "scene_present_subjects": scene_present,
+            }
+            print(
+                f"[DINO continuity] Step 6.5 segment={segment_number} "
+                f"expected_visible={tuple(expected_visible)} "
+                f"scene_present={tuple(scene_present)}",
+                flush=True,
+            )
         with dino_reference_lock:
             return update_dino_continuity_references(
                 video_path,
                 {"subjects": subject_state},
                 dino_reference_config,
                 dino_reference_output,
+                detector=continuity_detector,
+                identity_validator=continuity_identity_validator,
+                segment_number=segment_number,
+                vision_frame_output_directory=VISION_FRAME_OUTPUT,
+                **visibility_kwargs,
             )
 
-    # Set by finalize_skipped_vision_segment once it has finished appending a
+    # Set by finalize_skipped_continuity_segment once it has finished appending a
     # non-final segment's video path to generated_video_paths. The final
     # segment is always drained synchronously below, so this event is only
     # relevant when a later segment needs the preceding background render.
     pending_render_finalized = threading.Event()
     for segment in segments_to_generate:
-        if is_new_phase_start(beats, segment):
+        execution_target = resolve_execution_target(beats, segment)
+        current_beat_id = execution_target["beat_id"]
+        current_beat = execution_target["beat"]
+        next_execution_target = (
+            resolve_execution_target(beats, segment + 1)
+            if segment < total_segments
+            else None
+        )
+        next_segment_starts_phase = (
+            is_new_phase_start(beats, next_execution_target["beat_id"])
+            if next_execution_target is not None
+            else False
+        )
+        if is_new_phase_start(beats, current_beat_id):
             #Dynamic Subject cleanup at phase boundaries is intentionally
             #disabled so Subjects established in earlier phases persist.
             # continuity_state, removed_subject_names = (
@@ -16921,13 +20317,13 @@ def _run_main(
             # additional_subject_definitions = []
             # subject_definitions = base_subject_definitions
             # save_generation_state(generation_state)
-            phase_number = beats[segment - 1].phase_number
+            phase_number = getattr(current_beat, "phase_number", None)
             print(
                 f"Starting phase {phase_number} at segment {segment}; retaining "
                 "dynamically created Subjects from earlier phases."
             )
         segment_bundle = build_segment_bundle(
-            segment,
+            execution_target["segment_number"],
             completed_beat_ids,
             recent_results,
             continuity_state,
@@ -16935,7 +20331,21 @@ def _run_main(
             generation_state.get("recent_dialogues", []),
         )
         if prefetched_next is not None:
-            if prefetched_next["segment"] != segment:
+            if not prefetched_response_matches_target(
+                prefetched_next,
+                execution_target["segment_number"],
+                current_beat_id,
+            ):
+                prefetched_segment, prefetched_beat = describe_prefetch_identity(
+                    prefetched_next
+                )
+                print(
+                    "[Prefetch] rejected stale/wrong response: "
+                    f"requested segment={execution_target['segment_number']} "
+                    f"beat={current_beat_id} "
+                    f"prefetched segment={prefetched_segment} "
+                    f"beat={prefetched_beat}"
+                )
                 prefetched_next["cancellation_event"].set()
                 if not prefetched_next["future"].done():
                     prefetched_next["future"].cancel()
@@ -16965,18 +20375,50 @@ def _run_main(
         if prefetched_next is not None:
             try:
                 speculative_payload = prefetched_next["future"].result()
-                if (
-                    speculative_payload["fingerprint"]
-                    == segment_bundle["fingerprint"]
-                ):
-                    payload = speculative_payload
-                    print(f"Using prefetched LLM response for segment {segment}.")
-                else:
-                    print(
-                        f"Discarded prefetched LLM response for segment {segment} "
-                        "because the confirmed beat, continuity, or subject state "
-                        "differed; re-querying the LLM."
+                identity_matches = (
+                    prefetched_response_matches_target(
+                        prefetched_next,
+                        execution_target["segment_number"],
+                        current_beat_id,
                     )
+                    and prefetched_response_matches_target(
+                        speculative_payload,
+                        execution_target["segment_number"],
+                        current_beat_id,
+                    )
+                )
+                payload_matches_target = prefetched_response_is_usable(
+                    prefetched_next,
+                    speculative_payload,
+                    execution_target["segment_number"],
+                    current_beat_id,
+                    expected_fingerprint=segment_bundle["fingerprint"],
+                )
+                if payload_matches_target:
+                    payload = speculative_payload
+                    print(
+                        f"Using prefetched LLM response for segment "
+                        f"{execution_target['segment_number']}."
+                    )
+                else:
+                    prefetched_segment, prefetched_beat = describe_prefetch_identity(
+                        speculative_payload
+                    )
+                    if not identity_matches:
+                        print(
+                            "[Prefetch] rejected stale/wrong response: "
+                            f"requested segment={execution_target['segment_number']} "
+                            f"beat={current_beat_id} "
+                            f"prefetched segment={prefetched_segment} "
+                            f"beat={prefetched_beat}"
+                        )
+                    else:
+                        print(
+                            f"Discarded prefetched LLM response for segment "
+                            f"{execution_target['segment_number']} because the "
+                            "continuity or subject state differed; re-querying "
+                            "the LLM."
+                        )
             except Exception as error:
                 print(
                     f"WARNING: prefetched LLM response for segment {segment} failed: "
@@ -17016,7 +20458,7 @@ def _run_main(
         detailed_description = get_detailed_description(llm_result, "")
         expected_new_subjects = phase_characters_introduced_for_beat(
             macro_arc,
-            segment,
+            current_beat_id,
         )
         continuity_state, dialogue_subject_names = register_inline_dialogue_subjects(
             continuity_state,
@@ -17066,6 +20508,13 @@ def _run_main(
                 llm_result,
                 continuity_state,
             )
+        segment_reference_manifest = build_segment_reference_manifest(
+            subject_definitions,
+            continuity_state,
+            detailed_description,
+            segment,
+            previous_video_path=previous_video_path,
+        )
         previous_visible_subject_ids = extract_previous_visible_subject_ids(
             recent_results,
             segment,
@@ -17081,6 +20530,7 @@ def _run_main(
             excluded_picture_ids=segment_bundle.get("excluded_picture_ids"),
             continuity_state=continuity_state,
             previous_visible_subject_ids=previous_visible_subject_ids,
+            segment_reference_manifest=segment_reference_manifest,
         )
         # Phase 2 writes the opening of the NEXT segment, so give it the phase
         # that contains the next beat when one exists. On the final segment,
@@ -17096,20 +20546,20 @@ def _run_main(
         continuity_pipeline_result = None
         if segment < total_segments:
             candidate_future = summary_executor.submit(
-                request_combined_continuity,
+                request_text_continuity,
                 h3_prompt,
                 continuity_phase,
                 history_metadata={
                     "run_id": run_id,
                     "source_sha256": run_config["source_sha256"],
-                    "purpose": "combined_continuity",
+                    "purpose": "text_continuity",
                     "segment": segment,
                     "attempt": 1,
                     "conditioning_mode": segment_bundle["conditioning_mode"],
                 },
                 defer_opening=True,
             )
-            print(f"Combined continuity requested for segment {segment} during render.")
+            print(f"Text continuity requested for segment {segment} during render.")
         else:
             print(
                 f"Skipping continuity for final segment {segment}; "
@@ -17119,7 +20569,9 @@ def _run_main(
         prompt_completed_beat_ids, _ = print_minimax_beat_plan(
             beats,
             completed_beat_ids,
-            reported_beat_ids
+            reported_beat_ids,
+            authoritative_beat_id=current_beat_id,
+            authoritative_beat=current_beat,
         )
 
         print()
@@ -17138,13 +20590,24 @@ def _run_main(
                 raise
             finally:
                 pending_previous_render_future = None
+        if segment_reference_manifest is not None and previous_video_path:
+            segment_reference_manifest.video_reference = os.path.abspath(
+                previous_video_path
+            )
 
         if render_executor is None:
             raise RuntimeError("A background ComfyUI render executor is required.")
-        vision_required = should_run_vision_continuity(
-            segment,
-            getattr(args, "vision_continuity", 1),
-            refresh_interval,
+        # The final segment has no successor that can consume continuity
+        # state.  Keep this guard aligned with the pre-render text-continuity
+        # gate above so the final render does not start DINO/identity work
+        # after its ComfyUI prompt has already been submitted.
+        continuity_required = (
+            segment < total_segments
+            and should_run_vision_continuity(
+                segment,
+                getattr(args, "vision_continuity", 1),
+                refresh_interval,
+            )
         )
         render_started = threading.Event()
         render_future = render_executor.submit(
@@ -17165,6 +20628,7 @@ def _run_main(
             refresh_interval=refresh_interval,
             continuity_state=continuity_state,
             continuity_summary=continuity_summary,
+            segment_reference_manifest=segment_reference_manifest,
         )
         render_futures_by_segment[int(segment)] = render_future
         # A cadence-skipped final render must still be completed on the main
@@ -17172,7 +20636,7 @@ def _run_main(
         # stitch_videos after Future.result() but before the future's done
         # callback has appended the final path. The reusable completion event
         # is not sufficient here: it may already be set by an earlier segment.
-        if not vision_required and segment < total_segments:
+        if not continuity_required and segment < total_segments:
             pending_previous_render_future = render_future
         while not render_started.wait(0.05):
             if render_future.done():
@@ -17184,7 +20648,7 @@ def _run_main(
             "prompt-derived end-state prediction while the video renders."
         )
 
-        # The combined continuity call predicts the ending from the prompt while
+        # The text continuity call predicts the ending from the prompt while
         # H3 renders. Phase 2 is deferred until rendered visual facts are
         # available only when the cadence actually requires a visual check.
         if candidate_future is not None:
@@ -17192,7 +20656,7 @@ def _run_main(
                 continuity_pipeline_result = candidate_future.result()
             except Exception as error:
                 print(
-                    f"WARNING: combined continuity for segment {segment} failed: "
+                    f"WARNING: text continuity for segment {segment} failed: "
                     f"{error}; retaining the last continuity outputs."
                 )
                 continuity_pipeline_result = None
@@ -17201,41 +20665,37 @@ def _run_main(
             prompt_reduced_continuity_state = copy.deepcopy(
                 continuity_pipeline_result["reduced_state"]
             )
-            if vision_required:
-                print(
-                    f"Combined continuity completed for segment {segment}; "
-                    "Phase 2 is waiting for rendered visual state."
-                )
-            else:
-                print(
-                    f"Combined continuity completed for segment {segment}; "
-                    "vision continuity is disabled for this cadence, so Phase 2 "
-                    "uses the prompt-derived state immediately."
-                )
+            print(
+                f"Text continuity completed for segment {segment}; "
+                "Phase 2 will use the prompt-derived state."
+            )
 
         # Dynamic identities still come from explicit Director text and stay in
         # the internal registry only. They are not synthesized from continuity
-        # JSON, which keeps the three continuity calls narrowly scoped.
-        additional_subject_definitions, appended_subject_lines = (
-            collect_additional_subject_definitions(
+        # JSON, which keeps the three continuity calls narrowly scoped. There
+        # is no successor on the final segment, so do not do this post-submit
+        # registry/query work after ComfyUI has already accepted the prompt.
+        if segment < total_segments:
+            additional_subject_definitions, appended_subject_lines = (
+                collect_additional_subject_definitions(
+                    base_subject_definitions,
+                    additional_subject_definitions,
+                    continuity_state,
+                    segment,
+                )
+            )
+            subject_definitions = combine_subject_definitions(
                 base_subject_definitions,
                 additional_subject_definitions,
-                continuity_state,
-                segment,
             )
-        )
-        subject_definitions = combine_subject_definitions(
-            base_subject_definitions,
-            additional_subject_definitions,
-        )
-        continuity_state = continuity_state_for_registry(
-            subject_definitions,
-            continuity_state,
-        )
-        if appended_subject_lines:
-            print("Registered video-created subject definition(s) internally:")
-            for definition in appended_subject_lines:
-                print(f"  {definition}")
+            continuity_state = continuity_state_for_registry(
+                subject_definitions,
+                continuity_state,
+            )
+            if appended_subject_lines:
+                print("Registered video-created subject definition(s) internally:")
+                for definition in appended_subject_lines:
+                    print(f"  {definition}")
 
         if beats:
             completed_beat_ids = apply_reported_beat_completions(
@@ -17243,6 +20703,7 @@ def _run_main(
                 completed_beat_ids,
                 reported_beat_ids,
                 segment,
+                authoritative_beat_id=current_beat_id,
             )
             generation_state["beat_progress"] = {
                 "completed_beat_ids": sorted(completed_beat_ids),
@@ -17276,44 +20737,10 @@ def _run_main(
             f"response for segment {segment}."
         )
 
-        # When the cadence skips rendered-frame vision continuity, the prompt-
+        # When the cadence skips continuity processing, the prompt-
         # derived continuity state is authoritative and the next Director prompt
         # can be prefetched without waiting for the render to finish.
-        if not vision_required and segment < total_segments:
-            next_segment_starts_phase = is_new_phase_start(beats, segment + 1)
-            if (
-                segment < total_segments
-                and director_prefetch_executor is not None
-                and not next_segment_starts_phase
-            ):
-                next_bundle = build_segment_bundle(
-                    segment + 1,
-                    completed_beat_ids,
-                    recent_results,
-                    continuity_state,
-                    continuity_summary,
-                    next_dialogue_exclusions,
-                )
-                prefetch_cancellation = threading.Event()
-                prefetched_next = {
-                    "segment": segment + 1,
-                    "cancellation_event": prefetch_cancellation,
-                    "future": director_prefetch_executor.submit(
-                        request_prefetched_segment,
-                        next_bundle,
-                        prefetch_cancellation,
-                    ),
-                }
-                print(
-                    f"Started LLM prefetch for segment {segment + 1} without waiting "
-                    f"for segment {segment}'s video render because vision continuity "
-                    "is skipped by cadence."
-                )
-            print(
-                "Skipping the render wait for this segment so the next prompt can "
-                "start immediately while the render continues in the background."
-            )
-
+        if not continuity_required and segment < total_segments:
             skipped_segment_number = int(segment)
             skipped_llm_result = copy.deepcopy(llm_result)
             skipped_completed_beat_ids = sorted(set(completed_beat_ids))
@@ -17321,15 +20748,116 @@ def _run_main(
             skipped_registry_state = migrate_continuity_state(continuity_state)
             skipped_prompt_completed_beat_ids = list(prompt_completed_beat_ids)
 
+            # Phase 2 is prompt-only on a cadence-skipped segment. Resolve it
+            # before building the next bundle so an asynchronous Segment N+1
+            # request receives the actual opening state derived from Segment N.
+            skipped_continuity_summary = continuity_summary
+            if segment < total_segments:
+                try:
+                    skipped_continuity_summary = request_continuity_opening_state(
+                        skipped_prompt_state,
+                        continuity_phase,
+                        history_metadata={
+                            "run_id": run_id,
+                            "source_sha256": run_config["source_sha256"],
+                            "purpose": "continuity_phase_2_h3_opening",
+                            "segment": skipped_segment_number,
+                            "attempt": 1,
+                            "conditioning_mode": segment_bundle["conditioning_mode"],
+                            "state_source": "prompt_only",
+                        },
+                    )
+                except Exception as error:
+                    print(
+                        f"WARNING: Continuity Phase 2 for segment "
+                        f"{skipped_segment_number} failed with prompt_only state: "
+                        f"{error}; retaining the previous opening continuity text."
+                    )
+            continuity_summary = skipped_continuity_summary
+            generation_state["continuity_opening_state"] = continuity_summary
+            generation_state["continuity_summary"] = continuity_summary
+            checkpoint_generation_state()
+
+            if (
+                segment < total_segments
+                and director_prefetch_executor is not None
+                and not next_segment_starts_phase
+            ):
+                prefetched_next = submit_director_prefetch(
+                    next_execution_target,
+                    completed_beat_ids,
+                    recent_results,
+                    continuity_state,
+                    skipped_continuity_summary,
+                    next_dialogue_exclusions,
+                )
+                print(
+                    f"Started LLM prefetch for segment "
+                    f"{next_execution_target['segment_number']} beat "
+                    f"{next_execution_target['beat_id']} without waiting "
+                    f"for segment {segment}'s video render because continuity "
+                    "is skipped by cadence."
+                )
+            print(
+                "Skipping the render wait for this segment so the next prompt can "
+                "start immediately while the render continues in the background."
+            )
+
             skipped_dino_subject_state = copy.deepcopy(
                 skipped_registry_state.get("subjects", {})
                 if isinstance(skipped_registry_state, dict)
                 else {}
             )
+            skipped_expected_visible = (
+                expected_visible_subjects_for_segment(
+                    beats,
+                    skipped_segment_number,
+                    beat=current_beat,
+                )
+                if beats
+                else None
+            )
+            skipped_scene_presence = normalize_scene_presence_state(
+                scene_presence_state
+            )
+            if beats and skipped_expected_visible is not None:
+                skipped_transition = scene_presence_transition(
+                    skipped_scene_presence["scene_present_subjects"],
+                    current_beat,
+                )
+                skipped_scene_during = skipped_transition["during"]
+                skipped_scene_after = scene_presence_state_after_beat(
+                    skipped_scene_presence,
+                    current_beat,
+                    current_beat_id,
+                )
+            else:
+                skipped_expected_visible = () if beats else None
+                skipped_scene_during = () if beats else None
+                skipped_scene_after = skipped_scene_presence
+            # Presence metadata is known when the beat is accepted, even if
+            # this cadence defers waiting for the rendered video. Advance the
+            # main traversal now; the callback persists the same snapshot with
+            # its completed segment record.
+            scene_presence_state = skipped_scene_after
+            generation_state["scene_presence"] = copy.deepcopy(
+                scene_presence_state
+            )
 
-            def finalize_skipped_vision_segment(
+            def finalize_skipped_continuity_segment(
                 future,
                 skipped_subject_state=skipped_dino_subject_state,
+                expected_visible=skipped_expected_visible,
+                scene_during=skipped_scene_during,
+                scene_after=skipped_scene_after,
+                skipped_number=skipped_segment_number,
+                skipped_llm=skipped_llm_result,
+                skipped_beats=skipped_completed_beat_ids,
+                skipped_prompt=skipped_prompt_state,
+                skipped_summary=skipped_continuity_summary,
+                skipped_registry=skipped_registry_state,
+                skipped_new_beats=skipped_prompt_completed_beat_ids,
+                skipped_beat_id=current_beat_id,
             ):
                 nonlocal previous_video_path, pending_previous_render_future
                 try:
@@ -17342,8 +20870,8 @@ def _run_main(
                     ) = future.result()
                 except Exception:
                     print(
-                        f"Segment {skipped_segment_number} render failed after the "
-                        "cadence skipped its visual continuity check; the prompt-"
+                        f"Segment {skipped_number} render failed after the "
+                        "continuity cadence skipped this segment; the prompt-"
                         "derived state was already allowed to proceed."
                     )
                     pending_previous_render_future = None
@@ -17351,7 +20879,7 @@ def _run_main(
                     return
                 if not isinstance(video_path, str) or not video_path.strip():
                     print(
-                        f"Segment {skipped_segment_number} finished without a valid "
+                        f"Segment {skipped_number} finished without a valid "
                         "video path; skipping the background completion record."
                     )
                     pending_previous_render_future = None
@@ -17361,58 +20889,48 @@ def _run_main(
                 generated_video_paths.append(previous_video_path)
                 pending_previous_render_future = None
                 pending_render_finalized.set()
-                dino_references = run_dino_reference_update(
-                    video_path,
-                    skipped_subject_state,
-                )
-                reduced_continuity_state = copy.deepcopy(skipped_prompt_state)
-                continuity_summary = request_continuity_opening_state(
-                    reduced_continuity_state,
-                    continuity_phase,
-                    history_metadata={
-                        "run_id": run_id,
-                        "source_sha256": run_config["source_sha256"],
-                        "purpose": "continuity_phase_2_h3_opening",
-                        "segment": skipped_segment_number,
-                        "attempt": 1,
-                        "conditioning_mode": segment_bundle["conditioning_mode"],
-                        "state_source": "prompt_only",
-                    },
-                )
+                # This cadence intentionally skips DINO as well as the removed
+                # rendered-frame visual observer. The prompt-derived state is
+                # the only continuity source for a skipped segment.
+                dino_references = {}
+                reduced_continuity_state = copy.deepcopy(skipped_prompt)
+                continuity_summary = skipped_summary
                 with generation_state_lock:
                     completed_record = record_completed_segment(
                         generation_state,
-                        skipped_segment_number,
+                        skipped_number,
                         video_path,
-                        skipped_llm_result,
-                        skipped_completed_beat_ids,
+                        skipped_llm,
+                        skipped_beats,
                         continuity_summary,
                         continuity_state=reduced_continuity_state,
                         continuity_summary_pending=False,
                         continuity_opening_state=continuity_summary,
-                        subject_registry_state=skipped_registry_state,
+                        subject_registry_state=skipped_registry,
                         dino_continuity_references=dino_references,
+                        scene_presence_state=scene_after,
+                        beat_id=skipped_beat_id,
                     )
                     completed_record["continuity_prompt_state"] = copy.deepcopy(
-                        skipped_prompt_state
+                        skipped_prompt
                     )
                     generation_state["continuity_prompt_state"] = copy.deepcopy(
-                        skipped_prompt_state
+                        skipped_prompt
                     )
                     if beats:
                         generation_state["beat_progress"] = {
-                            "completed_beat_ids": sorted(skipped_completed_beat_ids),
-                            "last_segment_number": skipped_segment_number,
-                            "newly_completed_beat_ids": skipped_prompt_completed_beat_ids,
+                            "completed_beat_ids": sorted(skipped_beats),
+                            "last_segment_number": skipped_number,
+                            "newly_completed_beat_ids": skipped_new_beats,
                         }
                     save_generation_state(generation_state)
                 print(
-                    f"Completed segment {skipped_segment_number} from the "
+                    f"Completed segment {skipped_number} from the "
                     "prompt-derived state while its render finished in the "
                     "background."
                 )
 
-            render_future.add_done_callback(finalize_skipped_vision_segment)
+            render_future.add_done_callback(finalize_skipped_continuity_segment)
             continue
 
         try:
@@ -17443,57 +20961,60 @@ def _run_main(
             f"target {rendered_megapixels:.2f} MP)"
         )
 
-        dino_references = run_dino_reference_update(video_path, continuity_state)
-
-        # Rendered pixels are authoritative for fields they clearly show. The
-        # prompt-derived Phase 1 state remains the fallback for occluded/unknown
-        # facts.
-        visual_result = None
-        if segment < total_segments and vision_required:
-            try:
-                visual_result = request_visual_end_state(
-                    video_path,
-                    subject_definitions,
-                    segment,
-                )
-                print()
-                print("=" * 64)
-                print(f"VISUAL END STATE: SEGMENT {segment}")
-                print("=" * 64)
-                print(json.dumps(
-                    visual_result["end_state"],
-                    ensure_ascii=False,
-                    indent=2,
-                ))
-                print("=" * 64)
-            except Exception as error:
-                print(
-                    f"WARNING: visual end-state observation for segment {segment} "
-                    f"failed: {error}. Generation will continue without it."
-                )
-
-            visual_state_for_merge = (
-                visual_result["end_state"] if visual_result is not None else {}
+        expected_visible = (
+            expected_visible_subjects_for_segment(
+                beats,
+                segment,
+                beat=current_beat,
             )
-            reduced_continuity_state = merge_prompt_and_visual_end_state(
-                prompt_reduced_continuity_state,
-                visual_state_for_merge,
+            if beats
+            else None
+        )
+        if beats and expected_visible is not None:
+            current_transition = scene_presence_transition(
+                scene_presence_state["scene_present_subjects"],
+                current_beat,
             )
-            print()
-            print("=" * 64)
-            print(f"MERGED END STATE: SEGMENT {segment} (VISUAL PRECEDENCE)")
-            print("=" * 64)
-            print(json.dumps(reduced_continuity_state, ensure_ascii=False, indent=2))
-            print("=" * 64)
-            state_source = "prompt_plus_visual"
+            scene_during = current_transition["during"]
+            next_scene_presence_state = scene_presence_state_after_beat(
+                scene_presence_state,
+                current_beat,
+                current_beat_id,
+            )
         else:
-            reduced_continuity_state = copy.deepcopy(prompt_reduced_continuity_state)
-            print(
-                f"Skipping rendered-frame vision continuity for segment {segment} "
-                f"(cadence={getattr(args, 'vision_continuity', 1)}); using the "
-                "prompt-derived continuity state."
+            expected_visible = () if beats else None
+            scene_during = () if beats else None
+            next_scene_presence_state = scene_presence_state
+        if segment >= total_segments:
+            # The final segment has no downstream consumer for continuity
+            # state, so leave the rendered-state/DINO path untouched.
+            dino_references = {}
+        elif continuity_required:
+            dino_references = run_dino_reference_update(
+                video_path,
+                # The wrapper expects the subject-record mapping. The outer
+                # continuity state also contains environment/camera fields;
+                # passing it wholesale makes those fields look like subjects.
+                continuity_state.get("subjects", {}),
+                segment,
+                expected_visible,
+                scene_during,
+                beat=current_beat,
             )
-            state_source = "prompt_only"
+        else:
+            dino_references = {}
+            print(
+                f"Skipping DINO continuity for segment {segment} "
+                f"(cadence={getattr(args, 'vision_continuity', 1)})."
+            )
+        scene_presence_state = next_scene_presence_state
+        generation_state["scene_presence"] = copy.deepcopy(
+            scene_presence_state
+        )
+
+        # The text continuity prediction is authoritative. The legacy
+        # rendered-frame visual observer has been removed from this path.
+        reduced_continuity_state = copy.deepcopy(prompt_reduced_continuity_state)
 
         if segment < total_segments:
             try:
@@ -17507,13 +21028,13 @@ def _run_main(
                         "segment": segment,
                         "attempt": 1,
                         "conditioning_mode": segment_bundle["conditioning_mode"],
-                        "state_source": state_source,
+                        "state_source": "prompt_only",
                     },
                 )
             except Exception as error:
                 print(
                     f"WARNING: Continuity Phase 2 for segment {segment} failed "
-                    f"with {state_source} state: {error}; retaining the previous "
+                    f"with prompt_only state: {error}; retaining the previous "
                     "opening continuity text."
                 )
 
@@ -17545,6 +21066,8 @@ def _run_main(
                 continuity_opening_state=continuity_summary,
                 subject_registry_state=continuity_state,
                 dino_continuity_references=dino_references,
+                scene_presence_state=scene_presence_state,
+                beat_id=current_beat_id,
             )
             completed_record["continuity_prompt_state"] = copy.deepcopy(
                 prompt_reduced_continuity_state
@@ -17552,16 +21075,6 @@ def _run_main(
             generation_state["continuity_prompt_state"] = copy.deepcopy(
                 prompt_reduced_continuity_state
             )
-            if visual_result is not None:
-                visual_raw = copy.deepcopy(visual_result["raw_end_state"])
-                visual_state = copy.deepcopy(visual_result["end_state"])
-                visual_paths = list(visual_result["frame_paths"])
-                completed_record["visual_raw_end_state"] = visual_raw
-                completed_record["visual_end_state"] = visual_state
-                completed_record["visual_end_frame_paths"] = visual_paths
-                generation_state["visual_raw_end_state"] = visual_raw
-                generation_state["visual_end_state"] = visual_state
-                generation_state["visual_end_frame_paths"] = visual_paths
             if beats:
                 generation_state["beat_progress"] = {
                     "completed_beat_ids": sorted(completed_beat_ids),
@@ -17571,34 +21084,25 @@ def _run_main(
             save_generation_state(generation_state)
         print(f"Completed segment {segment} committed with its rendered video.")
 
-        next_segment_starts_phase = is_new_phase_start(beats, segment + 1)
         if (
-            vision_required
+            continuity_required
             and segment < total_segments
             and director_prefetch_executor is not None
             and not next_segment_starts_phase
         ):
-            next_bundle = build_segment_bundle(
-                segment + 1,
+            prefetched_next = submit_director_prefetch(
+                next_execution_target,
                 completed_beat_ids,
                 recent_results,
                 continuity_state,
                 continuity_summary,
                 next_dialogue_exclusions,
             )
-            prefetch_cancellation = threading.Event()
-            prefetched_next = {
-                "segment": segment + 1,
-                "cancellation_event": prefetch_cancellation,
-                "future": director_prefetch_executor.submit(
-                    request_prefetched_segment,
-                    next_bundle,
-                    prefetch_cancellation,
-                ),
-            }
             print(
-                f"Started LLM prefetch for segment {segment + 1} after "
-                f"segment {segment}'s visual continuity merge."
+                f"Started LLM prefetch for segment "
+                f"{next_execution_target['segment_number']} beat "
+                f"{next_execution_target['beat_id']} after segment {segment}'s "
+                "continuity processing."
             )
         elif next_segment_starts_phase and director_prefetch_executor is not None:
             print(

@@ -3,3 +3,4 @@
 # initialization preloads CUDA/cuDNN libraries from Python NVIDIA packages.
 insightface
 onnxruntime-gpu
+onnxruntime

@@ -40,13 +40,15 @@ DEFAULT_SETTINGS = {
     "steps": "6",
     "context_frames": "7",
     "refresh": "6",
-    "vision_continuity": "0",
+    "vision_continuity": "1",
     "dino_skip": False,
+    "disable_onnx_dino": False,
     "dino_confidence": "0.80",
     "dino_box_threshold": "0.35",
     "dino_text_threshold": "0.25",
     "dino_frame_interval": "8",
     "dino_max_candidates": "12",
+    "dino_max_state_age": "1.0",
     "dino_crop_padding_x": "0.12",
     "dino_crop_padding_y": "0.12",
     "dino_min_bbox_area_ratio": "0.01",
@@ -284,9 +286,12 @@ class MiniMaxBridge:
                 settings.get("refresh", 6), "Refresh interval"
             ),
             "vision_continuity": _non_negative_int(
-                settings.get("vision_continuity", 0), "Vision continuity"
+                settings.get("vision_continuity", 1), "Continuity cadence"
             ),
             "dino_skip": bool(settings.get("dino_skip", False)),
+            "disable_onnx_dino": bool(
+                settings.get("disable_onnx_dino", False)
+            ),
             "dino_confidence": _ratio(
                 settings.get("dino_confidence", "0.80"), "DINO confidence"
             ),
@@ -305,6 +310,10 @@ class MiniMaxBridge:
             "dino_max_candidates": _positive_int(
                 settings.get("dino_max_candidates", "12"),
                 "DINO maximum candidates",
+            ),
+            "dino_max_state_age": _positive_float(
+                settings.get("dino_max_state_age", "1.0"),
+                "DINO maximum rendered-state age",
             ),
             "dino_crop_padding_x": _ratio(
                 settings.get("dino_crop_padding_x", "0.12"),
@@ -431,6 +440,8 @@ class MiniMaxBridge:
             str(values["dino_frame_interval"]),
             "--dino-max-candidates",
             str(values["dino_max_candidates"]),
+            "--dino-max-state-age",
+            _number_argument(values["dino_max_state_age"]),
             "--dino-crop-padding-x",
             _number_argument(values["dino_crop_padding_x"]),
             "--dino-crop-padding-y",
@@ -446,6 +457,8 @@ class MiniMaxBridge:
         ]
         if values["dino_skip"]:
             command.append("--dino-skip")
+        if values["disable_onnx_dino"]:
+            command.append("--disable-onnx-dino")
         if values["repair"] is not None:
             command.extend(("--repair", str(values["repair"])))
         if values["first_frame"]:

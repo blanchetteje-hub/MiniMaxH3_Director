@@ -29,6 +29,21 @@ _HUMAN_TYPES = frozenset({
     "woman", "women", "girl", "girls",
 })
 
+_DINO_PROVENANCE_MARKERS = frozenset({
+    "lore-defined",
+    "story-defined",
+    "picture-defined",
+    "video-defined",
+    "generated-defined",
+})
+_DINO_PROVENANCE_MARKER_RE = re.compile(
+    r"(?i)\b(?:lore|story|picture|video|generated)-defined\b"
+)
+_DINO_REFERENCE_METADATA_RE = re.compile(
+    r"(?i),?\s*(?:referenced in|continued from)\s+"
+    r"<(?:Picture|Video)\s+\d+>"
+)
+
 def _normalize_query_rules(rules: Mapping[Any, Any] | None) -> dict[str, str]:
     return {
         str(phrase).strip().casefold(): str(query).strip()
@@ -48,6 +63,52 @@ def _query_rule_match(text: Any, rules: Mapping[str, str]) -> Optional[str]:
     return None
 
 
+def _is_provenance_marker(value: Any) -> bool:
+    normalized = re.sub(r"[_\s]+", "-", str(value or "").strip().casefold())
+    return normalized in _DINO_PROVENANCE_MARKERS
+
+
+def _contains_provenance_marker(value: Any) -> bool:
+    return _DINO_PROVENANCE_MARKER_RE.search(str(value or "")) is not None
+
+
+def _semantic_query_input(definition: Any, name: Any) -> str:
+    """Return subject identity/description without provenance metadata."""
+
+    canonical_name = str(name or "").strip()
+    source = str(definition or "").strip()
+    subject_body = source
+    prefix = re.match(
+        r"(?is)^\s*<Subject\s+\d+>\s+is\s+",
+        subject_body,
+    )
+    if prefix:
+        subject_body = subject_body[prefix.end():].strip()
+
+    # These clauses identify where a definition came from; they do not tell
+    # DINO what the subject is. Remove them before invoking the LLM resolver.
+    subject_body = _DINO_REFERENCE_METADATA_RE.sub("", subject_body)
+    subject_body = _DINO_PROVENANCE_MARKER_RE.sub("", subject_body)
+    subject_body = re.sub(r"\s*,\s*(?=\.|$)", "", subject_body)
+    subject_body = re.sub(r"\s+\.", ".", subject_body).strip(" .,:;")
+
+    if not canonical_name:
+        return subject_body
+    if not subject_body:
+        return canonical_name
+
+    # Parser output normally begins with the canonical subject name. Keep the
+    # name explicit and retain only any real description that follows it.
+    if subject_body.casefold().startswith(canonical_name.casefold()):
+        remainder = subject_body[len(canonical_name):].strip(" ,:;.")
+        return (
+            f"{canonical_name}, {remainder}"
+            if remainder
+            else canonical_name
+        )
+    return canonical_name
+
+
 def _query_from_definition(line: str, name: str, gender: Any) -> Optional[str]:
     """Resolve only the tiny generic human normalization layer."""
 
@@ -65,7 +126,10 @@ def _query_from_definition(line: str, name: str, gender: Any) -> Optional[str]:
     if not phrase and re.match(r"(?i)^(?:a|an|the)\s+", name.strip()):
         phrase = name
     if not phrase:
-        return "person"
+        # A bare proper name does not provide enough information for the
+        # generic inference layer. Let the configured resolver classify it
+        # before falling back to the generic ``person`` query.
+        return None
     tokens = re.findall(r"[A-Za-z][A-Za-z'-]*", phrase.casefold())
     return "person" if any(token in _HUMAN_TYPES for token in tokens) else None
 
@@ -77,6 +141,21 @@ def _normalize_llm_query(value: Any) -> str:
     return "-".join(tokens[:2]).casefold()
 
 
+def _print_dino_query_resolution(
+    *,
+    user_override: bool,
+    builtin_normalization: bool,
+    semantic_input: str,
+) -> None:
+    print(
+        "DINO query resolver:\n"
+        f"user override?         {'yes' if user_override else 'no'}\n"
+        f"tiny built-in normalization?         "
+        f"{'yes' if builtin_normalization else 'no'}\n"
+        f'semantic input = "{semantic_input}"',
+        flush=True,
+    )
+
 def _resolve_dino_query(
     explicit: Any,
     definition: Any,
@@ -87,19 +166,37 @@ def _resolve_dino_query(
 ) -> str:
     """Resolve one query once, in the registry's documented priority order."""
 
+    text = _semantic_query_input(definition, name)
+    configured = _query_rule_match(text, _normalize_query_rules(user_rules))
+    configured = (
+        configured
+        if configured and not _contains_provenance_marker(configured)
+        else None
+    )
+    normalized = _query_from_definition(text, str(name or ""), gender)
+    _print_dino_query_resolution(
+        user_override=(
+            explicit is not None and str(explicit).strip() != ""
+        ) or configured is not None,
+        builtin_normalization=normalized is not None,
+        semantic_input=text,
+    )
+
     if explicit is not None and str(explicit).strip():
         return str(explicit)
-    text = str(definition or name or "")
-    configured = _query_rule_match(text, _normalize_query_rules(user_rules))
     if configured:
         return configured
-    normalized = _query_from_definition(text, str(name or ""), gender)
     if normalized:
         return normalized
     if query_resolver is not None:
         resolved = _normalize_llm_query(query_resolver(text))
-        if resolved:
+        if resolved and not _contains_provenance_marker(resolved):
             return resolved
+        # A resolver must not be able to turn provenance metadata into the
+        # semantic query. The canonical name remains the safest fallback.
+        fallback = _normalize_llm_query(str(name or ""))
+        if fallback and not _contains_provenance_marker(fallback):
+            return fallback
     return "person"
 
 
@@ -212,8 +309,22 @@ class SubjectRegistry(dict):
             )
             current = data.get("current_state_reference")
             name = data.get("name") or key
+            stored_query = data.get("dino_query")
+            stored_query_explicit = bool(data.get("dino_query_explicit", False))
+            # Auto-resolved legacy records may contain a provenance marker from
+            # the old resolver bug. Re-resolve that invalid value, while valid
+            # stored queries remain authoritative and are not inferred again.
+            query_input = (
+                None
+                if (
+                    stored_query
+                    and not stored_query_explicit
+                    and _is_provenance_marker(stored_query)
+                )
+                else stored_query
+            )
             query = _resolve_dino_query(
-                data.get("dino_query"),
+                query_input,
                 data.get("subject_definition") or data.get("definition") or name,
                 name,
                 data.get("gender"),
@@ -243,8 +354,16 @@ class SubjectRegistry(dict):
         *,
         query_rules: Mapping[Any, Any] | None = None,
         query_resolver: Optional[Callable[[str], Any]] = None,
+        stored_records: Mapping[Any, Mapping[str, Any]] | None = None,
     ) -> "SubjectRegistry":
-        """Parse the existing H3 Subject/Picture definition format."""
+        """Parse H3 definitions, reusing persisted DINO queries when present.
+
+        ``stored_records`` is the continuity-state subject mapping.  A stored
+        query is authoritative for an existing subject, so parsing a subject
+        definition does not ask the LLM again.  Subjects without a stored
+        query (normally newly created subjects) still go through the normal
+        resolver path.
+        """
 
         registry = cls(query_rules=query_rules)
         lines = [
@@ -253,10 +372,10 @@ class SubjectRegistry(dict):
             if line.strip() and not line.strip().startswith("#")
         ]
         for line in lines:
-            video_origin = False
             match = re.match(
                 r"(?i)^\s*<Subject\s+(?P<subject>\d+)>\s+is\s+"
-                r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*?)\s*,\s+",
+                r"(?P<name>[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*?)\s*"
+                r"(?=,|\(\s*S\d+\s*\)\s*\.?\s*$|\.?\s*$)",
                 line,
             )
             if match is None:
@@ -280,15 +399,13 @@ class SubjectRegistry(dict):
                     int(value)
                     for value in re.findall(r"(?i)<Picture\s+(\d+)>", line)
                 ))
-                video_origin = bool(re.search(
-                    r"(?i)(?:\b(?:created|established)\s+(?:by\s+<Video\s+1>|"
-                    r"in\s+generated\s+video\s+segment\s+\d+)|"
-                    r"\bcontinued\s+from\s+<Video\s+1>)",
-                    line,
-                ))
                 speaker = next(iter(re.findall(r"(?i)\(S(\d+)\)", line)), None)
                 speaker_id = f"S{speaker}" if speaker else f"S{subject_id}"
-            if match is None or (not picture_ids and not video_origin):
+            # Subject existence is defined by the authoritative subject
+            # definition, not by whether a visual reference is available.
+            # Story-only subjects may have no picture and no previous video
+            # origin while still being valid registry entries.
+            if match is None:
                 continue
             if subject_id in registry:
                 raise ValueError(f"Duplicate subject ID: {subject_id}")
@@ -305,18 +422,53 @@ class SubjectRegistry(dict):
                 line,
             )
             gender = _infer_gender(line)
-            registry.register(
+            stored_record = None
+            if isinstance(stored_records, Mapping):
+                candidates = [
+                    stored_records.get(subject_id),
+                    stored_records.get(str(subject_id)),
+                    stored_records.get(name),
+                ]
+                candidates.extend(stored_records.values())
+                for candidate in candidates:
+                    if not isinstance(candidate, Mapping):
+                        continue
+                    if (
+                        str(candidate.get("subject_id", "")) == str(subject_id)
+                        or str(candidate.get("name", "")).casefold()
+                        == name.casefold()
+                    ):
+                        stored_record = candidate
+                        break
+            stored_query = (
+                stored_record.get("dino_query")
+                if stored_record is not None
+                else None
+            )
+            has_stored_query = (
+                isinstance(stored_query, str)
+                and bool(stored_query.strip())
+                and not _contains_provenance_marker(stored_query)
+            )
+            record = registry.register(
                 subject_id,
                 name=name,
                 definition=line,
                 identity_backend="insightface",
-                query_resolver=query_resolver,
+                dino_query=stored_query if has_stored_query else None,
+                query_resolver=(
+                    None if has_stored_query else query_resolver
+                ),
                 gender=gender,
                 picture_ids=picture_ids,
                 picture_id=picture_ids[0] if picture_ids else None,
                 speaker_id=speaker_id,
                 **({"origin_segment": int(origin_match.group(1))} if origin_match else {}),
             )
+            if has_stored_query and stored_record is not None:
+                record["dino_query_explicit"] = bool(
+                    stored_record.get("dino_query_explicit", False)
+                )
         return registry
 
     def get_subject(self, subject_id: Any) -> Optional[dict[str, Any]]:
@@ -426,6 +578,7 @@ def parse_subject_registry(
     *,
     query_rules: Mapping[Any, Any] | None = None,
     query_resolver: Optional[Callable[[str], Any]] = None,
+    stored_records: Mapping[Any, Mapping[str, Any]] | None = None,
 ) -> SubjectRegistry:
     """Canonical parser used by both minimax and continuity code."""
 
@@ -433,6 +586,7 @@ def parse_subject_registry(
         subject_definitions,
         query_rules=query_rules,
         query_resolver=query_resolver,
+        stored_records=stored_records,
     )
 
 

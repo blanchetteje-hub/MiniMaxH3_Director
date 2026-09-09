@@ -62,6 +62,146 @@ def test_h3_parser_and_continuity_registry_share_the_same_subject_model():
     assert registry[7]["dino_query"] == "woman"
 
 
+def test_story_only_subject_is_registered_without_visual_references():
+    calls = []
+    registry = SubjectRegistry.from_definitions(
+        "<Subject 7> is Werewolf",
+        query_resolver=lambda definition: calls.append(definition) or "werewolf",
+    )
+
+    assert registry[7]["name"] == "Werewolf"
+    assert registry[7]["picture_ids"] == []
+    assert registry[7]["picture_id"] is None
+    assert registry[7]["canonical_reference"] is None
+    assert registry[7]["current_state_reference"] is None
+    assert registry[7]["dino_query"] == "werewolf"
+    assert calls
+
+
+@pytest.mark.parametrize(
+    ("definition", "expected_input", "resolved_query"),
+    [
+        (
+            "<Subject 2> is werewolf, lore-defined.",
+            "werewolf",
+            "werewolf",
+        ),
+        (
+            "<Subject 3> is eldritch monster, lore-defined.",
+            "eldritch monster",
+            "eldritch-monster",
+        ),
+        (
+            "<Subject 4> is robot dog, story-defined.",
+            "robot dog",
+            "robot-dog",
+        ),
+        (
+            "<Subject 5> is robot dog, a mechanical canine companion, story-defined.",
+            "robot dog, a mechanical canine companion",
+            "robot-dog",
+        ),
+    ],
+)
+def test_dino_query_llm_input_excludes_definition_provenance(
+    definition,
+    expected_input,
+    resolved_query,
+):
+    calls = []
+    registry = SubjectRegistry.from_definitions(
+        definition,
+        query_resolver=lambda value: calls.append(value) or resolved_query,
+    )
+
+    assert calls == [expected_input]
+    assert registry[next(iter(registry))]["dino_query"] == resolved_query
+    assert not any(
+        marker in registry[next(iter(registry))]["dino_query"]
+        for marker in (
+            "lore-defined",
+            "story-defined",
+            "picture-defined",
+            "video-defined",
+            "generated-defined",
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [
+        "lore-defined",
+        "story-defined",
+        "picture-defined",
+        "video-defined",
+        "generated-defined",
+    ],
+)
+def test_dino_query_resolver_cannot_return_provenance_marker(marker):
+    registry = SubjectRegistry.from_definitions(
+        f"<Subject 1> is werewolf, {marker}.",
+        query_resolver=lambda _value: marker,
+    )
+
+    assert registry[1]["dino_query"] == "werewolf"
+
+
+def test_legacy_provenance_query_is_re_resolved_from_subject_identity():
+    calls = []
+    registry = SubjectRegistry.from_records(
+        {
+            "werewolf": {
+                "subject_id": 2,
+                "name": "werewolf",
+                "subject_definition": "<Subject 2> is werewolf, lore-defined.",
+                "dino_query": "lore-defined",
+                "dino_query_explicit": False,
+            }
+        },
+        query_resolver=lambda value: calls.append(value) or "werewolf",
+    )
+
+    assert calls == ["werewolf"]
+    assert registry["werewolf"]["dino_query"] == "werewolf"
+
+
+def test_explicit_dino_query_overrides_provenance_and_resolver():
+    registry = SubjectRegistry()
+    registry.register(
+        1,
+        name="werewolf",
+        definition="<Subject 1> is werewolf, lore-defined.",
+        dino_query="wolf",
+        query_resolver=lambda _value: (_ for _ in ()).throw(
+            AssertionError("explicit dino_query must not invoke the resolver")
+        ),
+    )
+
+    assert registry[1]["dino_query"] == "wolf"
+
+
+def test_multiple_story_only_subjects_are_authoritative_registry_entries():
+    registry = SubjectRegistry.from_definitions(
+        "\n".join([
+            "<Subject 1> is Werewolf, a large supernatural creature.",
+            "<Subject 2> is Eldritch Monster, an ancient entity.",
+            "<Subject 3> is Robot, a service machine.",
+            "<Subject 4> is Dog, a black dog.",
+        ]),
+        query_resolver=lambda _definition: "story-subject",
+    )
+
+    assert [registry[index]["name"] for index in range(1, 5)] == [
+        "Werewolf", "Eldritch Monster", "Robot", "Dog",
+    ]
+    assert all(
+        registry[index]["canonical_reference"] is None
+        and registry[index]["current_state_reference"] is None
+        for index in range(1, 5)
+    )
+
+
 @pytest.mark.parametrize(
     ("description", "expected"),
     [
@@ -203,15 +343,39 @@ def test_minimax_uses_existing_local_llm_shape_for_query_resolution(monkeypatch)
     )
     assert calls[0][0] == [{
         "role": "user",
-        "content": (
-            "In the most minimal, succinct sense, what is this definition in "
-            "one word (or two words hyphenated)?\n"
-            "'<Subject 1> is an eldritch tentacled creature, referenced in "
-            "<Picture 1>.'.\n"
-            "Return a one-word response."
+            "content": (
+                "In the most minimal, succinct sense, what is this definition in "
+                "one word (or two words hyphenated)? Note: If the subject name itself is already a concise, "
+                "common visual object/category description, return it unchanged. Do not replace it with synonyms.\n"
+                "'an eldritch tentacled creature'.\n"
+                "Return a one-word response."
         ),
     }]
     assert calls[0][1]["response_format"] is None
+
+
+def test_continuity_rebuild_loads_persisted_dino_query_without_second_llm_call():
+    calls = []
+    definitions = "<Subject 1> is Werewolf."
+
+    state = minimax.continuity_state_for_registry(
+        definitions,
+        minimax.new_continuity_state(),
+        query_resolver=lambda value: calls.append(value) or "werewolf",
+    )
+    assert state["subjects"]["Werewolf"]["dino_query"] == "werewolf"
+    assert calls == ["Werewolf"]
+
+    restored = minimax.continuity_state_for_registry(
+        definitions,
+        state,
+        query_resolver=lambda _value: (_ for _ in ()).throw(
+            AssertionError("persisted dino_query must not invoke the LLM")
+        ),
+    )
+
+    assert restored["subjects"]["Werewolf"]["dino_query"] == "werewolf"
+    assert calls == ["Werewolf"]
 
 
 class _RegistryIdentity:

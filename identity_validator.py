@@ -32,6 +32,30 @@ IDENTITY_MODEL_ROOT_ENV = "INSIGHTFACE_MODEL_ROOT"
 LOGGER = logging.getLogger(__name__)
 
 
+def _exception_summary(error: BaseException, limit: int = 240) -> str:
+    """Return a short, useful runtime error without a multiline traceback."""
+
+    chain = []
+    current: Optional[BaseException] = error
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        message = " ".join(str(current).split())
+        chain.append(
+            f"{type(current).__name__}: {message}"
+            if message
+            else type(current).__name__
+        )
+        current = current.__cause__
+    # Put the deepest backend exception first. IdentityModelError often wraps
+    # an ONNX/InsightFace exception, and that root cause is the useful part of
+    # a Step 4 diagnostic.
+    summary = " <- ".join(reversed(chain))
+    if len(summary) > limit:
+        return summary[: limit - 3].rstrip() + "..."
+    return summary
+
+
 def _discover_existing_model_root(model_name: str) -> Optional[str]:
     """Reuse a compatible ComfyUI/InsightFace model cache when present."""
 
@@ -134,8 +158,10 @@ class CanonicalReferenceResult:
     evaluated: bool
     embedding: Any = field(repr=False, compare=False, default=None)
     face_bbox: Optional[list[float]] = None
+    face_detection_score: Optional[float] = None
     reason: str = "canonical_face_not_found"
     provider: Optional[str] = None
+    error: Optional[str] = None
 
     @property
     def matched(self) -> bool:
@@ -148,8 +174,10 @@ class CanonicalReferenceResult:
             "evaluated": self.evaluated,
             "matched": self.matched,
             "face_bbox": self.face_bbox,
+            "face_detection_score": self.face_detection_score,
             "reason": self.reason,
             "provider": self.provider,
+            "error": self.error,
         }
 
 
@@ -172,7 +200,11 @@ class CandidateIdentityResult:
     reason: str
     identity_similarity: Optional[float] = None
     face_bbox: Optional[list[float]] = None
+    face_detection_score: Optional[float] = None
+    canonical_face_bbox: Optional[list[float]] = None
+    canonical_face_detection_score: Optional[float] = None
     dino_confidence: Optional[float] = None
+    error: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -182,7 +214,11 @@ class CandidateIdentityResult:
             "reason": self.reason,
             "identity_similarity": self.identity_similarity,
             "face_bbox": self.face_bbox,
+            "face_detection_score": self.face_detection_score,
+            "canonical_face_bbox": self.canonical_face_bbox,
+            "canonical_face_detection_score": self.canonical_face_detection_score,
             "dino_confidence": self.dino_confidence,
+            "error": self.error,
         }
 
 
@@ -199,6 +235,7 @@ class IdentitySelectionResult:
     face_bbox: Optional[list[float]] = None
     candidates: tuple[CandidateIdentityResult, ...] = field(default_factory=tuple)
     canonical: Optional[CanonicalReferenceResult] = None
+    error: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -213,6 +250,7 @@ class IdentitySelectionResult:
             "face_bbox": self.face_bbox,
             "candidates": [item.to_dict() for item in self.candidates],
             "canonical": self.canonical.to_dict() if self.canonical else None,
+            "error": self.error,
         }
 
 
@@ -330,6 +368,7 @@ class IdentityValidator:
         model_name: str = DEFAULT_IDENTITY_MODEL,
         root: Optional[str | os.PathLike[str]] = None,
         providers: Optional[Sequence[str]] = None,
+        device: str = "cpu",
         det_size: tuple[int, int] = DEFAULT_IDENTITY_DET_SIZE,
         backend: Any = None,
     ) -> None:
@@ -342,6 +381,10 @@ class IdentityValidator:
             or str(Path.home() / ".insightface")
         )
         self.requested_providers = tuple(providers or ())
+        device = str(device or "cpu").strip().lower()
+        if device not in {"cpu", "cuda"}:
+            raise ValueError("identity device must be 'cpu' or 'cuda'")
+        self.device = device
         self.det_size = det_size
         self._backend = backend
         self._providers: tuple[str, ...] = tuple()
@@ -440,12 +483,25 @@ class IdentityValidator:
         return torch, ort, available
 
     def _available_providers(self) -> list[str]:
-        _torch, _ort, available_names = self._prepare_onnx_runtime()
+        requested = list(self.requested_providers)
+        if not requested and self.device == "cpu":
+            # Do not preload CUDA libraries or inspect PyTorch's CUDA runtime
+            # for the default CPU-only continuity path.
+            try:
+                import onnxruntime as ort
+            except ImportError as error:  # pragma: no cover - optional runtime
+                raise IdentityModelError(
+                    "InsightFace requires onnxruntime or onnxruntime-gpu."
+                ) from error
+            available_names = list(ort.get_available_providers())
+        else:
+            _torch, _ort, available_names = self._prepare_onnx_runtime()
         available = set(available_names)
-        requested = list(self.requested_providers) or [
-            "CUDAExecutionProvider",
-            "CPUExecutionProvider",
-        ]
+        requested = requested or (
+            ["CPUExecutionProvider"]
+            if self.device == "cpu"
+            else ["CUDAExecutionProvider", "CPUExecutionProvider"]
+        )
         providers = [provider for provider in requested if provider in available]
         if "CPUExecutionProvider" in available and "CPUExecutionProvider" not in providers:
             providers.append("CPUExecutionProvider")
@@ -557,6 +613,7 @@ class IdentityValidator:
                 evaluated=True,
                 embedding=faces[0].embedding,
                 face_bbox=faces[0].bbox,
+                face_detection_score=faces[0].detection_score,
                 reason="canonical_loaded",
                 provider=self.providers[0] if self.providers else None,
             )
@@ -613,8 +670,158 @@ class IdentityValidator:
             reason="identity_evaluated",
             identity_similarity=similarity,
             face_bbox=face.bbox,
+            face_detection_score=face.detection_score,
+            canonical_face_bbox=canonical.face_bbox,
+            canonical_face_detection_score=canonical.face_detection_score,
             dino_confidence=candidate.dino_confidence,
         )
+
+    def score_candidates_for_subjects(
+        self,
+        subjects: Mapping[str, Any],
+        candidates: Sequence[IdentityCandidate],
+    ) -> dict[str, tuple[CandidateIdentityResult, ...]]:
+        """Score every subject/candidate pair without selecting ownership.
+
+        Canonical references are prepared once per subject and candidate face
+        analysis is performed once per candidate. The resulting embeddings
+        are then compared across the matrix. Thresholds, margins, and
+        one-to-one assignment intentionally do not occur here.
+        """
+
+        subject_ids = tuple(str(subject_id) for subject_id in subjects)
+        candidate_list = tuple(candidates)
+        output: dict[str, tuple[CandidateIdentityResult, ...]] = {}
+        if not candidate_list:
+            return {subject_id: tuple() for subject_id in subject_ids}
+
+        canonical_by_subject: dict[str, CanonicalReferenceResult] = {}
+        for subject_id in subject_ids:
+            reference = subjects[subject_id]
+            if isinstance(reference, Mapping):
+                reference = (
+                    reference.get("canonical_reference")
+                    or reference.get("identity_reference")
+                )
+            if reference is None:
+                output[subject_id] = tuple(
+                    CandidateIdentityResult(
+                        candidate_index=candidate.candidate_index,
+                        evaluated=False,
+                        matched=False,
+                        reason="canonical_face_not_found",
+                        dino_confidence=candidate.dino_confidence,
+                    )
+                    for candidate in candidate_list
+                )
+                continue
+            try:
+                canonical = self.prepare_canonical(subject_id, reference)
+            except Exception as error:
+                error_summary = _exception_summary(error)
+                LOGGER.warning(
+                    "InsightFace canonical analysis failed subject=%s: %s",
+                    subject_id,
+                    error_summary,
+                )
+                output[subject_id] = tuple(
+                    CandidateIdentityResult(
+                        candidate_index=candidate.candidate_index,
+                        evaluated=False,
+                        matched=False,
+                        reason="identity_model_error",
+                        dino_confidence=candidate.dino_confidence,
+                        error=error_summary,
+                    )
+                    for candidate in candidate_list
+                )
+                continue
+            if not canonical.matched:
+                output[subject_id] = tuple(
+                    CandidateIdentityResult(
+                        candidate_index=candidate.candidate_index,
+                        evaluated=False,
+                        matched=False,
+                        reason=canonical.reason,
+                        dino_confidence=candidate.dino_confidence,
+                    )
+                    for candidate in candidate_list
+                )
+                continue
+            canonical_by_subject[subject_id] = canonical
+
+        # Face analysis is shared across all subject rows. Only the canonical
+        # embedding comparison varies by subject.
+        face_results: list[tuple[Optional[FaceObservation], str, Optional[str]]] = []
+        for candidate in candidate_list:
+            try:
+                faces = self._detect_faces(candidate.image)
+                face, reason = self._select_candidate_face(faces, candidate)
+            except Exception as error:
+                error_summary = _exception_summary(error)
+                LOGGER.warning(
+                    "InsightFace candidate face analysis failed candidate=%s: %s",
+                    candidate.candidate_index,
+                    error_summary,
+                )
+                face, reason = None, "identity_model_error"
+            else:
+                error_summary = None
+            face_results.append((face, reason, error_summary))
+
+        for subject_id, canonical in canonical_by_subject.items():
+            candidate_results = []
+            for candidate, (face, face_reason, face_error) in zip(
+                candidate_list,
+                face_results,
+            ):
+                if face is None:
+                    candidate_results.append(CandidateIdentityResult(
+                        candidate_index=candidate.candidate_index,
+                        evaluated=False,
+                        matched=False,
+                        reason=face_reason,
+                        dino_confidence=candidate.dino_confidence,
+                        error=face_error,
+                    ))
+                    continue
+                try:
+                    similarity = compare_face_embeddings(
+                        canonical.embedding,
+                        face.embedding,
+                    )
+                except Exception as error:
+                    error_summary = _exception_summary(error)
+                    LOGGER.warning(
+                        "InsightFace embedding comparison failed candidate=%s: %s",
+                        candidate.candidate_index,
+                        error_summary,
+                    )
+                    candidate_results.append(CandidateIdentityResult(
+                        candidate_index=candidate.candidate_index,
+                        evaluated=False,
+                        matched=False,
+                        reason="identity_model_error",
+                        face_bbox=face.bbox,
+                        dino_confidence=candidate.dino_confidence,
+                        error=error_summary,
+                    ))
+                    continue
+                candidate_results.append(CandidateIdentityResult(
+                    candidate_index=candidate.candidate_index,
+                    evaluated=True,
+                    matched=False,
+                    reason="identity_score",
+                    identity_similarity=similarity,
+                    face_bbox=face.bbox,
+                    face_detection_score=face.detection_score,
+                    canonical_face_bbox=canonical.face_bbox,
+                    canonical_face_detection_score=canonical.face_detection_score,
+                    dino_confidence=candidate.dino_confidence,
+                ))
+            output[subject_id] = tuple(candidate_results)
+
+        return output
 
     def select_candidates_for_subjects(
         self,
@@ -663,7 +870,13 @@ class IdentityValidator:
                 continue
             try:
                 canonical = self.prepare_canonical(subject_id, reference)
-            except (FileNotFoundError, IdentityModelError, OSError, ValueError):
+            except (FileNotFoundError, IdentityModelError, OSError, ValueError) as error:
+                error_summary = _exception_summary(error)
+                LOGGER.warning(
+                    "InsightFace canonical analysis failed subject=%s: %s",
+                    subject_id,
+                    error_summary,
+                )
                 output[subject_id] = IdentitySelectionResult(
                     evaluated=False,
                     matched=False,
@@ -671,6 +884,7 @@ class IdentityValidator:
                     canonical_subject=subject_id,
                     identity_threshold=threshold,
                     identity_margin=margin,
+                    error=error_summary,
                 )
                 continue
             canonical_by_subject[subject_id] = canonical
@@ -723,6 +937,9 @@ class IdentityValidator:
                         face.embedding,
                     ),
                     face_bbox=face.bbox,
+                    face_detection_score=face.detection_score,
+                    canonical_face_bbox=canonical.face_bbox,
+                    canonical_face_detection_score=canonical.face_detection_score,
                     dino_confidence=candidate.dino_confidence,
                 ))
             score_results[subject_id] = tuple(candidate_results)
@@ -923,7 +1140,7 @@ class IdentityValidator:
         )
 
 
-_DEFAULT_VALIDATORS: dict[tuple[str, Optional[str]], IdentityValidator] = {}
+_DEFAULT_VALIDATORS: dict[tuple[str, Optional[str], str], IdentityValidator] = {}
 _DEFAULT_VALIDATORS_LOCK = threading.RLock()
 
 
@@ -931,6 +1148,7 @@ def get_identity_validator(
     *,
     model_name: str = DEFAULT_IDENTITY_MODEL,
     root: Optional[str | os.PathLike[str]] = None,
+    device: str = "cpu",
 ) -> IdentityValidator:
     effective_root = (
         os.fspath(root)
@@ -938,11 +1156,16 @@ def get_identity_validator(
         else os.environ.get(IDENTITY_MODEL_ROOT_ENV)
         or _discover_existing_model_root(str(model_name))
     )
-    key = (str(model_name), effective_root)
+    effective_device = str(device or "cpu").strip().lower()
+    key = (str(model_name), effective_root, effective_device)
     with _DEFAULT_VALIDATORS_LOCK:
         validator = _DEFAULT_VALIDATORS.get(key)
         if validator is None:
-            validator = IdentityValidator(model_name=model_name, root=effective_root)
+            validator = IdentityValidator(
+                model_name=model_name,
+                root=effective_root,
+                device=effective_device,
+            )
             _DEFAULT_VALIDATORS[key] = validator
         return validator
 

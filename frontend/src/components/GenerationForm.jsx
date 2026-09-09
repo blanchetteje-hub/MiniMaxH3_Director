@@ -9,13 +9,15 @@ const INITIAL_SETTINGS = {
   steps: '6',
   context_frames: '7',
   refresh: '6',
-  vision_continuity: '0',
+  vision_continuity: '1',
   dino_skip: false,
+  disable_onnx_dino: false,
   dino_confidence: '0.80',
   dino_box_threshold: '0.35',
   dino_text_threshold: '0.25',
   dino_frame_interval: '8',
   dino_max_candidates: '12',
+  dino_max_state_age: '1.0',
   dino_crop_padding_x: '0.12',
   dino_crop_padding_y: '0.12',
   dino_min_bbox_area_ratio: '0.01',
@@ -59,11 +61,13 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
           refresh: savedSettings.refresh ?? current.refresh,
           vision_continuity: savedSettings.vision_continuity ?? current.vision_continuity,
           dino_skip: savedSettings.dino_skip ?? current.dino_skip,
+          disable_onnx_dino: savedSettings.disable_onnx_dino ?? current.disable_onnx_dino,
           dino_confidence: savedSettings.dino_confidence ?? current.dino_confidence,
           dino_box_threshold: savedSettings.dino_box_threshold ?? current.dino_box_threshold,
           dino_text_threshold: savedSettings.dino_text_threshold ?? current.dino_text_threshold,
           dino_frame_interval: savedSettings.dino_frame_interval ?? current.dino_frame_interval,
           dino_max_candidates: savedSettings.dino_max_candidates ?? current.dino_max_candidates,
+          dino_max_state_age: savedSettings.dino_max_state_age ?? current.dino_max_state_age,
           dino_crop_padding_x: savedSettings.dino_crop_padding_x ?? current.dino_crop_padding_x,
           dino_crop_padding_y: savedSettings.dino_crop_padding_y ?? current.dino_crop_padding_y,
           dino_min_bbox_area_ratio: savedSettings.dino_min_bbox_area_ratio ?? current.dino_min_bbox_area_ratio,
@@ -151,7 +155,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
       return
     }
     if (settings.vision_continuity === '' || !/^\d+$/.test(settings.vision_continuity)) {
-      setError('Vision continuity must be a whole number (0 disables it).')
+      setError('Continuity cadence must be a whole number (0 disables it).')
       return
     }
     const dinoRatioFields = [
@@ -192,6 +196,10 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
     )
     if (invalidDinoInteger) {
       setError(`${invalidDinoInteger[1]} must be a whole number greater than zero.`)
+      return
+    }
+    if (settings.dino_max_state_age === '' || !(Number(settings.dino_max_state_age) > 0)) {
+      setError('DINO maximum rendered-state age must be greater than zero.')
       return
     }
     if (mode === 'resume' && !(Number(settings.resume) > 0)) {
@@ -348,8 +356,8 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               disabled={disabled}
             />
             <NumberField
-              label="Vision continuity"
-              help="Rendered-frame check cadence; 0 disables it, 1 checks every segment (requires ComfyUI to return before executing)"
+              label="Continuity cadence"
+              help="DINO continuity cadence; 0 disables it, 1 checks every segment"
               value={settings.vision_continuity}
               onChange={(event) => setField('vision_continuity', event.target.value)}
               min="0"
@@ -399,7 +407,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               min="0"
               max="1"
               step="0.01"
-              disabled={disabled || settings.dino_skip}
+              disabled={disabled || settings.dino_skip || settings.disable_onnx_dino}
             />
             <NumberField
               label="Box threshold"
@@ -409,7 +417,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               min="0"
               max="1"
               step="0.01"
-              disabled={disabled || settings.dino_skip}
+              disabled={disabled || settings.dino_skip || settings.disable_onnx_dino}
             />
             <NumberField
               label="Text threshold"
@@ -419,7 +427,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               min="0"
               max="1"
               step="0.01"
-              disabled={disabled || settings.dino_skip}
+              disabled={disabled || settings.dino_skip || settings.disable_onnx_dino}
             />
             <NumberField
               label="Frame interval"
@@ -428,7 +436,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               onChange={(event) => setField('dino_frame_interval', event.target.value)}
               min="1"
               step="1"
-              disabled={disabled || settings.dino_skip}
+              disabled={disabled || settings.dino_skip || settings.disable_onnx_dino}
             />
             <NumberField
               label="Maximum candidates"
@@ -437,7 +445,16 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               onChange={(event) => setField('dino_max_candidates', event.target.value)}
               min="1"
               step="1"
-              disabled={disabled || settings.dino_skip}
+              disabled={disabled || settings.dino_skip || settings.disable_onnx_dino}
+            />
+            <NumberField
+              label="Maximum state age"
+              help="Rendered-state search window at the segment end, in seconds"
+              value={settings.dino_max_state_age}
+              onChange={(event) => setField('dino_max_state_age', event.target.value)}
+              min="0.01"
+              step="0.1"
+              disabled={disabled || settings.dino_skip || settings.disable_onnx_dino}
             />
             <NumberField
               label="Horizontal padding"
@@ -447,7 +464,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               min="0"
               max="1"
               step="0.01"
-              disabled={disabled || settings.dino_skip}
+              disabled={disabled || settings.dino_skip || settings.disable_onnx_dino}
             />
             <NumberField
               label="Vertical padding"
@@ -457,7 +474,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               min="0"
               max="1"
               step="0.01"
-              disabled={disabled || settings.dino_skip}
+              disabled={disabled || settings.dino_skip || settings.disable_onnx_dino}
             />
             <NumberField
               label="Minimum bbox area"
@@ -467,7 +484,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               min="0"
               max="1"
               step="0.001"
-              disabled={disabled || settings.dino_skip}
+              disabled={disabled || settings.dino_skip || settings.disable_onnx_dino}
             />
             <NumberField
               label="Identity confidence"
@@ -477,7 +494,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               min="-1"
               max="1"
               step="0.01"
-              disabled={disabled || settings.dino_skip}
+              disabled={disabled || settings.dino_skip || settings.disable_onnx_dino}
             />
             <NumberField
               label="Identity margin"
@@ -487,7 +504,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               min="0"
               max="2"
               step="0.01"
-              disabled={disabled || settings.dino_skip}
+              disabled={disabled || settings.dino_skip || settings.disable_onnx_dino}
             />
           </div>
           <label className="checkbox-field">
@@ -498,6 +515,17 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               disabled={disabled}
             />
             <span>Skip Grounding DINO continuity detection (<code>--dino-skip</code>)</span>
+          </label>
+          <label className="checkbox-field">
+            <input
+              type="checkbox"
+              checked={settings.disable_onnx_dino}
+              onChange={(event) => setField('disable_onnx_dino', event.target.checked)}
+              disabled={disabled}
+            />
+            <span>
+              Disable ONNX/DINO visual continuity (<code>--disable-onnx-dino</code>)
+            </span>
           </label>
         </details>
 

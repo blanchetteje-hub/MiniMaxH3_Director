@@ -146,6 +146,14 @@ class DesktopBridgeTests(unittest.TestCase):
         self.assertEqual(command[command.index("--dino-text-threshold") + 1], "0.21")
         self.assertEqual(command[command.index("--dino-frame-interval") + 1], "6")
         self.assertEqual(command[command.index("--dino-max-candidates") + 1], "9")
+        self.assertEqual(command[command.index("--dino-max-state-age") + 1], "1")
+
+    def test_build_command_includes_onnx_dino_disable_flag(self):
+        command = self.make_bridge().build_command(
+            dict(BASE_SETTINGS, disable_onnx_dino=True)
+        )
+
+        self.assertIn("--disable-onnx-dino", command)
 
     def test_invalid_dino_ratio_is_rejected(self):
         settings = dict(BASE_SETTINGS, dino_confidence="1.1")

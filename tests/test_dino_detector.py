@@ -1,3 +1,7 @@
+import subprocess
+import sys
+from types import SimpleNamespace
+
 from PIL import Image
 
 import dino_detector
@@ -72,6 +76,24 @@ def test_model_backend_is_lazy_and_reused():
     assert len(backend.calls) == 2
 
 
+def test_dino_default_device_is_cpu_and_factory_reuses_one_detector(tmp_path):
+    first = dino_detector.get_detector(
+        config_path=tmp_path / "config.py",
+        checkpoint_path=tmp_path / "checkpoint.pth",
+        device=None,
+        auto_download=False,
+    )
+    second = dino_detector.get_detector(
+        config_path=tmp_path / "config.py",
+        checkpoint_path=tmp_path / "checkpoint.pth",
+        device="cpu",
+        auto_download=False,
+    )
+
+    assert first is second
+    assert first.device == "cpu"
+
+
 def test_thresholds_are_validated():
     detector = GroundingDINODetector(device="cpu", backend=FakeBackend([]))
     for name, value in (("box_threshold", -0.1), ("text_threshold", 1.1)):
@@ -81,6 +103,69 @@ def test_thresholds_are_validated():
             assert name in str(error)
         else:
             raise AssertionError("invalid threshold was accepted")
+
+
+def test_torchvision_loader_does_not_define_an_existing_native_operator(monkeypatch):
+    definitions = []
+
+    class FakeLibrary:
+        def __init__(self, namespace, kind):
+            assert namespace == "torchvision"
+            assert kind == "FRAGMENT"
+
+        def define(self, schema):
+            definitions.append(schema)
+
+    fake_torch = SimpleNamespace(
+        library=SimpleNamespace(Library=FakeLibrary),
+    )
+    availability = {"nms": True, "qnms": False}
+    imports = iter([
+        RuntimeError("operator torchvision::qnms does not exist"),
+        SimpleNamespace(ops=SimpleNamespace(nms=object())),
+    ])
+
+    def import_module(_name):
+        result = next(imports)
+        if isinstance(result, BaseException):
+            raise result
+        return result
+
+    monkeypatch.setattr(
+        dino_detector,
+        "_torchvision_operator_is_registered",
+        lambda _torch, operator: availability[operator],
+    )
+    monkeypatch.setattr(
+        dino_detector.importlib,
+        "import_module",
+        import_module,
+    )
+
+    _torchvision, _compatibility_library = dino_detector._load_torchvision(
+        fake_torch
+    )
+
+    assert definitions == [dino_detector._TORCHVISION_COMPAT_OPERATORS["qnms"]]
+    assert dino_detector._TORCHVISION_COMPAT_OPERATORS["nms"] not in definitions
+
+
+def test_torchvision_import_and_nms_smoke_in_a_clean_process():
+    script = """
+import torch
+import dino_detector
+
+torchvision, _compatibility_library = dino_detector._load_torchvision(torch)
+assert callable(torchvision.ops.nms)
+assert dino_detector._torchvision_operator_is_registered(torch, "nms")
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr or completed.stdout
 
 
 def test_missing_standard_model_downloads_into_configured_cache(tmp_path, monkeypatch):

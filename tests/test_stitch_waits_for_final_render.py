@@ -23,9 +23,9 @@ def _make_args(**overrides):
         "steps": 6,
         "context_frames": minimax.DEFAULT_CONTEXT_FRAMES,
         "ff": False,
-        # 0 disables vision continuity, so every segment (including the final
-        # one) takes the background-render path that previously raced ffmpeg.
-        "vision_continuity": 0,
+        # The final segment must skip vision continuity regardless of cadence;
+        # it has no later segment that can consume the resulting state.
+        "vision_continuity": 1,
     }
     base.update(overrides)
     return SimpleNamespace(**base)
@@ -50,7 +50,7 @@ class StitchWaitsForFinalRenderTests(unittest.TestCase):
         render_started = threading.Event()
         release_render = threading.Event()
         stitch_ran = threading.Event()
-        combined_continuity = mock.Mock(return_value={"reduced_state": {}})
+        text_continuity = mock.Mock(return_value={"reduced_state": {}})
         opening_continuity = mock.Mock(return_value="OPENING")
 
         def load_text(path, required=True):
@@ -87,6 +87,10 @@ class StitchWaitsForFinalRenderTests(unittest.TestCase):
                 )
             stitch_ran.set()
 
+        dino_continuity = mock.patch(
+            "minimax.update_dino_continuity_references",
+            return_value={},
+        )
         patches = (
             mock.patch("minimax.parse_args", return_value=args),
             mock.patch("minimax.configure_formatter"),
@@ -113,14 +117,15 @@ class StitchWaitsForFinalRenderTests(unittest.TestCase):
             mock.patch("minimax.save_generation_state"),
             mock.patch("minimax.request_segment_llm", side_effect=request_segment),
             mock.patch(
-                "minimax.request_combined_continuity",
-                new=combined_continuity,
+                "minimax.request_text_continuity",
+                new=text_continuity,
             ),
             mock.patch("minimax.build_h3_prompt", return_value="H3 prompt"),
             mock.patch(
                 "minimax.request_continuity_opening_state",
                 new=opening_continuity,
             ),
+            dino_continuity,
             mock.patch("minimax.record_completed_segment", return_value={}),
             mock.patch(
                 "minimax.render_segment_with_retries",
@@ -128,8 +133,11 @@ class StitchWaitsForFinalRenderTests(unittest.TestCase):
             ),
             mock.patch("minimax.stitch_videos", side_effect=stitching),
         )
+        dino_continuity_mock = None
         for patcher in patches:
-            patcher.start()
+            started = patcher.start()
+            if patcher is dino_continuity:
+                dino_continuity_mock = started
             self.addCleanup(patcher.stop)
 
         with ThreadPoolExecutor(max_workers=1) as main_executor:
@@ -156,8 +164,9 @@ class StitchWaitsForFinalRenderTests(unittest.TestCase):
 
         # Once the task completed, ffmpeg must have run.
         self.assertTrue(stitch_ran.is_set())
-        combined_continuity.assert_not_called()
+        text_continuity.assert_not_called()
         opening_continuity.assert_not_called()
+        dino_continuity_mock.assert_not_called()
 
 
 if __name__ == "__main__":

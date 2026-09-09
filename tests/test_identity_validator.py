@@ -67,6 +67,21 @@ def test_default_validator_factory_is_lazy_and_persistent(tmp_path, monkeypatch)
     assert first is second
     assert first.loaded is False
     assert first.root == str(tmp_path)
+    assert first.device == "cpu"
+
+
+def test_default_identity_provider_path_does_not_probe_cuda(monkeypatch):
+    events = []
+    fake_onnxruntime = types.ModuleType("onnxruntime")
+    fake_onnxruntime.get_available_providers = lambda: (
+        events.append("providers")
+        or ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    )
+    monkeypatch.setitem(sys.modules, "onnxruntime", fake_onnxruntime)
+
+    validator = IdentityValidator()
+    assert validator._available_providers() == ["CPUExecutionProvider"]
+    assert events == ["providers"]
 
 
 def test_onnx_runtime_preloads_python_cuda_libraries_before_provider_discovery(
@@ -95,7 +110,7 @@ def test_onnx_runtime_preloads_python_cuda_libraries_before_provider_discovery(
     monkeypatch.setitem(sys.modules, "onnxruntime", fake_onnxruntime)
     caplog.set_level(logging.DEBUG, logger="identity_validator")
 
-    providers = IdentityValidator()._available_providers()
+    providers = IdentityValidator(device="cuda")._available_providers()
 
     assert providers == ["CUDAExecutionProvider", "CPUExecutionProvider"]
     assert events == [

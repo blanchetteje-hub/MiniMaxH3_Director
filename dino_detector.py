@@ -14,6 +14,7 @@ Swin-T config/checkpoint are downloaded once into a local model cache.
 from __future__ import annotations
 
 import argparse
+import importlib
 import importlib.util
 import os
 import shutil
@@ -156,11 +157,13 @@ def _to_detection(
 
 
 def _resolve_device(requested: Optional[str]) -> str:
-    """Choose CUDA when available, otherwise use CPU."""
+    """Resolve the DINO device without implicitly selecting the render GPU."""
 
-    requested = (requested or "auto").lower()
+    requested = (requested or "cpu").lower()
     if requested == "auto":
-        requested = "cuda" if _cuda_available() else "cpu"
+        # ``auto`` must not claim the render GPU merely because CUDA exists.
+        # CUDA remains available only through an explicit ``cuda``/``cuda:N``.
+        requested = "cpu"
     if requested.startswith("cuda") and not _cuda_available():
         return "cpu"
     if requested not in {"cpu", "cuda"} and not requested.startswith("cuda:"):
@@ -356,6 +359,66 @@ def _find_local_package_parent() -> Optional[Path]:
     return None
 
 
+_TORCHVISION_COMPAT_OPERATORS = {
+    "nms": "nms(Tensor boxes, Tensor scores, float iou_threshold) -> Tensor",
+    "qnms": "qnms(Tensor boxes, Tensor scores, float iou_threshold) -> Tensor",
+}
+
+
+def _torchvision_operator_is_registered(torch: Any, operator: str) -> bool:
+    """Check the dispatcher schema without invoking a possibly missing op."""
+
+    try:
+        torch._C._dispatch_find_schema_or_throw(
+            f"torchvision::{operator}",
+            "",
+        )
+    except (AttributeError, RuntimeError):
+        return False
+    return True
+
+
+def _load_torchvision(torch: Any) -> tuple[Any, Any]:
+    """Load torchvision, adding schemas only when its native ops are absent.
+
+    torchvision's import registers fake implementations for NMS. Importing it
+    first gives its native extension the opportunity to register the real
+    operators. The compatibility schemas are created only after a specific
+    missing-operator import failure and only for schemas still absent then.
+    """
+
+    try:
+        return importlib.import_module("torchvision"), None
+    except RuntimeError as error:
+        error_text = str(error)
+        missing_operator_error = any(
+            f"operator torchvision::{operator} does not exist" in error_text
+            for operator in _TORCHVISION_COMPAT_OPERATORS
+        )
+        if not missing_operator_error:
+            raise
+        import_error = error
+
+    missing_operators = [
+        operator
+        for operator in _TORCHVISION_COMPAT_OPERATORS
+        if not _torchvision_operator_is_registered(torch, operator)
+    ]
+    if not missing_operators:
+        # The failed import was not evidence that a replacement schema is
+        # needed. In particular, never define over a native operator.
+        raise import_error
+
+    compat_library = torch.library.Library("torchvision", "FRAGMENT")
+    for operator in missing_operators:
+        # Recheck immediately before definition so a concurrent/native loader
+        # cannot turn this narrow compatibility path into a duplicate schema.
+        if not _torchvision_operator_is_registered(torch, operator):
+            compat_library.define(_TORCHVISION_COMPAT_OPERATORS[operator])
+
+    return importlib.import_module("torchvision"), compat_library
+
+
 class _LocalGroundingDINOBackend:
     """Adapter around the official Python implementation used by ComfyUI."""
 
@@ -378,23 +441,7 @@ class _LocalGroundingDINOBackend:
         if package_parent and str(package_parent) not in sys.path:
             sys.path.insert(0, str(package_parent))
 
-        # A few CPU/nightly Torch builds ship a torchvision wheel whose C++
-        # extension does not register these operators, while torchvision's
-        # Python import unconditionally registers their fake implementations.
-        # Grounding DINO only needs torchvision transforms here, so define the
-        # schemas when they are absent and let the rest of torchvision import.
-        torchvision_compat_library = None
-        for operator in ("nms", "qnms"):
-            try:
-                getattr(torch.ops.torchvision, operator)
-            except (AttributeError, RuntimeError):
-                if torchvision_compat_library is None:
-                    torchvision_compat_library = torch.library.Library(
-                        "torchvision", "DEF"
-                    )
-                torchvision_compat_library.define(
-                    f"{operator}(Tensor boxes, Tensor scores, float iou_threshold) -> Tensor"
-                )
+        torchvision, torchvision_compat_library = _load_torchvision(torch)
 
         try:
             from local_groundingdino.datasets import transforms as transforms
@@ -523,6 +570,10 @@ class GroundingDINODetector:
                         self.device,
                         bert_model_path=self.bert_model_path,
                     )
+                    print(
+                        f"[DINO continuity] detector initialized device={self.device}",
+                        flush=True,
+                    )
         return self._backend
 
     def detect(
@@ -648,7 +699,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--checkpoint", help="Grounding DINO .pth path")
     parser.add_argument("--bert-model", help="Optional local bert-base-uncased path")
     parser.add_argument(
-        "--device", default="auto", help="auto, cpu, cuda, or cuda:N (default: auto)"
+        "--device", default="cpu", help="cpu, cuda, or cuda:N (default: cpu)"
     )
     parser.add_argument(
         "--no-download",

@@ -16,10 +16,10 @@ def committed_state():
 
 
 class ContinuityCallContractTests(unittest.TestCase):
-    def test_combined_continuity_deferred_call_is_phase_one_only(self):
+    def test_text_continuity_deferred_call_is_phase_one_only(self):
         request = Mock(return_value={"environment": {"location": "bedroom"}})
 
-        result = minimax.request_combined_continuity(
+        result = minimax.request_text_continuity(
             "FINAL H3 PROMPT",
             {"phase_number": 2, "beat_start": 2, "beat_end": 3},
             llm_request=request,
@@ -47,14 +47,14 @@ class ContinuityCallContractTests(unittest.TestCase):
             },
         )
 
-    def test_combined_continuity_runs_phase_two_with_reduced_state(self):
+    def test_text_continuity_runs_phase_two_with_reduced_state(self):
         request = Mock(side_effect=[
             {"environment": {"location": "bedroom"}},
             "Mark remains beside the window.",
         ])
         phase = {"phase_number": 2, "beat_start": 2, "beat_end": 3}
 
-        result = minimax.request_combined_continuity(
+        result = minimax.request_text_continuity(
             "FINAL H3 PROMPT",
             phase,
             llm_request=request,
@@ -80,11 +80,11 @@ class ContinuityCallContractTests(unittest.TestCase):
             },
         )
 
-    def test_combined_continuity_retries_invalid_json_with_attempt_metadata(self):
+    def test_text_continuity_retries_invalid_json_with_attempt_metadata(self):
         request = Mock(side_effect=["not json", {"camera": "wide shot"}])
 
         with patch("minimax._print_continuity_phase_result"):
-            result = minimax.request_combined_continuity(
+            result = minimax.request_text_continuity(
                 "PROMPT",
                 {},
                 llm_request=request,

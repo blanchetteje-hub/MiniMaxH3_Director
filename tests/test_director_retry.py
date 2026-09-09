@@ -152,12 +152,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(payload["raw_scene"], raw_scene)
         self.assertEqual(payload["h3_mode"], "T2VA")
 
-    def test_combined_continuity_avoids_lm_studio_schema_rejection(self):
+    def test_text_continuity_avoids_lm_studio_schema_rejection(self):
         llm_request = mock.Mock(side_effect=[
             {"subject": {"name": "Amy"}},
         ])
 
-        minimax.request_combined_continuity(
+        minimax.request_text_continuity(
             "A full scene description.",
             {"environment": {"location": "bedroom"}},
             llm_request=llm_request,
@@ -166,8 +166,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             defer_opening=True,
         )
 
-        combined_call = llm_request.call_args_list[0]
-        self.assertEqual(combined_call.kwargs["response_format"], None)
+        text_call = llm_request.call_args_list[0]
+        self.assertEqual(text_call.kwargs["response_format"], None)
 
     def test_segment_llm_passes_assigned_beat_id_as_completion(self):
         bundle = segment_bundle()
