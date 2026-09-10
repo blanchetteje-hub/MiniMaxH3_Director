@@ -138,6 +138,7 @@ VIDEO_OUTPUT = os.path.abspath(
         )
     )
 )
+CONTINUATION_FRAME_OUTPUT = os.path.join(VIDEO_OUTPUT, "continuation_frames")
 
 H3_LATENT_SAVE_NODE_NAME = "H3 AV Save Latent"
 H3_LATENT_LOAD_NODE_NAME = "H3 AV Load Latent"
@@ -487,6 +488,7 @@ SCHEDULER_NODE_NAME = "BasicScheduler"
 IMAGE_BATCH_NODE_NAME = "Image Batch Multi"
 MATH_NODE_NAME = "Math Expression"
 VIDEO_EXTEND_NODE_NAME = "MiniMax H3 Video Extend (Backported)"
+CONTINUATION_FIRST_FRAME_NODE_NAME = "Continuation First Frame"
 ENCODE_AV_NODE_NAME = "MiniMax H3 Encode AV (Backported)"
 LOAD_VIDEO_NODE_NAME = "Load Video (Path) 🎥🅥🅗🅢"
 REFRESH_FIRST_FRAME_NODE_NAME = "Refresh First Frame"
@@ -807,13 +809,6 @@ RESPONSE_FORMAT = {
         }
     }
 }
-
-# The combined continuity call intentionally uses a flexible/arbitrary JSON
-# shape, so a fixed JSON schema is inappropriate. JSON-object mode still
-# constrains LM Studio to syntactically valid JSON without dictating
-# continuity fields.
-JSON_OBJECT_RESPONSE_FORMAT = {"type": "json_object"}
-
 
 # ============================================================
 # FILE / WORKFLOW HELPERS
@@ -3901,6 +3896,12 @@ def validate_workflow(workflow, workflow_label, is_append=False):
         workflow_label,
         "VHS_LoadVideoPath"
     )
+    find_workflow_node(
+        workflow,
+        CONTINUATION_FIRST_FRAME_NODE_NAME,
+        workflow_label,
+        "LoadImage",
+    )
 
     required_connections = (
         (
@@ -3927,6 +3928,13 @@ def validate_workflow(workflow, workflow_label, is_append=False):
             VIDEO_EXTEND_NODE_NAME,
             "context_latent",
             H3_LATENT_LOAD_NODE_NAME,
+            0,
+        ),
+
+        (
+            VIDEO_EXTEND_NODE_NAME,
+            "first_frame",
+            CONTINUATION_FIRST_FRAME_NODE_NAME,
             0,
         ),
 
@@ -4546,6 +4554,41 @@ def get_beat_deadline_segment(beat_id):
 # LLM
 # ============================================================
 
+def _merge_unquoted_json_string_suffixes(text):
+    """Repair a narrow local-model error such as ``\"growl\" snarls``.
+
+    Models sometimes append a descriptive word after a quoted array item
+    without either quoting it or inserting a comma.  That is not valid JSON,
+    but the intended value is unambiguous in this form: merge the suffix into
+    the preceding string.  Keep this recovery deliberately narrow so
+    genuinely malformed objects still fail loudly.
+    """
+    suffix_pattern = re.compile(
+        r'(?P<quoted>"(?:\\.|[^"\\])*")'
+        r'(?P<space>\s+)'
+        r'(?P<suffix>[A-Za-z][^,\]\}\r\n"]*?[A-Za-z0-9.!?*\u2019\'\u2014\u2013-])'
+        r'(?P<trailing>\s*)'
+        r'(?P<delimiter>[,\]\}])'
+    )
+
+    def replace(match):
+        try:
+            existing = json.loads(match.group("quoted"))
+        except json.JSONDecodeError:
+            return match.group(0)
+        suffix = match.group("suffix").strip()
+        if not isinstance(existing, str) or not suffix:
+            return match.group(0)
+        merged = json.dumps(
+            f"{existing} {suffix}",
+            ensure_ascii=False,
+        )
+        return merged + match.group("trailing") + match.group("delimiter")
+
+    repaired, replacements = suffix_pattern.subn(replace, text)
+    return repaired if replacements else text
+
+
 def parse_llm_json_content(content):
     if not isinstance(content, str):
         raise TypeError("LM Studio returned non-text message content.")
@@ -4623,7 +4666,13 @@ def parse_llm_json_content(content):
                         return text[start_index:index + 1]
         return None
 
+    repaired_candidate = _merge_unquoted_json_string_suffixes(candidate)
     candidates = [candidate, strip_trailing_commas(candidate)]
+    if repaired_candidate != candidate:
+        candidates.extend([
+            repaired_candidate,
+            strip_trailing_commas(repaired_candidate),
+        ])
     for candidate_text in candidates:
         try:
             return json.loads(candidate_text)
@@ -4632,20 +4681,28 @@ def parse_llm_json_content(content):
 
     json_segment = find_json_segment(candidate)
     if json_segment is not None:
-        normalized = strip_trailing_commas(json_segment)
-        try:
-            return json.loads(normalized)
-        except json.JSONDecodeError:
-            pass
+        for segment_candidate in (
+            json_segment,
+            _merge_unquoted_json_string_suffixes(json_segment),
+        ):
+            normalized = strip_trailing_commas(segment_candidate)
+            try:
+                return json.loads(normalized)
+            except json.JSONDecodeError:
+                pass
 
     last_error = None
     for candidate_text in candidates:
         json_segment = find_json_segment(candidate_text)
         if json_segment is not None:
-            try:
-                return json.loads(strip_trailing_commas(json_segment))
-            except json.JSONDecodeError as error:
-                last_error = error
+            for segment_candidate in (
+                json_segment,
+                _merge_unquoted_json_string_suffixes(json_segment),
+            ):
+                try:
+                    return json.loads(strip_trailing_commas(segment_candidate))
+                except json.JSONDecodeError as error:
+                    last_error = error
 
     if last_error is not None:
         raise last_error
@@ -5815,33 +5872,39 @@ CORE RULES
 4. Semantic equivalence counts. Do not require exact wording or a preferred
    dramatic presentation.
 
-5. CURRENT PHASE.required_end_state defines the handoff boundary. Events needed
+5. Preserve explicit spatial relationships and movement direction between
+   consecutive beats. Do not place a pursuer ahead after it was behind its
+   target unless the beat explicitly shows passing or overtaking. Keep explicit
+   lower-body absence incompatible with visible legs; torso absence with visible
+   legs is allowed.
+
+6. CURRENT PHASE.required_end_state defines the handoff boundary. Events needed
    to make that state true belong to the CURRENT PHASE.
 
-6. Do not reject a beat merely because its event, character, location, or
+7. Do not reject a beat merely because its event, character, location, or
    environmental condition is also mentioned in the FOLLOWING PHASE.
 
-7. Reject scope creep only when a beat materially performs story progression
+8. Reject scope creep only when a beat materially performs story progression
    that occurs AFTER CURRENT PHASE.required_end_state has already been reached.
 
-8. Do not invent finer distinctions than the phase text states. For example,
+9. Do not invent finer distinctions than the phase text states. For example,
    if required_end_state says an entity "emerges," do not reinterpret that as
    "partially emerges" or "only hints at emerging."
 
-9. Do not invent requirements from SOURCE STORY, canon, genre expectations, or
+10. Do not invent requirements from SOURCE STORY, canon, genre expectations, or
    your own preferences. Judge only the supplied phase information and beats.
 
-10. Do not report pacing, tone, imagery, detail level, dramatic strength, or
+11. Do not report pacing, tone, imagery, detail level, dramatic strength, or
     minor connective actions as failures.
 
-11. Track the semantic result of every explicit irreversible transition in ALL
+12. Track the semantic result of every explicit irreversible transition in ALL
     EARLIER ACCEPTED BEATS and in earlier beats of the current phase. Once an
     item, clothing, or structural feature is definitively destroyed, removed, consumed,
     detached, replaced, or otherwise permanently changed, every later beat must
     begin from that resulting state. Reject a later beat that repeats the same
     transition on the same entity or treats its prior state as still true.
 
-12. Use semantic reasoning, not keyword matching. Report a conflict only when
+13. Use semantic reasoning, not keyword matching. Report a conflict only when
     the earlier transition is definitive and the later beat clearly requires an
     incompatible earlier state or performs that completed transition again.
     Do not report a conflict when the text clearly establishes restoration, a
@@ -6163,6 +6226,11 @@ TARGETED REPAIR CONTRACT
   immutable story-state and continuity anchors.
 - Preserve chronological cause and effect with the immutable beats immediately
   before and after each replacement.
+- Treat each immutable beat's visible end state as the replacement's opening
+  state. Preserve explicit spatial relationships and movement direction; do not
+  move a pursuer from behind to ahead without an explicit passing/overtaking
+  action. Keep lower-body absence incompatible with visible legs, while allowing
+  torso absence with visible legs.
 - Keep the current phase inside its broad_progression, make its
   required_end_state true by its final beat, and do not perform progression that
   belongs after that boundary.
@@ -6454,6 +6522,9 @@ Create a blocking issue only for:
 - a later beat that contradicts a definitive lasting result of an earlier beat
   or repeats the same irreversible transition on the same item/body feature
   without an explicit restoration/replacement making it possible;
+- an explicit adjacent-beat spatial reversal where a pursuer changes from behind
+  its target to ahead without passing/overtaking, or a lower body is absent while
+  the legs are explicitly visible (torso absence with visible legs is allowed);
 - a source-required repeated remove/replace or cause/result cycle where the plan
   performs only one side for an item, or defers so much unrelated progression
   that the required pair is effectively skipped; or
@@ -6590,6 +6661,11 @@ REPAIR CONTRACT
   WHAT merely for detail, shock, atmosphere, or beat-count filler.
 - Maintain chronological cause-and-effect continuity with the immutable beats
   immediately before and after the range.
+- Treat each immutable beat's visible end state as the replacement range's
+  opening state. Preserve explicit spatial relationships and movement direction;
+  do not move a pursuer from behind to ahead without an explicit
+  passing/overtaking action. Keep lower-body absence incompatible with visible
+  legs, while allowing torso absence with visible legs.
 - Keep every replacement as a simple H3 EXECUTION TARGET: one primary physical
   operation or one tightly coupled cause -> action -> visible result. Use 1-2
   concise sentences and stop once that visible result is established.
@@ -7156,6 +7232,13 @@ Beat-writing rules:
 - Follow SOURCE STORY first and CURRENT PHASE second.
 - Continue naturally from PREVIOUS PHASE END STATE and recent accepted beats.
 - Progress chronologically; do not repeat or restage an earlier beat.
+- Treat each beat's visible end state as the next beat's opening state: preserve
+  explicit left/right, ahead/behind, in-front/behind relationships and movement
+  direction. A pursuer that was behind its target must not suddenly be ahead in
+  the next beat unless that beat explicitly shows passing or overtaking.
+- Keep explicit physical states mutually consistent across adjacent beats. If a
+  lower body or lower half is absent, removed, or gone, do not say the legs are
+  still visible; torso absent with visible legs is allowed.
 - Center each beat on ONE primary physical operation or one tightly coupled
   cause -> action -> visible result. If several distinct operations are needed,
   split them across separate beats.
@@ -7284,6 +7367,11 @@ category remains unauthorized unless the source separately requires it.
 Also enforce the base story requirements:
 - no beat may repeat or restage an earlier beat;
 - each beat must center on one primary story event/progression step;
+- preserve explicit spatial relationships and movement direction from one beat
+  to the next; a pursuer may not jump from behind to ahead without passing or
+  overtaking being shown;
+- keep lower-body absence incompatible with explicit visible legs, while
+  allowing torso absence with visible legs;
 - source-established setup details remain unchanged unless the source requires a
   change;
 - when the source requires a repeated paired process for each item, keep each
@@ -7577,6 +7665,227 @@ def validate_generated_beat_exclusions(beats, phrase_exclusions, beat_start=1):
     return issues
 
 
+# These checks intentionally cover only explicit, high-confidence state
+# statements. They are continuity guardrails, not an attempt to understand
+# arbitrary prose.
+_BEAT_SPATIAL_RELATION_PATTERN = re.compile(
+    r"(?P<left>[^,.!?;]{1,80}?)\s+"
+    r"(?:(?:suddenly|now|currently|still)\s+)?"
+    r"(?:is\s+positioned|is\s+located|is|stays|remains|appears|stands|"
+    r"sits|walks|runs|moves|keeps|waits|follows|trails|chases|pursues)\s+"
+    r"(?:(?:directly|suddenly|now|currently|still|far|well)\s+)?"
+    r"(?P<relation>behind|ahead of|in front of)\s+"
+    r"(?P<right>[^,.!?;]{1,80}?)"
+    r"(?=\s+(?:as|while|and|but|because|when)\b|[,.!?;]|$)",
+    re.IGNORECASE,
+)
+_BEAT_SPATIAL_EVENT_RELATION_PATTERN = re.compile(
+    r"(?P<left>[^,.!?;]{1,80}?)\s+"
+    r"(?:bursts?|emerges?|rushes?|charges?|materializes?)\s+"
+    r"[^,.!?;]{0,60}?\b"
+    r"(?P<relation>behind|ahead of|in front of)\s+"
+    r"(?P<right>[^,.!?;]{1,80}?)"
+    r"(?=\s+(?:as|while|and|but|because|when)\b|[,.!?;]|$)",
+    re.IGNORECASE,
+)
+_BEAT_SPATIAL_TRANSITION_PATTERN = re.compile(
+    r"\b(?:overtak\w*|pass(?:es|ed|ing)?|"
+    r"get(?:s|ting)?\s+(?:ahead|in\s+front)|"
+    r"move(?:s|d|ing)?\s+(?:ahead|in\s+front)|"
+    r"cut(?:s|ting)?\s+in\s+front|"
+    r"circle(?:s|d|ing)?\s+around|"
+    r"swing(?:s|ing)?\s+around|teleport\w*|leapfrog\w*)\b",
+    re.IGNORECASE,
+)
+_BEAT_LOWER_BODY_ABSENT_PATTERN = re.compile(
+    r"(?:\b(?:lower\s+body|lower\s+half|body\s+below\s+(?:the\s+)?waist)\b"
+    r"\s*(?:,|:|-)?\s*(?:(?:is|was|becomes?|remains?|has\s+become|"
+    r"appears?)\s+)?(?:now\s+|still\s+)?"
+    r"(?:absent|missing|gone|removed|severed|detached|destroyed|"
+    r"vanish\w*|disappear\w*|no\s+longer\s+(?:present|there))\b)"
+    r"|(?:\b(?:absent|missing|gone|removed|severed|detached|destroyed|"
+    r"vanish\w*|disappear\w*|no\s+longer\s+(?:present|there))\b\s+"
+    r"(?:the\s+)?(?:lower\s+body|lower\s+half|body\s+below\s+"
+    r"(?:the\s+)?waist)\b)",
+    re.IGNORECASE,
+)
+_BEAT_LEGS_VISIBLE_PATTERN = re.compile(
+    r"\blegs?\b\s*(?:(?:are|remain|stays?|keep(?:\s+being)?)\s+)?"
+    r"(?:still\s+|clearly\s+)?(?:visible|present|intact|attached|seen|in\s+view)\b"
+    r"|\b(?:visible|present|intact|attached|seen)\s+legs?\b",
+    re.IGNORECASE,
+)
+_BEAT_LEGS_NEGATION_PATTERN = re.compile(
+    r"\b(?:not|never|no\s+longer|missing|absent|gone)\b",
+    re.IGNORECASE,
+)
+_BEAT_RESTORATION_PATTERN = re.compile(
+    r"\b(?:restor\w*|regrow\w*|reattach\w*|replac\w*|"
+    r"new\s+(?:lower\s+body|lower\s+half))\b",
+    re.IGNORECASE,
+)
+
+
+def _normalize_beat_relation_entity(value):
+    words = re.findall(r"[A-Za-z][A-Za-z0-9'’-]*", str(value or "").casefold())
+    while words and words[0] in {"a", "an", "the"}:
+        words.pop(0)
+    return " ".join(words)
+
+
+def _beat_relation_entity_keys(value):
+    """Return conservative aliases for descriptive references to one entity."""
+
+    normalized = _normalize_beat_relation_entity(value)
+    keys = {normalized}
+    words = normalized.split()
+    if len(words) > 1 and words[0] in {
+        "fleeing",
+        "running",
+        "escaping",
+        "retreating",
+        "armored",
+        "wounded",
+        "injured",
+    }:
+        keys.add(" ".join(words[1:]))
+    if len(words) > 1 and words[-1] in {
+        "pursuer",
+        "chaser",
+        "hunter",
+        "runner",
+        "target",
+        "prey",
+        "victim",
+        "woman",
+        "man",
+        "person",
+    }:
+        keys.add(words[-1])
+    return keys
+
+
+def _beat_spatial_relations(beat):
+    relations = []
+    beat_text = str(beat or "")
+    matches = list(_BEAT_SPATIAL_RELATION_PATTERN.finditer(beat_text))
+    matches.extend(_BEAT_SPATIAL_EVENT_RELATION_PATTERN.finditer(beat_text))
+    for match in matches:
+        left = _normalize_beat_relation_entity(match.group("left"))
+        right = _normalize_beat_relation_entity(match.group("right"))
+        if not left or not right or left == right:
+            continue
+        raw_relation = match.group("relation").casefold()
+        relations.append({
+            "left": left,
+            "right": right,
+            "left_keys": _beat_relation_entity_keys(left),
+            "right_keys": _beat_relation_entity_keys(right),
+            "relation": "behind" if raw_relation == "behind" else "ahead",
+        })
+    return relations
+
+
+def _beat_legs_are_explicitly_visible(beat):
+    for match in _BEAT_LEGS_VISIBLE_PATTERN.finditer(str(beat or "")):
+        if not _BEAT_LEGS_NEGATION_PATTERN.search(match.group(0)):
+            return True
+    return False
+
+
+def validate_generated_beat_continuity(
+    beats,
+    beat_start=1,
+    previous_beats=None,
+):
+    """Report only explicit adjacent-beat continuity contradictions.
+
+    The validator deliberately requires the same textual subject pair and
+    explicit state words. It catches a pursuer changing from behind to ahead
+    without an overtaking transition, and lower-body absence paired with
+    explicit visible legs. Torso/body wording is intentionally not treated as
+    lower-body wording, so a torso-absent subject may still have visible legs.
+    """
+
+    if (
+        isinstance(beat_start, bool)
+        or not isinstance(beat_start, int)
+        or beat_start <= 0
+    ):
+        raise ValueError("Beat continuity validation requires a positive beat_start.")
+
+    history = list(previous_beats or [])
+    current = list(beats or [])
+    sequence = history + current
+    sequence_start = beat_start - len(history)
+    issues = []
+
+    for offset, beat in enumerate(sequence):
+        beat_text = str(beat or "")
+        if (
+            _BEAT_LOWER_BODY_ABSENT_PATTERN.search(beat_text)
+            and _beat_legs_are_explicitly_visible(beat_text)
+            and not _BEAT_RESTORATION_PATTERN.search(beat_text)
+        ):
+            issues.append(
+                f"Beat {sequence_start + offset} states that the lower body is "
+                "absent while the legs remain visible; those physical states "
+                "are mutually exclusive unless the lower body is explicitly "
+                "restored or replaced."
+            )
+
+    for offset, (previous, following) in enumerate(zip(sequence, sequence[1:])):
+        previous_number = sequence_start + offset
+        following_number = previous_number + 1
+        previous_text = str(previous or "")
+        following_text = str(following or "")
+
+        prior_relations = _beat_spatial_relations(previous_text)
+        next_relations = _beat_spatial_relations(following_text)
+        if prior_relations and next_relations:
+            for prior in prior_relations:
+                if prior["relation"] != "behind":
+                    continue
+                for following in next_relations:
+                    if following["relation"] != "ahead":
+                        continue
+                    if not (
+                        prior["left_keys"] & following["left_keys"]
+                        and prior["right_keys"] & following["right_keys"]
+                    ):
+                        continue
+                    break
+                else:
+                    continue
+                if _BEAT_SPATIAL_TRANSITION_PATTERN.search(following_text):
+                    continue
+                issues.append(
+                    f"Beat {following_number} reverses the established spatial "
+                    f"relationship: '{prior['left']}' was behind "
+                    f"'{prior['right']}' in Beat "
+                    f"{previous_number} but is suddenly ahead without an "
+                    "explicit passing or overtaking transition."
+                )
+
+        previous_lower_body_absent = bool(
+            _BEAT_LOWER_BODY_ABSENT_PATTERN.search(previous_text)
+        )
+        following_legs_visible = _beat_legs_are_explicitly_visible(following_text)
+        if (
+            previous_lower_body_absent
+            and following_legs_visible
+            and not _BEAT_RESTORATION_PATTERN.search(following_text)
+        ):
+            issues.append(
+                f"Beat {following_number} states that the lower body is absent while "
+                "the legs remain visible; those physical states are mutually "
+                "exclusive unless the lower body is explicitly restored or "
+                "replaced."
+            )
+
+    return list(dict.fromkeys(issues))
+
+
 def parse_generated_beats(
     raw_result,
     total_segments,
@@ -7584,6 +7893,7 @@ def parse_generated_beats(
     expected_start=1,
     enforce_content_validation=True,
     phrase_exclusions=(),
+    previous_beats=None,
 ):
     if total_segments <= 0:
         raise ValueError("Beat generation requires at least one segment.")
@@ -7689,6 +7999,13 @@ def parse_generated_beats(
     )
     if exclusion_issues:
         raise ValueError(" ".join(exclusion_issues))
+    continuity_issues = validate_generated_beat_continuity(
+        beats,
+        beat_start=expected_start,
+        previous_beats=previous_beats,
+    )
+    if continuity_issues:
+        raise ValueError(" ".join(continuity_issues))
     return beats
 
 
@@ -8431,6 +8748,7 @@ def generate_beats_from_story(
                         batch_size,
                         expected_start=batch_start,
                         phrase_exclusions=phrase_exclusions,
+                        previous_beats=generated,
                     )
                     prior_normalized = {
                         " ".join(previous.split()).casefold()
@@ -8471,6 +8789,7 @@ def generate_beats_from_story(
                                 expected_start=batch_start,
                                 enforce_content_validation=False,
                                 phrase_exclusions=phrase_exclusions,
+                                previous_beats=generated,
                             )
                         except ValueError as fallback_error:
                             batch_beats = None
@@ -8890,6 +9209,9 @@ def generate_beats_from_story(
         )
         if exclusion_issues:
             raise ValueError(" ".join(exclusion_issues))
+        continuity_issues = validate_generated_beat_continuity(beats)
+        if continuity_issues:
+            raise ValueError(" ".join(continuity_issues))
         if audit["warnings"]:
             print(
                 "Global beat-plan audit warnings (accepted): "
@@ -9458,6 +9780,29 @@ For extra context, you are provided the overarching story and the overarching ph
  
 Use your best judgement as a director and with the given context: the camera state/movements in addition to the scene itself."""
 
+
+def build_story_segment_ending_rules(is_final_story_segment):
+    """Return the deterministic ending-frame contract for one story segment."""
+
+    if bool(is_final_story_segment):
+        return (
+            "STORY SEGMENT ENDING: This is the final story segment. The nonfinal "
+            "handoff-frame restrictions do not apply. Preserve any ending the "
+            "assigned beat explicitly requires, including an explicitly assigned "
+            "blackout."
+        )
+    return (
+        "NONFINAL STORY SEGMENT — HANDOFF-FRAME PROTECTION: This segment has a "
+        "following segment, so do not invent or use a cut to black, cut to white, "
+        "fade to black, fade to white, empty transitional frame, title card, "
+        "credits, abstract transition, full lens obstruction (a completely obscured "
+        "lens), or deliberate blackout as the ending. These restrictions do not "
+        "apply when the assigned beat explicitly requires that exact visual event. "
+        "End on a useful physical "
+        "continuation state containing the relevant subject and environment whenever "
+        "reasonably possible."
+    )
+
 H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a MiniMax H3 audiovisual prompt formatter. 
  
 Your job is to take the user's scene description and rewrite it into a clear chronological video prompt for the requested duration. 
@@ -9553,18 +9898,28 @@ def build_director_rules(
     beats_enabled=True,
     conditioning_mode=None,
     gen_rules="",
+    is_final_story_segment=None,
 ):
     """Return the narrow Request-1 Director system prompt.
 
     The legacy signature is retained so repair/resume callers do not need a
-    separate compatibility path.  Only segment duration and beat number matter
-    to this micro-prompt; all narrative context is supplied in the user turn.
+    separate compatibility path.  Segment duration, beat number, and the
+    deterministic story-ending status matter to this micro-prompt; all narrative
+    context is supplied in the user turn.
     """
-    del total_length, total_segments, subject_definitions, beats_enabled
+    del total_length, subject_definitions, beats_enabled
     del conditioning_mode, gen_rules
-    return DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
+    rules = DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
         segment_seconds=f"{float(segment_length):g}",
         beat_number=int(segment_number),
+    )
+    if is_final_story_segment is None:
+        # Compatibility for direct callers that predate the explicit runtime
+        # boolean. Production callers pass this value explicitly.
+        is_final_story_segment = int(segment_number) == int(total_segments)
+    return (
+        f"{rules}\n\n"
+        f"{build_story_segment_ending_rules(is_final_story_segment)}"
     )
 
 
@@ -9618,8 +9973,9 @@ def build_h3_formatter_messages(
     mode,
     segment_seconds,
     continuity_summary="",
+    is_final_story_segment=False,
 ):
-    """Build Request 2: a pure MiniMax H3 audiovisual formatting job."""
+    """Build Request 2 with deterministic story-ending handoff rules."""
     mode = str(mode or "T2VA").strip().upper()
     continuity_text = str(continuity_summary or "").strip()
     opening_block = (
@@ -9634,7 +9990,13 @@ def build_h3_formatter_messages(
         f"{str(raw_scene or '').strip()}"
     )
     return [
-        {"role": "system", "content": H3_AUDIOVISUAL_FORMATTER_SYSTEM},
+        {
+            "role": "system",
+            "content": (
+                f"{H3_AUDIOVISUAL_FORMATTER_SYSTEM}\n\n"
+                f"{build_story_segment_ending_rules(is_final_story_segment)}"
+            ),
+        },
         {"role": "user", "content": user_content},
     ]
 
@@ -9792,11 +10154,10 @@ def build_summary_messages(recent_results):
             "role": "system",
             "content": (
                 "You are a movie continuity state summarizer. Summarize only the "
-                "generated prompts supplied by the user. Return exactly "
-                "eight plain-text lines in the required field format, one for "
-                "each field: Location/environment, Character positions, "
+                "generated prompts supplied by the user. Return in a JSON object: "
+                "Location/environment, Character positions, "
                 "Character appearance/physical condition, Clothing, Props/objects, "
-                "Camera/framing, Ongoing physical action, and Ongoing audio. "
+                "Camera/framing, Ongoing physical action, Ongoing audio. "
                 "The newest segment is authoritative. "
                 "Use the older segment only for facts visibly or explicitly "
                 "unchanged. Report only current visible facts. Do not invent "
@@ -11981,25 +12342,39 @@ def normalize_structured_continuity_state(
 
 COMBINED_CONTINUITY_SYSTEM = (
     "You are a state continuity maintainer and editor. You take the end state "
-    "of characters and setting from a scene and output, in JSON format, the "
+    "of characters and setting from a scene and output the "
     "reduced continuity state needed to open the next segment of the same "
     "movie. Determine what is visibly or audibly true when the segment has "
     "ended. Keep only the facts necessary to maintain continuity into the next "
     "segment. Remove temporary, completed, redundant, historical, or "
     "non-visual/non-audio information. Describe only the final state, with no "
     "timestamps and no sequence of earlier actions. Do not invent anything "
-    "that is not established by the input. Return only one JSON object with no "
-    "prose before or after it."
+    "that is not established by the input.\n\n"
+    "MANDATORY OUTPUT CONTRACT:\n"
+    "Return exactly one valid JSON object.\n"
+    "Do not use Markdown fences.\n"
+    "Do not write commentary before or after the JSON.\n"
+    "Use double quotes for all JSON property names and strings.\n"
+    "Every array element must be a complete quoted JSON string. Never place "
+    "a bare word after a quoted value; merge descriptive words into the "
+    "string or separate array items with a comma.\n"
+    "Do not use trailing commas.\n"
+    "The object must contain only the reduced continuity state.\n"
+    "Return as a JSON object"
 )
 
 PHASE_2_CONTINUITY_H3_SYSTEM = (
-    "You are a MiniMax H3 diffusion video prompt writer.  You only write the "
-    "continuity state of the prompt that comes before the actual actions happening "
-    "in the video. You only describe the opening of the video segment. You keep "
-    "it short and succinct. No \"setting the mood\", only facts. Do not include "
-    "any timestamps. Do not quibble over small things like \"~10 degrees\". You "
-    "are given the overall phase and then the end state of the last segment. "
-    "Write as a short opening to a story."
+    "Serialize the supplied reduced continuity state into short factual prose "
+    "for insertion before the actions in the next H3 video segment. Describe "
+    "only facts contained in the supplied continuity state, and only the "
+    "physical or audible state at frame 0 of the next segment. Do not advance "
+    "time, begin the next beat, infer likely or future actions, or use future "
+    "beats as creative context. Do not introduce props, injuries, environmental "
+    "changes, or spatial relationships that are not in the supplied state. Do "
+    "not add dramatic or narrative commentary. If a fact is absent or unknown, "
+    "omit it; do not mention N/A, unknown, empty fields, or placeholders. Do not "
+    "include timestamps. Keep the output short and suitable for "
+    "direct insertion into the H3 prompt. Output only factual prose."
 )
 
 
@@ -12010,16 +12385,95 @@ def _continuity_json_text(value):
     return json.dumps(value, ensure_ascii=False, indent=2)
 
 
+def _extract_top_level_json_object(value):
+    """Extract the first complete JSON object from an LLM response.
+
+    Responses may contain markdown fences or prose around the object. A small
+    state machine is used instead of a regular expression so nested
+    objects/arrays and braces inside quoted strings are handled correctly.
+    """
+    if not isinstance(value, str):
+        raise TypeError("Continuity JSON response must be text.")
+
+    text = value.strip()
+    # A top-level array is not a continuity-state object. Do not accidentally
+    # extract one of its nested objects as if it were the top-level result.
+    if text.startswith("["):
+        return None
+    stack = []
+    start_index = None
+    in_string = False
+    escaped = False
+
+    # Scan the complete response so braces inside quoted explanatory text are
+    # ignored before an actual object is considered.
+    for index, char in enumerate(text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif not stack and char == "{":
+            stack = ["{"]
+            start_index = index
+        elif stack and char in "[{":
+            stack.append(char)
+        elif stack and char in "]}":
+            expected = "]" if stack[-1] == "[" else "}"
+            if char != expected:
+                # A nested object from a malformed outer candidate must not be
+                # mistaken for a valid top-level continuity object.
+                return None
+            stack.pop()
+            if not stack:
+                return text[start_index:index + 1]
+
+    return None
+
+
 def _parse_continuity_json_result(raw_result, phase_name):
-    """Require a JSON object for the combined continuity call."""
+    """Parse and normalize one combined-continuity JSON response."""
     candidate = raw_result
     if isinstance(candidate, str):
         try:
-            candidate = parse_llm_json_content(candidate)
+            extracted = _extract_top_level_json_object(candidate)
+            if extracted is None:
+                raise json.JSONDecodeError(
+                    "No complete top-level JSON object found",
+                    candidate,
+                    0,
+                )
+            try:
+                candidate = json.loads(extracted)
+            except json.JSONDecodeError:
+                repaired = _merge_unquoted_json_string_suffixes(extracted)
+                if repaired == extracted:
+                    raise
+                candidate = json.loads(repaired)
         except json.JSONDecodeError as error:
-            raise ValueError(f"{phase_name} did not return valid JSON.") from error
+            raise ValueError(
+                f"{phase_name} did not return valid JSON: {error}"
+            ) from error
     if not isinstance(candidate, dict):
         raise ValueError(f"{phase_name} must return a JSON object.")
+    wrapped_state = candidate.get("continuity_state")
+    if isinstance(wrapped_state, dict):
+        candidate = wrapped_state
+    else:
+        candidate = dict(candidate)
+
+    # Some local models call the subject collection "characters". Normalize
+    # that harmless schema variation without injecting defaults or stale state.
+    if "subjects" not in candidate and isinstance(candidate.get("characters"), dict):
+        candidate["subjects"] = candidate.pop("characters")
+    elif "subjects" in candidate:
+        candidate.pop("characters", None)
     return candidate
 
 
@@ -12059,11 +12513,21 @@ def request_continuity_opening_state(
     """Run only continuity Phase 2 from an already-finalized end state."""
     if llm_request is None:
         llm_request = ask_llm
-    phase_json = json.dumps(current_phase or {}, ensure_ascii=False, indent=2)
+    # Keep the phase argument for caller compatibility. Opening serialization
+    # must not receive future beat/story context that could invite invention.
+    del current_phase
     state_text = _continuity_json_text(reduced_state)
     phase2_messages = [
         {"role": "system", "content": PHASE_2_CONTINUITY_H3_SYSTEM},
-        {"role": "user", "content": phase_json + "\n\n" + state_text},
+        {
+            "role": "user",
+            "content": (
+                "SUPPLIED CONTINUITY STATE\n"
+                f"{state_text}\n\n"
+                "Serialize only the known frame-0 physical/audible facts from "
+                "this state."
+            ),
+        },
     ]
     metadata = dict(history_metadata or {})
     metadata.update({"purpose": "continuity_phase_2_h3_opening", "content_attempt": 1})
@@ -12102,28 +12566,59 @@ def request_combined_continuity(
         llm_request = ask_llm
     attempts = max(1, int(content_attempts))
 
+    combined_user_content = (
+        str(h3_prompt or "").strip()
+        + "\n\nCONTINUITY OUTPUT CONTRACT (MANDATORY)\n"
+        "Return exactly one valid JSON object. Do not use Markdown fences. Do not "
+        "write commentary before or after the JSON. Use double quotes for all "
+        "JSON property names and strings. Every array element must be a complete "
+        "quoted JSON string; never leave descriptive words outside a string. "
+        "Do not use trailing commas. The object must contain only the reduced "
+        "continuity state."
+    )
     combined_messages = [
         {"role": "system", "content": COMBINED_CONTINUITY_SYSTEM},
-        {"role": "user", "content": str(h3_prompt or "").strip()},
+        {"role": "user", "content": combined_user_content},
     ]
     reduced_state = None
     combined_error = None
     for attempt in range(1, attempts + 1):
         metadata = dict(history_metadata or {})
         metadata.update({"purpose": "continuity_combined_reduced_state", "content_attempt": attempt})
+        messages = copy.deepcopy(combined_messages)
+        if attempt > 1:
+            messages[-1]["content"] += (
+                "\n\nCORRECTION: The previous response was not usable JSON because it "
+                "was syntactically invalid JSON. Return exactly one valid JSON "
+                "object now, with double-quoted "
+                "keys and strings, no Markdown fences, commentary, or trailing "
+                "commas."
+            )
+        raw = None
+        raw_received = False
         try:
             raw = llm_request(
-                combined_messages,
+                messages,
+                # This call intentionally has an open-ended continuity shape.
+                # Some LM Studio/model combinations reject json_object for
+                # this request, so JSON syntax is enforced by the prompt,
+                # parser, and bounded retry loop below.
                 response_format=None,
                 temperature=0.10,
                 top_p=0.90,
                 max_tokens=6000,
                 **({"history_metadata": metadata} if metadata else {}),
             )
+            raw_received = True
             reduced_state = _parse_continuity_json_result(raw, "Continuity")
             break
         except Exception as error:
             combined_error = error
+            if raw_received:
+                parse_error = error.__cause__ or error
+                print("CONTINUITY RAW RESPONSE - PARSE FAILURE:")
+                print(raw if isinstance(raw, str) else repr(raw))
+                print(f"CONTINUITY PARSE ERROR: {parse_error}")
             if attempt < attempts:
                 print(f"[Continuity] returned unusable JSON; retrying: {error}")
     if reduced_state is None:
@@ -13474,14 +13969,18 @@ def format_h3_current_appearance_continuity(
 
 
 def format_h3_structural_continuity_guard():
-    """Return a compact generic guard against unintended persistent reconfiguration."""
+    """Return the H3 retention contract for continuation shots."""
     return (
-        "STRUCTURAL CONTINUITY:\n"
-        "Preserve each visible Subject's current configuration at frame 0. "
-        "Do not add, remove, duplicate, restore, or reconfigure persistent visible "
-        "features unless detailed_description explicitly requires that change during "
-        "this segment. Do not infer a persistent configuration change merely from "
-        "camera motion, occlusion, contact, or temporary deformation."
+        "retention_analysis:\n\n"
+        "<Subject 1> (appears in [Shot 1]): fully_preserved - Preserve the "
+        "Subject's visible configuration from the final state of <Video 1> until "
+        "an action in detailed_description explicitly changes it. Do not treat "
+        "camera motion, occlusion, contact, or temporary deformation as a "
+        "persistent structural change.\n\n"
+        "<Video 1> (continuation starting point): fully_preserved - Preserve the "
+        "final visible physical state, environment, spatial relationships, "
+        "wardrobe condition, and subject configuration as the opening state of "
+        "[Shot 1]."
     )
 
 
@@ -13889,6 +14388,155 @@ def get_video_resolution(video_path):
     data = json.loads(result.stdout)
     stream = data["streams"][0]
     return int(stream["width"]), int(stream["height"])
+
+
+def continuation_frame_path(segment_number, output_directory=None):
+    """Return the stable final-frame path for a rendered source segment."""
+
+    segment_number = int(segment_number)
+    if segment_number < 1:
+        raise ValueError("Segment numbers must be one-based.")
+    output_directory = os.path.abspath(
+        output_directory or CONTINUATION_FRAME_OUTPUT
+    )
+    return os.path.join(
+        output_directory,
+        f"segment_{segment_number:04d}_final.png",
+    )
+
+
+def _verify_decodable_png(path, error_label):
+    """Verify that a PNG exists and can be decoded by Pillow."""
+
+    if not os.path.isfile(path) or os.path.getsize(path) == 0:
+        raise RuntimeError(f"{error_label} is missing or empty: {path}")
+    try:
+        with Image.open(path) as image:
+            image.verify()
+        with Image.open(path) as image:
+            image.load()
+    except (OSError, SyntaxError, UnidentifiedImageError, ValueError) as error:
+        raise RuntimeError(
+            f"{error_label} cannot be decoded as PNG: {path}: {error}"
+        ) from error
+
+
+def _comfy_image_reference(image_path):
+    """Return a LoadImage-safe reference for a local ComfyUI image."""
+
+    image_path = str(image_path).strip()
+    if not os.path.isabs(image_path):
+        return image_path
+
+    image_path = os.path.abspath(image_path)
+    comfy_output = os.path.abspath(COMFY_OUTPUT)
+    try:
+        inside_output = os.path.commonpath((image_path, comfy_output)) == comfy_output
+    except ValueError:
+        inside_output = False
+    if not inside_output:
+        raise ValueError(
+            "ComfyUI LoadImage cannot reference an absolute image outside "
+            f"COMFY_OUTPUT ({comfy_output}): {image_path}"
+        )
+
+    relative_path = os.path.relpath(image_path, comfy_output)
+    return f"{relative_path.replace(os.sep, '/')} [output]"
+
+
+def extract_final_frame(video_path, output_path):
+    """Extract the actual final decodable video frame as an atomic PNG."""
+
+    source_path = os.path.abspath(os.fspath(video_path)) if video_path else ""
+    if not source_path or not os.path.isfile(source_path):
+        raise FileNotFoundError(
+            f"Cannot extract final frame: source video is missing: {video_path!r}"
+        )
+    if os.path.getsize(source_path) == 0:
+        raise RuntimeError(
+            f"Cannot extract final frame: source video is empty: {source_path}"
+        )
+
+    if not isinstance(output_path, (str, bytes, os.PathLike)):
+        raise ValueError("Final-frame output path is required.")
+    destination_path = os.path.abspath(os.fspath(output_path))
+    destination_directory = os.path.dirname(destination_path)
+    if not destination_directory:
+        raise ValueError("Final-frame output path must include a directory.")
+    os.makedirs(destination_directory, exist_ok=True)
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix=".continuation_frame_",
+        suffix=".png",
+        dir=destination_directory,
+    )
+    os.close(descriptor)
+
+    command = [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-i",
+        source_path,
+        "-map",
+        "0:v:0",
+        "-vf",
+        "reverse",
+        "-frames:v",
+        "1",
+        "-an",
+        "-c:v",
+        "png",
+        temporary_path,
+    ]
+    try:
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as error:
+            detail = getattr(error, "stderr", "") or str(error)
+            detail = str(detail).strip()
+            raise RuntimeError(
+                f"Failed to extract final frame from {source_path}: {detail}"
+            ) from error
+
+        try:
+            _verify_decodable_png(temporary_path, "Extracted final frame")
+        except RuntimeError as error:
+            raise RuntimeError(
+                f"Failed to extract final frame from {source_path}: {error}"
+            ) from error
+
+        # os.replace is atomic on the same filesystem and safely replaces a
+        # stale anchor without exposing a partially written PNG.
+        os.replace(temporary_path, destination_path)
+        _verify_decodable_png(destination_path, "Extracted final frame")
+        return destination_path
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+
+
+def extract_continuation_frame(
+    segment_number,
+    previous_video_path,
+    output_directory=None,
+):
+    """Return the prior segment's deterministic final-frame anchor."""
+
+    segment_number = int(segment_number)
+    if segment_number <= 1:
+        return None
+    source_segment = segment_number - 1
+    return extract_final_frame(
+        previous_video_path,
+        continuation_frame_path(source_segment, output_directory),
+    )
 
 
 def extract_video_frame(
@@ -14564,21 +15212,26 @@ def _render_segment_with_retries(
     loras = normalize_lora_list(loras)
     refresh_segment = is_refresh_segment(segment, refresh_interval)
     refresh_frame_name = None
+    continuation_anchor_path = extract_continuation_frame(
+        segment,
+        previous_video_path,
+    )
+    if continuation_anchor_path is not None:
+        print(
+            f"Continuation first-frame anchor: {os.path.abspath(continuation_anchor_path)}",
+            flush=True,
+        )
     if refresh_segment:
         refresh_notice = (
             f"AUTO REFRESH: segment {segment} is using "
             f"'{os.path.basename(REFRESH_WORKFLOW_FILE)}'."
         )
         print(refresh_notice, flush=True)
-        refresh_frame_name = extract_refresh_first_frame(
-            previous_video_path,
-            segment,
-            input_directory=refresh_input_directory,
-        )
+        refresh_frame_name = continuation_anchor_path
         print(refresh_notice, flush=True)
         print(
             f"AUTO REFRESH: extracted the final frame of segment {segment - 1} "
-            f"as {refresh_frame_name}.",
+            f"as {os.path.abspath(refresh_frame_name)}.",
             flush=True,
         )
     for retry_number in range(COMFY_RENDER_RETRIES + 1):
@@ -14636,6 +15289,7 @@ def _render_segment_with_retries(
                 **lora_kwargs,
                 context_frames=context_frames,
                 continuity_state=continuity_state,
+                continuation_frame_path=continuation_anchor_path,
             )
 
         try:
@@ -14868,7 +15522,7 @@ def prepare_refresh_workflow(
         workflow,
         REFRESH_FIRST_FRAME_NODE_NAME,
         "image",
-        refresh_frame_name.strip(),
+        _comfy_image_reference(refresh_frame_name),
         label,
         "LoadImage",
     )
@@ -15188,6 +15842,7 @@ def prepare_append_workflow(
     context_frames=DEFAULT_CONTEXT_FRAMES,
     continuity_state=None,
     excluded_picture_ids=None,
+    continuation_frame_path=None,
 ):
     if lora_override is not None:
         if loras:
@@ -15238,6 +15893,23 @@ def prepare_append_workflow(
         label,
         "MiniMaxH3AVLoadLatentForExtend",
     )
+
+    if continuation_frame_path is not None:
+        continuation_frame_path = os.path.abspath(
+            os.fspath(continuation_frame_path)
+        )
+        _verify_decodable_png(
+            continuation_frame_path,
+            "Continuation first-frame anchor",
+        )
+        set_node_input(
+            workflow,
+            CONTINUATION_FIRST_FRAME_NODE_NAME,
+            "image",
+            _comfy_image_reference(continuation_frame_path),
+            label,
+            "LoadImage",
+        )
 
     set_node_input(
         workflow,
@@ -15293,33 +15965,83 @@ def prepare_append_workflow(
 # STITCHING
 # ============================================================
 
-def trim_video_start(input_path, output_path, trim_seconds):
-    subprocess.run(
-        [
-            "ffmpeg", "-y",
-            "-i", input_path,
-            "-ss", f"{trim_seconds:.6f}",
-            "-c:v", "libx264",
-            "-preset", "medium",
-            "-crf", "18",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            output_path,
-        ],
-        check=True,
-    )
+def trim_video_start(input_path, output_path, trim_seconds, duration_seconds=None):
+    command = [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-ss", f"{trim_seconds:.6f}",
+    ]
+    if duration_seconds is not None:
+        command.extend(["-t", f"{duration_seconds:.6f}"])
+    command.extend([
+        "-c:v", "libx264",
+        "-preset", "medium",
+        "-crf", "18",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        output_path,
+    ])
+    subprocess.run(command, check=True)
 
 
-def stitch_videos(video_paths):
+def _append_unique_video_path(video_paths, video_path, lock=None):
+    """Append one rendered clip exactly once, even across render callbacks."""
+    normalized_path = os.path.abspath(os.fspath(video_path))
+
+    def append_if_missing():
+        existing_paths = {
+            os.path.abspath(os.fspath(path))
+            for path in video_paths
+        }
+        if normalized_path not in existing_paths:
+            video_paths.append(normalized_path)
+
+    if lock is None:
+        append_if_missing()
+    else:
+        with lock:
+            append_if_missing()
+    return normalized_path
+
+
+def stitch_videos(video_paths, segment_length=None, total_duration=None):
     if not video_paths:
         raise RuntimeError("No generated videos are available to stitch.")
+    if segment_length is not None:
+        segment_length = float(segment_length)
+        if not math.isfinite(segment_length) or segment_length <= 0:
+            raise ValueError("segment_length must be positive when stitching.")
+        if total_duration is None:
+            total_duration = segment_length * len(video_paths)
+        total_duration = float(total_duration)
+        if not math.isfinite(total_duration) or total_duration <= 0:
+            raise ValueError("total_duration must be positive when stitching.")
+
+    # A cadence-skipped render can be reported by both its Future callback and
+    # the main thread. Normalize the list before assigning clip indexes so a
+    # duplicate first path cannot become a duplicate first clip.
+    unique_video_paths = []
+    _append_unique_video_path(unique_video_paths, video_paths[0])
+    for video_path in video_paths[1:]:
+        _append_unique_video_path(unique_video_paths, video_path)
 
     os.makedirs(VIDEO_OUTPUT, exist_ok=True)
     stitch_paths = []
     trimmed_paths = []
-    for index, video_path in enumerate(video_paths):
-        video_path = os.path.abspath(video_path)
-        if index == 0:
+    for index, video_path in enumerate(unique_video_paths):
+        target_duration = None
+        if segment_length is not None:
+            target_duration = min(
+                segment_length,
+                total_duration - index * segment_length,
+            )
+            if target_duration <= 0:
+                raise RuntimeError(
+                    "More video clips were supplied than fit within the "
+                    "requested total duration."
+                )
+
+        if index == 0 and target_duration is None:
             stitch_paths.append(video_path)
             continue
 
@@ -15327,15 +16049,34 @@ def stitch_videos(video_paths):
             os.path.dirname(video_path),
             f"trimmed_{os.path.basename(video_path)}",
         )
-        print(
-            f"Trimming first {TRIM_FRAMES_AFTER_FIRST} frames from "
-            f"segment {index + 1}."
-        )
-        trim_video_start(
+        if index == 0:
+            print(
+                f"Trimming segment {index + 1} to "
+                f"{target_duration:g} seconds."
+            )
+        elif target_duration is None:
+            print(
+                f"Trimming first {TRIM_FRAMES_AFTER_FIRST} frames from "
+                f"segment {index + 1}."
+            )
+        else:
+            print(
+                f"Trimming first {TRIM_FRAMES_AFTER_FIRST} frames from "
+                f"segment {index + 1} and limiting it to "
+                f"{target_duration:g} seconds."
+            )
+        trim_arguments = (
             video_path,
             trimmed_path,
-            TRIM_SECONDS_AFTER_FIRST,
+            TRIM_SECONDS_AFTER_FIRST if index else 0,
         )
+        if target_duration is None:
+            trim_video_start(*trim_arguments)
+        else:
+            trim_video_start(
+                *trim_arguments,
+                duration_seconds=target_duration,
+            )
         stitch_paths.append(trimmed_path)
         trimmed_paths.append(trimmed_path)
 
@@ -15354,17 +16095,21 @@ def stitch_videos(video_paths):
                 ffmpeg_path = path.replace("\\", "/").replace("'", "'\\''")
                 f.write(f"file '{ffmpeg_path}'\n")
 
-        subprocess.run(
-            [
-                "ffmpeg", "-y",
-                "-f", "concat",
-                "-safe", "0",
-                "-i", list_path,
-                "-c", "copy",
-                FINAL_VIDEO
-            ],
-            check=True
-        )
+        concat_command = [
+            "ffmpeg", "-y",
+            "-f", "concat",
+            "-safe", "0",
+            "-i", list_path,
+        ]
+        if total_duration is not None:
+            # The per-segment trims remove model padding; this final bound also
+            # prevents container/audio timestamps from reintroducing a tail.
+            concat_command.extend(["-t", f"{total_duration:.6f}"])
+        concat_command.extend([
+            "-c", "copy",
+            FINAL_VIDEO,
+        ])
+        subprocess.run(concat_command, check=True)
     finally:
         if list_path and os.path.exists(list_path):
             try:
@@ -15503,6 +16248,7 @@ def repair_existing_segment(
         beats_enabled=True,
         conditioning_mode=conditioning_mode,
         gen_rules=gen_rules,
+        is_final_story_segment=(segment_number == repair["total_segments"]),
     )
     messages, _estimated_tokens, _recent_count = build_generation_messages(
         director_rules=director_rules,
@@ -15525,6 +16271,7 @@ def repair_existing_segment(
         "current_duration": duration,
         "active_beat_id": segment_number,
         "conditioning_mode": conditioning_mode,
+        "is_final_story_segment": segment_number == repair["total_segments"],
         "messages": messages,
         "opening_state": director_opening_summary,
         "registry_state": opening_state,
@@ -15961,6 +16708,60 @@ def _director_messages_with_correction(messages, correction):
     return revised
 
 
+def _meaningful_director_continuity(value):
+    """Return whether a Director opening contains an actual continuity state."""
+
+    text = str(value or "").strip()
+    if not text:
+        return False
+    normalized = re.sub(r"[^a-z0-9]+", " ", text.casefold()).strip()
+    return normalized not in {
+        "n a",
+        "na",
+        "none",
+        "null",
+        "unknown",
+        "unspecified",
+        "not available",
+        "no known continuity facts",
+    }
+
+
+def validate_director_continuity(bundle):
+    """Require completed continuity before generating any Segment 2+ Director."""
+
+    try:
+        segment_number = int(bundle.get("segment", 1))
+    except (TypeError, ValueError):
+        segment_number = 1
+    if segment_number <= 1:
+        return "initial"
+
+    opening_state = (
+        bundle.get("opening_state")
+        or bundle.get("opening_summary")
+        or bundle.get("h3_opening_summary")
+    )
+    if not _meaningful_director_continuity(opening_state):
+        raise RuntimeError(
+            f"Segment {segment_number} Director continuity is missing or "
+            "unusable; refusing to start Director generation. Segment N+1 "
+            "must wait for Segment N prompt-derived continuity to finish."
+        )
+
+    source = str(bundle.get("continuity_source") or "prompt").strip().casefold()
+    source = {
+        "prompt_only": "prompt",
+        "prompt_plus_visual": "vision",
+    }.get(source, source)
+    if source not in {"prompt", "vision"}:
+        raise RuntimeError(
+            f"Segment {segment_number} Director continuity source is invalid: "
+            f"{source or 'missing'!r}. Expected 'prompt' or 'vision'."
+        )
+    return source
+
+
 def request_segment_llm(bundle, beats, run_id, run_config):
     """Run the two-stage Director micro-prompt pipeline for one segment.
 
@@ -15973,6 +16774,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         segment_number = int(bundle.get("segment", 1))
     except (TypeError, ValueError):
         segment_number = 1
+    continuity_source = validate_director_continuity(bundle)
+    print(
+        f"Segment {segment_number} Director continuity source: "
+        f"{continuity_source}",
+        flush=True,
+    )
     active_beat_id = bundle.get("active_beat_id")
     duration = float(bundle.get("current_duration") or 0)
     if duration <= 0:
@@ -16014,6 +16821,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         continuity_summary=bundle.get("opening_state")
         or bundle.get("h3_opening_summary")
         or "",
+        is_final_story_segment=bool(bundle.get("is_final_story_segment", False)),
     )
     request2_metadata = {
         "run_id": run_id,
@@ -16263,6 +17071,21 @@ def _run_main(
     # trusted after process restart unless that Future is restored as well.
     generation_state.pop("prefetched_next_prompt", None)
     generation_state_lock = threading.RLock()
+    continuity_source = str(
+        generation_state.get("continuity_source") or ""
+    ).strip().casefold()
+    if resume_segment <= 1:
+        continuity_source = "initial"
+    elif continuity_source not in {"prompt", "vision"}:
+        continuity_source = (
+            "vision"
+            if should_run_vision_continuity(
+                resume_segment - 1,
+                getattr(args, "vision_continuity", 1),
+                refresh_interval,
+            )
+            else "prompt"
+        )
 
     def checkpoint_generation_state():
         """Serialize the shared checkpoint without racing a prefetch worker."""
@@ -16430,6 +17253,7 @@ def _run_main(
             beats_enabled=bool(beats),
             conditioning_mode=conditioning_mode,
             gen_rules=gen_rules,
+            is_final_story_segment=(segment_number == total_segments),
         )
         opening_summary = (
             str(opening_summary_text or "").strip()
@@ -16466,6 +17290,7 @@ def _run_main(
             "current_duration": current_duration,
             "active_beat_id": active_beat_id,
             "conditioning_mode": conditioning_mode,
+            "is_final_story_segment": segment_number == total_segments,
             "loras": beat_loras(beats, active_beat_id, global_loras),
             "messages": messages,
             "estimated_tokens": estimated_tokens,
@@ -16474,6 +17299,9 @@ def _run_main(
             "registry_state": opening_state,
             "opening_summary": opening_summary,
             "h3_opening_summary": h3_opening_summary,
+            "continuity_source": (
+                continuity_source if segment_number > 1 else "initial"
+            ),
             "excluded_picture_ids": sorted(excluded_picture_ids),
             "dialogue_exclusions": list(dialogue_exclusions),
             "gen_rules": gen_rules,
@@ -16518,6 +17346,20 @@ def _run_main(
     prefetched_next = None
     pending_previous_render_future = None
     render_futures_by_segment = {}
+    # Keep the prompt inputs for the next segment in the main thread. A
+    # cadence-skipped render is finalized by a callback, and that callback
+    # updates generation_state["recent_dialogues"] asynchronously. Reading
+    # that field while rebuilding the next segment bundle can therefore make
+    # an otherwise identical prefetch look stale.
+    recent_dialogue_exclusions = list(
+        generation_state.get("recent_dialogues", [])
+    )
+    # The completed-segment list is also updated by the cadence-skipped render
+    # callback. Keep a private history for deriving the next exclusion window
+    # so that callback timing cannot change the next prompt's fingerprint.
+    dialogue_history_records = copy.deepcopy(
+        generation_state.get("segments", [])
+    )[-DIALOGUE_HISTORY_SEGMENTS_MAX:]
     # Set by finalize_skipped_vision_segment once it has finished appending a
     # non-final segment's video path to generated_video_paths. The final
     # segment is always drained synchronously below, so this event is only
@@ -16548,7 +17390,7 @@ def _run_main(
             recent_results,
             continuity_state,
             continuity_summary,
-            generation_state.get("recent_dialogues", []),
+            recent_dialogue_exclusions,
         )
         if prefetched_next is not None:
             if prefetched_next["segment"] != segment:
@@ -16742,10 +17584,18 @@ def _run_main(
         print(h3_prompt)
         print()
 
-        if segment > 1 and previous_video_path is None and pending_previous_render_future is not None:
+        # A skipped vision-continuity render runs in the background. The path
+        # from the prior completed segment may still be non-None, so checking
+        # only previous_video_path is insufficient: Segment N must wait for
+        # Segment N-1's render before its continuation anchor is extracted.
+        if segment > 1 and pending_previous_render_future is not None:
             try:
                 _, previous_video_path, _, _, _ = pending_previous_render_future.result()
-                generated_video_paths.append(previous_video_path)
+                previous_video_path = _append_unique_video_path(
+                    generated_video_paths,
+                    previous_video_path,
+                    generation_state_lock,
+                )
             except Exception as error:
                 print(
                     f"WARNING: waiting for the previous segment render to finish "
@@ -16829,6 +17679,45 @@ def _run_main(
                     "uses the prompt-derived state immediately."
                 )
 
+        if segment < total_segments and continuity_pipeline_result is None:
+            raise RuntimeError(
+                f"Segment {segment} prompt-derived continuity is missing; "
+                f"refusing to schedule Segment {segment + 1} Director."
+            )
+
+        # With visual continuity disabled, the prompt-derived state is the
+        # authoritative handoff. Serialize its opening before starting the
+        # next Director, while leaving the current ComfyUI render in flight.
+        prompt_only_opening_summary = None
+        if not vision_required and segment < total_segments:
+            prompt_only_opening_summary = request_continuity_opening_state(
+                prompt_reduced_continuity_state,
+                continuity_phase,
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": run_config["source_sha256"],
+                    "purpose": "continuity_phase_2_h3_opening",
+                    "segment": segment,
+                    "attempt": 1,
+                    "conditioning_mode": segment_bundle["conditioning_mode"],
+                    "state_source": "prompt_only",
+                },
+            )
+            continuity_summary = prompt_only_opening_summary
+            continuity_source = "prompt"
+            reduced_continuity_state = copy.deepcopy(
+                prompt_reduced_continuity_state
+            )
+            generation_state["continuity_state"] = copy.deepcopy(
+                reduced_continuity_state
+            )
+            generation_state["continuity_opening_state"] = continuity_summary
+            generation_state["continuity_summary"] = continuity_summary
+            print(
+                f"Segment {segment} continuity source: prompt-derived state; "
+                "opening state is ready before Director prefetch."
+            )
+
         # Dynamic identities still come from explicit Director text and stay in
         # the internal registry only. They are not synthesized from continuity
         # JSON, which keeps the three continuity calls narrowly scoped.
@@ -16867,14 +17756,21 @@ def _run_main(
             }
         recent_results.append((segment, llm_result))
         recent_results = recent_results[-RECENT_SEGMENTS_MAX:]
+        dialogue_history_records.append({
+            "segment_number": segment,
+            "llm_result": copy.deepcopy(llm_result),
+            "dialogues": extract_spoken_dialogues(llm_result),
+        })
+        dialogue_history_records = dialogue_history_records[
+            -DIALOGUE_HISTORY_SEGMENTS_MAX:
+        ]
         next_dialogue_exclusions = collect_recent_dialogues(
-            list(generation_state.get("segments", []))
-            + [{
-                "segment_number": segment,
-                "llm_result": llm_result,
-                "dialogues": extract_spoken_dialogues(llm_result),
-            }]
+            dialogue_history_records
         )
+        # This is the authoritative input for the next segment. Keep using
+        # this snapshot even if a background render completion updates the
+        # persisted copy before the next loop iteration starts.
+        recent_dialogue_exclusions = list(next_dialogue_exclusions)
         generation_state["continuity_prompt_state"] = copy.deepcopy(
             prompt_reduced_continuity_state
         )
@@ -16936,6 +17832,7 @@ def _run_main(
             skipped_prompt_state = copy.deepcopy(prompt_reduced_continuity_state)
             skipped_registry_state = migrate_continuity_state(continuity_state)
             skipped_prompt_completed_beat_ids = list(prompt_completed_beat_ids)
+            skipped_opening_summary = prompt_only_opening_summary
 
             def finalize_skipped_vision_segment(future):
                 nonlocal previous_video_path, pending_previous_render_future
@@ -16965,23 +17862,15 @@ def _run_main(
                     pending_render_finalized.set()
                     return
                 previous_video_path = os.path.abspath(video_path)
-                generated_video_paths.append(previous_video_path)
+                _append_unique_video_path(
+                    generated_video_paths,
+                    previous_video_path,
+                    generation_state_lock,
+                )
                 pending_previous_render_future = None
                 pending_render_finalized.set()
                 reduced_continuity_state = copy.deepcopy(skipped_prompt_state)
-                continuity_summary = request_continuity_opening_state(
-                    reduced_continuity_state,
-                    continuity_phase,
-                    history_metadata={
-                        "run_id": run_id,
-                        "source_sha256": run_config["source_sha256"],
-                        "purpose": "continuity_phase_2_h3_opening",
-                        "segment": skipped_segment_number,
-                        "attempt": 1,
-                        "conditioning_mode": segment_bundle["conditioning_mode"],
-                        "state_source": "prompt_only",
-                    },
-                )
+                continuity_summary = skipped_opening_summary
                 with generation_state_lock:
                     completed_record = record_completed_segment(
                         generation_state,
@@ -17001,6 +17890,8 @@ def _run_main(
                     generation_state["continuity_prompt_state"] = copy.deepcopy(
                         skipped_prompt_state
                     )
+                    completed_record["continuity_source"] = "prompt"
+                    generation_state["continuity_source"] = "prompt"
                     if beats:
                         generation_state["beat_progress"] = {
                             "completed_beat_ids": sorted(skipped_completed_beat_ids),
@@ -17086,6 +17977,7 @@ def _run_main(
             print(json.dumps(reduced_continuity_state, ensure_ascii=False, indent=2))
             print("=" * 64)
             state_source = "prompt_plus_visual"
+            continuity_source = "vision" if visual_result is not None else "prompt"
         else:
             reduced_continuity_state = copy.deepcopy(prompt_reduced_continuity_state)
             print(
@@ -17094,10 +17986,11 @@ def _run_main(
                 "prompt-derived continuity state."
             )
             state_source = "prompt_only"
+            continuity_source = "prompt"
 
         if segment < total_segments:
             try:
-                continuity_summary = request_continuity_opening_state(
+                next_opening_summary = request_continuity_opening_state(
                     reduced_continuity_state,
                     continuity_phase,
                     history_metadata={
@@ -17110,12 +18003,17 @@ def _run_main(
                         "state_source": state_source,
                     },
                 )
+                if not _meaningful_director_continuity(next_opening_summary):
+                    raise RuntimeError(
+                        f"Segment {segment} produced an empty or placeholder "
+                        "continuity opening state."
+                    )
+                continuity_summary = next_opening_summary
             except Exception as error:
-                print(
-                    f"WARNING: Continuity Phase 2 for segment {segment} failed "
-                    f"with {state_source} state: {error}; retaining the previous "
-                    "opening continuity text."
-                )
+                raise RuntimeError(
+                    f"Continuity for Segment {segment} is unavailable; refusing "
+                    f"to schedule Segment {segment + 1} Director: {error}"
+                ) from error
 
         generation_state["continuity_prompt_state"] = copy.deepcopy(
             prompt_reduced_continuity_state
@@ -17125,9 +18023,13 @@ def _run_main(
         )
         generation_state["continuity_opening_state"] = continuity_summary
         generation_state["continuity_summary"] = continuity_summary
+        generation_state["continuity_source"] = continuity_source
 
-        generated_video_paths.append(video_path)
-        previous_video_path = video_path
+        previous_video_path = _append_unique_video_path(
+            generated_video_paths,
+            video_path,
+            generation_state_lock,
+        )
 
         # Commit the rendered video and structured continuity state together.
         # The lock also prevents a just-completed prompt prefetch from
@@ -17148,6 +18050,7 @@ def _run_main(
             completed_record["continuity_prompt_state"] = copy.deepcopy(
                 prompt_reduced_continuity_state
             )
+            completed_record["continuity_source"] = continuity_source
             generation_state["continuity_prompt_state"] = copy.deepcopy(
                 prompt_reduced_continuity_state
             )
@@ -17255,10 +18158,11 @@ def _run_main(
                 f"Segment {expected_segment} render returned an invalid video path."
             )
         completed_video_path = os.path.abspath(completed_video_path)
-        if completed_video_path not in {
-            os.path.abspath(path) for path in generated_video_paths
-        }:
-            generated_video_paths.append(completed_video_path)
+        _append_unique_video_path(
+            generated_video_paths,
+            completed_video_path,
+            generation_state_lock,
+        )
 
     expected_render_count = len(render_futures_by_segment)
     if len(generated_video_paths) < expected_render_count + (resume_segment - 1):
@@ -17267,7 +18171,11 @@ def _run_main(
             f"to the stitch list ({len(generated_video_paths)} available)."
         )
 
-    stitch_videos(generated_video_paths)
+    stitch_videos(
+        generated_video_paths,
+        segment_length=segment_length,
+        total_duration=total_length,
+    )
 
 
 def main():

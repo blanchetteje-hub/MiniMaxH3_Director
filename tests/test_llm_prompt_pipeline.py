@@ -33,7 +33,9 @@ class ContinuityCallContractTests(unittest.TestCase):
         messages = request.call_args.args[0]
         self.assertEqual([message["role"] for message in messages], ["system", "user"])
         self.assertIn("reduced continuity state", messages[0]["content"])
-        self.assertEqual(messages[1]["content"], "FINAL H3 PROMPT")
+        self.assertIn("MANDATORY OUTPUT CONTRACT", messages[0]["content"])
+        self.assertIn("FINAL H3 PROMPT", messages[1]["content"])
+        self.assertIn("CONTINUITY OUTPUT CONTRACT (MANDATORY)", messages[1]["content"])
         self.assertIsNone(request.call_args.kwargs["response_format"])
         self.assertEqual(request.call_args.kwargs["temperature"], 0.10)
         self.assertEqual(request.call_args.kwargs["top_p"], 0.90)
@@ -64,9 +66,10 @@ class ContinuityCallContractTests(unittest.TestCase):
 
         self.assertEqual(result["opening_state"], "Mark remains beside the window.")
         self.assertEqual(request.call_count, 2)
+        self.assertIsNone(request.call_args_list[0].kwargs["response_format"])
         phase2_messages = request.call_args_list[1].args[0]
-        self.assertIn(json.dumps(phase, ensure_ascii=False, indent=2), phase2_messages[1]["content"])
         self.assertIn('"bedroom"', phase2_messages[1]["content"])
+        self.assertNotIn(json.dumps(phase, ensure_ascii=False, indent=2), phase2_messages[1]["content"])
         self.assertEqual(request.call_args_list[1].kwargs["response_format"], None)
         self.assertEqual(request.call_args_list[1].kwargs["temperature"], 0.10)
         self.assertEqual(request.call_args_list[1].kwargs["top_p"], 0.90)
@@ -79,6 +82,48 @@ class ContinuityCallContractTests(unittest.TestCase):
                 "content_attempt": 1,
             },
         )
+
+    def test_continuity_opening_prompt_is_strict_state_serialization(self):
+        request = Mock(return_value="Mark is beside the window.")
+        reduced_state = {
+            "environment": {"location": "bedroom"},
+            "subjects": {
+                "Mark": {
+                    "position": "beside the window",
+                    "physical_condition": "breathing heavily",
+                },
+            },
+            "ongoing_audio": "room tone",
+        }
+        future_phase = {
+            "beat_text": "Mark grabs a knife and runs outside.",
+            "future_beats": ["A storm destroys the bedroom."],
+        }
+
+        minimax.request_continuity_opening_state(
+            reduced_state,
+            future_phase,
+            llm_request=request,
+        )
+
+        system_prompt = request.call_args.args[0][0]["content"]
+        user_prompt = request.call_args.args[0][1]["content"]
+        self.assertIn("facts contained in the supplied continuity state", system_prompt)
+        self.assertIn("physical or audible state at frame 0", system_prompt)
+        self.assertIn("Do not advance time", system_prompt)
+        self.assertIn("begin the next beat", system_prompt)
+        self.assertIn("future beats as creative context", system_prompt)
+        self.assertIn("Do not introduce props", system_prompt)
+        self.assertIn("injuries", system_prompt)
+        self.assertIn("environmental changes", system_prompt)
+        self.assertIn("spatial relationships", system_prompt)
+        self.assertIn("dramatic or narrative commentary", system_prompt)
+        self.assertIn("absent or unknown, omit it", system_prompt)
+        self.assertIn('"breathing heavily"', user_prompt)
+        self.assertIn('"room tone"', user_prompt)
+        self.assertNotIn(json.dumps(future_phase, ensure_ascii=False, indent=2), user_prompt)
+        self.assertNotIn("grabs a knife", user_prompt)
+        self.assertNotIn("destroys the bedroom", user_prompt)
 
     def test_combined_continuity_retries_invalid_json_with_attempt_metadata(self):
         request = Mock(side_effect=["not json", {"camera": "wide shot"}])
@@ -97,6 +142,10 @@ class ContinuityCallContractTests(unittest.TestCase):
         self.assertEqual(
             [call.kwargs["history_metadata"]["content_attempt"] for call in request.call_args_list],
             [1, 2],
+        )
+        self.assertIn(
+            "previous response was not usable JSON",
+            request.call_args_list[1].args[0][1]["content"],
         )
 
     def test_continuity_opening_call_overrides_phase_metadata(self):
@@ -261,6 +310,76 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn("the werewolf emerge, Amy flee", system_prompt)
         self.assertIn("distance between them decrease", system_prompt)
 
+    def test_nonfinal_story_segment_protects_the_handoff_frame(self):
+        rules = minimax.build_director_rules(
+            12,
+            6,
+            2,
+            SUBJECTS,
+            1,
+            is_final_story_segment=False,
+        )
+        formatter_messages = minimax.build_h3_formatter_messages(
+            "Mark walks onward.",
+            "T2VA",
+            6,
+            is_final_story_segment=False,
+        )
+
+        for prompt in (rules, formatter_messages[0]["content"]):
+            self.assertIn("NONFINAL STORY SEGMENT", prompt)
+            self.assertIn("cut to black", prompt)
+            self.assertIn("cut to white", prompt)
+            self.assertIn("fade to black", prompt)
+            self.assertIn("fade to white", prompt)
+            self.assertIn("empty transitional frame", prompt)
+            self.assertIn("title card", prompt)
+            self.assertIn("credits", prompt)
+            self.assertIn("abstract transition", prompt)
+            self.assertIn("full lens obstruction", prompt)
+            self.assertIn("completely obscured lens", prompt)
+            self.assertIn("deliberate blackout", prompt)
+            self.assertIn(
+                "assigned beat explicitly requires that exact visual event",
+                prompt,
+            )
+
+    def test_final_story_segment_has_no_handoff_frame_prohibition(self):
+        rules = minimax.build_director_rules(
+            12,
+            6,
+            2,
+            SUBJECTS,
+            2,
+            is_final_story_segment=True,
+        )
+        formatter_system = minimax.build_h3_formatter_messages(
+            "The assigned beat ends in a blackout.",
+            "T2VA",
+            6,
+            is_final_story_segment=True,
+        )[0]["content"]
+
+        for prompt in (rules, formatter_system):
+            self.assertIn("This is the final story segment", prompt)
+            self.assertNotIn("NONFINAL STORY SEGMENT", prompt)
+            self.assertNotIn("do not invent or use a cut to black", prompt)
+            self.assertIn("explicitly assigned blackout", prompt)
+
+    def test_nonfinal_assigned_blackout_is_preserved_by_the_prompt_contract(self):
+        messages = minimax.build_h3_formatter_messages(
+            "The assigned beat explicitly requires a deliberate blackout.",
+            "T2VA",
+            6,
+            is_final_story_segment=False,
+        )
+
+        self.assertIn(
+            "assigned beat explicitly requires that exact visual event",
+            messages[0]["content"],
+        )
+        self.assertIn("deliberate blackout", messages[1]["content"])
+
     def test_h3_prompt_initial_and_continuation_have_distinct_contracts(self):
         result = {
             "detailed_description": "[Shot 4] Mark waits silently.",
@@ -288,7 +407,20 @@ class DirectorPromptCallContractTests(unittest.TestCase):
 
         self.assertIn("<Subject 1> is Mark, referenced in <Picture 1>.", initial)
         self.assertNotIn("continued from <Video 1>", initial)
-        self.assertIn("STRUCTURAL CONTINUITY:", continuation)
+        self.assertIn("retention_analysis:", continuation)
+        self.assertIn(
+            "<Subject 1> (appears in [Shot 1]): fully_preserved - Preserve the "
+            "Subject's visible configuration from the final state of <Video 1>",
+            continuation,
+        )
+        self.assertIn(
+            "<Video 1> (continuation starting point): fully_preserved - Preserve "
+            "the final visible physical state, environment, spatial relationships, "
+            "wardrobe condition, and subject configuration as the opening state of "
+            "[Shot 1].",
+            continuation,
+        )
+        self.assertNotIn("STRUCTURAL CONTINUITY:", continuation)
         self.assertIn("Mark remains at the door.", continuation)
         self.assertTrue(
             continuation.split("detailed_description: ", 1)[1].startswith(

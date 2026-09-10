@@ -73,7 +73,7 @@ class StitchWaitsForFinalRenderTests(unittest.TestCase):
                 raise AssertionError("test did not release the ComfyUI render")
             return (None, "segment_0001.mp4", 1280, 720, 0.5)
 
-        def stitching(paths):
+        def stitching(paths, **_kwargs):
             # Deterministic race check: if ffmpeg is reached before the render
             # is released, the final segment was still being rendered (and its
             # path was not yet appended to generated_video_paths).

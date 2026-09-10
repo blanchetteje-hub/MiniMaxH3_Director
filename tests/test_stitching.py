@@ -91,6 +91,60 @@ class StitchingTests(unittest.TestCase):
         )
         self.assertEqual(captured["contents"].count("trimmed_"), 2)
 
+    def test_stitching_deduplicates_a_raced_render_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            first = os.path.join(directory, "segment_0001.mp4")
+            second = os.path.join(directory, "segment_0002.mp4")
+            captured = {}
+
+            def capture_concat_list(command, check):
+                self.assertTrue(check)
+                list_path = command[command.index("-i") + 1]
+                with open(list_path, "r", encoding="utf-8") as concat_file:
+                    captured["contents"] = concat_file.read()
+
+            with mock.patch.object(minimax, "VIDEO_OUTPUT", directory), mock.patch.object(
+                minimax,
+                "FINAL_VIDEO",
+                os.path.join(directory, "final.mp4"),
+            ), mock.patch("minimax.trim_video_start"), mock.patch(
+                "minimax.subprocess.run",
+                side_effect=capture_concat_list,
+            ):
+                minimax.stitch_videos([first, first, second])
+
+        self.assertEqual(
+            captured["contents"].splitlines(),
+            [
+                f"file '{os.path.abspath(first).replace(chr(92), '/')}'",
+                f"file '{os.path.join(directory, 'trimmed_segment_0002.mp4').replace(chr(92), '/')}'",
+            ],
+        )
+
+    def test_stitching_limits_generation_padding_to_requested_duration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            paths = [
+                os.path.join(directory, "segment_0001.mp4"),
+                os.path.join(directory, "segment_0002.mp4"),
+            ]
+            with mock.patch.object(minimax, "VIDEO_OUTPUT", directory), mock.patch.object(
+                minimax,
+                "FINAL_VIDEO",
+                os.path.join(directory, "final.mp4"),
+            ), mock.patch("minimax.trim_video_start") as trim, mock.patch(
+                "minimax.subprocess.run",
+            ):
+                minimax.stitch_videos(
+                    paths,
+                    segment_length=5,
+                    total_duration=10,
+                )
+
+        self.assertEqual(trim.call_count, 2)
+        self.assertEqual(trim.call_args_list[0].kwargs["duration_seconds"], 5)
+        self.assertEqual(trim.call_args_list[1].kwargs["duration_seconds"], 5)
+        self.assertEqual(trim.call_args_list[1].args[2], 2 / 24)
+
     def test_successful_stitch_deletes_created_trimmed_videos(self):
         with tempfile.TemporaryDirectory() as directory:
             video_paths = [

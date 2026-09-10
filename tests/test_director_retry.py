@@ -167,7 +167,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
 
         combined_call = llm_request.call_args_list[0]
-        self.assertEqual(combined_call.kwargs["response_format"], None)
+        self.assertIsNone(combined_call.kwargs["response_format"])
 
     def test_segment_llm_passes_assigned_beat_id_as_completion(self):
         bundle = segment_bundle()

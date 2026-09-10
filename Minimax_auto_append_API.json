@@ -411,6 +411,10 @@
         "150",
         0
       ],
+      "first_frame": [
+        "152",
+        0
+      ],
       "audio_vae": [
         "74",
         0
@@ -461,6 +465,15 @@
     "class_type": "MiniMaxH3AVSaveLatentForExtend",
     "_meta": {
       "title": "H3 AV Save Latent"
+    }
+  },
+  "152": {
+    "inputs": {
+      "image": ""
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Continuation First Frame"
     }
   }
 }

@@ -1425,7 +1425,8 @@ class LmStudioIntegrationTests(unittest.TestCase):
         # The continuity summary now opens the description itself; the old
         # standalone opening-state block before `detailed_description:` is gone.
         self.assertNotIn("<Video 1> is the immediately preceding", prompt)
-        self.assertIn("STRUCTURAL CONTINUITY:", prompt)
+        self.assertIn("retention_analysis:", prompt)
+        self.assertNotIn("STRUCTURAL CONTINUITY:", prompt)
         description_section = prompt.split("detailed_description: ", 1)[1]
         self.assertTrue(description_section.startswith(
             "[Shot 1] Continuing directly from the final state of <Video 1>, "
