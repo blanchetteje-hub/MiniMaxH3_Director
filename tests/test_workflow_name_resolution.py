@@ -127,6 +127,20 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         self.assertEqual(registry[1]["speaker_id"], "S1")
         self.assertEqual(registry[2]["speaker_id"], "S2")
 
+    def test_duplicate_subject_name_keeps_first_identity_as_best_effort(self):
+        definitions = (
+            "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+            "<Subject 2> is Amy, referenced in <Picture 2>."
+        )
+
+        with mock.patch("builtins.print") as printed:
+            registry = minimax.parse_subject_registry(definitions)
+
+        self.assertEqual(list(registry), [1])
+        self.assertEqual(registry[1]["name"], "Amy")
+        printed.assert_called_once()
+        self.assertIn("duplicate subject name", printed.call_args.args[0])
+
     def test_video_created_subject_definition_has_no_picture_mapping(self):
         definitions = (
             "<Subject 3> is Jenny, female, created in generated video "
@@ -209,17 +223,11 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             updated,
             previous_state=continuation,
             segment_number=5,
+            conditioning_mode="clean_refresh",
         )
-        # The continuity summary opens the description itself, so the stored
-        # subject record appears inline in the description opening (before the
-        # `<Video 1>` handoff marker text) rather than in a standalone block.
-
-        self.assertLess(
-            prompt.index("detailed_description:"),
-            prompt.index("<Subject 2>: fully_preserved"),
-        )
-        self.assertIn("<Subject 2>: fully_preserved", prompt)
-        minimax._assert_h3_prompt_contains_continuity(prompt, continuation, 5)
+        self.assertIn("<Subject 2> Jenny", prompt)
+        self.assertIn("Jenny moves above <Subject 1> Amy", prompt)
+        self.assertIn("retention_analysis:", prompt)
 
     def test_append_validation_is_independent_of_exported_node_ids(self):
         workflow = renumber_workflow(self.append)
@@ -229,27 +237,6 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             "renumbered append workflow",
             is_append=True
         )
-
-    def test_append_preparation_defaults_to_seven_context_frames(self):
-        workflow = copy.deepcopy(self.append)
-        with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(
-            "minimax.secrets.randbelow", return_value=123456
-        ):
-            prepared = minimax.prepare_append_workflow(
-                6.0,
-                "prompt",
-                __file__,
-                2,
-            )
-
-        _, extender = minimax.find_workflow_node(
-            prepared,
-            minimax.VIDEO_EXTEND_NODE_NAME,
-            "prepared append workflow",
-            "MiniMaxH3VideoExtendPatched",
-        )
-        self.assertEqual(extender["inputs"]["context_frames"], 7)
-        self.assertIs(extender["inputs"]["pin_last_frame"], True)
 
     def test_append_validation_allows_any_number_of_reference_images(self):
         workflow = copy.deepcopy(self.append)
@@ -262,22 +249,6 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         }
         for node_id in reference_node_ids:
             del workflow[node_id]
-
-        _, image_batch = minimax.find_workflow_node(
-            workflow,
-            minimax.IMAGE_BATCH_NODE_NAME,
-            "workflow without reference images",
-            "ImageBatchMulti",
-        )
-        image_batch["inputs"] = {
-            key: value
-            for key, value in image_batch["inputs"].items()
-            if not (
-                isinstance(value, list)
-                and len(value) == 2
-                and str(value[0]) in reference_node_ids
-            )
-        }
 
         minimax.validate_workflow(
             workflow,
@@ -449,22 +420,32 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         self.assertEqual(scheduler["inputs"]["steps"], 12)
 
     def test_zero_loras_remove_placeholder_and_bypass_it_in_both_workflows(self):
-        cases = (
-            (self.initial, "79"),
-            (self.append, "138"),
-        )
-        for template, consumer_id in cases:
-            with self.subTest(consumer=consumer_id):
+        for template in (self.initial, self.append):
+            with self.subTest(workflow=template):
                 workflow = copy.deepcopy(template)
+                placeholder_id, placeholder = minimax.find_workflow_node(
+                    workflow,
+                    minimax.LORA_NODE_NAME,
+                    "test workflow",
+                    "LoraLoaderModelOnly",
+                )
+                source_connection = list(placeholder["inputs"]["model"])
+                consumers = [
+                    (node, input_name)
+                    for node_id, node in workflow.items()
+                    if str(node_id) != str(placeholder_id)
+                    for input_name, value in node.get("inputs", {}).items()
+                    if value == [placeholder_id, 0]
+                ]
+
                 minimax.configure_lora_chain(workflow, [], "test workflow")
 
                 self.assertFalse(any(
                     node.get("class_type") == "LoraLoaderModelOnly"
                     for node in workflow.values()
                 ))
-                self.assertEqual(workflow[consumer_id]["inputs"]["model"], ["90", 0])
-        self.assertEqual(self.initial["140"]["inputs"]["lora_name"], "")
-        self.assertEqual(self.append["149"]["inputs"]["lora_name"], "")
+                for node, input_name in consumers:
+                    self.assertEqual(node["inputs"][input_name], source_connection)
 
     def test_unlimited_loras_are_chained_in_order_in_both_workflows(self):
         specs = [
@@ -473,13 +454,23 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             ("beat-one.safetensors", -0.2),
             ("beat-two.safetensors", 1.25),
         ]
-        cases = (
-            (self.initial, "79"),
-            (self.append, "138"),
-        )
-        for template, consumer_id in cases:
-            with self.subTest(consumer=consumer_id):
+        for template in (self.initial, self.append):
+            with self.subTest(workflow=template):
                 workflow = copy.deepcopy(template)
+                placeholder_id, placeholder = minimax.find_workflow_node(
+                    workflow,
+                    minimax.LORA_NODE_NAME,
+                    "test workflow",
+                    "LoraLoaderModelOnly",
+                )
+                source_connection = list(placeholder["inputs"]["model"])
+                consumer_connections = [
+                    (node, input_name)
+                    for node_id, node in workflow.items()
+                    if str(node_id) != str(placeholder_id)
+                    for input_name, value in node.get("inputs", {}).items()
+                    if value == [placeholder_id, 0]
+                ]
                 minimax.configure_lora_chain(workflow, specs, "test workflow")
                 loaders = {
                     node_id: node
@@ -488,89 +479,19 @@ class WorkflowNameResolutionTests(unittest.TestCase):
                 }
                 self.assertEqual(len(loaders), len(specs))
 
+                consumer, input_name = consumer_connections[0]
                 reversed_chain = []
-                current_id = workflow[consumer_id]["inputs"]["model"][0]
-                while current_id in loaders:
+                current_connection = consumer["inputs"][input_name]
+                while str(current_connection[0]) in loaders:
+                    current_id = str(current_connection[0])
                     loader = loaders[current_id]
                     reversed_chain.append((
                         loader["inputs"]["lora_name"],
                         loader["inputs"]["strength_model"],
                     ))
-                    current_id = loader["inputs"]["model"][0]
-                self.assertEqual(current_id, "90")
+                    current_connection = loader["inputs"]["model"]
+                self.assertEqual(current_connection, source_connection)
                 self.assertEqual(list(reversed(reversed_chain)), specs)
-
-                if consumer_id == "79":
-                    self.assertEqual(
-                        workflow["80"]["inputs"]["model"],
-                        workflow["79"]["inputs"]["model"],
-                    )
-
-    def test_append_preparation_updates_nodes_by_title_after_renumbering(self):
-        workflow = renumber_workflow(self.append)
-        _, extender = minimax.find_workflow_node(
-            workflow,
-            minimax.VIDEO_EXTEND_NODE_NAME,
-            "renumbered append",
-            "MiniMaxH3VideoExtendPatched",
-        )
-        extender["inputs"]["context_frames"] = 2
-        extender["inputs"]["pin_last_frame"] = False
-        with mock.patch("minimax.load_workflow", return_value=workflow), mock.patch(
-            "minimax.secrets.randbelow", return_value=654321
-        ):
-            prepared = minimax.prepare_append_workflow(
-                6.0,
-                "prompt",
-                __file__,
-                7,
-                steps=10,
-                context_frames=12,
-            )
-
-        _, latent_load = minimax.find_workflow_node(
-            prepared,
-            minimax.H3_LATENT_LOAD_NODE_NAME,
-            "prepared append",
-            "MiniMaxH3AVLoadLatentForExtend",
-        )
-        _, latent_save = minimax.find_workflow_node(
-            prepared,
-            minimax.H3_LATENT_SAVE_NODE_NAME,
-            "prepared append",
-            "MiniMaxH3AVSaveLatentForExtend",
-        )
-        _, save = minimax.find_workflow_node(
-            prepared,
-            minimax.SAVE_VIDEO_NODE_NAME,
-            "prepared append"
-        )
-        self.assertEqual(latent_load["inputs"]["clip_index"], 6)
-        self.assertEqual(latent_save["inputs"]["clip_index"], 7)
-        self.assertEqual(
-            save["inputs"]["filename_prefix"],
-            "video/segment_0007"
-        )
-        _, noise = minimax.find_workflow_node(
-            prepared,
-            minimax.NOISE_NODE_NAME,
-            "prepared append",
-        )
-        self.assertEqual(noise["inputs"]["noise_seed"], 654322)
-        _, scheduler = minimax.find_workflow_node(
-            prepared,
-            minimax.SCHEDULER_NODE_NAME,
-            "prepared append",
-        )
-        self.assertEqual(scheduler["inputs"]["steps"], 10)
-        _, extender = minimax.find_workflow_node(
-            prepared,
-            minimax.VIDEO_EXTEND_NODE_NAME,
-            "prepared append",
-            "MiniMaxH3VideoExtendPatched",
-        )
-        self.assertEqual(extender["inputs"]["context_frames"], 12)
-        self.assertIs(extender["inputs"]["pin_last_frame"], True)
 
     def test_history_output_uses_save_video_title_after_renumbering(self):
         workflow = renumber_workflow(self.initial)

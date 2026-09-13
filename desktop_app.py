@@ -38,8 +38,8 @@ DEFAULT_SETTINGS = {
     "megapixels": "",
     "resume": "1",
     "steps": "6",
-    "context_frames": "7",
-    "refresh": "6",
+    "trim_frames": "2",
+    "refresh": "4",
     "vision_continuity": "0",
     "repair": "",
     "model": "ministral",
@@ -250,11 +250,11 @@ class MiniMaxBridge:
                 settings.get("megapixels"), "Megapixels"
             ),
             "steps": _positive_int(settings.get("steps", 6), "Steps"),
-            "context_frames": _positive_int(
-                settings.get("context_frames", 7), "Context frames"
+            "trim_frames": _non_negative_int(
+                settings.get("trim_frames", 2), "Trim frames"
             ),
             "refresh": _positive_int(
-                settings.get("refresh", 6), "Refresh interval"
+                settings.get("refresh", 4), "Refresh interval"
             ),
             "vision_continuity": _non_negative_int(
                 settings.get("vision_continuity", 0), "Vision continuity"
@@ -344,8 +344,8 @@ class MiniMaxBridge:
             str(values["resume"]),
             "--steps",
             str(values["steps"]),
-            "--context-frames",
-            str(values["context_frames"]),
+            "--trim-frames",
+            str(values["trim_frames"]),
             "--refresh",
             str(values["refresh"]),
             "--vision-continuity",

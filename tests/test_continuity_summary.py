@@ -64,6 +64,184 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertIsInstance(mark_record["held_props"], list)
         self.assertIsInstance(state["environment"], dict)
 
+    def test_omitted_registered_subject_is_preserved_as_no_update(self):
+        committed = minimax.continuity_state_for_registry(self.SUBJECTS)
+        amy = committed["subjects"]["Amy"]
+        amy["position"] = "beside the window"
+        amy["pose_action"] = "standing still"
+        amy["wardrobe"] = {
+            "upper": "blue blouse",
+            "lower": "black jeans",
+            "footwear": "white sneakers",
+            "other": "silver necklace",
+        }
+        amy["body_state"] = "left horn missing"
+        amy["held_props"] = ["flashlight"]
+        amy["injuries"] = ["scraped palm"]
+        before = copy.deepcopy(amy)
+
+        # The LLM updates Mark only and omits Amy entirely.
+        candidate = {
+            "subjects": {
+                "Mark": {
+                    "wardrobe": {"upper": "green sweater"},
+                },
+            },
+        }
+        result = minimax.normalize_structured_continuity_state(
+            candidate,
+            self.SUBJECTS,
+            committed,
+        )
+
+        self.assertEqual(result["subjects"]["Amy"], before)
+        self.assertEqual(
+            result["subjects"]["Mark"]["wardrobe"]["upper"],
+            "green sweater",
+        )
+
+    def test_final_h3_reconciles_invented_wardrobe_per_subject(self):
+        state = minimax.continuity_state_for_registry(self.SUBJECTS)
+        state["subjects"]["Mark"]["wardrobe"].update(
+            upper="red blouse",
+            lower="black jeans",
+        )
+        state["subjects"]["Amy"]["wardrobe"].update(
+            upper="yellow coat",
+            lower="blue trousers",
+        )
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 2] <Subject 1> Mark enters wearing a dark green jacket "
+                    "and khaki pants. <Subject 2> Amy follows wearing a white shirt "
+                    "and gray trousers."
+                ),
+                "overall_soundscape": "wind",
+                "non_diegetic_music": "N/A",
+            },
+            self.SUBJECTS,
+            segment_number=2,
+            continuity_state=state,
+        )
+        description = prompt.split("detailed_description: ", 1)[1].split(
+            "\n\noverall_soundscape:", 1
+        )[0]
+
+        self.assertIn("red blouse and black jeans", description)
+        self.assertIn("yellow coat and blue trousers", description)
+        self.assertNotIn("dark green jacket", description)
+        self.assertNotIn("khaki pants", description)
+        self.assertNotIn("white shirt", description)
+        self.assertNotIn("gray trousers", description)
+
+    def test_explicit_wardrobe_change_survives_final_h3_reconciliation(self):
+        state = minimax.continuity_state_for_registry(self.SUBJECTS)
+        state["subjects"]["Mark"]["wardrobe"]["upper"] = "blue blouse"
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 2] <Subject 1> Mark puts on a red jacket."
+                ),
+                "overall_soundscape": "wind",
+                "non_diegetic_music": "N/A",
+            },
+            self.SUBJECTS,
+            segment_number=2,
+            continuity_state=state,
+        )
+
+        description = prompt.split("detailed_description: ", 1)[1].split(
+            "\n\noverall_soundscape:", 1
+        )[0]
+        self.assertIn("puts on a red jacket", description)
+        self.assertNotIn("blue blouse", description)
+
+        candidate = canonical_candidate(self.SUBJECTS, state)
+        updated = minimax.normalize_structured_continuity_state(
+            candidate,
+            self.SUBJECTS,
+            state,
+            newest_description="[Shot 2] <Subject 1> Mark puts on a red jacket.",
+        )
+        self.assertEqual(
+            updated["subjects"]["Mark"]["wardrobe"]["upper"],
+            "red jacket",
+        )
+
+    def test_initial_known_wardrobe_remains_explicit(self):
+        state = minimax.continuity_state_for_registry(self.SUBJECTS)
+        state["subjects"]["Mark"]["wardrobe"].update(
+            upper="red blouse",
+            lower="black jeans",
+        )
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] <Subject 1> Mark enters wearing a red blouse "
+                    "and black jeans."
+                ),
+                "overall_soundscape": "wind",
+                "non_diegetic_music": "N/A",
+            },
+            self.SUBJECTS,
+            segment_number=1,
+            conditioning_mode="initial",
+            continuity_state=state,
+        )
+
+        self.assertIn("red blouse", prompt)
+        self.assertIn("black jeans", prompt)
+        self.assertNotIn("same clothes as before", prompt)
+
+    def test_refresh_without_rendered_context_keeps_explicit_wardrobe(self):
+        state = minimax.continuity_state_for_registry(self.SUBJECTS)
+        state["subjects"]["Mark"]["wardrobe"].update(
+            upper="red blouse",
+            lower="black jeans",
+        )
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 2] <Subject 1> Mark wears a red blouse and black jeans."
+                ),
+                "overall_soundscape": "wind",
+                "non_diegetic_music": "N/A",
+            },
+            self.SUBJECTS,
+            segment_number=2,
+            conditioning_mode="clean_refresh",
+            continuity_state=state,
+            previous_visible_subject_ids={1},
+        )
+
+        self.assertIn("red blouse", prompt)
+        self.assertIn("black jeans", prompt)
+        self.assertNotIn("same clothes as before", prompt)
+
+    def test_refresh_mode_keeps_existing_prompt_continuity_fallback(self):
+        subjects = (
+            "<Subject 1> is Elias, a man referenced in <Picture 1>.\n"
+            "<Subject 2> is Werewolf, referenced in <Picture 2>."
+        )
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": "[Shot 2] Elias waits quietly.",
+                "overall_soundscape": "wind",
+                "non_diegetic_music": "N/A",
+            },
+            subjects,
+            previous_state="Werewolf remains behind Elias.",
+            segment_number=2,
+            conditioning_mode="clean_refresh",
+        )
+
+        self.assertIn("Werewolf remains behind Elias", prompt)
+        self.assertIn("retention_analysis:\n\n", prompt)
+        self.assertNotIn("CURRENT SUBJECT CONTINUITY:", prompt)
+        self.assertNotIn("fully_preserved", prompt)
+        self.assertNotIn("<Video 1> (continuation starting point)", prompt)
+
     def test_opening_state_prompt_is_rendered_from_structured_state(self):
         state = minimax.continuity_state_for_registry(self.SUBJECTS)
         state["environment"]["location"] = "bedroom"
@@ -86,6 +264,149 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertIn("<Video 1>: fully_preserved", opening)
         self.assertNotIn("wardrobe_upper:", opening)
         self.assertNotIn("Body state: left horn missing", opening)
+
+    def test_clean_refresh_injects_python_subject_state_into_retention(self):
+        opening_state = "Mark is wearing a blue jacket and remains by the door."
+        continuity_state = minimax.continuity_state_for_registry(self.SUBJECTS)
+        continuity_state["subjects"]["Mark"].update(
+            position="by the door",
+            physical_condition="alert",
+        )
+        continuity_state["subjects"]["Mark"]["wardrobe"]["upper"] = (
+            "blue jacket"
+        )
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 2] <Subject 1> Mark waits beside <Subject 2> Amy."
+                ),
+                "overall_soundscape": "Room tone.",
+                "non_diegetic_music": "N/A",
+            },
+            self.SUBJECTS,
+            previous_state=opening_state,
+            segment_number=2,
+            conditioning_mode="clean_refresh",
+            continuity_state=continuity_state,
+        )
+
+        retention = prompt.split("retention_analysis:\n\n", 1)[1].split(
+            "\n\ndetailed_description:",
+            1,
+        )[0]
+        self.assertIn(
+            "<Subject 1> Mark: position: by the door; condition: alert; "
+            "wardrobe: blue jacket",
+            retention,
+        )
+        self.assertIn(
+            "Mark is wearing a blue jacket and remains by the door.",
+            retention,
+        )
+        self.assertNotIn("CONTINUITY PHASE 2: H3 OPENING STATE", retention)
+        self.assertNotIn("fully_preserved", retention)
+        self.assertNotIn("<Video 1> (continuation starting point)", retention)
+
+    def test_retention_humanizes_only_phase_one_subjects_json(self):
+        phase_one_json = {
+            "environment": {"location": "bedroom"},
+            "camera": "wide shot",
+            "subjects": {
+                "Amy": {
+                    "subject_id": 1,
+                    "age": 30,
+                    "wardrobe": {
+                        "upper": "white T-Shirt",
+                        "lower": "denim jeans",
+                    },
+                    "injuries": ["scraped palm"],
+                },
+            },
+        }
+
+        retention = minimax.format_retention_subjects_from_json(
+            phase_one_json,
+            visible_subject_ids={1},
+        )
+
+        self.assertEqual(
+            retention,
+            "Amy is:\n\n"
+            "- age: 30\n"
+            "- wardrobe:\n"
+            "  - top: white T-Shirt\n"
+            "  - bottoms: denim jeans\n"
+            "- injuries:\n"
+            "  - scraped palm",
+        )
+        self.assertNotIn("environment", retention)
+        self.assertNotIn("camera", retention)
+
+    def test_retention_uses_raw_phase_one_json_in_h3_prompt(self):
+        phase_one_json = {
+            "subjects": {
+                "Amy": {
+                    "subject_id": 1,
+                    "age": 30,
+                    "wardrobe": {"upper": "white T-Shirt"},
+                },
+                "Mark": {
+                    "subject_id": 2,
+                    "position": "by the window",
+                },
+            },
+        }
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": "[Shot 2] <Subject 1> Amy waits.",
+                "overall_soundscape": "Room tone.",
+                "non_diegetic_music": "N/A",
+            },
+            "<Subject 1> is Amy, referenced in <Picture 1>.",
+            previous_state="Amy remains by the door.",
+            segment_number=2,
+            conditioning_mode="clean_refresh",
+            continuity_state={
+                "subjects": {
+                    "Amy": {"subject_id": 1, "position": "stale state"},
+                },
+            },
+            retention=True,
+            retention_json=phase_one_json,
+        )
+
+        retention = prompt.split("retention_analysis:\n\n", 1)[1].split(
+            "\n\ndetailed_description:",
+            1,
+        )[0]
+        self.assertIn("- age: 30", retention)
+        self.assertIn("- top: white T-Shirt", retention)
+        self.assertIn("Mark is:\n\n- position: by the window", retention)
+        self.assertNotIn("stale state", retention)
+        self.assertNotIn("Amy remains by the door.", retention)
+
+    def test_queue_validation_accepts_h3_sanitized_continuity_summary(self):
+        raw_summary = "Mark: N/A\nMark remains beside the door."
+        prompt = minimax.sanitize_h3_prompt_component(raw_summary)
+
+        minimax._assert_h3_prompt_contains_continuity(
+            prompt,
+            raw_summary,
+            25,
+        )
+
+    def test_queue_validation_warns_and_returns_empty_when_summary_is_missing(self):
+        with patch("builtins.print") as print_mock:
+            result = minimax._assert_h3_prompt_contains_continuity(
+                "detailed_description: Mark stands beside the door.",
+                "Mark remains beside the window.",
+                46,
+            )
+
+        self.assertEqual(result, "")
+        print_mock.assert_called_once()
+        self.assertIn("WARNING:", print_mock.call_args.args[0])
+        self.assertIn("continuing with an empty value", print_mock.call_args.args[0])
 
     def test_formatter_receives_continuity_summary_and_h3_opens_description_with_it(self):
         continuity = (
@@ -112,11 +433,12 @@ class ContinuitySummaryTests(unittest.TestCase):
             self.SUBJECTS,
             previous_state=continuity,
             segment_number=2,
+            conditioning_mode="clean_refresh",
         )
 
         description_section = prompt.split("detailed_description: ", 1)[1]
         self.assertTrue(description_section.startswith(
-            "[Shot 1] Continuing directly from the final state of <Video 1>, "
+            "[Shot 1] The opening frame is <Picture 1>. "
         ))
         self.assertIn(continuity, description_section)
         # The formatter's internal `[Shot 2]` marker is replaced by the
@@ -226,31 +548,31 @@ class ContinuitySummaryTests(unittest.TestCase):
 
     def test_new_video_subject_does_not_require_name_evidence_in_prose(self):
         for description in (
-            "Amy cradles the baby in her arms.",
-            "Amy cradles the newborn in her arms.",
-            "Amy cradles the infant in her arms.",
-            "Amy cradles the newly arrived figure in her arms.",
+            "Amy cradles the kitten in her arms.",
+            "Amy cradles the cat in her arms.",
+            "Amy cradles the kitten in her arms.",
+            "Amy cradles the newly arrived cat in her arms.",
         ):
             with self.subTest(description=description):
                 snapshot = canonical_candidate(self.SUBJECTS)
-                snapshot["subjects"]["Baby Alpha"] = complete_new_subject(
+                snapshot["subjects"]["Kitten Alpha"] = complete_new_subject(
                     3,
-                    "Baby Alpha",
+                    "Kitten Alpha",
                     entity_kind="animate",
                     position="in Amy's arms",
-                    body_state="newborn infant",
+                    body_state="kitten",
                 )
                 candidate = minimax.normalize_structured_continuity_state(
                     snapshot,
                     self.SUBJECTS,
                     origin_segment=2,
                     newest_description=description,
-                    active_beat_text="Amy welcomes Baby Alpha.",
+                    active_beat_text="Amy welcomes Kitten Alpha.",
                 )
 
-                self.assertIn("Baby Alpha", candidate["subjects"])
+                self.assertIn("Kitten Alpha", candidate["subjects"])
                 self.assertEqual(
-                    candidate["subjects"]["Baby Alpha"]["origin_segment"],
+                    candidate["subjects"]["Kitten Alpha"]["origin_segment"],
                     2,
                 )
                 additional, added = (
@@ -260,7 +582,7 @@ class ContinuitySummaryTests(unittest.TestCase):
                     )
                 )
                 expected = (
-                    "<Subject 3> is Baby Alpha, female (S3), continued from "
+                    "<Subject 3> is Kitten Alpha (S3), continued from "
                     "<Video 1>."
                 )
                 self.assertEqual(added, [expected])
@@ -268,11 +590,11 @@ class ContinuitySummaryTests(unittest.TestCase):
 
     def test_new_video_subject_is_accepted_without_current_name_evidence(self):
         snapshot = canonical_candidate(self.SUBJECTS)
-        snapshot["subjects"]["Baby Alpha"] = complete_new_subject(
+        snapshot["subjects"]["Kitten Alpha"] = complete_new_subject(
             3,
-            "Baby Alpha",
+            "Kitten Alpha",
             entity_kind="animate",
-            body_state="newborn infant",
+            body_state="kitten",
         )
         candidate = minimax.normalize_structured_continuity_state(
             snapshot,
@@ -282,13 +604,13 @@ class ContinuitySummaryTests(unittest.TestCase):
             active_beat_text="Mark waits.",
         )
 
-        self.assertIn("Baby Alpha", candidate["subjects"])
+        self.assertIn("Kitten Alpha", candidate["subjects"])
 
     def test_future_only_named_subject_is_still_rejected(self):
         snapshot = canonical_candidate(self.SUBJECTS)
-        snapshot["subjects"]["Baby Alpha"] = complete_new_subject(
+        snapshot["subjects"]["Kitten Alpha"] = complete_new_subject(
             3,
-            "Baby Alpha",
+            "Kitten Alpha",
             entity_kind="animate",
             body_state="newly visible subject",
         )
@@ -298,10 +620,10 @@ class ContinuitySummaryTests(unittest.TestCase):
             origin_segment=2,
             newest_description="Mark stands alone in the empty room.",
             active_beat_text="Mark waits.",
-            future_beat_texts=["Baby Alpha arrives in the nursery."],
+            future_beat_texts=["Kitten Alpha arrives in the nursery."],
         )
 
-        self.assertNotIn("Baby Alpha", candidate["subjects"])
+        self.assertNotIn("Kitten Alpha", candidate["subjects"])
 
     def test_new_inanimate_objects_are_not_created_as_subjects(self):
         for entity_kind in ("inanimate", ""):
@@ -342,8 +664,8 @@ class ContinuitySummaryTests(unittest.TestCase):
 
         bicycle = candidate["subjects"]["Red Bicycle"]
         self.assertEqual(bicycle["subject_id"], 3)
-        self.assertEqual(bicycle["gender"], "N/A")
-        self.assertEqual(bicycle["speaker_id"], "S3")
+        self.assertEqual(bicycle["gender"], "unknown")
+        self.assertEqual(bicycle["speaker_id"], "(S3)")
         self.assertEqual(bicycle["origin_segment"], 2)
 
         additional, appended = minimax.collect_additional_subject_definitions(
@@ -376,7 +698,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         guard = candidate["subjects"]["New Guard"]
 
         self.assertEqual(guard["gender"], "male")
-        self.assertEqual(guard["speaker_id"], "S3")
+        self.assertEqual(guard["speaker_id"], "(S3)")
         additional, appended = minimax.collect_additional_subject_definitions(
             self.SUBJECTS,
             candidate,
@@ -387,7 +709,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(appended, [expected])
         self.assertEqual(additional, [expected])
 
-    def test_unknown_new_subject_gender_defaults_to_female(self):
+    def test_unknown_new_subject_gender_stays_unknown(self):
         snapshot = canonical_candidate(self.SUBJECTS)
         snapshot["subjects"]["New Arrival"] = complete_new_subject(
             3,
@@ -403,10 +725,10 @@ class ContinuitySummaryTests(unittest.TestCase):
             newest_description="A new arrival steps into view.",
         )
 
-        self.assertEqual(candidate["subjects"]["New Arrival"]["gender"], "female")
-        self.assertEqual(candidate["subjects"]["New Arrival"]["speaker_id"], "S3")
+        self.assertEqual(candidate["subjects"]["New Arrival"]["gender"], "unknown")
+        self.assertEqual(candidate["subjects"]["New Arrival"]["speaker_id"], "(S3)")
 
-    def test_new_subject_speaker_id_collision_is_reassigned(self):
+    def test_duplicate_speaker_id_does_not_create_a_new_subject(self):
         snapshot = canonical_candidate(self.SUBJECTS)
         snapshot["subjects"]["New Guard"] = complete_new_subject(
             3,
@@ -423,7 +745,7 @@ class ContinuitySummaryTests(unittest.TestCase):
             newest_description="A male guard enters.",
         )
 
-        self.assertEqual(candidate["subjects"]["New Guard"]["speaker_id"], "S3")
+        self.assertNotIn("New Guard", candidate["subjects"])
 
     def test_new_phase_clears_only_dynamically_created_subjects(self):
         state = minimax.continuity_state_for_registry(self.SUBJECTS)
@@ -488,7 +810,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         system_prompt = messages[0]["content"]
         self.assertIn("Use only registered Subject names/IDs", system_prompt)
         self.assertIn("Do not create new identities", system_prompt)
-        self.assertIn("Clothing, garment presence/absence", system_prompt)
+        self.assertIn("Clothing, garment presence or absence", system_prompt)
 
     def test_continuity_prompt_includes_phase_characters_introduced(self):
         messages = minimax.build_structured_continuity_messages(
@@ -797,9 +1119,9 @@ class ContinuitySummaryTests(unittest.TestCase):
             self.SUBJECTS,
             committed,
             newest_description=(
-                "Mark's red blouse detaches at her chest and falls away, "
-                "its sleeve sliding over her arm and waist before leaving her "
-                "upper body exposed."
+                "Mark's red armor detaches at his chest and falls away, "
+                "its heavy metal sliding over his arm and waist before leaving his "
+                "upper body visible."
             ),
         )
 
@@ -892,7 +1214,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertEqual(mark_record["subject_id"], 1)
         self.assertEqual(mark_record["picture_ids"], [1])
         self.assertEqual(mark_record["picture_id"], 1)
-        self.assertEqual(mark_record["speaker_id"], "S1")
+        self.assertEqual(mark_record["speaker_id"], "(S1)")
 
     def test_numeric_subject_id_candidates_replace_existing_state_with_na(self):
         committed = minimax.continuity_state_for_registry(self.SUBJECTS)
@@ -1151,19 +1473,20 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertNotIn("numbered prop 3", user_content)
         self.assertIn("SOURCE STORY", user_content)
 
-    def test_invalid_summary_fails_after_bounded_content_attempts(self):
+    def test_invalid_summary_uses_bounded_best_effort_fallback(self):
         calls = []
 
         def fake_llm(messages, **kwargs):
             calls.append(messages)
             return "not a five-bullet summary"
 
-        with self.assertRaisesRegex(RuntimeError, "eight-field"):
-            minimax.request_five_bullet_summary(
-                [(1, segment_result(1)), (2, segment_result(2))],
-                llm_request=fake_llm,
-                content_attempts=2,
-            )
+        result = minimax.request_five_bullet_summary(
+            [(1, segment_result(1)), (2, segment_result(2))],
+            llm_request=fake_llm,
+            content_attempts=2,
+        )
+        self.assertEqual(len(result.splitlines()), 8)
+        self.assertTrue(all(line.startswith("-") for line in result.splitlines()))
         self.assertEqual(2, len(calls))
 
 

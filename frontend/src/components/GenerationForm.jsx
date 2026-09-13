@@ -7,8 +7,8 @@ const INITIAL_SETTINGS = {
   megapixels: '',
   resume: '1',
   steps: '6',
-  context_frames: '7',
-  refresh: '6',
+  trim_frames: '2',
+  refresh: '4',
   vision_continuity: '0',
   repair: '',
   model: 'ministral',
@@ -44,7 +44,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
           megapixels: savedSettings.megapixels ?? current.megapixels,
           resume: savedSettings.resume ?? current.resume,
           steps: savedSettings.steps ?? current.steps,
-          context_frames: savedSettings.context_frames ?? current.context_frames,
+          trim_frames: savedSettings.trim_frames ?? current.trim_frames,
           refresh: savedSettings.refresh ?? current.refresh,
           vision_continuity: savedSettings.vision_continuity ?? current.vision_continuity,
           repair: savedSettings.repair ?? current.repair,
@@ -120,12 +120,15 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
       ['total_length', 'Total duration'],
       ['megapixels', 'Megapixels'],
       ['steps', 'Steps'],
-      ['context_frames', 'Context frames'],
       ['refresh', 'Refresh interval'],
     ]
     const invalid = positiveFields.find(([key]) => !(Number(settings[key]) > 0))
     if (invalid) {
       setError(`${invalid[1]} must be greater than zero.`)
+      return
+    }
+    if (settings.trim_frames === '' || !/^\d+$/.test(settings.trim_frames)) {
+      setError('Trim frames must be a whole number zero or greater.')
       return
     }
     if (settings.vision_continuity === '' || !/^\d+$/.test(settings.vision_continuity)) {
@@ -268,17 +271,17 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               disabled={disabled}
             />
             <NumberField
-              label="Context frames"
-              help="Engine default: 7"
-              value={settings.context_frames}
-              onChange={(event) => setField('context_frames', event.target.value)}
-              min="1"
+              label="Trim frames"
+              help="Frames removed from the start of each segment after the first; engine default: 2"
+              value={settings.trim_frames}
+              onChange={(event) => setField('trim_frames', event.target.value)}
+              min="0"
               step="1"
               disabled={disabled}
             />
             <NumberField
               label="Refresh interval"
-              help="Every Nth segment; engine default: 6"
+              help="Every Nth segment; engine default: 4"
               value={settings.refresh}
               onChange={(event) => setField('refresh', event.target.value)}
               min="1"

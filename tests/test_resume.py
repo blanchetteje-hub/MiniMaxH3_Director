@@ -27,16 +27,11 @@ class ResumeTests(unittest.TestCase):
                 minimax.build_run_config(5, 15, 0.5, 3)
             )
             video_paths = {}
-            latent_paths = {}
             for segment in (1, 2):
                 video_path = os.path.join(directory, f"segment_{segment:04d}.mp4")
-                latent_path = os.path.join(directory, f"latent_{segment:04d}")
                 with open(video_path, "wb") as video_file:
                     video_file.write(b"video")
-                with open(latent_path, "wb") as latent_file:
-                    latent_file.write(b"latent")
                 video_paths[segment] = video_path
-                latent_paths[segment] = latent_path
 
             minimax.record_completed_segment(
                 state,
@@ -61,17 +56,13 @@ class ResumeTests(unittest.TestCase):
             writer = threading.Thread(target=finish_segment_two)
             writer.start()
             try:
-                with mock.patch(
-                    "minimax.get_h3_latent_path",
-                    side_effect=lambda segment: latent_paths[segment],
-                ):
-                    restored = minimax.restore_generation_state(
-                        3,
-                        ["First", "Second", "Third"],
-                        checkpoint,
-                        checkpoint_wait_timeout=1,
-                        checkpoint_poll_interval=0.01,
-                    )
+                restored = minimax.restore_generation_state(
+                    3,
+                    ["First", "Second", "Third"],
+                    checkpoint,
+                    checkpoint_wait_timeout=1,
+                    checkpoint_poll_interval=0.01,
+                )
             finally:
                 writer.join()
 
@@ -80,6 +71,71 @@ class ResumeTests(unittest.TestCase):
                 [1, 2],
             )
             self.assertEqual(restored["previous_video_path"], video_paths[2])
+
+    def test_resume_without_completed_segments_warns_and_leaves_continuity_blank(self):
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = os.path.join(directory, "generation_state.json")
+            state = minimax.new_generation_state(
+                minimax.build_run_config(5, 15, 0.5, 3)
+            )
+            minimax.save_generation_state(state, checkpoint)
+
+            with mock.patch("builtins.print") as print_mock:
+                restored = minimax.restore_generation_state(
+                    3,
+                    ["First", "Second", "Third"],
+                    checkpoint,
+                )
+
+            warning = " ".join(
+                str(call.args[0])
+                for call in print_mock.call_args_list
+                if call.args
+            )
+            self.assertIn("WARNING:", warning)
+            self.assertIn("blank continuity", warning)
+            self.assertEqual(restored["continuity_summary"], "")
+            self.assertNotIn("continuity_opening_state", restored)
+            self.assertEqual(restored["continuity_state"], {})
+            self.assertEqual(restored["video_paths"], [])
+
+    def test_legacy_opening_state_is_migrated_to_summary_and_not_resaved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = os.path.join(directory, "generation_state.json")
+            state = minimax.new_generation_state(
+                minimax.build_run_config(5, 10, 0.5, 2)
+            )
+            state["continuity_opening_state"] = "legacy summary"
+            state["segments"] = [{
+                "segment_number": 1,
+                "continuity_opening_state": "legacy segment summary",
+                "continuity_summary": "",
+            }]
+            with open(checkpoint, "w", encoding="utf-8") as checkpoint_file:
+                json.dump(state, checkpoint_file)
+
+            loaded = minimax.load_generation_state(checkpoint)
+            self.assertEqual(loaded["continuity_summary"], "legacy summary")
+            self.assertNotIn("continuity_opening_state", loaded)
+            self.assertEqual(
+                loaded["segments"][0]["continuity_summary"],
+                "legacy segment summary",
+            )
+            minimax.save_generation_state(loaded, checkpoint)
+
+            with open(checkpoint, "r", encoding="utf-8") as checkpoint_file:
+                saved = json.load(checkpoint_file)
+
+            self.assertEqual(saved["continuity_summary"], "legacy summary")
+            self.assertNotIn("continuity_opening_state", saved)
+            self.assertEqual(
+                saved["segments"][0]["continuity_summary"],
+                "legacy segment summary",
+            )
+            self.assertNotIn(
+                "continuity_opening_state",
+                saved["segments"][0],
+            )
 
     def test_generation_state_contains_normalized_structured_continuity_state(self):
         state = minimax.new_generation_state(
@@ -94,6 +150,65 @@ class ResumeTests(unittest.TestCase):
         current["environment"]["location"] = "hallway"
         normalized = minimax.normalize_continuity_state(current)
         self.assertEqual(normalized["environment"]["location"], "hallway")
+
+    def test_initial_subject_state_uses_display_identity_fields(self):
+        subjects = "<Subject 1> is Jennifer, female, referenced in <Picture 1>."
+        state = minimax.new_generation_state({"subject_definitions": subjects})
+        subject = state["subject_identity_lock"]["subjects"]["1"]
+
+        self.assertEqual(list(subject)[:3], ["name", "id", "speaker_id"])
+        self.assertEqual(subject["name"], "Jennifer")
+        self.assertEqual(subject["id"], "Subject 1")
+        self.assertEqual(subject["speaker_id"], "(S1)")
+
+    def test_subject_identity_lock_rejects_segment_one_mismatch(self):
+        subjects = "<Subject 1> is Amy, a woman referenced in <Picture 1>."
+        state = minimax.new_generation_state({"subject_definitions": subjects})
+        registry = minimax.continuity_state_for_registry(subjects)
+        registry["subjects"]["Amy"]["name"] = "Wrong Person"
+
+        with self.assertRaisesRegex(RuntimeError, "Subject identity mismatch"):
+            minimax.record_completed_segment(
+                state,
+                1,
+                "/tmp/segment-1.mp4",
+                formatted_result(1),
+                [],
+                subject_registry_state=registry,
+            )
+
+    def test_subject_identity_lock_rejects_later_id_or_metadata_drift(self):
+        subjects = "<Subject 1> is Amy, a woman referenced in <Picture 1>."
+        state = minimax.new_generation_state({"subject_definitions": subjects})
+        registry = minimax.continuity_state_for_registry(subjects)
+        minimax.record_completed_segment(
+            state,
+            1,
+            "/tmp/segment-1.mp4",
+            formatted_result(1),
+            [],
+            subject_registry_state=registry,
+        )
+
+        changed = json.loads(json.dumps(registry))
+        changed["subjects"]["Amy"]["subject_id"] = 7
+        with self.assertRaisesRegex(RuntimeError, "Subject identity mismatch"):
+            minimax.record_completed_segment(
+                state,
+                2,
+                "/tmp/segment-2.mp4",
+                formatted_result(2),
+                [],
+                subject_registry_state=changed,
+            )
+
+    def test_subject_identity_lock_rejects_changed_subjects_file(self):
+        original = "<Subject 1> is Amy, a woman referenced in <Picture 1>."
+        changed = "<Subject 1> is Beth, a woman referenced in <Picture 1>."
+        state = minimax.new_generation_state({"subject_definitions": original})
+
+        with self.assertRaisesRegex(RuntimeError, "subjects.txt differs"):
+            minimax.validate_subject_identity_state(state, changed)
 
     def test_new_subject_identity_is_saved_in_generation_state_json(self):
         continuity = minimax.new_continuity_state()
@@ -121,7 +236,7 @@ class ResumeTests(unittest.TestCase):
         subject = saved["continuity_state"]["subjects"]["New Guard"]
         self.assertEqual(subject["subject_id"], 2)
         self.assertEqual(subject["gender"], "male")
-        self.assertEqual(subject["speaker_id"], "S2")
+        self.assertEqual(subject["speaker_id"], "(S2)")
         self.assertNotIn("additional_subject_definitions", saved)
 
     def test_beat_progress_is_kept_in_generation_state(self):
@@ -163,22 +278,23 @@ class ResumeTests(unittest.TestCase):
         args = minimax.parse_args(["5", "20", ".5", "--steps", "12"])
         self.assertEqual(args.steps, 12)
 
-    def test_parse_args_defaults_extension_context_to_seven_frames(self):
+    def test_parse_args_defaults_stitch_trim_to_two_frames(self):
         args = minimax.parse_args(["5", "20", ".5"])
 
-        self.assertEqual(args.context_frames, 7)
+        self.assertEqual(args.trim_frames, 2)
 
-    def test_parse_args_accepts_common_extension_context_sizes(self):
-        for context_frames in (2, 4, 8, 12):
-            with self.subTest(context_frames=context_frames):
+    def test_parse_args_accepts_zero_and_custom_stitch_trim(self):
+        for trim_frames in (0, 1, 5):
+            with self.subTest(trim_frames=trim_frames):
                 args = minimax.parse_args([
                     "5",
                     "20",
                     ".5",
-                    f"--context-frames={context_frames}",
+                    "--trim-frames",
+                    str(trim_frames),
                 ])
 
-                self.assertEqual(args.context_frames, context_frames)
+                self.assertEqual(args.trim_frames, trim_frames)
 
     def test_parse_args_defaults_to_ministral_model(self):
         args = minimax.parse_args(["5", "20", ".5"])
@@ -265,10 +381,10 @@ class ResumeTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             minimax.parse_args(["5", "20", ".5", "--steps", "0"])
 
-    def test_parse_args_rejects_nonpositive_context_frames(self):
+    def test_parse_args_rejects_negative_stitch_trim(self):
         with self.assertRaises(SystemExit):
             minimax.parse_args([
-                "5", "20", ".5", "--context-frames", "0"
+                "5", "20", ".5", "--trim-frames", "-1"
             ])
 
     def test_parse_args_rejects_nonpositive_resume_segment(self):
