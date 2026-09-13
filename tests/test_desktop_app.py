@@ -22,6 +22,7 @@ BASE_SETTINGS = {
     "resume": "1",
     "steps": "6",
     "context_frames": "7",
+    "trim_frames": "2",
     "refresh": "6",
     "repair": None,
     "model": "ministral",
@@ -83,6 +84,7 @@ class DesktopBridgeTests(unittest.TestCase):
                 "resume": "3",
                 "steps": "8",
                 "context_frames": "12",
+                "trim_frames": "5",
                 "refresh": "5",
                 "model": "qwen",
                 "first_frame": True,
@@ -103,6 +105,7 @@ class DesktopBridgeTests(unittest.TestCase):
             ["style.safetensors:0.7", "motion.safetensors:-0.25"],
         )
         self.assertEqual(command[command.index("--model") + 1], "qwen")
+        self.assertEqual(command[command.index("--trim-frames") + 1], "5")
 
     def test_build_command_maps_defined_images_to_numbered_arguments(self):
         settings = dict(

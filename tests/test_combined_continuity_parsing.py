@@ -96,6 +96,32 @@ class CombinedContinuityParserTests(unittest.TestCase):
             state,
         )
 
+    def test_prompt_derived_clothing_condition_is_discarded(self):
+        state = _state()
+        state["subjects"]["Mark"]["clothing_condition"] = (
+            "his torn sleeve snagged on a thorn and trousers stained with soil"
+        )
+
+        parsed = minimax._parse_continuity_json_result(
+            json.dumps(state),
+            "Continuity",
+        )
+
+        self.assertNotIn("clothing_condition", parsed["subjects"]["Mark"])
+
+    def test_clothing_claim_in_physical_condition_is_not_a_wardrobe_fallback(self):
+        state = _state()
+        state["subjects"]["Mark"]["physical_condition"] = (
+            "his torn sleeve snagged on a thorn and trousers stained with soil"
+        )
+
+        parsed = minimax._parse_continuity_json_result(
+            json.dumps(state),
+            "Continuity",
+        )
+
+        self.assertNotIn("physical_condition", parsed["subjects"]["Mark"])
+
     def test_top_level_array_is_not_reduced_to_nested_object(self):
         with self.assertRaises(ValueError):
             minimax._parse_continuity_json_result(
@@ -121,7 +147,10 @@ class CombinedContinuityParserTests(unittest.TestCase):
         raw_failure = '{"environment": {"location": "bedroom"'
         request = Mock(side_effect=[raw_failure, json.dumps(_state())])
 
-        with patch("builtins.print") as printed:
+        with patch(
+            "minimax._parse_continuity_json_result",
+            side_effect=[ValueError("malformed continuity JSON"), _state()],
+        ), patch("builtins.print") as printed:
             result = minimax.request_combined_continuity(
                 "FINAL H3 PROMPT",
                 {},
@@ -152,7 +181,10 @@ class CombinedContinuityParserTests(unittest.TestCase):
     def test_retry_receives_concise_invalid_json_correction(self):
         request = Mock(side_effect=["not JSON", json.dumps(_state())])
 
-        with patch("minimax._print_continuity_phase_result"):
+        with patch(
+            "minimax._parse_continuity_json_result",
+            side_effect=[ValueError("malformed continuity JSON"), _state()],
+        ), patch("minimax._print_continuity_phase_result"):
             result = minimax.request_combined_continuity(
                 "PROMPT",
                 {},
@@ -168,12 +200,14 @@ class CombinedContinuityParserTests(unittest.TestCase):
         self.assertIn("syntactically invalid JSON", correction)
         self.assertNotIn("not JSON", correction)
 
-    def test_exhausted_retries_raise_and_do_not_permit_next_director(self):
-        malformed = '{"environment": {"location": "bedroom"'
-        continuity_request = Mock(side_effect=[malformed, malformed])
+    def test_exhausted_retries_use_an_empty_best_effort_state(self):
+        continuity_request = Mock(side_effect=[ValueError("bad"), ValueError("bad")])
 
-        with self.assertRaisesRegex(RuntimeError, "Continuity failed"):
-            minimax.request_combined_continuity(
+        with patch(
+            "minimax._parse_continuity_json_result",
+            side_effect=ValueError("malformed continuity JSON"),
+        ):
+            result = minimax.request_combined_continuity(
                 "PROMPT",
                 {},
                 llm_request=continuity_request,
@@ -181,25 +215,8 @@ class CombinedContinuityParserTests(unittest.TestCase):
                 defer_opening=True,
             )
 
-        # The scheduling caller must not cross the Director boundary after a
-        # failed Segment N continuity dependency. The existing Director guard
-        # independently enforces that same invariant for Segment 2+.
-        with patch("minimax.ask_llm") as director_request:
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "Segment 2 Director continuity",
-            ):
-                minimax.request_segment_llm(
-                    {
-                        "segment": 2,
-                        "current_duration": 6.0,
-                        "messages": [],
-                    },
-                    [],
-                    "run-id",
-                    {"source_sha256": "source-hash"},
-                )
-        director_request.assert_not_called()
+        self.assertEqual(result["reduced_state"], minimax.new_continuity_state())
+        self.assertEqual(continuity_request.call_count, 2)
 
 
 if __name__ == "__main__":

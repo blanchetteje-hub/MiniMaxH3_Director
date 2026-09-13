@@ -8,6 +8,7 @@ prompts/
 # Local creative inputs / generated planning
 story.txt
 beats.txt
+additional_states.txt
 story_arc.json
 story_arc.json.sha256
 subjects.txt

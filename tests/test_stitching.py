@@ -121,6 +121,27 @@ class StitchingTests(unittest.TestCase):
             ],
         )
 
+    def test_stitching_uses_configured_trim_frame_count(self):
+        with tempfile.TemporaryDirectory() as directory:
+            video_paths = [
+                os.path.join(directory, "segment_0001.mp4"),
+                os.path.join(directory, "segment_0002.mp4"),
+            ]
+            with mock.patch.object(minimax, "VIDEO_OUTPUT", directory), mock.patch.object(
+                minimax,
+                "FINAL_VIDEO",
+                os.path.join(directory, "final.mp4"),
+            ), mock.patch("minimax.trim_video_start") as trim, mock.patch(
+                "minimax.subprocess.run",
+            ):
+                minimax.stitch_videos(video_paths, trim_frames=5)
+
+        self.assertEqual(trim.call_args.args[2], 5 / 24)
+
+    def test_stitching_rejects_negative_trim_frame_count(self):
+        with self.assertRaisesRegex(ValueError, "non-negative"):
+            minimax.stitch_videos(["segment_0001.mp4"], trim_frames=-1)
+
     def test_stitching_limits_generation_padding_to_requested_duration(self):
         with tempfile.TemporaryDirectory() as directory:
             paths = [

@@ -35,12 +35,17 @@ class ContinuitySchedulingTests(unittest.TestCase):
             "initial",
         )
 
-    def test_segment_two_rejects_missing_continuity_loudly(self):
-        with self.assertRaisesRegex(
-            RuntimeError,
-            r"Segment 2 Director continuity is missing",
-        ):
-            minimax.request_segment_llm(
+    def test_segment_two_warns_and_accepts_missing_continuity(self):
+        formatted = {
+            "detailed_description": "[Shot 1] Amy looks toward the doorway.",
+            "overall_soundscape": "Room tone.",
+            "non_diegetic_music": "N/A",
+        }
+        with mock.patch(
+            "minimax.ask_llm",
+            side_effect=["Amy looks toward the doorway.", formatted],
+        ), mock.patch("builtins.print") as printed:
+            result = minimax.request_segment_llm(
                 {
                     "segment": 2,
                     "current_duration": 6.0,
@@ -51,13 +56,26 @@ class ContinuitySchedulingTests(unittest.TestCase):
                 {"source_sha256": "source-hash"},
             )
 
+        self.assertEqual(result["llm_result"], {
+            **formatted,
+            "completed_beat_ids": [],
+            "reference_alignment": "",
+            "subject_genders": {},
+        })
+        self.assertIn(
+            "WARNING: Segment 2 Director continuity is missing or unusable",
+            "\n".join(
+                str(call.args[0]) for call in printed.call_args_list if call.args
+            ),
+        )
+
     def test_segment_two_logs_and_accepts_completed_continuity(self):
         bundle = {
             "segment": 2,
             "active_beat_id": None,
             "current_duration": 6.0,
             "messages": [{"role": "user", "content": "Direct segment 2."}],
-            "conditioning_mode": "latent_continuation",
+            "conditioning_mode": "continuation",
             "opening_state": "Amy is beside the doorway.",
             "h3_opening_summary": "Amy is beside the doorway.",
             "continuity_source": "prompt",

@@ -9,15 +9,15 @@ SUBJECTS = "<Subject 1> is Maya, an adult woman referenced in <Picture 1>."
 
 
 class SimplifiedPromptRegressionTests(unittest.TestCase):
-    def test_latent_continuation_keeps_director_rules(self):
+    def test_continuation_keeps_director_rules(self):
         rules = minimax.build_director_rules(
             12, 6, 2, SUBJECTS, 2,
-            conditioning_mode="latent_continuation",
+            conditioning_mode="continuation",
         )
         messages, _, _ = minimax.build_generation_messages(
             rules, "Story", ["One.", "Two."], {1}, [], 2, 2, 6, 12,
             subject_definitions=SUBJECTS,
-            conditioning_mode="latent_continuation",
+            conditioning_mode="continuation",
         )
         self.assertEqual(messages[0]["content"], rules)
 

@@ -92,119 +92,23 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Failed to extract final frame"):
                 minimax.extract_final_frame(invalid_video, output_path)
 
-    def test_continuation_workflow_receives_the_extracted_frame(self):
-        with tempfile.TemporaryDirectory() as directory:
-            previous_video = os.path.join(directory, "previous.mp4")
-            with open(previous_video, "wb") as file:
-                file.write(b"previous")
-            anchor_path = os.path.join(directory, "segment_0001_final.png")
-            Image.new("RGB", (2, 2), (10, 20, 30)).save(anchor_path)
-
-            with mock.patch("minimax.COMFY_OUTPUT", directory):
-                workflow = minimax.prepare_append_workflow(
-                    6.0,
-                    "prompt",
-                    previous_video,
-                    2,
-                    continuation_frame_path=anchor_path,
-                )
-
-            loader_id, loader = minimax.find_workflow_node(
-                workflow,
-                minimax.CONTINUATION_FIRST_FRAME_NODE_NAME,
-                "test append workflow",
-                "LoadImage",
-            )
-            _, extender = minimax.find_workflow_node(
-                workflow,
-                minimax.VIDEO_EXTEND_NODE_NAME,
-                "test append workflow",
-                "MiniMaxH3VideoExtendPatched",
-            )
-            self.assertEqual(
-                loader["inputs"]["image"],
-                "segment_0001_final.png [output]",
-            )
-            self.assertEqual(extender["inputs"]["first_frame"], [loader_id, 0])
-
-    def test_existing_h3_latent_connection_remains_unchanged(self):
-        workflow = minimax.load_workflow(minimax.APPEND_WORKFLOW_FILE)
-        _, extender_before = minimax.find_workflow_node(
-            workflow,
-            minimax.VIDEO_EXTEND_NODE_NAME,
-            "append template",
-            "MiniMaxH3VideoExtendPatched",
-        )
-        _, sampler_before = minimax.find_workflow_node(
-            workflow,
-            "SamplerCustomAdvanced",
-            "append template",
-        )
-        context_before = list(extender_before["inputs"]["context_latent"])
-        sampler_latent_before = list(sampler_before["inputs"]["latent_image"])
-        self.assertEqual(
-            context_before,
-            [
-                minimax.find_workflow_node(
-                    workflow,
-                    minimax.H3_LATENT_LOAD_NODE_NAME,
-                    "append template",
-                )[0],
-                0,
-            ],
-        )
-
-        with tempfile.TemporaryDirectory() as directory:
-            previous_video = os.path.join(directory, "previous.mp4")
-            with open(previous_video, "wb") as file:
-                file.write(b"previous")
-            anchor_path = os.path.join(directory, "anchor.png")
-            Image.new("RGB", (2, 2), (10, 20, 30)).save(anchor_path)
-            with mock.patch("minimax.COMFY_OUTPUT", directory), mock.patch(
-                "minimax.prune_missing_reference_images",
-                return_value=([], {number: number for number in range(1, 7)}),
-            ):
-                prepared = minimax.prepare_append_workflow(
-                    6.0,
-                    "prompt",
-                    previous_video,
-                    2,
-                    continuation_frame_path=anchor_path,
-                )
-
-        _, extender_after = minimax.find_workflow_node(
-            prepared,
-            minimax.VIDEO_EXTEND_NODE_NAME,
-            "prepared append workflow",
-            "MiniMaxH3VideoExtendPatched",
-        )
-        _, sampler_after = minimax.find_workflow_node(
-            prepared,
-            "SamplerCustomAdvanced",
-            "prepared append workflow",
-        )
-        self.assertEqual(extender_after["inputs"]["context_latent"], context_before)
-        self.assertEqual(sampler_after["inputs"]["latent_image"], sampler_latent_before)
-
     def test_existing_reference_picture_connections_remain_unchanged(self):
         workflow = minimax.load_workflow(minimax.APPEND_WORKFLOW_FILE)
         _, batch_before = minimax.find_workflow_node(
             workflow,
-            minimax.IMAGE_BATCH_NODE_NAME,
+            minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
             "append template",
-            "ImageBatchMulti",
+            "MiniMaxH3ReferenceToVideo",
         )
         batch_connections = {
             key: value
             for key, value in batch_before["inputs"].items()
-            if key.startswith("image_")
+            if key.startswith("ref_images.")
         }
         with tempfile.TemporaryDirectory() as directory:
             previous_video = os.path.join(directory, "previous.mp4")
             with open(previous_video, "wb") as file:
                 file.write(b"previous")
-            anchor_path = os.path.join(directory, "anchor.png")
-            Image.new("RGB", (2, 2), (10, 20, 30)).save(anchor_path)
             with mock.patch("minimax.COMFY_OUTPUT", directory), mock.patch(
                 "minimax.prune_missing_reference_images",
                 return_value=([], {number: number for number in range(1, 7)}),
@@ -214,20 +118,19 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
                     "prompt",
                     previous_video,
                     2,
-                    continuation_frame_path=anchor_path,
                 )
 
         _, batch_after = minimax.find_workflow_node(
             prepared,
-            minimax.IMAGE_BATCH_NODE_NAME,
+            minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
             "prepared append workflow",
-            "ImageBatchMulti",
+            "MiniMaxH3ReferenceToVideo",
         )
         self.assertEqual(
             {
                 key: value
                 for key, value in batch_after["inputs"].items()
-                if key.startswith("image_")
+                if key.startswith("ref_images.")
             },
             batch_connections,
         )

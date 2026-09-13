@@ -14,7 +14,10 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
-from formatter_base import BaseFormatter
+from formatter_base import (
+    BaseFormatter,
+    remove_subject_references_from_dialogue,
+)
 
 
 DESCRIPTION = "detailed_description"
@@ -162,6 +165,31 @@ def _strip_markdown(value: str) -> str:
     # an asterisk has no useful prompt meaning here, so removing the marker is
     # safer and more complete than trying to balance malformed pairs.
     return value.replace("*", "")
+
+
+def sanitize_director_text(value: Any) -> Any:
+    """Remove asterisks and dash markers from Director handoff text.
+
+    Director Request 1 is passed directly into Request 2, while Request 2 is
+    passed to the video-prompt builder. Neither handoff should carry Markdown
+    emphasis or list/inline dash characters into the next stage.
+    """
+
+    if isinstance(value, Mapping):
+        return {
+            key: sanitize_director_text(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [sanitize_director_text(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(sanitize_director_text(item) for item in value)
+    if not isinstance(value, str):
+        return value
+    # Keep the asterisk removal delegated to the shared Markdown sanitizer so
+    # this handoff cannot drift from the final H3 output-boundary guarantee.
+    value = re.sub(r"[\-\u2010\u2011\u2012\u2013\u2014\u2015\u2212]", "", value)
+    return _strip_markdown(value)
 
 
 def _replace_unsupported_dashes(value: str) -> str:
@@ -384,6 +412,24 @@ def _subject_maps(context: Mapping[str, Any]) -> tuple[dict[str, int], set[int],
         if record["picture_id"] is not None
     }
     return names, subjects, pictures
+
+
+def _canonicalize_registered_subject_aliases(
+    text: str,
+    records: Mapping[str, Mapping[str, Any]],
+) -> str:
+    """Convert registered angle-bracket name aliases to numeric Subject tags."""
+    for name, record in sorted(records.items(), key=lambda item: -len(item[0])):
+        subject_id = record.get("subject_id")
+        if subject_id is None:
+            continue
+        text = re.sub(
+            rf"<\s*{re.escape(name)}\s*>",
+            f"<Subject {int(subject_id)}> {name}",
+            text,
+            flags=re.I,
+        )
+    return text
 
 
 _DIALOGUE_ATTRIBUTION = (
@@ -1174,6 +1220,7 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
         ) == record["name"].casefold()
     }
     text, dialogue_blocks = _protect_dialogue_blocks(result[DESCRIPTION])
+    text = _canonicalize_registered_subject_aliases(text, records)
     text = re.sub(
         r"\s*\(\s*Subject\s+\d+\s*\)",
         "",
@@ -1669,6 +1716,7 @@ def _repair_canonical_subject_tags(
     records = _subject_records(context)
     subject_pictures = _subject_picture_map(context)
     text, dialogue_blocks = _protect_dialogue_blocks(result[DESCRIPTION])
+    text = _canonicalize_registered_subject_aliases(text, records)
 
     for name, record in sorted(records.items(), key=lambda item: -len(item[0])):
         subject_id = record.get("subject_id")
@@ -2715,8 +2763,8 @@ def format_ministral_prompt(llm_result: Any, context: Mapping[str, Any] | None) 
     # Keep this as a final output-boundary guarantee in case a later repair
     # rule introduces text sourced from model-provided context.
     for field in (DESCRIPTION, SOUNDSCAPE, MUSIC):
-        formatted[field] = _strip_markdown(formatted[field])
-    return formatted
+        formatted[field] = sanitize_director_text(formatted[field])
+    return remove_subject_references_from_dialogue(formatted)
 
 
 def validate_ministral_prompt(
@@ -2743,6 +2791,11 @@ class MinistralFormatter(BaseFormatter):
 
         return _strip_markdown(str(value))
 
+    def sanitize_director_text(self, value: Any) -> Any:
+        """Clean Director output before passing it to the next pipeline stage."""
+
+        return sanitize_director_text(value)
+
     def format_prompt(
         self,
         llm_result: Any,
@@ -2763,6 +2816,7 @@ __all__ = [
     "RULE_REGISTRY",
     "extract_inline_dialogue_subjects",
     "format_ministral_prompt",
+    "sanitize_director_text",
     "validate_h3_dialogue_format",
     "validate_ministral_prompt",
 ]

@@ -245,8 +245,7 @@ Custom Nodes**, search for each package below, install it, and restart ComfyUI.
 | Package | Nodes used by these workflows |
 |---|---|
 | [ComfyUI-MiniMax-H3-Turbo](https://github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo) | `MiniMaxH3TurboLoRA` |
-| [ComfyUI-MiniMax-H3-Extend](https://github.com/kat3ri/ComfyUI-MiniMax-H3-Extend) | `MiniMaxH3VideoExtendPatched`, `MiniMaxH3EncodeAVPatched` |
-| [ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes) | `PathchSageAttentionKJ`, `ImageBatchMulti` |
+| [ComfyUI-KJNodes](https://github.com/kijai/ComfyUI-KJNodes) | `PathchSageAttentionKJ` |
 | [ComfyUI-VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite) | `VHS_LoadVideoPath` |
 | [ComfyUI-DynamicPrompts](https://github.com/adieyal/comfyui-dynamicprompts) | `DPRandomGenerator` |
 | [MiniMax H3 Hybrid Cond](https://github.com/kitsune123150/minimax-h3-hybrid-cond) | `MiniMaxH3HybridRefAndKeyframe` used by the refresh workflow |
@@ -361,19 +360,17 @@ consistent between the initial and append workflow:
 
 | Prompt tag | Initial workflow input | Append workflow input |
 |---|---|---|
-| `<Picture 1>` | `ref_images.ref_image_0` | `Image Batch Multi.image_1` |
-| `<Picture 2>` | `ref_images.ref_image_1` | `Image Batch Multi.image_2` |
-| `<Picture 3>` | `ref_images.ref_image_2` | `Image Batch Multi.image_3` |
-| `<Picture 4>` | `ref_images.ref_image_3` | `Image Batch Multi.image_4` |
-| `<Picture 5>` | `ref_images.ref_image_4` | `Image Batch Multi.image_5` |
-| `<Picture 6>` | `ref_images.ref_image_5` | `Image Batch Multi.image_6` |
+| `<Picture 1>` | `ref_images.ref_image_0` | `ref_images.ref_image_0` |
+| `<Picture 2>` | `ref_images.ref_image_1` | `ref_images.ref_image_1` |
+| `<Picture 3>` | `ref_images.ref_image_2` | `ref_images.ref_image_2` |
+| `<Picture 4>` | `ref_images.ref_image_3` | `ref_images.ref_image_3` |
+| `<Picture 5>` | `ref_images.ref_image_4` | `ref_images.ref_image_4` |
+| `<Picture 6>` | `ref_images.ref_image_5` | `ref_images.ref_image_5` |
 
 Before any workflow is queued, the program opens and verifies each configured
 image from the ComfyUI input folder. It restores every valid `Load Image`
 connection to its exact numbered destination and disconnects missing or
-undecodable slots. The append workflow uses its reference batch only when the
-valid slots form an ordered, gap-free sequence, preventing later Picture IDs
-from being silently renumbered. For real identity continuity:
+undecodable slots. For real identity continuity:
 
 1. Copy up to six reference images into `ComfyUI/input`.
 2. In the initial and append workflows, assign them to the clearly titled
@@ -383,8 +380,7 @@ from being silently renumbered. For real identity continuity:
    `Minimax_auto_API.json` and `Minimax_auto_append_API.json`.
 4. Keep the automation-controlled node titles unchanged: `Float (duration)`,
    `Prompt`, `RandomNoise`, `Save Video`, `Resolution Selector`, `Reference
-   Image 1` through `Reference Image 6`, `Image Batch Multi`, and `Load Video
-   (Path) 🎥🅥🅗🅢`.
+   Image 1` through `Reference Image 6`, and `Load_Video`.
 
 Numeric ComfyUI node IDs may change when you export. That is safe: the Python
 program finds automation-controlled nodes by title, not by node number.
@@ -507,8 +503,9 @@ ffprobe -version
 ```
 
 `ffprobe` validates each generated clip's resolution. Python calls `ffmpeg` to
-concatenate the completed clips without trimming them. `stitch.bat` is not
-required for normal runs.
+concatenate the completed clips, trimming the configured number of leading
+frames from every segment after the first. `stitch.bat` is not required for
+normal runs.
 
 ## 9. Prepare the project inputs
 
@@ -655,6 +652,12 @@ that subject's visual reference. No Picture tag is invented for a video-created
 subject. Internal definitions are excluded from the user-source fingerprint, so
 registering them does not invalidate `--resume` for the active run.
 
+The checkpoint also stores an append-only Subject identity lock. Segment 1's
+Subject IDs and identity metadata are checked against `subjects.txt`; every
+later segment is checked against the lock and its prior segment snapshot.
+Changes to a Subject's ID, name, gender, Picture mapping, speaker ID, or origin
+are rejected before the checkpoint is written or resumed.
+
 When `beats.txt` is generated automatically, parsed subjects are sent to LM
 Studio as the main characters. Canonical names and available descriptive
 clauses (for example, `Mark is a 40-year-old man`) are included in both the
@@ -703,14 +706,7 @@ correction request fails or the corrected result remains invalid, the latest
 best-effort locally formatted prompt continues to ComfyUI instead of stopping
 the run. Network/transport retries remain separate.
 
-## 10. Add custom node
-
-A custom node was created for saving the state of the latents so no information would be lost when decoding/encoding video frames.
-- Create a folder in your custom_nodes folder called "ComfyUI-h3_av_latent_io"
-- Copy __init__.py to this folder
-- Restart ComfyUI if needed
-
-## 11. Preflight before the first generation
+## 10. Preflight before the first generation
 
 Confirm all of the following:
 
@@ -767,7 +763,7 @@ the same generation options as the CLI:
 | **Resume** | Continue at a one-based segment recorded in `generation_state.json`. |
 | **Repair** | Rerender an existing middle segment that has clips on both sides. |
 | **Steps** | Set BasicScheduler sampling steps for all workflows. |
-| **Context frames** | Set latent frames retained during video extension. |
+| **Trim frames** | Remove this many frames from the start of each segment after the first during stitching; defaults to `2`. Set to `0` to disable the trim. |
 | **Refresh interval** | Use the refresh workflow on every Nth segment. |
 | **Formatter** | Match either the Ministral or Qwen response format to the model loaded in LM Studio. |
 | **First-frame instructions** | Add opening-frame instructions for `<Picture 1>` on segment 1. |
@@ -787,7 +783,7 @@ app.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--context-frames FRAMES] [--refresh SEGMENTS] [--repair SEGMENT] [--model {ministral,qwen}] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--repair SEGMENT] [--model {ministral,qwen}] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -801,8 +797,8 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `MEGAPIXELS` | Initial and refresh workflow resolution target; must be greater than zero. |
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
 | `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
-| `--context-frames FRAMES` | Latent frames retained by `MiniMaxH3VideoExtendPatched`; defaults to `7`. |
-| `--refresh SEGMENTS` | Auto refresh on every Nth segment using `Minimax_auto_refresh_API.json`; defaults to every `6` segments. |
+| `--trim-frames FRAMES` | Trim this many leading frames from every segment after the first when stitching; defaults to `2`, and `0` disables the trim. |
+| `--refresh SEGMENTS` | Auto refresh on every Nth segment using `Minimax_auto_refresh_API.json`; defaults to every `4` segments. |
 | `--repair SEGMENT` | Rerender one existing middle segment using its checkpoint and neighboring clips; cannot be combined with a resume segment other than `1`. |
 | `--model {ministral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `ministral`. |
 | `--image1 PATH` through `--image6 PATH` | Override the corresponding numbered reference image in the initial, append, and refresh workflows. |
@@ -858,7 +854,7 @@ original inputs or start a new run.
 
 | File or folder | Purpose |
 |---|---|
-| `generation_state.json` | Atomic checkpoint containing settings, director results, beat state, committed structured continuity state, internal video-created subject definitions, and video paths. |
+| `generation_state.json` | Atomic checkpoint and runtime source of truth containing settings, director results, beat state, canonical Subject registry/identity data, committed structured continuity state, per-segment identity snapshots, internal video-created subject definitions, and video paths. |
 | `beat_progress.txt` | Readable DONE/NEXT/TODO beat checklist. |
 | ComfyUI `output/video/segment_*.mp4` | Individual generated clips. |
 | ComfyUI `output/video/list.txt` | Automatically generated FFmpeg concat list. |
@@ -875,11 +871,9 @@ workflow JSON and the named nodes it controls:
 - `Save Video`
 - `Resolution Selector` in the initial workflow
 - `Reference Image 1` through `Reference Image 6` in both workflows
-- `Image Batch Multi` with those six sources connected in the correct order in
-  the append workflow
-- `Load Video (Path) 🎥🅥🅗🅢` in the append workflow
-- The append duration/math, prompt, previous-video encoding, reference-image,
-  conditioning, latent, decoding, and save-video connections
+- `Load_Video` connected as the previous-video input in the append workflow
+- The append duration/math, prompt, previous-video, reference-image,
+  conditioning, decoding, and save-video connections
 
 Node types and required input fields are also checked. If you customize a
 workflow, preserve these titles or update the matching constants in
@@ -895,18 +889,22 @@ workflow, preserve these titles or update the matching constants in
   renders that segment.
 - The next director request receives an authoritative opening state rendered
   directly from the last committed structured state and the two newest exact
-  prompts, instead of an independently maintained prose summary. The outgoing
-  MiniMax H3 prompt expresses it as a `<Video 1>` continuation block with
-  `summary` and `retention_analysis` sections. It omits internal field labels
-  and unknown `N/A` values.
+  prompts, instead of an independently maintained prose summary. Clean-refresh
+  H3 prompts express that state as an opening-frame/retention block. Append
+  prompts receive the preceding segment through `Load_Video` and begin
+  `detailed_description` with `[Shot 1] Live-action, cinematic, continues from
+  <Video 1>.` rather than prepending the opening state. The state still drives
+  filtering, wardrobe, and Subject conditioning. Internal field labels and
+  unknown `N/A` values are omitted from H3 text.
 - While ComfyUI renders the current segment, the completed next-segment
   director prefetch is immediately checkpointed in `generation_state.json` as
   `prefetched_next_prompt` with its segment number, input-state fingerprint,
   and structured LLM result.
 - Prompt authority is ordered: BEAT STATE controls plot progression;
-  AUTHORITATIVE OPENING STATE controls current physical continuity; SUBJECT
-  REGISTRY controls identity and Picture mappings; recent generated segments
-  are secondary context; and the source story supplies creative intent.
+  AUTHORITATIVE OPENING STATE controls current physical continuity; the
+  canonical Subject registry stored in `generation_state.json` controls
+  identity and Picture mappings; recent generated segments are secondary
+  context; and the source story supplies creative intent.
 - The director sees the active beat and a configurable/dynamically bounded
   lookahead rather than the entire future beat list. Python retains the
   complete beat list for scheduling, completion validation, and checkpoints.
@@ -917,7 +915,10 @@ workflow, preserve these titles or update the matching constants in
 - Checkpoints include a versioned `continuity_state` envelope alongside
   independently addressable environment, camera, subject position, pose,
   wardrobe, condition, props, ongoing action, audio, video-only subject ID, and
-  subject-origin fields. Resume rejects unsupported checkpoint schema versions.
+  subject-origin fields. The prose handoff is stored once as `continuity_summary`
+  on the checkpoint and each completed segment; older duplicate
+  `continuity_opening_state` fields are migrated when loaded. Resume rejects
+  unsupported checkpoint schema versions.
 - Continuity updates are candidates while a segment renders. They are committed
   only after the render succeeds; failed renders discard the candidate and keep
   the last successful segment's opening state.

@@ -220,7 +220,7 @@
   },
   "90": {
     "inputs": {
-      "lora_name": "MiniMaxH3/minimax_h3_turbo_v4_step600_ema_pruned_comfyui.safetensors",
+      "lora_name": "MiniMaxH3/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
       "strength": 1,
       "low_vram": true,
       "model": [
@@ -387,20 +387,6 @@
     "class_type": "ResolutionSelector",
     "_meta": {
       "title": "Resolution Selector"
-    }
-  },
-  "142": {
-    "inputs": {
-      "filename_prefix": "h3_context/segment",
-      "clip_index": 1,
-      "latent": [
-        "83",
-        0
-      ]
-    },
-    "class_type": "MiniMaxH3AVSaveLatentForExtend",
-    "_meta": {
-      "title": "H3 AV Save Latent"
     }
   },
   "143": {

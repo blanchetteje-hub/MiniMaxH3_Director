@@ -180,7 +180,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             result,
             SUBJECTS,
             segment_number=2,
-            conditioning_mode="latent_continuation",
+            conditioning_mode="continuation",
             excluded_picture_ids={1, 2},
             previous_visible_subject_ids={1},
         )
@@ -281,7 +281,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
         excluded = minimax.get_conditioning_excluded_picture_ids(
             state,
-            "latent_continuation",
+            "continuation",
         )
         director_rules = minimax.build_director_rules(
             12.0,
@@ -289,7 +289,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             2,
             definitions,
             2,
-            conditioning_mode="latent_continuation",
+            conditioning_mode="continuation",
         )
 
         self.assertEqual(excluded, {1})
@@ -332,7 +332,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             include_camera=False,
         )
 
-        for mode in ("latent_continuation", "clean_refresh"):
+        for mode in ("continuation", "clean_refresh"):
             with self.subTest(conditioning_mode=mode):
                 prompt = minimax.build_h3_prompt(
                     result,
@@ -382,7 +382,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             response("[Shot 3] <Subject 3> New Guard re-enters.", []),
             definitions,
             segment_number=3,
-            conditioning_mode="latent_continuation",
+            conditioning_mode="continuation",
             previous_visible_subject_ids={1},
         )
         subject_text = prompt.split(
@@ -405,7 +405,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
             response("[Shot 3] <Subject 3> New Guard remains on guard.", []),
             definitions,
             segment_number=3,
-            conditioning_mode="latent_continuation",
+            conditioning_mode="continuation",
             previous_visible_subject_ids={3},
         )
 
@@ -437,6 +437,26 @@ class LmStudioIntegrationTests(unittest.TestCase):
 
         self.assertNotIn(suffix_fragment, initial)
         self.assertNotIn(suffix_fragment, refresh)
+
+    def test_refresh_continuation_opens_from_picture_one(self):
+        prompt = minimax.build_h3_prompt(
+            response("[Shot 2] Mark looks toward the street.", []),
+            SUBJECTS,
+            previous_state="Mark remains on the street.",
+            segment_number=2,
+            conditioning_mode="clean_refresh",
+        )
+
+        description_section = prompt.split("detailed_description: ", 1)[1]
+        self.assertTrue(
+            description_section.startswith(
+                "[Shot 1] The opening frame is <Picture 1>."
+            )
+        )
+        self.assertNotIn(
+            "[Shot 1] Continuing directly from the final state of <Video 1>",
+            description_section,
+        )
 
     def test_initial_h3_subject_definitions_never_mention_video_one(self):
         definitions = (
@@ -745,39 +765,6 @@ class LmStudioIntegrationTests(unittest.TestCase):
             )
 
         self.assertTrue(render_started.is_set())
-
-    @mock.patch("minimax.get_video_resolution", return_value=(640, 360))
-    @mock.patch("minimax.get_video_path", return_value="segment.mp4")
-    @mock.patch(
-        "minimax.wait_for_completion",
-        return_value={"status": {"completed": True, "status_str": "success"}},
-    )
-    @mock.patch("minimax.queue_workflow", return_value="prompt-id")
-    @mock.patch("minimax.prepare_append_workflow", return_value={})
-    def test_append_render_forwards_configured_context_frames(
-        self,
-        prepare,
-        queue,
-        wait,
-        get_path,
-        get_resolution,
-    ):
-        del queue, wait, get_path, get_resolution
-        for context_frames in (2, 4, 8, 12):
-            minimax.render_segment_with_retries(
-                2,
-                6.0,
-                0.50,
-                "prompt",
-                "previous.mp4",
-                6,
-                context_frames=context_frames,
-            )
-
-        self.assertEqual(
-            [call.kwargs["context_frames"] for call in prepare.call_args_list],
-            [2, 4, 8, 12],
-        )
 
     def test_next_beat_prompt_demands_immediate_dominant_execution(self):
         request = minimax.build_segment_request(

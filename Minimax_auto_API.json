@@ -61,7 +61,7 @@
   },
   "79": {
     "inputs": {
-      "scheduler": "beta",
+      "scheduler": "simple",
       "steps": 6,
       "denoise": 1,
       "model": [
@@ -220,7 +220,7 @@
   },
   "90": {
     "inputs": {
-      "lora_name": "MiniMaxH3/minimax_h3_turbo_v4_step600_ema_pruned_comfyui.safetensors",
+      "lora_name": "MiniMaxH3/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
       "strength": 1,
       "low_vram": true,
       "model": [
@@ -268,23 +268,23 @@
         "114",
         0
       ],
-	  "ref_images.ref_image_1": [
+      "ref_images.ref_image_1": [
         "116",
         0
       ],
-	  "ref_images.ref_image_2": [
+      "ref_images.ref_image_2": [
         "120",
         0
       ],
-	  "ref_images.ref_image_3": [
+      "ref_images.ref_image_3": [
         "137",
         0
       ],
-	  "ref_images.ref_image_4": [
+      "ref_images.ref_image_4": [
         "138",
         0
       ],
-	  "ref_images.ref_image_5": [
+      "ref_images.ref_image_5": [
         "139",
         0
       ]
@@ -292,17 +292,6 @@
     "class_type": "MiniMaxH3ReferenceToVideo",
     "_meta": {
       "title": "MiniMax H3 Reference to Video"
-    }
-  },
-  "118": {
-    "inputs": {
-      "text": "",
-      "seed": 922,
-      "autorefresh": "No"
-    },
-    "class_type": "DPRandomGenerator",
-    "_meta": {
-      "title": "Prompt"
     }
   },
   "114": {
@@ -321,6 +310,17 @@
     "class_type": "LoadImage",
     "_meta": {
       "title": "Reference Image 2"
+    }
+  },
+  "118": {
+    "inputs": {
+      "text": "",
+      "seed": 922,
+      "autorefresh": "No"
+    },
+    "class_type": "DPRandomGenerator",
+    "_meta": {
+      "title": "Prompt"
     }
   },
   "120": {
@@ -382,20 +382,6 @@
     "class_type": "ResolutionSelector",
     "_meta": {
       "title": "Resolution Selector"
-    }
-  },
-  "142": {
-    "inputs": {
-      "filename_prefix": "h3_context/segment",
-      "clip_index": 1,
-      "latent": [
-        "83",
-        0
-      ]
-    },
-    "class_type": "MiniMaxH3AVSaveLatentForExtend",
-    "_meta": {
-      "title": "H3 AV Save Latent"
     }
   }
 }
