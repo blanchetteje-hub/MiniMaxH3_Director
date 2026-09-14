@@ -65,7 +65,7 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             [1, 2],
         )
 
-    def test_h3_normalizes_raw_name_alias_to_canonical_subject_tag(self):
+    def test_h3_normalizes_raw_name_alias_without_adding_subject_tag(self):
         definitions, description = minimax._filter_h3_subject_definitions(
             SUBJECTS,
             {1},
@@ -73,7 +73,7 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         )
 
         self.assertIn("<Subject 2>", definitions)
-        self.assertIn("<Subject 2> Werewolf", description)
+        self.assertEqual(description, "Werewolf chases Elias.")
         self.assertNotIn("<Werewolf>", description)
 
     def test_h3_does_not_insert_canonical_tag_inside_angle_bracket_alias(self):
@@ -83,8 +83,8 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             "<Werewolf> chases Elias.",
         )
 
-        self.assertIn("<Subject 2> Werewolf", description)
-        self.assertNotIn("<<Subject 2>", description)
+        self.assertEqual(description, "Werewolf chases Elias.")
+        self.assertNotIn("<Subject 2>", description)
 
     def test_h3_refresh_propagates_registered_subject_two(self):
         prompt = minimax.build_h3_prompt(
@@ -106,7 +106,8 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         )[0]
         self.assertIn("<Subject 2>", definitions)
         self.assertNotIn("<Subject 1>", definitions)
-        self.assertIn("<Subject 2> Werewolf", description)
+        self.assertIn("Werewolf enters", description)
+        self.assertNotIn("<Subject 2> Werewolf", description)
         self.assertIn("retention_analysis:", prompt)
         self.assertNotIn("fully_preserved", prompt)
 
@@ -124,8 +125,92 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         )
 
         self.assertIn("<Subject 2> is Werewolf", prompt)
-        self.assertIn("<Subject 2> Werewolf enters", prompt)
+        self.assertIn("Werewolf enters", prompt)
+        self.assertNotIn("<Subject 2> Werewolf", prompt)
         self.assertNotIn("retention_analysis:", prompt)
+
+    def test_continuation_adds_video_origin_to_visible_subject_definitions(self):
+        definitions = (
+            "<Subject 1> is Elias, a man referenced in <Picture 1>.\n"
+            "<Subject 2> is Stranger, male (S2), created in generated video "
+            "segment 1."
+        )
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 2] <Subject 1> Elias and <Subject 2> Stranger "
+                    "stand together."
+                ),
+                "overall_soundscape": "wind",
+                "non_diegetic_music": "N/A",
+            },
+            definitions,
+            segment_number=2,
+            conditioning_mode="continuation",
+            previous_visible_subject_ids={1, 2},
+        )
+
+        subject_text = prompt.split("subject_definitions: ", 1)[1].split(
+            "\n\n", 1
+        )[0]
+        self.assertIn(
+            "Elias's pose, clothing condition, position, and physical state at "
+            "the beginning of the target video come from <Video 1>.",
+            subject_text,
+        )
+        self.assertIn(
+            "<Subject 2> is Stranger, male (S2), created in generated video "
+            "segment 1. continued from <Video 1>.",
+            subject_text,
+        )
+
+    def test_continuation_does_not_add_video_origin_to_absent_subjects(self):
+        definitions = (
+            "<Subject 1> is Elias, a man referenced in <Picture 1>.\n"
+            "<Subject 2> is Stranger, male (S2), created in generated video "
+            "segment 1."
+        )
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": "[Shot 2] Elias stands alone.",
+                "overall_soundscape": "wind",
+                "non_diegetic_music": "N/A",
+            },
+            definitions,
+            segment_number=2,
+            conditioning_mode="continuation",
+            previous_visible_subject_ids={1},
+        )
+
+        subject_text = prompt.split("subject_definitions: ", 1)[1].split(
+            "\n\n", 1
+        )[0]
+        self.assertIn("<Subject 1>", subject_text)
+        self.assertNotIn("<Subject 2>", subject_text)
+        self.assertNotIn("Stranger's pose", subject_text)
+
+    def test_refresh_does_not_add_video_origin_to_visible_subject_definitions(self):
+        definitions = (
+            "<Subject 1> is Elias, a man referenced in <Picture 1>.\n"
+            "<Subject 2> is Stranger, male (S2), continued from <Video 1>."
+        )
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": "[Shot 2] Stranger stands alone.",
+                "overall_soundscape": "wind",
+                "non_diegetic_music": "N/A",
+            },
+            definitions,
+            segment_number=2,
+            conditioning_mode="clean_refresh",
+        )
+
+        subject_text = prompt.split("subject_definitions: ", 1)[1].split(
+            "\n\n", 1
+        )[0]
+        self.assertIn("<Subject 2> is Stranger, male (S2).", subject_text)
+        self.assertNotIn("continued from <Video 1>", subject_text)
+        self.assertNotIn("Stranger's pose", subject_text)
 
     def test_subject_alias_after_canonical_tag_is_not_duplicated(self):
         _definitions, description = minimax._filter_h3_subject_definitions(

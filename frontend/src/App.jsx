@@ -133,8 +133,8 @@ export default function App() {
       <header className="app-header">
         <div className="brand-mark">H3</div>
         <div>
-          <h1>MiniMax H3</h1>
-          <p>Continuous video automation</p>
+          <h1>MiniMaxH3 Continuous Video Automator</h1>
+          <p>Write a paragraph or a full story, define the characters, have MiniMaxH3 Continuous Video Generator create it.</p>
         </div>
         <div className="header-state">
           <span className={ready ? 'connection-dot online' : 'connection-dot'} />

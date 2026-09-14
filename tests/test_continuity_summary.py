@@ -295,8 +295,7 @@ class ContinuitySummaryTests(unittest.TestCase):
             1,
         )[0]
         self.assertIn(
-            "<Subject 1> Mark: position: by the door; condition: alert; "
-            "wardrobe: blue jacket",
+            "Mark: position: by the door; condition: alert; wardrobe: blue jacket",
             retention,
         )
         self.assertIn(

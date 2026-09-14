@@ -41,6 +41,7 @@ DEFAULT_SETTINGS = {
     "trim_frames": "2",
     "refresh": "4",
     "vision_continuity": "0",
+    "retention": False,
     "repair": "",
     "model": "ministral",
     "first_frame": False,
@@ -259,6 +260,7 @@ class MiniMaxBridge:
             "vision_continuity": _non_negative_int(
                 settings.get("vision_continuity", 0), "Vision continuity"
             ),
+            "retention": bool(settings.get("retention", False)),
             "resume": _positive_int(
                 settings.get("resume", 1), "Resume segment"
             ),
@@ -303,6 +305,10 @@ class MiniMaxBridge:
                 raise ValueError(f"LoRA {index} strength must be finite.")
             loras.append((name, strength))
         validated["loras"] = loras
+        lora_dir = settings.get("lora_dir", LORA_DIRECTORY)
+        validated["lora_dir"] = (
+            LORA_DIRECTORY if lora_dir is None else str(lora_dir).strip()
+        )
         validated["defined_images"] = _defined_images(
             settings.get("defined_images", [])
         )
@@ -348,6 +354,7 @@ class MiniMaxBridge:
             str(values["trim_frames"]),
             "--refresh",
             str(values["refresh"]),
+            *(("--retention",) if values["retention"] else ()),
             "--vision-continuity",
             str(values["vision_continuity"]),
             "--model",
@@ -430,6 +437,16 @@ class MiniMaxBridge:
                 "errors": "replace",
                 "bufsize": 1,
             }
+            child_env = self._env.copy()
+            if isinstance(effective_settings, dict):
+                for environment_name, setting_name in (
+                    ("MINIMAX_COMFY_URL", "comfyui_url"),
+                    ("MINIMAX_LM_STUDIO_URL", "lm_studio_url"),
+                ):
+                    value = str(effective_settings.get(setting_name, "")).strip()
+                    if value:
+                        child_env[environment_name] = value.rstrip("/")
+            popen_options["env"] = child_env
             if os.name == "nt":
                 popen_options["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
             else:
@@ -743,7 +760,7 @@ def main() -> None:
 
     bridge = MiniMaxBridge()
     window = webview.create_window(
-        "MiniMax H3 Video Automation",
+        "MiniMaxH3 Continuous Video Automator",
         url=FRONTEND_INDEX.as_uri(),
         js_api=bridge,
         width=1180,

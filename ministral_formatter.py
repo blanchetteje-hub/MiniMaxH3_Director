@@ -1676,6 +1676,17 @@ def _repair_non_speaking_ids(
     result[DESCRIPTION] = _clean_space(" ".join(repaired))
 
 
+def remove_non_speaking_speaker_ids(
+    description: str,
+    context: Mapping[str, Any] | None = None,
+) -> str:
+    """Remove visual-only speaker IDs at the Request 2 output boundary."""
+
+    result = {DESCRIPTION: str(description or "")}
+    _repair_non_speaking_ids(result, context or {})
+    return result[DESCRIPTION]
+
+
 def _subject_picture_map(context: Mapping[str, Any]) -> dict[int, list[int]]:
     definitions = str(context.get("subject_definitions", "") or "")
     result: dict[int, list[int]] = {}
@@ -2816,6 +2827,7 @@ __all__ = [
     "RULE_REGISTRY",
     "extract_inline_dialogue_subjects",
     "format_ministral_prompt",
+    "remove_non_speaking_speaker_ids",
     "sanitize_director_text",
     "validate_h3_dialogue_format",
     "validate_ministral_prompt",

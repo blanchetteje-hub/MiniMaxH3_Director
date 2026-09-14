@@ -366,6 +366,53 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn('- "forbidden phrase"', user_content)
         self.assertIn('- "Art"', user_content)
 
+    def test_phrase_exclusions_are_added_to_beat_generation_prompt(self):
+        phase = {
+            "phase_number": 1,
+            "beat_start": 1,
+            "beat_end": 2,
+            "required_end_state": "The action is complete.",
+        }
+        messages = minimax.build_beat_generation_messages(
+            "A story.",
+            2,
+            macro_arc={"phases": [phase]},
+            current_phase=phase,
+            phrase_exclusions=["forbidden phrase", "Art"],
+        )
+
+        user_content = messages[1]["content"]
+        self.assertIn("WORDS AND PHRASES NOT ALLOWED IN BEATS", user_content)
+        self.assertIn(
+            "Do not use any of the following words or phrases in any beat.",
+            user_content,
+        )
+        self.assertIn('- "forbidden phrase"', user_content)
+        self.assertIn('- "Art"', user_content)
+
+    def test_phrase_exclusions_are_added_to_story_arc_prompt(self):
+        messages = minimax.build_beat_arc_plan_messages(
+            "A story.",
+            5,
+            phrase_exclusions=["forbidden phrase"],
+        )
+
+        user_content = messages[1]["content"]
+        self.assertIn("WORDS AND PHRASES NOT ALLOWED IN BEATS", user_content)
+        self.assertIn('- "forbidden phrase"', user_content)
+
+    def test_phrase_exclusions_are_added_to_h3_formatter_prompt(self):
+        messages = minimax.build_h3_formatter_messages(
+            "Mark crosses the room.",
+            "T2VA",
+            6,
+            phrase_exclusions=["forbidden phrase"],
+        )
+
+        user_content = messages[1]["content"]
+        self.assertIn("WORDS AND PHRASES NOT ALLOWED IN DIRECTOR OUTPUT", user_content)
+        self.assertIn('- "forbidden phrase"', user_content)
+
     def test_request_segment_llm_passes_bundle_context_to_h3_formatter(self):
         request = Mock(side_effect=[
             {"raw_scene": "Mark crosses the room."},
@@ -384,6 +431,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "messages": [{"role": "user", "content": "Director input."}],
             "opening_state_sha256": "hash-2",
             "dialogue_exclusions": ["We must leave now!"],
+            "phrase_exclusions": ["forbidden phrase"],
         }
 
         with patch("minimax.ask_llm", request):
@@ -401,6 +449,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn("Mark starts beside the window.", formatter_user)
         self.assertIn("Mark crosses the room.", formatter_user)
         self.assertIn("We must leave now!", formatter_user)
+        self.assertIn('"forbidden phrase"', formatter_user)
         self.assertIn(
             "AUTHORITATIVE OPENING STATE:\nMark starts beside the window.",
             formatter_user,

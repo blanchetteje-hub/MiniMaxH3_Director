@@ -226,7 +226,7 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             conditioning_mode="clean_refresh",
         )
         self.assertIn("<Subject 2> Jenny", prompt)
-        self.assertIn("Jenny moves above <Subject 1> Amy", prompt)
+        self.assertIn("Jenny moves above Amy", prompt)
         self.assertIn("retention_analysis:", prompt)
 
     def test_append_validation_is_independent_of_exported_node_ids(self):
@@ -237,6 +237,53 @@ class WorkflowNameResolutionTests(unittest.TestCase):
             "renumbered append workflow",
             is_append=True
         )
+
+    def test_append_validation_reconnects_video_conditioning_graph(self):
+        workflow = copy.deepcopy(self.append)
+        conditioning_id, conditioning = minimax.find_workflow_node(
+            workflow,
+            "MiniMax H3 Reference to Video",
+            "append workflow",
+        )
+        load_video_id, _ = minimax.find_workflow_node(
+            workflow,
+            "Load_Video",
+            "append workflow",
+        )
+        _, guider = minimax.find_workflow_node(
+            workflow,
+            "Basic Guider",
+            "append workflow",
+        )
+        _, sampler = minimax.find_workflow_node(
+            workflow,
+            "SamplerCustomAdvanced",
+            "append workflow",
+        )
+        conditioning["inputs"]["ref_videos.ref_video_0"] = ["wrong", 1]
+        conditioning["inputs"]["ref_video_audios.ref_video_audio_0"] = [
+            "wrong",
+            1,
+        ]
+        guider["inputs"]["conditioning"] = ["wrong", 1]
+        sampler["inputs"]["latent_image"] = ["wrong", 1]
+
+        minimax.validate_workflow(
+            workflow,
+            "append workflow with stale links",
+            is_append=True,
+        )
+
+        self.assertEqual(
+            conditioning["inputs"]["ref_videos.ref_video_0"],
+            [load_video_id, 0],
+        )
+        self.assertEqual(
+            conditioning["inputs"]["ref_video_audios.ref_video_audio_0"],
+            [load_video_id, 2],
+        )
+        self.assertEqual(guider["inputs"]["conditioning"], [conditioning_id, 0])
+        self.assertEqual(sampler["inputs"]["latent_image"], [conditioning_id, 1])
 
     def test_append_validation_allows_any_number_of_reference_images(self):
         workflow = copy.deepcopy(self.append)

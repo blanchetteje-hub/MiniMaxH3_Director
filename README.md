@@ -1,48 +1,77 @@
-# MiniMax H3 Continuous Video Automation (MCVA)
+# MiniMaxH3 Continuous Video Automator
 
-Generate a continuous, story-driven video as a sequence of MiniMax H3 clips.
-The desktop GUI is the primary way to run the project. It brings generation
-controls, project-file editing, live progress, logs, and stop controls into one
-window. The command line remains available as an alternative for scripting,
-automation, and remote shells.
+> Write a paragraph or a full story, define the characters, have MiniMaxH3 Continuous Video Generator create it.
 
-## Recommended Requirements
-- 1 computer with a video card with 32GB VRAM and 80GB RAM
-- OR 2 computers with video cards with 16GB VRAM and 40GB RAM each
+MiniMaxH3 Continuous Video Automator turns a written story or creative brief
+into a continuous sequence of MiniMax H3 video clips. It uses LM Studio as the
+writer/director and ComfyUI as the renderer, then joins the clips into one MP4.
 
-## Minimum Requirements
-- computer(s) that can run ComfyUI and host an LLM
+The desktop app is the easiest way to use it. The command line is available for
+scripts, remote machines, and repeatable runs.
+
+This project does not provide the MiniMax H3 model weights, ComfyUI, or an LLM.
+You supply those separately and connect them through the setup below.
+
+## What it does
+
+- Accepts a paragraph, outline, or full story in `story.txt`.
+- Optionally turns the story into an ordered beat list and a saved story arc.
+- Uses `subjects.txt` and up to six reference images to keep characters and
+  visual identity consistent.
+- Asks LM Studio for one directed shot at a time and formats it for MiniMax H3.
+- Uses initial, continuation, and optional clean-refresh ComfyUI workflows.
+- Checkpoints successful segments so an interrupted run can resume.
+- Trims continuation overlap frames and writes `final.mp4` with FFmpeg.
+
+Each segment is one directed shot. The generator tracks beat completion,
+subject identity, wardrobe, props, camera state, and other continuity facts in
+`generation_state.json`.
+
+## Hardware and software requirements
+
+There is no single guaranteed hardware minimum because the required VRAM and
+RAM depend on the workflow resolution, segment length, and ComfyUI setup. As a
+practical starting point, use a GPU with about 16 GB VRAM and start at `0.2`
+megapixels. More demanding runs may need 32 GB VRAM and substantial system RAM,
+or two machines sharing the workload.
+
+You also need:
+
+- Windows 10/11 or a current Linux distribution.
+- Python 3.10 or newer.
+- A current [ComfyUI installation](https://docs.comfy.org/installation/).
+- [LM Studio](https://lmstudio.ai/download) with a loaded instruction-following
+  model and its local API server enabled.
+- [FFmpeg](https://ffmpeg.org/download.html), with both `ffmpeg` and `ffprobe`
+  available on `PATH`.
+- Enough disk space for MiniMax H3 model files, intermediate clips, and the
+  final video.
 
 ## Desktop GUI (primary interface)
 
 ![MiniMax H3 desktop GUI showing service configuration, generation controls, and runtime status](docs/images/minimaxH3Director.png)
 
-## Overview
+## How the generation works
 
-Minimax H3 is the first local model that is truly reliable with generating videos accurately and pays attention to timestamps, making it the first candidate worth trying to make full length short films.
+The application has three cooperating stages:
 
-This program is primarily a director, but it also has the ability to be the writer and editor.  It gives you exactly as much control as you want to have.
+1. **Writer:** if `beats.txt` is empty, LM Studio expands `story.txt` into a
+   macro story arc and then an ordered beat for each requested segment. You can
+   also write the beats yourself.
+2. **Director:** for each segment, LM Studio turns the active beat and the
+   committed continuity state into a structured shot, then formats it as a
+   MiniMax H3 audiovisual prompt. Python validates the result and keeps beat and
+   subject identities consistent.
+3. **Renderer/editor:** ComfyUI generates the first shot, continues from the
+   preceding shot, and optionally performs clean refreshes. FFmpeg removes the
+   configured overlap frames and joins the clips into `final.mp4`.
 
-**The only hard requirement is story.txt have text in it.**
+When the append workflow loads the preceding clip, it passes its final 3 seconds
+(72 frames at 24 fps) into the continuation workflow.
 
-***MCVA Process:***
-
-**WRITER**
-- *MCVA* will take the story and the number of beats desired and create an over-arching story arc (story_arc.json)
-- The Story Arc contains 'phases' which will incorporate a range of beats. The LLM will determine the number of beats per phase based on the story. The story arc has defining start/end beat requirements to keep consistency.
-- After the story arc is generated, the beat list will then be generated per phase.
-- When all beats have been filled, they are saved to beats.txt
-
-**EDITOR**
-- After every process, there is a validator (editor) that runs that validates:
-  - Each story arc phases are true to the story.txt
-  - Beats are true to the phases in the story arc
-  - Global validation of all phases
-  - Global validation of all beats
-- Every validator runs 10 times to try and correct any problems. After the tenth time, it will use the 10th results and move on. This is for long generations to support "fire and walk away".
-
-**DIRECTOR**
-- Every COMFYUI MiniMax H3 Prompt is validated that the prompt follows the corresponding beat
+The generator can run unattended for long jobs, but it cannot guarantee that an
+LLM or video model will produce a perfect shot every time. Start with a short,
+low-resolution test before committing to a longer story.
 
 ## GUI Launch
 
@@ -98,7 +127,7 @@ You need:
   can handle.
 - [Git](https://git-scm.com/downloads).
 - [Python 3.10 or newer](https://www.python.org/downloads/).
-- [ComfyUI 0.30.0 or newer](https://docs.comfy.org/installation/).
+- A current [ComfyUI installation](https://docs.comfy.org/installation/).
 - [LM Studio](https://lmstudio.ai/download).
 - [FFmpeg](https://ffmpeg.org/download.html), including both `ffmpeg` and
   `ffprobe` on `PATH`.
@@ -112,17 +141,17 @@ Complete these once, in order:
 
 1. Install Python and the project dependencies.
 2. Install or update ComfyUI.
-3. Install the six required custom-node packages.
-4. Download the seven model/LoRA files selected by the supplied workflows.
-5. Place six reference images in `ComfyUI/input` and update both workflow JSON
-   files to use them.
+3. Install the five required custom-node packages.
+4. Download the model, text encoder, VAE, and LoRA files selected by the
+   supplied workflows.
+5. Optionally place up to six reference images in `ComfyUI/input` and assign
+   them in both reference-to-video workflows.
 6. Load an LLM in LM Studio and start its local API server.
-7. Set connection and output-path environment variables if their defaults do
-   not match your system, then launch `desktop_app.py`.
+7. Set filesystem environment variables if their defaults do not match your
+   system, then launch `desktop_app.py`.
 8. Use **Files & configuration** in the GUI to create `story.txt`, `beats.txt`,
    and optionally `subjects.txt` and `phrase_exclusions.txt`.
-9. Add the custom node supplied in this repo.
-10. Complete the preflight checks, enter a short test run in **Generation
+9. Complete the preflight checks, enter a short test run in **Generation
     settings**, and select **Generate**.
 
 The following sections explain each step.
@@ -217,8 +246,8 @@ Install ComfyUI using the
 [official installation instructions](https://docs.comfy.org/installation/) or
 use an existing installation.
 
-MiniMax H3 support is native in ComfyUI 0.30.0 and newer. Update older
-installations before loading these workflows. The supplied workflows use native
+MiniMax H3 support is native in current ComfyUI releases. Update an older
+installation before loading these workflows. The supplied workflows use
 MiniMax H3, AV decoding, video creation, math-expression, and resolution nodes.
 
 Start ComfyUI and leave it running while the automation is active. Its default
@@ -260,7 +289,6 @@ If a package is unavailable in Manager, open PowerShell in
 
 ```powershell
 git clone https://github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo.git
-git clone https://github.com/kat3ri/ComfyUI-MiniMax-H3-Extend.git
 git clone https://github.com/kijai/ComfyUI-KJNodes.git
 git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git
 git clone https://github.com/adieyal/comfyui-dynamicprompts.git
@@ -273,12 +301,17 @@ used by ComfyUI, then restart ComfyUI. For a portable build, that is normally
 
 ### MiniMax H3 hybrid conditioning patch
 
-The `minimax-h3-hybrid-cond` custom-node package contains
-`model_base_patch.py`. This file is not part of `minimax.py`, the Save Latent
-node, or the core ComfyUI source. The package imports it automatically from its
-`__init__.py` when ComfyUI starts. It patches `MiniMaxH3.extra_conds` so the
-refresh workflow can combine its extracted first-frame keyframe with the normal
-reference images in one conditioning payload.
+The repository also contains an optional ComfyUI custom-node module in
+`__init__.py` for saving and loading MiniMax H3 audio/video latent checkpoints.
+The three supplied workflows do not require those nodes. The repository's
+`model_base_patch.py` is a compatibility patch for the external
+`minimax-h3-hybrid-cond` package and is only needed when that package's installed
+version lacks the defensive latent filtering described below.
+
+The patch is loaded by the external hybrid-conditioning package when ComfyUI
+starts. It patches `MiniMaxH3.extra_conds` so the refresh workflow can combine
+its extracted first-frame keyframe with the normal reference images in one
+conditioning payload.
 
 Some versions of this patch assume every keyframe dictionary contains a
 `latent` value. A conditioning pass may retain keyframe layout metadata without
@@ -292,7 +325,9 @@ KeyError: 'latent'
 The corrected patch filters both keyframes and references with
 `item.get("latent") is not None` before adding their latents. This matches the
 defensive behavior in ComfyUI's native MiniMax H3 implementation while keeping
-valid keyframe and reference latents in order. After installing the node, overwrite the model_base_patch.py in customnodes/minimax-h3-hybrid-cond folder with the file provided.  This is assuming they haven't patched it themselves by this point.
+valid keyframe and reference latents in order. After installing the node,
+overwrite its `model_base_patch.py` with the copy in this repository only if the
+installed package does not already include the fix.
 
 ### Optional SageAttention acceleration
 
@@ -309,14 +344,13 @@ The base model, text encoder, and VAEs are available from
 node and current Turbo weights are documented in
 [Larryvrh/ComfyUI-MiniMax-H3-Turbo](https://github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo).
 
-The supplied API workflows currently select these exact relative paths:
+The supplied API workflows currently select these relative paths:
 
 ```text
 ComfyUI/
 └── models/
     ├── diffusion_models/
-    │   ├── minimax_h3_fl2va_pruned_int8_convrot.safetensors
-    │   └── minimax_h3_ref2va_pruned_int8_convrot.safetensors
+    │   └── minimaxH3INT8INT4_ref2vaINT8Pruned.safetensors
     ├── text_encoders/
     │   └── qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors
     ├── vae/
@@ -324,39 +358,27 @@ ComfyUI/
     │   └── minimax_h3_video_vae_fp16.safetensors
     └── loras/
         └── MiniMaxH3/
-            └── minimax_h3_turbo_v4_step600_ema_pruned_comfyui.safetensors
+            └── minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors
 ```
 
 Nested model paths use `/` in the checked-in JSON. Python converts those paths
 to the separator expected by the current operating system before submitting a
 workflow, so the same JSON works on Windows and Linux.
 
-Both diffusion models are also required because each workflow uses the model
-family matched to its task:
-
-- The initial workflow uses `fl2va` with the general v4 Turbo LoRA.
-- The append workflow uses `ref2va` with the reference-to-video Turbo LoRA to
-  prioritize reference fidelity during continuation.
-
-> **Important filename note:** these are the custom/local filenames currently
-> selected by the checked-in workflows. Current public repositories use names
-> such as `minimax_h3_turbo_v4_step600_ema.safetensors` and
-> `minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors`. A new user must
-> either obtain the exact selected files or download compatible public weights,
-> choose those files in the corresponding **MiniMax-H3 Turbo LoRA** node, and
-> export updated API JSON. A differently named file is not selected
-> automatically.
-
-Do not interchange `fl2va` and `ref2va` as a setup shortcut. They are different
-model families for different conditioning modes, and each supplied workflow now
-selects its intended model explicitly.
+All three checked-in workflows currently select the same `ref2va` diffusion
+model and Turbo LoRA filename shown above. These are the filenames in this
+repository's JSON, not a promise that a download will use the same names. If
+you install compatible files with different names, select those files in the
+workflow nodes and export the workflows again in API format.
 
 After adding models, restart ComfyUI so its model lists refresh.
 
-## 5. Configure the six reference images
+## 5. Configure up to six reference images
 
-Both workflows expect six ordered reference images. Their order must stay
-consistent between the initial and append workflow:
+Reference images are optional, but they are useful for keeping characters,
+props, or locations consistent. The workflows support up to six ordered images;
+unused slots are disconnected automatically. Their order must stay consistent
+between the initial, append, and refresh workflows:
 
 | Prompt tag | Initial workflow input | Append workflow input |
 |---|---|---|
@@ -372,7 +394,7 @@ image from the ComfyUI input folder. It restores every valid `Load Image`
 connection to its exact numbered destination and disconnects missing or
 undecodable slots. For real identity continuity:
 
-1. Copy up to six reference images into `ComfyUI/input`.
+1. Copy the reference images into `ComfyUI/input`.
 2. In the initial and append workflows, assign them to the clearly titled
    `Reference Image 1` through `Reference Image 6` nodes in the same order. The
    refresh workflow receives the initial workflow's filenames automatically.
@@ -403,11 +425,12 @@ written; duplicate names are preserved. For each segment, the program removes
 the workflow's blank placeholder when the merged list is empty, reuses it for
 the first LoRA, and adds/chains as many additional `LoraLoaderModelOnly` nodes
 as needed in both API workflows. These specific LoRAs are looked for in the
-constant `LORA_DIRECTORY`.
+configured LoRA directory. The GUI and CLI both accept a custom `--lora_dir`
+directory; the default in this checkout is `/mnt/h/StableDiffusion/loras`.
 
-At startup, each global LoRA is verified under
-`MINIMAX_COMFYUI_ROOT/models/loras` immediately after the reference images are
-checked. Every verified LoRA and its strength are printed before generation.
+At startup, each global LoRA is verified in the configured directory immediately
+after the reference images are checked. Every verified LoRA and its strength are
+printed before generation.
 
 To automatically generate beats while applying one LoRA to every generated beat,
 put only a file-level directive in `beats.txt` (comments and blank lines are also
@@ -462,16 +485,18 @@ computer's LAN IP, and allow the port through its firewall.
 
 ## 7. Configure connections and paths
 
-Set connection and filesystem overrides in the terminal before launching the
-desktop app; the generator inherits them. This avoids editing Python. Linux
-defaults to `~/ComfyUI` and `~/ComfyUI/output`. The original Windows defaults
-are retained. Override any value that differs on your computer.
+The desktop app exposes ComfyUI and LM Studio URLs and passes the saved values
+to the generator. Filesystem overrides still come from environment variables.
+Linux defaults to `~/AI/ComfyUI/input` and `~/AI/ComfyUI/output`; Windows
+defaults to `H:\images\input` and `H:\images\output` in this checkout. Override
+any value that differs on your computer.
 
 Linux (`bash` or `zsh`):
 
 ```bash
 export MINIMAX_COMFYUI_ROOT="$HOME/ComfyUI"
 export MINIMAX_COMFYUI_OUTPUT="$HOME/ComfyUI/output"
+export MINIMAX_COMFYUI_INPUT="$HOME/ComfyUI/input"
 export MINIMAX_VIDEO_OUTPUT="$HOME/ComfyUI/output/video"
 export MINIMAX_COMFY_URL="http://127.0.0.1:8188"
 export MINIMAX_LM_STUDIO_URL="http://127.0.0.1:1234"
@@ -482,6 +507,7 @@ Windows PowerShell:
 ```powershell
 $env:MINIMAX_COMFYUI_ROOT = "C:\ComfyUI_windows_portable\ComfyUI"
 $env:MINIMAX_COMFYUI_OUTPUT = "H:\images\output"
+$env:MINIMAX_COMFYUI_INPUT = "H:\images\input"
 $env:MINIMAX_VIDEO_OUTPUT = "H:\images\output\video"
 $env:MINIMAX_COMFY_URL = "http://127.0.0.1:8188"
 $env:MINIMAX_LM_STUDIO_URL = "http://192.168.0.203:1234"
@@ -521,10 +547,12 @@ be edited directly in a text editor when the generator is not running.
 Write the source story or creative brief. It can include setting, characters,
 tone, dialogue, clothing, and desired camera behavior.
 
-When this directive is present, a separate compliance-edit request audits the
-candidate beats before they are saved. Python also verifies common explicit
-constraints such as exact phrase placement/count, prohibited words, required
-phrases, and an exact final sentence; failed checks trigger another correction.
+An optional `beat_instructions: [ ... ]` line can add mandatory requirements to
+the beat-generation and beat-review prompts. When it is present, a separate
+compliance-edit request audits the candidate beats before they are saved.
+Python also verifies common explicit constraints such as exact phrase
+placement/count, prohibited words, required phrases, and an exact final
+sentence; failed checks trigger another correction.
 
 An optional `gen_rules` directive supplies rules for every H3 segment-generation
 request. Put a one-line rule on its own line after the directive:
@@ -538,14 +566,27 @@ beat planning or Director context. Its contents are placed near the top of each
 Director request as `IMPORTANT: ...` and are also supplied to the final H3-content
 validation gate. Only one `gen_rules` directive is allowed.
 
-### `phrase_exclusions.txt` — optional beat exclusions
+### `phrase_exclusions.txt` — optional phrase exclusions
 
 Put one word or phrase per line. When this file exists, its nonblank entries are
-added to every beat-writing prompt and are prohibited in both generated and
-hand-authored beats. Matching is case-insensitive and uses complete word or
-phrase boundaries, so an excluded word such as `art` does not reject `cart`.
-Duplicate entries are ignored. After reference-image verification, startup
-prints that the file was found and reports the number of loaded entries.
+added to the story-arc, beat-writing, and both Director prompts. They are
+prohibited in generated and hand-authored beats. Matching is case-insensitive
+and uses complete word or phrase boundaries, so an excluded word such as `art`
+does not reject `cart`. Duplicate entries are ignored. After reference-image
+verification, startup prints that the file was found and reports the number of
+loaded entries.
+
+### `additional_states.txt` — optional continuity fields
+
+Use this file for extra comma-separated state labels that continuity prompts
+should pay attention to. For example:
+
+```text
+weather, time of day, emotional state, visible damage
+```
+
+The file is optional and is read from the project directory. The included
+`additional_states_example.txt` shows the intended format.
 
 ### `beats.txt` — optional beat tracking
 
@@ -595,10 +636,14 @@ Each valid macro arc returned by LM Studio is written as formatted JSON to
 `story_arc.json`, overwriting the previous contents. Its SHA-256 source hash is
 written alongside it in `story_arc.json.sha256`. When beats need to be generated,
 the saved arc is reused only when that sidecar matches the current `story.txt`
-source and the arc validates against the current segment count. A missing,
-malformed, or mismatched hash triggers generation of a new arc and overwrites
-both files. Clear either file to request a new arc on the next automatic beat
-generation.
+source and the arc validates against the current segment count. During
+`--generate-beats`, an existing non-empty `beats.txt` marks the prior arc as
+eligible for replacement; an empty or missing `beats.txt` preserves a matching
+arc so incomplete beat generation can resume from it. A mismatch between the
+requested beat count and the arc's declared count also triggers a new arc. A
+missing, malformed, or mismatched hash triggers generation of a new arc and
+overwrites both files. Clear either file to request a new arc on the next
+automatic beat generation.
 
 Automatically generated beat files include `# Phase N` markers. Video-created
 Subjects are retained in structured continuity state when a later phase starts.
@@ -671,9 +716,11 @@ a main character. Immediately before each beat-generation or compliance-review
 request, the program also verifies that the complete formatted subject list is
 present in the LLM prompt.
 
-Generated scene prose uses `<Subject N> Name` for visual identity and
-`Name (SN) says: <d>[English] ...</d>` for dialogue. `<Picture N>` is reserved
-for explicit reference-frame or composition anchors.
+Generated scene prose uses the subject's plain display name for visual identity
+and `Name (SN) says: <d>[English] ...</d>` for dialogue. Subject definitions
+retain their internal identity IDs, but the final H3 scene description does not
+automatically add `<Subject N>` before names. `<Picture N>` is reserved for
+explicit reference-frame or composition anchors.
 The filename is `subjects.txt`, not `subject_definitions.txt`.
 
 ### Continuity safeguards
@@ -715,9 +762,9 @@ Confirm all of the following:
 - `python -c "import requests"` succeeds.
 - `ffmpeg -version` and `ffprobe -version` succeed.
 - ComfyUI starts without reporting missing workflow nodes.
-- All seven base/LoRA/VAE/text-encoder files selected by the workflows appear in
-  ComfyUI.
-- Every reference image exists under `ComfyUI/input`.
+- All five model, VAE, text-encoder, and LoRA files selected by the workflows
+  appear in ComfyUI.
+- Every configured reference image exists under `ComfyUI/input`.
 - `MINIMAX_COMFYUI_OUTPUT` points to the real ComfyUI output directory.
 - `MINIMAX_COMFYUI_INPUT` points to the real ComfyUI input directory when it
   is not `ComfyUI/input`.
@@ -751,8 +798,10 @@ The GUI is the main control surface:
 3. Confirm or edit the project sources under **Files & configuration**.
 4. Set **Segment duration**, **Total duration**, and **Megapixels**.
 5. Choose **New run**, **Resume**, or **Repair**.
-6. Adjust **Pipeline controls** or add ordered global LoRAs if needed.
-7. Select **Generate** and monitor **Status** and **Live output**.
+6. If `beats.txt` is blank, enter a beat count and select **Generate Story**;
+   otherwise review or write the beats yourself.
+7. Adjust **Pipeline controls** or add ordered global LoRAs if needed.
+8. Select **Generate** and monitor **Status** and **Live output**.
 
 Settings are saved in `gui_settings.json` for the next launch. The GUI exposes
 the same generation options as the CLI:
@@ -765,8 +814,11 @@ the same generation options as the CLI:
 | **Steps** | Set BasicScheduler sampling steps for all workflows. |
 | **Trim frames** | Remove this many frames from the start of each segment after the first during stitching; defaults to `2`. Set to `0` to disable the trim. |
 | **Refresh interval** | Use the refresh workflow on every Nth segment. |
+| **Vision continuity** | Ask an image-capable LM Studio model to inspect rendered frames on a cadence; `0` disables this. |
+| **Retention analysis** | Include structured retention guidance in non-initial H3 prompts. |
 | **Formatter** | Match either the Ministral or Qwen response format to the model loaded in LM Studio. |
 | **First-frame instructions** | Add opening-frame instructions for `<Picture 1>` on segment 1. |
+| **LoRA Path** | Directory used to verify global and beat-specific LoRA files. |
 | **Global LoRAs** | Apply any number of named LoRAs, in order, to every beat. |
 | **Defined Images** | Map up to six ordered paths to `--image1` through `--image6` and override the matching reference node in all three workflows. |
 
@@ -783,7 +835,7 @@ app.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--repair SEGMENT] [--model {ministral,qwen}] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--vision-continuity N] [--repair SEGMENT] [--model {ministral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -799,11 +851,24 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
 | `--trim-frames FRAMES` | Trim this many leading frames from every segment after the first when stitching; defaults to `2`, and `0` disables the trim. |
 | `--refresh SEGMENTS` | Auto refresh on every Nth segment using `Minimax_auto_refresh_API.json`; defaults to every `4` segments. |
+| `--retention` | Add retention analysis to non-initial H3 prompts; disabled by default. |
+| `--vision-continuity N` | Run rendered-frame continuity checks every `N` segments; `0` disables them, `1` checks every segment, and larger values check on a cadence. |
 | `--repair SEGMENT` | Rerender one existing middle segment using its checkpoint and neighboring clips; cannot be combined with a resume segment other than `1`. |
 | `--model {ministral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `ministral`. |
+| `--lora_dir DIRECTORY` | Directory containing LoRA files; defaults to `/mnt/h/StableDiffusion/loras` in this checkout. |
 | `--image1 PATH` through `--image6 PATH` | Override the corresponding numbered reference image in the initial, append, and refresh workflows. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |
 | `ff` or `--ff` | Add opening-frame instructions for `<Picture 1>` when generating segment 1; defaults to disabled. |
+
+To generate only the story arc and beats, without contacting ComfyUI or
+rendering video, use:
+
+```powershell
+python minimax.py --generate-beats 12
+```
+
+The count is the number of beats to write. The generated beats are saved to
+`beats.txt`, and the reusable macro plan is saved to `story_arc.json`.
 
 For example, this applies two global LoRAs to every segment; any LoRAs declared
 on the active beat are added after them:
@@ -829,9 +894,9 @@ python minimax.py 5 60 0.5 --refresh 5
 
 Segments 5 and 10 use `Minimax_auto_refresh_API.json`. Before each refresh, the
 program extracts the exact last frame of the preceding segment into the ComfyUI
-input folder, assigns it to `Refresh First Frame`, copies all six reference-image
-settings from the initial workflow, and prints an `AUTO REFRESH` notice. The
-following segments return to the normal append workflow until the next multiple
+input folder, assigns it to `Refresh First Frame`, copies the configured
+reference-image settings from the initial workflow, and prints an `AUTO REFRESH`
+notice. The following segments return to the normal append workflow until the next multiple
 of five. Segment 1 always uses the initial workflow.
 
 ### Example: resume at segment 12
@@ -855,10 +920,12 @@ original inputs or start a new run.
 | File or folder | Purpose |
 |---|---|
 | `generation_state.json` | Atomic checkpoint and runtime source of truth containing settings, director results, beat state, canonical Subject registry/identity data, committed structured continuity state, per-segment identity snapshots, internal video-created subject definitions, and video paths. |
-| `beat_progress.txt` | Readable DONE/NEXT/TODO beat checklist. |
-| ComfyUI `output/video/segment_*.mp4` | Individual generated clips. |
-| ComfyUI `output/video/list.txt` | Automatically generated FFmpeg concat list. |
-| ComfyUI `output/video/final.mp4` | Final concatenated movie. |
+| `beats.txt` | Ordered beats and optional beat-specific LoRA directives. |
+| `prompt_history.txt` | JSON records of the normalized LM Studio requests and response metadata. |
+| Configured video output/`segment_*.mp4` | Individual generated clips. |
+| Configured video output/`continuation_frames/` | Continuation-frame videos used by the append workflow. |
+| Configured video output/`vision_frames/` | Extracted frames used by optional vision continuity checks. |
+| Configured video output/`final.mp4` | Final concatenated movie. |
 
 ## Workflow validation
 
@@ -869,8 +936,9 @@ workflow JSON and the named nodes it controls:
 - `Prompt`
 - `RandomNoise`
 - `Save Video`
-- `Resolution Selector` in the initial workflow
-- `Reference Image 1` through `Reference Image 6` in both workflows
+- `Resolution Selector` in the initial, append, and refresh workflows
+- `Reference Image 1` through `Reference Image 6` in all three workflows
+- `Refresh First Frame` in the refresh workflow
 - `Load_Video` connected as the previous-video input in the append workflow
 - The append duration/math, prompt, previous-video, reference-image,
   conditioning, decoding, and save-video connections
@@ -947,7 +1015,7 @@ render is still pending; only a verified render marks the segment resumable.
 
 ### “Missing ComfyUI node named ...”
 
-1. Update ComfyUI to 0.30.0 or newer.
+1. Update ComfyUI to a current release.
 2. Install every custom-node package listed above.
 3. Restart ComfyUI and inspect its console for import errors.
 4. If you renamed a controlled node, restore its expected title and export the
@@ -1002,9 +1070,10 @@ the failed segment.
 - Confirm the folder is writable.
 - Delete no `segment_*.mp4` files until finalization finishes.
 
-Python performs stitching directly. On Windows, `stitch.bat` can optionally be
-copied beside the generated `list.txt` and run manually to repeat only the
-final concatenation step.
+Python performs stitching directly and cleans up its temporary FFmpeg list.
+On Windows, `stitch.bat` is an optional separate helper: place it beside a
+manually prepared `list.txt` of video paths if you want to repeat a fixed
+two-frame-overlap stitch.
 
 To show a full Python traceback for an unexpected failure:
 
@@ -1028,6 +1097,8 @@ MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
 | `docs/images/minimaxH3Director.png` | Desktop GUI screenshot used in this README. |
 | `gui_settings.json` | Settings saved by the desktop interface. |
 | `minimax.py` | Generation engine and command-line interface. |
+| `__init__.py` | Optional ComfyUI nodes for H3 AV latent save/load. |
+| `model_base_patch.py` | Optional compatibility patch for hybrid conditioning. |
 | `Minimax_auto_API.json` | Initial reference-to-video API workflow. |
 | `Minimax_auto_append_API.json` | Video-continuation API workflow. |
 | `Minimax_auto_refresh_API.json` | Auto-refresh reference-to-video workflow used by `--refresh`. |
@@ -1035,7 +1106,9 @@ MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
 | `story_arc.json` | Persisted macro story arc reused by automatic beat generation when valid. |
 | `story_arc.json.sha256` | SHA-256 of the `story.txt` source associated with the persisted arc. |
 | `beats.txt` | Ordered story events; blank triggers automatic beat generation. |
-| `phrase_exclusions.txt` | Optional newline-delimited words and phrases prohibited in beats. |
+| `phrase_exclusions.txt` | Optional newline-delimited words and phrases supplied to story-arc, beat, and Director prompts and prohibited in beats. |
+| `additional_states.txt` | Optional comma-separated continuity fields. |
 | `subjects.txt` | Optional subject/reference definitions. |
+| `story_example.txt`, `subjects_example.txt`, `additional_states_example.txt` | Example input formats. |
 | `stitch.bat` | Optional Windows-only FFmpeg concat helper. |
 | `requirements.txt` | Python package requirements. |

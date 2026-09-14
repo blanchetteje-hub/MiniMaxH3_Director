@@ -107,6 +107,21 @@ class DesktopBridgeTests(unittest.TestCase):
         self.assertEqual(command[command.index("--model") + 1], "qwen")
         self.assertEqual(command[command.index("--trim-frames") + 1], "5")
 
+    def test_build_command_forwards_retention_and_lora_directory(self):
+        settings = dict(
+            BASE_SETTINGS,
+            retention=True,
+            lora_dir="/tmp/custom-loras",
+        )
+
+        command = self.make_bridge().build_command(settings)
+
+        self.assertIn("--retention", command)
+        self.assertEqual(
+            command[command.index("--lora_dir") + 1],
+            "/tmp/custom-loras",
+        )
+
     def test_build_command_maps_defined_images_to_numbered_arguments(self):
         settings = dict(
             BASE_SETTINGS,

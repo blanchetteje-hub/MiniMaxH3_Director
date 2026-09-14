@@ -10,6 +10,7 @@ const INITIAL_SETTINGS = {
   trim_frames: '2',
   refresh: '4',
   vision_continuity: '0',
+  retention: false,
   repair: '',
   model: 'ministral',
   first_frame: false,
@@ -47,6 +48,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
           trim_frames: savedSettings.trim_frames ?? current.trim_frames,
           refresh: savedSettings.refresh ?? current.refresh,
           vision_continuity: savedSettings.vision_continuity ?? current.vision_continuity,
+          retention: savedSettings.retention ?? current.retention,
           repair: savedSettings.repair ?? current.repair,
           model: savedSettings.model ?? current.model,
           first_frame: savedSettings.first_frame ?? current.first_frame,
@@ -316,6 +318,17 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               </select>
             </label>
           </div>
+          <label className="checkbox-field">
+            <input
+              type="checkbox"
+              checked={settings.retention}
+              onChange={(event) => setField('retention', event.target.checked)}
+              disabled={disabled}
+            />
+            <span>
+              Include retention analysis <code>--retention</code>
+            </span>
+          </label>
           <label className="checkbox-field">
             <input
               type="checkbox"

@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -120,6 +121,17 @@ class GenerateBeatsCliTests(unittest.TestCase):
 
         self.assertEqual(result, ["New beat"])
         load.assert_called_once_with("beats.txt", required=False)
+        self.assertTrue(generated.call_args.kwargs["reuse_story_arc"])
+
+    def test_story_arc_count_mismatch_is_treated_as_a_cache_miss(self):
+        raw_arc = json.dumps({"phases": [{"beat_start": 1, "beat_end": 3}]})
+        with mock.patch(
+            "minimax.load_text_file",
+            side_effect=[raw_arc, minimax.hash_story_arc_source("Story")],
+        ):
+            result = minimax.load_story_arc("story_arc.json", 4, "Story")
+
+        self.assertIsNone(result)
 
 
 class GenerateBeatsDesktopTests(unittest.TestCase):

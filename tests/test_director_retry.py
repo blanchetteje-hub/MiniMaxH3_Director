@@ -81,6 +81,38 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(parsed["detailed_description"], "[Shot 1] Werewolf enters.")
         self.assertEqual(parsed["subject_genders"], {"Werewolf": "unknown"})
 
+    @mock.patch("minimax.ask_llm")
+    def test_request_2_removes_non_speaking_subject_ids_before_handoff(
+        self, ask_llm
+    ):
+        bundle = segment_bundle()
+        bundle["subject_definitions"] = (
+            "<Subject 1> is Alice, referenced in <Picture 1>."
+        )
+        ask_llm.side_effect = [
+            "Alice walks over to the window.",
+            formatter_response(
+                "[Shot 1] Alice (S1) walked over to the window."
+            ),
+        ]
+
+        payload = minimax.request_segment_llm(
+            bundle,
+            [],
+            "run-id",
+            {"source_sha256": "source-hash"},
+        )
+
+        description = payload["llm_result"]["detailed_description"]
+        self.assertIn("Alice walked over to the window.", description)
+        self.assertNotIn("Alice (S1)", description)
+
+        speaking = minimax.parse_h3_formatter_result(
+            formatter_response("[Shot 1] Alice (S1) says: <d>[English] Hi.</d>"),
+            subject_definitions=bundle["subject_definitions"],
+        )
+        self.assertIn("Alice (S1) says:", speaking["detailed_description"])
+
     @mock.patch("minimax.append_prompt_history")
     @mock.patch("minimax.requests.post")
     def test_h3_response_format_repairs_malformed_json(self, post, _history):
@@ -166,7 +198,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
         self.assertNotIn("subject_genders", prompt)
         self.assertNotIn('{"Amy": "female"}', prompt)
-        self.assertIn("[Shot 1] <Subject 1> Amy walks.", prompt)
+        self.assertIn("[Shot 1] Amy walks.", prompt)
         self.assertIn("Reference Image 1 establishes Amy's identity.", prompt)
 
     def test_ministral_asterisks_never_reach_final_h3_prompt(self):
@@ -266,7 +298,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
         self.assertNotIn("```", prompt)
         self.assertIn("Reference alignment: Amy's identity and the cabin remain consistent.", prompt)
-        self.assertIn("[Shot 1] <Subject 1> Amy enters the cabin.", prompt)
+        self.assertIn("[Shot 1] Amy enters the cabin.", prompt)
         self.assertIn("Footsteps on the wooden floor.", prompt)
         self.assertIn("non_diegetic_music: Soft piano undercurrent.", prompt)
 
@@ -523,6 +555,99 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "[Shot 1] Mark enters the room quietly.",
         )
         self.assertEqual(payload["llm_result"]["overall_soundscape"], "Room tone.")
+
+    @mock.patch("minimax.ask_llm")
+    def test_segment_llm_retries_director_request_2_on_timestamp_mismatch(
+        self, ask_llm):
+        raw_scene = (
+            "At 00:00.0, Mark enters the room.\n"
+            "At 00:02.500, Mark looks toward the window."
+        )
+        missing_timestamp = formatter_response(
+            "[Shot 1] Mark enters the room. At 00:00.000 seconds, "
+            "Mark looks toward the window."
+        )
+        corrected = formatter_response(
+            "[Shot 1] Mark enters the room. At 00:00.000 seconds, "
+            "Mark enters. At 00:02.500 seconds, Mark looks toward the window."
+        )
+        ask_llm.side_effect = [raw_scene, missing_timestamp, corrected]
+
+        payload = minimax.request_segment_llm(
+            segment_bundle(),
+            [],
+            "run-id",
+            {"source_sha256": "source-hash"},
+        )
+
+        self.assertEqual(ask_llm.call_count, 3)
+        self.assertEqual(
+            [
+                call.kwargs["history_metadata"]["attempt"]
+                for call in ask_llm.call_args_list
+            ],
+            [1, 2, 2],
+        )
+        self.assertIn(
+            "TIMESTAMP VALIDATION FAILURE",
+            ask_llm.call_args_list[2].args[0][-1]["content"],
+        )
+        self.assertEqual(
+            payload["llm_result"]["detailed_description"],
+            corrected["detailed_description"],
+        )
+
+    @mock.patch("minimax.ask_llm")
+    def test_segment_llm_does_not_require_opening_timestamp_match(self, ask_llm):
+        raw_scene = "At 00:00.000, Mark enters the room."
+        formatted = formatter_response("[Shot 1] Mark enters the room.")
+        ask_llm.side_effect = [raw_scene, formatted]
+
+        payload = minimax.request_segment_llm(
+            segment_bundle(),
+            [],
+            "run-id",
+            {"source_sha256": "source-hash"},
+        )
+
+        self.assertEqual(ask_llm.call_count, 2)
+        self.assertEqual(
+            payload["llm_result"]["detailed_description"],
+            formatted["detailed_description"],
+        )
+
+    @mock.patch("minimax.ask_llm")
+    def test_segment_llm_uses_last_timestamp_mismatch_after_ten_retries(
+        self, ask_llm):
+        raw_scene = (
+            "At 00:00.000, Mark enters the room.\n"
+            "At 00:02.000, Mark looks toward the window."
+        )
+        invalid = formatter_response(
+            "[Shot 1] Mark enters the room. At 00:00.000 seconds, "
+            "Mark enters."
+        )
+        ask_llm.side_effect = [raw_scene] + [invalid] * 10
+
+        with mock.patch("builtins.print") as printed:
+            payload = minimax.request_segment_llm(
+                segment_bundle(),
+                [],
+                "run-id",
+                {"source_sha256": "source-hash"},
+            )
+
+        self.assertEqual(ask_llm.call_count, 11)
+        self.assertEqual(
+            payload["llm_result"]["detailed_description"],
+            invalid["detailed_description"],
+        )
+        self.assertIn(
+            "WARNING: Director Request 2 timestamp validation failed after 10 attempts",
+            "\n".join(
+                str(call.args[0]) for call in printed.call_args_list if call.args
+            ),
+        )
 
     @mock.patch("minimax.ask_llm")
     def test_segment_llm_uses_last_output_after_ten_formatter_failures(
