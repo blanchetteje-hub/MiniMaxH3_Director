@@ -546,6 +546,27 @@ PERSISTENT_STATE_CONFLICT_ISSUE_TYPE = "persistent_state_conflict"
 
 ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE = "adjacent_physical_transition"
 
+GLOBAL_FIDELITY_ISSUE_TYPES = (
+    "required_source_event_missing",
+    "source_event_out_of_order",
+    "missing_prerequisite",
+    PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
+    "phase_required_end_state",
+    "repeated_process_incomplete",
+    "unsupported_major_event",
+)
+
+# These issue types are direct source/state comparisons.  They still require a
+# well-formed concrete requirement and problem before they may bypass semantic
+# verification.
+VERIFIER_BYPASS_ISSUE_TYPES = frozenset({
+    "phase_required_end_state",
+    "missing_prerequisite",
+    "required_source_event_missing",
+})
+
+ADJACENT_AUDIT_WINDOW_SIZE = 7
+
 BEAT_PHASE_VALIDATION_ISSUE_TYPES = (
     "missing_end_state",
     "next_phase_scope_creep",
@@ -6460,6 +6481,10 @@ def ask_llm(
         "beat_generation",
         "beat_instruction_review",
         "beat_plan_audit",
+        "beat_adjacent_continuity_audit",
+        "beat_global_fidelity_audit",
+        "beat_blocker_verification",
+        "beat_blocker_localization",
         "beat_plan_repair",
         "beat_plan_verify",
     }
@@ -6920,72 +6945,6 @@ def build_beat_phase_validation_response_format(beat_start=None, beat_end=None):
     }
 
 
-# Build beat plan audit response format.
-def build_beat_plan_audit_response_format(total_segments=None):
-    beat_id_schema = {"type": "integer", "minimum": 1}
-    if total_segments is not None:
-        total_segments = int(total_segments)
-        if total_segments <= 0:
-            raise ValueError("Beat-plan auditing requires at least one segment.")
-        beat_id_schema["maximum"] = total_segments
-    return {
-        "type": "json_schema",
-        "json_schema": {
-            "name": "story_beat_plan_audit",
-            "strict": True,
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "valid": {"type": "boolean"},
-                    "macro_arc_consistent_with_source": {"type": "boolean"},
-                    "blocking_issues": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "beat_start": {
-                                    **beat_id_schema,
-                                },
-                                "beat_end": {
-                                    **beat_id_schema,
-                                },
-                                "type": {"type": "string", "minLength": 1},
-                                "source_requirement": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                },
-                                "problem": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                },
-                            },
-                            "required": [
-                                "beat_start",
-                                "beat_end",
-                                "type",
-                                "source_requirement",
-                                "problem",
-                            ],
-                            "additionalProperties": False,
-                        },
-                    },
-                    "warnings": {
-                        "type": "array",
-                        "items": {"type": "string", "minLength": 1},
-                    },
-                },
-                "required": [
-                    "valid",
-                    "macro_arc_consistent_with_source",
-                    "blocking_issues",
-                    "warnings",
-                ],
-                "additionalProperties": False,
-            },
-        },
-    }
-
-
 # Beat ids for repair ranges.
 def beat_ids_for_repair_ranges(repair_ranges, beat_end=None):
     if beat_end is not None:
@@ -7086,6 +7045,7 @@ def build_beat_arc_plan_messages(
     subject_information="",
     correction="",
     phrase_exclusions=(),
+    beat_instructions="",
 ):
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
     phrase_exclusions_text = format_phrase_exclusions_section(phrase_exclusions)
@@ -7124,6 +7084,11 @@ required_end_state is the concrete handoff state that must be true at the END
 of that phase before the next phase starts. Do not put next-phase progression in
 the current phase merely to make the arc feel complete.
 
+required_end_state may contain only states explicitly required by the SOURCE
+STORY or beat instructions, or states logically necessary for a required source
+event. Do not promote optional injuries, wardrobe, emotions, props, damage,
+exhaustion, or other plausible embellishments into hard requirements.
+
 Preserve required events, order, premise, and ending. Connective detail is
 allowed, but do not introduce unsupported major characters, transformations,
 procedures, mythology, timelines, loops, resurrection, or other plot mechanics.
@@ -7156,6 +7121,9 @@ Story:
 
 MAIN CHARACTER(S):
 {subject_text}
+
+EXPLICIT BEAT INSTRUCTIONS
+{str(beat_instructions or '').strip() or 'N/A'}
 
 TOTAL BEATS:
 {total_segments}
@@ -7380,6 +7348,7 @@ def build_beat_arc_fidelity_messages(
     story,
     macro_arc,
     subject_information="",
+    beat_instructions="",
 ):
     subject_text = str(subject_information or "").strip() or "N/A"
     return [
@@ -7409,14 +7378,19 @@ Set valid=false only if the arc:
   those stages should not all be merged into one catch-all phase; or
 - fails to establish concrete clothing when a defined human Subject is first
   shown. A human Subject introduced later may establish clothing in that later
-  introduction phase.
+  introduction phase; or
+- contains a required_end_state clause that is not explicitly authorized by the
+  SOURCE STORY or beat instructions and is not logically necessary for a
+  required source event. Reject optional injuries, wardrobe, emotions, props,
+  environmental damage, exhaustion, or other merely plausible embellishments.
 
 Do NOT reject merely because phase sizes are unequal or because one long process
 uses most of the beats. A one-phase arc is valid when the source truly has one
 continuous narrative purpose with no meaningful stage change.
 
 Do not critique wording, pacing, minor visual details, or screenplay quality.
-When uncertain, return valid=true.
+For required_end_state authorization, uncertainty is not authorization; return
+valid=false when a clause may be an optional invention.
 
 SOURCE STORY
 --- STORY START ---
@@ -7425,6 +7399,9 @@ SOURCE STORY
 
 DEFINED SUBJECTS
 {subject_text}
+
+EXPLICIT BEAT INSTRUCTIONS
+{str(beat_instructions or '').strip() or 'N/A'}
 
 PROPOSED MACRO STORY ARC
 {json.dumps(macro_arc, ensure_ascii=False, indent=2)}
@@ -8029,47 +8006,37 @@ def format_macro_phase_boundaries(macro_arc):
     return "\n".join(lines) or "N/A"
 
 
-# Return a compact schema for verifying only already-frozen blockers.
-def build_beat_plan_verification_response_format(issue_ids):
-    """Return a compact schema for verifying only already-frozen blockers."""
-    issue_ids = sorted(set(int(issue_id) for issue_id in issue_ids))
-    if not issue_ids:
-        raise ValueError("Beat-plan verification requires at least one issue ID.")
+# Build the compact candidate-verification schema.
+def build_candidate_blocker_verification_response_format(issue_id):
+    issue_id = int(issue_id)
+    if issue_id <= 0:
+        raise ValueError("Candidate verification requires a positive issue ID.")
     return {
         "type": "json_schema",
         "json_schema": {
-            "name": "story_beat_plan_verification",
+            "name": "story_candidate_blocker_verification",
             "strict": True,
             "schema": {
                 "type": "object",
                 "properties": {
-                    "unresolved_issue_ids": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer",
-                            "enum": issue_ids,
-                        },
-                        "uniqueItems": True,
-                    },
+                    "decision": {"type": "string", "enum": ["BLOCK", "DISCARD"]},
+                    "reason": {"type": "string", "minLength": 1},
                 },
-                "required": ["unresolved_issue_ids"],
+                "required": ["decision", "reason"],
                 "additionalProperties": False,
             },
         },
     }
 
 
-# Parse a verifier response without permitting new blocker identities.
-def parse_beat_plan_verification(
+def parse_candidate_blocker_verification(
     raw_result,
-    issue_ids,
+    issue_id,
     formatter=None,
     llm_request=None,
 ):
-    """Parse a verifier response without permitting new blocker identities."""
+    """Parse one candidate decision without permitting new issue identities."""
     formatter = formatter or ACTIVE_FORMATTER
-    allowed_ids = sorted(set(int(issue_id) for issue_id in issue_ids))
-    allowed = set(allowed_ids)
     candidate = raw_result
     if isinstance(candidate, str):
         candidate = formatter.sanitize_generated_text(candidate)
@@ -8078,369 +8045,504 @@ def parse_beat_plan_verification(
             if isinstance(candidate, UnrepairedJSON):
                 return candidate
         except json.JSONDecodeError as error:
-            raise ValueError(
-                "The beat-plan verification response must be valid JSON."
-            ) from error
-    if not isinstance(candidate, dict) or set(candidate) != {"unresolved_issue_ids"}:
-        raise ValueError(
-            "The beat-plan verification response must contain only "
-            "'unresolved_issue_ids'."
-        )
-    unresolved = candidate["unresolved_issue_ids"]
-    if not isinstance(unresolved, list):
-        raise ValueError("'unresolved_issue_ids' must be an array.")
-    normalized = []
-    seen = set()
-    for raw_issue_id in unresolved:
-        if isinstance(raw_issue_id, bool) or not isinstance(raw_issue_id, int):
-            raise ValueError("Every unresolved issue ID must be an integer.")
-        if raw_issue_id not in allowed:
-            raise ValueError(
-                f"Verifier returned unknown frozen issue ID {raw_issue_id}."
-            )
-        if raw_issue_id in seen:
-            raise ValueError(
-                f"Verifier returned duplicate frozen issue ID {raw_issue_id}."
-            )
-        seen.add(raw_issue_id)
-        normalized.append(raw_issue_id)
-    return sorted(normalized)
+            raise ValueError("The blocker verification response must be valid JSON.") from error
+    allowed_fields = {"decision", "reason"}
+    legacy_fields = {"issue_id", "decision", "reason"}
+    if not isinstance(candidate, dict) or set(candidate) not in (allowed_fields, legacy_fields):
+        raise ValueError("The blocker verification response must contain only decision and reason.")
+    if "issue_id" in candidate and candidate["issue_id"] != int(issue_id):
+        raise ValueError("The blocker verifier returned the wrong issue ID.")
+    if candidate["decision"] not in {"BLOCK", "DISCARD"}:
+        raise ValueError("The blocker verifier decision must be BLOCK or DISCARD.")
+    if not isinstance(candidate["reason"], str) or not candidate["reason"].strip():
+        raise ValueError("The blocker verifier reason must be non-empty.")
+    return {
+        "decision": candidate["decision"],
+        "reason": " ".join(candidate["reason"].split()),
+    }
 
 
-# Verify only frozen blockers; never discover or redefine new blockers.
-def build_beat_plan_verification_messages(
-    story,
-    total_segments,
-    beats,
-    macro_arc,
-    frozen_issues,
-    pending_issue_ids,
-    subject_information="",
-):
-    """Verify only frozen blockers; never discover or redefine new blockers."""
-    subject_text = str(subject_information or "").strip() or "N/A"
-    numbered_beats = "\n".join(
-        f"Beat {number}: {beat}" for number, beat in enumerate(beats, start=1)
+def _numbered_beat_range(beats, beat_start, beat_end):
+    return "\n".join(
+        f"Beat {number}: {beats[number - 1]}"
+        for number in range(beat_start, beat_end + 1)
     )
-    phase_boundaries = format_macro_phase_boundaries(macro_arc)
-    pending_issue_ids = sorted(set(int(issue_id) for issue_id in pending_issue_ids))
-    issue_sections = []
-    for issue_id in pending_issue_ids:
-        if issue_id <= 0 or issue_id > len(frozen_issues):
-            raise ValueError(f"Unknown frozen beat-plan issue ID {issue_id}.")
-        issue_sections.append(
-            f"ISSUE {issue_id}\n"
-            + json.dumps(frozen_issues[issue_id - 1], ensure_ascii=False, indent=2)
-        )
-    frozen_text = "\n\n".join(issue_sections)
+
+
+def build_candidate_blocker_verification_messages(
+    issue,
+    issue_id,
+    beats,
+    story="",
+    macro_arc=None,
+):
+    """Build minimum relevant context for one proposed blocker."""
+    issue = dict(issue or {})
+    issue_id = int(issue_id)
+    beat_start = max(1, int(issue.get("beat_start", 1)))
+    beat_end = min(len(beats), max(beat_start, int(issue.get("beat_end", beat_start))))
+    if issue.get("type") == ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE:
+        beat_start = max(1, beat_end - 1)
+        beat_end = min(len(beats), beat_end)
+    relevant_beats = _numbered_beat_range(beats, beat_start, beat_end) if beats else "N/A"
+    source_context = ""
+    if issue.get("type") != ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE:
+        phase = story_arc_phase_for_beat(macro_arc or {}, beat_start)
+        source_context = f"""
+SOURCE REQUIREMENT
+{issue.get('source_requirement', 'N/A')}
+
+SOURCE CONTEXT
+{story or 'N/A'}
+
+APPLICABLE MACRO PHASE
+{json.dumps(phase, ensure_ascii=False) if phase else 'N/A'}"""
     return [
         {
             "role": "system",
             "content": (
-                "You are a narrow beat-plan repair verifier. Verify only the "
-                "listed frozen issues. You are forbidden from discovering, "
-                "inventing, broadening, renaming, or relocating blockers. "
-                "Return only the requested JSON object."
+                "You verify an already-proposed blocking issue. Do not invent "
+                "off-screen actions, movements, object handling, entrances, exits, "
+                "room layouts, hidden subjects, causes, repairs, or other "
+                "explanations. A physical or persistent state explicitly established "
+                "by a supplied beat remains true until another supplied beat "
+                "explicitly changes it. For adjacent continuity, a missing transition "
+                "remains missing unless Beat N or Beat N+1 actually describes it. "
+                "Physical plausibility alone does not resolve a continuity gap. "
+                "Do not justify DISCARD using could have, may have, might have, "
+                "possibly, implied off-screen, or equivalent speculation. Return BLOCK "
+                "when the supplied evidence directly establishes the violation. "
+                "Return DISCARD only when the proposed issue depends on an unsupported "
+                "assumption or misreads the supplied beats. Do not find new issues. "
+                "Return a compact JSON object."
             ),
         },
         {
             "role": "user",
             "content": f"""
-Verify the current COMPLETE {total_segments}-beat plan ONLY against the frozen
-issues listed below.
+ISSUE ID: {issue_id}
+PROPOSED BLOCKER
+{json.dumps(issue, ensure_ascii=False, indent=2)}
 
-The initial global audit already established the complete blocker set. This is
-NOT a new global audit. Do not search for new problems and do not reinterpret the
-story to create additional requirements.
+RELEVANT BEATS
+{relevant_beats}
+{source_context}
 
-VERIFICATION RULES
-- For each frozen issue, answer only whether its HARD source requirement is still
-  clearly unsatisfied in the CURRENT beat plan.
-- For an issue whose type is `{PERSISTENT_STATE_CONFLICT_ISSUE_TYPE}`, instead
-  verify semantically whether the targeted later beat still contradicts the
-  definitive lasting state established earlier or repeats the same completed
-  irreversible transition. This built-in chronological rule does not need to
-  appear in SOURCE STORY.
-- For an adjacent physical-transition issue, compare the end state of the beat
-  immediately before the frozen target with the target beat's assumed opening
-  state. Leave the issue unresolved only when the target still requires an
-  unshown movement, spatial change, handoff, reorientation, or other physical
-  transition. The target is normally the later beat; do not relocate it.
-- Return its numeric issue ID in unresolved_issue_ids only if it still clearly
-  fails. Omit the ID when the requirement is now reasonably satisfied.
-- Never return an issue ID that was not supplied below.
-- Never change a frozen issue's type, source requirement, or repair target.
-- If a frozen issue's old problem explanation contains a factual, numeric, or
-  semantic mistake, judge the CURRENT beats against the quoted source_requirement
-  instead of preserving the old mistake.
-- Semantic equivalence counts. Do not fail synonyms or paraphrases such as
-  "warped" versus "distorted" unless SOURCE STORY explicitly requires exact
-  wording.
-- If a required event or character appears anywhere in the exact phase-ending
-  beat, that satisfies "at the end of the phase" unless SOURCE STORY explicitly
-  requires a finer within-beat sequence. Do not call an event in Beat 20
-  "mid-phase" when Python says Beat 20 is the phase-ending beat.
-- A transition requirement such as "at the end of each phase ... into the next
-  area" applies only to phases that actually have a next phase unless SOURCE
-  STORY explicitly requires the same transition after the final phase.
-- "Periodically" or "occasionally" means recurring at reasonable intervals; it
-  does NOT mean every phase, every beat, or every phase-ending beat unless SOURCE
-  STORY explicitly says so.
-- Do not require characters or events merely because they exist in a famous or
-  established version of the story. Only SOURCE STORY is hard authority.
-- When the source requirement is already visibly satisfied, mark the issue
-  resolved even if you would prefer different wording, placement, pacing, or
-  dramatic emphasis.
+Check only this proposed issue. For an adjacent physical issue compare Beat N's
+established end state with Beat N+1; an explicit transition performed in Beat
+N+1 or an explicitly unfinished action is valid. For source/state issues, use
+only the supplied requirement and context. Do not infer unstated facts.
 
-PYTHON-DERIVED PHASE BOUNDARIES
-{phase_boundaries}
-
-FROZEN ISSUES TO VERIFY
-{frozen_text}
-
-SOURCE STORY
---- STORY START ---
-{story}
---- STORY END ---
-
-MAIN CHARACTER(S)
-{subject_text}
-
-CURRENT COMPLETE BEAT PLAN
-{numbered_beats}
-
-Return only:
-{{"unresolved_issue_ids": [/* zero or more supplied issue IDs */]}}
+Return {{"decision": "BLOCK" or "DISCARD", "reason": "..."}}.
 """.strip(),
         },
     ]
 
 
-# Build beat plan audit messages.
-def build_beat_plan_audit_messages(
-    story,
-    total_segments,
-    beats,
-    macro_arc,
-    subject_information="",
-    beat_instructions="",
-    repaired_beat_ids=None,
-):
-    subject_text = str(subject_information or "").strip() or "N/A"
-    instruction_text = str(beat_instructions or "").strip() or "N/A"
-    numbered_beats = "\n".join(
-        f"Beat {number}: {beat}" for number, beat in enumerate(beats, start=1)
-    )
-    repaired_beat_ids = sorted(set(repaired_beat_ids or []))
-    repaired_context = (
-        ", ".join(str(beat_id) for beat_id in repaired_beat_ids)
-        if repaired_beat_ids else "N/A"
-    )
-    phase_boundaries = format_macro_phase_boundaries(macro_arc)
+def issue_can_bypass_verification(issue):
+    """Return whether an issue is a concrete deterministic blocker."""
+    if not isinstance(issue, dict):
+        return False
+    if issue.get("type") not in VERIFIER_BYPASS_ISSUE_TYPES:
+        return False
+    start, end = issue.get("beat_start"), issue.get("beat_end")
+    if (
+        isinstance(start, bool)
+        or not isinstance(start, int)
+        or isinstance(end, bool)
+        or not isinstance(end, int)
+        or start <= 0
+        or end < start
+    ):
+        return False
+    source_requirement = " ".join(str(issue.get("source_requirement", "")).split())
+    problem = " ".join(str(issue.get("problem", "")).split())
+    if not source_requirement or not problem:
+        return False
+    if source_requirement.casefold() in {
+        "n/a", "na", "unknown", "unspecified", "the requirement", "a requirement",
+    }:
+        return False
+    generic_terms = {
+        "source", "story", "requirement", "requires", "required", "concrete",
+        "event", "state", "thing", "something", "issue", "problem", "phase",
+    }
+    requirement_tokens = {
+        token
+        for token in re.findall(r"[a-z0-9]+", source_requirement.casefold())
+        if len(token) > 2 and token not in {"the", "this", "that", "must", "be", "by", "end"}
+    }
+    if not requirement_tokens or requirement_tokens <= generic_terms:
+        return False
+    return True
+
+
+def build_blocker_localization_response_format(beat_start, beat_end):
+    if (
+        isinstance(beat_start, bool)
+        or not isinstance(beat_start, int)
+        or isinstance(beat_end, bool)
+        or not isinstance(beat_end, int)
+        or beat_start <= 0
+        or beat_end < beat_start
+    ):
+        raise ValueError("Blocker localization requires a valid original range.")
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_blocker_localization",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "beat_start": {
+                        "type": "integer",
+                        "minimum": beat_start,
+                        "maximum": beat_end,
+                    },
+                    "beat_end": {
+                        "type": "integer",
+                        "minimum": beat_start,
+                        "maximum": beat_end,
+                    },
+                },
+                "required": ["beat_start", "beat_end"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_blocker_localization(raw_result, original_start, original_end, formatter=None, llm_request=None):
+    """Parse and constrain a localizer response to the original issue range."""
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate, llm_request=llm_request)
+            if isinstance(candidate, UnrepairedJSON):
+                return candidate
+        except json.JSONDecodeError as error:
+            raise ValueError("The blocker localization response must be valid JSON.") from error
+    if not isinstance(candidate, dict) or set(candidate) != {"beat_start", "beat_end"}:
+        raise ValueError("The blocker localization response must contain only beat_start and beat_end.")
+    start, end = candidate["beat_start"], candidate["beat_end"]
+    if (
+        isinstance(start, bool)
+        or not isinstance(start, int)
+        or isinstance(end, bool)
+        or not isinstance(end, int)
+        or start < original_start
+        or end > original_end
+        or end < start
+    ):
+        raise ValueError("The blocker localization range must stay within the original range.")
+    return {"beat_start": start, "beat_end": end}
+
+
+def build_blocker_localization_messages(issue, beats, macro_arc=None):
+    issue = dict(issue or {})
+    original_start = int(issue["beat_start"])
+    original_end = int(issue["beat_end"])
+    phase = story_arc_phase_for_beat(macro_arc or {}, original_start)
     return [
         {
-    "role": "system",
-    "content": (
-        "You are a conservative whole-story beat-plan continuity auditor. "
-        "Your highest priority is detecting chronological and physical continuity "
-        "errors between adjacent beats. Also catch clear source-authority and "
-        "persistent-state violations. Do not optimize pacing, style, or screenplay "
-        "quality. Report only definite failures. Return only the requested JSON object."
-    ),
-},
-{
-    "role": "user",
-    "content": f"""
-Audit the complete {total_segments}-beat plan.
+            "role": "system",
+            "content": (
+                "You localize a confirmed beat-plan failure. Choose the smallest "
+                "contiguous beat range that can be rewritten to fix the supplied "
+                "problem while preserving valid earlier beats. Do not find new "
+                "problems. Do not rewrite beats. Return only a JSON object."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+ISSUE TYPE
+{issue.get('type', '')}
 
-SOURCE STORY and EXPLICIT BEAT INSTRUCTIONS are authoritative.
-MACRO STORY ARC and PYTHON-DERIVED PHASE BOUNDARIES are planning constraints,
-but may not override the source.
+PROBLEM
+{issue.get('problem', '')}
 
-ADJACENT CONTINUITY RULE
+SOURCE REQUIREMENT
+{issue.get('source_requirement', '')}
 
-Audit every adjacent pair in numeric order, one pair at a time. For each
-Beat N -> Beat N+1 pair, explicitly determine (in your reasoning) the physical
-end state actually established by Beat N, then determine what physical state
-Beat N+1 assumes is already true at its start. Compare location, containment,
-spatial relationship, possession, orientation, physical condition, and whether
-an action or transition is still in progress or already complete. Beat N+1
-must be physically reachable from Beat N's established end state.
+APPLICABLE MACRO PHASE
+{json.dumps(phase, ensure_ascii=False) if phase else 'N/A'}
 
-Flag Beat N+1 as an adjacent physical-transition failure when its assumed
-opening state requires an unshown movement, entry/exit, handoff, turn,
-reorientation, pursuit/passing, state change, or other completed transition.
-The transition may be established by Beat N, visibly performed in Beat N+1,
-continued from an explicitly unfinished movement, or authorized by an explicit
-story transition/cut in time or place. Do not infer a transition just because
-the later location or relationship is plausible. Do not require identical
-wording, exact distances, or repeated connective detail between compatible
-beats.
+ORIGINAL FAILING RANGE
+Beats {original_start}-{original_end}
 
-CALIBRATION EXAMPLES
+BEATS IN THAT RANGE
+{_numbered_beat_range(beats, original_start, original_end)}
 
-- If Beat 4 leaves a man outside a locked garage and Beat 5 has him standing
-  inside an upstairs bedroom, flag Beat 5 unless Beat 4 or Beat 5 establishes
-  entry and movement through the intervening spaces.
-- If Beat 4 leaves a man outside the garage and Beat 5 has him force the door
-  open and enter while the family runs upstairs, the location transition is
-  established; do not demand additional exact path details in Beat 6.
-- If Beat N establishes a pursuer behind a target and Beat N+1 places that
-  pursuer ahead, flag Beat N+1 unless Beat N or Beat N+1 establishes passing or
-  overtaking. A turn of the camera or a reaction does not establish passing.
-- If Beat N ends while a subject is walking toward a doorway and Beat N+1 has
-  the subject continue through that doorway, treat it as a valid continuation
-  when no incompatible state is introduced.
+Choose the smallest repairable range inside Beats {original_start}-{original_end}.
+For a phase required-end-state failure, prefer the latest capable beats. For a
+missing prerequisite, target the first illegal-use beat and include a preceding
+beat only when necessary. For a missing source event, use the smallest location
+in the correct source order. For a persistent-state conflict, target the first
+contradictory beat unless a slightly wider range preserves action continuity.
+Return {{"beat_start": {original_start}, "beat_end": {original_end}}} with your chosen range.
+""".strip(),
+        },
+    ]
 
-A later beat may continue an unfinished action, but must not:
-- restart or substantially repeat an action already completed;
-- return a subject, object, injury, wardrobe state, body state, location, or
-  spatial relationship to an earlier state without an explicit intervening cause;
-- skip a required intermediate transition needed to make its opening state possible;
-- move a subject or object to a new location without an established movement,
-  transition, cut in time/place authorized by the story, or other clear cause;
-- reverse an established spatial relationship without an intervening movement
-  that makes the reversal possible;
-- repeat an irreversible transition on the same subject/object unless an explicit
-  restoration or replacement occurred first.
 
-The handoff does not need identical wording. Judge the underlying physical state
-and event progression.
+# Public names now point at the issue-local verifier. The old whole-plan
+# verifier implementation above is no longer used by generation.
+build_beat_plan_verification_response_format = build_candidate_blocker_verification_response_format
+parse_beat_plan_verification = parse_candidate_blocker_verification
+build_beat_plan_verification_messages = build_candidate_blocker_verification_messages
 
-Do not flag a beat merely because it continues the same ongoing action. Flag it
-when the later beat starts the action over, repeats already completed progression,
-or requires the previous beat's result not to have happened.
 
-AUTHORIZED-EVENT RULE
+# Build beat plan audit messages.
+def build_beat_plan_audit_messages(story, total_segments, beats, macro_arc, subject_information="", beat_instructions="", repaired_beat_ids=None):
+    del total_segments, subject_information, repaired_beat_ids
+    return build_global_fidelity_audit_messages(story, beats, macro_arc, beat_instructions)
 
-Every beat's primary event must be traceable to SOURCE STORY, EXPLICIT BEAT
-INSTRUCTIONS, the applicable macro phase, or a physically necessary consequence
-of one of those requirements.
 
-Specificity may explain HOW an authorized event happens. It does not authorize a
-new event.
+# Return deterministic overlapping windows whose shared beat is the only overlap.
+def build_adjacent_beat_windows(beats_or_count, window_size=ADJACENT_AUDIT_WINDOW_SIZE):
+    total = len(beats_or_count) if not isinstance(beats_or_count, int) else beats_or_count
+    if total <= 1:
+        return []
+    window_size = min(int(window_size), total)
+    if window_size < 2:
+        raise ValueError("Adjacent audit window_size must be at least two beats.")
+    windows = []
+    start = 1
+    while start < total:
+        end = min(total, start + window_size - 1)
+        windows.append((start, end))
+        if end == total:
+            break
+        start = end
+    return windows
 
-When the source authorizes a broad category or repeated process, concrete examples
-within that category may be selected as needed. Do not invent unrelated operations,
-transformations, targets, setup changes, or plot mechanics merely to fill beats.
 
-PERSISTENT-STATE RULE
+create_adjacent_beat_windows = build_adjacent_beat_windows
+create_overlapping_beat_windows = build_adjacent_beat_windows
 
-Once a beat establishes a definitive lasting result, later beats must preserve it
-until an authorized event explicitly changes it.
 
-Check especially:
-- injuries and body topology;
-- removed, destroyed, attached, or replaced objects/body parts;
-- wardrobe identity and condition;
-- held or possessed objects;
-- subject location;
-- subject-to-subject spatial relationships;
-- environmental changes;
-- character presence/absence;
-- completed transformations.
+def build_adjacent_continuity_audit_response_format(beat_start=None, beat_end=None):
+    schema = {"type": "integer", "minimum": 1}
+    if beat_start is not None:
+        schema["minimum"] = int(beat_start)
+    if beat_end is not None:
+        schema["maximum"] = int(beat_end)
+    issue = {
+        "type": "object",
+        "properties": {
+            "beat_start": schema,
+            "beat_end": schema,
+            "type": {"type": "string", "enum": [ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE]},
+            "problem": {"type": "string", "minLength": 1},
+        },
+        "required": ["beat_start", "beat_end", "type", "problem"],
+        "additionalProperties": False,
+    }
+    return {"type": "json_schema", "json_schema": {"name": "adjacent_physical_continuity_audit", "strict": True, "schema": {
+        "type": "object", "properties": {"valid": {"type": "boolean"}, "issues": {"type": "array", "items": issue}},
+        "required": ["valid", "issues"], "additionalProperties": False,
+    }}}
 
-ORDER AND PREREQUISITE RULE
 
-Required events must occur in source order.
+def build_adjacent_continuity_audit_messages(beats, beat_start, beat_end):
+    if beat_start < 1 or beat_end < beat_start or beat_end > len(beats):
+        raise ValueError("Invalid adjacent continuity audit window.")
+    return [
+        {"role": "system", "content": (
+            "You are a conservative adjacent-beat continuity auditor. Check only "
+            "physical and chronological continuity between consecutive beats. "
+            "Flag only definite failures. Do not judge story fidelity, pacing, "
+            "style, or screenplay quality. Return a JSON object."
+        )},
+        {"role": "user", "content": f"""
+Audit only Beats {beat_start}-{beat_end}, comparing every consecutive pair.
+Check location, containment/barriers, held or possessed objects, material
+spatial relationships and orientation, body state, and whether an action is
+complete or still in progress. Flag the later beat only for an unshown movement,
+entry/exit, barrier transition, handoff, material spatial reversal,
+physical-state change, or restart of a completed action. Beat N+1 may visibly
+perform the transition and explicitly unfinished movement may continue. Do not
+infer movement merely because a later state is plausible; do not require exact
+wording or distances. Do not judge authorization, phase end states, style,
+pacing, dialogue, atmosphere, or camera choices. Return only blocking issues of
+type {ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE}, targeting Beat N+1.
 
-A beat may not use the result of an event before the event occurs.
-A subject, prop, injury, transformation, or environmental condition may not appear
-before it has been introduced or caused unless it already exists in the source's
-opening state.
+BEATS
+{_numbered_beat_range(beats, beat_start, beat_end)}
 
-REPEATED-PROCESS RULE
+Return only {{"valid": true, "issues": []}} or the same object with issues.
+""".strip()},
+    ]
 
-For source-required repeated remove/replace, cause/result, or similar cycles,
-preserve the required sequence for each affected item. Do not perform only one
-side of a required pair or separate the pair with unrelated progression such that
-the required sequence is effectively lost.
 
-Create a blocking issue only for:
-- adjacent-beat continuity contradiction or completed-event repetition;
-- unsupported concrete event or state change;
-- missing or contradicted required major source event;
-- incorrect event ordering or missing prerequisite;
-- contradiction of a definitive persistent state;
-- impossible unexplained spatial/location transition;
-- adjacent physical-transition failure where Beat N+1 assumes a changed
-  location, spatial relationship, possession, orientation, physical state, or
-  completed transition without Beat N or Beat N+1 establishing how it became
-  true;
-- repeated irreversible transition without restoration/replacement;
-- required repeated-process sequence that is incomplete or out of order;
-- several consecutive beats that substantially repeat the same progression;
-- major unsupported premise drift.
+def parse_adjacent_continuity_audit(raw_result, beat_start, beat_end, formatter=None, llm_request=None):
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate, llm_request=llm_request)
+            if isinstance(candidate, UnrepairedJSON):
+                return candidate
+        except json.JSONDecodeError as error:
+            raise ValueError("The adjacent continuity audit response must be valid JSON.") from error
+    if not isinstance(candidate, dict) or set(candidate) != {"valid", "issues"}:
+        raise ValueError("The adjacent continuity audit response must contain only valid and issues.")
+    if not isinstance(candidate["valid"], bool) or not isinstance(candidate["issues"], list):
+        raise ValueError("The adjacent continuity audit valid/issues fields are invalid.")
+    normalized = []
+    for issue in candidate["issues"]:
+        if not isinstance(issue, dict) or set(issue) != {"beat_start", "beat_end", "type", "problem"}:
+            raise ValueError("Each adjacent continuity issue must contain four fields.")
+        start, end = issue["beat_start"], issue["beat_end"]
+        if (isinstance(start, bool) or not isinstance(start, int) or isinstance(end, bool) or
+                not isinstance(end, int) or start < beat_start or end > beat_end or end < start):
+            raise ValueError("Adjacent continuity issue is outside its audit window.")
+        if issue["type"] != ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE or not isinstance(issue["problem"], str) or not issue["problem"].strip():
+            raise ValueError("Adjacent continuity issue has invalid type or problem.")
+        target = end
+        normalized.append({
+            "beat_start": target, "beat_end": target,
+            "type": issue["type"],
+            "source_requirement": "Beat N+1 must be physically reachable from Beat N without an unshown transition.",
+            "problem": " ".join(issue["problem"].split()),
+        })
+    if candidate["valid"] != (not normalized):
+        raise ValueError("Adjacent continuity valid must be true exactly when issues is empty.")
+    return {"valid": not normalized, "blocking_issues": normalized, "discarded_blocking_issues": 0}
 
-Do NOT block for:
-- style;
-- pacing preference;
-- phase size;
-- camera choices;
-- dialogue style;
-- atmosphere;
-- reactions;
-- harmless connective detail;
-- wording differences that describe compatible states.
 
-REPORTING
+def build_global_fidelity_audit_response_format(total_segments=None):
+    schema = {"type": "integer", "minimum": 1}
+    if total_segments is not None:
+        schema["maximum"] = int(total_segments)
+    issue = {"type": "object", "properties": {
+        "beat_start": schema, "beat_end": schema,
+        "type": {"type": "string", "enum": list(GLOBAL_FIDELITY_ISSUE_TYPES)},
+        "source_requirement": {"type": "string", "minLength": 1},
+        "problem": {"type": "string", "minLength": 1},
+    }, "required": ["beat_start", "beat_end", "type", "source_requirement", "problem"], "additionalProperties": False}
+    return {"type": "json_schema", "json_schema": {"name": "global_source_state_fidelity_audit", "strict": True, "schema": {
+        "type": "object", "properties": {"valid": {"type": "boolean"}, "issues": {"type": "array", "items": issue}},
+        "required": ["valid", "issues"], "additionalProperties": False,
+    }}}
 
-For each blocking issue return the smallest beat range that must be rewritten,
-preferably one beat.
 
-For adjacent continuity problems, normally report the later beat unless the
-earlier beat itself creates the incorrect state.
-For a missing physical transition, report the smallest later-beat range that
-can establish the missing movement or make the later beat compatible; normally
-this is Beat N+1 alone. In `problem`, name the established end state of Beat N,
-the state Beat N+1 assumes at its start, and the missing transition between
-them. Use `type="{ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE}"` for this failure.
-Do not target the earlier valid beat merely to accommodate the later assumption.
-
-Each blocking_issues object contains:
-- beat_start
-- beat_end
-- type
-- source_requirement
-- problem
-
-`source_requirement` should state the violated source requirement or continuity
-rule concisely.
-
-Set `macro_arc_consistent_with_source` false only when the macro arc itself
-contradicts a hard source requirement enough that repairing individual beats
-would be unsafe.
-
-Warnings never make the plan invalid.
-Set `valid=true` exactly when `blocking_issues` is empty.
-
-PREVIOUSLY REPAIRED BEAT IDS
-{repaired_context}
+def build_global_fidelity_audit_messages(story, beats, macro_arc, beat_instructions=""):
+    return [
+        {"role": "system", "content": (
+            "You are a conservative whole-story beat-plan fidelity auditor. Check "
+            "only source requirements, event order, prerequisites, phase end "
+            "states, repeated processes, and persistent story state. Do not audit "
+            "adjacent movement or screenplay quality. Flag only definite failures. "
+            "Return a JSON object."
+        )},
+        {"role": "user", "content": f"""
+Audit this complete {len(beats)}-beat plan. Check only: required source events
+missing or contradicted; required events out of order; props, states, injuries,
+transformations, environmental conditions, or results used before introduction
+or cause; definitive persistent states later contradicted without an authorized
+event; every macro phase required_end_state not true by its beat_end; required
+repeated processes incomplete or out of order; and major concrete events
+unsupported by the source or applicable phase. Explicitly test every phase
+required_end_state against all beats through that phase's beat_end. Do not audit ordinary adjacent movement; Pass 1 owns it. Do not re-evaluate macro-arc
+fidelity, and do not suggest repair strategy.
 
 SOURCE STORY
---- STORY START ---
 {story}
---- STORY END ---
 
 EXPLICIT BEAT INSTRUCTIONS
-{instruction_text}
-
-MAIN CHARACTER(S)
-{subject_text}
-
-PYTHON-DERIVED PHASE BOUNDARIES
-{phase_boundaries}
+{beat_instructions or 'N/A'}
 
 MACRO STORY ARC
 {json.dumps(macro_arc, ensure_ascii=False, indent=2)}
 
-COMPLETE BEAT PLAN
-{numbered_beats}
-""".strip()
-        },
+COMPLETE NUMBERED BEAT PLAN
+{chr(10).join(f"Beat {number}: {beat}" for number, beat in enumerate(beats, start=1))}
+
+Return only valid=true with an empty issues array, or definite blocking issues
+with beat_start, beat_end, type, source_requirement, and problem.
+""".strip()},
     ]
 
-# Build beat plan repair messages.
+
+def parse_global_fidelity_audit(raw_result, total_segments, formatter=None, llm_request=None):
+    formatter = formatter or ACTIVE_FORMATTER
+    if total_segments is None:
+        total_segments = 10**9
+    total_segments = int(total_segments)
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate, llm_request=llm_request)
+            if isinstance(candidate, UnrepairedJSON):
+                return candidate
+        except json.JSONDecodeError as error:
+            raise ValueError("The global fidelity audit response must be valid JSON.") from error
+    if not isinstance(candidate, dict) or set(candidate) != {"valid", "issues"}:
+        raise ValueError("The global fidelity audit response must contain only valid and issues.")
+    if not isinstance(candidate["valid"], bool) or not isinstance(candidate["issues"], list):
+        raise ValueError("The global fidelity audit valid/issues fields are invalid.")
+    normalized = []
+    fields = {"beat_start", "beat_end", "type", "source_requirement", "problem"}
+    for issue in candidate["issues"]:
+        if not isinstance(issue, dict) or set(issue) != fields:
+            raise ValueError("Each global fidelity issue must contain five fields.")
+        start, end = issue["beat_start"], issue["beat_end"]
+        if (isinstance(start, bool) or not isinstance(start, int) or isinstance(end, bool) or
+                not isinstance(end, int) or start <= 0 or end < start or end > total_segments):
+            raise ValueError("Global fidelity issue range is invalid.")
+        if issue["type"] not in GLOBAL_FIDELITY_ISSUE_TYPES:
+            raise ValueError("Global fidelity issue type is invalid.")
+        if any(not isinstance(issue[field], str) or not issue[field].strip() for field in ("source_requirement", "problem")):
+            raise ValueError("Global fidelity issue text must be non-empty.")
+        normalized.append({
+            "beat_start": start, "beat_end": end, "type": issue["type"],
+            "source_requirement": " ".join(issue["source_requirement"].split()),
+            "problem": " ".join(issue["problem"].split()),
+        })
+    if candidate["valid"] != (not normalized):
+        raise ValueError("Global fidelity valid must be true exactly when issues is empty.")
+    return {"valid": not normalized, "blocking_issues": normalized, "discarded_blocking_issues": 0}
+
+
+def merge_beat_plan_audit_issues(*issue_lists):
+    merged, seen = [], set()
+    for issues in issue_lists:
+        for issue in issues or []:
+            if not isinstance(issue, dict):
+                continue
+            key = (issue.get("type"), issue.get("beat_start"), issue.get("beat_end"))
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(dict(issue))
+    return sorted(merged, key=lambda issue: (issue["beat_start"], issue["beat_end"], issue["type"]))
+
+
+def assign_stable_blocker_ids(issues):
+    return [{"issue_id": index, **dict(issue)} for index, issue in enumerate(issues or [], start=1)]
+
+
+def remove_blocker_ids(issues):
+    return [{key: value for key, value in issue.items() if key != "issue_id"} for issue in issues or []]
+
+
+def build_beat_plan_audit_messages(story, total_segments, beats, macro_arc, subject_information="", beat_instructions="", repaired_beat_ids=None):
+    del total_segments, subject_information, repaired_beat_ids
+    return build_global_fidelity_audit_messages(story, beats, macro_arc, beat_instructions)
+
+
+def parse_beat_plan_audit(raw_result, formatter=None, total_segments=None, llm_request=None):
+    return parse_global_fidelity_audit(raw_result, total_segments, formatter, llm_request)
+
+
+# Parse beat plan repair.
 def build_beat_plan_repair_messages(
     story,
     total_segments,
@@ -8597,259 +8699,50 @@ beat_id and text, with one item for every requested beat ID and no others.
     ]
 
 
-# Parse beat plan audit.
-def parse_beat_plan_audit(
-    raw_result,
-    formatter=None,
-    total_segments=None,
-    llm_request=None,
-):
-    formatter = formatter or ACTIVE_FORMATTER
-    candidate = raw_result
-    if isinstance(candidate, str):
-        candidate = formatter.sanitize_generated_text(candidate)
-        try:
-            candidate = parse_llm_json_content(candidate, llm_request=llm_request)
-            if isinstance(candidate, UnrepairedJSON):
-                return candidate
-        except json.JSONDecodeError as error:
-            raise ValueError("The beat-plan audit response must be valid JSON.") from error
-    if (
-        isinstance(candidate, dict)
-        and set(candidate) == {"audit"}
-        and isinstance(candidate["audit"], dict)
-    ):
-        candidate = candidate["audit"]
-    if not isinstance(candidate, dict):
-        raise ValueError("The beat-plan audit response must be a JSON object.")
-    valid = candidate.get("valid")
-    arc_consistent = candidate.get("macro_arc_consistent_with_source")
-    blocking_issues = candidate.get("blocking_issues")
-    warnings = candidate.get("warnings")
-    if not isinstance(valid, bool):
-        raise ValueError("The beat-plan audit 'valid' field must be boolean.")
-    if not isinstance(arc_consistent, bool):
-        raise ValueError(
-            "The beat-plan audit 'macro_arc_consistent_with_source' field must "
-            "be boolean."
-        )
-    if not isinstance(blocking_issues, list):
-        raise ValueError(
-            "The beat-plan audit 'blocking_issues' field must be an array."
-        )
-    if not isinstance(warnings, list) or not all(
-        isinstance(warning, str) and warning.strip() for warning in warnings
-    ):
-        raise ValueError(
-            "The beat-plan audit 'warnings' field must be a string array."
-        )
-    if valid != (not blocking_issues):
-        raise ValueError(
-            "The beat-plan audit 'valid' field must be true exactly when the "
-            "reported 'blocking_issues' array is empty."
-        )
-    required_issue_fields = {
-        "beat_start",
-        "beat_end",
-        "type",
-        "source_requirement",
-        "problem",
-    }
-    normalized_blockers = []
-    for issue_number, issue in enumerate(blocking_issues, start=1):
-        if not isinstance(issue, dict) or set(issue) != required_issue_fields:
-            continue
-        beat_start = issue["beat_start"]
-        beat_end = issue["beat_end"]
-        if (
-            isinstance(beat_start, bool)
-            or not isinstance(beat_start, int)
-            or isinstance(beat_end, bool)
-            or not isinstance(beat_end, int)
-        ):
-            continue
-        if beat_start <= 0 or beat_end < beat_start:
-            continue
-        if total_segments is not None and beat_end > total_segments:
-            continue
-        normalized_issue = {
-            "beat_start": beat_start,
-            "beat_end": beat_end,
-        }
-        for field in ("type", "source_requirement", "problem"):
-            value = issue[field]
-            if not isinstance(value, str) or not value.strip():
-                normalized_issue = None
-                break
-            normalized_issue[field] = " ".join(value.split())
-        if normalized_issue is not None:
-            normalized_blockers.append(normalized_issue)
-    normalized_warnings = [" ".join(warning.split()) for warning in warnings]
-    return {
-        "valid": not normalized_blockers,
-        "macro_arc_consistent_with_source": arc_consistent,
-        "blocking_issues": normalized_blockers,
-        "discarded_blocking_issues": len(blocking_issues) - len(
-            normalized_blockers
-        ),
-        "warnings": normalized_warnings,
-    }
-
-
-# Check whether source requirement is grounded.
-def hard_source_requirement_is_grounded(
-    source_requirement,
-    story,
-    beat_instructions="",
-):
-    requirement = re.sub(
-        r"[^a-z0-9]+",
-        " ",
-        str(source_requirement or "").casefold(),
-    ).strip()
-    hard_source = re.sub(
-        r"[^a-z0-9]+",
-        " ",
-        f"{story or ''} {beat_instructions or ''}".casefold(),
-    ).strip()
+def hard_source_requirement_is_grounded(source_requirement, story, beat_instructions=""):
+    requirement = re.sub(r"[^a-z0-9]+", " ", str(source_requirement or "").casefold()).strip()
+    hard_source = re.sub(r"[^a-z0-9]+", " ", f"{story or ''} {beat_instructions or ''}".casefold()).strip()
     if not requirement or requirement in {"n a", "unknown", "unspecified"}:
         return False
     if requirement in hard_source:
         return True
-    ignored = {
-        "a", "an", "and", "are", "as", "at", "be", "before", "by", "for",
-        "from", "in", "is", "it", "must", "of", "on", "or", "should", "the",
-        "then", "to", "with",
-    }
-    requirement_tokens = {
-        token for token in requirement.split()
-        if token not in ignored and len(token) > 2
-    }
-    source_tokens = set(hard_source.split())
-    if len(requirement_tokens) < 2:
-        return False
-    overlap = requirement_tokens & source_tokens
-    return len(overlap) >= 2 and (
-        len(overlap) / len(requirement_tokens) >= 0.6
-    )
+    ignored = {"a", "an", "and", "are", "as", "at", "be", "before", "by", "for", "from", "in", "is", "it", "must", "of", "on", "or", "should", "the", "then", "to", "with"}
+    tokens = {token for token in requirement.split() if token not in ignored and len(token) > 2}
+    overlap = tokens & set(hard_source.split())
+    return len(tokens) >= 2 and len(overlap) >= 2 and len(overlap) / len(tokens) >= 0.6
 
 
-# Normalize beat plan repair ranges.
-def normalize_beat_plan_repair_ranges(
-    blocking_issues,
-    total_segments,
-    repaired_beat_ids=None,
-    story="",
-    beat_instructions="",
-    max_gap=0,
-):
+def normalize_beat_plan_repair_ranges(blocking_issues, total_segments, repaired_beat_ids=None, story="", beat_instructions="", max_gap=0):
     if total_segments <= 0:
         raise ValueError("Beat-plan repair requires at least one beat.")
     repaired_beat_ids = set(repaired_beat_ids or [])
-    credible = []
-    discarded = []
-    downgraded = []
-    required_fields = {
-        "beat_start",
-        "beat_end",
-        "type",
-        "source_requirement",
-        "problem",
-    }
-    for issue in blocking_issues:
-        if not isinstance(issue, dict):
+    credible, discarded = [], []
+    required_fields = {"beat_start", "beat_end", "type", "source_requirement", "problem"}
+    for issue in blocking_issues or []:
+        if not isinstance(issue, dict) or set(issue) != required_fields:
             discarded.append(issue)
             continue
-        beat_start = issue.get("beat_start")
-        beat_end = issue.get("beat_end")
-        if (
-            set(issue) != required_fields
-            or isinstance(beat_start, bool)
-            or not isinstance(beat_start, int)
-            or isinstance(beat_end, bool)
-            or not isinstance(beat_end, int)
-            or beat_start <= 0
-            or beat_end < beat_start
-            or beat_end > total_segments
-        ):
+        start, end = issue["beat_start"], issue["beat_end"]
+        if (isinstance(start, bool) or not isinstance(start, int) or isinstance(end, bool) or
+                not isinstance(end, int) or start <= 0 or end < start or end > total_segments):
             discarded.append(issue)
             continue
-        normalized_issue = {
-            "beat_start": beat_start,
-            "beat_end": beat_end,
-        }
-        invalid_text = False
-        for field in ("type", "source_requirement", "problem"):
-            value = issue.get(field)
-            if not isinstance(value, str) or not value.strip():
-                invalid_text = True
-                break
-            normalized_issue[field] = " ".join(value.split())
-        if invalid_text:
+        if any(not isinstance(issue[field], str) or not issue[field].strip() for field in ("type", "source_requirement", "problem")):
             discarded.append(issue)
             continue
-        # Adjacent physical-transition blockers are found by comparing two
-        # beats, but the later beat is the default repair target. If the model
-        # returns the exact adjacent pair instead of the requested later beat,
-        # localize it here without touching the earlier established state.
-        if (
-            normalized_issue["type"]
-            == ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE
-            and beat_end == beat_start + 1
-        ):
-            normalized_issue["beat_start"] = beat_end
-            normalized_issue["beat_end"] = beat_end
-        issue_ids = set(range(
-            normalized_issue["beat_start"],
-            normalized_issue["beat_end"] + 1,
-        ))
-        repair_span = (
-            normalized_issue["beat_end"]
-            - normalized_issue["beat_start"]
-            + 1
-        )
-        if repair_span > MAX_TARGETED_BEAT_REPAIR_SPAN:
-            # A global audit is useful for spotting problems, but a complaint
-            # that spans a large part of the plan is not precise enough to
-            # authorize destructive rewriting. Preserve the generated plan and
-            # surface the complaint as a warning instead.
-            downgraded.append(normalized_issue)
-            continue
-        if (
-            issue_ids & repaired_beat_ids
-            and normalized_issue["type"]
-            != PERSISTENT_STATE_CONFLICT_ISSUE_TYPE
-            and not hard_source_requirement_is_grounded(
-                normalized_issue["source_requirement"],
-                story,
-                beat_instructions,
-            )
-        ):
-            downgraded.append(normalized_issue)
-            continue
-        credible.append(normalized_issue)
-
-    credible.sort(key=lambda issue: (issue["beat_start"], issue["beat_end"]))
-    merged = []
+        normalized = {field: (" ".join(issue[field].split()) if isinstance(issue[field], str) else issue[field]) for field in required_fields}
+        if normalized["type"] == ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE and end == start + 1:
+            normalized["beat_start"] = normalized["beat_end"] = end
+        credible.append(normalized)
+    credible.sort(key=lambda item: (item["beat_start"], item["beat_end"]))
+    ranges = []
     for issue in credible:
-        if (
-            not merged
-            or issue["beat_start"] > merged[-1]["beat_end"] + max_gap
-        ):
-            merged.append({
-                "beat_start": issue["beat_start"],
-                "beat_end": issue["beat_end"],
-                "issues": [issue],
-            })
-            continue
-        merged[-1]["beat_end"] = max(merged[-1]["beat_end"], issue["beat_end"])
-        merged[-1]["issues"].append(issue)
-    return {
-        "issues": credible,
-        "ranges": merged,
-        "discarded": discarded,
-        "downgraded": downgraded,
-    }
+        if not ranges or issue["beat_start"] > ranges[-1]["beat_end"] + max_gap:
+            ranges.append({"beat_start": issue["beat_start"], "beat_end": issue["beat_end"], "issues": [issue]})
+        else:
+            ranges[-1]["beat_end"] = max(ranges[-1]["beat_end"], issue["beat_end"])
+            ranges[-1]["issues"].append(issue)
+    return {"issues": credible, "ranges": ranges, "discarded": discarded, "downgraded": []}
 
 
 # Format beat plan blocking issues.
@@ -10034,6 +9927,7 @@ def generate_beats_from_story(
                 story,
                 total_segments,
                 subject_information=subject_information,
+                beat_instructions=beat_instructions,
                 correction=correction if attempt == 1 else str(last_error),
                 phrase_exclusions=phrase_exclusions,
             )
@@ -10059,8 +9953,6 @@ def generate_beats_from_story(
                     total_segments,
                     llm_request=llm_request,
                 )
-                save_story_arc(macro_arc, story_arc_source, story_arc_path)
-                print(f"Saved story arc to {story_arc_path}.", flush=True)
                 return (macro_arc, True)
             except ValueError as error:
                 last_error = error
@@ -10070,10 +9962,10 @@ def generate_beats_from_story(
                     f"corrected arc: {last_error}"
                 )
         
-        # Max attempts reached; return None as best effort
+        # Max attempts reached without a structurally valid arc.
         print(
             f"Global beat macro arc generation reached maximum attempts ({max_attempts}); "
-            "accepting best effort result.",
+            "requesting a new combined attempt.",
             flush=True,
         )
         return (None, False)
@@ -10105,6 +9997,7 @@ def generate_beats_from_story(
                 story,
                 macro_arc,
                 subject_information=subject_information,
+                beat_instructions=beat_instructions,
             )
             verify_subjects_in_beat_messages(
                 messages,
@@ -10162,12 +10055,10 @@ def generate_beats_from_story(
             
         Returns:
             (macro_arc, success) tuple. Success is True only if fidelity passes.
-            If max_attempts reached, returns (last_macro_arc, False) as best effort.
+            If max_attempts is reached, returns (None, False).
         """
         fidelity_correction = correction
         combined_attempt = 0
-        last_macro_arc = None
-        
         while combined_attempt < max_attempts:
             combined_attempt += 1
             print(
@@ -10202,6 +10093,8 @@ def generate_beats_from_story(
             )
             
             if fidelity_success and fidelity.get("valid"):
+                save_story_arc(macro_arc, story_arc_source, story_arc_path)
+                print(f"Saved fidelity-validated story arc to {story_arc_path}.", flush=True)
                 print(
                     f"Macro-arc fidelity check passed on combined attempt "
                     f"{combined_attempt}.",
@@ -10209,8 +10102,7 @@ def generate_beats_from_story(
                 )
                 return (macro_arc, True)
             
-            # Fidelity failed; prepare correction for next iteration
-            last_macro_arc = macro_arc
+            # Fidelity failed; prepare correction for next iteration.
             issues = fidelity.get("issues", ["Unknown fidelity issue"])
             fidelity_correction = (
                 "The low-temperature macro fidelity check rejected the previous "
@@ -10223,13 +10115,13 @@ def generate_beats_from_story(
                 flush=True,
             )
         
-        # Max combined attempts reached
+        # Max combined attempts reached. Never return a fidelity-rejected arc.
         print(
             f"Macro arc validation reached maximum combined attempts ({max_attempts}); "
-            "accepting best effort result.",
+            "no macro arc passed fidelity validation.",
             flush=True,
         )
-        return (last_macro_arc, False)
+        return (None, False)
 
     # Request validation of one generated phase.
     def request_phase_validation(
@@ -10790,157 +10682,267 @@ def generate_beats_from_story(
         )
         return original_beats
 
-    # Request an audit of the generated beat plan.
-    def request_plan_audit(
-        beats,
-        macro_arc,
-        plan_attempt,
-        audit_round=0,
-        repaired_beat_ids=None,
-    ):
-        last_error = None
-        audit_content_attempt = 0
-        while audit_content_attempt < LLM_CONNECTION_RETRIES:
-            audit_content_attempt += 1
+    # Run Pass 1 in overlapping windows and Pass 2 once for the complete plan.
+    def request_plan_audits(beats, macro_arc, plan_attempt, audit_round=0):
+        adjacent_issues = []
+        for window_start, window_end in build_adjacent_beat_windows(beats):
             print(
-                f"Requesting global beat-plan audit for plan attempt "
-                f"{plan_attempt} (response attempt {audit_content_attempt}; "
-                "10 times then best effort or Ctrl+Q).",
+                f"Adjacent continuity audit: Beats {window_start}-{window_end}",
                 flush=True,
             )
-            audit_messages = build_beat_plan_audit_messages(
-                story,
-                total_segments,
-                beats,
-                macro_arc,
-                subject_information=subject_information,
-                beat_instructions=beat_instructions,
-                repaired_beat_ids=repaired_beat_ids,
+            parsed = None
+            last_error = None
+            for response_attempt in range(1, LLM_CONNECTION_RETRIES + 1):
+                messages = build_adjacent_continuity_audit_messages(
+                    beats, window_start, window_end
+                )
+                if last_error:
+                    messages[-1]["content"] += f"\n\nPrevious response invalid: {last_error}"
+                raw_result = llm_request(
+                    messages,
+                    response_format=build_adjacent_continuity_audit_response_format(window_start, window_end),
+                    history_metadata={
+                        **(history_metadata or {}),
+                        "purpose": "beat_adjacent_continuity_audit",
+                        "attempt": plan_attempt,
+                        "audit_round": audit_round,
+                        "response_attempt": response_attempt,
+                        "window_start": window_start,
+                        "window_end": window_end,
+                    },
+                    **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
+                )
+                try:
+                    parsed = parse_adjacent_continuity_audit(raw_result, window_start, window_end, llm_request=llm_request)
+                    break
+                except ValueError as error:
+                    last_error = error
+            if parsed is not None:
+                adjacent_issues.extend(parsed["blocking_issues"])
+            else:
+                print(
+                    f"WARNING: adjacent continuity audit for Beats {window_start}-{window_end} "
+                    "exhausted retries; continuing best effort.", flush=True
+                )
+
+        print(f"Global fidelity audit: complete {len(beats)}-beat plan", flush=True)
+        global_issues = []
+        last_error = None
+        global_audit_parsed = False
+        for response_attempt in range(1, LLM_CONNECTION_RETRIES + 1):
+            messages = build_global_fidelity_audit_messages(
+                story, beats, macro_arc, beat_instructions
             )
             if last_error:
-                audit_messages[-1]["content"] += (
-                    "\n\nYOUR PREVIOUS AUDIT RESPONSE WAS STRUCTURALLY INVALID\n"
-                    f"{last_error}\nReturn the complete audit JSON again."
-                )
-            verify_subjects_in_beat_messages(
-                audit_messages,
-                subject_information,
-            )
-            raw_audit = llm_request(
-                audit_messages,
-                response_format=build_beat_plan_audit_response_format(
-                    total_segments
-                ),
+                messages[-1]["content"] += f"\n\nPrevious response invalid: {last_error}"
+            raw_result = llm_request(
+                messages,
+                response_format=build_global_fidelity_audit_response_format(total_segments),
                 history_metadata={
                     **(history_metadata or {}),
-                    "purpose": "beat_plan_audit",
+                    "purpose": "beat_global_fidelity_audit",
                     "attempt": plan_attempt,
-                    "response_attempt": audit_content_attempt,
                     "audit_round": audit_round,
-                    "total_segments": total_segments,
+                    "response_attempt": response_attempt,
                 },
                 **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
             )
             try:
-                return parse_beat_plan_audit(
-                    raw_audit,
-                    total_segments=total_segments,
-                    llm_request=llm_request,
-                )
+                global_issues = parse_global_fidelity_audit(raw_result, total_segments, llm_request=llm_request)["blocking_issues"]
+                global_audit_parsed = True
+                break
             except ValueError as error:
                 last_error = error
-                print(
-                    "LM Studio returned an invalid beat-plan audit; requesting "
-                    f"another audit response: {last_error}"
-                )
-        print(
-            "WARNING: beat-plan audit exhausted its response retries; accepting "
-            "the current plan as best effort.",
-            flush=True,
-        )
+        if not global_audit_parsed:
+            print(
+                "WARNING: global fidelity audit exhausted retries; continuing "
+                "best effort.",
+                flush=True,
+            )
         return {
-            "valid": True,
-            "macro_arc_consistent_with_source": True,
-            "blocking_issues": [],
+            "valid": not merge_beat_plan_audit_issues(adjacent_issues, global_issues),
+            "blocking_issues": merge_beat_plan_audit_issues(adjacent_issues, global_issues),
             "discarded_blocking_issues": 0,
-            "warnings": ["Audit response unavailable; accepted best effort."],
+            "warnings": [],
         }
 
-    # Verify the frozen blockers in a beat plan.
-    def request_plan_verification(
+    # Verify each candidate independently and retain only definite blockers.
+    def request_candidate_verification(
         beats,
         macro_arc,
-        frozen_issues,
-        pending_issue_ids,
+        candidates,
         plan_attempt,
         verification_round,
     ):
-        last_error = None
-        response_attempt = 0
-        pending_issue_ids = sorted(set(pending_issue_ids))
-        while response_attempt < LLM_CONNECTION_RETRIES:
-            response_attempt += 1
-            print(
-                f"Verifying {len(pending_issue_ids)} frozen beat-plan blocker"
-                f"{'' if len(pending_issue_ids) == 1 else 's'} "
-                f"(round {verification_round}, response attempt "
-                f"{response_attempt}; 10 times then best effort or Ctrl+Q).",
-                flush=True,
-            )
-            messages = build_beat_plan_verification_messages(
-                story,
-                total_segments,
-                beats,
-                macro_arc,
-                frozen_issues,
-                pending_issue_ids,
-                subject_information=subject_information,
-            )
-            if last_error:
-                messages[-1]["content"] += (
-                    "\n\nYOUR PREVIOUS VERIFICATION RESPONSE WAS STRUCTURALLY "
-                    "INVALID\n"
-                    f"{last_error}\nReturn the verification JSON again."
-                )
-            verify_subjects_in_beat_messages(
-                messages,
-                subject_information,
-            )
-            raw_verification = llm_request(
-                messages,
-                response_format=build_beat_plan_verification_response_format(
-                    pending_issue_ids
-                ),
-                history_metadata={
-                    **(history_metadata or {}),
-                    "purpose": "beat_plan_verify",
-                    "attempt": plan_attempt,
-                    "verification_round": verification_round,
-                    "response_attempt": response_attempt,
-                    "total_segments": total_segments,
-                    "pending_issue_ids": pending_issue_ids,
-                },
-                **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
-            )
-            try:
-                return parse_beat_plan_verification(
-                    raw_verification,
-                    pending_issue_ids,
-                    llm_request=llm_request,
-                )
-            except ValueError as error:
-                last_error = error
-                print(
-                    "LM Studio returned an invalid frozen-blocker verification; "
-                    f"requesting another response: {last_error}",
-                    flush=True,
-                )
+        candidates = assign_stable_blocker_ids(candidates)
+        unresolved = []
         print(
-            "WARNING: beat-plan verification exhausted its response retries; "
-            "treating the remaining blockers as best effort.",
+            f"Verifying {len(candidates)} candidate blockers",
             flush=True,
         )
-        return []
+        for candidate in candidates:
+            issue_id = candidate["issue_id"]
+            origin = (
+                "ADJACENT"
+                if candidate.get("type") == ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE
+                else "GLOBAL"
+            )
+            if issue_can_bypass_verification(candidate):
+                unresolved.append(candidate)
+                print(
+                    f"{origin} candidate {issue_id}: type: {candidate['type']}; "
+                    f"range: {candidate['beat_start']}-{candidate['beat_end']}; "
+                    "verification: BYPASSED; action: BLOCK",
+                    flush=True,
+                )
+                continue
+            last_error = None
+            decision = None
+            for response_attempt in range(1, LLM_CONNECTION_RETRIES + 1):
+                messages = build_candidate_blocker_verification_messages(
+                    candidate,
+                    issue_id,
+                    beats,
+                    story=story,
+                    macro_arc=macro_arc,
+                )
+                if last_error:
+                    messages[-1]["content"] += (
+                        "\n\nPREVIOUS RESPONSE WAS STRUCTURALLY INVALID\n"
+                        f"{last_error}\nReturn the JSON object again."
+                    )
+                raw_result = llm_request(
+                    messages,
+                    response_format=build_candidate_blocker_verification_response_format(
+                        issue_id
+                    ),
+                    history_metadata={
+                        **(history_metadata or {}),
+                        "purpose": "beat_blocker_verification",
+                        "attempt": plan_attempt,
+                        "audit_round": verification_round,
+                        "response_attempt": response_attempt,
+                        "issue_id": issue_id,
+                        "total_segments": total_segments,
+                    },
+                    **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
+                )
+                try:
+                    decision = parse_candidate_blocker_verification(
+                        raw_result, issue_id, llm_request=llm_request
+                    )
+                    if not isinstance(decision, dict):
+                        raise ValueError("The blocker verifier returned unrepaired JSON.")
+                    break
+                except ValueError as error:
+                    last_error = error
+                    print(
+                        f"Blocker verification for issue {issue_id} was invalid; "
+                        f"retrying: {error}",
+                        flush=True,
+                    )
+            if decision and decision["decision"] == "BLOCK":
+                unresolved.append(candidate)
+                print(
+                    f"{origin} candidate {issue_id}: type: {candidate['type']}; "
+                    f"range: {candidate['beat_start']}-{candidate['beat_end']}; "
+                    f"verification: USED ({decision['decision']}); action: BLOCK",
+                    flush=True,
+                )
+            elif decision:
+                print(
+                    f"{origin} candidate {issue_id}: type: {candidate['type']}; "
+                    f"range: {candidate['beat_start']}-{candidate['beat_end']}; "
+                    f"verification: USED ({decision['decision']}); action: DISCARD; "
+                    f"{decision['reason']}",
+                    flush=True,
+                )
+            else:
+                print(
+                    f"{origin} candidate {issue_id}: type: {candidate['type']}; "
+                    f"range: {candidate['beat_start']}-{candidate['beat_end']}; "
+                    "verification: FAILED_CLOSED; action: BLOCK",
+                    flush=True,
+                )
+                unresolved.append(candidate)
+        return remove_blocker_ids(unresolved)
+
+    # Localize only confirmed blockers whose reported range is too broad for a
+    # targeted repair. Failure falls back to the original range and remains a
+    # blocker; it is never downgraded to a warning.
+    def localize_confirmed_blockers(beats, macro_arc, blocking_issues, plan_attempt, localization_round):
+        localized = []
+        for issue_number, issue in enumerate(blocking_issues, start=1):
+            original_start = issue["beat_start"]
+            original_end = issue["beat_end"]
+            span = original_end - original_start + 1
+            if span <= MAX_TARGETED_BEAT_REPAIR_SPAN:
+                localized.append(issue)
+                continue
+            origin = (
+                "ADJACENT"
+                if issue.get("type") == ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE
+                else "GLOBAL"
+            )
+            localizer_result = None
+            last_error = None
+            for response_attempt in range(1, LLM_CONNECTION_RETRIES + 1):
+                messages = build_blocker_localization_messages(issue, beats, macro_arc)
+                if last_error:
+                    messages[-1]["content"] += (
+                        "\n\nPREVIOUS LOCALIZER RESPONSE WAS INVALID\n"
+                        f"{last_error}\nReturn the JSON object again."
+                    )
+                raw_result = llm_request(
+                    messages,
+                    response_format=build_blocker_localization_response_format(
+                        original_start, original_end
+                    ),
+                    history_metadata={
+                        **(history_metadata or {}),
+                        "purpose": "beat_blocker_localization",
+                        "attempt": plan_attempt,
+                        "audit_round": localization_round,
+                        "response_attempt": response_attempt,
+                        "issue_id": issue_number,
+                        "total_segments": total_segments,
+                    },
+                    **BEAT_AUDIT_LLM_SAMPLING_PARAMETERS,
+                )
+                try:
+                    localizer_result = parse_blocker_localization(
+                        raw_result,
+                        original_start,
+                        original_end,
+                        llm_request=llm_request,
+                    )
+                    if not isinstance(localizer_result, dict):
+                        raise ValueError("The blocker localizer returned unrepaired JSON.")
+                    break
+                except ValueError as error:
+                    last_error = error
+            if localizer_result is None:
+                print(
+                    f"{origin} candidate {issue_number}: type: {issue['type']}; "
+                    f"original range: {original_start}-{original_end}; "
+                    "localization: FAILED; repair range: "
+                    f"{original_start}-{original_end}; action: REPAIR_FALLBACK",
+                    flush=True,
+                )
+                localized.append(issue)
+                continue
+            localized_issue = dict(issue)
+            localized_issue["beat_start"] = localizer_result["beat_start"]
+            localized_issue["beat_end"] = localizer_result["beat_end"]
+            print(
+                f"{origin} candidate {issue_number}: type: {issue['type']}; "
+                f"original range: {original_start}-{original_end}; "
+                f"localization: {localizer_result['beat_start']}-"
+                f"{localizer_result['beat_end']}; action: REPAIR",
+                flush=True,
+            )
+            localized.append(localized_issue)
+        return localized
 
     # Request repairs for the beat-plan blockers.
     def request_plan_repair(
@@ -11037,9 +11039,23 @@ def generate_beats_from_story(
         return load_beats(path)
 
     if saved_macro_arc is not None:
-        macro_arc = saved_macro_arc
-        print(f"Using existing story arc from {story_arc_path}.", flush=True)
-    else:
+        cached_fidelity, cached_fidelity_success = request_macro_arc_fidelity(
+            saved_macro_arc,
+            combined_attempt=0,
+            max_attempts=3,
+        )
+        if cached_fidelity_success and cached_fidelity.get("valid"):
+            macro_arc = saved_macro_arc
+            print(f"Using fidelity-validated story arc from {story_arc_path}.", flush=True)
+        else:
+            print(
+                f"Ignoring cached story arc {story_arc_path}; it failed macro "
+                "fidelity validation and will be regenerated.",
+                flush=True,
+            )
+            saved_macro_arc = None
+            macro_arc = None
+    if saved_macro_arc is None:
         # Outer process loop: try up to 10 times, regenerating story_arc.json on each failure
         macro_arc = None
         process_attempt = 0
@@ -11081,7 +11097,8 @@ def generate_beats_from_story(
             else:
                 print(
                     f"Macro arc process reached maximum attempts ({max_process_attempts}); "
-                    "accepting best effort result.",
+                    "no fidelity-validated arc is available; using the deterministic "
+                    "fallback arc.",
                     flush=True,
                 )
         
@@ -11092,362 +11109,176 @@ def generate_beats_from_story(
                 "budget; using a deterministic linear arc as best effort.",
                 flush=True,
             )
+    # The active validation pipeline is deliberately three-pass: localized
+    # adjacent continuity, one global fidelity audit, then independent blocker
+    # verification. Repairs return to this loop so both audits can see their
+    # new plan state and newly introduced candidates are not hidden by a frozen
+    # first response.
     audit_correction = ""
     last_audit = None
-    plan_attempt = 0
-    while plan_attempt < LLM_CONNECTION_RETRIES:
-        plan_attempt += 1
-        if (
-            plan_attempt > 1
-            and last_audit
-            and not last_audit["macro_arc_consistent_with_source"]
-        ):
-            # Outer process loop for audit-triggered regeneration
-            audit_macro_arc = None
-            audit_process_attempt = 0
-            audit_max_process_attempts = 10
-            audit_correction = (
-                "The global audit found the macro arc inconsistent with the "
-                "source story: "
-                + format_beat_plan_blocking_issues(
-                    last_audit["blocking_issues"]
-                )
-            )
-            
-            while audit_process_attempt < audit_max_process_attempts:
-                audit_process_attempt += 1
-                print(
-                    f"\n=== Audit-triggered macro arc process attempt "
-                    f"{audit_process_attempt}/{audit_max_process_attempts} ===",
-                    flush=True,
-                )
-                
-                # Delete story_arc files to force regeneration
-                hash_path = get_story_arc_hash_path(story_arc_path)
-                if os.path.exists(story_arc_path):
-                    os.remove(story_arc_path)
-                    print(f"Deleted cached story arc: {story_arc_path}", flush=True)
-                if os.path.exists(hash_path):
-                    os.remove(hash_path)
-                    print(f"Deleted cache hash: {hash_path}", flush=True)
-                
-                # Request macro arc with validation and audit correction
-                audit_macro_arc, audit_validation_success = request_valid_macro_arc(
-                    correction=audit_correction,
-                    max_attempts=10
-                )
-                
-                if audit_validation_success and audit_macro_arc is not None:
-                    print(
-                        f"Audit-triggered macro arc validation succeeded on "
-                        f"process attempt {audit_process_attempt}.",
-                        flush=True,
-                    )
-                    macro_arc = audit_macro_arc
-                    break
-                
-                # Validation failed but we have a macro_arc as best effort
-                if audit_process_attempt < audit_max_process_attempts:
-                    print(
-                        f"Audit-triggered macro arc validation failed on process attempt "
-                        f"{audit_process_attempt}; restarting macro arc generation "
-                        f"(process attempt {audit_process_attempt + 1}/{audit_max_process_attempts}).",
-                        flush=True,
-                    )
-                else:
-                    print(
-                        f"Audit-triggered macro arc process reached maximum attempts "
-                        f"({audit_max_process_attempts}); accepting best effort result.",
-                        flush=True,
-                    )
-                    macro_arc = audit_macro_arc
-            
-            if macro_arc is None:
-                macro_arc = best_effort_macro_arc()
-                print(
-                    "WARNING: Audit-triggered macro arc regeneration was "
-                    "unavailable; using a deterministic linear arc as best effort.",
-                    flush=True,
-                )
+    for plan_attempt in range(1, LLM_CONNECTION_RETRIES + 1):
         beats = generate_batches(macro_arc, audit_correction=audit_correction)
         beats = review_explicit_instructions(beats, macro_arc)
-        audit = request_plan_audit(beats, macro_arc, plan_attempt)
         repaired_beat_ids = set()
         completed_repair_rounds = 0
-        fallback_reason = ""
-        frozen_issues = []
-        pending_issue_ids = []
-        last_audit = audit
-
-        if not audit["macro_arc_consistent_with_source"]:
-            fallback_reason = (
-                "the audit found the macro arc inconsistent with the hard "
-                "source requirements"
+        repair_exhausted = False
+        for audit_round in range(LLM_CONNECTION_RETRIES + 1):
+            audit = request_plan_audits(
+                beats, macro_arc, plan_attempt, audit_round=audit_round
             )
-        else:
-            initial_normalized = normalize_beat_plan_repair_ranges(
+            last_audit = audit
+            normalized = normalize_beat_plan_repair_ranges(
                 audit["blocking_issues"],
                 total_segments,
+                repaired_beat_ids=repaired_beat_ids,
                 story=story,
                 beat_instructions=beat_instructions,
             )
-            discarded_count = (
-                audit.get("discarded_blocking_issues", 0)
-                + len(initial_normalized["discarded"])
-            )
-            broad_downgrades = list(initial_normalized["downgraded"])
-            if broad_downgrades:
-                for issue in broad_downgrades:
-                    print(
-                        "Global beat-plan audit warning only; not auto-repairing "
-                        f"broad Beats {issue['beat_start']}-{issue['beat_end']} "
-                        f"({issue['type']}). Targeted auto-repairs are limited "
-                        f"to {MAX_TARGETED_BEAT_REPAIR_SPAN} beats.",
-                        flush=True,
-                    )
-
-            if not initial_normalized["issues"]:
-                if discarded_count:
-                    fallback_reason = (
-                        "the audit's blocking ranges were malformed or outside "
-                        "the beat plan and could not be localized safely"
-                    )
-                else:
-                    accepted_audit = dict(audit)
-                    accepted_audit["valid"] = True
-                    accepted_audit["blocking_issues"] = []
-                    accepted_audit["warnings"] = list(audit.get("warnings", []))
-                    accepted_audit["warnings"].extend(
-                        f"Broad audit issue was not auto-repaired: Beats "
-                        f"{issue['beat_start']}-{issue['beat_end']} "
-                        f"({issue['type']}): {issue['problem']}"
-                        for issue in broad_downgrades
-                    )
+            if not normalized["issues"]:
+                accepted_audit = dict(audit)
+                accepted_audit["valid"] = True
+                accepted_audit["blocking_issues"] = []
+                accepted_audit["warnings"] = list(audit.get("warnings", []))
+                if not normalized["discarded"]:
                     return accept_plan(
-                        beats,
-                        accepted_audit,
-                        plan_attempt,
-                        completed_repair_rounds,
+                        beats, accepted_audit, plan_attempt, completed_repair_rounds
                     )
-            else:
-                # Freeze the initial global audit's blocker identities. Every
-                # subsequent LLM call may only resolve or retain these issues;
-                # it may never discover a new blocker or move the goalposts.
-                frozen_issues = list(initial_normalized["issues"])
-                pending_issue_ids = list(range(1, len(frozen_issues) + 1))
                 print(
-                    "Initial global beat-plan audit reported "
-                    f"{len(frozen_issues)} frozen blocking issue"
-                    f"{'' if len(frozen_issues) == 1 else 's'}; verifying them "
-                    "before making repairs.",
+                    "WARNING: malformed or unsafe audit candidates were discarded; "
+                    "accepting the current plan as best effort.",
                     flush=True,
                 )
-                pending_issue_ids = request_plan_verification(
-                    beats,
-                    macro_arc,
-                    frozen_issues,
-                    pending_issue_ids,
-                    plan_attempt,
-                    verification_round=0,
+                return accept_plan(
+                    beats, accepted_audit, plan_attempt, completed_repair_rounds
                 )
 
-                if not pending_issue_ids:
-                    accepted_audit = dict(audit)
-                    accepted_audit["valid"] = True
-                    accepted_audit["blocking_issues"] = []
-                    return accept_plan(
-                        beats,
-                        accepted_audit,
-                        plan_attempt,
-                        completed_repair_rounds,
-                    )
+            verified = request_candidate_verification(
+                beats,
+                macro_arc,
+                normalized["issues"],
+                plan_attempt,
+                verification_round=audit_round,
+            )
+            if not verified:
+                accepted_audit = dict(audit)
+                accepted_audit["valid"] = True
+                accepted_audit["blocking_issues"] = []
+                accepted_audit["warnings"] = list(audit.get("warnings", []))
+                return accept_plan(
+                    beats, accepted_audit, plan_attempt, completed_repair_rounds
+                )
 
-                repair_round = 0
-                while pending_issue_ids:
-                    repair_round += 1
-                    pending_issues = [
-                        frozen_issues[issue_id - 1]
-                        for issue_id in pending_issue_ids
-                    ]
-                    normalized = normalize_beat_plan_repair_ranges(
-                        pending_issues,
-                        total_segments,
-                        story=story,
-                        beat_instructions=beat_instructions,
+            verified = localize_confirmed_blockers(
+                beats,
+                macro_arc,
+                verified,
+                plan_attempt,
+                localization_round=audit_round,
+            )
+
+            verified_normalized = normalize_beat_plan_repair_ranges(
+                verified,
+                total_segments,
+                repaired_beat_ids=repaired_beat_ids,
+                story=story,
+                beat_instructions=beat_instructions,
+            )
+            if not verified_normalized["ranges"]:
+                print(
+                    "ERROR: confirmed blockers had no safe repair range; "
+                    "retaining them as blocking and restarting the plan attempt.",
+                    flush=True,
+                )
+                last_audit = {
+                    **audit,
+                    "valid": False,
+                    "blocking_issues": verified,
+                }
+                repair_exhausted = True
+                break
+            if completed_repair_rounds >= LLM_CONNECTION_RETRIES:
+                repair_exhausted = True
+                break
+
+            repair_ranges = verified_normalized["ranges"]
+            working_beats = list(beats)
+            for range_number, repair_range in enumerate(repair_ranges, start=1):
+                range_issues = [
+                    issue for issue in verified
+                    if not (
+                        issue["beat_end"] < repair_range["beat_start"]
+                        or issue["beat_start"] > repair_range["beat_end"]
                     )
-                    discarded_count = len(normalized["discarded"])
-                    if discarded_count or not normalized["issues"]:
-                        fallback_reason = (
-                            "a frozen blocker could no longer be localized safely"
+                ]
+                range_label = format_beat_plan_repair_ranges([repair_range])
+                correction = ""
+                repaired = None
+                for response_attempt in range(1, LLM_CONNECTION_RETRIES + 1):
+                    try:
+                        replacements = request_plan_repair(
+                            working_beats,
+                            macro_arc,
+                            [repair_range],
+                            range_issues,
+                            plan_attempt,
+                            completed_repair_rounds + 1,
+                            response_attempt,
+                            correction=correction,
                         )
+                        repaired = splice_beat_plan_repair(
+                            working_beats, [repair_range], replacements
+                        )
+                        introduction_issues = validate_generated_beat_macro_introductions(
+                            repaired, macro_arc
+                        )
+                        if introduction_issues:
+                            raise ValueError(" ".join(introduction_issues))
+                        instruction_issues = validate_generated_beat_instructions(
+                            repaired, beat_instructions
+                        )
+                        if instruction_issues:
+                            raise ValueError(" ".join(instruction_issues))
+                        exclusion_issues = validate_generated_beat_exclusions(
+                            repaired, phrase_exclusions
+                        )
+                        if exclusion_issues:
+                            raise ValueError(" ".join(exclusion_issues))
                         break
-
-                    repair_ranges = normalized["ranges"]
-                    if not repair_ranges:
-                        fallback_reason = (
-                            "the frozen blockers produced no safely localized "
-                            "repair range"
-                        )
-                        break
-
-                    print(
-                        "Frozen beat-plan verification still has "
-                        f"{len(pending_issue_ids)} unresolved blocker"
-                        f"{'' if len(pending_issue_ids) == 1 else 's'}: "
-                        + ", ".join(
-                            f"Issue {issue_id}" for issue_id in pending_issue_ids
-                        ),
-                        flush=True,
-                    )
-                    print(f"Issues: {pending_issues}", flush=True)
-                    working_beats = list(beats)
-                    for range_number, repair_range in enumerate(
-                        repair_ranges,
-                        start=1,
-                    ):
-                        range_issues = [
-                            issue
-                            for issue in pending_issues
-                            if not (
-                                issue["beat_end"] < repair_range["beat_start"]
-                                or issue["beat_start"] > repair_range["beat_end"]
-                            )
-                        ]
-                        range_label = format_beat_plan_repair_ranges(
-                            [repair_range]
-                        )
+                    except (LLMConnectionError, ComfyUIConnectionError):
+                        raise
+                    except Exception as error:
+                        correction = str(error)
                         print(
-                            f"Repair round {repair_round}, localized request "
-                            f"{range_number}/{len(repair_ranges)}: repairing "
-                            f"{range_label} only.",
+                            f"Repair {range_label} response failed validation "
+                            f"(attempt {response_attempt}): {error}",
                             flush=True,
                         )
-                        correction = ""
-                        repaired_beats = None
-                        response_attempt = 0
-                        while response_attempt < LLM_CONNECTION_RETRIES:
-                            response_attempt += 1
-                            try:
-                                replacement_beats = request_plan_repair(
-                                    working_beats,
-                                    macro_arc,
-                                    [repair_range],
-                                    range_issues,
-                                    plan_attempt,
-                                    repair_round,
-                                    response_attempt,
-                                    correction=correction,
-                                )
-                                repaired_beats = splice_beat_plan_repair(
-                                    working_beats,
-                                    [repair_range],
-                                    replacement_beats,
-                                )
-                                introduction_issues = (
-                                    validate_generated_beat_macro_introductions(
-                                        repaired_beats,
-                                        macro_arc,
-                                    )
-                                )
-                                if introduction_issues:
-                                    raise ValueError(
-                                        "Repaired complete plan violates macro "
-                                        "introduction timing: "
-                                        + " ".join(introduction_issues)
-                                    )
-                                instruction_issues = (
-                                    validate_generated_beat_instructions(
-                                        repaired_beats,
-                                        beat_instructions,
-                                    )
-                                )
-                                if instruction_issues:
-                                    raise ValueError(
-                                        "Repaired complete plan violates explicit "
-                                        "beat instructions: "
-                                        + " ".join(instruction_issues)
-                                    )
-                                exclusion_issues = validate_generated_beat_exclusions(
-                                    repaired_beats,
-                                    phrase_exclusions,
-                                )
-                                if exclusion_issues:
-                                    raise ValueError(" ".join(exclusion_issues))
-                            except (LLMConnectionError, ComfyUIConnectionError):
-                                raise
-                            except Exception as error:
-                                correction = str(error)
-                                repaired_beats = None
-                                print(
-                                    f"Repair round {repair_round}, {range_label} "
-                                    f"response failed validation (attempt "
-                                    f"{response_attempt}; 10 times then best "
-                                    f"effort or Ctrl+Q): {error}",
-                                    flush=True,
-                                )
-                                continue
-                            break
-
-                        if repaired_beats is None:
-                            print(
-                                f"WARNING: {range_label} exhausted repair "
-                                "retries; keeping its current beats as best effort.",
-                                flush=True,
-                            )
-                            repaired_beats = list(working_beats)
-                        working_beats = repaired_beats
-
-                    beats = working_beats
-                    completed_repair_rounds = repair_round
-                    repaired_beat_ids.update(
-                        beat_ids_for_repair_ranges(repair_ranges)
-                    )
+                if repaired is None:
                     print(
-                        f"Repair round {repair_round} completed; verifying only "
-                        f"the {len(pending_issue_ids)} remaining frozen blocker"
-                        f"{'' if len(pending_issue_ids) == 1 else 's'}.",
+                        f"WARNING: {range_label} exhausted repair retries; "
+                        "keeping its current beats as best effort.",
                         flush=True,
                     )
-                    pending_issue_ids = request_plan_verification(
-                        beats,
-                        macro_arc,
-                        frozen_issues,
-                        pending_issue_ids,
-                        plan_attempt,
-                        verification_round=repair_round,
-                    )
-
-                if not pending_issue_ids and not fallback_reason:
-                    accepted_audit = dict(audit)
-                    accepted_audit["valid"] = True
-                    accepted_audit["blocking_issues"] = []
-                    return accept_plan(
-                        beats,
-                        accepted_audit,
-                        plan_attempt,
-                        completed_repair_rounds,
-                    )
-
-        last_audit = audit
-        if pending_issue_ids:
-            remaining_frozen = [
-                frozen_issues[issue_id - 1]
-                for issue_id in pending_issue_ids
-            ]
-            audit_correction = format_beat_plan_blocking_issues(remaining_frozen)
-        else:
-            audit_correction = (
-                format_beat_plan_blocking_issues(audit["blocking_issues"])
-                if audit["blocking_issues"]
-                else fallback_reason
+                else:
+                    working_beats = repaired
+            beats = working_beats
+            completed_repair_rounds += 1
+            repaired_beat_ids.update(beat_ids_for_repair_ranges(repair_ranges))
+            print(
+                f"Repair round {completed_repair_rounds} completed; rerunning "
+                "adjacent and global validation.",
+                flush=True,
             )
-        print(
-            "Falling back to full-plan regeneration because "
-            f"{fallback_reason}. Remaining blockers: "
-            f"{audit_correction}. Plan attempts are bounded at "
-            f"{LLM_CONNECTION_RETRIES}; then best effort is accepted.",
-            flush=True,
-        )
+
+        if repair_exhausted:
+            audit_correction = format_beat_plan_blocking_issues(
+                last_audit.get("blocking_issues", []) if last_audit else []
+            )
+            print(
+                "WARNING: targeted beat-plan repair rounds exhausted; "
+                "regenerating the complete plan within the retry budget.",
+                flush=True,
+            )
 
     print(
         f"WARNING: beat-plan generation exhausted {LLM_CONNECTION_RETRIES} "
@@ -11463,7 +11294,6 @@ def generate_beats_from_story(
         )
         return load_beats(path)
     return beats
-
 
 # Load or generate beats.
 def load_or_generate_beats(
