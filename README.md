@@ -884,8 +884,11 @@ Segments 5 and 10 use `Minimax_auto_refresh_API.json`. Before each refresh, the
 program extracts the exact last frame of the preceding segment into the ComfyUI
 input folder, assigns it to `Refresh First Frame`, copies the configured
 reference-image settings from the initial workflow, and prints an `AUTO REFRESH`
-notice. The following segments return to the normal append workflow until the next multiple
-of five. Segment 1 always uses the initial workflow.
+notice. The refresh prompt treats that image as the supplied `first_frame`
+conditioning input, not as any `<Picture N>` reference, so numbered subject
+references remain unambiguous. The following segments return to the normal
+append workflow until the next multiple of five. Segment 1 always uses the
+initial workflow.
 
 ### Example: resume at segment 12
 

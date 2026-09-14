@@ -278,9 +278,17 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertEqual(recent_count, 0)
         user_content = messages[1]["content"]
         self.assertIn(json.dumps(phase, ensure_ascii=False, indent=2), user_content)
-        self.assertIn("2. Door opens", user_content)
-        self.assertIn("3. Room revealed", user_content)
+        self.assertIn(
+            "CURRENT BEAT — EXECUTE ONLY THIS:\n2. Door opens",
+            user_content,
+        )
+        self.assertIn(
+            "NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\n"
+            "3. Room revealed",
+            user_content,
+        )
         self.assertNotIn("1. Opening", user_content)
+        self.assertNotIn("BEATS:", user_content)
         self.assertIn("CONTINUITY STATE:", user_content)
         self.assertIn("Mark is at the door.", user_content)
 
@@ -303,10 +311,50 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
 
         user_content = messages[1]["content"]
-        self.assertIn("2. Door opens", user_content)
-        self.assertIn("3. Room revealed", user_content)
+        self.assertIn(
+            "CURRENT BEAT — EXECUTE ONLY THIS:\n2. Door opens",
+            user_content,
+        )
+        self.assertIn(
+            "NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\n"
+            "3. Room revealed",
+            user_content,
+        )
         self.assertNotIn("1. Opening", user_content)
         self.assertNotIn("4. Leaves room", user_content)
+        self.assertNotIn("BEATS:", user_content)
+
+    def test_phase_beats_text_returns_current_and_next_separately(self):
+        self.assertEqual(
+            minimax._phase_beats_text(
+                ["Opening", "Door opens", "Room revealed", "Leaves room"],
+                {"phase_number": 1},
+                2,
+            ),
+            ("2. Door opens", "3. Room revealed"),
+        )
+
+    def test_phase_beats_text_handles_first_and_final_beats(self):
+        beats = ["Opening", "Door opens", "Room revealed"]
+
+        self.assertEqual(
+            minimax._phase_beats_text(beats, None, 1),
+            ("1. Opening", "2. Door opens"),
+        )
+        self.assertEqual(
+            minimax._phase_beats_text(beats, None, 3),
+            ("3. Room revealed", "N/A"),
+        )
+
+    def test_phase_beats_text_handles_empty_and_out_of_range_beats(self):
+        self.assertEqual(
+            minimax._phase_beats_text([], None, 2),
+            ("N/A", "N/A"),
+        )
+        self.assertEqual(
+            minimax._phase_beats_text(["Only beat"], None, 99),
+            ("1. Only beat", "N/A"),
+        )
 
     def test_recent_dialogue_exclusions_are_added_to_generation_prompt(self):
         rules = minimax.build_director_rules(30, 6, 5, SUBJECTS, 5)

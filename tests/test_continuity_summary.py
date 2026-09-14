@@ -437,7 +437,8 @@ class ContinuitySummaryTests(unittest.TestCase):
 
         description_section = prompt.split("detailed_description: ", 1)[1]
         self.assertTrue(description_section.startswith(
-            "[Shot 1] The opening frame is <Picture 1>. "
+            "[Shot 1] The opening composition is already established by "
+            "the supplied first frame. "
         ))
         self.assertIn(continuity, description_section)
         # The formatter's internal `[Shot 2]` marker is replaced by the

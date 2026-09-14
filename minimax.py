@@ -544,6 +544,8 @@ JSON_REPAIR_SYSTEM_PROMPT = (
 
 PERSISTENT_STATE_CONFLICT_ISSUE_TYPE = "persistent_state_conflict"
 
+ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE = "adjacent_physical_transition"
+
 BEAT_PHASE_VALIDATION_ISSUE_TYPES = (
     "missing_end_state",
     "next_phase_scope_creep",
@@ -551,6 +553,7 @@ BEAT_PHASE_VALIDATION_ISSUE_TYPES = (
     "future_location",
     "bad_opening_continuity",
     PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
+    ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE,
 )
 
 # ------------------------------------------------------------
@@ -585,11 +588,19 @@ _BEAT_ABBREVIATIONS = {
 # System prompts and parser patterns for Director and H3 formatting requests.
 # ------------------------------------------------------------
 
-DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are a minimalist movie editor expanding on a an idea into a {segment_seconds} second beat into micro-beats. This segment will be based on beat {beat_number}.  The continuity state from the previous segment is provided.
+DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are a minimalist movie editor expanding the CURRENT BEAT into timed micro-beats for a {segment_seconds}-second video segment.
 
-For extra context, you are provided the overarching story and the overarching phase.  You will be provided the current beat and the following beat, and the opening CONTINUITY STATE. Only use these as references except for the current beat.
+AUTHORITY RULES
 
-- Only write the specified beat. DO NOT write anything from the next beat, it is provided so you know what NOT to write.
+- CURRENT BEAT is the complete and exclusive list of story events allowed in this segment.
+- NEXT BEAT is a forbidden boundary. Do not perform, begin, anticipate, foreshadow, cause, or show any result of NEXT BEAT.
+- If an action appears in NEXT BEAT but not CURRENT BEAT, it must not occur anywhere in the response, including the End continuity state.
+- OPENING CONTINUITY STATE defines what is already true at 00:00.000. It does not authorize a new event.
+- STORY and PHASE are background context only. Never introduce an action, event, character entrance, object, reveal, interruption, or state change from STORY or PHASE unless the CURRENT BEAT explicitly contains it.
+- SUBJECT DEFINITIONS establish identity and appearance only. They do not authorize events or actions.
+- Expand the CURRENT BEAT; do not advance the story beyond it.
+- Write only CURRENT BEAT. NEXT BEAT is not part of this segment. No action, event, state change, reaction, setup, or consequence unique to NEXT BEAT may occur in this response.
+- Do not add dramatic escalation, foreshadowing, interruptions, reactions to future events, or setup for later story events unless the CURRENT BEAT explicitly requires them.
 - Do not embellish the beat, if the beat has two actions, write two actions as micro-beats.
 - Be short and succint. Only write what would be necessary for visual and audio input, no taste or smell.
 - Any clothing either defined in the beat or clothing changes must be specified in a micro-beat. Any clothing specified in the beat must be part of the response.
@@ -623,21 +634,18 @@ MICRO-BEATS
 
 EXAMPLE:
 
-Beat: Alice follows him into rabbit hole and falls in. She floats down, there are clocks floating around her. She lands in a room with a table to her right with a vial of black liquid with "drink me" written on it. Alice stands and drinks from it.
+CURRENT BEAT:
+A woman crosses the garage and opens a storage cabinet.
 
-Return:
+Correct:
+At 00:00.000 seconds, the woman walks across the garage toward the storage cabinet as the camera tracks beside her.
 
-At 00:00.250, Alice rises and walks over to the rabbit hole and looks down into it.
+At 00:02.500 seconds, she reaches the cabinet and pulls its door open.
 
-At 00:02.500, Alice slips and falls, feet first, into the rabbit hole.
+End continuity state: The woman stands in front of the open storage cabinet.
 
-At 00:03.500, The camera zooms down into the rabbit hole and centers on Alice as she falls. Alice floats down. There are clocks floating all around her as she falls.
-
-At 00:06.000, Alice falls onto the floor of a small room. There is a table to her right with a small vial of black liquid with a label that says "Drink Me". Alice looks around her. The camera slowly zooms out.
-
-At 00:08.000, Alice stands up and sees the vial and reaches for it.
-
-At 00:09.000, Alice drinks the liquid in the vial.
+Incorrect:
+Do not add something from the STORY that happens later, such as another person entering, an alarm sounding, or the woman removing an object from the cabinet.
 
 End continuity state: Alice is standing in a room with a table to her right, holding a vial of black liquid that she is drinking.
 """
@@ -8153,6 +8161,11 @@ VERIFICATION RULES
   definitive lasting state established earlier or repeats the same completed
   irreversible transition. This built-in chronological rule does not need to
   appear in SOURCE STORY.
+- For an adjacent physical-transition issue, compare the end state of the beat
+  immediately before the frozen target with the target beat's assumed opening
+  state. Leave the issue unresolved only when the target still requires an
+  unshown movement, spatial change, handoff, reorientation, or other physical
+  transition. The target is normally the later beat; do not relocate it.
 - Return its numeric issue ID in unresolved_issue_ids only if it still clearly
   fails. Omit the ID when the requirement is now reasonably satisfied.
 - Never return an issue ID that was not supplied below.
@@ -8246,8 +8259,38 @@ but may not override the source.
 
 ADJACENT CONTINUITY RULE
 
-For every adjacent pair of beats, Beat N+1 must start from a physical and
-chronological state compatible with the end of Beat N.
+Audit every adjacent pair in numeric order, one pair at a time. For each
+Beat N -> Beat N+1 pair, explicitly determine (in your reasoning) the physical
+end state actually established by Beat N, then determine what physical state
+Beat N+1 assumes is already true at its start. Compare location, containment,
+spatial relationship, possession, orientation, physical condition, and whether
+an action or transition is still in progress or already complete. Beat N+1
+must be physically reachable from Beat N's established end state.
+
+Flag Beat N+1 as an adjacent physical-transition failure when its assumed
+opening state requires an unshown movement, entry/exit, handoff, turn,
+reorientation, pursuit/passing, state change, or other completed transition.
+The transition may be established by Beat N, visibly performed in Beat N+1,
+continued from an explicitly unfinished movement, or authorized by an explicit
+story transition/cut in time or place. Do not infer a transition just because
+the later location or relationship is plausible. Do not require identical
+wording, exact distances, or repeated connective detail between compatible
+beats.
+
+CALIBRATION EXAMPLES
+
+- If Beat 4 leaves a man outside a locked garage and Beat 5 has him standing
+  inside an upstairs bedroom, flag Beat 5 unless Beat 4 or Beat 5 establishes
+  entry and movement through the intervening spaces.
+- If Beat 4 leaves a man outside the garage and Beat 5 has him force the door
+  open and enter while the family runs upstairs, the location transition is
+  established; do not demand additional exact path details in Beat 6.
+- If Beat N establishes a pursuer behind a target and Beat N+1 places that
+  pursuer ahead, flag Beat N+1 unless Beat N or Beat N+1 establishes passing or
+  overtaking. A turn of the camera or a reaction does not establish passing.
+- If Beat N ends while a subject is walking toward a doorway and Beat N+1 has
+  the subject continue through that doorway, treat it as a valid continuation
+  when no incompatible state is introduced.
 
 A later beat may continue an unfinished action, but must not:
 - restart or substantially repeat an action already completed;
@@ -8320,6 +8363,10 @@ Create a blocking issue only for:
 - incorrect event ordering or missing prerequisite;
 - contradiction of a definitive persistent state;
 - impossible unexplained spatial/location transition;
+- adjacent physical-transition failure where Beat N+1 assumes a changed
+  location, spatial relationship, possession, orientation, physical state, or
+  completed transition without Beat N or Beat N+1 establishing how it became
+  true;
 - repeated irreversible transition without restoration/replacement;
 - required repeated-process sequence that is incomplete or out of order;
 - several consecutive beats that substantially repeat the same progression;
@@ -8343,6 +8390,12 @@ preferably one beat.
 
 For adjacent continuity problems, normally report the later beat unless the
 earlier beat itself creates the incorrect state.
+For a missing physical transition, report the smallest later-beat range that
+can establish the missing movement or make the later beat compatible; normally
+this is Beat N+1 alone. In `problem`, name the established end state of Beat N,
+the state Beat N+1 assumes at its start, and the missing transition between
+them. Use `type="{ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE}"` for this failure.
+Do not target the earlier valid beat merely to accommodate the later assumption.
 
 Each blocking_issues object contains:
 - beat_start
@@ -8478,6 +8531,13 @@ REPAIR CONTRACT
   do not move a pursuer from behind to ahead without an explicit
   passing/overtaking action. Keep lower-body absence incompatible with visible
   legs, while allowing torso absence with visible legs.
+- For an adjacent physical-transition blocker, repair the later targeted beat
+  by showing the smallest authorized movement or transition needed from the
+  immutable preceding beat's end state. If the preceding beat ends with an
+  unfinished movement, continue that movement instead of restarting it. Do not
+  rewrite an earlier valid beat merely to make an unsupported later assumption
+  appear consistent, and do not invent a new mechanism or destination to hide
+  the missing transition.
 - Keep every replacement as a simple H3 EXECUTION TARGET: one primary physical
   operation or one tightly coupled cause -> action -> visible result. Use 1-2
   concise sentences and stop once that visible result is established.
@@ -8728,8 +8788,26 @@ def normalize_beat_plan_repair_ranges(
         if invalid_text:
             discarded.append(issue)
             continue
-        issue_ids = set(range(beat_start, beat_end + 1))
-        repair_span = beat_end - beat_start + 1
+        # Adjacent physical-transition blockers are found by comparing two
+        # beats, but the later beat is the default repair target. If the model
+        # returns the exact adjacent pair instead of the requested later beat,
+        # localize it here without touching the earlier established state.
+        if (
+            normalized_issue["type"]
+            == ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE
+            and beat_end == beat_start + 1
+        ):
+            normalized_issue["beat_start"] = beat_end
+            normalized_issue["beat_end"] = beat_end
+        issue_ids = set(range(
+            normalized_issue["beat_start"],
+            normalized_issue["beat_end"] + 1,
+        ))
+        repair_span = (
+            normalized_issue["beat_end"]
+            - normalized_issue["beat_start"]
+            + 1
+        )
         if repair_span > MAX_TARGETED_BEAT_REPAIR_SPAN:
             # A global audit is useful for spotting problems, but a complaint
             # that spans a large part of the plan is not precise enough to
@@ -11570,7 +11648,7 @@ def build_director_rules(
         is_final_story_segment = int(segment_number) == int(total_segments)
     rules = DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
         segment_seconds=f"{float(segment_length):g}",
-        segment_min_beats=max(0, int(float(float(segment_length) / 2))),
+        segment_min_beats=max(0, int(math.ceil(float(segment_length) / 2))),
         beat_number=int(segment_number),
         story_segment_ending_rules=build_story_segment_ending_rules(
             is_final_story_segment
@@ -11579,22 +11657,24 @@ def build_director_rules(
     return rules
 
 
-# Render only the active beat and the immediately following beat.
+# Return the active beat and the immediately following beat separately.
 def _phase_beats_text(beats, current_phase, beat_number):
-    """Render only the active beat and the immediately following beat."""
+    """Return the active beat and immediately following beat separately."""
     if not beats:
-        return "N/A"
+        return "N/A", "N/A"
     try:
         active_id = int(beat_number)
     except (TypeError, ValueError):
         active_id = 1
     del current_phase
     start = max(1, min(active_id, len(beats)))
-    end = min(start + 1, len(beats))
-    return "\n".join(
-        f"{beat_id}. {beats[beat_id - 1]}"
-        for beat_id in range(start, end + 1)
+    current_beat = f"{start}. {beats[start - 1]}"
+    next_beat = (
+        f"{start + 1}. {beats[start]}"
+        if start < len(beats)
+        else "N/A"
     )
+    return current_beat, next_beat
 
 
 # Return Request 1 as plain raw_scene text without semantic rewriting.
@@ -13179,6 +13259,8 @@ def _continuity_fact_belongs_to_wardrobe(value):
         return False
     if _WARDROBE_ONLY_STATE_RE.search(text):
         return True
+    if _CLOTHING_NOUN.search(text):
+        return True
     return any(
         pattern.search(text)
         for pattern in _WARDROBE_COMPONENT_PATTERNS.values()
@@ -14396,38 +14478,52 @@ def _continuity_json_text(value):
 
 
 # Remove non-canonical clothing-condition claims from prompt state.
+_WARDROBE_CONTINUITY_ALIASES = (
+    "clothing",
+    "clothing_condition",
+    "clothing_state",
+    "outfit",
+    "attire",
+    "apparel",
+)
+
+
 def sanitize_prompt_derived_continuity_state(state):
     """Remove non-canonical clothing-condition claims from prompt state.
 
     ``wardrobe`` is the only continuity field allowed to carry garment facts.
-    A combined-continuity model may nevertheless emit a prose-oriented
-    ``clothing_condition`` field (for example, "torn sleeve" or "stained
-    trousers"). Those claims are not rendered evidence and can bypass the
-    atomic Feature #2 wardrobe replacement, so discard the field before the
-    state is serialized or merged into the next segment. The same protection
-    applies to a clothing-bearing ``physical_condition`` string, which some
-    models use as a synonym for that field.
+    A combined-continuity model may nevertheless emit prose-oriented aliases
+    (for example, ``clothing_condition``, ``body_state.clothing``, or
+    ``clothing_state``). Those claims are not rendered evidence and can bypass
+    the atomic wardrobe replacement, so discard the aliases before the state is
+    serialized or merged into the next segment. The canonical ``wardrobe``
+    field is intentionally retained here: merge_prompt_and_visual_end_state()
+    needs it in order to preserve a previously authoritative rendered slot
+    when the new visual observation is unknown. Prompt-only callers remove it
+    through clear_unrendered_wardrobes().
     """
     if not isinstance(state, dict):
         return copy.deepcopy(state)
 
     # Recursively remove unsafe values from prompt-derived state.
-    def scrub(value):
+    def scrub(value, parent_key=None):
         if isinstance(value, dict):
             cleaned = {}
             for key, item in value.items():
                 normalized_key = str(key).strip().casefold()
-                if normalized_key == "clothing_condition":
+                if normalized_key in _WARDROBE_CONTINUITY_ALIASES:
+                    continue
+                if normalized_key == "wardrobe" and parent_key == "body_state":
                     continue
                 if (
                     normalized_key == "physical_condition"
                     and _continuity_fact_belongs_to_wardrobe(item)
                 ):
                     continue
-                cleaned[key] = scrub(item)
+                cleaned[key] = scrub(item, normalized_key)
             return cleaned
         if isinstance(value, list):
-            return [scrub(item) for item in value]
+            return [scrub(item, parent_key) for item in value]
         return copy.deepcopy(value)
 
     return scrub(state)
@@ -15064,7 +15160,7 @@ def build_generation_messages(
         if isinstance(current_phase, dict) and current_phase
         else "N/A"
     )
-    beats_for_phase = _phase_beats_text(
+    current_beat_text, next_beat_text = _phase_beats_text(
         beats,
         current_phase,
         current_segment,
@@ -15100,9 +15196,11 @@ SUBJECT DEFINITIONS:
  
 PHASE: {phase_text}
  
-BEATS: 
- 
-{beats_for_phase}
+CURRENT BEAT — EXECUTE ONLY THIS:
+{current_beat_text}
+
+NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:
+{next_beat_text}
  
 CONTINUITY STATE: 
 {continuity_text}
@@ -16724,11 +16822,10 @@ def _open_h3_continuation_description(
 ):
     """Open a continuation description as the canonical ``[Shot 1]`` form.
 
-
-
     The continuity summary begins the section itself, immediately after the
     explicit continuation handoff from the preceding video, per the pipeline
-    contract. Clean-refresh segments use the supplied opening-frame reference.
+    contract. Clean-refresh segments use the supplied ``first_frame`` input;
+    it is intentionally not described as a ``<Picture N>`` reference.
     The standalone opening-state section no longer precedes the description.
     """
     description = str(description or "").lstrip()
@@ -16738,7 +16835,10 @@ def _open_h3_continuation_description(
         if prefix_match is not None:
             summary_body = summary_text[prefix_match.end():].strip()
             if conditioning_mode == "clean_refresh":
-                opener = "[Shot 1] The opening frame is <Picture 1>."
+                opener = (
+                    "[Shot 1] The supplied first frame defines the exact opening composition. "
+                    "Continue directly from that frame. "
+                )
             else:
                 opener = "[Shot 1] " + _H3_CONTINUATION_PREFIX_TEXT
             if summary_body:
@@ -16746,7 +16846,8 @@ def _open_h3_continuation_description(
         else:
             if conditioning_mode == "clean_refresh":
                 opener = (
-                    "[Shot 1] The opening frame is <Picture 1>. "
+                    "[Shot 1] The supplied first frame defines the exact opening composition. "
+                    "Continue directly from that frame. "
                     f"{summary_text}"
                 )
             else:
@@ -16758,7 +16859,10 @@ def _open_h3_continuation_description(
             opener += "."
     else:
         if conditioning_mode == "clean_refresh":
-            opener = "[Shot 1] The opening frame is <Picture 1>."
+            opener = (
+                "[Shot 1] The supplied first frame defines the exact opening composition. "
+                "Continue directly from that frame. "
+            )
         else:
             opener = "[Shot 1] Continuing directly from the final state of <Video 1>."
     if not description:
@@ -17954,26 +18058,48 @@ def _replace_rendered_wardrobe(prompt_subject, visual_subject):
     prompt_subject.pop("clothing", None)
 
 
-# Leave wardrobe unchanged when a Subject is absent from observation.
+# Remove all unobserved wardrobe claims from one Subject.
 def _clear_unobserved_wardrobe(subject):
-    """Leave wardrobe unchanged when a Subject is absent from observation."""
-    return
+    """Remove prompt-derived wardrobe claims without deleting body state."""
+    if not isinstance(subject, dict):
+        return subject
+
+    # Apply the same deterministic alias scrub used before continuity merge,
+    # then remove the canonical wardrobe from every nested malformed location.
+    # Updating in place matters because callers retain the canonical Subject
+    # record object for identity/state bookkeeping.
+    cleaned = sanitize_prompt_derived_continuity_state(subject)
+    if isinstance(cleaned, dict):
+        subject.clear()
+        subject.update(cleaned)
+
+    def remove_nested_wardrobe(value):
+        if isinstance(value, dict):
+            for key in list(value):
+                if str(key).strip().casefold() == "wardrobe":
+                    value.pop(key, None)
+                else:
+                    remove_nested_wardrobe(value[key])
+        elif isinstance(value, list):
+            for item in value:
+                remove_nested_wardrobe(item)
+
+    # The canonical wardrobe is still prompt-derived until a rendered visual
+    # observation replaces one or more slots. Clear it on prompt-only paths so
+    # requested clothing cannot become authoritative opening continuity.
+    remove_nested_wardrobe(subject)
+    _remove_wardrobe_owned_persistent_effects(subject)
+    return subject
 
 
-# Return state unchanged where no positive wardrobe observation exists.
+# Return state without wardrobe claims when no positive observation exists.
 def clear_unrendered_wardrobes(state):
-    """Return state unchanged where no positive wardrobe observation exists."""
+    """Remove wardrobe claims when no rendered visual evidence exists."""
     cleared = sanitize_prompt_derived_continuity_state(state)
     if not isinstance(cleared, dict):
         cleared = {}
     _subject_key, subjects = _prompt_subject_collection(cleared)
-    if isinstance(subjects, dict):
-        records = subjects.values()
-    elif isinstance(subjects, list):
-        records = subjects
-    else:
-        records = ()
-    for subject in records:
+    for _key, subject in _continuity_subject_entries(subjects):
         _clear_unobserved_wardrobe(subject)
     return cleared
 
@@ -18106,13 +18232,7 @@ def merge_prompt_and_visual_end_state(prompt_state, visual_state):
     # A subject omitted from the final-frame observation has no rendered
     # wardrobe evidence. Clear the copied/requested value rather than allowing
     # it to leak into the next segment as if it were visible.
-    if isinstance(subjects, dict):
-        subject_records = subjects.items()
-    elif isinstance(subjects, list):
-        subject_records = ((None, subject) for subject in subjects)
-    else:
-        subject_records = ()
-    for subject_key, subject in subject_records:
+    for subject_key, subject in _continuity_subject_entries(subjects):
         if not isinstance(subject, dict):
             continue
         subject_name = str(
@@ -18539,6 +18659,14 @@ def prepare_refresh_workflow(
         _comfy_image_reference(refresh_frame_name),
         label,
         "LoadImage",
+    )
+    set_node_input(
+        workflow,
+        REFRESH_CONDITIONING_NODE_NAME,
+        "also_ref_first_frame",
+        False,
+        label,
+        "MiniMaxH3HybridRefAndKeyframe",
     )
     set_node_input(
         workflow,

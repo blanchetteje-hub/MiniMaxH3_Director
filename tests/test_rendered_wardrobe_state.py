@@ -68,16 +68,18 @@ class RenderedWardrobeStateTests(unittest.TestCase):
             "tall man with a distinctive scar",
         )
 
-    def test_unknown_rendered_details_do_not_overwrite_requested_clothing(self):
+    def test_unknown_rendered_details_do_not_overwrite_authoritative_wardrobe(self):
+        prompt = self.prompt_state()
+        prompt["subjects"]["Mark"]["wardrobe"]["upper"] = "previous rendered coat"
         merged = minimax.merge_prompt_and_visual_end_state(
-            self.prompt_state(),
+            prompt,
             self.visual_state(self.subject(
                 "Mark",
                 {field: "unknown" for field in minimax._WARDROBE_FIELDS},
             )),
         )
 
-        self.assertEqual(merged["subjects"]["Mark"]["wardrobe"], self.prompt_state()["subjects"]["Mark"]["wardrobe"])
+        self.assertEqual(merged["subjects"]["Mark"]["wardrobe"], prompt["subjects"]["Mark"]["wardrobe"])
 
     def test_duplicate_rendered_wardrobe_slots_are_removed(self):
         merged = minimax.merge_prompt_and_visual_end_state(
@@ -188,7 +190,7 @@ class RenderedWardrobeStateTests(unittest.TestCase):
             "requested sandals",
         )
 
-    def test_unseen_subject_wardrobe_is_carried_forward(self):
+    def test_unseen_subject_prompt_wardrobe_is_cleared_without_visual_evidence(self):
         merged = minimax.merge_prompt_and_visual_end_state(
             self.prompt_state(),
             self.visual_state(self.subject(
@@ -202,10 +204,100 @@ class RenderedWardrobeStateTests(unittest.TestCase):
             )),
         )
 
-        self.assertEqual(
-            merged["subjects"]["Amy"]["wardrobe"],
-            self.prompt_state()["subjects"]["Amy"]["wardrobe"],
-        )
+        self.assertNotIn("wardrobe", merged["subjects"]["Amy"])
+
+    def test_prompt_only_clears_wardrobe_aliases_but_preserves_body_state(self):
+        state = {
+            "subjects": {
+                "Mark": {
+                    "name": "Mark",
+                    "wardrobe": {"upper": "invented shirt"},
+                    "clothing": {"lower": "invented jeans"},
+                    "clothing_condition": "torn",
+                    "body_state": {
+                        "clothing": {"footwear": "invented boots"},
+                        "injuries": ["scraped palm"],
+                        "topology": "intact",
+                    },
+                    "persistent_effects": [
+                        "red shirt remains",
+                        "the garage door is damaged",
+                    ],
+                }
+            }
+        }
+        before = copy.deepcopy(state)
+
+        cleared = minimax.clear_unrendered_wardrobes(state)
+        subject = cleared["subjects"]["Mark"]
+
+        for field in ("wardrobe", "clothing", "clothing_condition"):
+            self.assertNotIn(field, subject)
+        self.assertNotIn("clothing", subject["body_state"])
+        self.assertEqual(subject["body_state"]["injuries"], ["scraped palm"])
+        self.assertEqual(subject["body_state"]["topology"], "intact")
+        self.assertEqual(subject["persistent_effects"], ["the garage door is damaged"])
+        self.assertEqual(state, before)
+
+    def test_malformed_wrapped_subject_cannot_bypass_prompt_only_clearing(self):
+        state = {
+            "subjects": [
+                {"Mark": {
+                    "name": "Mark",
+                    "wardrobe": {"upper": "invented shirt"},
+                }}
+            ]
+        }
+
+        cleared = minimax.clear_unrendered_wardrobes(state)
+
+        self.assertNotIn("wardrobe", cleared["subjects"][0]["Mark"])
+
+    def test_malformed_wrapped_subject_cannot_bypass_visual_merge_clearing(self):
+        state = {
+            "subjects": [
+                {"Mark": {
+                    "name": "Mark",
+                    "wardrobe": {"upper": "invented shirt"},
+                    "body_state": {
+                        "clothing": {"lower": "invented jeans"},
+                        "injuries": ["bruise"],
+                    },
+                }}
+            ]
+        }
+
+        merged = minimax.merge_prompt_and_visual_end_state(state, {})
+
+        subject = merged["subjects"][0]["Mark"]
+        self.assertNotIn("wardrobe", subject)
+        self.assertNotIn("clothing", subject["body_state"])
+        self.assertEqual(subject["body_state"]["injuries"], ["bruise"])
+
+    def test_malformed_clothing_alias_cannot_bypass_sanitization(self):
+        state = {
+            "subjects": {
+                "Mark": {
+                    "name": "Mark",
+                    "body_state": {
+                        "clothing": {"upper": "invented jacket"},
+                        "wardrobe": {"lower": "invented jeans"},
+                        "physical_condition": "wet clothing",
+                        "injuries": ["bruise"],
+                    },
+                    "clothing_state": "clean",
+                }
+            }
+        }
+
+        sanitized = minimax.sanitize_prompt_derived_continuity_state(state)
+        subject = sanitized["subjects"]["Mark"]
+
+        self.assertNotIn("clothing_state", subject)
+        self.assertNotIn("clothing", subject["body_state"])
+        self.assertNotIn("wardrobe", subject["body_state"])
+        self.assertNotIn("physical_condition", subject["body_state"])
+        self.assertEqual(subject["body_state"]["injuries"], ["bruise"])
 
     def test_identity_is_not_copied_into_wardrobe(self):
         prompt = self.prompt_state()

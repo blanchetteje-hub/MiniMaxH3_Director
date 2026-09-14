@@ -438,7 +438,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertNotIn(suffix_fragment, initial)
         self.assertNotIn(suffix_fragment, refresh)
 
-    def test_refresh_continuation_opens_from_picture_one(self):
+    def test_refresh_continuation_uses_the_supplied_first_frame(self):
         prompt = minimax.build_h3_prompt(
             response("[Shot 2] Mark looks toward the street.", []),
             SUBJECTS,
@@ -450,9 +450,11 @@ class LmStudioIntegrationTests(unittest.TestCase):
         description_section = prompt.split("detailed_description: ", 1)[1]
         self.assertTrue(
             description_section.startswith(
-                "[Shot 1] The opening frame is <Picture 1>."
+                "[Shot 1] The opening composition is already established by "
+                "the supplied first frame."
             )
         )
+        self.assertNotIn("<Picture", description_section.split(".", 1)[0])
         self.assertNotIn(
             "[Shot 1] Continuing directly from the final state of <Video 1>",
             description_section,

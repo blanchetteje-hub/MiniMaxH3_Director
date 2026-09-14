@@ -404,10 +404,7 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             {"subjects": []},
         )
 
-        self.assertEqual(
-            merged["subjects"]["Werewolf"]["wardrobe"]["upper"],
-            "old coat",
-        )
+        self.assertNotIn("wardrobe", merged["subjects"]["Werewolf"])
 
     def test_phase_derived_definitions_preserve_dynamic_subject_mapping(self):
         state = minimax.continuity_state_for_registry(SUBJECTS)
@@ -589,7 +586,7 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         )
 
         self.assertNotIn("clothing_condition", merged["subjects"]["Werewolf"])
-        self.assertEqual(merged["subjects"]["Werewolf"]["wardrobe"], wardrobe())
+        self.assertNotIn("wardrobe", merged["subjects"]["Werewolf"])
 
     def test_checkpoint_canonicalizes_array_aliases_to_frozen_subject_identity(self):
         definitions = (
