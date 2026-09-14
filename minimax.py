@@ -563,12 +563,6 @@ _BEAT_INSTRUCTIONS = re.compile(
     r"(?P<instructions>.*?)\][ \t]*(?:\n|$)"
 )
 
-_GEN_RULES = re.compile(
-    r"(?ims)^[ \t]*gen_rules[ \t]*:[ \t]*"
-    r"(?:\[(?P<bracketed_rules>.*?)\]|(?P<inline_rules>[^\r\n]*))"
-    r"[ \t]*(?:\r?\n|$)"
-)
-
 _BEAT_SENTENCE_BREAK = re.compile(
     r"(?P<ending>[.!?]+)[\"'\u2019\u201d)]*\s+(?P<next>[A-Za-z0-9])"
 )
@@ -1122,8 +1116,6 @@ DIRECTOR_CONTINUITY_ISSUE_TYPES = (
     "incompatible_state_restoration",
     "unsupported_persistent_change",
     "next_beat_scope_creep",
-    "important_generation_rules_violation",
-    "generation_rule_violation",
 )
 
 DIRECTOR_CONTINUITY_RESPONSE_FORMAT = {
@@ -2223,7 +2215,6 @@ def build_run_config(
     subject_definitions="",
     global_loras=None,
     refresh_interval=None,
-    gen_rules="",
     vision_continuity=1,
     trim_frames=TRIM_FRAMES_AFTER_FIRST,
     retention=False,
@@ -2248,7 +2239,6 @@ def build_run_config(
             "refresh_interval": refresh_interval,
             "vision_continuity": int(vision_continuity),
             "retention": bool(retention),
-            "gen_rules": str(gen_rules or ""),
             "subject_definitions": source_subject_definitions,
         },
         ensure_ascii=False,
@@ -8914,23 +8904,6 @@ def parse_story_beat_instructions(story):
     return narrative, match.group("instructions")
 
 
-# Extract optional H3-generation rules from story.txt metadata.
-def parse_story_gen_rules(story):
-    """Extract optional H3-generation rules from story.txt metadata."""
-    story = str(story or "")
-    matches = list(_GEN_RULES.finditer(story))
-    if len(matches) > 1:
-        raise ValueError("story.txt contains more than one gen_rules directive.")
-    if not matches:
-        return story.strip(), ""
-    match = matches[0]
-    narrative = (story[:match.start()] + story[match.end():]).strip()
-    rules = match.group("bracketed_rules")
-    if rules is None:
-        rules = match.group("inline_rules").strip()
-    return narrative, rules
-
-
 # Build beat generation messages.
 def build_beat_generation_messages(
     story,
@@ -8945,7 +8918,6 @@ def build_beat_generation_messages(
     current_phase=None,
     audit_correction="",
     phrase_exclusions=(),
-    gen_rules="",
 ):
     batch_start = 1 if batch_start is None else int(batch_start)
     batch_end = total_segments if batch_end is None else int(batch_end)
@@ -9002,10 +8974,6 @@ def build_beat_generation_messages(
     if beat_instructions:
         supplemental_sections.append(
             "STORY BEAT INSTRUCTIONS (MANDATORY)\n" + str(beat_instructions).strip()
-        )
-    if str(gen_rules or "").strip():
-        supplemental_sections.append(
-            "PROJECT GENERATION RULES (MANDATORY)\n" + str(gen_rules).strip()
         )
     phrase_exclusions_section = format_phrase_exclusions_section(phrase_exclusions)
     if phrase_exclusions_section:
@@ -9909,7 +9877,6 @@ def generate_beats_from_story(
     story_arc_source=None,
     phrase_exclusions=(),
     reuse_story_arc=True,
-    gen_rules="",
 ):
     if llm_request is None:
         llm_request = ask_llm
@@ -10421,7 +10388,6 @@ def generate_beats_from_story(
                     current_phase=current_phase,
                     audit_correction=audit_correction,
                     phrase_exclusions=phrase_exclusions,
-                    gen_rules=gen_rules,
                 )
                 verify_subjects_in_beat_messages(
                     messages,
@@ -11434,7 +11400,6 @@ def load_or_generate_beats(
     story_arc_source=None,
     phrase_exclusions=(),
     force_generate=False,
-    gen_rules="",
 ):
     raw = load_text_file(path, required=not force_generate)
     try:
@@ -11481,7 +11446,6 @@ def load_or_generate_beats(
         # still empty so a failed/incomplete beat-generation run can resume
         # from its existing plan.
         reuse_story_arc=not force_generate or not beats,
-        gen_rules=gen_rules,
     )
 
 
@@ -11589,7 +11553,6 @@ def build_director_rules(
     segment_number,
     beats_enabled=True,
     conditioning_mode=None,
-    gen_rules="",
     is_final_story_segment=None,
 ):
     """Return the narrow Request-1 Director system prompt.
@@ -11600,7 +11563,7 @@ def build_director_rules(
     context is supplied in the user turn.
     """
     del total_length, subject_definitions, beats_enabled
-    del conditioning_mode, gen_rules
+    del conditioning_mode
     if is_final_story_segment is None:
         # Compatibility for direct callers that predate the explicit runtime
         # boolean. Production callers pass this value explicitly.
@@ -19213,21 +19176,16 @@ def repair_existing_segment(
             f"contains only {len(beats)} beat(s)."
         )
     story_source = load_text_file(story_path, required=True)
-    story_without_gen_rules, gen_rules = parse_story_gen_rules(story_source)
-    story, _beat_instructions = parse_story_beat_instructions(
-        story_without_gen_rules
-    )
+    story, _beat_instructions = parse_story_beat_instructions(story_source)
     if not story:
-        raise ValueError(
-            "story.txt contains no story after beat_instructions/gen_rules metadata."
-        )
+        raise ValueError("story.txt contains no story after beat_instructions metadata.")
     phrase_exclusions = load_phrase_exclusions(PHRASE_EXCLUSIONS_FILE)
 
     conditioning_mode = "clean_refresh"
     repair_macro_arc = load_story_arc(
         STORY_ARC_FILE,
         repair["total_segments"],
-        story_without_gen_rules,
+        story_source,
     )
     current_phase = story_arc_phase_for_beat(repair_macro_arc, segment_number)
     segment_length = float(repair["config"]["segment_length"])
@@ -19251,7 +19209,6 @@ def repair_existing_segment(
         segment_number,
         beats_enabled=True,
         conditioning_mode=conditioning_mode,
-        gen_rules=gen_rules,
         is_final_story_segment=(segment_number == repair["total_segments"]),
     )
     messages, _estimated_tokens, _recent_count = build_generation_messages(
@@ -19282,7 +19239,6 @@ def repair_existing_segment(
         "registry_state": opening_state,
         "dialogue_exclusions": dialogue_exclusions,
         "phrase_exclusions": phrase_exclusions,
-        "gen_rules": gen_rules,
         "opening_state_sha256": hashlib.sha256(
             json.dumps(
                 opening_state,
@@ -19451,40 +19407,33 @@ def _director_continuity_validation_state(opening_state):
     return payload
 
 
-# Build the final continuity, scope, and custom-rule check for H3 content.
+# Build the final continuity and scope check for H3 content.
 def build_director_continuity_validation_messages(
     opening_state,
     active_beat_text,
     detailed_description,
     segment_number,
     next_beat_text="",
-    gen_rules="",
     overall_soundscape="",
     non_diegetic_music="",
 ):
-    """Build the final continuity, scope, and custom-rule check for H3 content."""
+    """Build the final continuity and scope check for H3 content."""
     validation_state = _director_continuity_validation_state(opening_state)
-    rendered_gen_rules = str(gen_rules or "").strip() or "N/A"
     return [
         {
             "role": "system",
             "content": (
                 "You are a narrow final continuity gate for one generated video "
                 "segment. Check concrete persistent-state contradictions, "
-                "material scope creep into the supplied NEXT BEAT, and compliance "
-                "with any IMPORTANT GENERATION RULES. "
+                "material scope creep into the supplied NEXT BEAT. "
                 "Do not critique style, pacing, camera choices, temporary motion, "
-                "or dramatic intensity unless an IMPORTANT GENERATION RULE explicitly "
-                "governs it. Return only the requested JSON object."
+                "or dramatic intensity. Return only the requested JSON object."
             ),
         },
         {
             "role": "user",
             "content": f"""
 Validate the candidate Director description for Segment {segment_number}.
-
-IMPORTANT GENERATION RULES
-{rendered_gen_rules}
 
 AUTHORITY
 - COMMITTED OPENING STATE is already true at frame 0.
@@ -19509,23 +19458,15 @@ FAIL only for a concrete violation of one of these rules:
    distinctive story event or outcome reserved for NEXT BEAT. Shared characters,
    setting, props, connective motion, active-beat consequences, or reasonable
    preparation that does not itself enact the next event are not scope creep.
-6. The candidate concretely violates an IMPORTANT GENERATION RULE. Judge all three
-   candidate fields together. Do not invent requirements beyond the supplied rules,
-   and do not fail a rule whose compliance cannot be determined from the text.
-
 Use issue types narrowly:
 - absent_state_reintroduction
 - persistent_transition_replay
 - incompatible_state_restoration
 - unsupported_persistent_change
 - next_beat_scope_creep
-- important_generation_rules_violation
-- generation_rule_violation
-- generation_rule_violation
-
 Do NOT fail because the candidate merely shows an already-existing persistent
 condition. Do NOT demand exact wording. Do NOT infer a violation from ambiguity.
-If no concrete contradiction or generation-rule violation exists, return valid=true.
+If no concrete contradiction or scope violation exists, return valid=true.
 
 COMMITTED OPENING STATE
 {validation_state if isinstance(validation_state, str) else json.dumps(validation_state, ensure_ascii=False, indent=2)}
@@ -19896,10 +19837,7 @@ def _run_main(
         STORY_FILE,
         required=not generate_beats_only,
     )
-    story_without_gen_rules, gen_rules = parse_story_gen_rules(story_source)
-    story, beat_instructions = parse_story_beat_instructions(
-        story_without_gen_rules
-    )
+    story, beat_instructions = parse_story_beat_instructions(story_source)
     if not story:
         raise ValueError("story.txt must have a story defined.")
     base_subject_definitions = load_text_file(
@@ -19924,10 +19862,9 @@ def _run_main(
         beat_instructions=beat_instructions,
         subject_information=subject_information,
         story_arc_path=STORY_ARC_FILE,
-        story_arc_source=story_without_gen_rules,
+        story_arc_source=story_source,
         phrase_exclusions=phrase_exclusions,
         force_generate=generate_beats_only,
-        gen_rules=gen_rules,
     )
     if beats and len(beats) != total_segments:
         raise ValueError(
@@ -19945,7 +19882,7 @@ def _run_main(
     macro_arc = load_story_arc(
         STORY_ARC_FILE,
         total_segments,
-        story_without_gen_rules,
+        story_source,
     )
 
     # Beat generation deliberately happens before external runtime and workflow
@@ -19962,7 +19899,6 @@ def _run_main(
         subject_definitions,
         global_loras,
         refresh_interval,
-        gen_rules=gen_rules,
         vision_continuity=args.vision_continuity,
         trim_frames=trim_frames,
         retention=retention,
@@ -20231,9 +20167,6 @@ def _run_main(
                 ),
                 "recent_results": list(recent_items),
                 "dialogue_exclusions": list(dialogue_exclusions),
-                "gen_rules_sha256": hashlib.sha256(
-                    str(gen_rules or "").encode("utf-8")
-                ).hexdigest(),
                 "opening_state_sha256": continuity_state_sha(opening_state),
                 "opening_summary_sha256": hashlib.sha256(
                     str(opening_summary_text or "").encode("utf-8")
@@ -20271,7 +20204,6 @@ def _run_main(
             segment_number,
             beats_enabled=bool(beats),
             conditioning_mode=conditioning_mode,
-            gen_rules=gen_rules,
             is_final_story_segment=(segment_number == total_segments),
         )
         opening_summary = (
@@ -20325,7 +20257,6 @@ def _run_main(
             "excluded_picture_ids": sorted(excluded_picture_ids),
             "dialogue_exclusions": list(dialogue_exclusions),
             "phrase_exclusions": list(phrase_exclusions),
-            "gen_rules": gen_rules,
             "current_phase": copy.deepcopy(current_phase or {}),
             "subject_definitions": subject_definitions,
             "opening_state_sha256": continuity_state_sha(opening_state),
@@ -21684,64 +21615,6 @@ if __name__ == "__main__":
 #     subjects[str(visual_name).strip()] = record
 #     merged_state[key] = subjects
 #     return record
-
-
-# def validate_director_continuity_candidate(
-#     opening_state,
-#     active_beat_text,
-#     detailed_description,
-#     segment_number,
-#     history_metadata=None,
-#     llm_request=None,
-#     next_beat_text="",
-#     gen_rules="",
-#     overall_soundscape="",
-#     non_diegetic_music="",
-# ):
-#     """Reject continuity, scope, and custom generation-rule violations."""
-#     llm_request = llm_request or ask_llm
-#     messages = build_director_continuity_validation_messages(
-#         opening_state,
-#         active_beat_text,
-#         detailed_description,
-#         segment_number,
-#         next_beat_text=next_beat_text,
-#         gen_rules=gen_rules,
-#         overall_soundscape=overall_soundscape,
-#         non_diegetic_music=non_diegetic_music,
-#     )
-#     request_kwargs = {
-#         "response_format": DIRECTOR_CONTINUITY_RESPONSE_FORMAT,
-#         "temperature": 0.05,
-#     }
-#     if history_metadata:
-#         request_kwargs["history_metadata"] = history_metadata
-#     raw_result = llm_request(messages, **request_kwargs)
-#     return parse_director_continuity_validation(raw_result)
-
-
-# def format_director_continuity_correction(validation, gen_rules=""):
-#     """Turn final-gate issues into concise Director regeneration feedback."""
-#     bullets = "\n".join(
-#         f"- {issue['type']}: {issue['problem']}"
-#         for issue in validation.get("issues", [])
-#     )
-#     return (
-#         "DIRECTOR CONTINUITY CORRECTION\n\n"
-#         "The previous candidate contradicted the committed opening state, "
-#         "introduced an unsupported persistent change or next-beat scope creep, "
-#         "or violated an IMPORTANT generation rule:\n"
-#         f"{bullets}\n\n"
-#         "Regenerate the segment from the same frame-0 state. Execute only the "
-#         "ACTIVE beat and leave the NEXT beat unperformed. Preserve explicit "
-#         "absences and completed persistent transitions unless the ACTIVE beat "
-#         "itself requires a new change."
-#         + (
-#             f"\n\nIMPORTANT: {str(gen_rules).strip()}"
-#             if str(gen_rules or "").strip()
-#             else ""
-#         )
-#     )
 
 
 # def format_director_dialogue_correction(issues):

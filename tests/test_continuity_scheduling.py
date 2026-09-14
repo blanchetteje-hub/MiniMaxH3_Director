@@ -160,10 +160,6 @@ class ContinuitySchedulingTests(unittest.TestCase):
             mock.patch("minimax.configure_reference_image_overrides"),
             mock.patch("minimax.load_text_file", side_effect=load_text),
             mock.patch(
-                "minimax.parse_story_gen_rules",
-                return_value=("Amy walks toward a doorway.", ""),
-            ),
-            mock.patch(
                 "minimax.parse_story_beat_instructions",
                 return_value=("Amy walks toward a doorway.", []),
             ),
@@ -269,10 +265,6 @@ class ContinuitySchedulingTests(unittest.TestCase):
             mock.patch("minimax.configure_formatter"),
             mock.patch("minimax.configure_reference_image_overrides"),
             mock.patch("minimax.load_text_file", side_effect=load_text),
-            mock.patch(
-                "minimax.parse_story_gen_rules",
-                return_value=("Amy walks toward a doorway.", ""),
-            ),
             mock.patch(
                 "minimax.parse_story_beat_instructions",
                 return_value=("Amy walks toward a doorway.", []),

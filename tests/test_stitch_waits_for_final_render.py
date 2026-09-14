@@ -93,10 +93,6 @@ class StitchWaitsForFinalRenderTests(unittest.TestCase):
             mock.patch("minimax.configure_reference_image_overrides"),
             mock.patch("minimax.load_text_file", side_effect=load_text),
             mock.patch(
-                "minimax.parse_story_gen_rules",
-                return_value=("A courier makes a delivery.", ""),
-            ),
-            mock.patch(
                 "minimax.parse_story_beat_instructions",
                 return_value=("A courier makes a delivery.", []),
             ),

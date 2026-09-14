@@ -349,53 +349,6 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(parsed["subject_genders"], {"Amy": "female"})
 
-    def test_gen_rules_are_near_top_of_director_prompt(self):
-        messages = minimax.build_director_continuity_validation_messages(
-            opening_state={},
-            active_beat_text="",
-            detailed_description="",
-            segment_number=1,
-            gen_rules="Never show on-screen text.",
-        )
-        combined = "\n".join(m["content"] for m in messages)
-
-        self.assertIn("Never show on-screen text.", combined)
-        # The exact ordering between system and user content may vary; just
-        # verify the generation rule is present.
-
-    def test_validation_prompt_checks_gen_rules_across_h3_fields(self):
-        messages = minimax.build_director_continuity_validation_messages(
-            opening_state={},
-            active_beat_text="Amy opens the gate.",
-            detailed_description="Amy opens the gate beneath a title card.",
-            segment_number=1,
-            gen_rules="Never show on-screen text and never use music.",
-            overall_soundscape="The gate creaks.",
-            non_diegetic_music="A string theme rises.",
-        )
-
-        combined = "\n".join(message["content"] for message in messages)
-        self.assertIn(
-            "IMPORTANT GENERATION RULES\n"
-            "Never show on-screen text and never use music.",
-            combined,
-        )
-        self.assertIn("overall_soundscape: The gate creaks.", combined)
-        self.assertIn("non_diegetic_music: A string theme rises.", combined)
-        self.assertIn("generation_rule_violation", combined)
-
-        parsed = minimax.parse_director_continuity_validation({
-            "valid": False,
-            "issues": [{
-                "type": "generation_rule_violation",
-                "problem": "The candidate uses music despite the custom rule.",
-            }],
-        })
-        self.assertEqual(
-            parsed["issues"][0]["type"],
-            "generation_rule_violation",
-        )
-
     def test_validation_prompt_checks_scope_creep_into_exact_next_beat(self):
         messages = minimax.build_director_continuity_validation_messages(
             opening_state={},
