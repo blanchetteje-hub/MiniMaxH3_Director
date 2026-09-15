@@ -16,6 +16,7 @@ fix.py
 
 # Runtime state / LLM traces
 generation_state.json
+beat_validation_state.json
 prompt_history.txt
 
 # Generated media / intermediates

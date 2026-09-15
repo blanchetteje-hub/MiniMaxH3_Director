@@ -73,6 +73,45 @@ The generator can run unattended for long jobs, but it cannot guarantee that an
 LLM or video model will produce a perfect shot every time. Start with a short,
 low-resolution test before committing to a longer story.
 
+### Beat-plan validation
+
+Before directing shots, the initially generated beats are treated as a
+provisional framework. Validation moves forward through small overlapping
+windows. Once finalized, a beat and its canonical state snapshot are immutable.
+
+Each window uses three focused local stages:
+
+1. **Local source/story fidelity:** checks only the provisional beats against
+   the source, current macro phase, and required-event progress.
+2. **Local physical/state continuity:** checks only the provisional beats against
+   the canonical state after the immutable anchor.
+3. **Local finalization:** walks the provisional beats in order, minimally repairs
+   confirmed problems, returns partial state patches, and reports completed
+   required-event IDs separately. Python owns the complete canonical state and
+   cumulative event tally.
+
+For a 20-beat plan, the windows are `1-4`, `4-8`, `8-12`, `12-16`, and `16-20`.
+The first window has four mutable beats; later windows have one immutable anchor
+and up to four new mutable beats. A future framework beat can be supplied as
+non-authoritative lookahead, but it can never change finalized history.
+
+Beat validation progress is checkpointed in `beat_validation_state.json`,
+including finalized beat text, state-after snapshots, current state,
+required-event progress, and the next window. Resuming after Beat 8 starts at
+Window `8-12` without revalidating Beats 1-8. At completion Python performs only
+deterministic structural checks before writing `beats.txt`; there is no whole-plan
+semantic audit or whole-plan regeneration.
+
+Phase-ending beats are not finalized until every required-event ID for the phase
+has been explicitly established by finalized beat prose. `required_end_state` is
+the macro-plan summary of those events, not a second free-text semantic gate.
+Continuity checks treat canonical state as authoritative for locations,
+containment, objects, weapons, barriers, injuries, environmental damage, and
+persistent threats. New threats receive stable Python-allocated IDs, unsupported
+prior entity history is rejected, active entities persist until explicitly
+resolved, and obvious planning annotations are removed or retried locally before
+beats are written.
+
 ## GUI Launch
 
 After completing the setup below, start the application from the project
@@ -594,31 +633,29 @@ removed when beat text is loaded. Existing unnumbered hand-authored beat lines
 remain supported. The director cannot mark a later beat complete before an
 earlier one. If the file is blank or contains only comments, the program first
 asks LM Studio for a macro story arc, then generates the beats one complete
-macro phase at a time. Each later phase receives only the five immediately
-preceding accepted beats as continuity context. Responses use globally numbered
+macro phase at a time. Each phase receives its ordered `required_events` and a
+previous-phase final-beat boundary for continuity; recent accepted beats may
+also be supplied as useful context. Responses use globally numbered
 `beat_number`/`beat_text` objects, and Python validates the phase's exact range,
 order, count, uniqueness, one-complete-sentence limit, and the macro arc's
 earliest permitted introduction beat for every named character and location
 before saving the beat text to `beats.txt`. The final generated beat must
-conclude the story.
+conclude the story. Explicit instructions, clothing, objects, threats, and
+phase requirements are enforced by the local validation windows.
 
 Initial beat generation retries a phase normally through attempt 9. If attempt
 10 still fails content validation but contains the required number of
-structurally usable beats, that response is retained and passed to the phase
-validator and downstream targeted-repair flow. If attempt 10 is structurally
+structurally usable beats, that response is retained and passed to the
+validation and downstream recovery flow. If attempt 10 is structurally
 unusable, requests continue without an error until the next usable beat list is
-returned. Macro-arc, instruction-review, audit, and repair requests remain
-unbounded when waiting for a structurally usable response. Phase-targeted repair
-is capped at 10 semantic rounds; each round keeps requesting until it receives a
-structurally valid replacement. After round 10, Python performs one final phase
-validation and accepts the round-10 beats without requesting round 11. Press
-`Ctrl+Q` to stop the process at any point.
+returned. Macro-arc requests retain their existing retry behavior. Local
+validation uses bounded window attempts; a failed local repair can regenerate
+only the affected provisional beat. Press `Ctrl+Q` to stop the process at any
+point.
 
-During phase-validation retries, Python remembers every unchanged beat that a
-prior validation response passed. A later seeded response cannot reopen those
-accepted beats: its claims against them are ignored, while issues for beats that
-have not yet passed continue through targeted repair. If only previously passed
-beats are challenged, the phase passes.
+During beat-validation retries, Python remembers finalized beats and their state
+snapshots. A later response cannot reopen them; only the current provisional
+window may be repaired.
 
 Each valid macro arc returned by LM Studio is written as formatted JSON to
 `story_arc.json`, overwriting the previous contents. Its SHA-256 source hash is
@@ -1096,6 +1133,7 @@ MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
 | `story.txt` | Source story or creative brief. |
 | `story_arc.json` | Persisted macro story arc reused by automatic beat generation when valid. |
 | `story_arc.json.sha256` | SHA-256 of the `story.txt` source associated with the persisted arc. |
+| `beat_validation_state.json` | Resumable forward-only beat-validation checkpoint. |
 | `beats.txt` | Ordered story events; blank triggers automatic beat generation. |
 | `phrase_exclusions.txt` | Optional newline-delimited words and phrases supplied to story-arc, beat, and Director prompts and prohibited in beats. |
 | `additional_states.txt` | Optional comma-separated continuity fields. |

@@ -14,16 +14,18 @@ class BeatPlanAuditorTests(unittest.TestCase):
         "The pursuer is suddenly ahead of the protagonist.",
     ]
 
-    def test_adjacent_windows_overlap_once_and_cover_every_pair(self):
-        windows = minimax.build_adjacent_beat_windows(30)
-        self.assertEqual(windows, [(1, 7), (7, 13), (13, 19), (19, 25), (25, 30)])
-        pairs = []
-        for start, end in windows:
-            pairs.extend(range(start, end))
-        self.assertEqual(pairs, list(range(1, 30)))
+    def test_adjacent_audit_uses_one_complete_plan_and_covers_every_pair(self):
+        beats = [f"Beat text {number}." for number in range(1, 21)]
+        messages = minimax.build_adjacent_continuity_audit_messages(beats)
+        user = messages[1]["content"]
+        self.assertIn("Beat 1: Beat text 1.", user)
+        self.assertIn("Beat 20: Beat text 20.", user)
+        for number in range(1, 20):
+            self.assertIn(f"Beat {number}", user)
+            self.assertIn(f"Beat {number + 1}", user)
 
     def test_adjacent_prompt_is_narrow_and_excludes_global_context(self):
-        messages = minimax.build_adjacent_continuity_audit_messages(self.BEATS, 1, 7)
+        messages = minimax.build_adjacent_continuity_audit_messages(self.BEATS)
         system, user = messages[0]["content"], messages[1]["content"]
         self.assertIn("adjacent-beat continuity auditor", system)
         self.assertIn("location", user)
@@ -36,24 +38,25 @@ class BeatPlanAuditorTests(unittest.TestCase):
         parsed = minimax.parse_adjacent_continuity_audit({
             "valid": False,
             "issues": [{
-                "beat_start": 1, "beat_end": 2,
-                "type": minimax.ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE,
-                "problem": "Beat 2 assumes an unshown move from the basement.",
+                "beat": 2,
+                "end_state_before": "The protagonist waits outside the locked basement.",
+                "opening_state_after": "The protagonist is suddenly in the living room.",
+                "missing_transition": "No entry into the living room is established.",
             }],
-        }, 1, 7)
+        }, 7)
         self.assertEqual(parsed["blocking_issues"][0]["beat_start"], 2)
         self.assertEqual(parsed["blocking_issues"][0]["beat_end"], 2)
 
     def test_adjacent_valid_transition_cases_are_accepted(self):
-        parsed = minimax.parse_adjacent_continuity_audit({"valid": True, "issues": []}, 1, 7)
+        parsed = minimax.parse_adjacent_continuity_audit({"valid": True, "issues": []}, 7)
         self.assertEqual(parsed["blocking_issues"], [])
         prompt = minimax.build_adjacent_continuity_audit_messages([
             "The subject keeps walking toward the doorway.",
             "The subject continues walking through the doorway.",
-        ], 1, 2)[1]["content"]
-        self.assertIn("explicitly unfinished movement may continue", prompt)
+        ])[1]["content"]
+        self.assertIn("unfinished movement may continue", prompt)
 
-    def test_overlapping_window_duplicate_is_removed(self):
+    def test_duplicate_candidates_are_removed(self):
         issue = {
             "beat_start": 6, "beat_end": 6,
             "type": minimax.ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE,
@@ -68,11 +71,15 @@ class BeatPlanAuditorTests(unittest.TestCase):
             "narrative_purpose": "Setup", "broad_progression": "Equip the protagonist",
             "characters_introduced": [], "location": "Basement",
             "required_end_state": "Three weapons are equipped.",
+            "required_events": [
+                {"id": "E1", "event": "The protagonist retrieves the pistol."},
+            ],
         }]}
         prompt = minimax.build_global_fidelity_audit_messages(
             "The protagonist retrieves three weapons.", self.BEATS[:5], arc
         )[1]["content"]
         self.assertIn("required_end_state", prompt)
+        self.assertIn("The protagonist retrieves the pistol.", prompt)
         self.assertIn("Explicitly test every phase", prompt)
         self.assertIn("Do not audit ordinary adjacent movement", prompt)
         self.assertNotIn("subject definitions", prompt)
@@ -85,7 +92,7 @@ class BeatPlanAuditorTests(unittest.TestCase):
         ]
         raw = {"valid": False, "issues": [{
             "beat_start": index + 1, "beat_end": index + 1, "type": issue_type,
-            "source_requirement": "The source requires this concrete event.",
+            "requirement": "The source requires this concrete event.",
             "problem": "The definite requirement is not satisfied.",
         } for index, issue_type in enumerate(issue_types)]}
         parsed = minimax.parse_global_fidelity_audit(raw, 7)
@@ -96,7 +103,7 @@ class BeatPlanAuditorTests(unittest.TestCase):
             minimax.parse_global_fidelity_audit({"valid": False, "issues": [{
                 "beat_start": 2, "beat_end": 2,
                 "type": minimax.ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE,
-                "source_requirement": "movement", "problem": "Location changed.",
+                "requirement": "movement", "problem": "Location changed.",
             }]}, 7)
 
     def test_candidate_verifier_is_compact_and_discards_speculation(self):
@@ -125,6 +132,9 @@ class BeatPlanAuditorTests(unittest.TestCase):
             "type": minimax.ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE,
             "source_requirement": "physical reachability",
             "problem": "Beat 3 assumes an unshown move.",
+            "end_state_before": "The subject remains outside.",
+            "opening_state_after": "The subject is suddenly inside.",
+            "missing_transition": "No entry is shown.",
         }
         normalized = minimax.normalize_beat_plan_repair_ranges([issue], 3)
         self.assertEqual(normalized["ranges"][0]["beat_start"], 3)
