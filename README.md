@@ -949,7 +949,7 @@ original inputs or start a new run.
 |---|---|
 | `generation_state.json` | Atomic checkpoint and runtime source of truth containing settings, director results, beat state, canonical Subject registry/identity data, committed structured continuity state, per-segment identity snapshots, internal video-created subject definitions, and video paths. |
 | `beats.txt` | Ordered beats and optional beat-specific LoRA directives. |
-| `prompt_history.txt` | JSON records of the normalized LM Studio requests and response metadata. |
+| `prompt_history.txt` | A human-readable delimiter-separated history of normalized LM Studio requests and response metadata. Message content is written in raw blocks so embedded newlines remain visible. |
 | Configured video output/`segment_*.mp4` | Individual generated clips. |
 | Configured video output/`continuation_frames/` | Continuation-frame videos used by the append workflow. |
 | Configured video output/`vision_frames/` | Extracted frames used by optional vision continuity checks. |
@@ -1021,9 +1021,12 @@ workflow, preserve these titles or update the matching constants in
 - Beat completion is accepted only as a contiguous prefix of `beats.txt`, so a
   model cannot silently skip a required event.
 
-Outgoing LM Studio requests are appended to `prompt_history.txt` as complete
-JSON records. Each record includes a timestamp, response-format flag,
-and any request metadata, followed by the exact normalized message batch.
+Outgoing LM Studio requests are appended to `prompt_history.txt` as
+delimiter-separated records. The metadata and message structure are formatted
+as JSON, while each string message body is written in a raw content block so
+embedded newlines and quotes remain directly visible. Older JSON-array and
+delimiter-separated history files are still loaded when new entries are
+appended.
 
 ## ComfyUI render retries
 

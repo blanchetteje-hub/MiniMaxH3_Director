@@ -30,6 +30,53 @@ class MacroRequiredEndStateTests(unittest.TestCase):
             {"id": "E2", "event": "Amy locks the door."},
         )
 
+    def test_required_event_state_effects_are_preserved_and_applied(self):
+        arc = {
+            "phases": [{
+                "phase_number": 1,
+                "beat_start": 1,
+                "beat_end": 2,
+                "narrative_purpose": "Resolution",
+                "broad_progression": "Defeat the pursuers.",
+                "characters_introduced": ["Amy"],
+                "location": "House",
+                "required_end_state": "The pursuit is over.",
+                "required_events": [{
+                    "id": "E1",
+                    "event": "All active pursuers are defeated.",
+                    "state_effects": {
+                        "story": {
+                            "terminal_states": {"active_pursuit": True},
+                        },
+                    },
+                }],
+            }],
+        }
+        parsed = minimax.parse_beat_arc_plan(arc, 2)
+        event = parsed["phases"][0]["required_events"][0]
+        state = minimax._apply_required_event_state_effects(
+            minimax.new_beat_canonical_state(), [event]
+        )
+        self.assertTrue(state["story"]["terminal_states"]["active_pursuit"])
+        changed = minimax.apply_state_patch(
+            state,
+            {"story": {"terminal_states": {"active_pursuit": False}}},
+        )
+        self.assertTrue(changed["story"]["terminal_states"]["active_pursuit"])
+
+    def test_required_event_threat_effects_require_object_records(self):
+        with self.assertRaisesRegex(ValueError, "state patch entity threats.zombies"):
+            minimax.parse_beat_arc_plan({
+                "phases": [self.make_phase([{
+                    "id": "E1",
+                    "event": "The zombies are defeated.",
+                    "beat_number": 1,
+                    "state_effects": {
+                        "threats": {"zombies": "dead"},
+                    },
+                }])],
+            }, 5)
+
     def test_macro_response_schema_requires_required_events(self):
         schema = minimax.build_beat_arc_response_format(5)["json_schema"]["schema"]
         phase_schema = schema["properties"]["phases"]["items"]

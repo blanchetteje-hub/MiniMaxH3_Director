@@ -1963,16 +1963,6 @@ def _repair_music(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     result[MUSIC] = "N/A" if _NA.match(value) else _limit_sentences(value, 3)
 
 
-def _parse_beat_id(raw: Any) -> int | None:
-    if isinstance(raw, bool):
-        return None
-    if isinstance(raw, int):
-        return raw
-    match = re.fullmatch(r"\s*(?:B\s*0*)?(\d+)\s*", str(raw), re.I)
-    return int(match.group(1)) if match else None
-
-
-
 def _repair_completions(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     """Treat one-beat-per-segment completion as deterministic metadata."""
     current = _next_beat_id(context)
@@ -2832,3 +2822,13 @@ __all__ = [
     "validate_h3_dialogue_format",
     "validate_ministral_prompt",
 ]
+
+
+# --- Unused function retained for reference ---
+# def _parse_beat_id(raw: Any) -> int | None:
+#     if isinstance(raw, bool):
+#         return None
+#     if isinstance(raw, int):
+#         return raw
+#     match = re.fullmatch(r"\s*(?:B\s*0*)?(\d+)\s*", str(raw), re.I)
+#     return int(match.group(1)) if match else None

@@ -1042,14 +1042,42 @@ class LmStudioIntegrationTests(unittest.TestCase):
             )
 
             history = open(history_path, "r", encoding="utf-8").read()
-            self.assertEqual(history.count("=" * 72), 2)
-            self.assertIn('"content": "first prompt"', history)
-            self.assertIn('"content": "second prompt"', history)
+            records = minimax._load_prompt_history(history_path)
+            self.assertEqual(len(records), 2)
+            self.assertIn("first prompt", history)
+            self.assertIn("second prompt", history)
+            self.assertEqual(
+                records[0]["messages"][0]["content"], "first prompt"
+            )
             self.assertIn('"purpose": "director"', history)
             self.assertIn('"purpose": "summary"', history)
             self.assertIn('"run_id": "run-123"', history)
             self.assertIn('"source_sha256": "source-abc"', history)
             self.assertIn('"conditioning_mode": "initial"', history)
+
+    def test_append_prompt_history_does_not_quote_each_multiline_content_line(self):
+        with tempfile.TemporaryDirectory() as directory:
+            history_path = os.path.join(directory, "prompt_history.txt")
+            content = (
+                '  "phases": [\n'
+                "    {\n"
+                '      "phase_number": 1,\n'
+                '      "beat_start": 1,\n'
+                '      "beat_end": 3,\n'
+                "    }\n"
+                "  ]"
+            )
+
+            minimax.append_prompt_history(
+                [{"role": "user", "content": content}], history_path
+            )
+
+            history = open(history_path, "r", encoding="utf-8").read()
+            records = minimax._load_prompt_history(history_path)
+            self.assertEqual(records[0]["messages"][0]["content"], content)
+            self.assertNotIn('"  \\"phases\\": [",', history)
+            self.assertIn('\n  "phases": [\n    {\n', history)
+            self.assertNotIn("\\n", history)
 
     def test_reset_prompt_history_clears_previous_run_before_appending(self):
         with tempfile.TemporaryDirectory() as directory:
