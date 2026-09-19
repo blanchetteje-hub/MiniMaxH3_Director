@@ -44,7 +44,7 @@ class MacroArcContractTests(unittest.TestCase):
                 self.arc({"id": "E1", "event": "Operator opens the primary barrier.", "beat_number": 1}),
             )
         ).casefold()
-        for term in ("source fidelity", "required_end_state", "state_effects", "dependencies"):
+        for term in ("required events", "required_end_state", "state effects", "dependencies"):
             self.assertIn(term, text)
         self.assertNotIn("separate state-preparation", text)
 

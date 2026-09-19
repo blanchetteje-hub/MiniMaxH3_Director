@@ -268,8 +268,6 @@ BEAT_PHASE_GENERATION_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 
 BEAT_PROCESS_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 
-BEAT_VALIDATION_STATE_FILE = os.path.join(SCRIPT_DIR, "beat_validation_state.json")
-
 BEAT_VALIDATION_STATE_VERSION = 3
 
 # Frozen model profiles used by the beat-validation benchmark.  These are
@@ -8296,10 +8294,36 @@ def build_beat_validation_messages(
     next_beat_job,
     candidate_beat,
     settings=None,
+    assigned_state_effects=None,
 ):
     """Build the single immutable-candidate validator prompt used in tests."""
     settings = settings or _active_beat_validation_settings()
     state = current_state if isinstance(current_state, dict) else {}
+    state_effects_section = ""
+    state_effects_rules = ""
+    if assigned_state_effects is not None:
+        state_effects_section = f"""
+
+STATE EFFECTS TO COMMIT IF VALID
+{json.dumps(assigned_state_effects, ensure_ascii=False, separators=(",", ":"))}
+"""
+        state_effects_rules = """
+
+7. CHECK STATE EFFECTS TO COMMIT.
+   VALID is allowed only when the candidate agrees with the listed effects
+   Python will commit if this beat passes.
+
+   Every listed state effect must actually be established by the candidate. If
+   a state effect says an entity is dead, destroyed, opened, released, moved,
+   equipped, or has another complete result, the candidate must clearly perform
+   enough action to establish that result. Do not accept partial progress when
+   the committed state effect is terminal or complete.
+
+   If the candidate creates a new persistent change, including structural
+   damage, that change must be represented by the assigned state effects.
+   Temporary motion, combat actions, reactions, poses, and other non-persistent
+   details do not need state effects.
+"""
     system = (
         "You validate concise story beats. Judge the candidate against the "
         "authoritative current state and the current beat job. The current state "
@@ -8331,6 +8355,7 @@ NEXT BEAT MUST DO (context only; not required for this beat)
 
 DO NOT COMPLETE YET
 {next_beat_job or "There is no later beat job."}
+{state_effects_section}
 
 CANDIDATE BEAT
 {candidate_beat}
@@ -8443,6 +8468,7 @@ DECISION RULES
   state, invents prior history, repeats completed history, or introduces an
   unsupported important fact.
 - Report only clear violations. Do not invent possible problems.
+{state_effects_rules}
 
 OUTPUT CONTRACT
 
@@ -9329,6 +9355,13 @@ def _run_forward_beat_validation(
                 next_beat_job=next_job,
                 candidate_beat=candidate,
                 settings=_active_beat_validation_settings(),
+                assigned_state_effects=[
+                    {
+                        "id": event["id"],
+                        "state_effects": copy.deepcopy(event.get("state_effects", {})),
+                    }
+                    for event in assigned_current_events
+                ],
             )
             print(
                 f"Validating Beat {beat_number} "
@@ -9721,84 +9754,69 @@ def build_macro_arc_validation_messages(
         {
             "role": "system",
             "content": (
-                "You are the single semantic validator for a complete story arc. "
-                "Report only blocking errors and return only the requested JSON."
+                "You validate one complete story arc. Use simple semantic checks. "
+                "Return one small JSON object only."
             ),
         },
         {
             "role": "user",
             "content": f"""
-Check whether the PROPOSED MACRO STORY ARC is semantically valid for
-phase-by-phase beat generation.
+Check the proposed arc against the source story and instructions.
 
-    Set valid=false only if the arc's NARRATIVE STRUCTURE or SOURCE FIDELITY:
-- changes the central premise or core conflict;
-- omits or reverses a required major event;
-- changes the required ending;
-- invents a major unsupported character, transformation, procedure, mythology,
-  timeline, or plot mechanic;
-- materially contradicts an explicit source fact;
-- collapses clearly distinct source stages into one phase in a way that removes
-  a meaningful handoff boundary. In particular, if the source clearly contains
-  setup/introduction, a long main process/conflict, and completion/aftermath,
-  those stages should not all be merged into one catch-all phase; or
-- fails to establish concrete clothing when a defined human Subject is first
-  shown. A human Subject introduced later may establish clothing in that later
-  introduction phase; or
-- contains a required_end_state clause that is not explicitly authorized by the
-  SOURCE STORY or beat instructions and is not logically necessary for a
-  required source event. Reject optional injuries, wardrobe, emotions, props,
-  environmental damage, exhaustion, or other merely plausible embellishments.
-- contains a required_events entry that is not directly authorized by the SOURCE
-  STORY or explicit beat instructions;
-- orders required_events differently from their source order;
-- promotes optional connective action into a required_events entry;
-- contains incoherent dependencies or dependency order.
+Reject the arc only when there is a real blocking error.
 
-Also validate every phase's required_end_state. Each concrete fact in that
-end state must be established by one or more required_events by the phase
-boundary. Distinguish partial progress from exhaustive completion; handling
-some items does not establish that all remaining items are resolved.
+Reject when:
+- The premise, main conflict, or required ending changes.
+- A required major source event is missing or out of order.
+- The arc adds an unsupported major character, change, procedure, myth, time
+  event, plot device, required event, or required end-state fact.
+- The arc contradicts an explicit source fact.
+- Clearly separate source stages are collapsed into one phase and a meaningful
+  stage boundary is lost.
+- A defined human Subject has no concrete clothing when first shown. Clothing
+  may be added when that Subject is introduced later.
+- Dependencies are missing, incoherent, or in the wrong order.
+- A phase end state contains a fact that is not true by that phase boundary.
+- A persistent state effect is missing, owned by the wrong entity, unrelated,
+  malformed, or has the wrong value.
 
-Review the semantic structure of the complete arc: phases must cover the
-requested beat range coherently, required events must be assigned to beats in
-their phase, dependencies must refer to real prerequisites, and required
-events must occur in a coherent order. Python already rejects malformed JSON,
-invalid numeric ranges, duplicate IDs, and malformed dependency data.
+Required events:
+- Must be directly supported by the source or explicit instructions.
+- Must keep the source order.
+- Check the actual event meaning and location against the source order. Do not
+  trust event IDs, list order, or a phase summary. If a later source event is
+  assigned an earlier beat than a preceding source event, reject the arc.
+- Must be concrete enough to show in a beat.
+- May use a clear paraphrase, a named item being equipped, a source-stated
+  condition, or the minimum physical action needed by a source event.
+- Must not promote optional connective action into a required event.
+- Do not require optional timing, route, gesture, choreography, or item use.
 
-Validate state_effects as semantic event consequences. An effect must be
-established by its own event. Events that establish persistent modeled facts
-such as character location or containment, release, held/equipped objects,
-barriers, persistent objects, terminal entities, or persistent environment
-conditions must carry the corresponding nested effect. Do not require effects
-for temporary actions, emotions, reactions, or decorative detail. Do not copy
-an earlier persistent fact onto an unrelated later event merely to satisfy an
-end state. Do not accept malformed or unrelated effects merely because they
-make coverage appear complete.
+Required end states:
+- Treat each end state as a snapshot at its phase boundary, not as a checklist
+  that must repeat every contributing event.
+- Check all required events in the current phase and earlier phases together.
+- Several events may establish one summary fact. A source-authorized access or
+  transition state may be inferred when all of its source-defined prerequisites
+  are complete, even if no event repeats the summary words.
+- A statement that all items are complete requires all items, not just some.
 
-Do NOT reject merely because phase sizes are unequal or because one long process
-uses most of the beats. A one-phase arc is valid when the source truly has one
-continuous narrative purpose with no meaningful stage change.
+State effects:
+- Require effects for persistent modeled facts such as location, containment,
+  release, held/equipped objects, barriers, persistent objects, terminal
+  entities, and persistent environment conditions.
+- Do not require effects for temporary actions, feelings, reactions, or detail.
+- Do not copy an old effect onto an unrelated event just to satisfy coverage.
 
-For required_events, check the event text semantically against the supplied
-source and instructions. Required events must be concrete enough to be visible
-in a beat, but must not add optional actions merely to fill the list. Judge the
-event's meaning, not whether it repeats the source's exact wording. Accept a
-source-authorized paraphrase, explicitly named items being equipped, or a
-source-stated persistent scene condition. Also accept the minimum physical
-mechanic needed to perform a required event, such as unlocking or opening a
-locked barrier when the source says someone passes through it. Do not require
-optional choreography such as exact timing, route, gesture, or use of every
-available item.
+Do not reject because:
+- Phase sizes are unequal.
+- One process uses most of the beats.
+- Required-event beat numbers have gaps. They must be ordered, not consecutive.
+- A one-phase arc is used for one continuous source purpose.
+- Wording differs slightly but the meaning is source-authorized.
 
-Do not reject based on a minor difference in wording.
-Example:
-'The operator takes the scanner.'
-'The operator equips the scanner.'
-
-Do not critique wording, pacing, minor visual details, or screenplay quality.
-For required_end_state authorization, uncertainty is not authorization; return
-valid=false when a clause may be an optional invention.
+Python already checks JSON shape, numeric ranges, duplicate IDs, and dependency
+field shape. Judge the semantic meaning, not exact wording.
 
 SOURCE STORY
 --- STORY START ---
@@ -9814,8 +9832,12 @@ EXPLICIT BEAT INSTRUCTIONS
 PROPOSED MACRO STORY ARC
 {json.dumps(macro_arc, ensure_ascii=False, indent=2)}
 
-Return only {{"valid": true, "issues": []}} or the same object with valid=false
-and concise blocking issue strings.
+Output exactly one JSON object and nothing else. Do not output analysis,
+reasoning, a checklist, markdown, or any text before or after the object.
+Use this exact shape: {{"valid": true, "issues": []}} for a valid arc, or
+{{"valid": false, "issues": ["one concise blocking issue"]}} for an invalid
+arc. Keep the issues array empty when valid is true, and stop immediately after
+the closing brace.
 """.strip(),
         },
     ]

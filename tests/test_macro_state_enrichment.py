@@ -36,8 +36,8 @@ class MacroArcPipelineTests(unittest.TestCase):
             )
         ).casefold()
         self.assertIn("required_end_state", prompt)
-        self.assertIn("state_effects", prompt)
-        self.assertIn("established by its own event", prompt)
+        self.assertIn("state effects", prompt)
+        self.assertIn("persistent modeled facts", prompt)
         self.assertNotIn("state preparation", prompt)
         self.assertNotIn("coverage inventory", prompt)
 

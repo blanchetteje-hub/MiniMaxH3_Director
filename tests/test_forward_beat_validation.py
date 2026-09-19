@@ -41,6 +41,32 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn('valid": true', messages[1]["content"])
         self.assertNotIn("state_patch", messages[1]["content"])
 
+    def test_validator_prompt_includes_assigned_state_effects(self):
+        messages = minimax.build_beat_validation_messages(
+            "The operator opens the primary barrier.",
+            "Complete the authorized action.",
+            "",
+            minimax.new_beat_canonical_state(),
+            "Operator opens the primary barrier.",
+            None,
+            "Operator opens the primary barrier.",
+            assigned_state_effects=[
+                {
+                    "id": "E1",
+                    "state_effects": {
+                        "environment": {
+                            "barriers": {"primary": {"status": "open"}}
+                        }
+                    },
+                }
+            ],
+        )
+        prompt = messages[1]["content"]
+        self.assertIn("STATE EFFECTS TO COMMIT IF VALID", prompt)
+        self.assertIn('"id":"E1"', prompt)
+        self.assertIn('"status":"open"', prompt)
+        self.assertIn("Every listed state effect must actually be established", prompt)
+
     def test_invalid_candidate_regenerates_same_beat_without_state_mutation(self):
         validation_states = []
         candidates = []
