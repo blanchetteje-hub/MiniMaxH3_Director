@@ -31,7 +31,10 @@ STATE EFFECTS TO COMMIT IF VALID
 """
         state_effects_rules = """
 
-7. CHECK STATE EFFECTS TO COMMIT.
+   7. CHECK STATE EFFECTS TO COMMIT.
+   If the candidate explicitly states the opposite of a listed state effect, or
+   explicitly says that effect does not occur, return INVALID.
+
    VALID is allowed only when the candidate agrees with the listed effects
    Python will commit if this beat passes.
 

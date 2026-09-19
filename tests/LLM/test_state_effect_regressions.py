@@ -10,25 +10,29 @@ from tests.LLM.prompt_under_test import build_validation_messages
 
 STATE_EFFECT_REGRESSION_CASES = (
     {
-        "name": "missing_transition",
-        "story": "An operator is in the upper hall while the chamber hatch is locked.",
-        "phase_goal": "Track the hostile units in the facility.",
-        "previous": "The operator is in the upper hall; the chamber hatch is locked.",
+        "name": "explicit_effect_contradiction",
+        "story": "An operator engages two active hostile units in the upper hall.",
+        "phase_goal": "Engage both hostile units.",
         "state": {
             "characters": {"operator": {"location": "upper_hall"}},
-            "environment": {"barriers": {"chamber_hatch": {"status": "locked"}}},
+            "threats": {
+                "unit_1": {"status": "active", "location": "upper_hall"},
+                "unit_2": {"status": "active", "location": "upper_hall"},
+            },
         },
-        "job": "The hostile units approach the operator in the upper hall.",
+        "previous": "Both hostile units are active in the upper hall.",
+        "job": "The operator attacks both hostile units.",
         "candidate": (
-            "Hostile units approach the operator in the upper hall; the chamber "
-            "hatch remains locked, and no one opens or unlocks it."
+            "The operator attacks unit_1 and unit_2. The listed state effects "
+            "that they are dead do not occur; both remain active."
         ),
         "effects": [
             {
                 "id": "E1",
                 "state_effects": {
-                    "environment": {
-                        "barriers": {"chamber_hatch": {"status": "open"}}
+                    "threats": {
+                        "unit_1": {"status": "dead"},
+                        "unit_2": {"status": "dead"},
                     }
                 },
             }
