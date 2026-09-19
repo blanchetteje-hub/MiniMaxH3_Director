@@ -4,22 +4,25 @@ import os
 
 import pytest
 
-import minimax
 from tests.LLM.llama_client import call_llama, get_model_settings, normalize_result
+from tests.LLM.prompt_under_test import build_validation_messages
 
 
 STATE_EFFECT_REGRESSION_CASES = (
     {
         "name": "missing_transition",
-        "story": "An operator is in a chamber while the chamber hatch is locked.",
-        "phase_goal": "Open the hatch and secure the chamber.",
-        "previous": "The operator is in the chamber; the chamber hatch is locked.",
+        "story": "An operator is in the upper hall while the chamber hatch is locked.",
+        "phase_goal": "Track the hostile units in the facility.",
+        "previous": "The operator is in the upper hall; the chamber hatch is locked.",
         "state": {
-            "characters": {"operator": {"location": "chamber"}},
+            "characters": {"operator": {"location": "upper_hall"}},
             "environment": {"barriers": {"chamber_hatch": {"status": "locked"}}},
         },
-        "job": "The operator opens the chamber hatch.",
-        "candidate": "Hostile units approach the operator elsewhere in the facility.",
+        "job": "The hostile units approach the operator in the upper hall.",
+        "candidate": (
+            "Hostile units approach the operator in the upper hall; the chamber "
+            "hatch remains locked, and no one opens or unlocks it."
+        ),
         "effects": [
             {
                 "id": "E1",
@@ -34,7 +37,7 @@ STATE_EFFECT_REGRESSION_CASES = (
     {
         "name": "incomplete_terminal_effect",
         "story": "An operator must stop two hostile units.",
-        "phase_goal": "Stop both hostile units.",
+        "phase_goal": "Engage both hostile units in the loading bay.",
         "previous": "Two hostile units are active in the loading bay.",
         "state": {
             "threats": {
@@ -42,8 +45,11 @@ STATE_EFFECT_REGRESSION_CASES = (
                 "unit_4": {"status": "active"},
             }
         },
-        "job": "The operator stops both hostile units.",
-        "candidate": "The operator destroys unit_3 but only wounds unit_4.",
+        "job": "The operator attacks both hostile units.",
+        "candidate": (
+            "The operator decapitates unit_3 and attacks unit_4; unit_4 remains "
+            "active."
+        ),
         "effects": [
             {
                 "id": "E1",
@@ -59,7 +65,7 @@ STATE_EFFECT_REGRESSION_CASES = (
     {
         "name": "unmodeled_barrier_damage",
         "story": "An operator must stop a hostile unit without damaging the facility.",
-        "phase_goal": "Stop the hostile unit.",
+        "phase_goal": "Defeat the hostile unit at the facility entrance.",
         "previous": "The facility entrance is intact and the hostile unit is active.",
         "state": {
             "environment": {
@@ -69,8 +75,8 @@ STATE_EFFECT_REGRESSION_CASES = (
             },
             "threats": {"unit_1": {"status": "active"}},
         },
-        "job": "The operator stops unit_1.",
-        "candidate": "The hostile unit kicks down the front hatch.",
+        "job": "The operator defeats unit_1.",
+        "candidate": "The operator destroys unit_1, and the hostile unit kicks down the front hatch.",
         "effects": [
             {"id": "E1", "state_effects": {"threats": {"unit_1": {"status": "destroyed"}}}}
         ],
@@ -78,14 +84,14 @@ STATE_EFFECT_REGRESSION_CASES = (
     {
         "name": "unmodeled_structure_damage",
         "story": "An operator must stop a hostile unit inside a facility.",
-        "phase_goal": "Stop the hostile unit.",
+        "phase_goal": "Defeat the hostile unit inside the facility.",
         "previous": "The facility ceiling is intact and the hostile unit is active.",
         "state": {
             "environment": {"structures": {"ceiling": {"condition": "intact"}}},
             "threats": {"unit_1": {"status": "active"}},
         },
-        "job": "The operator stops unit_1.",
-        "candidate": "The hostile unit breaks through the ceiling.",
+        "job": "The operator defeats unit_1.",
+        "candidate": "The operator destroys unit_1, and the hostile unit breaks through the ceiling.",
         "effects": [
             {"id": "E1", "state_effects": {"threats": {"unit_1": {"status": "destroyed"}}}}
         ],
@@ -94,7 +100,7 @@ STATE_EFFECT_REGRESSION_CASES = (
 
 
 def _messages(case):
-    return minimax.build_beat_validation_messages(
+    return build_validation_messages(
         story=case["story"],
         phase_goal=case["phase_goal"],
         previous_final_beat=case["previous"],
