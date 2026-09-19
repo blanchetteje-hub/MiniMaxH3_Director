@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 
-from cases import BeatCase
-from llama_client import get_model_settings
+from tests.LLM.cases import BeatCase
+from tests.LLM.llama_client import get_model_settings
 
 
 def build_messages(
@@ -24,7 +24,13 @@ def build_messages(
         "left to right. Do not invent hidden actions or facts. Do not require "
         "details the beat job does not require. Only the current beat job defines "
         "work required now, but every explicit candidate action must still be "
-        "consistent with authoritative state and history. Return only one JSON "
+        "consistent with authoritative state and history. Treat terminal or "
+        "exhaustive wording such as 'last', 'final', 'final remaining', "
+        "'only remaining', 'all remaining', or 'completely eliminates' in "
+        "NEXT BEAT MUST DO as protected future work; do not "
+        "allow the candidate to perform that work early. When CURRENT BEAT JOB "
+        "requires an action, the candidate must perform that action now; merely "
+        "describing its resulting state is not enough. Return only one JSON "
         "object with boolean valid and string issue."
     )
 
@@ -88,6 +94,16 @@ VALIDATION METHOD
 
    Do not require a separate sentence for each requirement.
 
+   If CURRENT BEAT JOB requires an action, require that action itself now.
+   A result-only statement does not satisfy an action job: "the last standing
+   zombie lies dead" does not satisfy "shoots the last standing zombie".
+
+   Also compare every explicit candidate action with NEXT BEAT MUST DO before
+   accepting the candidate. If the candidate performs the distinct next job,
+   it is invalid even when it also completes CURRENT BEAT JOB. In particular,
+   when NEXT BEAT MUST DO is "shoots the last standing zombie", a candidate
+   that says "shoots the last standing zombie, killing it" is invalid here.
+
 4. CHECK CURRENT STATE.
    Read object, barrier, containment, location, threat, and irreversible-status
    facts literally.
@@ -120,12 +136,26 @@ VALIDATION METHOD
      threat area is clear;
    - an important person, threat, object, or event is introduced without support
      from STORY, PHASE GOAL, CURRENT BEAT JOB, or CURRENT STATE;
-   - the candidate completes the distinct NEXT BEAT MUST DO action early.
+   - the candidate completes the distinct NEXT BEAT MUST DO action early,
+     especially a terminal or exhaustive action such as killing the last
+     standing threat.
 
 DECISION RULES
 
 - Completing CURRENT BEAT JOB does not excuse another violation.
 - Check every explicit candidate action, not only the required action.
+- Terminal or exhaustive NEXT BEAT MUST DO wording is protected: "last",
+  "final", "final remaining", "only remaining", "all remaining", and
+  "completely eliminates" mean that work must wait for the next beat. For
+  example, if the next job is to kill the last standing zombie, a candidate
+  that shoots and kills it now is invalid.
+- Before returning valid, compare each explicit candidate action with NEXT BEAT
+  MUST DO. Performing that distinct next action early is always invalid, even
+  if the candidate also completes the current job.
+- An action-type CURRENT BEAT JOB requires the action, not only the outcome. A
+  candidate saying "the last zombie lies dead" is invalid for a job requiring
+  the kill; "shoots the last zombie, killing it" is valid when that is the
+  current job.
 - Explicit movement establishes a location change.
 - Explicit opening or unlocking can resolve a barrier.
 - Explicit release can resolve containment.

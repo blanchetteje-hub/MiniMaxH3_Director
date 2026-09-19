@@ -268,8 +268,8 @@ class MiniMaxBridge:
         }
 
         model = str(settings.get("model", "ministral")).strip().lower()
-        if model not in {"ministral", "qwen"}:
-            raise ValueError("Model formatter must be 'ministral' or 'qwen'.")
+        if model not in {"mistral", "ministral", "qwen"}:
+            raise ValueError("Model formatter must be 'mistral' or 'qwen'.")
         validated["model"] = model
 
         repair_value = settings.get("repair")
@@ -326,8 +326,8 @@ class MiniMaxBridge:
                 raise ValueError("Generation settings must be an object.")
             beat_count = _positive_int(settings.get("beat_count"), "Story beats")
             model = str(settings.get("model", "ministral")).strip().lower()
-            if model not in {"ministral", "qwen"}:
-                raise ValueError("Model formatter must be 'ministral' or 'qwen'.")
+            if model not in {"mistral", "ministral", "qwen"}:
+                raise ValueError("Model formatter must be 'mistral' or 'qwen'.")
             return [
                 self.python_executable,
                 "-u",

@@ -1,7 +1,7 @@
 """Qwen-specific formatting for MiniMax H3 prompt fields.
 
 The repairs in this module are limited to patterns observed in Qwen responses.
-The shared Minstral formatter still owns the common H3
+The shared Mistral formatter still owns the common H3
 schema and validation rules.
 """
 
@@ -12,7 +12,7 @@ import re
 from typing import Any, Mapping
 
 from formatter_base import BaseFormatter
-import minstral_formatter as minstral
+import mistral_formatter as mistral
 
 
 DEFAULT_LLM_SETTINGS = {
@@ -56,7 +56,7 @@ def _prepare_qwen_result(
         return llm_result
 
     prepared = copy.deepcopy(dict(llm_result))
-    description = str(prepared.get(minstral.DESCRIPTION, "") or "")
+    description = str(prepared.get(mistral.DESCRIPTION, "") or "")
     description = re.sub(
         r"(?i)(Camera\s+continues\s+from\s+the\s+previous\s+shot)\.{2,}",
         r"\1.",
@@ -65,7 +65,7 @@ def _prepare_qwen_result(
 
     # Qwen often writes "Mark's face as he says: <d>...".  Preserve the
     # camera prose while making the known speaker explicit for H3.
-    records = minstral._subject_records(context)
+    records = mistral._subject_records(context)
     speech_verbs = (
         r"says|asks|answers|replies|shouts|whispers|yells|tells|"
         r"exclaims|narrates"
@@ -84,21 +84,21 @@ def _prepare_qwen_result(
             description,
             flags=re.I,
         )
-    prepared[minstral.DESCRIPTION] = description
+    prepared[mistral.DESCRIPTION] = description
 
-    soundscape = str(prepared.get(minstral.SOUNDSCAPE, "") or "")
+    soundscape = str(prepared.get(mistral.SOUNDSCAPE, "") or "")
     soundscape = _SOUNDSCAPE_MUSIC_FRAGMENT.sub("", soundscape)
     soundscape = " ".join(
         sentence
-        for sentence in minstral._sentences(soundscape)
+        for sentence in mistral._sentences(soundscape)
         if not re.search(r"\b[A-Z][\w'-]*'s\s+[^.!?]{0,60}'[^']+'", sentence)
     )
     soundscape = re.sub(r"(?i)^with\s+", "", soundscape).strip()
     if soundscape:
         soundscape = soundscape[0].upper() + soundscape[1:]
-    prepared[minstral.SOUNDSCAPE] = soundscape
+    prepared[mistral.SOUNDSCAPE] = soundscape
 
-    music = str(prepared.get(minstral.MUSIC, "") or "")
+    music = str(prepared.get(mistral.MUSIC, "") or "")
     music = _ABSTRACT_MUSIC_WORDS.sub("", music)
     music = re.sub(
         r"(?i)\b(low|high|soft|loud)\s*,\s*"
@@ -106,7 +106,7 @@ def _prepare_qwen_result(
         r"\1 ",
         music,
     )
-    prepared[minstral.MUSIC] = music
+    prepared[mistral.MUSIC] = music
     return prepared
 
 
@@ -175,7 +175,7 @@ class QwenFormatter(BaseFormatter):
     DEFAULT_LLM_SETTINGS = DEFAULT_LLM_SETTINGS
 
     def __init__(self) -> None:
-        self._shared = minstral.MinstralFormatter()
+        self._shared = mistral.MistralFormatter()
 
     def format_prompt(
         self,
@@ -185,13 +185,13 @@ class QwenFormatter(BaseFormatter):
         safe_context: Mapping[str, Any] = context or {}
         prepared = _prepare_qwen_result(llm_result, safe_context)
         formatted = self._shared.format_prompt(prepared, safe_context)
-        description = _remove_visual_speaker_ids(formatted[minstral.DESCRIPTION])
+        description = _remove_visual_speaker_ids(formatted[mistral.DESCRIPTION])
         description = re.sub(
             r"(?i)\((S\d+)\)\s+\(\1\)",
             r"(\1)",
             description,
         )
-        formatted[minstral.DESCRIPTION] = _clamp_terminal_timestamps(
+        formatted[mistral.DESCRIPTION] = _clamp_terminal_timestamps(
             re.sub(
                 r"(?i)(Camera\s+continues\s+from\s+the\s+previous\s+shot\.)"
                 r"\s*(?:\.\s*)+",

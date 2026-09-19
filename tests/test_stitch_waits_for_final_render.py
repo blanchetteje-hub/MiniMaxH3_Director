@@ -11,7 +11,7 @@ import minimax
 
 def _make_args(**overrides):
     base = {
-        "model": "minstral",
+        "model": "mistral",
         "lora": (),
         "repair": None,
         "generate_beats": None,

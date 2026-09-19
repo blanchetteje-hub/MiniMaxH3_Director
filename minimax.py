@@ -17,12 +17,11 @@ import time
 import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-
 import requests
 from PIL import Image, UnidentifiedImageError
 
-from minstral_formatter import (
-    MinstralFormatter,
+from mistral_formatter import (
+    MistralFormatter,
     extract_inline_dialogue_subjects,
     normalize_summary_subject_references,
     remove_non_speaking_speaker_ids,
@@ -53,11 +52,11 @@ PREVIOUS_STATE_FIELDS = (
 )
 
 FORMATTER_CLASSES = {
-    "minstral": MinstralFormatter,
+    "mistral": MistralFormatter,
     "qwen": QwenFormatter,
 }
 
-ACTIVE_FORMATTER = MinstralFormatter()
+ACTIVE_FORMATTER = MistralFormatter()
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -279,9 +278,8 @@ BEAT_VALIDATION_STATE_VERSION = 3
 # measured in tests/LLM.
 BENCHMARK_SEED = 42
 
-MINSTRAL_24B_SETTINGS = {
+MISTRAL_24B_SETTINGS = {
     "temperature": 0,
-    "seed": BENCHMARK_SEED,
     "repeat_penalty": 1.15,
     "top_p": None,
     "top_k": None,
@@ -289,14 +287,13 @@ MINSTRAL_24B_SETTINGS = {
     "thinking": "off",
     "chat_template": "built-in",
     "jinja": True,
-    "context": 4096,
+    "context": 8192,
     "user_prompt_only": False,
     "stream": False,
 }
 
 QWEN38_27B_SETTINGS = {
     "temperature": 0,
-    "seed": BENCHMARK_SEED,
     "repeat_penalty": 1.15,
     "top_p": None,
     "top_k": None,
@@ -304,7 +301,7 @@ QWEN38_27B_SETTINGS = {
     "thinking": "off",
     "chat_template": "built-in",
     "jinja": True,
-    "context": 4096,
+    "context": 8192,
     "user_prompt_only": True,
     "stream": False,
 }
@@ -609,6 +606,13 @@ _FIRE_PATTERN = re.compile(
 )
 _DROP_PATTERN = re.compile(r"\b(?:drop(?:s|ped|ping)?|lets?\s+go\s+of|abandons?)\b", re.IGNORECASE)
 _LOCK_PATTERN = re.compile(r"\b(?:lock(?:s|ed|ing)?|bolt(?:s|ed|ing)?)\b", re.IGNORECASE)
+_EQUIP_PATTERN = re.compile(
+    r"\b(?:equip(?:s|ped|ping)?|holster(?:s|ed|ing)?|"
+    r"strap(?:s|ped|ping)?(?:\s+\S+){0,6}\s+(?:to|onto|around)|"
+    r"sling(?:s|ed|ing)?(?:\s+\S+){0,6}\s+(?:over|across|onto)|"
+    r"puts?\s+on)\b",
+    re.IGNORECASE,
+)
 
 # Planning annotations are internal bookkeeping and must not reach beats.txt.
 # Keep these patterns deliberately narrow so ordinary story prose is preserved.
@@ -736,7 +740,7 @@ AUTHORITY RULES
 - Only the authoritative assigned beat/user input may authorize a wardrobe identity change. Generated Director or formatter prose can modify condition only when consistent with canonical clothing; it cannot introduce replacement garments.
 - Do not editorialize, IE - if the beat says a werewolf bursts through the trees, describe a werewolf bursting through the trees, not a \"dark silhouette\" or some other nonsense.
 - Focus on actions, camera movement, and audio. Avoid camera cuts, favor using camera movement.
-- Keep it minimal, EX: \"At 00:03.000 seconds, Amy runs through the woods, the camera follows behind her as she runs.\"
+- Keep it minimal, EX: \"At 00:03.000 seconds, the operator runs through Location X, the camera follows behind them as they run.\"
 - For perpetuity for the next segment, if possible, describe the end-segment clothing of each subject/character in detail.
 - Keep the camera movement smooth - remember, this is only a {segment_seconds} second segment.
 - Keep spatial awareness accurate for each micro-beat.
@@ -754,8 +758,8 @@ MICRO-BEATS
 - no pass tense explanations: do not write \"her jeans torn from branches\", write \"her jeans tore on a branch as she ran.\"
 - do not create a change in clothing or any other type of state change unless there was a preceding reason for the change.
 - Conserve story state. The micro-beat may not introduce a new story event or change the required hand-off into the next micro-beat or segment.
-- Be explicit on where important elements are, EX: "Frank stands on Amy's left". Write spatial awareness for anything of importance.
-- Be specific for everything important, EX: instead of "teacup on a table", write "a teacup filled with green tea is on the table in front of Amy".
+- Be explicit on where important elements are, EX: "The companion stands on the operator's left". Write spatial awareness for anything of importance.
+- Be specific for everything important, EX: instead of "object on a table", write "the named object is on the table in front of the operator".
 - Always make sure the last micro-beat is at least 1 second before the alotted {segment_seconds} seconds.
 
 {story_segment_ending_rules}
@@ -786,8 +790,9 @@ H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a minimalist MiniMax H3 audiovisual
 - No dialogue can be outside of <d> tags or without a speaker ID, EX: ("Ahhh!") becomes (S1) <d> [English] Ahhh!</d>
 - Spoken <d></d> tags must always be preceeded with the speaker_id of the subject.
 - The assigned beat's primary action must visibly occur during this segment; do not merely set it up, hint at it, reveal its consequences, or end on a reaction to it.
+- If an AUTHORITATIVE OPENING STATE is supplied, use that continuity once at the beginning of Shot 1. Do not repeat the opening continuity later in the description.
 - When subjects are referred to by name, do not use a speaker_id or <subject id>.
-- If the beat has multiple required actions, show them in order and complete the visible progression before the segment ends. For example, if the beat says a werewolf emerges, chases Amy, and gains ground, visibly show the werewolf emerge, Amy flee, the werewolf pursue her, and the distance between them decrease before the segment ends.
+- If the beat has multiple required actions, show them in order and complete the visible progression before the segment ends. For example, if the beat says a werewolf emerges, chases Elias, and gains ground, visibly show the werewolf emerge, Elias flee, the werewolf chase him, and the distance between them decrease before the segment ends.
 - Any clothing specified in the beat must be part of the response.
 - Make sure each timestamp from the RAW SCENE is accounted for and established in the same format, EX: ("At [timestamp], ".
 - assume 'Live-action, cinematic' unless otherwise specified.
@@ -984,8 +989,8 @@ _WARDROBE_ACTION_BOUNDARY_RE = re.compile(
 
 _WARDROBE_CONDITION_CHANGE_RE = re.compile(
     r"(?i)\b(?:becomes?|become|gets?|get|turns?|turn|now|is\s+now|"
-    r"covered|soaked|drenched|stained|muddy|mud[- ]streaked|bloodied|"
-    r"bloody|dusty|dirty|torn|ripped|tattered|singed|burned|burnt)\b"
+    r"covered|soaked|drenched|stained|muddy|mud[- ]streaked|"
+    r"dusty|dirty|torn|ripped|tattered|singed|burned|burnt)\b"
 )
 
 _CONTINUITY_FACT_STOPWORDS = frozenset({
@@ -1308,11 +1313,11 @@ def get_formatter(model):
 def configure_formatter(model):
     """Select the formatter used by the existing generation pipeline."""
 
-    global ACTIVE_FORMATTER, format_minstral_prompt, validate_minstral_prompt
+    global ACTIVE_FORMATTER, format_mistral_prompt, validate_mistral_prompt
     ACTIVE_FORMATTER = get_formatter(model)
     # Keep these established names as compatibility seams for callers/tests.
-    format_minstral_prompt = ACTIVE_FORMATTER.format_prompt
-    validate_minstral_prompt = ACTIVE_FORMATTER.validate_prompt
+    format_mistral_prompt = ACTIVE_FORMATTER.format_prompt
+    validate_mistral_prompt = ACTIVE_FORMATTER.validate_prompt
     return ACTIVE_FORMATTER
 
 
@@ -1322,13 +1327,11 @@ def _active_formatter_llm_settings():
 
 
 def _active_beat_validation_settings():
-    """Return the frozen benchmark profile for the selected text model."""
-    if isinstance(ACTIVE_FORMATTER, QwenFormatter):
-        return dict(QWEN38_27B_SETTINGS)
-    return dict(MINSTRAL_24B_SETTINGS)
+    """Return the production profile measured by the beat validator benchmark."""
+    return dict(MISTRAL_24B_SETTINGS)
 
 
-configure_formatter("minstral")
+configure_formatter("mistral")
 
 
 # Remove temporary frames created by visual continuity and auto-refresh.
@@ -1677,8 +1680,8 @@ def parse_args(arguments=None):
     parser.add_argument(
         "--model",
         choices=tuple(FORMATTER_CLASSES),
-        default="minstral",
-        help="select the response formatter (default: minstral)",
+        default="mistral",
+        help="select the response formatter (default: mistral)",
     )
     for image_number in range(1, 7):
         parser.add_argument(
@@ -3339,7 +3342,7 @@ def continuity_state_for_registry(subject_definitions, state=None):
             "Subject definitions were present but could not be parsed; "
             "refusing to render an empty AUTHORITATIVE OPENING STATE. "
             "Expected one definition per line, for example: "
-            "<Subject 1> is Mark, a 40-year-old man referenced in "
+            "<Subject 1> is the operator, an adult person referenced in "
             "<Picture 1>. Video-only subjects use: <Subject 2> is creature, "
             "N/A (S2), continued from <Video 1>."
         )
@@ -6240,7 +6243,7 @@ class LLMConnectionError(RuntimeError):
 
 
 class BeatGenerationError(RuntimeError):
-    """A beat-generation failure that must terminate the CLI run."""
+    """Legacy beat-generation exception retained for import compatibility."""
 
 
 # Repair a narrow local-model error such as ``"growl" snarls``.
@@ -6507,9 +6510,9 @@ def raise_for_lm_studio_status(response):
         ) from error
 
 
-# Merge adjacent same-role turns before Minstral's strict Jinja template.
+# Merge adjacent same-role turns before Mistral's strict Jinja template.
 def normalize_lm_studio_messages(messages):
-    """Merge adjacent same-role turns before Minstral's strict Jinja template."""
+    """Merge adjacent same-role turns before Mistral's strict Jinja template."""
     normalized = []
     for message in messages or []:
         if not isinstance(message, dict):
@@ -6808,8 +6811,9 @@ def ask_llm(
     elif temperature is None:
         temperature = 0.35
     beat_history_purposes = {
-        "beat_arc_plan",
-        "beat_arc_fidelity",
+        "macro_arc_create",
+        "macro_arc_validate",
+        "macro_arc_repair",
         "beat_generation",
         "beat_instruction_review",
         "beat_validation",
@@ -7022,7 +7026,7 @@ def ask_llm(
                 and set(result) == {"segment"}
                 and isinstance(result["segment"], dict)
             ):
-                # Without response_format, Minstral sometimes adds this
+                # Without response_format, Mistral sometimes adds this
                 # harmless wrapper despite being asked for the fields at the
                 # top level. Unwrap it without changing any authored content.
                 result = result["segment"]
@@ -7460,6 +7464,22 @@ def _validate_state_effects(effects):
     for raw_path in effects:
         if not isinstance(raw_path, str) or not raw_path.strip():
             raise ValueError("Required-event state_effects keys must be non-empty strings.")
+    flattened = _flatten_state_effects(effects)
+    python_owned_paths = {
+        "current_macro_phase",
+        "completed_required_event_ids",
+        "pending_required_event_ids",
+        "irreversible_states",
+        "phase_end_states",
+        "persistent_state_effects",
+    }
+    for path in flattened:
+        parts = path.split(".")
+        if len(parts) >= 2 and parts[0] == "story_progress" and parts[1] in python_owned_paths:
+            raise ValueError(
+                "Required-event state_effects cannot write Python-owned "
+                f"bookkeeping field: {path!r}."
+            )
     # Validate the complete path, including its canonical root, while the arc
     # is still being parsed. Otherwise a malformed effect can survive arc
     # validation and fail later during Beat N application, where the old outer
@@ -7501,7 +7521,7 @@ def _state_effects_patch(effects):
         cursor[parts[-1]] = copy.deepcopy(value)
     # Required-event effects bypass the model patch parser when Python applies
     # them, so validate the reconstructed patch here as well. In particular,
-    # canonical entity records such as threats.zombies must be objects rather
+    # canonical entity records under characters/threats must be objects rather
     # than scalar labels/status strings.
     return normalize_beat_state_patch(patch)
 
@@ -7521,23 +7541,29 @@ def _reapply_persistent_state_effects(state):
     )
     effect_items = effects.items() if isinstance(effects, dict) else ()
     for path, value in effect_items:
+        try:
+            _validate_state_effects({str(path): value})
+        except ValueError as error:
+            raise ValueError(
+                f"Persisted canonical state effect {path!r} is invalid: {error}"
+            ) from error
         _set_state_path(state, str(path), value)
     return normalize_beat_canonical_state(state)
 
 
 def _entity_status_is_irreversible(status):
+    """Return whether a status is explicitly terminal/non-reversible."""
     lowered = str(status or "").casefold()
     return any(
         marker in lowered
         for marker in (
-            "dead", "destroyed", "dismembered", "decapitated", "exited",
-            "trapped", "incapacitated", "resolved",
+            "inactive", "destroyed", "exited", "trapped", "incapacitated",
+            "resolved", "removed", "finished", "complete",
         )
     )
 
-
 def _enforce_irreversible_entity_statuses(previous, state):
-    """Prevent an un-authorized partial patch from reviving old entity state."""
+    """Prevent an unauthorized partial patch from reversing terminal entity state."""
     for root in _BEAT_ENTITY_ROOTS:
         previous_entities = (previous or {}).get(root, {})
         current_entities = state.get(root, {})
@@ -7553,12 +7579,7 @@ def _enforce_irreversible_entity_statuses(previous, state):
             new_status = current_record.get("status")
             if str(new_status).casefold() != str(old_status).casefold():
                 current_record["status"] = copy.deepcopy(old_status)
-            if "body_topology" in old_record and "body_topology" in current_record:
-                old_topology = str(old_record["body_topology"]).casefold()
-                if any(marker in old_topology for marker in ("dismembered", "decapitated")):
-                    current_record["body_topology"] = copy.deepcopy(old_record["body_topology"])
     return state
-
 
 def _barrier_is_closed(record):
     text = _record_values_text(record)
@@ -7798,145 +7819,11 @@ def _active_threat(record):
     status = str(record.get("status", "")).casefold()
     return not any(
         marker in status
-        for marker in ("dead", "destroyed", "incapacitated", "resolved", "exited")
+        for marker in (
+            "inactive", "destroyed", "incapacitated", "resolved", "removed",
+            "exited", "finished", "complete",
+        )
     )
-
-
-def _canonical_continuity_issues(beat_text, state, beat_number):
-    """Return deterministic, high-confidence contradictions with canonical state."""
-    text = " ".join(str(beat_text or "").split())
-    lowered = text.casefold()
-    issues = []
-    entries = _state_object_entries(state)
-
-    issues.extend(_terminal_story_conflicts(text, state, beat_number))
-    issues.extend(_entity_persistence_conflicts(text, state, beat_number))
-
-    # Containment is checked against stable character IDs and the barrier
-    # record, so a prose alias cannot silently teleport an occupant.
-    for character_id, record in (state or {}).get("characters", {}).items():
-        if not isinstance(record, dict) or not _text_mentions_entity(text, character_id, record):
-            continue
-        container = record.get("contained_in") or record.get("containment")
-        barrier = _containment_barrier_for(state, container)
-        if not container or not _barrier_is_closed(barrier):
-            continue
-        if re.search(r"\b(?:hallway|corridor|outside|street|yard|room|elsewhere|standing in)\b", lowered):
-            explicit_transition = re.search(
-                r"\b(?:unlock(?:s|ed)?|open(?:s|ed)?|breach(?:es|ed)?|exit(?:s|ed)?|"
-                r"leave(?:s|d)?|step(?:s|ped)?\s+(?:out|into))\b",
-                lowered,
-            )
-            if not explicit_transition:
-                issues.append({
-                    "beat_number": beat_number,
-                    "type": PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
-                    "problem": (
-                        f"Beat {beat_number} moves {character_id} outside locked "
-                        f"{container} without transition"
-                    ),
-                })
-        if re.search(r"\b(?:enters?|appears?|inside|within|accesses?)\b", lowered):
-            issues.append({
-                "beat_number": beat_number,
-                "type": PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
-                "problem": f"Beat {beat_number} treats locked {container} as accessible",
-            })
-
-    # An entity that was outside cannot appear inside a closed container unless
-    # the beat itself establishes the opening/route.
-    for character_id, record in (state or {}).get("characters", {}).items():
-        if not isinstance(record, dict) or not _text_mentions_entity(text, character_id, record):
-            continue
-        current_location = str(record.get("location", "")).replace("_", " ").casefold()
-        for field in ("doors", "barriers"):
-            for key, barrier in ((state or {}).get("environment", {}).get(field, {}) or {}).items():
-                if not _barrier_is_closed(barrier):
-                    continue
-                container = str(key).replace("_door", "").replace("_barrier", "").replace("_", " ").casefold()
-                if not container or container in current_location:
-                    continue
-                if container in lowered and re.search(r"\b(?:inside|within|enters?|appears?|gets? into)\b", lowered) and not re.search(
-                    r"\b(?:unlock(?:s|ed)?|open(?:s|ed)?|breach(?:es|ed)?|through another route|window)\b",
-                    lowered,
-                ):
-                    issues.append({
-                        "beat_number": beat_number,
-                        "type": PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
-                        "problem": (
-                            f"Beat {beat_number} places {character_id} inside sealed "
-                            f"{container} without an opening"
-                        ),
-                    })
-
-    for object_name, records in entries.items():
-        if not _object_name_in_text(lowered, object_name):
-            continue
-        if _RETRIEVAL_PATTERN.search(lowered) and any(
-            field in {"held_objects", "equipped_objects"} for _, field, _ in records
-        ):
-            issues.append({
-                "beat_number": beat_number,
-                "type": PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
-                "problem": (
-                    f"{object_name} is already held or equipped in canonical state; "
-                    "the beat cannot retrieve it again without an explicit transition."
-                ),
-            })
-        if _FIRE_PATTERN.search(lowered) and any(
-            "jam" in _record_text(record) or "dropped" in _record_text(record)
-            for _, _, record in records
-        ) and not any(
-            word in lowered for word in ("clear", "unjam", "reload", "prepare")
-        ):
-            issues.append({
-                "beat_number": beat_number,
-                "type": PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
-                "problem": (
-                    f"{object_name} is jammed or dropped in canonical state; "
-                    "the beat fires it without explicitly recovering and preparing it."
-                ),
-            })
-
-    if "both hands" in lowered and any(
-        phrase in lowered for phrase in ("free hand", "with her free hand", "with his free hand")
-    ):
-        issues.append({
-            "beat_number": beat_number,
-            "type": PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
-            "problem": "The beat uses a free hand while both hands are explicitly occupied.",
-        })
-
-    active_threats = [
-        threat_id for threat_id, record in (state or {}).get("threats", {}).items()
-        if _active_threat(record)
-    ]
-    if active_threats and (
-        re.search(r"\b(?:all|every)\s+(?:threats?|zombies?|enemies?)\s+(?:are\s+)?gone\b", lowered)
-        or re.search(r"\b(?:house|room|kitchen|workshop|corridor|hallway|area|location)\s+is\s+clear\b", lowered)
-    ):
-        issues.append({
-            "beat_number": beat_number,
-            "type": PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
-            "problem": (
-                "The beat declares threats resolved while canonical state still has "
-                + ", ".join(active_threats) + " active."
-            ),
-        })
-    if re.search(
-        r"\b(?:zombies?|threats?|enemies?)\b.*\b(?:crawl|climb|emerge|come)\b.*\b(?:out of|through)\b.*\b(?:basement|locked room)\b",
-        lowered,
-    ) and any(
-        "lock" in _record_text(value)
-        for value in (state or {}).get("environment", {}).values()
-    ):
-        issues.append({
-            "beat_number": beat_number,
-            "type": PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
-            "problem": "The beat introduces a threat from a location blocked by a canonical locked barrier.",
-        })
-    return issues
-
 
 def sanitize_beat_planning_metadata(beat_text):
     """Strip only obvious trailing planning annotations from one beat."""
@@ -7994,229 +7881,6 @@ def _event_words(text):
     ]
 
 
-def required_event_is_grounded_in_beat_text(event_text, beat_text):
-    """Return whether a beat explicitly establishes a required event.
-
-    This is intentionally a conservative lexical guard. The Local Fidelity pass
-    supplies semantic judgment; Python only prevents clear setup/intention text
-    from being counted as completion.
-    """
-    event_words = _event_words(event_text)
-    beat_words = _event_words(beat_text)
-    if not event_words or not beat_words:
-        return False
-    overlap = set(event_words) & set(beat_words)
-    if len(overlap) < max(1, min(2, len(event_words))):
-        return False
-    event_lower = str(event_text or "").casefold()
-    beat_lower = str(beat_text or "").casefold()
-    if _UNFINISHED_ACTION_PATTERN.search(beat_lower) and not _COMPLETION_ACTION_PATTERN.search(beat_lower):
-        return False
-    action_terms = re.findall(
-        r"\b(?:enter|enters|entered|inside|lock|locks|locked|open|opens|opened|"
-        r"retrieve|retrieves|retrieved|take|takes|took|grab|grabs|grabbed|"
-        r"load|loads|loaded|prepare|prepares|prepared|"
-        r"kill|kills|killed|destroy|destroys|destroyed|leave|leaves|left|"
-        r"exit|exits|exited|equip|equips|equipped|release|releases|released)\w*\b",
-        event_lower,
-    )
-    if action_terms:
-        normalized_beat = beat_lower.replace("steps into", "enters").replace("steps inside", "enters")
-        if not any(term.rstrip("s") in normalized_beat for term in action_terms):
-            return False
-    return True
-
-
-def _repeated_adjacent_action_issues(beats, start, anchor_beat=None):
-    """Find only high-confidence restarts of a completed adjacent action."""
-    sequence = ([anchor_beat] if anchor_beat else []) + list(beats)
-    first_number = start - 1 if anchor_beat else start
-    issues = []
-    for index in range(1, len(sequence)):
-        previous = " ".join(str(sequence[index - 1]).split()).casefold()
-        current = " ".join(str(sequence[index]).split()).casefold()
-        previous_words = _event_words(previous)
-        if len(previous_words) < 4 or _UNFINISHED_ACTION_PATTERN.search(previous):
-            continue
-        prefix = " ".join(previous_words[:4])
-        if prefix and prefix in " ".join(_event_words(current)):
-            beat_number = first_number + index
-            issues.append({
-                "beat_number": beat_number,
-                "type": PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
-                "problem": "repeats or restarts the completed action from the previous beat",
-            })
-    return issues
-
-
-def _unsupported_entity_history_issues(beat_text, state, beat_number):
-    """Reject explicit prior-history claims for entities absent from state."""
-    text = " ".join(str(beat_text or "").split())
-    if not _RETROACTIVE_HISTORY_PATTERN.search(text):
-        return []
-    lowered = text.casefold()
-    known_entity = False
-    supported_history = False
-    for root in _BEAT_ENTITY_ROOTS:
-        for entity_id, record in (state or {}).get(root, {}).items():
-            if not isinstance(record, dict) or not _text_names_entity(text, entity_id, record):
-                continue
-            known_entity = True
-            supported_history = supported_history or any(
-                record.get(field)
-                for field in (
-                    "injuries", "history", "origin", "prior_events", "previous_events",
-                )
-            )
-    if known_entity and supported_history:
-        return []
-    if re.search(r"\b(?:enters?|appears?|arrives?|lies?)\b", lowered):
-        return [{
-            "beat_number": beat_number,
-            "type": PERSISTENT_STATE_CONFLICT_ISSUE_TYPE,
-            "problem": "newly introduced entity claims unsupported prior history",
-        }]
-    return []
-
-
-def _state_contains_phrase(state, phrase):
-    return " ".join(str(phrase or "").split()).casefold() in _record_text(state)
-
-
-def _phase_required_end_state_issues(phase, state):
-    """Check common phase handoff facts against the proposed canonical state."""
-    end_state = " ".join(str((phase or {}).get("required_end_state", "")).split()).strip()
-    if not end_state:
-        return []
-    lowered = end_state.casefold()
-    environment = (state or {}).get("environment", {})
-    problems = []
-
-    if "lock" in lowered:
-        door_match = re.search(r"([a-z0-9_-]+(?:\s+[a-z0-9_-]+){0,2})\s+door\b", lowered)
-        door_tokens = set((door_match.group(1) if door_match else "").split())
-        locked = any(
-            "lock" in _record_text(value)
-            and (
-                not door_tokens
-                or any(token in str(key).casefold() or token in _record_text(value)
-                       for token in door_tokens)
-            )
-            for key, value in environment.items()
-        )
-        if not locked:
-            problems.append("required locked door/barrier is not present in canonical state")
-
-    if any(word in lowered for word in ("inside", "within", "contained")):
-        mentioned_characters = [
-            name for name in (state or {}).get("characters", {})
-            if name.casefold() in lowered
-        ]
-        if "children" in lowered:
-            event_text = " ".join(
-                str(event.get("event", ""))
-                for event in (phase or {}).get("required_events", [])
-                if isinstance(event, dict)
-            ).casefold()
-            mentioned_characters.extend(
-                name for name, record in (state or {}).get("characters", {}).items()
-                if name.casefold() in event_text
-                or "child" in _record_text(record)
-            )
-            mentioned_characters = list(dict.fromkeys(mentioned_characters))
-        if mentioned_characters:
-            for name in mentioned_characters:
-                record = state["characters"][name]
-                if not any(
-                    value and value.casefold() in lowered
-                    for value in (
-                        str(record.get("location", "")),
-                        str(record.get("containment", "")),
-                    )
-                ):
-                    problems.append(f"{name} is not in the required containment/location")
-
-    if any(phrase in lowered for phrase in ("no threats", "threats are gone", "all threats are gone", "house is clear")):
-        active = [
-            threat_id for threat_id, record in (state or {}).get("threats", {}).items()
-            if _active_threat(record)
-        ]
-        if active:
-            problems.append("required threat-clear state is false while active threats remain")
-
-    # For state descriptions that are explicitly recorded by the finalizer,
-    # accept the canonical evidence. Otherwise an unrecognized requirement is
-    # deliberately left unresolved instead of being guessed as satisfied.
-    explicit_end_states = (state or {}).get("story_progress", {}).get("phase_end_states", {})
-    phase_number = str((phase or {}).get("phase_number", ""))
-    if not problems and not (
-        "lock" in lowered or any(word in lowered for word in ("inside", "within", "contained"))
-    ) and not (
-        _state_contains_phrase(state, end_state)
-        or str(explicit_end_states.get(phase_number, "")).casefold() in {"true", "satisfied", "complete"}
-    ):
-        problems.append("required_end_state has no matching canonical-state evidence")
-    return problems
-
-
-def validate_finalized_beat_state_consistency(beat_text, state_before, state_after, patch):
-    """Reject stale or contradictory state patches for explicit beat actions."""
-    text = " ".join(str(beat_text or "").split())
-    lowered = text.casefold()
-    issues = []
-    before_entries = _state_object_entries(state_before)
-    after_entries = _state_object_entries(state_after)
-    if _DROP_PATTERN.search(lowered):
-        for object_name in before_entries:
-            if not _object_name_in_text(lowered, object_name):
-                continue
-            records = after_entries.get(object_name, [])
-            if any(field in {"held_objects", "equipped_objects"} for _, field, _ in records):
-                issues.append(f"{object_name} remains held/equipped after being dropped")
-            if not any(
-                "floor" in _record_text(record)
-                or "dropped" in _record_text(record)
-                for _, _, record in records
-            ):
-                issues.append(f"{object_name} has no floor/dropped location after being dropped")
-            if "jam" in lowered and any(
-                marker in _record_values_text(record)
-                for _, _, record in records
-                for marker in ("ready", "loaded", "usable")
-            ):
-                issues.append(
-                    f"{object_name} remains ready/loaded/usable after being dropped jammed"
-                )
-    if re.search(r"\bjam(?:s|med|ming)?\b", lowered):
-        if "jam" not in _record_text(state_after):
-            issues.append("beat states a jam but finalized canonical state is not jammed")
-    if _LOCK_PATTERN.search(lowered):
-        if "lock" not in _record_text((state_after or {}).get("environment", {}).get("doors", {})):
-            issues.append("beat locks a door/barrier but canonical state does not record it as locked")
-    # A release/exit is a two-sided transition. Do not accept stale
-    # containment or a closed barrier after the prose visibly releases an
-    # occupant.
-    if re.search(r"\b(?:unlock(?:s|ed)?|open(?:s|ed)?|exit(?:s|ed)?|leave(?:s|d)?|"
-                 r"step(?:s|ped)?\s+(?:out|into))\b", lowered):
-        for character_id, before_record in (state_before or {}).get("characters", {}).items():
-            if not isinstance(before_record, dict) or not (
-                before_record.get("contained_in") or before_record.get("containment")
-            ) or not _text_mentions_entity(lowered, character_id, before_record):
-                continue
-            after_record = (state_after or {}).get("characters", {}).get(character_id, {})
-            container = before_record.get("contained_in") or before_record.get("containment")
-            barrier = _containment_barrier_for(state_after, container)
-            if after_record.get("contained_in") not in (None, "", "N/A", "none", "null"):
-                issues.append(f"{character_id} remains contained after release/exit")
-            if _barrier_is_closed(barrier):
-                issues.append(f"{container} remains closed after {character_id} exits")
-    if issues:
-        return issues
-    return []
-
-
-
-
 def _required_event_records(macro_arc):
     records = []
     for phase in (macro_arc or {}).get("phases", []):
@@ -8227,6 +7891,10 @@ def _required_event_records(macro_arc):
                 record = {
                     "id": str(event["id"]),
                     "event": str(event["event"]),
+                    # Keep the Python-owned global assignment with the
+                    # normalized record.  The forward coordinator uses this
+                    # same record for both job selection and completion.
+                    "beat_number": event.get("beat_number"),
                     "depends_on": [
                         str(dependency)
                         for dependency in event.get("depends_on", [])
@@ -8240,6 +7908,17 @@ def _required_event_records(macro_arc):
                     record["state_effects"] = copy.deepcopy(event["state_effects"])
                 records.append(record)
     return records
+
+
+def _ordered_required_event_ids(all_event_ids, completed_ids):
+    """Return completed required-event IDs in canonical arc order."""
+    completed_keys = {
+        str(event_id).casefold() for event_id in (completed_ids or ())
+    }
+    return [
+        event_id for event_id in all_event_ids
+        if str(event_id).casefold() in completed_keys
+    ]
 
 
 def _log_required_event_failure(
@@ -8600,6 +8279,14 @@ BEAT_VALIDATION_RESPONSE_FORMAT = {
 }
 
 
+def _connective_beat_job():
+    """Return the generic job used for beats with no assigned required event."""
+    return (
+        "Advance the current macro phase with one concise connective beat that is "
+        "consistent with canonical state and does not complete a later required event early."
+    )
+
+
 def build_beat_validation_messages(
     story,
     phase_goal,
@@ -8683,6 +8370,18 @@ VALIDATION METHOD
 
    Do not require a separate sentence for each requirement.
 
+   If the current job is an action, the candidate must explicitly perform or
+   unambiguously show that action occurring during THIS beat. A result or
+   state left behind by an earlier action is not enough. For example, when the
+   job is "Unlock the final gate", "The final gate stands unlocked" is invalid;
+   "The operator turns the key and unlocks the final gate" performs the action.
+   A state-only candidate may satisfy a job that explicitly asks for a state,
+   but it must not substitute for an action-type job.
+
+   If CURRENT BEAT JOB contains multiple required actions, people, objects, or
+   results, the candidate must satisfy ALL of them. Completing only one item from
+   an explicit list or one side of a compound requirement is invalid.
+
 4. CHECK CURRENT STATE.
    Read object, barrier, containment, location, threat, and irreversible-status
    facts literally.
@@ -8709,13 +8408,21 @@ VALIDATION METHOD
    - a closed or locked barrier is crossed without being opened;
    - a contained entity appears outside containment without release;
    - location changes without explicit movement or transition;
-   - something permanently dead, destroyed, defeated, escaped, or finished
-     becomes active again;
+   - something in an explicitly terminal, inactive, removed, exited, or
+     finished state becomes active again;
    - a new threat appears after CURRENT STATE explicitly says the immediate
      threat area is clear;
    - an important person, threat, object, or event is introduced without support
      from STORY, PHASE GOAL, CURRENT BEAT JOB, or CURRENT STATE;
    - the candidate completes the distinct NEXT BEAT MUST DO action early.
+
+   Treat terminal or exhaustive wording in NEXT BEAT MUST DO semantically, not
+   by exact word matching. If the next job says last, final, all remaining,
+   final remaining, only remaining, completely resolves, or an equivalent
+   terminal condition, the current candidate must not explicitly establish that
+   condition early. For example, if the next job is "Complete the final
+   checkpoint", a candidate that marks the only remaining checkpoint complete is
+   early completion even when the wording differs.
 
 DECISION RULES
 
@@ -8729,6 +8436,9 @@ DECISION RULES
   explicitly says that area is already clear.
 - Preparation for the current job is allowed.
 - Completing the distinct next beat job early is not allowed.
+- Terminal or exhaustive next-beat completion includes semantic equivalents,
+  not only exact repeated wording.
+- A result-only description does not perform a required current action.
 - Ordinary descriptive detail is allowed unless it contradicts established
   state, invents prior history, repeats completed history, or introduces an
   unsupported important fact.
@@ -8757,10 +8467,13 @@ Do not output category names, issue codes, lists, or arrays.
 
 
 def parse_beat_validation_result(raw_result):
-    """Parse the validator's validity-only response without accepting repairs."""
+    """Parse one strict validity-only response without invoking another LLM."""
     result = raw_result
     if isinstance(result, str):
-        result = parse_llm_json_content(result, repair_on_failure=True)
+        # Beat validation has a deliberately small contract.  In particular,
+        # malformed validator output must consume the normal retry budget rather
+        # than starting a separate JSON-repair request.
+        result = json.loads(result.strip())
     if not isinstance(result, dict) or set(result) != {"valid", "issue"}:
         raise ValueError("Beat validation must contain only valid and issue.")
     if not isinstance(result["valid"], bool):
@@ -8797,7 +8510,7 @@ by this beat):
 {
   "characters": {"Mara": {"status": "unconscious"}},
   "environment": {
-    "doors": {"basement door": {"status": "locked"}}
+    "doors": {"storage door": {"status": "locked"}}
   }
 }
 
@@ -9235,20 +8948,101 @@ def _beat_validation_state_from_checkpoint(
     return checkpoint
 
 
+def _truncate_beat_validation_checkpoint_to_phase_prefix(
+    checkpoint,
+    prefix_end,
+    framework_beats,
+    macro_arc,
+):
+    """Discard a failed phase and every later phase from a beat checkpoint."""
+    prefix_end = int(prefix_end)
+    if prefix_end < 0:
+        raise ValueError("Beat validation phase prefix cannot be negative.")
+    if not isinstance(framework_beats, list):
+        raise ValueError("Beat validation phase retry requires a beat framework.")
+
+    finalized = checkpoint.get("finalized_beats") or []
+    if len(finalized) < prefix_end:
+        raise ValueError(
+            "Beat validation checkpoint does not contain the finalized phase prefix."
+        )
+    finalized = finalized[:prefix_end]
+    snapshots = checkpoint.get("beat_state_after") or {}
+    if prefix_end:
+        if str(prefix_end) not in snapshots:
+            raise ValueError(
+                "Beat validation checkpoint is missing the phase-prefix state snapshot."
+            )
+        current_state = normalize_beat_canonical_state(snapshots[str(prefix_end)])
+    else:
+        current_state = new_beat_canonical_state()
+
+    all_events = _required_event_records(macro_arc)
+    all_event_ids = [event["id"] for event in all_events]
+    completed = set(
+        current_state.get("story_progress", {}).get(
+            "completed_required_event_ids", []
+        )
+    )
+    completed_keys = {str(event_id).casefold() for event_id in completed}
+    current_state["story_progress"]["completed_required_event_ids"] = (
+        _ordered_required_event_ids(all_event_ids, completed)
+    )
+    current_state["story_progress"]["pending_required_event_ids"] = [
+        event_id for event_id in all_event_ids
+        if str(event_id).casefold() not in completed_keys
+    ]
+
+    checkpoint["framework_beats"] = list(framework_beats)
+    checkpoint["finalized_beats"] = [
+        {"beat_number": index, "beat_text": record["beat_text"]}
+        for index, record in enumerate(finalized, start=1)
+    ]
+    checkpoint["beat_state_after"] = {
+        str(index): normalize_beat_canonical_state(snapshots[str(index)])
+        for index in range(1, prefix_end + 1)
+    }
+    checkpoint["current_beat_state"] = current_state
+    checkpoint["completed_required_event_ids"] = (
+        _ordered_required_event_ids(all_event_ids, completed)
+    )
+    checkpoint["pending_required_event_ids"] = [
+        event_id for event_id in all_event_ids
+        if str(event_id).casefold() not in completed_keys
+    ]
+    checkpoint["finalized_through"] = prefix_end
+    checkpoint["next_window_start"] = (
+        None if prefix_end >= len(framework_beats) else prefix_end + 1
+    )
+    checkpoint["next_threat_id"] = max(
+        [
+            (_threat_number(threat_id) or 0) + 1
+            for threat_id in current_state.get("threats", {})
+        ]
+        or [1]
+    )
+    return checkpoint
+
+
 class BeatValidationExhaustedError(ValueError):
     """A single beat failed its complete local validation retry budget."""
 
-    def __init__(self, beat_number, message=None):
+    def __init__(self, beat_number, message=None, phase_number=None, scope="beat"):
         self.beat_number = int(beat_number)
+        self.phase_number = (
+            int(phase_number) if phase_number is not None else None
+        )
+        self.scope = str(scope or "beat")
         super().__init__(
             message
             or f"Beat {self.beat_number} could not pass local semantic verification."
         )
 
 
-# Single-pass beat validation replaces the former local fidelity, continuity,
-# state-extraction, and repair pipeline.  Keep the candidate immutable: the
-# validator may reject it, but it can never return replacement beat text.
+# Single-candidate beat validation replaces the former local fidelity,
+# continuity, state-extraction, and repair pipeline. Keep each validator call
+# immutable: it may reject a candidate, but it can never return replacement
+# beat text.
 def _run_forward_beat_validation(
     framework_factory,
     story,
@@ -9263,8 +9057,9 @@ def _run_forward_beat_validation(
     lora_directive="",
     state_path=None,
     reset_state=False,
+    candidate_factory=None,
 ):
-    """Validate each generated beat once and persist it unchanged."""
+    """Validate beats sequentially, retrying only the current candidate."""
     state_path = get_beat_validation_state_path(path, state_path)
     _validate_local_event_assignments(macro_arc)
     fingerprint = beat_validation_fingerprint(
@@ -9286,12 +9081,6 @@ def _run_forward_beat_validation(
             int(total_segments),
             phrase_exclusions=phrase_exclusions,
         )
-        if (macro_arc or {}).get("phases"):
-            introduction_issues = validate_generated_beat_macro_introductions(
-                framework, macro_arc
-            )
-            if introduction_issues:
-                raise ValueError(" ".join(introduction_issues))
         instruction_issues = validate_generated_beat_instructions(
             framework, beat_instructions
         )
@@ -9325,6 +9114,21 @@ def _run_forward_beat_validation(
     state_cursor = normalize_beat_canonical_state(
         checkpoint.get("current_beat_state") or new_beat_canonical_state()
     )
+    state_cursor = _seed_known_beat_characters(
+        state_cursor,
+        macro_arc=macro_arc,
+        subject_information=subject_information,
+    )
+    completed_keys = {
+        str(event_id).casefold() for event_id in completed_cursor
+    }
+    state_cursor["story_progress"]["completed_required_event_ids"] = (
+        _ordered_required_event_ids(all_event_ids, completed_cursor)
+    )
+    state_cursor["story_progress"]["pending_required_event_ids"] = [
+        event_id for event_id in all_event_ids
+        if str(event_id).casefold() not in completed_keys
+    ]
 
     def save_checkpoint():
         checkpoint["framework_beats"] = list(framework)
@@ -9337,11 +9141,14 @@ def _run_forward_beat_validation(
             None if finalized_through >= int(total_segments) else finalized_through + 1
         )
         checkpoint["current_beat_state"] = copy.deepcopy(state_cursor)
-        checkpoint["completed_required_event_ids"] = [
-            event_id for event_id in all_event_ids if event_id in completed_cursor
-        ]
+        checkpoint["completed_required_event_ids"] = _ordered_required_event_ids(
+            all_event_ids, completed_cursor
+        )
         checkpoint["pending_required_event_ids"] = [
-            event_id for event_id in all_event_ids if event_id not in completed_cursor
+            event_id for event_id in all_event_ids
+            if str(event_id).casefold() not in {
+                str(completed).casefold() for completed in completed_cursor
+            }
         ]
         checkpoint["next_threat_id"] = max(
             checkpoint.get("next_threat_id", 1),
@@ -9355,6 +9162,12 @@ def _run_forward_beat_validation(
         )
         save_beat_validation_state(checkpoint, state_path)
 
+    # Persist normalized initial state (including seeded known characters and
+    # Python-owned required-event collections) before the first validator call.
+    # This is initialization, not candidate acceptance, so rejected attempts
+    # still leave the authoritative snapshot unchanged.
+    save_checkpoint()
+
     def phase_for_beat(beat_number):
         return story_arc_phase_for_beat(macro_arc, beat_number) or {}
 
@@ -9365,7 +9178,7 @@ def _run_forward_beat_validation(
             if str(phase.get(field, "")).strip()
         ) or "Continue the story clearly from the previous beat."
 
-    def job_for_beat(beat_number, candidate, phase):
+    def job_for_beat(beat_number, planned_candidate, phase):
         assigned = [
             event["event"]
             for event in all_events
@@ -9373,114 +9186,277 @@ def _run_forward_beat_validation(
         ]
         if assigned:
             return " ".join(str(event).strip() for event in assigned)
-        return str(phase.get("narrative_purpose") or _goal_text_for_beat(candidate))
+        return _connective_beat_job()
+
+    def next_required_job_after(beat_number):
+        later_beats = sorted({
+            int(event["beat_number"])
+            for event in all_events
+            if isinstance(event.get("beat_number"), int)
+            and not isinstance(event.get("beat_number"), bool)
+            and int(event["beat_number"]) > int(beat_number)
+        })
+        if not later_beats:
+            return None, None
+        target_beat = later_beats[0]
+        events = [
+            event for event in all_events
+            if event.get("beat_number") == target_beat and event.get("event")
+        ]
+        if not events:
+            return target_beat, None
+        return target_beat, " ".join(str(event["event"]).strip() for event in events)
+
+    def assigned_job_label(beat_number, job):
+        assigned = [
+            event for event in all_events
+            if event.get("beat_number") == beat_number
+        ]
+        if assigned:
+            return "; ".join(
+                f"{event['id']} - {event['event']}" for event in assigned
+            )
+        return job
+
+    def issue_text(issues):
+        rendered = []
+        for issue in issues or ():
+            if isinstance(issue, dict):
+                rendered.append(
+                    str(issue.get("problem") or issue.get("issue") or issue)
+                )
+            else:
+                rendered.append(str(issue))
+        return "; ".join(item.strip() for item in rendered if item.strip())
 
     for beat_number in range(finalized_through + 1, int(total_segments) + 1):
-        candidate = str(framework[beat_number - 1]).strip()
-        text_issues = validate_generated_beat_exclusions(
-            [candidate], phrase_exclusions, beat_start=beat_number
-        )
-        text_issues.extend(validate_beat_planning_metadata(candidate))
-        try:
-            parse_generated_beats(
-                {"beats": [candidate]},
-                1,
-                expected_start=beat_number,
-                phrase_exclusions=phrase_exclusions,
-            )
-        except (TypeError, ValueError) as error:
-            text_issues.append(str(error))
-        if text_issues:
-            raise BeatValidationExhaustedError(
-                beat_number,
-                "Beat failed structural validation: "
-                + "; ".join(dict.fromkeys(text_issues)),
-            )
-
         phase = phase_for_beat(beat_number)
-        next_beat = framework[beat_number] if beat_number < int(total_segments) else ""
-        messages = build_beat_validation_messages(
-            story=story,
-            phase_goal=phase_goal_for_beat(phase),
-            previous_final_beat=(
-                finalized_texts[-1] if finalized_texts else ""
-            ),
-            current_state=state_cursor,
-            beat_job=job_for_beat(beat_number, candidate, phase),
-            next_beat_job=next_beat,
-            candidate_beat=candidate,
-            settings=_active_beat_validation_settings(),
+        planned_candidate = str(framework[beat_number - 1]).strip()
+        assigned_current_events = [
+            event for event in all_events
+            if event.get("beat_number") == beat_number
+        ]
+        current_job = job_for_beat(beat_number, planned_candidate, phase)
+        next_job_beat, next_job = next_required_job_after(beat_number)
+
+        completed_before = _ordered_required_event_ids(
+            all_event_ids, completed_cursor
         )
-        print(f"Validating Beat {beat_number} with the single beat validator.", flush=True)
-        raw_result = llm_request(
-            messages,
-            response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
-            history_metadata={
-                **(history_metadata or {}),
-                "purpose": "beat_validation",
-                "use_beat_validation_settings": True,
-                "beat_number": beat_number,
-                "total_segments": int(total_segments),
-            },
-        )
-        validation = parse_beat_validation_result(raw_result)
-        validation_status = "VALID" if validation["valid"] else "INVALID"
+        pending_before = [
+            event_id for event_id in all_event_ids
+            if str(event_id).casefold() not in {
+                str(completed).casefold() for completed in completed_cursor
+            }
+        ]
         print(
-            f"Beat {beat_number} validation result: {validation_status}; "
-            f"issue: {validation['issue'] or 'none'}",
+            f"Beat {beat_number} jobs: "
+            f"current={assigned_job_label(beat_number, current_job)}; "
+            f"next={assigned_job_label(next_job_beat, next_job) if next_job else 'none'}; "
+            f"completed before={', '.join(completed_before) or 'none'}; "
+            f"pending before={', '.join(pending_before) or 'none'}",
             flush=True,
         )
-        if not validation["valid"]:
+
+        candidate = planned_candidate
+        retry_feedback = ""
+        regenerate_candidate = False
+        accepted = False
+        last_issue = ""
+        for validation_attempt in range(1, BEAT_RETRY_ATTEMPTS + 1):
+            if validation_attempt > 1 and regenerate_candidate:
+                if candidate_factory is None:
+                    candidate = planned_candidate
+                else:
+                    try:
+                        candidate = str(
+                            candidate_factory(
+                                beat_number=beat_number,
+                                previous_finalized_beats=list(finalized_texts),
+                                correction=retry_feedback,
+                                current_phase=phase,
+                                next_beat_job=next_job,
+                            )
+                        ).strip()
+                        regenerate_candidate = False
+                    except (LLMConnectionError, requests.RequestException, OSError, ValueError, TypeError) as error:
+                        last_issue = f"Beat regeneration failed: {error}"
+                        retry_feedback = last_issue
+                        print(
+                            f"Beat {beat_number} validation attempt "
+                            f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
+                            f"{last_issue}",
+                            flush=True,
+                        )
+                        continue
+
+            state_before = copy.deepcopy(state_cursor)
+            structural_issues = validate_generated_beat_exclusions(
+                [candidate], phrase_exclusions, beat_start=beat_number
+            )
+            structural_issues.extend(validate_beat_planning_metadata(candidate))
+            try:
+                parse_generated_beats(
+                    {"beats": [candidate]},
+                    1,
+                    expected_start=beat_number,
+                    phrase_exclusions=phrase_exclusions,
+                )
+            except (TypeError, ValueError) as error:
+                structural_issues.append(str(error))
+
+            if structural_issues:
+                last_issue = "Beat failed structural validation: " + issue_text(
+                    dict.fromkeys(structural_issues)
+                )
+                retry_feedback = last_issue
+                regenerate_candidate = True
+                print(
+                    f"Beat {beat_number} validation attempt "
+                    f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: INVALID; "
+                    f"issue: {last_issue}",
+                    flush=True,
+                )
+                continue
+
+            messages = build_beat_validation_messages(
+                story=story,
+                phase_goal=phase_goal_for_beat(phase),
+                previous_final_beat=(
+                    finalized_texts[-1] if finalized_texts else ""
+                ),
+                current_state=state_before,
+                beat_job=current_job,
+                next_beat_job=next_job,
+                candidate_beat=candidate,
+                settings=_active_beat_validation_settings(),
+            )
+            print(
+                f"Validating Beat {beat_number} "
+                f"(attempt {validation_attempt}/{BEAT_RETRY_ATTEMPTS}) "
+                "with the single beat validator.",
+                flush=True,
+            )
+            try:
+                raw_result = llm_request(
+                    messages,
+                    response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+                    parse_json_response=False,
+                    history_metadata={
+                        **(history_metadata or {}),
+                        "purpose": "beat_validation",
+                        "use_beat_validation_settings": True,
+                        "beat_number": beat_number,
+                        "validation_attempt": validation_attempt,
+                        "total_segments": int(total_segments),
+                    },
+                )
+                validation = parse_beat_validation_result(raw_result)
+            except (LLMConnectionError, requests.RequestException, OSError, ValueError, TypeError) as error:
+                last_issue = f"Beat validator failed: {error}"
+                retry_feedback = last_issue
+                regenerate_candidate = False
+                print(
+                    f"Beat {beat_number} validation attempt "
+                    f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
+                    f"{last_issue}",
+                    flush=True,
+                )
+                continue
+
+            validation_status = "VALID" if validation["valid"] else "INVALID"
+            last_issue = validation["issue"] or "The beat validator rejected the candidate."
+            print(
+                f"Beat {beat_number} validation attempt "
+                f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
+                f"{validation_status}; issue: "
+                f"{validation['issue'] or 'none'}",
+                flush=True,
+            )
+            if validation["valid"]:
+                accepted = True
+                break
+            retry_feedback = last_issue
+            regenerate_candidate = True
+
+        if not accepted:
             raise BeatValidationExhaustedError(
                 beat_number,
-                validation["issue"] or "The beat validator rejected the candidate.",
+                last_issue or "The beat did not pass validation.",
             )
 
-        assigned_events = [
-            event for event in all_events if event.get("beat_number") == beat_number
-        ]
-        newly_completed = []
-        completed_keys = {str(value).casefold() for value in completed_cursor}
-        assigned_keys = {
-            str(event["id"]).casefold() for event in assigned_events
+        # Stage every authoritative mutation until the accepted candidate's
+        # required-event effects have been applied successfully. Rejected
+        # candidates never reach this block, and a commit failure leaves the
+        # outer cursors untouched.
+        # The production beat validator is the semantic authority. Once it
+        # returns VALID, every event explicitly assigned to this beat is
+        # complete. Do not re-check the prose or dependencies here: doing so
+        # creates a second semantic completion decision after validation.
+        completed_keys = {
+            str(event_id).casefold() for event_id in completed_cursor
         }
-        for event in assigned_events:
-            event_id = event["id"]
-            if str(event_id).casefold() in completed_keys:
-                continue
-            dependencies = {
-                str(dependency).casefold()
-                for dependency in event.get("depends_on", [])
-            }
-            if (
-                dependencies.issubset(completed_keys | assigned_keys)
-                and required_event_is_grounded_in_beat_text(
-                    event.get("event", ""), candidate
-                )
-            ):
-                newly_completed.append(event_id)
-
-        completed_cursor.update(newly_completed)
-        state_cursor = _apply_required_event_state_effects(
+        newly_completed = [
+            event["id"]
+            for event in all_events
+            if event.get("beat_number") == beat_number
+            and str(event["id"]).casefold() not in completed_keys
+        ]
+        staged_completed = set(completed_cursor)
+        staged_completed.update(newly_completed)
+        staged_state = _apply_required_event_state_effects(
             copy.deepcopy(state_cursor),
             [events_by_id[event_id] for event_id in newly_completed],
         )
-        state_cursor["story_progress"]["completed_required_event_ids"] = [
-            event_id for event_id in all_event_ids if event_id in completed_cursor
-        ]
-        state_cursor["story_progress"]["pending_required_event_ids"] = [
-            event_id for event_id in all_event_ids if event_id not in completed_cursor
+        staged_state["story_progress"]["completed_required_event_ids"] = (
+            _ordered_required_event_ids(all_event_ids, staged_completed)
+        )
+        completed_keys = {
+            str(event_id).casefold() for event_id in staged_completed
+        }
+        staged_state["story_progress"]["pending_required_event_ids"] = [
+            event_id for event_id in all_event_ids
+            if str(event_id).casefold() not in completed_keys
         ]
         if phase:
-            state_cursor["story_progress"]["current_macro_phase"] = phase.get(
+            staged_state["story_progress"]["current_macro_phase"] = phase.get(
                 "phase_number"
             )
 
+        completed_cursor = staged_completed
+        state_cursor = normalize_beat_canonical_state(staged_state)
+
+        framework[beat_number - 1] = candidate
         finalized_texts.append(candidate)
         finalized_through = beat_number
         checkpoint["beat_state_after"][str(beat_number)] = copy.deepcopy(state_cursor)
         save_checkpoint()
-        print(f"Beat {beat_number} accepted unchanged.", flush=True)
+        print(
+            f"Beat {beat_number} accepted and finalized; "
+            f"committed required events: {', '.join(newly_completed) or 'none'}; "
+            f"completed after={', '.join(_ordered_required_event_ids(all_event_ids, completed_cursor)) or 'none'}",
+            flush=True,
+        )
+
+        if phase and beat_number == phase.get("beat_end"):
+            missing = [
+                event["id"]
+                for event in all_events
+                if event.get("beat_number") is not None
+                and event.get("id") not in completed_cursor
+                and (
+                    story_arc_phase_for_beat(
+                        macro_arc, event["beat_number"]
+                    ) or {}
+                ).get("phase_number") == phase.get("phase_number")
+            ]
+            if missing:
+                raise BeatValidationExhaustedError(
+                    beat_number,
+                    "Phase boundary is missing required events: "
+                    + ", ".join(missing),
+                    phase_number=phase.get("phase_number"),
+                    scope="phase",
+                )
 
     for phase in (macro_arc or {}).get("phases", []):
         phase_end = phase.get("beat_end")
@@ -9495,6 +9471,8 @@ def _run_forward_beat_validation(
             raise BeatValidationExhaustedError(
                 phase_end,
                 "Phase boundary is missing required events: " + ", ".join(missing),
+                phase_number=phase.get("phase_number"),
+                scope="phase",
             )
 
     finalized = parse_generated_beats(
@@ -9510,6 +9488,670 @@ def _run_forward_beat_validation(
     )
     save_checkpoint()
     return load_beats(path)
+
+
+# Format the subject names used in the macro-arc prompts.
+def _format_beat_arc_subject_names(subject_information):
+    subject_names = []
+    for subject_line in str(subject_information or "").splitlines():
+        subject_name, separator, _ = subject_line.strip().lstrip("- ").partition(
+            " is "
+        )
+        if separator and subject_name:
+            subject_names.append(subject_name)
+    return ", ".join(subject_names)
+
+
+def _seed_known_beat_characters(state, macro_arc=None, subject_information=""):
+    """Seed known characters with explicit closed-world injury history.
+
+    This is intentionally limited to characters already named by the story
+    inputs or macro arc.  It does not infer events or injuries from prose.
+    """
+    state = normalize_beat_canonical_state(state or new_beat_canonical_state())
+    names = []
+    seen = set()
+
+    def add_name(value):
+        name = " ".join(str(value or "").split()).strip()
+        key = name.casefold()
+        if name and key not in seen:
+            seen.add(key)
+            names.append(name)
+
+    for subject_line in str(subject_information or "").splitlines():
+        subject_line = subject_line.strip().lstrip("- ")
+        subject_name, separator, _details = subject_line.partition(" is ")
+        if separator:
+            add_name(subject_name)
+    for phase in (macro_arc or {}).get("phases", []):
+        if not isinstance(phase, dict):
+            continue
+        for character in phase.get("characters_introduced", []):
+            add_name(character)
+
+    existing_by_key = {
+        str(character_id).casefold(): character_id
+        for character_id in state.get("characters", {})
+    }
+    for name in names:
+        character_id = existing_by_key.get(name.casefold(), name)
+        record = state["characters"].setdefault(character_id, {})
+        injury_values = (
+            record.get("current_injuries"),
+            record.get("prior_injuries"),
+            record.get("injury_history"),
+        )
+        no_injury_markers = {"", "none", "n/a", "no injury"}
+        has_established_injury = bool(record.get("injuries")) or any(
+            " ".join(str(value or "").split()).casefold() not in no_injury_markers
+            and "no injury event" not in " ".join(
+                str(value or "").split()
+            ).casefold()
+            for value in injury_values
+            if value is not None
+        )
+        if not has_established_injury:
+            record["current_injuries"] = "none"
+            record["prior_injuries"] = "none"
+            record["injury_history"] = (
+                "no injury event has been established at any earlier beat"
+            )
+
+    return normalize_beat_canonical_state(state)
+
+
+# Build the macro-arc planning prompt.
+def build_beat_arc_plan_messages(
+    story,
+    total_segments,
+    subject_information="",
+    correction="",
+    phrase_exclusions=(),
+    beat_instructions="",
+):
+    subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
+    phrase_exclusions_text = format_phrase_exclusions_section(phrase_exclusions)
+    correction_text = ""
+    if correction:
+        correction_text = f"""
+
+CORRECTION REQUIRED
+{correction}
+Return the complete corrected arc.
+"""
+    return [
+        {
+            "role": "system",
+            "content": (
+                """You are a story-arc planner. Divide a supplied story into meaningful
+narrative phases that will later be expanded into individual video beats.
+
+PHASE BOUNDARY RULES
+- Separate a setup/introduction stage from a long main process/conflict when the
+  source clearly contains both.
+- Separate completion/aftermath/resolution from the main process when the source
+  clearly gives the ending a different purpose.
+- A long repeated process may occupy one large phase.
+- Do NOT collapse setup + long process + completion into one phase merely because
+  they occur in the same place with the same characters.
+- One phase is appropriate only when the story genuinely has one narrative
+  purpose from beginning through ending. For a long multi-stage story, a
+  one-phase arc should be unusual.
+- Phase sizes do not need to be similar. Give most beats to the stage containing
+  most of the required visible events.
+
+broad_progression is an abstract description of what happens DURING that phase.
+
+required_end_state is the concrete handoff state that must be true at the END
+of that phase before the next phase starts. Do not put next-phase progression in
+the current phase merely to make the arc feel complete.
+
+Every hard fact in required_end_state must be represented by one or more atomic
+required_events for that phase. required_end_state may summarize those events,
+but must not introduce an additional mandatory fact that is absent from
+required_events. Phase freezing is enforced from required-event IDs.
+
+required_end_state may contain only states explicitly required by the SOURCE
+STORY or beat instructions, or states logically necessary for a required source
+event. Do not promote optional injuries, wardrobe, emotions, props, damage,
+exhaustion, or other plausible embellishments into hard requirements.
+
+Preserve required events, order, premise, and ending. Connective detail is
+allowed, but do not introduce unsupported major characters, transformations,
+procedures, mythology, timelines, loops, resurrection, or other plot mechanics.
+
+required_events describe WHAT must happen, not optional choreography. For example,
+"The protagonist handles several required obstacles" is appropriate when authorized
+by the source; an optional pause, flourish, or side action is not unless the source
+explicitly requires it. Minimal mechanics needed to make an authorized event
+physically executable are allowed: unlocking/opening a locked barrier is authorized
+when the source requires a person or object to pass through it. Accept
+source-authorized concrete details such as persistent scene conditions, explicitly
+named items being equipped, and source-stated visible state changes.
+
+For each phase return only the JSON properties:
+- phase_number
+- beat_start
+- beat_end
+- narrative_purpose
+- broad_progression
+- characters_introduced
+- location
+- required_end_state
+- required_events
+
+Each required event MUST include a non-empty state_effects object when the
+event directly establishes a persistent canonical fact in a modeled category:
+character location or containment, door or barrier state, named object
+possession or equipment, irreversible object state, terminal threat state, or
+an explicitly required persistent environmental condition. Temporary actions,
+emotion, reaction, and optional embellishment do not require state_effects.
+Do not invent unrelated state merely to fill the field.
+
+required_events is a short ordered list of concrete mandatory events. Derive
+them only from SOURCE STORY or explicit beat instructions. Preserve source
+order, split compound requirements into atomic visible events, and do not
+promote optional connective actions into requirements. Give every event a
+unique ID within the complete arc, preferably E1, E2, E3, and so on. Assign
+each event to the exact global beat number where its human-readable job belongs
+using beat_number. Add an
+optional depends_on array only when the source or macro semantics define a real
+prerequisite; never infer one from event IDs or list position. When a required
+event directly establishes one of the modeled persistent categories above, do
+not omit its state_effects merely because the event contains other prose. A
+corrected arc must retain existing state_effects for every unchanged event.
+Python will apply those effects deterministically after completion.
+
+STATE_EFFECTS JSON CONTRACT
+`state_effects` is a nested partial patch of Python's canonical state. Its first
+key must be exactly one of `characters`, `environment`, `threats`, `story`, or
+`story_progress`; it must never be a free-standing state label. For example,
+when a storage door becomes locked, return:
+{"environment": {"doors": {"storage_door": {"status": "locked"}}}}
+When an authorized event places named characters inside that locked area,
+record the direct containment/location consequence under those character IDs.
+When an authorized event explicitly equips or retrieves a named item, record
+the direct possession consequence under the character's `held_objects` or
+`equipped_objects` field. Do not infer unrelated inventory, conditions, or
+temporary actions.
+Do not return {"storage_locked": true}. Python records the accepted effect
+in `story_progress.persistent_state_effects` and reapplies it after later beat
+patches. Use canonical stable keys for event effects; do not invent Python
+bookkeeping fields."""
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Story:
+{story}
+
+MAIN CHARACTER(S):
+{subject_text}
+
+EXPLICIT BEAT INSTRUCTIONS
+{str(beat_instructions or '').strip() or 'N/A'}
+
+TOTAL BEATS:
+{total_segments}
+
+The phases must cover Beats 1-{total_segments} exactly once,
+with no gaps or overlaps.
+
+{f"ADDITIONAL RULES: {phrase_exclusions_text}" if str(phrase_exclusions_text).strip() or '' else ''}
+
+{correction_text}
+
+Return only a JSON object with a 'phases' array using exactly the fields above.
+""".strip(),
+        },
+    ]
+
+
+# Build the single semantic macro-arc validation prompt.
+def build_macro_arc_validation_messages(
+    story,
+    macro_arc,
+    subject_information="",
+    beat_instructions="",
+):
+    subject_text = str(subject_information or "").strip() or "N/A"
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are the single semantic validator for a complete story arc. "
+                "Report only blocking errors and return only the requested JSON."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+Check whether the PROPOSED MACRO STORY ARC is semantically valid for
+phase-by-phase beat generation.
+
+    Set valid=false only if the arc's NARRATIVE STRUCTURE or SOURCE FIDELITY:
+- changes the central premise or core conflict;
+- omits or reverses a required major event;
+- changes the required ending;
+- invents a major unsupported character, transformation, procedure, mythology,
+  timeline, or plot mechanic;
+- materially contradicts an explicit source fact;
+- collapses clearly distinct source stages into one phase in a way that removes
+  a meaningful handoff boundary. In particular, if the source clearly contains
+  setup/introduction, a long main process/conflict, and completion/aftermath,
+  those stages should not all be merged into one catch-all phase; or
+- fails to establish concrete clothing when a defined human Subject is first
+  shown. A human Subject introduced later may establish clothing in that later
+  introduction phase; or
+- contains a required_end_state clause that is not explicitly authorized by the
+  SOURCE STORY or beat instructions and is not logically necessary for a
+  required source event. Reject optional injuries, wardrobe, emotions, props,
+  environmental damage, exhaustion, or other merely plausible embellishments.
+- contains a required_events entry that is not directly authorized by the SOURCE
+  STORY or explicit beat instructions;
+- orders required_events differently from their source order;
+- promotes optional connective action into a required_events entry;
+- contains incoherent dependencies or dependency order.
+
+Also validate every phase's required_end_state. Each concrete fact in that
+end state must be established by one or more required_events by the phase
+boundary. Distinguish partial progress from exhaustive completion; handling
+some items does not establish that all remaining items are resolved.
+
+Review the semantic structure of the complete arc: phases must cover the
+requested beat range coherently, required events must be assigned to beats in
+their phase, dependencies must refer to real prerequisites, and required
+events must occur in a coherent order. Python already rejects malformed JSON,
+invalid numeric ranges, duplicate IDs, and malformed dependency data.
+
+Validate state_effects as semantic event consequences. An effect must be
+established by its own event. Events that establish persistent modeled facts
+such as character location or containment, release, held/equipped objects,
+barriers, persistent objects, terminal entities, or persistent environment
+conditions must carry the corresponding nested effect. Do not require effects
+for temporary actions, emotions, reactions, or decorative detail. Do not copy
+an earlier persistent fact onto an unrelated later event merely to satisfy an
+end state. Do not accept malformed or unrelated effects merely because they
+make coverage appear complete.
+
+Do NOT reject merely because phase sizes are unequal or because one long process
+uses most of the beats. A one-phase arc is valid when the source truly has one
+continuous narrative purpose with no meaningful stage change.
+
+For required_events, check the event text semantically against the supplied
+source and instructions. Required events must be concrete enough to be visible
+in a beat, but must not add optional actions merely to fill the list. Judge the
+event's meaning, not whether it repeats the source's exact wording. Accept a
+source-authorized paraphrase, explicitly named items being equipped, or a
+source-stated persistent scene condition. Also accept the minimum physical
+mechanic needed to perform a required event, such as unlocking or opening a
+locked barrier when the source says someone passes through it. Do not require
+optional choreography such as exact timing, route, gesture, or use of every
+available item.
+
+Do not reject based on a minor difference in wording.
+Example:
+'The operator takes the scanner.'
+'The operator equips the scanner.'
+
+Do not critique wording, pacing, minor visual details, or screenplay quality.
+For required_end_state authorization, uncertainty is not authorization; return
+valid=false when a clause may be an optional invention.
+
+SOURCE STORY
+--- STORY START ---
+{story}
+--- STORY END ---
+
+DEFINED SUBJECTS
+{subject_text}
+
+EXPLICIT BEAT INSTRUCTIONS
+{str(beat_instructions or '').strip() or 'N/A'}
+
+PROPOSED MACRO STORY ARC
+{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
+
+Return only {{"valid": true, "issues": []}} or the same object with valid=false
+and concise blocking issue strings.
+""".strip(),
+        },
+    ]
+
+
+def build_macro_arc_repair_messages(
+    story,
+    macro_arc,
+    issues,
+    total_segments,
+    subject_information="",
+    beat_instructions="",
+):
+    """Build the one complete-arc repair request used after validation fails."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You repair a rejected macro story arc. Correct only the issues "
+                "listed by the validator while preserving every unaffected phase, "
+                "event, assignment, dependency, and state effect. You may change "
+                "narrative fields when directly required by an issue. Return one "
+                "complete macro arc using the normal phases schema; never return a "
+                "patch, coverage metadata, claim IDs, or commentary."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+SOURCE STORY
+{story}
+
+DEFINED SUBJECTS
+{str(subject_information or '').strip() or 'N/A'}
+
+EXPLICIT BEAT INSTRUCTIONS
+{str(beat_instructions or '').strip() or 'N/A'}
+
+REQUESTED BEAT COUNT
+{total_segments}
+
+CURRENT MACRO ARC
+{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
+
+VALIDATOR ISSUES
+{json.dumps([str(issue).strip() for issue in (issues or []) if str(issue).strip()], ensure_ascii=False, indent=2)}
+
+Return the complete corrected macro arc with phases covering Beats 1-{total_segments}
+exactly once. Preserve all correct material and include state_effects on events that
+establish persistent modeled facts. Return only the normal macro-arc JSON object.
+""".strip(),
+        },
+    ]
+
+
+def parse_beat_arc_plan(
+    raw_result,
+    total_segments,
+    formatter=None,
+    llm_request=None,
+    validate_state_effects=True,
+):
+    """Parse and validate a complete macro story arc deterministically."""
+    if total_segments <= 0:
+        raise ValueError("Beat arc planning requires at least one segment.")
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate, llm_request=llm_request)
+            if isinstance(candidate, UnrepairedJSON):
+                return candidate
+        except json.JSONDecodeError as error:
+            raise ValueError("The LLM arc response must be valid JSON.") from error
+    if (
+        isinstance(candidate, dict)
+        and set(candidate) == {"arc_plan"}
+        and isinstance(candidate["arc_plan"], dict)
+    ):
+        candidate = candidate["arc_plan"]
+    if not isinstance(candidate, dict) or not isinstance(candidate.get("phases"), list):
+        raise ValueError("The LLM arc response must contain a JSON 'phases' array.")
+    if set(candidate) != {"phases"}:
+        raise ValueError(
+            "The LLM arc response must contain only the JSON 'phases' array."
+        )
+    phases = candidate["phases"]
+    if not phases:
+        raise ValueError("The macro story arc must contain at least one phase.")
+    if len(phases) > total_segments:
+        raise ValueError(
+            "The macro story arc cannot contain more phases than story beats."
+        )
+
+    required_fields = {
+        "phase_number", "beat_start", "beat_end", "narrative_purpose",
+        "broad_progression", "characters_introduced", "location",
+        "required_end_state", "required_events",
+    }
+    allowed_event_fields = {"id", "event", "beat_number", "depends_on", "state_effects"}
+    normalized_phases = []
+    required_event_ids = set()
+    expected_start = 1
+    for phase_number, phase in enumerate(phases, start=1):
+        if not isinstance(phase, dict):
+            raise ValueError(f"Macro arc phase {phase_number} must be an object.")
+        missing = required_fields - set(phase)
+        if missing:
+            raise ValueError(
+                f"Macro arc phase {phase_number} is missing: {', '.join(sorted(missing))}."
+            )
+        extras = set(phase) - required_fields
+        if extras:
+            raise ValueError(
+                f"Macro arc phase {phase_number} has unsupported fields: "
+                f"{', '.join(sorted(extras))}."
+            )
+        if phase["phase_number"] != phase_number or isinstance(
+            phase["phase_number"], bool
+        ) or not isinstance(phase["phase_number"], int):
+            raise ValueError(
+                f"Macro arc phase {phase_number} must have phase_number {phase_number}."
+            )
+        start, end = phase["beat_start"], phase["beat_end"]
+        if isinstance(start, bool) or not isinstance(start, int):
+            raise ValueError(f"Macro arc phase {phase_number} beat_start must be an integer.")
+        if isinstance(end, bool) or not isinstance(end, int):
+            raise ValueError(f"Macro arc phase {phase_number} beat_end must be an integer.")
+        if start != expected_start:
+            relationship = "overlap" if start < expected_start else "gap"
+            raise ValueError(
+                f"Macro arc phase {phase_number} creates a {relationship}: expected "
+                f"beat_start {expected_start}, received {start}."
+            )
+        if end < start or end > total_segments:
+            raise ValueError(
+                f"Macro arc phase {phase_number} has invalid inclusive range "
+                f"{start}-{end} for {total_segments} beats."
+            )
+        purpose = str(phase["narrative_purpose"] or "").strip()
+        progression = " ".join(str(phase["broad_progression"] or "").split())
+        end_state = str(phase["required_end_state"] or "").strip()
+        location = " ".join(str(phase["location"] or "").split())
+        characters = phase["characters_introduced"]
+        if not isinstance(characters, list) or any(
+            not isinstance(character, str) or not character.strip()
+            for character in characters
+        ):
+            raise ValueError(
+                f"Macro arc phase {phase_number} characters_introduced must be "
+                "an array of non-empty strings."
+            )
+        characters = [" ".join(character.split()) for character in characters]
+        if len({character.casefold() for character in characters}) != len(characters):
+            raise ValueError(
+                f"Macro arc phase {phase_number} characters_introduced contains duplicates."
+            )
+        if not purpose or not progression or not end_state or not location:
+            raise ValueError(
+                f"Macro arc phase {phase_number} must include purpose, broad "
+                "progression, location, and end state."
+            )
+        events = phase["required_events"]
+        if not isinstance(events, list):
+            raise ValueError(
+                f"Macro arc phase {phase_number} required_events must be an array."
+            )
+        normalized_events = []
+        for event_index, event in enumerate(events, start=1):
+            if (
+                not isinstance(event, dict)
+                or not {"id", "event"}.issubset(event)
+                or set(event) - allowed_event_fields
+            ):
+                raise ValueError(
+                    f"Macro arc phase {phase_number} required event {event_index} "
+                    "must contain id, event, and optional depends_on."
+                )
+            if not isinstance(event["id"], str) or not isinstance(event["event"], str):
+                raise ValueError(
+                    f"Macro arc phase {phase_number} required event {event_index} "
+                    "id and event must be strings."
+                )
+            event_id = " ".join(event["id"].split()).strip()
+            event_text = " ".join(event["event"].split()).strip()
+            if not event_id or not event_text:
+                raise ValueError(
+                    f"Macro arc phase {phase_number} required event {event_index} "
+                    "must have non-empty id and event text."
+                )
+            event_key = event_id.casefold()
+            if event_key in required_event_ids:
+                raise ValueError(f"Duplicate macro required event ID: {event_id}.")
+            required_event_ids.add(event_key)
+            beat_number = event.get("beat_number")
+            if beat_number is not None and (
+                isinstance(beat_number, bool)
+                or not isinstance(beat_number, int)
+                or not start <= beat_number <= end
+            ):
+                raise ValueError(
+                    f"Macro story arc required event {event_id} has an invalid "
+                    "beat_number for its phase."
+                )
+            dependencies = event.get("depends_on", [])
+            if not isinstance(dependencies, list) or any(
+                not isinstance(dependency, str) or not dependency.strip()
+                for dependency in dependencies
+            ):
+                raise ValueError(
+                    f"Macro arc phase {phase_number} required event {event_index} "
+                    "depends_on must be an array of non-empty strings."
+                )
+            dependencies = [" ".join(dependency.split()).strip() for dependency in dependencies]
+            if len({dependency.casefold() for dependency in dependencies}) != len(dependencies):
+                raise ValueError(
+                    f"Macro arc phase {phase_number} required event {event_index} "
+                    "depends_on contains duplicates."
+                )
+            if event_key in {dependency.casefold() for dependency in dependencies}:
+                raise ValueError(
+                    f"Macro arc phase {phase_number} required event {event_id} "
+                    "cannot depend on itself."
+                )
+            state_effects = event.get("state_effects")
+            if state_effects is not None:
+                if not isinstance(state_effects, dict):
+                    raise ValueError(
+                        f"Macro arc phase {phase_number} required event {event_index} "
+                        "state_effects must be an object."
+                    )
+                _validate_state_effects(state_effects)
+            normalized_event = {"id": event_id, "event": event_text}
+            if beat_number is not None:
+                normalized_event["beat_number"] = beat_number
+            if dependencies:
+                normalized_event["depends_on"] = dependencies
+            if state_effects is not None:
+                normalized_event["state_effects"] = copy.deepcopy(state_effects)
+            normalized_events.append(normalized_event)
+        normalized_phases.append({
+            "phase_number": phase_number,
+            "beat_start": start,
+            "beat_end": end,
+            "narrative_purpose": purpose,
+            "broad_progression": progression,
+            "characters_introduced": characters,
+            "location": location,
+            "required_end_state": end_state,
+            "required_events": normalized_events,
+        })
+        expected_start = end + 1
+
+    known_event_ids = {
+        event["id"].casefold()
+        for phase in normalized_phases
+        for event in phase["required_events"]
+    }
+    for phase in normalized_phases:
+        for event in phase["required_events"]:
+            unknown = [
+                dependency for dependency in event.get("depends_on", [])
+                if dependency.casefold() not in known_event_ids
+            ]
+            if unknown:
+                raise ValueError(
+                    f"Macro required event {event['id']} has unknown explicit "
+                    "dependency: " + ", ".join(unknown)
+                )
+    if expected_start != total_segments + 1:
+        raise ValueError(
+            f"Macro story arc ends at Beat {expected_start - 1}; it must cover "
+            f"through Beat {total_segments}."
+        )
+    return {"phases": normalized_phases}
+
+
+def build_phase_generation_batches(macro_arc, max_batch_size=None):
+    """Return one generation batch per phase unless a limit is explicitly set."""
+    if max_batch_size is not None:
+        if isinstance(max_batch_size, bool) or not isinstance(max_batch_size, int):
+            raise ValueError("Beat generation batch size must be an integer.")
+        if max_batch_size <= 0:
+            raise ValueError("Beat generation batch size must be positive.")
+    phases = macro_arc.get("phases") if isinstance(macro_arc, dict) else None
+    if not isinstance(phases, list) or not phases:
+        raise ValueError("Phase-based beat generation requires a macro arc.")
+    batches = []
+    expected_start = 1
+    for phase_index, phase in enumerate(phases, start=1):
+        if not isinstance(phase, dict):
+            raise ValueError(f"Macro arc phase {phase_index} must be an object.")
+        start, end = phase.get("beat_start"), phase.get("beat_end")
+        if phase.get("phase_number") != phase_index or not isinstance(start, int) or not isinstance(end, int) or start != expected_start or end < start:
+            raise ValueError(f"Macro arc phase {phase_index} has an invalid beat range.")
+        batch_size = max_batch_size or (end - start + 1)
+        for batch_start in range(start, end + 1, batch_size):
+            batches.append({
+                "phase": phase,
+                "batch_start": batch_start,
+                "batch_end": min(batch_start + batch_size - 1, end),
+            })
+        expected_start = end + 1
+    return batches
+
+
+def parse_macro_arc_validation_result(raw_result, formatter=None, llm_request=None):
+    """Parse the minimal unified macro-arc validation response."""
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate, llm_request=llm_request)
+            if isinstance(candidate, UnrepairedJSON):
+                return candidate
+        except json.JSONDecodeError as error:
+            raise ValueError(
+                "The macro-arc validation response must be valid JSON."
+            ) from error
+    if not isinstance(candidate, dict):
+        raise ValueError("The macro-arc validation response must be a JSON object.")
+    valid, issues = candidate.get("valid"), candidate.get("issues")
+    if not isinstance(valid, bool):
+        raise ValueError("The macro-arc validation 'valid' field must be boolean.")
+    if not isinstance(issues, list) or not all(
+        isinstance(issue, str) and issue.strip() for issue in issues
+    ):
+        raise ValueError("The macro-arc validation 'issues' field must be a string array.")
+    issues = [" ".join(issue.split()) for issue in issues]
+    if valid != (not issues):
+        raise ValueError(
+            "Macro-arc validation 'valid' must be true exactly when issues is empty."
+        )
+    return {"valid": valid, "issues": issues}
 
 
 # Build beat arc response format.
@@ -9611,12 +10253,12 @@ def build_beat_arc_response_format(total_segments):
     }
 
 
-# Build beat arc fidelity response format.
-def build_beat_arc_fidelity_response_format():
+# Build macro arc validation response format.
+def build_macro_arc_validation_response_format():
     return {
         "type": "json_schema",
         "json_schema": {
-            "name": "story_beat_arc_fidelity",
+            "name": "story_macro_arc_validation",
             "strict": True,
             "schema": {
                 "type": "object",
@@ -10313,7 +10955,7 @@ COMPLETE NUMBERED BEAT PLAN
 
 Return only valid=true with an empty issues array, or definite blocking issues
 with beat_start, beat_end, type, requirement, and problem. Prefer direct
-required-event references such as "E4: Amy retrieves the AR-15."
+required-event references such as "E4: the operator retrieves the scanner."
 """.strip()},
     ]
 
@@ -10375,6 +11017,118 @@ def merge_beat_plan_audit_issues(*issue_lists):
 
 def assign_stable_blocker_ids(issues):
     return [{"issue_id": index, **dict(issue)} for index, issue in enumerate(issues or [], start=1)]
+
+
+def normalize_beat_plan_repair_ranges(issues, total_segments):
+    """Return deterministic repair ranges without widening a reported blocker.
+
+    Adjacent physical-transition failures belong to the later beat: repairing
+    the earlier beat would change an already-established ending state.  Other
+    semantic failures retain the range reported by the auditor.  The helper is
+    deliberately conservative because repair orchestration must never invent a
+    broader regeneration scope than the validator requested.
+    """
+    total_segments = int(total_segments)
+    normalized_issues = [dict(issue) for issue in (issues or []) if isinstance(issue, dict)]
+    ranges = []
+    for issue in normalized_issues:
+        start = issue.get("beat_start")
+        end = issue.get("beat_end")
+        if (isinstance(start, bool) or not isinstance(start, int) or
+                isinstance(end, bool) or not isinstance(end, int) or
+                start <= 0 or end < start or end > total_segments):
+            continue
+        range_issue = dict(issue)
+        if issue.get("type") == ADJACENT_PHYSICAL_TRANSITION_ISSUE_TYPE:
+            range_issue["beat_start"] = end
+            range_issue["beat_end"] = end
+        ranges.append(range_issue)
+    ranges.sort(key=lambda issue: (
+        issue["beat_start"], issue["beat_end"], str(issue.get("type", ""))))
+    return {
+        "issues": normalized_issues,
+        "ranges": ranges,
+        "downgraded": [],
+    }
+
+
+def targeted_repair_improved(previous_issues, current_issues, _macro_arc=None):
+    """Allow targeted repair to continue only when blockers strictly decrease."""
+    return len(current_issues or []) < len(previous_issues or [])
+
+
+def _blocker_phase_numbers(blockers, macro_arc):
+    phases = macro_arc.get("phases", []) if isinstance(macro_arc, dict) else []
+    matched = set()
+    for issue in blockers or []:
+        if not isinstance(issue, dict):
+            continue
+        try:
+            start, end = int(issue["beat_start"]), int(issue["beat_end"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        for index, phase in enumerate(phases, start=1):
+            if not isinstance(phase, dict):
+                continue
+            try:
+                phase_start = int(phase["beat_start"])
+                phase_end = int(phase["beat_end"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if end >= phase_start and start <= phase_end:
+                matched.add(phase.get("phase_number", index))
+    return sorted(matched, key=lambda value: (value is None, value))
+
+
+def classify_verified_blocker_scope(blockers, macro_arc):
+    """Choose the smallest safe recovery scope for verified beat blockers."""
+    blockers = list(blockers or [])
+    phase_numbers = _blocker_phase_numbers(blockers, macro_arc)
+    if not blockers:
+        return {"action": "accept", "phase_number": None}
+    if len(phase_numbers) != 1:
+        return {"action": "regenerate_phases", "phase_numbers": phase_numbers}
+
+    phase_number = phase_numbers[0]
+    phase = next(
+        (item for index, item in enumerate(macro_arc.get("phases", []), start=1)
+         if isinstance(item, dict) and item.get("phase_number", index) == phase_number),
+        {},
+    )
+    try:
+        phase_start, phase_end = int(phase["beat_start"]), int(phase["beat_end"])
+    except (KeyError, TypeError, ValueError):
+        phase_start = phase_end = None
+    wide = any(
+        phase_start is not None and
+        int(issue.get("beat_start", 0)) <= phase_start and
+        int(issue.get("beat_end", 0)) >= phase_end
+        for issue in blockers if isinstance(issue, dict)
+    )
+    action = "regenerate_phase" if wide or len(blockers) >= 3 else "targeted_repair"
+    return {"action": action, "phase_number": phase_number}
+
+
+def classify_verified_blocker_scopes(blockers, macro_arc):
+    """Classify each affected phase independently for multi-phase recovery."""
+    phases = _blocker_phase_numbers(blockers, macro_arc)
+    decisions = []
+    for phase_number in phases:
+        phase_blockers = []
+        for issue in blockers or []:
+            if phase_number in _blocker_phase_numbers([issue], macro_arc):
+                phase_blockers.append(issue)
+        decision = classify_verified_blocker_scope(phase_blockers, macro_arc)
+        decisions.append({"phase_number": phase_number, "action": decision["action"]})
+    return {"action": "recover_phases", "decisions": decisions}
+
+
+def classify_regeneration_scope(blockers, macro_arc):
+    """Force a phase-level regeneration for callers requiring full phase repair."""
+    phases = _blocker_phase_numbers(blockers, macro_arc)
+    if len(phases) == 1:
+        return {"action": "regenerate_phase", "phase_number": phases[0]}
+    return {"action": "regenerate_phases", "phase_numbers": phases}
 
 
 
@@ -10517,7 +11271,7 @@ def build_beat_generation_messages(
         supplemental_sections.append(
             "CORRECTION REQUIRED\n"
             + str(correction).strip()
-            + "\nRegenerate the complete current phase."
+            + "\nRegenerate the requested beat list."
         )
     if beat_instructions:
         supplemental_sections.append(
@@ -10689,119 +11443,6 @@ def _normalize_instruction_check_text(text):
 
 
 # Normalize prose for whole-token macro character/location matching.
-def _normalize_macro_introduction_text(text):
-    """Normalize prose for whole-token macro character/location matching."""
-
-    return " ".join(
-        re.findall(r"[^\W_]+", str(text or "").casefold(), flags=re.UNICODE)
-    )
-
-
-# Macro introduction aliases.
-def _macro_introduction_aliases(value):
-    normalized = _normalize_macro_introduction_text(value)
-    if not normalized or normalized in {"n a", "none", "unknown"}:
-        return set()
-    aliases = {normalized}
-    words = normalized.split()
-    if len(words) > 1 and words[0] in {"a", "an", "the"}:
-        aliases.add(" ".join(words[1:]))
-    # Also add aliases for slash-separated alternatives, e.g. "X / Y".
-    try:
-        raw = str(value or "")
-        parts = [p.strip() for p in re.split(r"\s*/\s*", raw) if p.strip()]
-        for part in parts:
-            part_norm = _normalize_macro_introduction_text(part)
-            if part_norm:
-                aliases.add(part_norm)
-    except Exception:
-        pass
-    return aliases
-
-
-# Macro entity is mentioned.
-def _macro_entity_is_mentioned(beat_text, aliases):
-    normalized_beat = _normalize_macro_introduction_text(beat_text)
-    padded_beat = f" {normalized_beat} "
-    return any(f" {alias} " in padded_beat for alias in aliases)
-
-
-# Report characters or locations used before their macro phase begins.
-def validate_generated_beat_macro_introductions(
-    beats,
-    macro_arc,
-    beat_start=1,
-):
-    """Report characters or locations used before their macro phase begins."""
-
-    if isinstance(beat_start, bool) or not isinstance(beat_start, int) or beat_start <= 0:
-        raise ValueError("Macro introduction validation requires a positive beat_start.")
-    phases = macro_arc.get("phases") if isinstance(macro_arc, dict) else None
-    if not isinstance(phases, list) or not phases:
-        raise ValueError("Macro introduction validation requires a macro arc.")
-
-    introductions = {"character": {}, "location": {}}
-
-    # Register one discovered entity or identity.
-    def register(kind, display_name, introduction_beat):
-        aliases = _macro_introduction_aliases(display_name)
-        if not aliases:
-            return
-        key = min(aliases, key=lambda alias: (len(alias), alias))
-        existing = introductions[kind].get(key)
-        if existing is None or introduction_beat < existing["beat_start"]:
-            introductions[kind][key] = {
-                "name": " ".join(str(display_name).split()),
-                "aliases": aliases,
-                "beat_start": introduction_beat,
-            }
-
-    for phase_number, phase in enumerate(phases, start=1):
-        if not isinstance(phase, dict):
-            raise ValueError(f"Macro arc phase {phase_number} must be an object.")
-        introduction_beat = phase.get("beat_start")
-        if (
-            isinstance(introduction_beat, bool)
-            or not isinstance(introduction_beat, int)
-            or introduction_beat <= 0
-        ):
-            raise ValueError(
-                f"Macro arc phase {phase_number} must have a positive beat_start."
-            )
-        characters = phase.get("characters_introduced")
-        if not isinstance(characters, list):
-            raise ValueError(
-                f"Macro arc phase {phase_number} must have characters_introduced."
-            )
-        for character in characters:
-            if not isinstance(character, str):
-                raise ValueError(
-                    f"Macro arc phase {phase_number} has an invalid character."
-                )
-            register("character", character, introduction_beat)
-        location = phase.get("location")
-        if not isinstance(location, str):
-            raise ValueError(f"Macro arc phase {phase_number} must have a location.")
-        register("location", location, introduction_beat)
-
-    issues = []
-    for offset, beat in enumerate(beats):
-        beat_number = beat_start + offset
-        for kind in ("location", "character"):
-            for introduction in introductions[kind].values():
-                allowed_from = introduction["beat_start"]
-                if beat_number >= allowed_from:
-                    continue
-                if _macro_entity_is_mentioned(beat, introduction["aliases"]):
-                    issues.append(
-                        f"Beat {beat_number} introduces future {kind} "
-                        f"{introduction['name']!r} before its macro phase begins "
-                        f"at beat {allowed_from}."
-                    )
-    return list(dict.fromkeys(issues))
-
-
-# Validate common explicit, mechanically checkable beat constraints.
 def validate_generated_beat_instructions(beats, beat_instructions):
     """Validate common explicit, mechanically checkable beat constraints."""
     instructions = str(beat_instructions or "")
@@ -11167,6 +11808,7 @@ def load_story_arc(path, total_segments, source_text):
             raw_arc,
             total_segments,
             llm_request=ask_llm,
+            validate_state_effects=False,
         )
     except ValueError as error:
         print(
@@ -11285,7 +11927,21 @@ def generate_beats_from_story(
     if llm_request is None:
         llm_request = ask_llm
     if not str(story or "").strip():
-        raise ValueError("Cannot generate story beats from an empty story.")
+        print(
+            "WARNING: story text is empty; no beats can be generated yet.",
+            flush=True,
+        )
+        return []
+    try:
+        total_segments = int(total_segments)
+    except (TypeError, ValueError):
+        total_segments = 0
+    if isinstance(total_segments, bool) or total_segments <= 0:
+        print(
+            f"WARNING: invalid beat count {total_segments!r}; returning no beats.",
+            flush=True,
+        )
+        return []
     # These former configurable attempt-limit arguments remain accepted so
     # existing callers do not break. Framework generation still uses the
     # existing structural retry behavior; semantic validation is performed only
@@ -11338,7 +11994,7 @@ def generate_beats_from_story(
         
         Args:
             correction: Initial correction message or empty string
-            combined_attempt: Current attempt in the combined macro_arc + fidelity loop
+            combined_attempt: Current arc-creation attempt
             max_attempts: Maximum attempts for this macro arc generation
             
         Returns:
@@ -11346,12 +12002,10 @@ def generate_beats_from_story(
         """
         last_error = None
         attempt = 0
-        last_macro_arc = None
-        
         while attempt < max_attempts:
             attempt += 1
             print(
-                f"Requesting global beat macro arc (combined attempt {combined_attempt}, "
+                f"Requesting macro arc (attempt {combined_attempt}, "
                 f"response attempt {attempt}/{max_attempts}).",
                 flush=True,
             )
@@ -11372,7 +12026,7 @@ def generate_beats_from_story(
                 response_format=build_beat_arc_response_format(total_segments),
                 history_metadata={
                     **(history_metadata or {}),
-                    "purpose": "beat_arc_plan",
+                    "purpose": "macro_arc_create",
                     "attempt": attempt,
                     "total_segments": total_segments,
                 },
@@ -11388,7 +12042,6 @@ def generate_beats_from_story(
                 return (macro_arc, True)
             except ValueError as error:
                 last_error = error
-                last_macro_arc = None  # Only save if we get a parseable result
                 print(
                     "LM Studio returned an invalid macro arc; requesting a "
                     f"corrected arc: {last_error}"
@@ -11402,30 +12055,28 @@ def generate_beats_from_story(
         )
         return (None, False)
 
-    # Request fidelity check for a macro arc; returns (fidelity, success).
-    def request_macro_arc_fidelity(macro_arc, combined_attempt, max_attempts=10):
-        """Request fidelity check for a macro arc; returns (fidelity, success).
+    # Validate one complete macro arc; returns (validation, success).
+    def request_macro_arc_validation(macro_arc, combined_attempt, max_attempts=10):
+        """Request the one semantic validation result for a macro arc.
         
         Args:
             macro_arc: The macro arc to validate
-            combined_attempt: Current attempt in the combined macro_arc + fidelity loop
-            max_attempts: Maximum attempts for parsing fidelity response
+            combined_attempt: Current arc-validation attempt
+            max_attempts: Maximum attempts for parsing the validation response
             
         Returns:
-            (fidelity_dict, success) tuple. Success is False if max_attempts reached.
+            (validation_dict, success) tuple. Success is False if max_attempts reached.
         """
         last_error = None
         response_attempt = 0
-        last_fidelity = None
-        
         while response_attempt < max_attempts:
             response_attempt += 1
             print(
-                f"Requesting macro-arc fidelity check (combined attempt {combined_attempt}, "
+                f"Validating macro arc (attempt {combined_attempt}, "
                 f"response attempt {response_attempt}/{max_attempts}).",
                 flush=True,
             )
-            messages = build_beat_arc_fidelity_messages(
+            messages = build_macro_arc_validation_messages(
                 story,
                 macro_arc,
                 subject_information=subject_information,
@@ -11437,15 +12088,15 @@ def generate_beats_from_story(
             )
             if last_error:
                 messages[-1]["content"] += (
-                    "\n\nYOUR PREVIOUS FIDELITY RESPONSE WAS STRUCTURALLY INVALID\n"
-                    f"{last_error}\nReturn the complete fidelity JSON again."
+                    "\n\nYOUR PREVIOUS ARC VALIDATION RESPONSE WAS STRUCTURALLY INVALID\n"
+                    f"{last_error}\nReturn the complete validation JSON again."
                 )
-            raw_fidelity = llm_request(
+            raw_validation = llm_request(
                 messages,
-                response_format=build_beat_arc_fidelity_response_format(),
+                response_format=build_macro_arc_validation_response_format(),
                 history_metadata={
                     **(history_metadata or {}),
-                    "purpose": "beat_arc_fidelity",
+                    "purpose": "macro_arc_validate",
                     "attempt": combined_attempt,
                     "response_attempt": response_attempt,
                     "total_segments": total_segments,
@@ -11453,107 +12104,128 @@ def generate_beats_from_story(
                 **BEAT_LLM_SAMPLING_PARAMETERS,
             )
             try:
-                fidelity = parse_beat_arc_fidelity(
-                    raw_fidelity,
+                validation = parse_macro_arc_validation_result(
+                    raw_validation,
                     llm_request=llm_request,
                 )
-                return (fidelity, True)
+                return (validation, True)
             except ValueError as error:
                 last_error = error
-                last_fidelity = None  # Only track if we get valid fidelity
                 print(
-                    "LM Studio returned an invalid macro-arc fidelity response; "
+                    "Macro arc validation response was malformed; "
                     f"requesting another response: {last_error}"
                 )
         
-        # Max attempts reached; return empty fidelity as best effort
+        # Max attempts reached; return an invalid result so the caller repairs
+        # or restarts the arc rather than accepting an unvalidated arc.
         print(
-            f"Macro-arc fidelity check parsing reached maximum attempts ({max_attempts}); "
-            "accepting best effort result.",
+            f"Macro arc validation parsing reached maximum attempts ({max_attempts}); "
+            "returning to arc creation.",
             flush=True,
         )
-        return ({"valid": False, "issues": ["Fidelity parsing failed after max attempts"]}, False)
+        return ({"valid": False, "issues": ["Arc validation parsing failed after max attempts"]}, False)
 
-    # Request a valid macro arc with fidelity checks; returns (macro_arc, success).
-    def request_valid_macro_arc(correction="", max_attempts=10):
-        """Request a valid macro arc with fidelity checks; returns (macro_arc, success).
-        
-        Combines macro arc generation and fidelity validation with a shared attempt limit.
-        Both macro arc failures and fidelity check failures count toward the same limit.
-        
-        Args:
-            correction: Initial correction message or empty string
-            max_attempts: Maximum combined attempts for macro_arc + fidelity validation
-            
-        Returns:
-            (macro_arc, success) tuple. Success is True only if fidelity passes.
-            If max_attempts is reached, returns (None, False).
-        """
-        fidelity_correction = correction
-        combined_attempt = 0
-        while combined_attempt < max_attempts:
-            combined_attempt += 1
-            print(
-                f"\n--- Combined macro arc generation attempt {combined_attempt}/{max_attempts} ---",
-                flush=True,
-            )
-            
-            # Request macro arc
-            macro_arc, arc_success = request_macro_arc(
-                fidelity_correction, 
-                combined_attempt=combined_attempt,
-                max_attempts=BEAT_RETRY_ATTEMPTS,
-            )
-            
-            if not arc_success or macro_arc is None:
-                print(
-                    f"Macro arc generation failed on combined attempt {combined_attempt}; "
-                    "requesting another macro arc.",
-                    flush=True,
+    def request_kiss_macro_arc(correction="", max_attempts=None):
+        """Run one create/validate/repair arc loop with recovery boundaries."""
+        process_budget = max(1, int(max_attempts or BEAT_PROCESS_ATTEMPTS))
+        last_error = str(correction or "").strip()
+        for process_round in range(1, process_budget + 1):
+            try:
+                macro_arc, created = request_macro_arc(
+                    last_error,
+                    combined_attempt=process_round,
+                    max_attempts=BEAT_RETRY_ATTEMPTS,
                 )
-                fidelity_correction = (
-                    "The previous macro arc generation attempt failed; "
-                    "please generate a new macro arc."
+            except Exception as error:
+                macro_arc, created = None, False
+                last_error = f"Arc creation failed: {error}"
+            if not created or not isinstance(macro_arc, dict):
+                print(
+                    f"Arc creation failed; restarting arc creation "
+                    f"({process_round}/{process_budget}).",
+                    flush=True,
                 )
                 continue
-            
-            # Check fidelity
-            fidelity, fidelity_success = request_macro_arc_fidelity(
-                macro_arc, 
-                combined_attempt=combined_attempt,
-                max_attempts=BEAT_RETRY_ATTEMPTS,
-            )
-            
-            if fidelity_success and fidelity.get("valid"):
-                save_story_arc(macro_arc, story_arc_source, story_arc_path)
-                print(f"Saved fidelity-validated story arc to {story_arc_path}.", flush=True)
+
+            current_arc = macro_arc
+            for validation_round in range(1, BEAT_RETRY_ATTEMPTS + 1):
+                try:
+                    validation, parsed = request_macro_arc_validation(
+                        current_arc,
+                        combined_attempt=validation_round,
+                        max_attempts=BEAT_RETRY_ATTEMPTS,
+                    )
+                except Exception as error:
+                    validation, parsed = {
+                        "valid": False,
+                        "issues": [f"Arc validation failed: {error}"],
+                    }, False
+                if parsed and validation.get("valid"):
+                    print("Macro arc validation: VALID", flush=True)
+                    return current_arc, True
+
+                issues = validation.get("issues") or [
+                    "The macro arc did not satisfy semantic validation."
+                ]
                 print(
-                    f"Macro-arc fidelity check passed on combined attempt "
-                    f"{combined_attempt}.",
+                    "Macro arc validation: INVALID — " + " ".join(map(str, issues)),
                     flush=True,
                 )
-                return (macro_arc, True)
-            
-            # Fidelity failed; prepare correction for next iteration.
-            issues = fidelity.get("issues", ["Unknown fidelity issue"])
-            fidelity_correction = (
-                "The low-temperature macro fidelity check rejected the previous "
-                "arc: " + " ".join(issues)
-            )
+                repaired = None
+                repair_error = None
+                for repair_round in range(1, BEAT_RETRY_ATTEMPTS + 1):
+                    try:
+                        print("Repairing macro arc.", flush=True)
+                        repair_raw = llm_request(
+                            build_macro_arc_repair_messages(
+                                story,
+                                current_arc,
+                                issues,
+                                total_segments,
+                                subject_information=subject_information,
+                                beat_instructions=beat_instructions,
+                            ),
+                            response_format=build_beat_arc_response_format(total_segments),
+                            history_metadata={
+                                **(history_metadata or {}),
+                                "purpose": "macro_arc_repair",
+                                "attempt": repair_round,
+                                "total_segments": total_segments,
+                            },
+                            **BEAT_LLM_SAMPLING_PARAMETERS,
+                        )
+                        repaired = parse_beat_arc_plan(
+                            repair_raw,
+                            total_segments,
+                            llm_request=llm_request,
+                        )
+                        if not isinstance(repaired, dict):
+                            raise ValueError(
+                                "Macro arc repair did not return a complete arc."
+                            )
+                        break
+                    except Exception as error:
+                        repair_error = error
+                        print(
+                            f"Macro arc repair failed; retrying repair "
+                            f"({repair_round}/{BEAT_RETRY_ATTEMPTS}): {error}",
+                            flush=True,
+                        )
+                if repaired is None:
+                    last_error = (
+                        "Macro arc repair exhausted its retry budget: "
+                        f"{repair_error}"
+                    )
+                    break
+                current_arc = repaired
+
             print(
-                f"Macro-arc fidelity check failed on combined attempt "
-                f"{combined_attempt}; requesting another macro arc: "
-                + " ".join(issues),
+                "Macro arc validation/repair budget exhausted; restarting "
+                "the arc from creation.",
                 flush=True,
             )
-        
-        # Max combined attempts reached. Never return a fidelity-rejected arc.
-        print(
-            f"Macro arc validation reached maximum combined attempts ({max_attempts}); "
-            "no macro arc passed fidelity validation.",
-            flush=True,
-        )
-        return (None, False)
+            last_error = "The previous arc could not be repaired into a valid arc."
+        return None, False
 
     # Generate beat batches for the planned macro arc.
     def generate_batches(
@@ -11562,21 +12234,40 @@ def generate_beats_from_story(
         phase_number=None,
         seed_beats=None,
         end_boundary_beat=None,
+        include_later_phases=False,
     ):
-        """Generate the complete plan or one phase with an immutable prefix."""
+        """Generate the plan or a phase suffix with an immutable prefix."""
         generated = list(seed_beats or []) if phase_number is not None else []
         phase_batches = build_phase_generation_batches(macro_arc)
         if phase_number is not None:
             target_batches = [
                 phase_batch
                 for phase_batch in phase_batches
-                if phase_batch["phase"].get("phase_number") == phase_number
+                if (
+                    phase_batch["phase"].get("phase_number") == phase_number
+                    if not include_later_phases
+                    else phase_batch["phase"].get("phase_number", 0) >= phase_number
+                )
             ]
             if len(target_batches) != 1:
-                raise ValueError(
-                    f"Cannot regenerate unknown or split macro phase {phase_number}."
-                )
-            target_phase = target_batches[0]["phase"]
+                if not include_later_phases or not target_batches:
+                    raise ValueError(
+                        f"Cannot regenerate unknown or split macro phase {phase_number}."
+                    )
+                matching_batches = [
+                    phase_batch
+                    for phase_batch in target_batches
+                    if phase_batch["phase"].get("phase_number") == phase_number
+                ]
+                if len(matching_batches) != 1:
+                    raise ValueError(
+                        f"Cannot regenerate unknown or split macro phase {phase_number}."
+                    )
+            target_phase = next(
+                phase_batch["phase"]
+                for phase_batch in target_batches
+                if phase_batch["phase"].get("phase_number") == phase_number
+            )
             expected_prefix_length = target_phase["beat_start"] - 1
             if len(generated) != expected_prefix_length:
                 raise ValueError(
@@ -11680,18 +12371,6 @@ def generate_beats_from_story(
                             "Generated batch repeats an earlier beat: "
                             f"{duplicate!r}."
                         )
-                    introduction_issues = (
-                        validate_generated_beat_macro_introductions(
-                            batch_beats,
-                            macro_arc,
-                            beat_start=batch_start,
-                        )
-                    )
-                    if introduction_issues:
-                        raise ValueError(
-                            "Generated phase violates macro introduction timing: "
-                            + " ".join(introduction_issues)
-                        )
                 except ValueError as error:
                     last_error = error
                     correction = str(error)
@@ -11727,16 +12406,78 @@ def generate_beats_from_story(
                 f"{len(generated)}/{total_segments} beats.",
                 flush=True,
             )
-        if phase_number is not None:
+        if phase_number is not None and not include_later_phases:
             target_phase = phase_batches[0]["phase"]
             return generated[target_phase["beat_start"] - 1:target_phase["beat_end"]]
         return generated
 
-    # Keep an accepted story arc immutable across framework generation,
-    # checkpoint, and validation errors. A fresh arc is allowed only when the
-    # forward validator explicitly rejects one beat. Semantic beat rejection is
-    # recoverable and therefore restarts indefinitely until a complete beat plan
-    # succeeds; the candidate text is never rewritten locally.
+    def generate_candidate(
+        *,
+        beat_number,
+        previous_finalized_beats,
+        correction,
+        current_phase,
+        next_beat_job=None,
+    ):
+        """Regenerate one rejected beat using the existing beat prompt path."""
+        correction_text = (
+            f"The candidate for Beat {beat_number} failed validation.\n"
+            f"Concrete feedback: {str(correction or '').strip()}\n"
+            f"Generate a replacement for Beat {beat_number} only."
+        )
+        messages = build_beat_generation_messages(
+            story,
+            total_segments,
+            correction=correction_text,
+            beat_instructions=beat_instructions,
+            subject_information=subject_information,
+            batch_start=beat_number,
+            batch_end=beat_number,
+            previous_beats=previous_finalized_beats,
+            previous_phase_final_beat=(
+                previous_finalized_beats[-1]
+                if previous_finalized_beats
+                else None
+            ),
+            end_boundary_beat=next_beat_job,
+            macro_arc=macro_arc,
+            current_phase=current_phase,
+            phrase_exclusions=phrase_exclusions,
+        )
+        verify_subjects_in_beat_messages(
+            messages,
+            _format_beat_arc_subject_names(subject_information),
+        )
+        raw_result = llm_request(
+            messages,
+            response_format=build_beats_response_format(
+                1,
+                beat_start=beat_number,
+            ),
+            history_metadata={
+                **(history_metadata or {}),
+                "purpose": "beat_generation",
+                "attempt": "beat_validation_retry",
+                "total_segments": total_segments,
+                "beat_number": beat_number,
+            },
+            **BEAT_LLM_SAMPLING_PARAMETERS,
+        )
+        regenerated = parse_generated_beats(
+            raw_result,
+            1,
+            expected_start=beat_number,
+            phrase_exclusions=phrase_exclusions,
+            llm_request=llm_request,
+        )
+        return regenerated[0]
+
+    # Keep an accepted story arc immutable across candidate, phase, framework,
+    # checkpoint, and validation retries. A fresh arc is allowed only after
+    # beat, phase, and same-arc full-process retry scopes are exhausted; a
+    # rejected candidate itself is regenerated in place and never rewritten
+    # locally by the validator. Any exhausted retry scope returns to the
+    # nearest earlier creation scope instead of escaping as a fatal error.
     cached_macro_arc = saved_macro_arc
     validation_state_path = get_beat_validation_state_path(
         path, validation_state_path
@@ -11787,55 +12528,66 @@ def generate_beats_from_story(
         )
         return recovered_beats
 
+    active_macro_arc = None
+    saved_arc_checked = False
     process_attempt = 0
+    phase_retry_counts = {}
+    force_clean_validation_state = bool(reset_validation_state)
     while True:
-        process_attempt += 1
         try:
-            macro_arc = None
-            if process_attempt == 1 and cached_macro_arc is not None:
-                cached_fidelity, cached_fidelity_success = (
-                    request_macro_arc_fidelity(
-                        cached_macro_arc,
-                        combined_attempt=0,
-                        max_attempts=BEAT_RETRY_ATTEMPTS,
+            if active_macro_arc is None:
+                if not saved_arc_checked and cached_macro_arc is not None:
+                    saved_arc_checked = True
+                    cached_validation, cached_validation_success = (
+                        request_macro_arc_validation(
+                            cached_macro_arc,
+                            combined_attempt=0,
+                            max_attempts=BEAT_RETRY_ATTEMPTS,
+                        )
                     )
-                )
-                if cached_fidelity_success and cached_fidelity.get("valid"):
-                    macro_arc = cached_macro_arc
-                    print(
-                        f"Using fidelity-validated story arc from {story_arc_path}.",
-                        flush=True,
-                    )
-
-            if macro_arc is None:
-                print(
-                    f"\n=== Full beat process attempt "
-                    f"{process_attempt} (retrying until success; including "
-                    "story arc) ===",
-                    flush=True,
-                )
-                hash_path = get_story_arc_hash_path(story_arc_path)
-                if os.path.exists(story_arc_path):
-                    os.remove(story_arc_path)
-                if os.path.exists(hash_path):
-                    os.remove(hash_path)
-                macro_arc, validation_success = request_valid_macro_arc(
-                    max_attempts=BEAT_PROCESS_ATTEMPTS
-                )
-                if not validation_success or macro_arc is None:
-                    if process_attempt >= BEAT_PROCESS_ATTEMPTS:
-                        macro_arc = best_effort_macro_arc()
+                    if cached_validation_success and cached_validation.get("valid"):
+                        active_macro_arc = cached_macro_arc
+                        save_story_arc(
+                            active_macro_arc,
+                            story_arc_source,
+                            story_arc_path,
+                        )
                         print(
-                            "WARNING: No valid macro arc was available after the "
-                            "full retry budget; using a deterministic linear arc "
-                            "as best effort.",
+                            f"Using validated story arc from {story_arc_path}.",
                             flush=True,
                         )
-                    else:
-                        raise ValueError(
-                            "Story arc generation did not produce a valid arc."
-                        )
 
+                if active_macro_arc is None:
+                    process_attempt += 1
+                    print(
+                        f"\n=== Macro arc generation attempt {process_attempt}/"
+                        f"{BEAT_PROCESS_ATTEMPTS} ===",
+                        flush=True,
+                    )
+                    active_macro_arc, validation_success = request_kiss_macro_arc(
+                        max_attempts=BEAT_PROCESS_ATTEMPTS
+                    )
+                    if not validation_success or active_macro_arc is None:
+                        active_macro_arc = best_effort_macro_arc()
+                        print(
+                            "WARNING: No valid macro arc was available after the "
+                            "macro-arc retry budget; using a deterministic linear "
+                            "arc as best effort.",
+                            flush=True,
+                        )
+                    save_story_arc(
+                        active_macro_arc,
+                        story_arc_source,
+                        story_arc_path,
+                    )
+                    print(
+                        f"Saved validated story arc to {story_arc_path}.",
+                        flush=True,
+                    )
+                process_attempt = max(1, process_attempt)
+                phase_retry_counts = {}
+
+            macro_arc = active_macro_arc
             try:
                 return _run_forward_beat_validation(
                     lambda: generate_batches(macro_arc),
@@ -11850,35 +12602,159 @@ def generate_beats_from_story(
                     phrase_exclusions=phrase_exclusions,
                     lora_directive=lora_directive,
                     state_path=validation_state_path,
-                    reset_state=reset_validation_state or process_attempt > 1,
-            )
+                    reset_state=(
+                        force_clean_validation_state
+                        or process_attempt > 1
+                    ),
+                    candidate_factory=generate_candidate,
+                )
             except IndexError as error:
                 recovered = recover_completed_beats_after_index_error(error)
                 if recovered is not None:
                     return recovered
                 raise
         except BeatValidationExhaustedError as error:
+            macro_arc = active_macro_arc
+            phase_number = error.phase_number
+            if phase_number is None and macro_arc is not None:
+                phase = story_arc_phase_for_beat(macro_arc, error.beat_number)
+                phase_number = phase.get("phase_number") if phase else None
+
             print(
                 f"WARNING: beat process attempt {process_attempt} failed: {error}",
                 flush=True,
             )
+
+            # Preserve only finalized phases before the failed phase. The
+            # failed phase and every later phase must be regenerated from the
+            # same macro arc because later generation depends on the new phase
+            # output and state.
+            if macro_arc is not None and phase_number is not None:
+                phase_retry_count = phase_retry_counts.get(phase_number, 0)
+                if phase_retry_count < BEAT_RETRY_ATTEMPTS:
+                    phase_retry_counts[phase_number] = phase_retry_count + 1
+                    phase = next(
+                        (
+                            item for item in macro_arc.get("phases", [])
+                            if item.get("phase_number") == phase_number
+                        ),
+                        None,
+                    )
+                    if phase is not None:
+                        prefix_end = int(phase["beat_start"]) - 1
+                        try:
+                            checkpoint = load_beat_validation_state(
+                                validation_state_path
+                            )
+                            if not isinstance(checkpoint, dict):
+                                raise ValueError(
+                                    "No usable validation checkpoint was available "
+                                    "for phase recovery."
+                                )
+                            prefix_beats = [
+                                record["beat_text"]
+                                for record in checkpoint.get(
+                                    "finalized_beats", []
+                                )[:prefix_end]
+                            ]
+                            regenerated_framework = generate_batches(
+                                macro_arc,
+                                phase_number=phase_number,
+                                seed_beats=prefix_beats,
+                                include_later_phases=True,
+                            )
+                            checkpoint = (
+                                _truncate_beat_validation_checkpoint_to_phase_prefix(
+                                    checkpoint,
+                                    prefix_end,
+                                    regenerated_framework,
+                                    macro_arc,
+                                )
+                            )
+                            save_beat_validation_state(
+                                checkpoint,
+                                validation_state_path,
+                            )
+                            force_clean_validation_state = False
+                            preserved_prefix = (
+                                f"beats 1-{prefix_end}"
+                                if prefix_end
+                                else "no finalized beats"
+                            )
+                            print(
+                                f"Retrying phase {phase_number} and all later "
+                                "phases with the same story arc; preserving "
+                                f"{preserved_prefix}.",
+                                flush=True,
+                            )
+                            continue
+                        except (OSError, TypeError, ValueError) as retry_error:
+                            print(
+                                f"Phase {phase_number} retry could not regenerate "
+                                f"its suffix: {retry_error}",
+                                flush=True,
+                            )
+
+            if macro_arc is not None and process_attempt < BEAT_PROCESS_ATTEMPTS:
+                process_attempt += 1
+                force_clean_validation_state = True
+                if os.path.exists(validation_state_path):
+                    os.remove(validation_state_path)
+                print(
+                    "Retrying the complete beat process with the same story arc "
+                    "and clean validation state.",
+                    flush=True,
+                )
+                continue
+
+            if macro_arc is None:
+                raise
+
             print(
-                "Restarting the complete beat process with a fresh story arc "
-                "and clean validation state; semantic beat retries are "
-                "unbounded until success.",
+                "All beat, phase, and same-arc full-process retries are exhausted; "
+                "requesting a new macro story arc.",
                 flush=True,
             )
+            active_macro_arc = None
             cached_macro_arc = None
+            saved_arc_checked = True
+            process_attempt = 0
+            phase_retry_counts = {}
+            force_clean_validation_state = True
             hash_path = get_story_arc_hash_path(story_arc_path)
             for stale_path in (story_arc_path, hash_path, validation_state_path):
                 if os.path.exists(stale_path):
                     os.remove(stale_path)
-        except Exception:
-            # Do not silently rewrite the story arc for an infrastructure,
-            # framework-generation, checkpoint, or schema error. The arc is
-            # still the established source of truth; surface the actual error
-            # to the caller instead of masking it with a fresh arc.
-            raise
+        except Exception as error:
+            # H3 generation is an interactive recovery loop. Any recoverable
+            # failure at this outer boundary returns to arc creation instead
+            # of terminating the process or exposing a fatal exception.
+            print(
+                f"Generation failed; discarding the failing process state and "
+                f"restarting from arc creation: {error}",
+                flush=True,
+            )
+            active_macro_arc = None
+            cached_macro_arc = None
+            saved_arc_checked = True
+            process_attempt = 0
+            phase_retry_counts = {}
+            force_clean_validation_state = True
+            for stale_path in (
+                story_arc_path,
+                get_story_arc_hash_path(story_arc_path),
+                validation_state_path,
+            ):
+                try:
+                    if os.path.exists(stale_path):
+                        os.remove(stale_path)
+                except OSError as cleanup_error:
+                    print(
+                        f"Could not remove stale retry artifact {stale_path}: "
+                        f"{cleanup_error}; continuing recovery.",
+                        flush=True,
+                    )
+            continue
 
 def load_or_generate_beats(
     path,
@@ -11893,24 +12769,43 @@ def load_or_generate_beats(
     phrase_exclusions=(),
     force_generate=False,
 ):
-    raw = load_text_file(path, required=not force_generate)
+    try:
+        raw = load_text_file(path, required=not force_generate)
+    except (OSError, ValueError) as error:
+        print(
+            f"Could not read {path} ({error}); regenerating the beat plan.",
+            flush=True,
+        )
+        raw = ""
+        force_generate = True
     try:
         beats, lora_directive = parse_beats_content(raw)
-    except ValueError:
+    except ValueError as error:
         if not force_generate:
-            raise
-        beats, lora_directive = [], ""
+            print(
+                f"Existing beats could not be parsed ({error}); regenerating "
+                "the beat plan.",
+                flush=True,
+            )
+            beats, lora_directive = [], ""
+            force_generate = True
+        else:
+            beats, lora_directive = [], ""
     if beats and not force_generate:
         exclusion_issues = validate_generated_beat_exclusions(
             beats,
             phrase_exclusions,
         )
         if exclusion_issues:
-            raise ValueError(
-                f"{path} violates phrase_exclusions.txt: "
-                + " ".join(exclusion_issues)
+            print(
+                f"{path} violates phrase_exclusions.txt; regenerating the "
+                "beat plan: " + " ".join(exclusion_issues),
+                flush=True,
             )
-        return beats
+            beats, lora_directive = [], ""
+            force_generate = True
+        else:
+            return beats
     if force_generate:
         print(
             f"Asking LM Studio to replace {path} with {total_segments} creative "
@@ -16080,7 +16975,7 @@ def sanitize_h3_prompt_component(value):
     if not isinstance(value, str):
         return ""
     text = value.replace("\r\n", "\n").replace("\r", "\n")
-    # Minstral may use asterisks for Markdown emphasis. H3 consumes plain
+    # Mistral may use asterisks for Markdown emphasis. H3 consumes plain
     # prose, so remove those markers from every sanitized component.
     text = _strip_h3_markdown_emphasis(text)
     text = _strip_h3_markdown_fence_lines(text)
@@ -17251,7 +18146,7 @@ def _open_h3_continuation_description(
             summary_body = summary_text[prefix_match.end():].strip()
             if conditioning_mode == "clean_refresh":
                 opener = (
-                    "[Shot 1] The supplied first frame defines the exact opening composition. "
+                    "[Shot 1] The opening composition is already established by the supplied first frame. "
                     "Continue directly from that frame. "
                 )
             else:
@@ -17261,7 +18156,7 @@ def _open_h3_continuation_description(
         else:
             if conditioning_mode == "clean_refresh":
                 opener = (
-                    "[Shot 1] The supplied first frame defines the exact opening composition. "
+                    "[Shot 1] The opening composition is already established by the supplied first frame. "
                     "Continue directly from that frame. "
                     f"{summary_text}"
                 )
@@ -17275,7 +18170,7 @@ def _open_h3_continuation_description(
     else:
         if conditioning_mode == "clean_refresh":
             opener = (
-                "[Shot 1] The supplied first frame defines the exact opening composition. "
+                "[Shot 1] The opening composition is already established by the supplied first frame. "
                 "Continue directly from that frame. "
             )
         else:
@@ -20347,7 +21242,7 @@ def _run_main(
             "Generating the story arc and beats based on story.txt",
             flush=True,
         )
-    configure_formatter(getattr(args, "model", "minstral"))
+    configure_formatter(getattr(args, "model", "mistral"))
     global_loras = normalize_lora_list(getattr(args, "lora", ()))
     lora_directory = getattr(args, "lora_dir", LORA_DIRECTORY)
     repair_segment = getattr(args, "repair", None)
@@ -20606,7 +21501,7 @@ def _run_main(
     print(f"Visual Continuity:    {args.vision_continuity == 0 and 'disabled' or args.vision_continuity == 1 and 'every segment' or f'every {args.vision_continuity} segments'}")
     print(f"Stitch trim:          {trim_frames} frames after segment 1")
     print(f"Retention analysis:   {'enabled' if retention else 'disabled'}")
-    print(f"Formatter:            {getattr(args, 'model', 'minstral')}")
+    print(f"Formatter:            {getattr(args, 'model', 'mistral')}")
     print(f"Global LoRAs:         {len(global_loras)}")
     print(
         "Auto refresh:         "
@@ -21817,18 +22712,21 @@ if __name__ == "__main__":
         print("\nGeneration cancelled by user.", file=sys.stderr)
         raise SystemExit(130) from None
     except LLMConnectionError as error:
-        print(f"\nFatal LLM connection error: {error}", file=sys.stderr)
-        raise SystemExit(2) from None
+        print(
+            f"\nWARNING: LLM connection failed; returning best effort: {error}",
+            file=sys.stderr,
+        )
     except ComfyUIConnectionError as error:
-        print(f"\nFatal ComfyUI connection error: {error}", file=sys.stderr)
-        raise SystemExit(3) from None
+        print(
+            f"\nWARNING: ComfyUI connection failed; returning best effort: {error}",
+            file=sys.stderr,
+        )
     except BeatGenerationError as error:
-        print(f"\nFatal beat-generation error: {error}", file=sys.stderr)
+        print(f"\nWARNING: beat generation failed: {error}", file=sys.stderr)
         if os.environ.get("MINIMAX_DEBUG", "").strip().casefold() in {
             "1", "true", "yes", "on"
         }:
             traceback.print_exc()
-        raise SystemExit(4) from None
     except SystemExit as error:
         # argparse uses SystemExit for invalid optional input. Keep that
         # recoverable at the application boundary; only the explicit emergency

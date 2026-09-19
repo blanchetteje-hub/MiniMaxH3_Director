@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 
 from formatter_base import BaseFormatter
-from minstral_formatter import MinstralFormatter
+from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
 
 
@@ -51,7 +51,7 @@ class BaseFormatterTests(unittest.TestCase):
         raw = _result("Amy says: <d>Hi Subject 1 Amy.</d>")
         context = {"segment_number": 1}
 
-        for formatter in (MinstralFormatter(), QwenFormatter()):
+        for formatter in (MistralFormatter(), QwenFormatter()):
             with self.subTest(formatter=type(formatter).__name__):
                 formatted = formatter.format_prompt(raw, context)
                 self.assertNotRegex(

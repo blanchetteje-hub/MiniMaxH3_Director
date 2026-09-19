@@ -10,7 +10,7 @@
   "trim_frames": "2",
   "refresh": "4",
   "repair": "",
-  "model": "minstral",
+  "model": "mistral",
   "first_frame": false,
   "loras": []
 }

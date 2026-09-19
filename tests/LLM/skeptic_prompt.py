@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 
-from cases import BeatCase
-from llama_client import get_model_settings
+from tests.LLM.cases import BeatCase
+from tests.LLM.llama_client import get_model_settings
 
 
 def build_skeptic_messages(

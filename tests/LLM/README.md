@@ -18,6 +18,10 @@ It contains:
 - `prompt_under_test.py` — **the prompt Codex should edit**.
 - `llama_client.py` — OpenAI-compatible LLM client.
 - `test_prompt_benchmark.py` — pytest suite.
+- `regression_cases.py` — focused terminal-action regression fixtures kept
+  separate from the frozen 400-case benchmark.
+- `test_prompt_regressions.py` — contract checks and the opt-in live regression
+  benchmark for those focused fixtures.
 - `score_prompt.py` — easier scoring loop for Codex.
 - `skeptic_prompt.py` — short generic second-pass prompt for primary VALID results.
 
@@ -34,7 +38,7 @@ Override as needed:
     export H3_LLM_TIMEOUT=120
     export H3_LLM_TEMPERATURE=0
 
-The benchmark selects settings by model. Minstral keeps the current settings:
+The benchmark selects settings by model. Mistral keeps the current settings:
 `repeat_penalty=1.1`, `top_p=0.95`, and `min_p=0.05`. Qwen uses temperature 0,
 `repeat_penalty=1.15`, default `top_p`/`top_k`/`min_p`, thinking off, its built-in
 Jinja chat template, an 8K context, and a user-only prompt layout. Start the
@@ -98,6 +102,27 @@ Suggested workflow:
 9. Do not modify `cases.py`, expected answers, or the scorer to make the prompt pass.
 
 The full 400-case suite is intentionally expensive. Codex should not run all 400 after every tiny edit.
+
+## Focused validator regressions
+
+The focused regressions cover two prompt boundaries that are not added to the
+frozen `cases.py` fixture set:
+
+- completing a terminal or exhaustive "last standing" action before its
+  `NEXT BEAT MUST DO` beat;
+- treating the result of an action as if it performed the required action.
+
+Each boundary has an invalid case and a valid control. The cases require the
+same JSON response contract as the main benchmark. The deterministic contract
+check is:
+
+    pytest -q tests/LLM/test_prompt_regressions.py -k contract
+
+To call the configured local LLM for the four focused cases:
+
+    H3_RUN_LLM_REGRESSIONS=1 pytest -q tests/LLM/test_prompt_regressions.py
+
+The original `cases.py` remains unchanged and still asserts exactly 400 cases.
 
 ## Output contract
 

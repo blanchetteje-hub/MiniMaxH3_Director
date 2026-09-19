@@ -25,7 +25,7 @@ BASE_SETTINGS = {
     "trim_frames": "2",
     "refresh": "6",
     "repair": None,
-    "model": "minstral",
+    "model": "mistral",
     "first_frame": False,
     "loras": [],
 }

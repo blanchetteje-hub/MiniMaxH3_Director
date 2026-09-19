@@ -4,10 +4,10 @@ import argparse
 import os
 from collections import Counter
 
-from cases import ALL_CASES
-from llama_client import LLMError, call_llama, get_model_settings, normalize_result
-from prompt_under_test import build_messages
-from skeptic_prompt import build_skeptic_messages
+from tests.LLM.cases import ALL_CASES
+from tests.LLM.llama_client import LLMError, call_llama, get_model_settings, normalize_result
+from tests.LLM.prompt_under_test import build_messages
+from tests.LLM.skeptic_prompt import build_skeptic_messages
 
 
 BENCHMARK_URL = os.environ.get(

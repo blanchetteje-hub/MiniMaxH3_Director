@@ -2,7 +2,19 @@ import os
 import re
 
 import folder_paths
-from safetensors.torch import save_file, load_file
+
+try:
+    from safetensors.torch import save_file, load_file
+except (ImportError, ModuleNotFoundError):
+    # The ComfyUI runtime supplies torch.  Keep the node package importable in
+    # lightweight test/install environments where only the workflow helpers
+    # are exercised; the node methods below report an ordinary operation
+    # failure instead of aborting module discovery.
+    def _missing_safetensors_backend(*_args, **_kwargs):
+        return None
+
+    save_file = _missing_safetensors_backend
+    load_file = _missing_safetensors_backend
 
 import comfy.nested_tensor
 

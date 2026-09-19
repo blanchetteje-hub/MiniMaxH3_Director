@@ -32,7 +32,7 @@ class GenerateBeatsCliTests(unittest.TestCase):
             megapixels=None,
             resume=1,
             repair=None,
-            model="minstral",
+            model="mistral",
             lora=[],
         )
         generated = mock.Mock(return_value=[f"Beat {number}" for number in range(1, 8)])
@@ -78,7 +78,7 @@ class GenerateBeatsCliTests(unittest.TestCase):
             megapixels=None,
             resume=1,
             repair=None,
-            model="minstral",
+            model="mistral",
             lora=[],
         )
         with mock.patch("minimax.parse_args", return_value=args), mock.patch(
@@ -172,7 +172,7 @@ class GenerateBeatsDesktopTests(unittest.TestCase):
                 clear=True,
             ):
                 result = bridge.start_generation(
-                    {"beat_count": "4", "model": "minstral"},
+                    {"beat_count": "4", "model": "mistral"},
                     True,
                 )
 

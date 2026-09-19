@@ -173,7 +173,7 @@ def _format_continuation_opening(description: str) -> str:
 def _strip_markdown(value: str) -> str:
     """Remove presentation-only Markdown emphasis without touching field names."""
 
-    # MiniMax consumes prose rather than Markdown.  Minstral commonly wraps a
+    # MiniMax consumes prose rather than Markdown.  Mistral commonly wraps a
     # whole camera direction or dialogue attribution in one or two asterisks;
     # an asterisk has no useful prompt meaning here, so removing the marker is
     # safer and more complete than trying to balance malformed pairs.
@@ -238,7 +238,7 @@ def _strip_field_prefix(value: str, field: str) -> str:
 def _parse_labeled_text(text: str) -> dict[str, Any]:
     matches = list(_LABEL.finditer(text))
     if not matches:
-        raise ValueError("Minstral response is neither JSON nor labeled H3 fields.")
+        raise ValueError("Mistral response is neither JSON nor labeled H3 fields.")
     parsed: dict[str, Any] = {}
     for index, match in enumerate(matches):
         field = match.group(1).lower()
@@ -265,10 +265,10 @@ def _coerce_result(llm_result: Any) -> dict[str, Any]:
             result = _parse_labeled_text(raw)
         else:
             if not isinstance(decoded, dict):
-                raise ValueError("Minstral JSON response must be an object.")
+                raise ValueError("Mistral JSON response must be an object.")
             result = decoded
     else:
-        raise TypeError("Minstral response must be a mapping or text.")
+        raise TypeError("Mistral response must be a mapping or text.")
 
     # Some models put the entire labeled prompt in the description field.
     description = result.get(DESCRIPTION)
@@ -1156,7 +1156,7 @@ def _repair_camera(result: dict[str, Any], context: Mapping[str, Any]) -> None:
         description,
     )
 
-    # ACTIVE BEAT camera directions are authoritative. If Minstral ignored
+    # ACTIVE BEAT camera directions are authoritative. If Mistral ignored
     # the camera motion explicitly written in the beat, inject it here.
     description = _enforce_beat_camera(description, context)
 
@@ -1523,7 +1523,7 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
                 flags=re.I,
             )
 
-    # Identity wins over whatever number Minstral generated.
+    # Identity wins over whatever number Mistral generated.
     for name, canonical in sorted(names.items(), key=lambda item: -len(item[0])):
         text = re.sub(
             rf"\b({re.escape(name)})\b\s*\(\s*S\d+\s*\)",
@@ -2757,11 +2757,11 @@ RULE_REGISTRY = (
 )
 
 
-def format_minstral_prompt(llm_result: Any, context: Mapping[str, Any] | None) -> dict[str, Any]:
+def format_mistral_prompt(llm_result: Any, context: Mapping[str, Any] | None) -> dict[str, Any]:
     """Return a deterministic, locally repaired H3 response object.
 
     The function never performs I/O.  It intentionally does not raise merely
-    because semantic problems remain; call :func:`validate_minstral_prompt`
+    because semantic problems remain; call :func:`validate_mistral_prompt`
     after formatting and use those issues for a last-resort content re-query.
     """
 
@@ -2781,14 +2781,14 @@ def format_minstral_prompt(llm_result: Any, context: Mapping[str, Any] | None) -
     return remove_subject_references_from_dialogue(formatted)
 
 
-def validate_minstral_prompt(
+def validate_mistral_prompt(
     result: Mapping[str, Any], context: Mapping[str, Any] | None
 ) -> list[str]:
     """Return stable descriptions of unresolved format and content violations."""
 
     safe_context: Mapping[str, Any] = context or {}
     if not isinstance(result, Mapping):
-        return ["Formatted Minstral result must be an object."]
+        return ["Formatted Mistral result must be an object."]
     issues: list[str] = []
     for rule in RULE_REGISTRY:
         issues.extend(rule.validate(result, safe_context))
@@ -2797,13 +2797,13 @@ def validate_minstral_prompt(
     return list(dict.fromkeys(issues))
 
 
-class MinstralFormatter(BaseFormatter):
-    """Adapter exposing the Minstral repair pipeline through the shared API."""
+class MistralFormatter(BaseFormatter):
+    """Adapter exposing the Mistral repair pipeline through the shared API."""
 
     DEFAULT_LLM_SETTINGS = DEFAULT_LLM_SETTINGS
 
     def sanitize_generated_text(self, value: str) -> str:
-        """Remove every asterisk emitted as Minstral Markdown decoration."""
+        """Remove every asterisk emitted as Mistral Markdown decoration."""
 
         return _strip_markdown(str(value))
 
@@ -2817,25 +2817,25 @@ class MinstralFormatter(BaseFormatter):
         llm_result: Any,
         context: Mapping[str, Any] | None,
     ) -> dict[str, Any]:
-        return format_minstral_prompt(llm_result, context)
+        return format_mistral_prompt(llm_result, context)
 
     def validate_prompt(
         self,
         result: Mapping[str, Any],
         context: Mapping[str, Any] | None,
     ) -> list[str]:
-        return validate_minstral_prompt(result, context)
+        return validate_mistral_prompt(result, context)
 
 
 __all__ = [
-    "MinstralFormatter",
+    "MistralFormatter",
     "RULE_REGISTRY",
     "extract_inline_dialogue_subjects",
-    "format_minstral_prompt",
+    "format_mistral_prompt",
     "remove_non_speaking_speaker_ids",
     "sanitize_director_text",
     "validate_h3_dialogue_format",
-    "validate_minstral_prompt",
+    "validate_mistral_prompt",
 ]
 
 

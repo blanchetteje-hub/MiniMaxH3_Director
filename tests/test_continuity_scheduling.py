@@ -10,7 +10,7 @@ import minimax
 
 def _args(**overrides):
     values = {
-        "model": "minstral",
+        "model": "mistral",
         "lora": (),
         "repair": None,
         "generate_beats": None,

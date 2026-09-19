@@ -201,8 +201,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("[Shot 1] Amy walks.", prompt)
         self.assertIn("Reference Image 1 establishes Amy's identity.", prompt)
 
-    def test_minstral_asterisks_never_reach_final_h3_prompt(self):
-        formatted = minimax.format_minstral_prompt(
+    def test_mistral_asterisks_never_reach_final_h3_prompt(self):
+        formatted = minimax.format_mistral_prompt(
             {
                 "detailed_description": "*[Shot 1]* **Amy** walks.",
                 "overall_soundscape": "*Footsteps* echo.",
@@ -223,7 +223,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
         self.assertNotIn("*", prompt)
 
-    def test_minstral_asterisks_in_continuity_never_reach_final_h3_prompt(self):
+    def test_mistral_asterisks_in_continuity_never_reach_final_h3_prompt(self):
         prompt = minimax.build_h3_prompt(
             {
                 "detailed_description": "[Shot 2] Amy waits.",
@@ -372,9 +372,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         })
         self.assertEqual(parsed["issues"][0]["type"], "next_beat_scope_creep")
 
-    @mock.patch("minimax.validate_minstral_prompt")
-    @mock.patch("minimax.format_minstral_prompt")
-    @mock.patch("minimax.request_valid_minstral_prompt", create=True)
+    @mock.patch("minimax.validate_mistral_prompt")
+    @mock.patch("minimax.format_mistral_prompt")
+    @mock.patch("minimax.request_valid_mistral_prompt", create=True)
     @mock.patch("minimax.ask_llm")
     def test_segment_llm_runs_two_requests_without_legacy_seams(
         self,

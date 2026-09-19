@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from cases import ALL_CASES
-from llama_client import LLMError, call_llama, get_model_settings, normalize_result
-from prompt_under_test import build_messages
+from tests.LLM.cases import ALL_CASES
+from tests.LLM.llama_client import LLMError, call_llama, get_model_settings, normalize_result
+from tests.LLM.prompt_under_test import build_messages
 
 
 def main() -> None:

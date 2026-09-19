@@ -9,12 +9,12 @@ import urllib.request
 
 DEFAULT_URL = "http://127.0.0.1:1234/v1/chat/completions"
 BENCHMARK_SEED = 42
-DEFAULT_MODEL = "minstral-3-14b-instruct-2512-absolute-heresy"
+DEFAULT_MODEL = "mistral-3-14b-instruct-2512-absolute-heresy"
 
 
 # Settings that were previously hard-coded in call_llama(). Values set to None
 # use the llama.cpp/server default and are omitted from the request payload.
-MINSTRAL_24B_SETTINGS = {
+MISTRAL_24B_SETTINGS = {
   "temperature": 0,
   "seed": BENCHMARK_SEED,
   "repeat_penalty": 1.15,
@@ -24,7 +24,7 @@ MINSTRAL_24B_SETTINGS = {
   "thinking": "off",
   "chat_template": "built-in",
   "jinja": True,
-  "context": 4096,
+  "context": 8192,
   "user_prompt_only": False,
   "stream": False
 }
@@ -40,7 +40,7 @@ QWEN38_27B_SETTINGS = {
     "thinking": "off",
     "chat_template": "built-in",
     "jinja": True,
-    "context": 4096,
+    "context": 8192,
     "user_prompt_only": True,
     "stream": False,
 }
@@ -56,7 +56,7 @@ def get_model_settings(model: str | None = None) -> dict[str, object]:
     profile = (
         QWEN38_27B_SETTINGS
         if "qwen" in model.casefold()
-        else MINSTRAL_24B_SETTINGS
+        else MISTRAL_24B_SETTINGS
     )
     settings = dict(profile)
     settings["model"] = model

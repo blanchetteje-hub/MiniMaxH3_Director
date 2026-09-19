@@ -621,9 +621,9 @@ Write one required story event per non-empty line, in chronological order.
 Saved beat files number each event as `N. [beat text]`:
 
 ```text
-1. Introduce Mark and his family at the crowded theme park.
-2. Flying saucers appear above the park.
-3. The saucers abduct Mark's family while they flee.
+1. Introduce the operator and the group at Location X.
+2. An entity appears above Location X.
+3. The entity relocates the group while they flee.
 ```
 
 Blank lines and ordinary lines beginning with `#` are ignored. A line formatted
@@ -637,21 +637,32 @@ macro phase at a time. Each phase receives its ordered `required_events` and a
 previous-phase final-beat boundary for continuity; recent accepted beats may
 also be supplied as useful context. Responses use globally numbered
 `beat_number`/`beat_text` objects, and Python validates the phase's exact range,
-order, count, uniqueness, one-complete-sentence limit, and the macro arc's
-earliest permitted introduction beat for every named character and location
-before saving the beat text to `beats.txt`. The final generated beat must
-conclude the story. Explicit instructions, clothing, objects, threats, and
-phase requirements are enforced by the local validation windows.
+order, count, uniqueness, and response shape before saving the beat text to
+`beats.txt`. The final generated beat must conclude the story. Semantic beat
+validity is owned by the single beat validator; Python owns only deterministic
+formatting, checkpoint, and canonical-state integrity.
+
+Macro arcs use one semantic KISS loop: create the complete arc, validate its
+narrative fidelity, structure, required end states, dependencies, and event
+`state_effects`, then repair the complete arc when validation fails and validate
+the repair again. Python enforces only deterministic schema and data-integrity
+rules. There is no independent state-preparation, enrichment, coverage, or
+claim-tracking stage.
 
 Initial beat generation retries a phase normally through attempt 9. If attempt
 10 still fails content validation but contains the required number of
 structurally usable beats, that response is retained and passed to the
 validation and downstream recovery flow. If attempt 10 is structurally
 unusable, requests continue without an error until the next usable beat list is
-returned. Macro-arc requests retain their existing retry behavior. Local
-validation uses bounded window attempts; a failed local repair can regenerate
-only the affected provisional beat. Press `Ctrl+Q` to stop the process at any
-point.
+returned. Arc and beat failures return to their appropriate earlier create or
+repair stage and restart the process when a retry scope is exhausted rather than
+terminating generation. The production beat validator is a final single-beat `VALID`/`INVALID` gate and
+has no repair or rewrite capability. An invalid candidate retries the same
+beat; exhausted beat retries regenerate the failed phase and every later phase
+from the same macro arc, preserving only finalized phases before the failure.
+If those phase retries are exhausted, the complete beat process is retried with
+the same arc. A new macro arc is requested only after all same-arc retry scopes
+are exhausted. Press `Ctrl+Q` to stop the process at any point.
 
 During beat-validation retries, Python remembers finalized beats and their state
 snapshots. A later response cannot reopen them; only the current provisional
@@ -687,8 +698,8 @@ cause-and-effect over unsupported invention.
 Describe persistent subjects and map them to the reference-image tags:
 
 ```text
-<Subject 1> is Mark, a 40-year-old man referenced in <Picture 1>.
-<Subject 2> is Elena, Mark's wife, referenced in <Picture 2>.
+<Subject 1> is the operator, an adult person referenced in <Picture 1>.
+<Subject 2> is the companion, a related adult person referenced in <Picture 2>.
 ```
 
 Subject identity, Picture identity, gender, and speaker identity are separate
@@ -730,7 +741,7 @@ are rejected before the checkpoint is written or resumed.
 
 When `beats.txt` is generated automatically, parsed subjects are sent to LM
 Studio as the main characters. Canonical names and available descriptive
-clauses (for example, `Mark is a 40-year-old man`) are included in both the
+clauses (for example, `the operator is an adult person`) are included in both the
 initial beat request and its compliance review. A subject with no description
 is still included by name. Picture and speaker metadata are omitted.
 
@@ -841,7 +852,7 @@ the same generation options as the CLI:
 | **Refresh interval** | Use the refresh workflow on every Nth segment. |
 | **Vision continuity** | Ask an image-capable LM Studio model to inspect rendered frames on a cadence; `0` disables this. |
 | **Retention analysis** | Include structured retention guidance in non-initial H3 prompts. |
-| **Formatter** | Match either the Minstral or Qwen response format to the model loaded in LM Studio. |
+| **Formatter** | Match either the Mistral or Qwen response format to the model loaded in LM Studio. |
 | **First-frame instructions** | Add opening-frame instructions for `<Picture 1>` on segment 1. |
 | **LoRA Path** | Directory used to verify global and beat-specific LoRA files. |
 | **Global LoRAs** | Apply any number of named LoRAs, in order, to every beat. |
@@ -860,7 +871,7 @@ app.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--vision-continuity N] [--repair SEGMENT] [--model {minstral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--vision-continuity N] [--repair SEGMENT] [--model {mistral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -879,7 +890,7 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `--retention` | Add retention analysis to non-initial H3 prompts; disabled by default. |
 | `--vision-continuity N` | Run rendered-frame continuity checks every `N` segments; `0` disables them, `1` checks every segment, and larger values check on a cadence. |
 | `--repair SEGMENT` | Rerender one existing middle segment using its checkpoint and neighboring clips; cannot be combined with a resume segment other than `1`. |
-| `--model {minstral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `minstral`. |
+| `--model {mistral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `mistral`. |
 | `--lora_dir DIRECTORY` | Directory containing LoRA files; defaults to `/mnt/h/StableDiffusion/loras` in this checkout. |
 | `--image1 PATH` through `--image6 PATH` | Override the corresponding numbered reference image in the initial, append, and refresh workflows. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |

@@ -20,7 +20,7 @@ import minimax
     # @pytest.mark.live_llm
     # def test_next_h3_prompt_is_checkpointed_while_comfyui_render_is_running(self):
     #     args = SimpleNamespace(
-    #         model="minstral",
+    #         model="mistral",
     #         lora=(),
     #         repair=None,
     #         segment_length=6.0,

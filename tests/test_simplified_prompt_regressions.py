@@ -21,23 +21,6 @@ class SimplifiedPromptRegressionTests(unittest.TestCase):
         )
         self.assertEqual(messages[0]["content"], rules)
 
-    def test_compound_future_location_alias_is_detected(self):
-        arc = {"phases": [
-            {
-                "phase_number": 1, "beat_start": 1, "beat_end": 1,
-                "characters_introduced": ["Maya"], "location": "Street",
-            },
-            {
-                "phase_number": 2, "beat_start": 2, "beat_end": 2,
-                "characters_introduced": [],
-                "location": "Collapsed bridge / Rescue boat",
-            },
-        ]}
-        issues = minimax.validate_generated_beat_macro_introductions(
-            ["Maya boards a rescue boat."], arc,
-        )
-        self.assertTrue(issues)
-
     def test_wardrobe_extraction_is_scoped_to_named_subject(self):
         description = (
             "Maya, wearing a red jacket and black jeans, kneels beside Leo. "

@@ -3,9 +3,18 @@ from __future__ import annotations
 import os
 import pytest
 
-from cases import ALL_CASES
-from llama_client import LLMError, call_llama, get_model_settings, normalize_result
-from prompt_under_test import build_messages
+from tests.LLM.cases import ALL_CASES
+from tests.LLM.llama_client import LLMError, call_llama, get_model_settings, normalize_result
+from tests.LLM.prompt_under_test import build_messages
+
+
+pytestmark = [
+    pytest.mark.live_llm,
+    pytest.mark.skipif(
+        os.environ.get("H3_RUN_LLM_BENCHMARK") != "1",
+        reason="set H3_RUN_LLM_BENCHMARK=1 to contact the configured local LLM",
+    ),
+]
 
 
 def _selected_cases():

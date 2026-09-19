@@ -1,7 +1,7 @@
-"""Unit tests for deterministic Minstral-to-MiniMax H3 formatting.
+"""Unit tests for deterministic Mistral-to-MiniMax H3 formatting.
 
 The tests deliberately use only the standard library.  They describe the
-public contract of ``minstral_formatter`` and avoid importing or contacting
+public contract of ``mistral_formatter`` and avoid importing or contacting
 LM Studio, ComfyUI, or any other service.
 """
 
@@ -15,7 +15,7 @@ import json
 import re
 import unittest
 
-from minstral_formatter import format_minstral_prompt, validate_minstral_prompt
+from mistral_formatter import format_mistral_prompt, validate_mistral_prompt
 
 
 CORE_KEYS = (
@@ -88,11 +88,11 @@ class FieldAndFixedPointTests(unittest.TestCase):
             hard_cut_required=False,
         )
 
-        formatted = format_minstral_prompt(raw, context)
+        formatted = format_mistral_prompt(raw, context)
 
         self.assertIn("final frame of <Video 1>", formatted["detailed_description"])
         self.assertNotIn("Segment 30", formatted["detailed_description"])
-        self.assertEqual(validate_minstral_prompt(formatted, context), [])
+        self.assertEqual(validate_mistral_prompt(formatted, context), [])
 
     def test_symbolic_segment_reference_is_rewritten_as_video_1(self) -> None:
         raw = result(
@@ -101,7 +101,7 @@ class FieldAndFixedPointTests(unittest.TestCase):
             completed=[2],
         )
 
-        formatted = format_minstral_prompt(raw, context_for(2))
+        formatted = format_mistral_prompt(raw, context_for(2))
 
         self.assertIn("final frame of <Video 1>", formatted["detailed_description"])
         self.assertNotRegex(formatted["detailed_description"], r"(?i)segment\s+N")
@@ -115,7 +115,7 @@ class FieldAndFixedPointTests(unittest.TestCase):
             completed=[1],
         )
 
-        formatted = format_minstral_prompt(raw, context_for(1))
+        formatted = format_mistral_prompt(raw, context_for(1))
 
         for field in (
             "detailed_description",
@@ -133,11 +133,11 @@ non_diegetic_music: N/A
 
 completed_beat_ids: [1]"""
 
-        formatted = format_minstral_prompt(raw, context_for(1))
+        formatted = format_mistral_prompt(raw, context_for(1))
 
         self.assertEqual(tuple(formatted), CORE_KEYS)
         self.assertEqual(formatted["completed_beat_ids"], [1])
-        self.assertEqual(validate_minstral_prompt(formatted, context_for(1)), [])
+        self.assertEqual(validate_mistral_prompt(formatted, context_for(1)), [])
 
     def test_code_fenced_json_and_decorated_duplicate_labels_are_cleaned(self) -> None:
         raw = {
@@ -154,7 +154,7 @@ completed_beat_ids: [1]"""
         }
         fenced = "```json\n" + json.dumps(raw) + "\n```"
 
-        formatted = format_minstral_prompt(fenced, context_for(1))
+        formatted = format_mistral_prompt(fenced, context_for(1))
 
         self.assertEqual(tuple(formatted), CORE_KEYS)
         self.assertTrue(formatted["detailed_description"].startswith("[Shot 1]"))
@@ -173,11 +173,11 @@ completed_beat_ids: [1]"""
             completed=[1],
         )
 
-        first = format_minstral_prompt(copy.deepcopy(valid), context_for(1))
-        second = format_minstral_prompt(copy.deepcopy(first), context_for(1))
+        first = format_mistral_prompt(copy.deepcopy(valid), context_for(1))
+        second = format_mistral_prompt(copy.deepcopy(first), context_for(1))
 
         self.assertEqual(first, second)
-        self.assertEqual(validate_minstral_prompt(first, context_for(1)), [])
+        self.assertEqual(validate_mistral_prompt(first, context_for(1)), [])
 
     def test_formatter_and_validator_do_not_mutate_their_inputs(self) -> None:
         original = result(
@@ -190,8 +190,8 @@ completed_beat_ids: [1]"""
         original_snapshot = copy.deepcopy(original)
         context_snapshot = copy.deepcopy(context)
 
-        formatted = format_minstral_prompt(original, context)
-        validate_minstral_prompt(formatted, context)
+        formatted = format_mistral_prompt(original, context)
+        validate_mistral_prompt(formatted, context)
 
         self.assertEqual(original, original_snapshot)
         self.assertEqual(context, context_snapshot)
@@ -205,11 +205,11 @@ completed_beat_ids: [1]"""
             completed=[1],
         )
 
-        repaired = format_minstral_prompt(noisy, context_for(1))
+        repaired = format_mistral_prompt(noisy, context_for(1))
 
         self.assertEqual(
             repaired,
-            format_minstral_prompt(copy.deepcopy(repaired), context_for(1)),
+            format_mistral_prompt(copy.deepcopy(repaired), context_for(1)),
         )
 
 
@@ -230,7 +230,7 @@ class VisualFormattingTests(unittest.TestCase):
             "[Shot 1] A close-up shows Ben doing something.",
         )
 
-        formatted = format_minstral_prompt(malformed, context)
+        formatted = format_mistral_prompt(malformed, context)
         description = formatted["detailed_description"]
 
         self.assertEqual(description.count("<Subject 2>"), 1)
@@ -250,13 +250,13 @@ class VisualFormattingTests(unittest.TestCase):
             completed=[2],
         )
 
-        formatted = format_minstral_prompt(malformed, context)
+        formatted = format_mistral_prompt(malformed, context)
         description = formatted["detailed_description"]
 
         self.assertIn("<Subject 1> Mary Jane Watson charges forward", description)
         self.assertEqual(description.count("<Subject 1>"), 1)
         self.assertNotIn("<Picture 4>", description)
-        self.assertEqual(validate_minstral_prompt(formatted, context), [])
+        self.assertEqual(validate_mistral_prompt(formatted, context), [])
 
     def test_stripped_unknown_picture_does_not_leave_spaced_apostrophe(self) -> None:
         malformed = result(
@@ -273,7 +273,7 @@ class VisualFormattingTests(unittest.TestCase):
             hard_cut_required=False,
         )
 
-        formatted = format_minstral_prompt(malformed, context)
+        formatted = format_mistral_prompt(malformed, context)
         description = formatted["detailed_description"]
 
         self.assertIn("Amy's expression", description)
@@ -296,7 +296,7 @@ class VisualFormattingTests(unittest.TestCase):
             hard_cut_required=False,
         )
 
-        formatted = format_minstral_prompt(malformed, context)
+        formatted = format_mistral_prompt(malformed, context)
         description = formatted["detailed_description"]
 
         self.assertEqual(
@@ -308,7 +308,7 @@ class VisualFormattingTests(unittest.TestCase):
         self.assertNotIn("(00:01.200)", description)
         self.assertEqual(
             formatted,
-            format_minstral_prompt(copy.deepcopy(formatted), context),
+            format_mistral_prompt(copy.deepcopy(formatted), context),
         )
 
     def test_required_segment_boundary_uses_exact_hard_cut_opening(self) -> None:
@@ -319,7 +319,7 @@ class VisualFormattingTests(unittest.TestCase):
             completed=[3],
         )
 
-        description = format_minstral_prompt(malformed, context_for(3))[
+        description = format_mistral_prompt(malformed, context_for(3))[
             "detailed_description"
         ]
 
@@ -330,7 +330,7 @@ class VisualFormattingTests(unittest.TestCase):
             "[Shot 2] Camera cuts to a new shot: Mark walks toward Jill."
         )
 
-        description = format_minstral_prompt(
+        description = format_mistral_prompt(
             malformed,
             context_for(2, hard_cut_required=False),
         )["detailed_description"]
@@ -346,7 +346,7 @@ class VisualFormattingTests(unittest.TestCase):
             completed=[3],
         )
 
-        description = format_minstral_prompt(malformed, context_for(3))[
+        description = format_mistral_prompt(malformed, context_for(3))[
             "detailed_description"
         ]
 
@@ -363,13 +363,13 @@ class VisualFormattingTests(unittest.TestCase):
             completed=[2],
         )
 
-        formatted = format_minstral_prompt(malformed, context_for(2))
-        issues = validate_minstral_prompt(formatted, context_for(2))
+        formatted = format_mistral_prompt(malformed, context_for(2))
+        issues = validate_mistral_prompt(formatted, context_for(2))
 
         self.assertFalse(any("after the first" in issue for issue in issues), issues)
 
     def test_later_segment_timestamp_satisfies_timestamp_requirement(self) -> None:
-        formatted = format_minstral_prompt(
+        formatted = format_mistral_prompt(
             result(
                 "[Shot 2] At 00:01.200, Mark and Jill walk through the park.",
                 completed=[2],
@@ -377,7 +377,7 @@ class VisualFormattingTests(unittest.TestCase):
             context_for(2),
         )
 
-        issues = validate_minstral_prompt(formatted, context_for(2))
+        issues = validate_mistral_prompt(formatted, context_for(2))
 
         self.assertFalse(
             any("after the first" in issue for issue in issues),
@@ -392,7 +392,7 @@ class VisualFormattingTests(unittest.TestCase):
             completed=[2],
         )
 
-        description = format_minstral_prompt(
+        description = format_mistral_prompt(
             malformed,
             context_for(2),
         )["detailed_description"]
@@ -402,7 +402,7 @@ class VisualFormattingTests(unittest.TestCase):
         self.assertIn("<Subject 1> Mark runs forward.", description)
 
     def test_generic_continuation_opening_and_timestamp_are_removed(self) -> None:
-        formatted = format_minstral_prompt(
+        formatted = format_mistral_prompt(
             result(
                 "[Shot 2] Camera continues from the previous shot At 00:01.500, "
                 "Mark walks through the park.",
@@ -421,7 +421,7 @@ class VisualFormattingTests(unittest.TestCase):
         self.assertNotIn("00:01.500", description)
         self.assertNotIn("continues from the previous shot", description.lower())
         self.assertEqual(
-            validate_minstral_prompt(
+            validate_mistral_prompt(
                 formatted,
                 context_for(
                     2,
@@ -434,7 +434,7 @@ class VisualFormattingTests(unittest.TestCase):
         )
 
     def test_each_later_timestamp_starts_on_its_own_line(self) -> None:
-        formatted = format_minstral_prompt(
+        formatted = format_mistral_prompt(
             result(
                 "[Shot 2] At 00:01.000, the camera moves toward the doorway. "
                 "At 00:03.500, the camera cuts to the hallway.",
@@ -458,7 +458,7 @@ class VisualFormattingTests(unittest.TestCase):
             completed=[2],
         )
 
-        repaired = format_minstral_prompt(malformed, context_for(2))
+        repaired = format_mistral_prompt(malformed, context_for(2))
         description = repaired["detailed_description"]
 
         self.assertTrue(description.startswith("[Shot 2]"))
@@ -473,7 +473,7 @@ class VisualFormattingTests(unittest.TestCase):
             completed=[2],
         )
 
-        description = format_minstral_prompt(malformed, context_for(2))[
+        description = format_mistral_prompt(malformed, context_for(2))[
             "detailed_description"
         ]
 
@@ -491,7 +491,7 @@ class VisualFormattingTests(unittest.TestCase):
             completed=[1],
         )
 
-        description = format_minstral_prompt(malformed, context_for(1))[
+        description = format_mistral_prompt(malformed, context_for(1))[
             "detailed_description"
         ]
 
@@ -510,7 +510,7 @@ class VisualFormattingTests(unittest.TestCase):
             completed=[1],
         )
 
-        description = format_minstral_prompt(malformed, context_for(1))[
+        description = format_mistral_prompt(malformed, context_for(1))[
             "detailed_description"
         ]
 
@@ -526,7 +526,7 @@ class DialogueFormattingTests(unittest.TestCase):
             completed=[2],
         )
 
-        description = format_minstral_prompt(malformed, context_for(2))[
+        description = format_mistral_prompt(malformed, context_for(2))[
             "detailed_description"
         ]
 
@@ -545,7 +545,7 @@ class DialogueFormattingTests(unittest.TestCase):
             completed=[3],
         )
 
-        description = format_minstral_prompt(malformed, context_for(3))[
+        description = format_mistral_prompt(malformed, context_for(3))[
             "detailed_description"
         ]
 
@@ -564,7 +564,7 @@ class DialogueFormattingTests(unittest.TestCase):
             completed=[3],
         )
 
-        description = format_minstral_prompt(malformed, context_for(3))[
+        description = format_mistral_prompt(malformed, context_for(3))[
             "detailed_description"
         ]
 
@@ -580,7 +580,7 @@ class DialogueFormattingTests(unittest.TestCase):
             completed=[3],
         )
 
-        description = format_minstral_prompt(malformed, context_for(3))[
+        description = format_mistral_prompt(malformed, context_for(3))[
             "detailed_description"
         ]
 
@@ -598,7 +598,7 @@ class DialogueFormattingTests(unittest.TestCase):
             completed=[3],
         )
 
-        description = format_minstral_prompt(malformed, context_for(3))[
+        description = format_mistral_prompt(malformed, context_for(3))[
             "detailed_description"
         ]
 
@@ -612,7 +612,7 @@ class DialogueFormattingTests(unittest.TestCase):
             completed=[3],
         )
 
-        description = format_minstral_prompt(malformed, context_for(3))[
+        description = format_mistral_prompt(malformed, context_for(3))[
             "detailed_description"
         ]
 
@@ -637,7 +637,7 @@ class AudioFormattingTests(unittest.TestCase):
             completed=[3],
         )
 
-        soundscape = format_minstral_prompt(malformed, context_for(3))["overall_soundscape"]
+        soundscape = format_mistral_prompt(malformed, context_for(3))["overall_soundscape"]
 
         self.assertIn("Crowds murmur", soundscape)
         self.assertIn("Footsteps scrape", soundscape)
@@ -654,7 +654,7 @@ class AudioFormattingTests(unittest.TestCase):
                     music=value,
                     completed=[2],
                 )
-                repaired = format_minstral_prompt(malformed, context_for(2))
+                repaired = format_mistral_prompt(malformed, context_for(2))
                 self.assertEqual(repaired["non_diegetic_music"], "N/A")
 
     def test_music_is_limited_to_three_sentences(self) -> None:
@@ -667,7 +667,7 @@ class AudioFormattingTests(unittest.TestCase):
             completed=[2],
         )
 
-        music = format_minstral_prompt(malformed, context_for(2))["non_diegetic_music"]
+        music = format_mistral_prompt(malformed, context_for(2))["non_diegetic_music"]
         sentences = [piece for piece in re.split(r"(?<=[.!?])\s+", music) if piece]
         self.assertLessEqual(len(sentences), 3)
 
@@ -678,9 +678,9 @@ class AudioFormattingTests(unittest.TestCase):
             completed=[2],
         )
 
-        self.assertTrue(validate_minstral_prompt(prompt, context_for(2)))
+        self.assertTrue(validate_mistral_prompt(prompt, context_for(2)))
         self.assertEqual(
-            validate_minstral_prompt(prompt, context_for(2, allow_silence=True)),
+            validate_mistral_prompt(prompt, context_for(2, allow_silence=True)),
             [],
         )
 
@@ -693,11 +693,11 @@ class CompletionMetadataTests(unittest.TestCase):
             completed=[],
         )
 
-        formatted = format_minstral_prompt(prompt, context_for(1))
+        formatted = format_mistral_prompt(prompt, context_for(1))
 
         self.assertIn(
             "Segment 1 must report exactly one completed beat ID: [1].",
-            validate_minstral_prompt(formatted, context_for(1)),
+            validate_mistral_prompt(formatted, context_for(1)),
         )
 
     def test_completion_ids_are_normalized_to_consecutive_beats(self) -> None:
@@ -708,7 +708,7 @@ class CompletionMetadataTests(unittest.TestCase):
             completed=[1, "B003", "3", 4, 99],
         )
 
-        repaired = format_minstral_prompt(malformed, context_for(3))
+        repaired = format_mistral_prompt(malformed, context_for(3))
 
         self.assertEqual(repaired["completed_beat_ids"], [3])
 
@@ -719,7 +719,7 @@ class CompletionMetadataTests(unittest.TestCase):
             completed=[2],
         )
 
-        repaired = format_minstral_prompt(malformed, context_for(2))
+        repaired = format_mistral_prompt(malformed, context_for(2))
 
         self.assertNotIn(
             "completed_beat_ids",
@@ -734,15 +734,15 @@ class CompletionMetadataTests(unittest.TestCase):
             completed=[],
         )
 
-        repaired = format_minstral_prompt(prompt, context_for(4, beat_deadline_required=False))
+        repaired = format_mistral_prompt(prompt, context_for(4, beat_deadline_required=False))
 
         self.assertEqual(repaired["completed_beat_ids"], [])
 
 
 class BeatFixtureTests(unittest.TestCase):
     def assert_valid_after_formatting(self, malformed: dict, beat_number: int) -> dict:
-        formatted = format_minstral_prompt(malformed, context_for(beat_number))
-        self.assertEqual(validate_minstral_prompt(formatted, context_for(beat_number)), [])
+        formatted = format_mistral_prompt(malformed, context_for(beat_number))
+        self.assertEqual(validate_mistral_prompt(formatted, context_for(beat_number)), [])
         return formatted
 
     def test_b001_malformed_and_valid_fixtures(self) -> None:
@@ -760,7 +760,7 @@ class BeatFixtureTests(unittest.TestCase):
         )
 
         self.assert_valid_after_formatting(malformed, 1)
-        self.assertEqual(format_minstral_prompt(valid, context_for(1)), valid)
+        self.assertEqual(format_mistral_prompt(valid, context_for(1)), valid)
 
     def test_b002_malformed_and_valid_fixtures(self) -> None:
         malformed = result(
@@ -777,7 +777,7 @@ class BeatFixtureTests(unittest.TestCase):
         )
 
         self.assert_valid_after_formatting(malformed, 2)
-        self.assertEqual(format_minstral_prompt(valid, context_for(2)), valid)
+        self.assertEqual(format_mistral_prompt(valid, context_for(2)), valid)
 
     def test_b003_malformed_dialogue_fixture_preserves_every_spoken_character(self) -> None:
         malformed = result(
@@ -803,7 +803,7 @@ class BeatFixtureTests(unittest.TestCase):
         description = formatted["detailed_description"]
         self.assertIn("<d>[English] What is happening?!</d>", description)
         self.assertIn("<d>[English] I don't know, those things aren't planes.</d>", description)
-        self.assertEqual(format_minstral_prompt(valid, context_for(3)), valid)
+        self.assertEqual(format_mistral_prompt(valid, context_for(3)), valid)
 
     def test_b004_malformed_and_valid_fixtures(self) -> None:
         malformed = result(
@@ -825,7 +825,7 @@ class BeatFixtureTests(unittest.TestCase):
         )
 
         self.assert_valid_after_formatting(malformed, 4)
-        self.assertEqual(format_minstral_prompt(valid, context_for(4)), valid)
+        self.assertEqual(format_mistral_prompt(valid, context_for(4)), valid)
 
     def test_validation_flags_missing_story_content_for_last_resort_requery(self) -> None:
         content_missing = result(
@@ -833,7 +833,7 @@ class BeatFixtureTests(unittest.TestCase):
             completed=[4],
         )
 
-        errors = validate_minstral_prompt(content_missing, context_for(4))
+        errors = validate_mistral_prompt(content_missing, context_for(4))
 
         self.assertTrue(errors)
         self.assertTrue(all(isinstance(error, str) and error for error in errors))
