@@ -296,10 +296,10 @@ class ResumeTests(unittest.TestCase):
 
                 self.assertEqual(args.trim_frames, trim_frames)
 
-    def test_parse_args_defaults_to_ministral_model(self):
+    def test_parse_args_defaults_to_minstral_model(self):
         args = minimax.parse_args(["5", "20", ".5"])
 
-        self.assertEqual(args.model, "ministral")
+        self.assertEqual(args.model, "minstral")
 
     def test_parse_args_accepts_qwen_model(self):
         args = minimax.parse_args(["5", "20", ".5", "--model", "qwen"])
@@ -331,10 +331,10 @@ class ResumeTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             minimax.parse_args(["5", "20", ".5", "--model", "unknown"])
 
-    def test_get_formatter_selects_ministral_formatter(self):
-        formatter = minimax.get_formatter("ministral")
+    def test_get_formatter_selects_minstral_formatter(self):
+        formatter = minimax.get_formatter("minstral")
 
-        self.assertIs(type(formatter), minimax.MinistralFormatter)
+        self.assertIs(type(formatter), minimax.MinstralFormatter)
 
     def test_get_formatter_selects_qwen_formatter(self):
         formatter = minimax.get_formatter("qwen")

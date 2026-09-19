@@ -841,7 +841,7 @@ the same generation options as the CLI:
 | **Refresh interval** | Use the refresh workflow on every Nth segment. |
 | **Vision continuity** | Ask an image-capable LM Studio model to inspect rendered frames on a cadence; `0` disables this. |
 | **Retention analysis** | Include structured retention guidance in non-initial H3 prompts. |
-| **Formatter** | Match either the Ministral or Qwen response format to the model loaded in LM Studio. |
+| **Formatter** | Match either the Minstral or Qwen response format to the model loaded in LM Studio. |
 | **First-frame instructions** | Add opening-frame instructions for `<Picture 1>` on segment 1. |
 | **LoRA Path** | Directory used to verify global and beat-specific LoRA files. |
 | **Global LoRAs** | Apply any number of named LoRAs, in order, to every beat. |
@@ -860,7 +860,7 @@ app.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--vision-continuity N] [--repair SEGMENT] [--model {ministral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--vision-continuity N] [--repair SEGMENT] [--model {minstral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -879,7 +879,7 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `--retention` | Add retention analysis to non-initial H3 prompts; disabled by default. |
 | `--vision-continuity N` | Run rendered-frame continuity checks every `N` segments; `0` disables them, `1` checks every segment, and larger values check on a cadence. |
 | `--repair SEGMENT` | Rerender one existing middle segment using its checkpoint and neighboring clips; cannot be combined with a resume segment other than `1`. |
-| `--model {ministral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `ministral`. |
+| `--model {minstral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `minstral`. |
 | `--lora_dir DIRECTORY` | Directory containing LoRA files; defaults to `/mnt/h/StableDiffusion/loras` in this checkout. |
 | `--image1 PATH` through `--image6 PATH` | Override the corresponding numbered reference image in the initial, append, and refresh workflows. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |

@@ -45,6 +45,8 @@ def remove_subject_references_from_dialogue(
 class BaseFormatter:
     """Format and validate an LLM response for the MiniMax prompt schema."""
 
+    DEFAULT_LLM_SETTINGS: Mapping[str, Any] = {}
+
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Apply shared output validation to custom formatter implementations."""
 

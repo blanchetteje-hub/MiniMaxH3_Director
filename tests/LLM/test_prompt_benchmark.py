@@ -4,7 +4,7 @@ import os
 import pytest
 
 from cases import ALL_CASES
-from llama_client import LLMError, call_llama, normalize_result
+from llama_client import LLMError, call_llama, get_model_settings, normalize_result
 from prompt_under_test import build_messages
 
 
@@ -42,7 +42,8 @@ CASES = _selected_cases()
     ids=lambda c: f"{c.story_slug}-beat-{c.beat_number:02d}",
 )
 def test_validator_prompt(case):
-    raw = call_llama(build_messages(case))
+    settings = get_model_settings()
+    raw = call_llama(build_messages(case, settings))
     valid, issue = normalize_result(raw)
     assert isinstance(issue, str), f"Issue must be a string: {raw!r}"
 

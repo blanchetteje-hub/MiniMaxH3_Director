@@ -1,4 +1,4 @@
-"""Regression tests distilled from malformed live Ministral responses.
+"""Regression tests distilled from malformed live Minstral responses.
 
 These tests intentionally exercise only the deterministic formatter and its
 Python validator.  They must never import the runtime scheduler or contact LM
@@ -13,8 +13,8 @@ pytest.skip("Skipping tests that contact external LLM services", allow_module_le
 import re
 import unittest
 
-import ministral_formatter as formatter
-from ministral_formatter import format_ministral_prompt, validate_ministral_prompt
+import minstral_formatter as formatter
+from minstral_formatter import format_minstral_prompt, validate_minstral_prompt
 
 
 DESCRIPTION = "detailed_description"
@@ -92,12 +92,12 @@ class LiveDialogueRegressionTests(unittest.TestCase):
                     completed=[1],
                 )
 
-                formatted = format_ministral_prompt(malformed, context)
+                formatted = format_minstral_prompt(malformed, context)
                 description = formatted[DESCRIPTION]
 
                 self.assertIn("<Subject 1> Mark", description)
                 self.assertNotRegex(description, r"(?i)\(\s*Subject\s+\d+\s*\)")
-                self.assertEqual(validate_ministral_prompt(formatted, context), [])
+                self.assertEqual(validate_minstral_prompt(formatted, context), [])
 
     def test_visual_subject_definitions_do_not_use_speaker_ids(self) -> None:
         context = context_for(
@@ -116,14 +116,14 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             completed=[1],
         )
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
         description = formatted[DESCRIPTION]
 
         self.assertNotIn("—", description)
         self.assertNotRegex(description, r"\(S\d+\)")
         self.assertIn("<Subject 1> Jim", description)
         self.assertIn("<Subject 2> Frank", description)
-        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+        self.assertEqual(validate_minstral_prompt(formatted, context), [])
 
     def test_actual_jim_dialogue_keeps_canonical_speaker_id(self) -> None:
         context = context_for(
@@ -140,7 +140,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             "[Shot 1] Jim (S8) says: <d>Keep walking.</d> while Frank listens."
         )
 
-        description = format_ministral_prompt(malformed, context)[DESCRIPTION]
+        description = format_minstral_prompt(malformed, context)[DESCRIPTION]
 
         self.assertIn("<Subject 1> Jim (S1) says:", description)
         self.assertIn("<d>[English] Keep walking.</d>", description)
@@ -161,12 +161,12 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             "Frank watches him."
         )
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
         description = formatted[DESCRIPTION]
 
         self.assertIn("<Subject 1> Jim (S1) says:", description)
         self.assertNotIn("Dialogue block is missing an attributed speaker ID.", " ".join(
-            validate_ministral_prompt(formatted, context)
+            validate_minstral_prompt(formatted, context)
         ))
 
     def test_empty_speaker_placeholders_are_repaired(self) -> None:
@@ -187,7 +187,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             completed=[1],
         )
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
         description = formatted[DESCRIPTION]
 
         self.assertIn(
@@ -197,7 +197,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
         self.assertNotRegex(description, r"\(\s*\)")
         self.assertNotIn("<Subject 2> Amy (S2)", description)
-        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+        self.assertEqual(validate_minstral_prompt(formatted, context), [])
 
     def test_speaker_ids_are_removed_from_purely_visual_roles(self) -> None:
         context = context_for(1, next_beat_id=None, current_beat_text="")
@@ -206,7 +206,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             "khaki pants; the mother (S4) wears a floral dress."
         )
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
         description = formatted[DESCRIPTION]
 
         self.assertIn(
@@ -216,7 +216,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
         self.assertNotRegex(description, r"\(\s*S\d+")
         self.assertNotRegex(description, r"<(?:Subject|Picture)\s+[34]>")
-        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+        self.assertEqual(validate_minstral_prompt(formatted, context), [])
 
     def test_leading_comma_in_speaker_id_is_removed(self) -> None:
         context = context_for(
@@ -235,7 +235,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             completed=[1],
         )
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
         description = formatted[DESCRIPTION]
 
         self.assertIn(
@@ -244,7 +244,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             description,
         )
         self.assertNotIn("(, S1)", description)
-        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+        self.assertEqual(validate_minstral_prompt(formatted, context), [])
 
     def test_speech_verbs_keep_spaces_before_adverbs(self) -> None:
         context = context_for(
@@ -269,7 +269,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             ),
         ):
             with self.subTest(malformed=malformed):
-                description = format_ministral_prompt(
+                description = format_minstral_prompt(
                     response(malformed),
                     context,
                 )[DESCRIPTION]
@@ -288,7 +288,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             next_beat_id=1,
             beat_deadline_required=False,
         )
-        formatted = format_ministral_prompt(
+        formatted = format_minstral_prompt(
             response("[Shot 1] Mark <Picture 1> walks down the road."),
             context,
         )
@@ -312,7 +312,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
                     f"{spoken_words}</d> Jill watches him."
                 )
 
-                description = format_ministral_prompt(
+                description = format_minstral_prompt(
                     malformed, context_for(3)
                 )[DESCRIPTION]
 
@@ -341,7 +341,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             f"<d>[English] {spoken_words}</d>. Jill turns toward him."
         )
 
-        description = format_ministral_prompt(malformed, context_for(3))[DESCRIPTION]
+        description = format_minstral_prompt(malformed, context_for(3))[DESCRIPTION]
 
         self.assertIn(f"<d>[English] {spoken_words}</d>", description)
         self.assertNotIn("</d>.", description)
@@ -359,7 +359,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
                     "<d>Run!</d>"
                 )
 
-                description = format_ministral_prompt(
+                description = format_minstral_prompt(
                     malformed, context_for(segment)
                 )[DESCRIPTION]
 
@@ -386,7 +386,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             "(S5,S6) Mark and Jill shout together: <d>Run!</d>"
         )
 
-        description = format_ministral_prompt(malformed, context_for(3))[DESCRIPTION]
+        description = format_minstral_prompt(malformed, context_for(3))[DESCRIPTION]
 
         self.assertRegex(description, r"Mark(?: <Picture 1>)? \(S1\)")
         self.assertRegex(description, r"Jill(?: <Picture 2>)? \(S2\)")
@@ -403,9 +403,9 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
 
         context = context_for(3, next_beat_id=None, hard_cut_required=True)
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
         description = formatted[DESCRIPTION]
-        issues = validate_ministral_prompt(formatted, context)
+        issues = validate_minstral_prompt(formatted, context)
 
         self.assertNotIn("<Subject 3>", description)
         self.assertNotIn("Mark's Unidentified Son", description)
@@ -419,12 +419,12 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
 
         context = context_for(3, next_beat_id=None, hard_cut_required=True)
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
         description = formatted[DESCRIPTION]
 
         self.assertEqual(description.count("<Subject 3> Nora Vale (S3)"), 2)
         self.assertIn("<Subject 4> Eli Stone (S4) whispers:", description)
-        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+        self.assertEqual(validate_minstral_prompt(formatted, context), [])
 
     def test_joint_registered_and_unknown_speakers_each_have_subject_identity(self) -> None:
         malformed = response(
@@ -433,7 +433,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
         context = context_for(3, next_beat_id=None, hard_cut_required=True)
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
         description = formatted[DESCRIPTION]
 
         self.assertIn(
@@ -447,7 +447,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
         context = context_for(3, next_beat_id=None, hard_cut_required=True)
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
 
         self.assertIn(
             "Mark (S1) says: <d>[English] Stay behind me.</d>",
@@ -456,7 +456,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         self.assertNotIn("<Subject 3>", formatted[DESCRIPTION])
         self.assertFalse(any(
             "HARD_DIALOGUE_FORMAT" in issue
-            for issue in validate_ministral_prompt(formatted, context)
+            for issue in validate_minstral_prompt(formatted, context)
         ))
 
     def test_unknown_speaker_cannot_reuse_registered_generated_id(self) -> None:
@@ -465,7 +465,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
         context = context_for(3, next_beat_id=None, hard_cut_required=True)
 
-        description = format_ministral_prompt(malformed, context)[DESCRIPTION]
+        description = format_minstral_prompt(malformed, context)[DESCRIPTION]
 
         self.assertIn("<Subject 3> Nora Vale (S3) says:", description)
         self.assertNotIn("Nora Vale (S1)", description)
@@ -477,11 +477,11 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
         context = context_for(3, next_beat_id=None, hard_cut_required=True)
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
 
         self.assertIn("<Subject 3> Nora Vale (S3) says:", formatted[DESCRIPTION])
         self.assertNotIn("Nora Vale (S1)", formatted[DESCRIPTION])
-        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+        self.assertEqual(validate_minstral_prompt(formatted, context), [])
 
     def test_unattributed_dialogue_does_not_manufacture_a_subject(self) -> None:
         malformed = response(
@@ -490,13 +490,13 @@ class LiveDialogueRegressionTests(unittest.TestCase):
         )
         context = context_for(3, next_beat_id=None, hard_cut_required=True)
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
 
         self.assertNotIn("<Subject 3>", formatted[DESCRIPTION])
         self.assertNotIn("Unidentified Speaker", formatted[DESCRIPTION])
         self.assertTrue(any(
             "HARD_DIALOGUE_FORMAT" in issue
-            for issue in validate_ministral_prompt(formatted, context)
+            for issue in validate_minstral_prompt(formatted, context)
         ))
 
     def test_dynamic_speaker_is_allocated_after_all_defined_subject_ids(self) -> None:
@@ -514,7 +514,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             "[Shot 3] Nora Vale says: <d>[English] AHHH!</d>"
         )
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
 
         self.assertIn(
             "<Subject 5> Nora Vale (S5) says: "
@@ -535,7 +535,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             "[Shot 3] Nora Vale says: <d>[English] AHHH!</d>"
         )
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
 
         self.assertIn(
             "<Subject 8> Nora Vale (S8) says:",
@@ -559,7 +559,7 @@ class LiveDialogueRegressionTests(unittest.TestCase):
 
         for malformed_description, manufactured_name in cases:
             with self.subTest(manufactured_name=manufactured_name):
-                formatted = format_ministral_prompt(
+                formatted = format_minstral_prompt(
                     response(malformed_description), context
                 )
 
@@ -580,8 +580,8 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             "while her lips remain completely closed as Mark watches her."
         )
 
-        formatted = format_ministral_prompt(malformed, context_for(3))
-        issues = validate_ministral_prompt(formatted, context_for(3))
+        formatted = format_minstral_prompt(malformed, context_for(3))
+        issues = validate_minstral_prompt(formatted, context_for(3))
 
         self.assertTrue(issues)
         self.assertTrue(
@@ -593,8 +593,8 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             '[Shot 3] Mark (S5) says, "Those are not airplanes!" as Jill watches.'
         )
 
-        formatted = format_ministral_prompt(malformed, context_for(3))
-        issues = validate_ministral_prompt(formatted, context_for(3))
+        formatted = format_minstral_prompt(malformed, context_for(3))
+        issues = validate_minstral_prompt(formatted, context_for(3))
 
         self.assertTrue(issues)
         self.assertTrue(any(re.search(r"(?i)(dialogue|<d>|spoken)", issue) for issue in issues), issues)
@@ -604,8 +604,8 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             "[Shot 3] Mark (S5) says: <d>[English] Look out! Jill turns toward him."
         )
 
-        formatted = format_ministral_prompt(malformed, context_for(3))
-        issues = validate_ministral_prompt(formatted, context_for(3))
+        formatted = format_minstral_prompt(malformed, context_for(3))
+        issues = validate_minstral_prompt(formatted, context_for(3))
 
         self.assertTrue(any("unbalanced" in issue.lower() for issue in issues), issues)
 
@@ -618,8 +618,8 @@ class LiveDialogueRegressionTests(unittest.TestCase):
             completed=[3],
         )
 
-        formatted = format_ministral_prompt(malformed, context)
-        issues = validate_ministral_prompt(formatted, context)
+        formatted = format_minstral_prompt(malformed, context)
+        issues = validate_minstral_prompt(formatted, context)
 
         self.assertEqual(
             issues,
@@ -648,7 +648,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
             ("<Picture 1>", "<Picture 1>\u2019s final frame"),
         ):
             with self.subTest(identity_tag=identity_tag):
-                formatted = format_ministral_prompt(
+                formatted = format_minstral_prompt(
                     response(
                         "[Shot 2] Camera continues from the previous shot. "
                         + identity_tag
@@ -665,7 +665,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
                     r"(?:^|\]\s+|[.!?]\s+)['\u2019]s\b",
                 )
 
-        formatted = format_ministral_prompt(
+        formatted = format_minstral_prompt(
             response(
                 "[Shot 2] Camera continues seamlessly from the previous shot"
                 + suffix
@@ -685,7 +685,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
             "and continued from <Video 1>."
         )
         video_only_context["known_subjects"] = {"Amy": 3}
-        formatted = format_ministral_prompt(
+        formatted = format_minstral_prompt(
             response(
                 "[Shot 2] Camera continues from the previous shot. "
                 "<Subject 3>" + suffix
@@ -697,7 +697,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
             formatted[DESCRIPTION],
         )
 
-        formatted = format_ministral_prompt(
+        formatted = format_minstral_prompt(
             response(
                 "[Shot 2] Camera continues from the previous shot. "
                 + suffix
@@ -719,7 +719,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
             "[Shot 2] At 0.00 seconds, several flying saucers cross overhead."
         )
 
-        description = format_ministral_prompt(malformed, context_for(2))[DESCRIPTION]
+        description = format_minstral_prompt(malformed, context_for(2))[DESCRIPTION]
 
         self.assertTrue(description.startswith("[Shot 2]"))
         self.assertIn("At 00:00.000,", description)
@@ -733,7 +733,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
             completed=[2],
         )
 
-        formatted = format_ministral_prompt(
+        formatted = format_minstral_prompt(
             malformed,
             context_for(
                 2,
@@ -770,7 +770,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
         for fragment, expected, forbidden in cases:
             with self.subTest(fragment=fragment):
                 malformed = response(f"[Shot 2] Live-action, cinematic. {fragment}")
-                description = format_ministral_prompt(
+                description = format_minstral_prompt(
                     malformed,
                     context_for(
                         2,
@@ -788,7 +788,7 @@ class LiveVisualFormattingRegressionTests(unittest.TestCase):
             "Mark's son (unidentified) and the rest of the family."
         )
 
-        description = format_ministral_prompt(
+        description = format_minstral_prompt(
             malformed,
             context_for(
                 1,
@@ -820,7 +820,7 @@ class LiveSoundscapeRegressionTests(unittest.TestCase):
             next_beat_id=2,
         )
 
-        formatted = format_ministral_prompt(malformed, context)
+        formatted = format_minstral_prompt(malformed, context)
         soundscape = formatted[SOUNDSCAPE]
 
         self.assertIn("Crowds gasp", soundscape)
@@ -828,7 +828,7 @@ class LiveSoundscapeRegressionTests(unittest.TestCase):
         self.assertNotIn("Please proceed", soundscape)
         self.assertNotIn("Remain calm", soundscape)
         self.assertNotRegex(soundscape, r"(?i)(PA announcement|carnival music|carousel speakers)")
-        self.assertEqual(validate_ministral_prompt(formatted, context), [])
+        self.assertEqual(validate_minstral_prompt(formatted, context), [])
 
     def test_mixed_spoken_line_and_instrument_sentence_is_removed_whole(self) -> None:
         malformed = response(
@@ -840,7 +840,7 @@ class LiveSoundscapeRegressionTests(unittest.TestCase):
             ),
         )
 
-        soundscape = format_ministral_prompt(malformed, context_for(4))[SOUNDSCAPE]
+        soundscape = format_minstral_prompt(malformed, context_for(4))[SOUNDSCAPE]
 
         self.assertIn("Footsteps pound", soundscape)
         self.assertIn("crowds gasp", soundscape)
@@ -868,8 +868,8 @@ class LiveBeatFourSemanticRegressionTests(unittest.TestCase):
             completed=[4],
         )
 
-        formatted = format_ministral_prompt(malformed, self._b4_context())
-        issues = validate_ministral_prompt(formatted, self._b4_context())
+        formatted = format_minstral_prompt(malformed, self._b4_context())
+        issues = validate_minstral_prompt(formatted, self._b4_context())
 
         self.assertEqual(
             issues,
@@ -885,8 +885,8 @@ class LiveBeatFourSemanticRegressionTests(unittest.TestCase):
             completed=[4],
         )
 
-        formatted = format_ministral_prompt(malformed, self._b4_context())
-        issues = validate_ministral_prompt(formatted, self._b4_context())
+        formatted = format_minstral_prompt(malformed, self._b4_context())
+        issues = validate_minstral_prompt(formatted, self._b4_context())
 
         self.assertEqual(
             issues,

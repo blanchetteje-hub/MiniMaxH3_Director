@@ -1180,7 +1180,7 @@ class LmStudioIntegrationTests(unittest.TestCase):
         post.return_value = FakeResponse(labeled)
 
         raw = minimax.ask_llm([])
-        formatted = minimax.format_ministral_prompt(raw, context_for(1))
+        formatted = minimax.format_minstral_prompt(raw, context_for(1))
 
         self.assertEqual(post.call_count, 1)
         self.assertEqual(formatted["completed_beat_ids"], [1])

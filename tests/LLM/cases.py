@@ -235,7 +235,10 @@ def correct_beat(s: StorySpec, n: int) -> str:
         4: f"{s.protagonist} checks {s.primary_item} and makes it ready for immediate use.",
         5: f"{s.first_threat} pushes into {s.start_location}, forcing {s.protagonist} to face it.",
         6: f"{s.protagonist} holds position against {s.first_threat}; {s.protected} remains secured behind {s.safe_barrier}.",
-        7: f"{s.protagonist} lands the decisive blow and permanently destroys {s.first_threat}.",
+        7: (
+            f"{s.protagonist} lands the decisive blow and permanently destroys {s.first_threat}, "
+            f"remaining uninjured. No earlier wound, limp, or off-screen fight has occurred."
+        ),
         8: f"With {s.first_threat} down, {s.protagonist} leaves {s.start_location} and moves into {s.transit_location}.",
         9: f"{s.protagonist} receives clear evidence that {s.rescue_target} is trapped at {s.destination} and decides to reach them.",
         10: f"{s.protagonist} reaches {s.destination_barrier} and opens it using the mechanism already present there.",
@@ -255,6 +258,23 @@ def correct_beat(s: StorySpec, n: int) -> str:
 
 def state_before(s: StorySpec, n: int) -> dict[str, Any]:
     state: dict[str, Any] = {
+        "characters": {
+            s.protagonist: {
+                "current_injuries": "none",
+                "prior_injuries": "none",
+                "injury_history": "no injury event has been established at any earlier beat",
+            },
+            s.protected: {
+                "current_injuries": "none",
+                "prior_injuries": "none",
+                "injury_history": "no injury event has been established at any earlier beat",
+            },
+            s.rescue_target: {
+                "current_injuries": "none",
+                "prior_injuries": "none",
+                "injury_history": "no injury event has been established at any earlier beat",
+            },
+        },
         "locations": {
             s.protagonist: s.start_location,
             s.protected: s.start_location,
@@ -277,11 +297,7 @@ def state_before(s: StorySpec, n: int) -> dict[str, Any]:
             "rescue_goal_known": False,
             "immediate_threat_area_clear": False,
             "escaped": False,
-        },
-        "characters": {
-            s.protagonist: {"injuries": "none", "damage": "none"},
-            s.protected: {"injuries": "none", "damage": "none"},
-            s.rescue_target: {"injuries": "none", "damage": "none"},
+            "established_prior_events": "only events from completed earlier beats exist; no off-screen injuries, fights, or wounds may be assumed",
         },
     }
 
@@ -291,7 +307,7 @@ def state_before(s: StorySpec, n: int) -> dict[str, Any]:
         if beat == 2:
             state["locations"][s.protected] = s.safe_location
             state["containment"][s.protected] = s.safe_location
-            state["barriers"][s.safe_barrier] = "locked"
+            state["barriers"][s.safe_barrier] = "locked and impassable; it has not been opened"
         elif beat == 3:
             state["objects"][s.primary_item] = f"held by {s.protagonist}"
         elif beat == 4:
@@ -300,6 +316,11 @@ def state_before(s: StorySpec, n: int) -> dict[str, Any]:
             state["threats"][s.first_threat] = f"active at {s.start_location}"
         elif beat == 7:
             state["threats"][s.first_threat] = "permanently destroyed"
+            state["characters"][s.protagonist]["current_injuries"] = "none"
+            state["characters"][s.protagonist]["prior_injuries"] = "none"
+            state["characters"][s.protagonist]["injury_history"] = (
+                f"uninjured after destroying {s.first_threat}; no earlier wound exists"
+            )
         elif beat == 8:
             state["locations"][s.protagonist] = s.transit_location
         elif beat == 9:
@@ -337,6 +358,11 @@ def state_before(s: StorySpec, n: int) -> dict[str, Any]:
 # Fixed fault pattern. Every story receives the same logical traps in different
 # narrative clothing. Valid cases are just as important as invalid cases because
 # an over-aggressive prompt should fail the suite too.
+#
+# Beat 2 and Beat 6 are locked-barrier STATE: the protected person cannot be
+# outside a barrier that is still locked and unopened.
+# Beat 8 is invented-history CONTINUITY: the candidate asserts a prior injury
+# that neither state_now nor the previous final beat established.
 FAULT_BY_BEAT: dict[int, tuple[str, ...]] = {
     2: ("STATE",),
     3: ("SEQUENCING",),
@@ -355,9 +381,10 @@ FAULT_BY_BEAT: dict[int, tuple[str, ...]] = {
 def candidate_beat(s: StorySpec, n: int) -> str:
     if n == 2:
         return (
-            f"{s.protagonist} ushers {s.protected} into {s.safe_location}, shuts and locks {s.safe_barrier}. "
-            f"Without anyone opening it again, {s.protected} immediately steps back through the still-locked "
-            f"{s.safe_barrier} and stands beside {s.protagonist}."
+            f"{s.protagonist} ushers {s.protected} into {s.safe_location}, shuts {s.safe_barrier}, "
+            f"and locks it. {s.safe_barrier} stays locked and impassable. No one opens it. "
+            f"{s.protected} then walks back through that still-locked {s.safe_barrier} and stands "
+            f"beside {s.protagonist} outside {s.safe_location}."
         )
     if n == 3:
         return (
@@ -376,13 +403,16 @@ def candidate_beat(s: StorySpec, n: int) -> str:
         )
     if n == 6:
         return (
-            f"{s.protagonist} confronts {s.first_threat}. Although {s.safe_barrier} is still locked and no one "
-            f"opened it, {s.protected} is now standing beside {s.protagonist}."
+            f"{s.protagonist} confronts {s.first_threat} at {s.start_location}. "
+            f"{s.protected} remains listed as contained in {s.safe_location}. "
+            f"{s.safe_barrier} is still locked and impassable; no one opened it. "
+            f"{s.protected} is nevertheless standing beside {s.protagonist}, outside the lock."
         )
     if n == 8:
         return (
-            f"With {s.first_threat} down, {s.protagonist} limps into {s.transit_location}, favoring the leg that "
-            f"was badly injured earlier."
+            f"With {s.first_threat} down, {s.protagonist} limps into {s.transit_location}, dragging the shattered "
+            f"leg that {s.first_threat} crushed in an earlier off-screen fight before this story began, still "
+            f"bleeding from that prior wound."
         )
     if n == 9:
         return (

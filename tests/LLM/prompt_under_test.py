@@ -1,25 +1,31 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
+
 from cases import BeatCase
+from llama_client import get_model_settings
 
 
-def build_messages(case: BeatCase) -> list[dict[str, str]]:
+def build_messages(
+    case: BeatCase,
+    settings: Mapping[str, object] | None = None,
+) -> list[dict[str, str]]:
     """Build the production validity-first validator prompt."""
+    if settings is None:
+        settings = get_model_settings()
+
     state = case.state_now if isinstance(case.state_now, dict) else {}
+
     system = (
-        "You validate concise story beats. Judge the meaning of the candidate "
-        "against the current state and the current beat job. A requirement is "
-        "satisfied when its action or fact is stated or unambiguously entailed. "
-        "A stated outcome does not require a second demonstration, a named "
-        "mechanism, or extra detail unless the job explicitly requires it. "
-        "The current state is authoritative at the start of the beat. Simulate "
-        "explicit actions from left to right. Require direct evidence; never "
-        "invent facts or hidden actions. Only the current beat job defines work "
-        "required now; the premise and phase goal are context, not additional "
-        "requirements for this beat. Return only one "
-        "JSON object with boolean valid and string issue. If invalid, issue must "
-        "briefly state the concrete problem. Do not use labels, codes, or lists."
+        "You validate concise story beats. Judge the candidate against the "
+        "authoritative current state and the current beat job. The current state "
+        "is true at the start of the beat. Apply explicit candidate actions from "
+        "left to right. Do not invent hidden actions or facts. Do not require "
+        "details the beat job does not require. Only the current beat job defines "
+        "work required now, but every explicit candidate action must still be "
+        "consistent with authoritative state and history. Return only one JSON "
+        "object with boolean valid and string issue."
     )
 
     user = f"""
@@ -48,67 +54,107 @@ CANDIDATE BEAT
 {case.candidate_beat}
 
 VALIDATION METHOD
-1. Split CURRENT BEAT JOB into atomic requirements and compare their meaning
-   with the candidate. Each requirement may be conveyed by a statement, an
-   action, or an unambiguous implication. A setup requirement is satisfied by
-   establishing the requested facts; identifying their cause or resolving them
-   is separate work unless expressly required. Count all participants in an
-   action, including its objects, and allow one sentence to satisfy multiple
-   requirements. Do not require a separate sentence repeating each fact.
-2. Read CURRENT STATE literally, including object, barrier, containment,
-   location, threat, and irreversible-status facts. Treat missing facts as
-   unknown, not as permission to invent them.
-3. Apply explicit candidate actions in order. Opening or unlocking can permit a
-   later crossing; releasing can permit a later departure; entering or crossing
-   can establish a later location. Do not compare a later action with the
-   untouched start state after the candidate explicitly changed that state.
-4. Check all of the following for direct contradictions or omissions:
-   - required beat-job fidelity, without demanding broader phase work;
-   - object availability, closed barriers, containment, and unexplained location
-     changes;
+
+1. CHECK PRIOR HISTORY.
+   Treat CURRENT STATE and PREVIOUS FINAL BEAT as complete evidence of what
+   happened before this beat.
+
+   If the candidate says or implies that an injury, damage, event, possession,
+   knowledge, permission, or other condition happened earlier, that history must
+   be supported by CURRENT STATE or PREVIOUS FINAL BEAT.
+
+   If claimed prior history is absent, it did not happen and the candidate is
+   invalid.
+
+2. CHECK FOR REPEATED COMPLETED ACTIONS.
+   CURRENT STATE contains the effects of completed earlier actions.
+
+   If an object is already held by a character, retrieving that same object again
+   is a repeated completed action unless CURRENT STATE explicitly says it was
+   subsequently put away, dropped, lost, or transferred.
+
+   If an object is already ready, making it ready again is repeated unless
+   CURRENT STATE explicitly says it became unready.
+
+   Check every explicit candidate action, including extra actions before or after
+   the CURRENT BEAT JOB. Any repeated completed action makes the candidate
+   invalid.
+
+3. CHECK CURRENT BEAT JOB.
+   Split CURRENT BEAT JOB into its required actions or facts and compare their
+   meaning with the candidate.
+
+   Paraphrases and unambiguous implications count.
+
+   Do not require a separate sentence for each requirement.
+
+4. CHECK CURRENT STATE.
+   Read object, barrier, containment, location, threat, and irreversible-status
+   facts literally.
+
+   For present-state facts, missing information is unknown.
+
+   This does NOT apply to claims about events before this beat: prior history is
+   complete as described in Rule 1.
+
+5. APPLY CANDIDATE ACTIONS IN ORDER.
+   Explicit actions may legitimately change state during the beat.
+
+   Opening or unlocking a barrier can permit later crossing.
+   Releasing someone can permit later departure.
+   Entering, leaving, crossing, returning, or traveling can establish a new
+   location.
+
+   Do not compare a later candidate action against the untouched start state when
+   an earlier explicit action already changed that state.
+
+6. CHECK FOR OTHER CLEAR VIOLATIONS:
+   - the required current beat job is not completed;
+   - an unavailable object is used or possessed;
+   - a closed or locked barrier is crossed without being opened;
+   - a contained entity appears outside containment without release;
+   - location changes without explicit movement or transition;
    - something permanently dead, destroyed, defeated, escaped, or finished
-     becoming active again;
-   - a new threat after the current state explicitly says the immediate-threat
-     area is clear;
-   - an earlier event, injury, or permission not established by the supplied
-     current state or previous context;
-   - repeating an action the current state says is already complete;
-   - an important person, threat, object, or event unsupported by the story,
-     state, job, or phase goal;
-   - a distinct later state-changing action completed before its turn.
+     becomes active again;
+   - a new threat appears after CURRENT STATE explicitly says the immediate
+     threat area is clear;
+   - an important person, threat, object, or event is introduced without support
+     from STORY, PHASE GOAL, CURRENT BEAT JOB, or CURRENT STATE;
+   - the candidate completes the distinct NEXT BEAT MUST DO action early.
 
 DECISION RULES
-- Check job completion and contradictions independently. Completing the job
-  does not excuse another clear violation. Describe that violation accurately
-  instead of claiming the completed job was omitted.
-- Explicit movement establishes a location change. Explicit opening/unlocking
-  resolves a barrier for later actions. Explicit release resolves containment
-  for later actions. Do not report a contradiction after its enabling action is
-  explicit in the same candidate.
-- A contained entity appearing outside without release is a containment problem;
-  do not add a second location explanation for the same fact. A separately
-  crossed closed or locked barrier remains an additional concrete problem.
-- A known entity returning from a permanent or finished state is a continuity
-  problem, not an unsupported-new-entity problem. A past event explicitly stated
-  in the supplied context is supported; do not call it invented.
-- A threat violates a cleared-area condition only if the current state already
-  explicitly marks that area clear. A false or missing clearance value is not
-  a reason to reject danger. Permanent destruction remains binding regardless
-  of the area's clearance value.
-- Preparation for the current job is allowed. A separate later state change is
-  not allowed merely because the phase goal mentions it.
-- Ordinary descriptive detail is allowed unless it contradicts established state
-  or introduces an unsupported important fact.
+
+- Completing CURRENT BEAT JOB does not excuse another violation.
+- Check every explicit candidate action, not only the required action.
+- Explicit movement establishes a location change.
+- Explicit opening or unlocking can resolve a barrier.
+- Explicit release can resolve containment.
+- A known entity returning from a permanent state is invalid.
+- A new threat violates a cleared-area condition only when CURRENT STATE
+  explicitly says that area is already clear.
+- Preparation for the current job is allowed.
+- Completing the distinct next beat job early is not allowed.
+- Ordinary descriptive detail is allowed unless it contradicts established
+  state, invents prior history, repeats completed history, or introduces an
+  unsupported important fact.
+- Report only clear violations. Do not invent possible problems.
 
 OUTPUT CONTRACT
-Return exactly one JSON object and no markdown:
+
+If valid:
 {{"valid": true, "issue": ""}}
-or
+
+If invalid:
 {{"valid": false, "issue": "short concrete explanation"}}
-The issue value is always a string. If several clear problems exist, mention them
-briefly in the same issue string. Do not output category names, issue codes, or
-an array.
+
+Return exactly one JSON object and no markdown.
+The issue value must always be a string.
+Do not output category names, issue codes, lists, or arrays.
 """.strip()
+
+    if settings and settings.get("user_prompt_only"):
+        user = f"{system}\n\n{user}"
+        system = ""
 
     return [
         {"role": "system", "content": system},

@@ -20,6 +20,19 @@ from formatter_base import (
 )
 
 
+DEFAULT_LLM_SETTINGS = {
+    "temperature": 0.7,
+    "top_p": 0.80,
+    "top_k": 20,
+    "min_p": 0.0,
+    "presence_penalty": 1.5,
+    "repeat_penalty": 1.0,
+    "thinking": "off",
+    "chat_template": "built-in",
+    "jinja": True,
+}
+
+
 DESCRIPTION = "detailed_description"
 SOUNDSCAPE = "overall_soundscape"
 MUSIC = "non_diegetic_music"
@@ -160,7 +173,7 @@ def _format_continuation_opening(description: str) -> str:
 def _strip_markdown(value: str) -> str:
     """Remove presentation-only Markdown emphasis without touching field names."""
 
-    # MiniMax consumes prose rather than Markdown.  Ministral commonly wraps a
+    # MiniMax consumes prose rather than Markdown.  Minstral commonly wraps a
     # whole camera direction or dialogue attribution in one or two asterisks;
     # an asterisk has no useful prompt meaning here, so removing the marker is
     # safer and more complete than trying to balance malformed pairs.
@@ -225,7 +238,7 @@ def _strip_field_prefix(value: str, field: str) -> str:
 def _parse_labeled_text(text: str) -> dict[str, Any]:
     matches = list(_LABEL.finditer(text))
     if not matches:
-        raise ValueError("Ministral response is neither JSON nor labeled H3 fields.")
+        raise ValueError("Minstral response is neither JSON nor labeled H3 fields.")
     parsed: dict[str, Any] = {}
     for index, match in enumerate(matches):
         field = match.group(1).lower()
@@ -252,10 +265,10 @@ def _coerce_result(llm_result: Any) -> dict[str, Any]:
             result = _parse_labeled_text(raw)
         else:
             if not isinstance(decoded, dict):
-                raise ValueError("Ministral JSON response must be an object.")
+                raise ValueError("Minstral JSON response must be an object.")
             result = decoded
     else:
-        raise TypeError("Ministral response must be a mapping or text.")
+        raise TypeError("Minstral response must be a mapping or text.")
 
     # Some models put the entire labeled prompt in the description field.
     description = result.get(DESCRIPTION)
@@ -1143,7 +1156,7 @@ def _repair_camera(result: dict[str, Any], context: Mapping[str, Any]) -> None:
         description,
     )
 
-    # ACTIVE BEAT camera directions are authoritative. If Ministral ignored
+    # ACTIVE BEAT camera directions are authoritative. If Minstral ignored
     # the camera motion explicitly written in the beat, inject it here.
     description = _enforce_beat_camera(description, context)
 
@@ -1510,7 +1523,7 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
                 flags=re.I,
             )
 
-    # Identity wins over whatever number Ministral generated.
+    # Identity wins over whatever number Minstral generated.
     for name, canonical in sorted(names.items(), key=lambda item: -len(item[0])):
         text = re.sub(
             rf"\b({re.escape(name)})\b\s*\(\s*S\d+\s*\)",
@@ -2744,11 +2757,11 @@ RULE_REGISTRY = (
 )
 
 
-def format_ministral_prompt(llm_result: Any, context: Mapping[str, Any] | None) -> dict[str, Any]:
+def format_minstral_prompt(llm_result: Any, context: Mapping[str, Any] | None) -> dict[str, Any]:
     """Return a deterministic, locally repaired H3 response object.
 
     The function never performs I/O.  It intentionally does not raise merely
-    because semantic problems remain; call :func:`validate_ministral_prompt`
+    because semantic problems remain; call :func:`validate_minstral_prompt`
     after formatting and use those issues for a last-resort content re-query.
     """
 
@@ -2768,14 +2781,14 @@ def format_ministral_prompt(llm_result: Any, context: Mapping[str, Any] | None) 
     return remove_subject_references_from_dialogue(formatted)
 
 
-def validate_ministral_prompt(
+def validate_minstral_prompt(
     result: Mapping[str, Any], context: Mapping[str, Any] | None
 ) -> list[str]:
     """Return stable descriptions of unresolved format and content violations."""
 
     safe_context: Mapping[str, Any] = context or {}
     if not isinstance(result, Mapping):
-        return ["Formatted Ministral result must be an object."]
+        return ["Formatted Minstral result must be an object."]
     issues: list[str] = []
     for rule in RULE_REGISTRY:
         issues.extend(rule.validate(result, safe_context))
@@ -2784,11 +2797,13 @@ def validate_ministral_prompt(
     return list(dict.fromkeys(issues))
 
 
-class MinistralFormatter(BaseFormatter):
-    """Adapter exposing the Ministral repair pipeline through the shared API."""
+class MinstralFormatter(BaseFormatter):
+    """Adapter exposing the Minstral repair pipeline through the shared API."""
+
+    DEFAULT_LLM_SETTINGS = DEFAULT_LLM_SETTINGS
 
     def sanitize_generated_text(self, value: str) -> str:
-        """Remove every asterisk emitted as Ministral Markdown decoration."""
+        """Remove every asterisk emitted as Minstral Markdown decoration."""
 
         return _strip_markdown(str(value))
 
@@ -2802,25 +2817,25 @@ class MinistralFormatter(BaseFormatter):
         llm_result: Any,
         context: Mapping[str, Any] | None,
     ) -> dict[str, Any]:
-        return format_ministral_prompt(llm_result, context)
+        return format_minstral_prompt(llm_result, context)
 
     def validate_prompt(
         self,
         result: Mapping[str, Any],
         context: Mapping[str, Any] | None,
     ) -> list[str]:
-        return validate_ministral_prompt(result, context)
+        return validate_minstral_prompt(result, context)
 
 
 __all__ = [
-    "MinistralFormatter",
+    "MinstralFormatter",
     "RULE_REGISTRY",
     "extract_inline_dialogue_subjects",
-    "format_ministral_prompt",
+    "format_minstral_prompt",
     "remove_non_speaking_speaker_ids",
     "sanitize_director_text",
     "validate_h3_dialogue_format",
-    "validate_ministral_prompt",
+    "validate_minstral_prompt",
 ]
 
 

@@ -1,7 +1,7 @@
 """Qwen-specific formatting for MiniMax H3 prompt fields.
 
 The repairs in this module are limited to patterns observed in Qwen responses.
-The shared Ministral formatter still owns the common H3
+The shared Minstral formatter still owns the common H3
 schema and validation rules.
 """
 
@@ -12,7 +12,20 @@ import re
 from typing import Any, Mapping
 
 from formatter_base import BaseFormatter
-import ministral_formatter as ministral
+import minstral_formatter as minstral
+
+
+DEFAULT_LLM_SETTINGS = {
+    "temperature": 0.15,
+    "top_p": 1.0,
+    "top_k": 0,
+    "min_p": 0.0,
+    "repeat_penalty": 1.0,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "chat_template": "built-in",
+    "jinja": True,
+}
 
 
 _ABSTRACT_MUSIC_WORDS = re.compile(
@@ -43,7 +56,7 @@ def _prepare_qwen_result(
         return llm_result
 
     prepared = copy.deepcopy(dict(llm_result))
-    description = str(prepared.get(ministral.DESCRIPTION, "") or "")
+    description = str(prepared.get(minstral.DESCRIPTION, "") or "")
     description = re.sub(
         r"(?i)(Camera\s+continues\s+from\s+the\s+previous\s+shot)\.{2,}",
         r"\1.",
@@ -52,7 +65,7 @@ def _prepare_qwen_result(
 
     # Qwen often writes "Mark's face as he says: <d>...".  Preserve the
     # camera prose while making the known speaker explicit for H3.
-    records = ministral._subject_records(context)
+    records = minstral._subject_records(context)
     speech_verbs = (
         r"says|asks|answers|replies|shouts|whispers|yells|tells|"
         r"exclaims|narrates"
@@ -71,21 +84,21 @@ def _prepare_qwen_result(
             description,
             flags=re.I,
         )
-    prepared[ministral.DESCRIPTION] = description
+    prepared[minstral.DESCRIPTION] = description
 
-    soundscape = str(prepared.get(ministral.SOUNDSCAPE, "") or "")
+    soundscape = str(prepared.get(minstral.SOUNDSCAPE, "") or "")
     soundscape = _SOUNDSCAPE_MUSIC_FRAGMENT.sub("", soundscape)
     soundscape = " ".join(
         sentence
-        for sentence in ministral._sentences(soundscape)
+        for sentence in minstral._sentences(soundscape)
         if not re.search(r"\b[A-Z][\w'-]*'s\s+[^.!?]{0,60}'[^']+'", sentence)
     )
     soundscape = re.sub(r"(?i)^with\s+", "", soundscape).strip()
     if soundscape:
         soundscape = soundscape[0].upper() + soundscape[1:]
-    prepared[ministral.SOUNDSCAPE] = soundscape
+    prepared[minstral.SOUNDSCAPE] = soundscape
 
-    music = str(prepared.get(ministral.MUSIC, "") or "")
+    music = str(prepared.get(minstral.MUSIC, "") or "")
     music = _ABSTRACT_MUSIC_WORDS.sub("", music)
     music = re.sub(
         r"(?i)\b(low|high|soft|loud)\s*,\s*"
@@ -93,7 +106,7 @@ def _prepare_qwen_result(
         r"\1 ",
         music,
     )
-    prepared[ministral.MUSIC] = music
+    prepared[minstral.MUSIC] = music
     return prepared
 
 
@@ -159,8 +172,10 @@ def _remove_visual_speaker_ids(description: str) -> str:
 class QwenFormatter(BaseFormatter):
     """Format locally tested Qwen responses for MiniMax H3."""
 
+    DEFAULT_LLM_SETTINGS = DEFAULT_LLM_SETTINGS
+
     def __init__(self) -> None:
-        self._shared = ministral.MinistralFormatter()
+        self._shared = minstral.MinstralFormatter()
 
     def format_prompt(
         self,
@@ -170,13 +185,13 @@ class QwenFormatter(BaseFormatter):
         safe_context: Mapping[str, Any] = context or {}
         prepared = _prepare_qwen_result(llm_result, safe_context)
         formatted = self._shared.format_prompt(prepared, safe_context)
-        description = _remove_visual_speaker_ids(formatted[ministral.DESCRIPTION])
+        description = _remove_visual_speaker_ids(formatted[minstral.DESCRIPTION])
         description = re.sub(
             r"(?i)\((S\d+)\)\s+\(\1\)",
             r"(\1)",
             description,
         )
-        formatted[ministral.DESCRIPTION] = _clamp_terminal_timestamps(
+        formatted[minstral.DESCRIPTION] = _clamp_terminal_timestamps(
             re.sub(
                 r"(?i)(Camera\s+continues\s+from\s+the\s+previous\s+shot\.)"
                 r"\s*(?:\.\s*)+",

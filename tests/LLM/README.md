@@ -34,7 +34,11 @@ Override as needed:
     export H3_LLM_TIMEOUT=120
     export H3_LLM_TEMPERATURE=0
 
-The benchmark also sends `repeat_penalty=1.1`, `top_p=0.95`, and `min_p=0.05`.
+The benchmark selects settings by model. Minstral keeps the current settings:
+`repeat_penalty=1.1`, `top_p=0.95`, and `min_p=0.05`. Qwen uses temperature 0,
+`repeat_penalty=1.15`, default `top_p`/`top_k`/`min_p`, thinking off, its built-in
+Jinja chat template, an 8K context, and a user-only prompt layout. Start the
+Qwen llama.cpp server with `--jinja` and an 8K context window.
 
 The scoring harness uses the local llama.cpp endpoint above. Override it with
 `H3_LLM_URL` if needed.

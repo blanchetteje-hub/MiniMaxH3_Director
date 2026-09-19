@@ -5,7 +5,7 @@ import os
 from collections import Counter
 
 from cases import ALL_CASES
-from llama_client import LLMError, call_llama, normalize_result
+from llama_client import LLMError, call_llama, get_model_settings, normalize_result
 from prompt_under_test import build_messages
 from skeptic_prompt import build_skeptic_messages
 
@@ -81,8 +81,13 @@ def main():
     skeptic_rejections = []
     second_pass_calls = 0
     diagnostic_counts = Counter()
+    settings = get_model_settings()
 
-    results = run_lane(enumerate(cases, 1), BENCHMARK_URL, build_messages)
+    results = run_lane(
+        enumerate(cases, 1),
+        BENCHMARK_URL,
+        lambda case: build_messages(case, settings),
+    )
 
     for index, case, valid, issue, error in results:
         if error is not None:
@@ -107,7 +112,7 @@ def main():
         if args.mode == "primary+skeptic" and primary_valid:
             second_pass_calls += 1
             _, skeptic_valid, skeptic_issue, skeptic_error = run_case(
-                case, BENCHMARK_URL, build_skeptic_messages(case)
+                case, BENCHMARK_URL, build_skeptic_messages(case, settings)
             )
             if skeptic_error is not None:
                 format_errors += 1
