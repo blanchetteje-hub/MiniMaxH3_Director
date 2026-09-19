@@ -35,7 +35,7 @@ Override as needed:
 
     export H3_LLM_URL=http://127.0.0.1:1234/v1/chat/completions
     export H3_LLM_MODEL=your-model-name
-    export H3_LLM_TIMEOUT=120
+    export H3_LLM_TIMEOUT=300
     export H3_LLM_TEMPERATURE=0
 
 The benchmark selects settings by model. Mistral keeps the current settings:

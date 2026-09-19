@@ -3,9 +3,19 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
+import threading
+import time
 import urllib.error
 import urllib.request
 
+
+SCRIPT_DIR = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
+PROMPT_HISTORY_LOCK = threading.Lock()
+_PROMPT_HISTORY_RESET = False
 
 DEFAULT_URL = "http://127.0.0.1:1234/v1/chat/completions"
 BENCHMARK_SEED = 42
@@ -60,7 +70,7 @@ def get_model_settings(model: str | None = None) -> dict[str, object]:
     )
     settings = dict(profile)
     settings["model"] = model
-    settings["timeout"] = float(os.environ.get("H3_LLM_TIMEOUT", "120"))
+    settings["timeout"] = float(os.environ.get("H3_LLM_TIMEOUT", "300"))
     if "H3_LLM_TEMPERATURE" in os.environ:
         settings["temperature"] = float(os.environ["H3_LLM_TEMPERATURE"])
     return settings
@@ -200,6 +210,105 @@ def _extract_json(text: str) -> dict:
     return value
 
 
+def _write_prompt_history_record(history_file, messages, metadata):
+    """Write one prompt-history record in minimax.py's readable format."""
+    separator = "=" * 72
+    content_blocks = []
+    record_messages = []
+    for message in messages or []:
+        if not isinstance(message, dict):
+            record_messages.append(message)
+            continue
+        record_message = dict(message)
+        content = record_message.get("content")
+        if isinstance(content, str):
+            content_index = len(content_blocks)
+            content_blocks.append(content)
+            record_message["content"] = {
+                "__prompt_history_content__": content_index,
+                "length": len(content),
+            }
+        record_messages.append(record_message)
+
+    history_file.write(separator + "\n")
+    json.dump(
+        {"metadata": metadata, "messages": record_messages},
+        history_file,
+        ensure_ascii=False,
+        indent=2,
+    )
+    history_file.write("\n")
+    for content_index, content in enumerate(content_blocks):
+        history_file.write(
+            f"<<<PROMPT_HISTORY_CONTENT {content_index} "
+            f"LENGTH {len(content)}>>>\n"
+        )
+        history_file.write(content)
+        if not content.endswith("\n"):
+            history_file.write("\n")
+        history_file.write(
+            f"<<<END_PROMPT_HISTORY_CONTENT {content_index}>>>\n"
+        )
+
+
+def _reset_prompt_history(path=PROMPT_HISTORY_FILE):
+    """Clear prompt history once before a benchmark run starts."""
+    directory = os.path.dirname(os.path.abspath(path))
+    os.makedirs(directory, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as history_file:
+        history_file.write("[]\n")
+
+
+def _append_prompt_history(messages, path=PROMPT_HISTORY_FILE, metadata=None):
+    """Append one outgoing prompt using minimax.py's history format."""
+    directory = os.path.dirname(os.path.abspath(path))
+    os.makedirs(directory, exist_ok=True)
+    with PROMPT_HISTORY_LOCK:
+        descriptor, temporary_path = tempfile.mkstemp(
+            prefix=".prompt_history_",
+            suffix=".tmp",
+            dir=directory,
+            text=True,
+        )
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as history_file:
+                if os.path.exists(path) and os.path.getsize(path):
+                    with open(path, "r", encoding="utf-8") as existing_history:
+                        existing_content = existing_history.read()
+                    if existing_content.strip() != "[]":
+                        history_file.write(existing_content)
+                _write_prompt_history_record(
+                    history_file,
+                    messages,
+                    {
+                        "timestamp": time.strftime(
+                            "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+                        ),
+                        **(metadata or {}),
+                    },
+                )
+                history_file.flush()
+                os.fsync(history_file.fileno())
+            os.replace(temporary_path, path)
+        finally:
+            if os.path.exists(temporary_path):
+                os.remove(temporary_path)
+
+
+def _log_prompt(messages, *, model, url):
+    """Reset history for the first call, then append each outgoing prompt."""
+    global _PROMPT_HISTORY_RESET
+    with PROMPT_HISTORY_LOCK:
+        if not _PROMPT_HISTORY_RESET:
+            _reset_prompt_history(PROMPT_HISTORY_FILE)
+            _PROMPT_HISTORY_RESET = True
+    _append_prompt_history(
+        messages,
+        path=PROMPT_HISTORY_FILE,
+        metadata={"model": model, "url": url, "entry_type": "request"},
+    )
+
+
 def call_llama(messages: list[dict[str, str]], url: str | None = None) -> dict:
     url = url or os.environ.get("H3_LLM_URL", DEFAULT_URL)
     settings = get_model_settings()
@@ -210,6 +319,7 @@ def call_llama(messages: list[dict[str, str]], url: str | None = None) -> dict:
         "temperature": settings["temperature"],
         "seed": settings["seed"],
         "stream": settings["stream"],
+        "max_tokens": 512,
     }
     for parameter in ("repeat_penalty", "top_p", "top_k", "min_p"):
         value = settings[parameter]
@@ -221,6 +331,8 @@ def call_llama(messages: list[dict[str, str]], url: str | None = None) -> dict:
     # remain in the profile rather than being sent as chat-completion fields.
     if settings["thinking"] in (False, "off"):
         payload["chat_template_kwargs"] = {"enable_thinking": False}
+
+    _log_prompt(messages, model=str(settings["model"]), url=url)
 
     req = urllib.request.Request(
         url,
