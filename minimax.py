@@ -890,7 +890,13 @@ _WARDROBE_DESCRIPTION_RE = re.compile(
     r"(?i)\b(?:wears?|wearing|dressed\s+in|clad\s+in|draped\s+in|"
     r"outfitted\s+in|outfit\s+(?:consists?\s+of|comprises)|"
     r"two-piece\s+outfit\s+(?:consists?\s+of|with))\s+"
-    r"(?P<items>[^.!?;\r\n]{1,240})"
+    r"(?P<items>[^.!?;\r\n]{1,240}?)(?="
+    r"\s+(?:while|as|when)\b"
+    r"|,\s+(?:as|while|when)\b"
+    r"|,\s+(?=[^.!?;\r\n]{0,160}\b(?:raised|holding|carrying|"
+    r"slung|running|kneeling|covered|camera\s+(?:pans?|tracks?|"
+    r"zooms?|follows?|circles?|pulls?|pushes?)\b))"
+    r"|[.!?;\r\n]|$)"
 )
 
 _WARDROBE_ACTION_BOUNDARY_RE = re.compile(
@@ -1102,7 +1108,7 @@ _H3_APPEND_DESCRIPTION_PREFIX = (
 )
 
 _H3_CONTINUATION_STYLE_PREFIX_RE = re.compile(
-    r"^\s*(?:live-action\s*,\s*cinematic\s*,\s*)+",
+    r"^\s*(?:live-action\s*,\s*cinematic\s*(?:,|\.)\s*)+",
     re.IGNORECASE,
 )
 
@@ -3122,6 +3128,102 @@ def _continuity_subject_map(subjects, registry=None):
         for record in values
         if str(record.get("name") or "").strip()
     }
+
+
+def _continuity_scene_description(h3_prompt):
+    """Extract only H3 detailed-description prose from an assembled prompt."""
+    text = str(h3_prompt or "")
+    match = re.search(
+        r"(?is)(?:^|\n)detailed_description:\s*(.*?)(?=\n\n"
+        r"(?:overall_soundscape|non_diegetic_music):|\Z)",
+        text,
+    )
+    return match.group(1).strip() if match else text
+
+
+def _continuity_subject_identity_is_grounded(
+    raw_name,
+    record,
+    scene_description,
+    registry,
+    visible_subject_ids=None,
+):
+    """Return whether a candidate Subject has explicit scene identity evidence."""
+    visible = {
+        int(value)
+        for value in (visible_subject_ids or ())
+        if isinstance(value, int) or str(value).isdigit()
+    }
+    if not visible:
+        visible = _h3_visual_subject_ids(scene_description, registry)
+
+    raw_id = _subject_numeric_id(record, _subject_reference_id(raw_name))
+    if raw_id is not None and int(raw_id) in visible:
+        return True
+
+    proposed_name = str(record.get("name") or raw_name or "").strip()
+    for subject_id, name, _registered in _subject_registry_records(registry):
+        if _subject_identity_key(name) == _subject_identity_key(proposed_name):
+            return int(subject_id) in visible
+
+    # New durable names must be explicitly visible in the scene. Generic
+    # transient actors are intentionally not promoted by this check.
+    if not _subject_name_is_promotable(proposed_name):
+        return False
+    visual_text = _h3_visual_identity_text(scene_description)
+    return re.search(
+        rf"(?i)(?<!\w){re.escape(proposed_name)}(?!\w)",
+        visual_text,
+    ) is not None
+
+
+def _guard_combined_continuity_subjects(
+    candidate,
+    h3_prompt,
+    subject_definitions,
+    committed_state=None,
+):
+    """Reject anonymous Subject remaps while copying forward registry state."""
+    if not isinstance(candidate, dict):
+        return candidate
+    registry = parse_subject_registry(str(subject_definitions or ""))
+    scene_description = _continuity_scene_description(h3_prompt)
+    base = continuity_state_for_registry(
+        subject_definitions,
+        copy.deepcopy(committed_state) if isinstance(committed_state, dict) else None,
+    )
+    candidate_subjects = candidate.get("subjects")
+    candidate_map = _continuity_subject_map(candidate_subjects, registry)
+    guarded_subjects = copy.deepcopy(base.get("subjects", {}))
+    for raw_name, record in candidate_map.items():
+        if not _continuity_subject_identity_is_grounded(
+            raw_name,
+            record,
+            scene_description,
+            registry,
+        ):
+            print(
+                "WARNING: Ignoring continuity identity without explicit scene "
+                f"evidence for {record.get('name') or raw_name!r}."
+            )
+            continue
+        name = str(record.get("name") or raw_name).strip()
+        existing_name = _find_existing_subject_name(
+            guarded_subjects,
+            name,
+            subject_id=record.get("subject_id"),
+            speaker_id=record.get("speaker_id"),
+        )
+        if existing_name is None:
+            guarded_subjects[name] = copy.deepcopy(record)
+            continue
+        target = guarded_subjects[existing_name]
+        for field, value in record.items():
+            if field not in SUBJECT_IDENTITY_FIELDS:
+                target[field] = copy.deepcopy(value)
+    guarded = copy.deepcopy(candidate)
+    guarded["subjects"] = guarded_subjects
+    return guarded
 
 
 # Resolve one raw name/token to the registry's canonical Subject entry.
@@ -15058,7 +15160,7 @@ def extract_dialogue_subject_declarations(detailed_description):
         r"\((?P<speaker>S\d+)\)\s+"
         r"(?:says in an off-screen voiceover|says?|asks?|answers?|replies|"
         r"shouts?|whispers?|yells?|tells?|exclaims?|narrates?|yelps?|cries|"
-        r"calls?|murmurs?|mutters?|growls?|screams?)"
+        r"calls?(?:\s+out)?|murmurs?|mutters?|growls?|screams?)"
         r"[^<>.!?]{0,120}:?\s*$",
         re.I,
     )
@@ -15136,6 +15238,7 @@ def register_named_subject_hints(
         copy.deepcopy(continuity_state),
     )
     description = str(detailed_description or "")
+    visual_description = _h3_visual_identity_text(description)
     added_names = []
     for raw_name in subject_hints or []:
         name = " ".join(str(raw_name).split()).strip(" ,.;:-")
@@ -15145,7 +15248,7 @@ def register_named_subject_hints(
             continue
         if re.search(
             rf"(?<![\w]){re.escape(name)}(?![\w])",
-            description,
+            visual_description,
             re.I,
         ) is None:
             continue
@@ -16502,7 +16605,28 @@ def normalize_structured_continuity_state(
         candidate["subjects"],
         parse_subject_registry(subject_definitions),
     )
+    continuity_registry = parse_subject_registry(subject_definitions)
     for raw_name, record in candidate["subjects"].items():
+        proposed_name = str(record.get("name") or raw_name).strip()
+        registered_match = _resolve_subject_registry_entry(
+            proposed_name,
+            continuity_registry,
+        )
+        if (
+            registered_match is not None
+            and str(newest_description or "").strip()
+            and not _continuity_subject_identity_is_grounded(
+                raw_name,
+                record,
+                newest_description,
+                continuity_registry,
+            )
+        ):
+            print(
+                "WARNING: Ignoring continuity Subject update without explicit "
+                f"scene evidence for {record.get('name') or raw_name!r}."
+            )
+            continue
         name = resolve_subject_name(raw_name, record)
         if name is None:
             proposed_name = str(record.get("name", raw_name)).strip()
@@ -17018,6 +17142,7 @@ def request_combined_continuity(
     content_attempts=SUMMARY_CONTENT_ATTEMPTS,
     defer_opening=False,
     subject_definitions="",
+    committed_state=None,
 ):
     """Run the single combined continuity extraction/reduction call.
 
@@ -17079,6 +17204,16 @@ def request_combined_continuity(
                 "Continuity",
                 llm_request=llm_request,
             )
+            if str(subject_definitions or "").strip() or isinstance(
+                committed_state,
+                dict,
+            ):
+                reduced_state = _guard_combined_continuity_subjects(
+                    reduced_state,
+                    h3_prompt,
+                    subject_definitions,
+                    committed_state=committed_state,
+                )
             if str(subject_definitions or "").strip():
                 original_subjects = reduced_state.get("subjects")
                 if isinstance(original_subjects, (dict, list)):
@@ -18639,23 +18774,73 @@ def extract_current_visible_subject_ids(detailed_description):
     }
 
 
+# Return the portion of scene prose that is visual identity evidence.
+def _h3_visual_identity_text(detailed_description):
+    """Mask dialogue/addressee text before resolving visual Subjects."""
+    source = str(detailed_description or "")
+    masked = list(source)
+
+    def blank(start, end):
+        for index in range(max(0, start), min(len(masked), end)):
+            if masked[index] not in "\n":
+                masked[index] = " "
+
+    for match in _DIALOGUE_BLOCK_PATTERN.finditer(source):
+        blank(match.start(), match.end())
+
+    quote_pattern = re.compile(
+        r'"[^"\r\n]+"|\u201c[^\u201d\r\n]+\u201d|\u2018[^\u2019\r\n]+\u2019'
+    )
+    quote_matches = list(quote_pattern.finditer(source))
+    for match in quote_matches:
+        blank(match.start(), match.end())
+
+    speech_pattern = re.compile(
+        r"(?i)\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"tells?|exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|"
+        r"mutters?|growls?|screams?)\b"
+    )
+    masked_text = "".join(masked)
+    for speech in speech_pattern.finditer(masked_text):
+        quote = next(
+            (candidate for candidate in quote_matches if candidate.start() >= speech.end()),
+            None,
+        )
+        if quote is None:
+            continue
+        clause = masked_text[speech.end():quote.start()]
+        to_match = re.search(r"(?i)\bto\b", clause)
+        if to_match is not None and "\n" not in clause:
+            blank(speech.end() + to_match.start(), quote.start())
+
+    return "".join(masked)
+
+
+def _h3_visual_subject_ids(detailed_description, registry):
+    """Return registered Subjects with deterministic visual evidence."""
+    text = _h3_visual_identity_text(detailed_description)
+    visible = {
+        int(subject_id)
+        for subject_id in re.findall(r"(?i)<Subject\s+(\d+)>", text)
+    }
+    for subject_id, name, record in _subject_registry_records(registry):
+        name = str(record.get("name") or name or "").strip()
+        if name and re.search(rf"(?i)(?<!\w){re.escape(name)}(?!\w)", text):
+            visible.add(int(subject_id))
+    return visible
+
+
 # Return explicit or plain-name Subject references without editing prose.
 def _subject_ids_referenced_by_description(
     detailed_description,
     subject_definitions,
 ):
     """Return explicit or plain-name Subject references without editing prose."""
-    visible = extract_current_visible_subject_ids(detailed_description)
     try:
         registry = parse_subject_registry(str(subject_definitions or ""))
     except (TypeError, ValueError):
         registry = {}
-    text = str(detailed_description or "")
-    for subject_id, record in registry.items():
-        name = str(record.get("name") or "").strip()
-        if name and re.search(rf"(?i)\b{re.escape(name)}\b", text):
-            visible.add(int(subject_id))
-    return visible
+    return _h3_visual_subject_ids(detailed_description, registry)
 
 
 # Keep identity/reference definitions only for target-visible Subjects.
@@ -18708,23 +18893,9 @@ def _filter_h3_subject_definitions(
     # tag was not included in visible, keep its definition without adding a
     # Subject tag to the final H3 description.
     if isinstance(detailed_description, str) and registry:
-        # Sort names by length desc to avoid partial overlaps
-        name_items = sorted(
-            ((sid, info.get("name") or "") for sid, info in registry.items()),
-            key=lambda t: len(t[1] or ""),
-            reverse=True,
+        visible.update(
+            _h3_visual_subject_ids(modified_description, registry)
         )
-        for sid, name in name_items:
-            if not name:
-                continue
-            if sid in visible:
-                continue
-            # Find word-boundary occurrences of the name
-            pattern = r"(?i)\b" + re.escape(name) + r"\b"
-            if not re.search(pattern, modified_description):
-                continue
-            # Mark subject as visible
-            visible.add(sid)
 
     # Now render lines: include only those subject definition lines with ids
     # in visible. Preserve original order. For visible ids without an original
@@ -19066,9 +19237,35 @@ def format_h3_structural_continuity_guard(
 
 
 # Return the deterministic H3 speech constraint for one segment.
+def _h3_contains_spoken_dialogue(detailed_description):
+    """Return whether H3 text contains tagged or clearly spoken dialogue."""
+    text = str(detailed_description or "")
+    if _DIALOGUE_BLOCK_PATTERN.search(text):
+        return True
+
+    quote_pattern = r"(?:\"[^\"\r\n]+\"|“[^”\r\n]+”|‘[^’\r\n]+’)"
+    speech_pattern = (
+        r"(?i)\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"tells?|exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|"
+        r"mutters?|growls?|screams?)\b"
+    )
+    for match in re.finditer(quote_pattern, text):
+        prefix = text[max(0, match.start() - 220):match.start()]
+        if not re.search(speech_pattern, prefix):
+            continue
+        if re.search(
+            r"(?i)\b(?:sign|banner|label|subtitle|screen|display|monitor|"
+            r"caption|written\s+text)\b",
+            prefix,
+        ):
+            continue
+        return True
+    return False
+
+
 def format_h3_spoken_dialogue_constraint(detailed_description):
     """Return the deterministic H3 speech constraint for one segment."""
-    if _DIALOGUE_BLOCK_PATTERN.search(str(detailed_description or "")):
+    if _h3_contains_spoken_dialogue(detailed_description):
         return ""
     return (
         "SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized "
@@ -19374,7 +19571,7 @@ def build_h3_prompt(
     )
     _append_h3_prompt_section(sections, "overall_soundscape", soundscape)
     _append_h3_prompt_section(sections, "non_diegetic_music", music)
-    spoken_dialogue_constraint = format_h3_spoken_dialogue_constraint(description)
+    spoken_dialogue_constraint = format_h3_spoken_dialogue_constraint(integrated)
     if spoken_dialogue_constraint:
         sections.append(spoken_dialogue_constraint)
     # Keep formatter-only fields out even when a malformed response embeds
@@ -23251,6 +23448,7 @@ def _run_main(
                 },
                 defer_opening=True,
                 subject_definitions=subject_definitions,
+                committed_state=copy.deepcopy(continuity_state),
             )
             print(
                 f"Combined continuity requested for segment {segment} "

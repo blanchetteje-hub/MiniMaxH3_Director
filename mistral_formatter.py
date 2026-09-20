@@ -447,7 +447,8 @@ def _canonicalize_registered_subject_aliases(
 
 _DIALOGUE_ATTRIBUTION = (
     r"says?|asks?|answers?|repl(?:y|ies)|shouts?|whispers?|yells?|tells?|"
-    r"exclaims?|narrates?"
+    r"exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|mutters?|"
+    r"growls?|screams?"
 )
 _DIALOGUE_PROPER_NAME = (
     rf"[A-Z][\w'\u2019-]*"
@@ -1187,6 +1188,10 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
     explicitly uses the picture itself as a frame/keyframe/composition anchor.
     They are not injected next to character names for routine identity recall.
     """
+    result[DESCRIPTION] = _convert_attributed_quoted_dialogue(
+        result[DESCRIPTION],
+        context,
+    )
     names, subjects, pictures = _subject_maps(context)
     subject_pictures = _subject_picture_map(context)
     records = _subject_records(context)
@@ -1339,6 +1344,37 @@ def _repair_subject_tags(result: dict[str, Any], context: Mapping[str, Any]) -> 
     result[DESCRIPTION] = _clean_space(
         _restore_dialogue_blocks(text, dialogue_blocks)
     )
+    result[DESCRIPTION] = _remove_dialogue_target_subject_tags(
+        result[DESCRIPTION]
+    )
+
+
+def _remove_dialogue_target_subject_tags(
+    text: str,
+) -> str:
+    """Keep addressees in speech attributions as plain names."""
+    for dialogue in reversed(list(re.finditer(r"<d>.*?</d>", text, re.I | re.S))):
+        before = text[max(0, dialogue.start() - 260):dialogue.start()]
+        boundary = max(
+            before.rfind(". "),
+            before.rfind("! "),
+            before.rfind("? "),
+            before.rfind("\n"),
+        )
+        clause_start = max(0, dialogue.start() - 260) + boundary + 1
+        clause = text[clause_start:dialogue.start()]
+        speech = re.search(
+            rf"\b(?:{_DIALOGUE_ATTRIBUTION})\b[^.!?\r\n]{{0,140}}:\s*$",
+            clause,
+            re.IGNORECASE,
+        )
+        if speech is None:
+            continue
+        target_start = clause_start + speech.start()
+        target = text[target_start:dialogue.start()]
+        target = re.sub(r"(?i)<Subject\s+\d+>\s*", "", target)
+        text = text[:target_start] + target + text[dialogue.start():]
+    return text
 
 def _canonicalize_compound_ids(text: str, id_map: Mapping[int, int]) -> str:
     def replace(match: re.Match[str]) -> str:
@@ -1406,8 +1442,7 @@ def _move_dialogue_delivery_cues(text: str) -> str:
 
         if prefix:
             speech = re.compile(
-                r"\b(says|asks|answers|replies|shouts|whispers|yells|tells|"
-                r"exclaims|narrates)\b",
+                rf"\b({_DIALOGUE_ATTRIBUTION})\b",
                 re.I,
             )
             matches = list(speech.finditer(prefix))
@@ -1425,6 +1460,89 @@ def _move_dialogue_delivery_cues(text: str) -> str:
     return block.sub(replace, text)
 
 
+def _convert_attributed_quoted_dialogue(
+    text: str,
+    context: Mapping[str, Any],
+) -> str:
+    """Convert a clearly attributed quoted line into H3 dialogue syntax.
+
+    This intentionally requires a registered name before a speech verb. Names
+    after ``to`` and names inside the quote are therefore never candidates for
+    the speaker. The quote body is copied verbatim into the dialogue block.
+    """
+
+    records = _subject_records(context)
+    if not records:
+        return text
+
+    quote_pattern = re.compile(
+        r'"(?P<body>[^"\r\n]+)"'
+        r"|\u201c(?P<body_curly>[^\u201d\r\n]+)\u201d"
+        r"|\u2018(?P<body_single>[^\u2019\r\n]+)\u2019",
+        re.DOTALL,
+    )
+
+    for quote in reversed(list(quote_pattern.finditer(text))):
+        lower_text = text.casefold()
+        if lower_text.rfind("<d>", 0, quote.start()) > lower_text.rfind(
+            "</d>", 0, quote.start()
+        ):
+            continue
+
+        boundary = max(
+            text.rfind(".", 0, quote.start()),
+            text.rfind("!", 0, quote.start()),
+            text.rfind("?", 0, quote.start()),
+            text.rfind("\n", 0, quote.start()),
+        )
+        window_start = max(boundary + 1, quote.start() - 260)
+        before = text[window_start:quote.start()]
+        candidates = []
+        for name, record in sorted(records.items(), key=lambda item: -len(item[0])):
+            speaker_id = str(record.get("speaker_id") or "").strip()
+            if not speaker_id:
+                continue
+            attribution = re.compile(
+                rf"(?P<name>\b{re.escape(name)}\b)"
+                rf"(?P<middle>[^.!?\r\n]{{0,160}}?)\b"
+                rf"(?P<verb>{_DIALOGUE_ATTRIBUTION})\b"
+                rf"(?P<tail>[^.!?\r\n]{{0,120}})$",
+                re.IGNORECASE,
+            )
+            match = attribution.search(before)
+            if match is not None:
+                candidates.append((match.start("name"), match, speaker_id))
+        if not candidates:
+            continue
+
+        _, speaker_match, speaker_id = max(candidates, key=lambda item: item[0])
+        name_end = window_start + speaker_match.end("name")
+        quote_start = quote.start()
+        quote_end = quote.end()
+        between_name_and_quote = text[name_end:quote_start]
+        if not re.search(r"\(\s*S\d+\s*\)", between_name_and_quote):
+            token = f" ({speaker_id})"
+            text = text[:name_end] + token + text[name_end:]
+            quote_start += len(token)
+            quote_end += len(token)
+
+        head = text[:quote_start].rstrip()
+        if head.endswith(","):
+            head = head[:-1].rstrip()
+        if not head.endswith(":"):
+            head += ":"
+        body = (
+            quote.group("body")
+            or quote.group("body_curly")
+            or quote.group("body_single")
+            or ""
+        )
+        replacement = f"<d>[English] {body}</d>"
+        text = head + " " + replacement + text[quote_end:]
+
+    return text
+
+
 def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     # An empty model-generated speaker placeholder blocks the normal
     # ``Name says`` attribution matcher. Remove it before assigning IDs.
@@ -1440,6 +1558,7 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
     )
     names, subjects, _ = _subject_maps(context)
     records = _subject_records(context)
+    text = _convert_attributed_quoted_dialogue(text, context)
 
     for name, record in sorted(records.items(), key=lambda item: -len(item[0])):
         speaker_id = record.get("speaker_id")
@@ -1458,8 +1577,7 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
         )
         text = re.sub(
             rf"\b({re.escape(name)})\b\s*(<Picture\s+\d+>)?\s+"
-            rf"(?P<verb>says|asks|answers|replies|shouts|whispers|yells|"
-            rf"tells|exclaims|narrates)\s*:",
+            rf"(?P<verb>{_DIALOGUE_ATTRIBUTION})\s*:",
             lambda match, speaker=speaker_id: (
                 f"{match.group(1)} "
                 f"{match.group(2) + ' ' if match.group(2) else ''}"
@@ -1470,8 +1588,7 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
         )
         text = re.sub(
             rf"\b({re.escape(name)})\b\s*(<Picture\s+\d+>)?\s+"
-            rf"(?P<verb>says|asks|answers|replies|shouts|whispers|yells|"
-            rf"tells|exclaims|narrates)\s+(?=<d>)",
+            rf"(?P<verb>{_DIALOGUE_ATTRIBUTION})\s+(?=<d>)",
             lambda match, speaker=speaker_id: (
                 f"{match.group(1)} "
                 f"{match.group(2) + ' ' if match.group(2) else ''}"
@@ -1566,14 +1683,15 @@ def _repair_dialogue(result: dict[str, Any], context: Mapping[str, Any]) -> None
     # (for example, "saysagain" or "saysfirmly") should still read as two
     # words, while punctuation forms like "says:" remain unchanged.
     text = re.sub(
-        r"(?i)\b(says|asks|answers|replies|shouts|whispers|yells|tells|exclaims|narrates)"
+        r"(?i)\b(says|asks|answers|replies|shouts|whispers|yells|tells|"
+        r"exclaims|narrates)"
         r"(?=[a-z])",
         r"\1 ",
         text,
     )
 
     # Add a stable ID when a known character directly introduces dialogue.
-    attribution = r"says|asks|answers|replies|shouts|whispers|yells|tells|exclaims|narrates"
+    attribution = _DIALOGUE_ATTRIBUTION
     for name, canonical in names.items():
         text = re.sub(
             rf"\b(?P<name>{re.escape(name)})\b"
@@ -1808,7 +1926,7 @@ def _repair_canonical_subject_tags(
             rf"(?P<name>{re.escape(name)})"
             r"(?=\s+\(S\d+\)\s+"
             r"(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
-            r"tells?|exclaims?|narrates?))",
+            r"tells?|exclaims?|narrates?|calls?(?:\s+out)?))",
             r"\g<name>",
             text,
             flags=re.I,
@@ -2251,8 +2369,7 @@ def _validate_dialogue_speaker_contract(
         r"\((?P<speaker>S\d+)\)\s+"
         r"(?P<verb>"
         r"says in an off-screen voiceover|"
-        r"says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
-        r"tells?|exclaims?|narrates?"
+        rf"{_DIALOGUE_ATTRIBUTION}"
         r")"
         r"[^<>.!?]{0,100}:\s*$",
         re.I,
@@ -2776,6 +2893,9 @@ def format_mistral_prompt(llm_result: Any, context: Mapping[str, Any] | None) ->
             break
     # Keep this as a final output-boundary guarantee in case a later repair
     # rule introduces text sourced from model-provided context.
+    formatted[DESCRIPTION] = _remove_dialogue_target_subject_tags(
+        formatted[DESCRIPTION]
+    )
     for field in (DESCRIPTION, SOUNDSCAPE, MUSIC):
         formatted[field] = sanitize_director_text(formatted[field])
     return remove_subject_references_from_dialogue(formatted)
