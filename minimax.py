@@ -268,6 +268,8 @@ BEAT_PHASE_GENERATION_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 
 BEAT_PROCESS_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 
+DIRECTOR_RAW_SCENE_ATTEMPTS = 3
+
 BEAT_VALIDATION_STATE_VERSION = 3
 
 # Frozen model profiles used by the beat-validation benchmark.  These are
@@ -419,6 +421,23 @@ H3_FORMATTER_RESPONSE_FORMAT = {
                 "overall_soundscape",
                 "non_diegetic_music",
             ],
+            "additionalProperties": False,
+        },
+    },
+}
+
+DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_raw_scene",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "raw_scene": {"type": "string"},
+                "beat_complete": {"type": "boolean"},
+            },
+            "required": ["raw_scene", "beat_complete"],
             "additionalProperties": False,
         },
     },
@@ -761,6 +780,18 @@ MICRO-BEATS
 - Always make sure the last micro-beat is at least 1 second before the alotted {segment_seconds} seconds.
 
 {story_segment_ending_rules}
+
+OUTPUT CONTRACT
+
+- Return only one valid JSON object with exactly these properties:
+  {{"raw_scene": "...", "beat_complete": true}}
+- `raw_scene` must contain the complete timed scene and the one-sentence END
+  CONTINUITY STATE.
+- Set `beat_complete` to true only when RAW SCENE visibly executes every
+  explicit required action, object, and outcome in CURRENT BEAT. If any
+  requirement is missing, set it to false.
+- Compress timing when necessary to fit the segment. Never omit an explicit
+  CURRENT BEAT requirement and never advance into NEXT BEAT.
 
 EXAMPLE:
 
@@ -3192,21 +3223,17 @@ def _guard_combined_continuity_subjects(
         subject_definitions,
         copy.deepcopy(committed_state) if isinstance(committed_state, dict) else None,
     )
+    grounding_registry = dict(registry)
+    for subject_id, _name, record in _ordered_continuity_subjects(base):
+        grounding_registry.setdefault(subject_id, copy.deepcopy(record))
     candidate_subjects = candidate.get("subjects")
     candidate_map = _continuity_subject_map(candidate_subjects, registry)
     guarded_subjects = copy.deepcopy(base.get("subjects", {}))
     for raw_name, record in candidate_map.items():
-        if not _continuity_subject_identity_is_grounded(
-            raw_name,
-            record,
-            scene_description,
-            registry,
-        ):
-            print(
-                "WARNING: Ignoring continuity identity without explicit scene "
-                f"evidence for {record.get('name') or raw_name!r}."
-            )
-            continue
+        # Continuity is allowed to update an identity that was registered
+        # before this call, but it is never an identity-registration path.
+        # In particular, visual presence of an otherwise unknown label is not
+        # enough to turn a transient actor into durable Subject state.
         name = str(record.get("name") or raw_name).strip()
         existing_name = _find_existing_subject_name(
             guarded_subjects,
@@ -3215,7 +3242,21 @@ def _guard_combined_continuity_subjects(
             speaker_id=record.get("speaker_id"),
         )
         if existing_name is None:
-            guarded_subjects[name] = copy.deepcopy(record)
+            print(
+                "WARNING: Ignoring continuity identity that was not registered "
+                f"before continuity extraction for {name!r}."
+            )
+            continue
+        if not _continuity_subject_identity_is_grounded(
+            raw_name,
+            record,
+            scene_description,
+            grounding_registry,
+        ):
+            print(
+                "WARNING: Ignoring continuity identity without explicit scene "
+                f"evidence for {record.get('name') or raw_name!r}."
+            )
             continue
         target = guarded_subjects[existing_name]
         for field, value in record.items():
@@ -4245,6 +4286,40 @@ def _h3_continuity_state_for_visible_subjects(state, visible_subject_ids):
                 absent_names,
             )
     return rendered
+
+
+# Return an ephemeral Phase 2 copy scoped to the ending scene.
+def _phase2_continuity_state_for_scene(
+    state,
+    subject_definitions="",
+    ending_scene="",
+):
+    """Project continuity for Phase 2 without mutating canonical state."""
+    projected = copy.deepcopy(state)
+    scene = _continuity_scene_description(ending_scene)
+    if not str(scene or "").strip():
+        return projected
+
+    visible_subject_ids = _h3_opening_subject_ids_in_scene(
+        scene,
+        projected,
+        subject_definitions,
+    )
+    projected = _h3_continuity_state_for_visible_subjects(
+        projected,
+        visible_subject_ids,
+    )
+    visible = {
+        int(value)
+        for value in visible_subject_ids
+        if isinstance(value, int) or str(value).isdigit()
+    }
+    projected["subjects"] = {
+        name: record
+        for subject_id, name, record in _ordered_continuity_subjects(projected)
+        if subject_id in visible
+    }
+    return projected
 
 
 # Continuity facts that are safe to expose for one current scene.
@@ -6700,10 +6775,9 @@ def apply_reported_beat_completions(
             f"segment: {', '.join(str(x) for x in unexpected)}"
         )
     if expected_id not in reported:
-        print(
-            f"WARNING: Director did not confirm Beat {expected_id} complete for "
-            f"Segment {segment_number}; treating the assigned beat as complete "
-            "so generation can continue."
+        raise RuntimeError(
+            f"Director did not confirm Beat {expected_id} complete for "
+            f"Segment {segment_number}; refusing to advance the beat plan."
         )
 
     required_prior = set(range(1, expected_id))
@@ -13995,6 +14069,39 @@ def _normalize_raw_scene_result(raw_result):
     return text
 
 
+# Parse Request 1's structured raw-scene response.
+def _parse_director_raw_scene_result(raw_result):
+    """Return Request 1's scene text and model-owned completion claim."""
+    candidate = raw_result
+    if isinstance(raw_result, str):
+        try:
+            candidate = parse_llm_json_content(
+                raw_result,
+                repair_on_failure=False,
+            )
+        except (TypeError, ValueError, json.JSONDecodeError):
+            candidate = raw_result
+
+    if isinstance(candidate, dict):
+        raw_scene_value = candidate.get("raw_scene")
+        raw_scene = (
+            _normalize_raw_scene_result(raw_scene_value)
+            if isinstance(raw_scene_value, str)
+            else ""
+        )
+        beat_complete = candidate.get("beat_complete") is True
+    else:
+        # Legacy/free-form responses contain no trustworthy completion claim.
+        # Preserve their text for diagnostics, but force Request 1 retry logic.
+        raw_scene = _normalize_raw_scene_result(candidate)
+        beat_complete = False
+
+    return {
+        "raw_scene": raw_scene,
+        "beat_complete": beat_complete,
+    }
+
+
 # Return timestamps in a comparable ``(seconds, milliseconds)`` form.
 def _director_timestamps(value):
     """Return timestamps in a comparable ``(seconds, milliseconds)`` form."""
@@ -14014,16 +14121,8 @@ def _director_timestamps(value):
 # Require Request 2 to preserve Request 1's non-opening timestamps.
 def _validate_director_timestamp_correspondence(raw_scene, detailed_description):
     """Require Request 2 to preserve Request 1's non-opening timestamps."""
-    raw_timestamps = [
-        timestamp
-        for timestamp in _director_timestamps(raw_scene)
-        if timestamp != (0, 0)
-    ]
-    formatted_timestamps = [
-        timestamp
-        for timestamp in _director_timestamps(detailed_description)
-        if timestamp != (0, 0)
-    ]
+    raw_timestamps = _director_timestamps(raw_scene)
+    formatted_timestamps = _director_timestamps(detailed_description)
     if raw_timestamps == formatted_timestamps:
         return []
 
@@ -14453,7 +14552,6 @@ def _strip_formatter_metadata(value):
 # Parse Request 2's four-property JSON response and legacy fallbacks.
 def parse_h3_formatter_result(
     raw_result,
-    completed_beat_id=None,
     subject_definitions=None,
 ):
     """Parse Request 2's four-property JSON response and legacy fallbacks."""
@@ -14474,12 +14572,6 @@ def parse_h3_formatter_result(
     if not isinstance(music, str) or not music.strip():
         raise RuntimeError("Director Request 2 is missing non_diegetic_music.")
 
-    completed = []
-    if completed_beat_id is not None:
-        try:
-            completed = [int(completed_beat_id)]
-        except (TypeError, ValueError):
-            completed = []
     description = _strip_formatter_metadata(description.strip())
     description = remove_non_speaking_speaker_ids(
         description,
@@ -14489,7 +14581,6 @@ def parse_h3_formatter_result(
         "detailed_description": description,
         "overall_soundscape": _strip_formatter_metadata(soundscape.strip()),
         "non_diegetic_music": _strip_formatter_metadata(music.strip()),
-        "completed_beat_ids": completed,
         "reference_alignment": reference_alignment,
         "subject_genders": subject_genders,
     }
@@ -14498,7 +14589,6 @@ def parse_h3_formatter_result(
 # Best-effort Request 2 result from the last raw LLM output.
 def _salvage_h3_formatter_result(
     raw_result,
-    completed_beat_id=None,
     fallback_text="",
     subject_definitions=None,
 ):
@@ -14508,8 +14598,7 @@ def _salvage_h3_formatter_result(
     never becomes a fatal error.  The description falls back to the last raw
     LLM output (when it is free-form text), then to the raw scene text (the
     source the formatter was asked to render); missing soundscape/music become
-    "N/A".  Beat completion metadata is still attached so downstream
-    checkpointing behaves normally.
+    "N/A". Beat completion remains owned by Request 1.
     """
     description, soundscape, music, reference_alignment, subject_genders = (
         _extract_h3_formatter_fields(raw_result)
@@ -14528,12 +14617,6 @@ def _salvage_h3_formatter_result(
         soundscape = "N/A"
     if not isinstance(music, str) or not music.strip():
         music = "N/A"
-    completed = []
-    if completed_beat_id is not None:
-        try:
-            completed = [int(completed_beat_id)]
-        except (TypeError, ValueError):
-            completed = []
     description = str(description).strip() or "N/A"
     description = remove_non_speaking_speaker_ids(
         description,
@@ -14543,7 +14626,6 @@ def _salvage_h3_formatter_result(
         "detailed_description": description,
         "overall_soundscape": str(soundscape).strip() or "N/A",
         "non_diegetic_music": str(music).strip() or "N/A",
-        "completed_beat_ids": completed,
         "reference_alignment": reference_alignment,
         "subject_genders": subject_genders,
     }
@@ -16632,67 +16714,12 @@ def normalize_structured_continuity_state(
             proposed_name = str(record.get("name", raw_name)).strip()
             if not proposed_name or proposed_name.isdigit():
                 continue
-            if not _subject_name_is_promotable(proposed_name):
-                print(
-                    "WARNING: Ignoring anonymous, collective, or temporary "
-                    f"video-only subject {proposed_name!r}."
-                )
-                continue
-            if not _new_subject_is_animate(record):
-                print(
-                    "WARNING: Ignoring inanimate or unclassified video-only "
-                    f"subject {proposed_name!r}; new Subjects require "
-                    "entity_kind='animate'."
-                )
-                continue
-            if _future_subject_name_is_reserved(
-                proposed_name,
-                active_beat_text,
-                future_beat_texts,
-            ):
-                print(
-                    "WARNING: Ignoring premature future-beat subject "
-                    f"{proposed_name!r}."
-                )
-                continue
-            used_ids = {
-                int(current.get("subject_id"))
-                for current in state["subjects"].values()
-                if str(current.get("subject_id", "")).isdigit()
-            }
-            try:
-                proposed_id = int(record.get("subject_id"))
-            except (TypeError, ValueError):
-                proposed_id = None
-            if proposed_id is None or proposed_id <= 0 or proposed_id in used_ids:
-                proposed_id = max(used_ids, default=0) + 1
-            proposed_speaker_id = available_subject_speaker_id(
-                proposed_id,
-                state["subjects"].values(),
-                record.get("speaker_id"),
-            )
-            try:
-                created_in_segment = int(origin_segment)
-            except (TypeError, ValueError):
-                try:
-                    created_in_segment = int(record.get("origin_segment"))
-                except (TypeError, ValueError):
-                    created_in_segment = None
-            name = proposed_name
-            state["subjects"][name] = new_subject_continuity_record({
-                "subject_id": proposed_id,
-                "name": name,
-                "gender": normalize_subject_gender(record.get("gender")),
-                "picture_ids": [],
-                "picture_id": None,
-                "speaker_id": proposed_speaker_id,
-                "origin_segment": created_in_segment,
-            })
-            id_to_name[str(proposed_id)] = name
             print(
-                f"[Continuity] registered new Subject {name!r} as "
-                f"<Subject {proposed_id}> ({proposed_speaker_id})."
+                "[Continuity] ignoring unregistered Subject candidate "
+                f"{proposed_name!r}; identity registration must happen "
+                "before continuity extraction."
             )
+            continue
 
         target = state["subjects"][name]
         committed_record = committed_snapshot.get("subjects", {}).get(name, {})
@@ -17071,6 +17098,8 @@ def request_continuity_opening_state(
     current_phase,
     llm_request=None,
     history_metadata=None,
+    subject_definitions="",
+    ending_scene="",
 ):
     """Run only continuity Phase 2 from an already-finalized end state."""
     if llm_request is None:
@@ -17079,6 +17108,11 @@ def request_continuity_opening_state(
     # must not receive future beat/story context that could invite invention.
     del current_phase
     state_for_opening = sanitize_prompt_derived_continuity_state(reduced_state)
+    state_for_opening = _phase2_continuity_state_for_scene(
+        state_for_opening,
+        subject_definitions=subject_definitions,
+        ending_scene=ending_scene,
+    )
     state_text = _continuity_json_text(state_for_opening)
     phase2_messages = [
         {"role": "system", "content": PHASE_2_CONTINUITY_H3_SYSTEM},
@@ -17124,7 +17158,7 @@ def request_continuity_opening_state(
                 f"({attempt}/{LLM_CONNECTION_RETRIES}); retrying: {last_error}"
             )
 
-    fallback = _best_effort_continuity_opening_state(reduced_state)
+    fallback = _best_effort_continuity_opening_state(state_for_opening)
     print(
         "WARNING: Continuity Phase 2 exhausted its content retries; using "
         f"best-effort serialized state: {last_error}"
@@ -17270,6 +17304,8 @@ def request_combined_continuity(
         current_phase,
         llm_request=llm_request,
         history_metadata=history_metadata,
+        subject_definitions=subject_definitions,
+        ending_scene=h3_prompt,
     )
     return {
         "reduced_state": reduced_state,
@@ -22437,9 +22473,9 @@ def validate_director_continuity(bundle):
 def request_segment_llm(bundle, beats, run_id, run_config):
     """Run the two-stage Director micro-prompt pipeline for one segment.
 
-    Request 1 expands the assigned beat into raw_scene. Request 2 performs only
-    MiniMax H3 audiovisual formatting. Python owns beat completion metadata and
-    does not send the result through the legacy Director semantic gates.
+    Request 1 expands the assigned beat into raw_scene and reports whether it
+    completed the beat. Request 2 performs only MiniMax H3 audiovisual
+    formatting and does not own beat completion.
     """
     del beats
     try:
@@ -22464,22 +22500,62 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     conditioning_mode = bundle.get("conditioning_mode")
     mode = "I2VA" if conditioning_mode == "clean_refresh" else "T2VA"
 
-    request1_metadata = {
-        "run_id": run_id,
-        "source_sha256": (run_config or {}).get("source_sha256"),
-        "purpose": "director_raw_scene",
-        "segment": segment_number,
-        "attempt": 1,
-        "conditioning_mode": conditioning_mode,
-        "opening_state_sha256": bundle.get("opening_state_sha256"),
-    }
-    raw_scene_result = ask_llm(
-        bundle.get("messages", []),
-        response_format=None,
-        history_metadata=request1_metadata,
-        **_active_formatter_llm_settings(),
+    request1_base_messages = copy.deepcopy(bundle.get("messages", []))
+    request1_messages = request1_base_messages
+    request1_result = None
+    raw_scene = ""
+    request1_feedback = (
+        "The previous RAW SCENE did not fully execute CURRENT BEAT. Regenerate "
+        "this same segment and include every explicit required action/object/"
+        "outcome. Do not advance into NEXT BEAT."
     )
-    raw_scene = _normalize_raw_scene_result(raw_scene_result)
+    for request1_attempt in range(1, DIRECTOR_RAW_SCENE_ATTEMPTS + 1):
+        request1_metadata = {
+            "run_id": run_id,
+            "source_sha256": (run_config or {}).get("source_sha256"),
+            "purpose": "director_raw_scene",
+            "segment": segment_number,
+            "attempt": request1_attempt,
+            "conditioning_mode": conditioning_mode,
+            "opening_state_sha256": bundle.get("opening_state_sha256"),
+        }
+        raw_scene_result = ask_llm(
+            request1_messages,
+            response_format=DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
+            history_metadata=request1_metadata,
+            **_active_formatter_llm_settings(),
+        )
+        request1_result = _parse_director_raw_scene_result(raw_scene_result)
+        raw_scene = request1_result["raw_scene"]
+        if request1_result["beat_complete"] and raw_scene.strip() and raw_scene != "N/A":
+            break
+
+        if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+            raise BeatGenerationError(
+                f"Director Request 1 did not confirm completion of Beat "
+                f"{active_beat_id or segment_number} after "
+                f"{DIRECTOR_RAW_SCENE_ATTEMPTS} attempts."
+            )
+
+        print(
+            f"Director Request 1 did not confirm a complete CURRENT BEAT "
+            f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+            "retrying the same segment.",
+            flush=True,
+        )
+        request1_messages = copy.deepcopy(request1_base_messages)
+        if request1_messages:
+            request1_messages[-1] = dict(request1_messages[-1])
+            request1_messages[-1]["content"] = (
+                f"{request1_messages[-1].get('content', '')}\n\n"
+                "REQUEST 1 COMPLETION FEEDBACK:\n"
+                f"{request1_feedback}"
+            )
+
+    if request1_result is None:
+        raise BeatGenerationError(
+            "Director Request 1 returned no usable scene result."
+        )
 
     print()
     print("=" * 64)
@@ -22559,7 +22635,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         try:
             llm_result = parse_h3_formatter_result(
                 formatted_result,
-                completed_beat_id=active_beat_id,
                 subject_definitions=bundle.get("subject_definitions", ""),
             )
         except RuntimeError as error:
@@ -22572,7 +22647,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 )
                 llm_result = _salvage_h3_formatter_result(
                     formatted_result,
-                    completed_beat_id=active_beat_id,
                     fallback_text=raw_scene,
                     subject_definitions=bundle.get("subject_definitions", ""),
                 )
@@ -22624,13 +22698,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         # an unrelated fatal error.
         llm_result = _salvage_h3_formatter_result(
             "",
-            completed_beat_id=active_beat_id,
             fallback_text=raw_scene,
             subject_definitions=bundle.get("subject_definitions", ""),
         )
 
     payload = dict(bundle)
     payload["raw_scene"] = raw_scene
+    payload["request1_result"] = copy.deepcopy(request1_result)
     payload["h3_mode"] = mode
     payload["authoritative_opening_state"] = h3_opening_summary or (
         bundle.get("opening_state") or bundle.get("h3_opening_summary") or ""
@@ -23323,7 +23397,19 @@ def _run_main(
         )
         payload["llm_result"] = llm_result
         loras = payload["loras"]
-        reported_beat_ids = llm_result.get("completed_beat_ids", [])
+        request1_result = payload.get("request1_result", {})
+        if beats and not (
+            isinstance(request1_result, dict)
+            and request1_result.get("beat_complete") is True
+        ):
+            raise BeatGenerationError(
+                f"Segment {segment} has no confirmed complete Request 1 result."
+            )
+        reported_beat_ids = (
+            [int(payload.get("active_beat_id"))]
+            if beats and payload.get("active_beat_id") is not None
+            else []
+        )
 
         # Register stable identities visible in the Director result before H3.
         # Dialogue uses Character Name (SN), so the speaker ID itself can supply
@@ -23682,6 +23768,8 @@ def _run_main(
                     "conditioning_mode": segment_bundle["conditioning_mode"],
                     "state_source": "prompt_only",
                 },
+                subject_definitions=subject_definitions,
+                ending_scene=h3_prompt,
             )
             continuity_summary = prompt_only_opening_summary
             continuity_source = "prompt"
@@ -24045,7 +24133,13 @@ def _run_main(
         )
 
         if segment < total_segments:
+            phase2_state_for_opening = copy.deepcopy(reduced_continuity_state)
             try:
+                phase2_state_for_opening = _phase2_continuity_state_for_scene(
+                    reduced_continuity_state,
+                    subject_definitions=subject_definitions,
+                    ending_scene=h3_prompt,
+                )
                 next_opening_summary = request_continuity_opening_state(
                     reduced_continuity_state,
                     continuity_phase,
@@ -24058,17 +24152,19 @@ def _run_main(
                         "conditioning_mode": segment_bundle["conditioning_mode"],
                         "state_source": state_source,
                     },
+                    subject_definitions=subject_definitions,
+                    ending_scene=h3_prompt,
                 )
                 if not _meaningful_director_continuity(next_opening_summary):
                     next_opening_summary = _best_effort_continuity_opening_state(
-                        reduced_continuity_state
+                        phase2_state_for_opening
                     )
                 continuity_summary = next_opening_summary
             except LLMConnectionError:
                 raise
             except Exception as error:
                 continuity_summary = _best_effort_continuity_opening_state(
-                    reduced_continuity_state
+                    phase2_state_for_opening
                 )
                 print(
                     f"WARNING: Continuity for Segment {segment} is unavailable; "

@@ -32,6 +32,47 @@ class H3ContinuityBoundaryTests(unittest.TestCase):
         state["ongoing_audio"] = "eggs sizzling in the kitchen"
         return state
 
+    def test_phase_two_projection_omits_offscreen_subjects_without_mutation(self):
+        state = self.state()
+        state["subjects"]["Will"]["pose_action"] = (
+            "being pulled down the stairs"
+        )
+        projected = minimax._phase2_continuity_state_for_scene(
+            state,
+            SUBJECTS,
+            "detailed_description: [Shot 1] Amy stands beside the locked "
+            "basement door.",
+        )
+
+        self.assertIn("Will", state["subjects"])
+        self.assertEqual(
+            state["subjects"]["Will"]["pose_action"],
+            "being pulled down the stairs",
+        )
+        self.assertNotIn("Will", projected["subjects"])
+        self.assertIn("Amy", projected["subjects"])
+        self.assertIn("basement door is locked", projected["environment"]["persistent_state"])
+
+    def test_phase_two_request_receives_scene_visible_copy(self):
+        state = self.state()
+        request = Mock(return_value="Amy stands beside the locked door.")
+
+        minimax.request_continuity_opening_state(
+            state,
+            {},
+            llm_request=request,
+            subject_definitions=SUBJECTS,
+            ending_scene=(
+                "detailed_description: [Shot 1] Amy stands beside the locked "
+                "basement door."
+            ),
+        )
+
+        user_prompt = request.call_args.args[0][1]["content"]
+        self.assertIn('"Amy"', user_prompt)
+        self.assertNotIn('"Will"', user_prompt)
+        self.assertIn("basement door is locked", user_prompt)
+
     def test_canonical_state_is_preserved_but_opening_is_scene_scoped(self):
         state = self.state()
         opening = minimax.format_authoritative_opening_state(
@@ -67,7 +108,10 @@ class H3ContinuityBoundaryTests(unittest.TestCase):
     def test_request_two_receives_filtered_opening_state(self):
         state = self.state()
         request = Mock(side_effect=[
-            {"raw_scene": "Amy aims her pistol through the hallway."},
+            {
+                "raw_scene": "Amy aims her pistol through the hallway.",
+                "beat_complete": True,
+            },
             {
                 "detailed_description": "[Shot 2] Amy aims her pistol.",
                 "overall_soundscape": "Room tone.",

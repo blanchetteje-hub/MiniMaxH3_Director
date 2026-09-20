@@ -43,7 +43,13 @@ class ContinuitySchedulingTests(unittest.TestCase):
         }
         with mock.patch(
             "minimax.ask_llm",
-            side_effect=["Amy looks toward the doorway.", formatted],
+            side_effect=[
+                {
+                    "raw_scene": "Amy looks toward the doorway.",
+                    "beat_complete": True,
+                },
+                formatted,
+            ],
         ), mock.patch("builtins.print") as printed:
             result = minimax.request_segment_llm(
                 {
@@ -58,7 +64,6 @@ class ContinuitySchedulingTests(unittest.TestCase):
 
         self.assertEqual(result["llm_result"], {
             **formatted,
-            "completed_beat_ids": [],
             "reference_alignment": "",
             "subject_genders": {},
         })
@@ -88,7 +93,13 @@ class ContinuitySchedulingTests(unittest.TestCase):
         }
         with mock.patch(
             "minimax.ask_llm",
-            side_effect=["Amy looks toward the doorway.", formatted],
+            side_effect=[
+                {
+                    "raw_scene": "Amy looks toward the doorway.",
+                    "beat_complete": True,
+                },
+                formatted,
+            ],
         ), mock.patch("builtins.print") as printed:
             minimax.request_segment_llm(
                 bundle,

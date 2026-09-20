@@ -500,7 +500,7 @@ class ContinuitySummaryTests(unittest.TestCase):
         self.assertIn("segmented body, eight legs, and mandibles", opening)
         self.assertIn("sterile alien chamber", opening)
 
-    def test_continuity_candidate_records_new_subject_creation_segment(self):
+    def test_continuity_candidate_does_not_create_new_subject_identity(self):
         initial_snapshot = canonical_candidate(self.SUBJECTS)
         initial_snapshot["subjects"]["Jenny"] = complete_new_subject(
             3,
@@ -519,32 +519,7 @@ class ContinuitySummaryTests(unittest.TestCase):
             ),
         )
 
-        created = candidate["subjects"]["Jenny"]
-        self.assertEqual(created["subject_id"], 3)
-        self.assertEqual(created["picture_ids"], [])
-        self.assertEqual(created["origin_segment"], 2)
-
-        next_snapshot = canonical_candidate(self.SUBJECTS, candidate)
-        next_snapshot["subjects"]["Jenny"]["subject_id"] = 99
-        next_snapshot["subjects"]["Jenny"]["origin_segment"] = 99
-        next_snapshot["subjects"]["Jenny"]["position"] = "beside Mark"
-        preserved = minimax.normalize_structured_continuity_state(
-            next_snapshot,
-            self.SUBJECTS,
-            candidate,
-            origin_segment=3,
-            newest_description=(
-                "Jenny remains beside Mark."
-            ),
-        )
-        self.assertEqual(
-            preserved["subjects"]["Jenny"]["subject_id"],
-            3,
-        )
-        self.assertEqual(
-            preserved["subjects"]["Jenny"]["origin_segment"],
-            2,
-        )
+        self.assertNotIn("Jenny", candidate["subjects"])
 
     def test_new_video_subject_does_not_require_name_evidence_in_prose(self):
         for description in (
@@ -570,23 +545,7 @@ class ContinuitySummaryTests(unittest.TestCase):
                     active_beat_text="Amy welcomes Kitten Alpha.",
                 )
 
-                self.assertIn("Kitten Alpha", candidate["subjects"])
-                self.assertEqual(
-                    candidate["subjects"]["Kitten Alpha"]["origin_segment"],
-                    2,
-                )
-                additional, added = (
-                    minimax.collect_additional_subject_definitions(
-                        self.SUBJECTS,
-                        candidate,
-                    )
-                )
-                expected = (
-                    "<Subject 3> is Kitten Alpha (S3), continued from "
-                    "<Video 1>."
-                )
-                self.assertEqual(added, [expected])
-                self.assertEqual(additional, [expected])
+                self.assertNotIn("Kitten Alpha", candidate["subjects"])
 
     def test_new_video_subject_is_accepted_without_current_name_evidence(self):
         snapshot = canonical_candidate(self.SUBJECTS)
@@ -604,7 +563,7 @@ class ContinuitySummaryTests(unittest.TestCase):
             active_beat_text="Mark waits.",
         )
 
-        self.assertIn("Kitten Alpha", candidate["subjects"])
+        self.assertNotIn("Kitten Alpha", candidate["subjects"])
 
     def test_future_only_named_subject_is_still_rejected(self):
         snapshot = canonical_candidate(self.SUBJECTS)
@@ -695,19 +654,7 @@ class ContinuitySummaryTests(unittest.TestCase):
             origin_segment=2,
             newest_description="A male guard enters and stands beside the doorway.",
         )
-        guard = candidate["subjects"]["New Guard"]
-
-        self.assertEqual(guard["gender"], "male")
-        self.assertEqual(guard["speaker_id"], "(S3)")
-        additional, appended = minimax.collect_additional_subject_definitions(
-            self.SUBJECTS,
-            candidate,
-        )
-        expected = (
-            "<Subject 3> is New Guard, male (S3), continued from <Video 1>."
-        )
-        self.assertEqual(appended, [expected])
-        self.assertEqual(additional, [expected])
+        self.assertNotIn("New Guard", candidate["subjects"])
 
     def test_unknown_new_subject_gender_stays_unknown(self):
         snapshot = canonical_candidate(self.SUBJECTS)
@@ -725,8 +672,7 @@ class ContinuitySummaryTests(unittest.TestCase):
             newest_description="A new arrival steps into view.",
         )
 
-        self.assertEqual(candidate["subjects"]["New Arrival"]["gender"], "unknown")
-        self.assertEqual(candidate["subjects"]["New Arrival"]["speaker_id"], "(S3)")
+        self.assertNotIn("New Arrival", candidate["subjects"])
 
     def test_duplicate_speaker_id_does_not_create_a_new_subject(self):
         snapshot = canonical_candidate(self.SUBJECTS)

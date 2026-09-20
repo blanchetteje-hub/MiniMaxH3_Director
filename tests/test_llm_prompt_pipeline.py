@@ -464,7 +464,10 @@ class DirectorPromptCallContractTests(unittest.TestCase):
 
     def test_request_segment_llm_passes_bundle_context_to_h3_formatter(self):
         request = Mock(side_effect=[
-            {"raw_scene": "Mark crosses the room."},
+            {
+                "raw_scene": "Mark crosses the room.",
+                "beat_complete": True,
+            },
             {
                 "detailed_description": "[Shot 1] Mark crosses the room.",
                 "overall_soundscape": "Footsteps.",
@@ -508,7 +511,10 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "Mark starts beside the window.",
             2,
         )
-        self.assertIsNone(request.call_args_list[0].kwargs["response_format"])
+        self.assertEqual(
+            request.call_args_list[0].kwargs["response_format"],
+            minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
+        )
         self.assertEqual(
             request.call_args_list[1].kwargs["response_format"],
             minimax.H3_FORMATTER_RESPONSE_FORMAT,
