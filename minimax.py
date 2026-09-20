@@ -285,7 +285,7 @@ MISTRAL_24B_SETTINGS = {
     "thinking": "off",
     "chat_template": "built-in",
     "jinja": True,
-    "context": 8192,
+    "context": 6144,
     "user_prompt_only": False,
     "stream": False,
 }
@@ -299,7 +299,7 @@ QWEN38_27B_SETTINGS = {
     "thinking": "off",
     "chat_template": "built-in",
     "jinja": True,
-    "context": 8192,
+    "context": 6144,
     "user_prompt_only": True,
     "stream": False,
 }
@@ -7245,7 +7245,23 @@ def normalize_beat_canonical_state(state):
             raise ValueError("Canonical beat state contains an invalid character ID.")
         if not isinstance(raw_record, dict):
             raise ValueError(f"Character {character_id!r} state must be an object.")
-        record = copy.deepcopy(raw_record)
+        character_id = character_id.strip()
+        existing_character_id = next(
+            (
+                known_id
+                for known_id in normalized["characters"]
+                if known_id.casefold() == character_id.casefold()
+            ),
+            None,
+        )
+        record = (
+            _deep_merge_state(
+                normalized["characters"][existing_character_id],
+                raw_record,
+            )
+            if existing_character_id is not None
+            else copy.deepcopy(raw_record)
+        )
         record.setdefault("location", "N/A")
         record.setdefault("containment", "N/A")
         record.setdefault("contained_in", None)
@@ -7272,7 +7288,11 @@ def normalize_beat_canonical_state(state):
             "relationships",
         ):
             record[field] = _state_string_list(record[field])
-        normalized["characters"][character_id.strip()] = record
+        if existing_character_id is None:
+            normalized["characters"][character_id] = record
+        else:
+            # The first-seen spelling remains the canonical ID.
+            normalized["characters"][existing_character_id] = record
 
     environment = state.get("environment", {})
     if not isinstance(environment, dict):
@@ -7435,6 +7455,7 @@ def normalize_beat_state_patch(patch):
                 _validate_state_patch_value(entity_patch, (root, entity_id))
         else:
             _validate_state_patch_value(value, (root,))
+    _validate_canonical_state_namespace(patch)
     return copy.deepcopy(patch)
 
 
@@ -7452,6 +7473,53 @@ def _deep_merge_state(current, patch):
             # become empty lists during canonical-state normalization.
             merged[key] = copy.deepcopy(value)
     return merged
+
+
+def _validate_canonical_state_namespace(patch):
+    """Reject a canonical state root nested below another semantic root."""
+    def visit(value, path=()):
+        if any(part in _BEAT_STATE_ROOTS for part in path[1:]):
+            raise ValueError(
+                "State effects cannot nest canonical state root "
+                f"{'.'.join(path)!r}; roots must remain top-level."
+            )
+        if isinstance(value, dict):
+            for key, child in value.items():
+                key_parts = tuple(
+                    part.strip() for part in str(key).split(".")
+                )
+                visit(child, path + key_parts)
+
+    visit(patch)
+
+
+def _canonicalize_character_patch(state, patch):
+    """Resolve character patch IDs to the first known case-insensitive spelling."""
+    if not isinstance(patch, dict) or not isinstance(patch.get("characters"), dict):
+        return patch
+    known_characters = {
+        str(character_id).casefold(): character_id
+        for character_id in (state or {}).get("characters", {})
+    }
+    canonical_by_key = {}
+    canonical_characters = {}
+    for raw_id, record in patch["characters"].items():
+        character_id = str(raw_id).strip()
+        key = character_id.casefold()
+        canonical_id = known_characters.get(
+            key,
+            canonical_by_key.get(key, character_id),
+        )
+        canonical_by_key[key] = canonical_id
+        if canonical_id in canonical_characters:
+            canonical_characters[canonical_id] = _deep_merge_state(
+                canonical_characters[canonical_id], record
+            )
+        else:
+            canonical_characters[canonical_id] = copy.deepcopy(record)
+    result = copy.deepcopy(patch)
+    result["characters"] = canonical_characters
+    return result
 
 
 def _validate_state_effects(effects):
@@ -7502,6 +7570,7 @@ def _flatten_state_effects(effects, prefix=()):
 
 def _state_effects_patch(effects):
     """Convert event effects to a normal nested state patch."""
+    _validate_canonical_state_namespace(effects)
     patch = {}
     for path, value in _flatten_state_effects(effects).items():
         parts = path.split(".")
@@ -7532,12 +7601,47 @@ def _set_state_path(state, path, value):
     cursor[parts[-1]] = copy.deepcopy(value)
 
 
+def _canonicalize_character_effect_path(state, path):
+    """Resolve the character component of one canonical dotted effect path."""
+    parts = str(path).split(".")
+    if len(parts) < 2 or parts[0] != "characters":
+        return str(path)
+    characters = (state or {}).get("characters", {})
+    raw_id = parts[1]
+    canonical_id = next(
+        (
+            character_id
+            for character_id in characters
+            if str(character_id).casefold() == raw_id.casefold()
+        ),
+        raw_id,
+    )
+    parts[1] = canonical_id
+    return ".".join(parts)
+
+
+def _canonicalize_persistent_effects(state, effects):
+    """Keep persisted effect paths aligned with canonical character IDs."""
+    if not isinstance(effects, dict):
+        return {}
+    canonical = {}
+    for path, value in effects.items():
+        canonical_path = _canonicalize_character_effect_path(state, str(path))
+        canonical[canonical_path] = copy.deepcopy(value)
+    return canonical
+
+
 def _reapply_persistent_state_effects(state):
     """Reassert Python-recorded event effects after every model patch."""
     effects = (state or {}).get("story_progress", {}).get(
         "persistent_state_effects", {}
     )
-    effect_items = effects.items() if isinstance(effects, dict) else ()
+    canonical_effects = _canonicalize_persistent_effects(state, effects)
+    if isinstance(state, dict):
+        state.setdefault("story_progress", {})[
+            "persistent_state_effects"
+        ] = canonical_effects
+    effect_items = canonical_effects.items()
     for path, value in effect_items:
         try:
             _validate_state_effects({str(path): value})
@@ -7952,14 +8056,21 @@ def _apply_required_event_state_effects(state, events):
     """Apply source-authorized required-event effects and register them as hard state."""
     state = normalize_beat_canonical_state(state)
     progress = state["story_progress"]
-    persistent = progress.setdefault("persistent_state_effects", {})
+    persistent = _canonicalize_persistent_effects(
+        state,
+        progress.setdefault("persistent_state_effects", {}),
+    )
+    progress["persistent_state_effects"] = persistent
     for event in events or ():
         effects = event.get("state_effects", {}) if isinstance(event, dict) else {}
         if not effects:
             continue
         _validate_state_effects(effects)
-        effect_patch = _state_effects_patch(effects)
-        flattened_effects = _flatten_state_effects(effects)
+        effect_patch = _canonicalize_character_patch(
+            state,
+            _state_effects_patch(effects),
+        )
+        flattened_effects = _flatten_state_effects(effect_patch)
         if all(
             path in persistent and persistent[path] == value
             for path, value in flattened_effects.items()
@@ -9809,6 +9920,10 @@ State effects:
   release, held/equipped objects, barriers, persistent objects, terminal
   entities, and persistent environment conditions.
 - Do not require effects for temporary actions, feelings, reactions, or detail.
+- Attach each persistent effect to the required event that actually establishes
+  that fact. If a later event retrieves or equips named equipment, an earlier
+  ordinary setup event must not carry that held/equipped effect; reject the arc
+  even if the later event also carries the effect.
 - Do not copy an old effect onto an unrelated event just to satisfy coverage.
 
 Do not reject because:

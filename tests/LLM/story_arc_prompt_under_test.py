@@ -69,6 +69,10 @@ State effects:
   release, held/equipped objects, barriers, persistent objects, terminal
   entities, and persistent environment conditions.
 - Do not require effects for temporary actions, feelings, reactions, or detail.
+- Attach each persistent effect to the required event that actually establishes
+  that fact. If a later event retrieves or equips named equipment, an earlier
+  ordinary setup event must not carry that held/equipped effect; reject the arc
+  even if the later event also carries the effect.
 - Do not copy an old effect onto an unrelated event just to satisfy coverage.
 
 Do not reject because:
