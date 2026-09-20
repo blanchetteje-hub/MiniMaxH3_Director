@@ -556,6 +556,65 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn("The children are in the basement.", user_prompt)
         self.assertIn("At 00:02.000 seconds, Amy fires", user_prompt)
 
+    def test_request_two_opening_instructions_follow_conditioning_mode(self):
+        continuation = minimax.build_h3_formatter_messages(
+            "Mark continues down the street.",
+            "T2VA",
+            6,
+            continuity_summary="Mark remains on the street.",
+            conditioning_mode="continuation",
+        )[1]["content"]
+        clean_refresh = minimax.build_h3_formatter_messages(
+            "Mark continues down the street.",
+            "I2VA",
+            6,
+            continuity_summary="Mark remains on the street.",
+            conditioning_mode="clean_refresh",
+        )[1]["content"]
+        initial = minimax.build_h3_formatter_messages(
+            "Mark enters the room.",
+            "T2VA",
+            6,
+            conditioning_mode="initial",
+        )[1]["content"]
+
+        self.assertIn("<Video 1>", continuation)
+        self.assertIn("opening composition, framing, and camera position", continuation)
+        self.assertIn("supplied first frame", clean_refresh)
+        self.assertIn("CLEAN-REFRESH OPENING RULE", clean_refresh)
+        self.assertNotIn(
+            "<Video 1> already establish the opening composition",
+            clean_refresh,
+        )
+        self.assertNotIn("<Video 1>", initial)
+        self.assertNotIn("OPENING RULE", initial)
+
+        opening = minimax.format_authoritative_opening_state(
+            minimax.continuity_state_for_registry(SUBJECTS),
+            SUBJECTS,
+            conditioning_mode="clean_refresh",
+        )
+        self.assertIn("supplied first frame establishes", opening)
+        self.assertNotIn("<Video 1> is the immediately preceding", opening)
+        self.assertNotIn("final observable state of <Video 1>", opening)
+
+        final_prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": "[Shot 2] Mark looks toward the street.",
+                "overall_soundscape": "City hum.",
+                "non_diegetic_music": "N/A",
+            },
+            SUBJECTS,
+            segment_number=2,
+            conditioning_mode="clean_refresh",
+        )
+        self.assertTrue(
+            final_prompt.split("detailed_description: ", 1)[1].startswith(
+                "[Shot 1] The opening composition is established by "
+                "the supplied first frame."
+            )
+        )
+
     def test_h3_formatter_contract_preserves_schema_and_audio_constraints(self):
         messages = minimax.build_h3_formatter_messages(
             "Mark crosses the room.",

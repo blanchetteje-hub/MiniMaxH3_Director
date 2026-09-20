@@ -23,6 +23,10 @@ _FIELD_PREFIX_RE = re.compile(
     r"^\s*(?:detailed_description|overall_soundscape|non_diegetic_music)\s*:\s*",
     re.IGNORECASE,
 )
+_END_CONTINUITY_STATE_RE = re.compile(
+    r"(?:^|\n)\s*End\s+continuity\s+state\s*:.*\Z",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 class FixtureError(ValueError):
@@ -88,7 +92,7 @@ def _strip_shot_prefix(value):
 
 
 def _mode_prefix(mode):
-    if mode == "append":
+    if mode == "continuation":
         return "[Shot 1] Continuing directly from the final state of <Video 1>."
     if mode == "clean_refresh":
         return (
@@ -96,6 +100,15 @@ def _mode_prefix(mode):
             "supplied first frame. Continue directly from that frame."
         )
     return "[Shot 1]"
+
+
+def _strip_end_continuity_state(value):
+    """Remove only the trailing internal continuity bookkeeping section."""
+    text = str(value or "").replace("\r\n", "\n")
+    match = _END_CONTINUITY_STATE_RE.search(text)
+    if match is None:
+        return value
+    return text[:match.start()].rstrip()
 
 
 def _assemble_action_prompt(subject_definitions, description, mode):
@@ -154,7 +167,7 @@ def build_variant_prompts(fixture):
         "A_current": inputs["final_h3_prompt"],
         "B_raw_scene": _assemble_action_prompt(
             subject_definitions,
-            inputs["raw_scene"],
+            _strip_end_continuity_state(inputs["raw_scene"]),
             mode,
         ),
         "C_action_only": _assemble_action_prompt(
@@ -214,4 +227,3 @@ def resolve_fixture_path(fixture, value):
     if not path.is_absolute():
         path = Path(fixture.get("_fixture_path", ".")).resolve().parent / path
     return str(path.resolve())
-

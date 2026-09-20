@@ -140,6 +140,52 @@ class H3ContinuityBoundaryTests(unittest.TestCase):
         self.assertNotIn("wearing a red jacket", prompt)
         self.assertNotIn("retention_analysis", prompt)
 
+    def test_timed_opening_camera_motion_survives_continuation_cleanup(self):
+        camera_actions = (
+            "At 00:00.000 seconds, the camera tracks behind Amy as she runs down the hallway.",
+            "At 00:00.000 seconds, the camera pans right to follow Amy entering the hallway.",
+            "At 00:00.000 seconds, the camera pushes toward the door as Amy reaches for it.",
+        )
+
+        for action in camera_actions:
+            with self.subTest(action=action):
+                prompt = minimax.build_h3_prompt(
+                    {
+                        "detailed_description": f"[Shot 2] {action}",
+                        "overall_soundscape": "Hallway ambience.",
+                        "non_diegetic_music": "N/A",
+                    },
+                    SUBJECTS,
+                    segment_number=2,
+                    conditioning_mode="continuation",
+                )
+
+                self.assertIn(action, prompt)
+                self.assertEqual(prompt.count("Live-action, cinematic"), 1)
+                self.assertEqual(
+                    prompt.count("continues from <Video 1>"),
+                    1,
+                )
+
+    def test_generic_continuation_camera_opener_is_removed(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 2] Live-action, cinematic, the camera continues "
+                    "from the previous shot. Amy runs toward the door."
+                ),
+                "overall_soundscape": "Hallway ambience.",
+                "non_diegetic_music": "N/A",
+            },
+            SUBJECTS,
+            segment_number=2,
+            conditioning_mode="continuation",
+        )
+
+        self.assertNotIn("the camera continues from the previous shot", prompt)
+        self.assertIn("Amy runs toward the door", prompt)
+        self.assertEqual(prompt.count("Live-action, cinematic"), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

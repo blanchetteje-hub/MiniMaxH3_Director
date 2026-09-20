@@ -19,7 +19,7 @@ def fixture():
         "schema_version": 1,
         "segment": {
             "number": 2,
-            "conditioning_mode": "append",
+            "conditioning_mode": "continuation",
             "duration": 6.0,
             "current_beat_text": "Maya opens the door.",
             "next_beat_boundary_text": "Maya steps outside.",
@@ -77,10 +77,42 @@ class H3HarnessTests(unittest.TestCase):
         variants = build_variant_prompts(fixture())
         self.assertEqual(variants["A_current"], "CURRENT PROMPT")
         self.assertIn("Maya reaches", variants["B_raw_scene"])
+        for variant_name in ("B_raw_scene", "C_action_only", "D_compact"):
+            with self.subTest(variant_name=variant_name):
+                self.assertIn(
+                    "Continuing directly from the final state of <Video 1>.",
+                    variants[variant_name],
+                )
         self.assertNotIn("Footsteps", variants["B_raw_scene"])
         self.assertNotIn("Footsteps", variants["C_action_only"])
         self.assertNotIn("non_diegetic_music", variants["C_action_only"])
         self.assertIn("At 00:03.000", variants["D_compact"])
+
+    def test_raw_scene_variant_strips_trailing_end_continuity_state(self):
+        payload = fixture()
+        payload["inputs"]["raw_scene"] = (
+            "At 00:00.000 seconds, Amy runs toward the door.\n\n"
+            "At 00:03.000 seconds, Amy opens it.\n\n"
+            "End continuity state: Amy stands beside the open door."
+        )
+
+        raw_scene_variant = build_variant_prompts(payload)["B_raw_scene"]
+
+        self.assertIn("At 00:00.000 seconds", raw_scene_variant)
+        self.assertIn("Amy runs toward the door", raw_scene_variant)
+        self.assertIn("At 00:03.000 seconds", raw_scene_variant)
+        self.assertIn("Amy opens it", raw_scene_variant)
+        self.assertNotIn("End continuity state", raw_scene_variant)
+        self.assertNotIn("Amy stands beside the open door", raw_scene_variant)
+
+    def test_raw_scene_variant_keeps_scene_without_continuity_state_marker(self):
+        payload = fixture()
+        raw_scene = payload["inputs"]["raw_scene"]
+
+        raw_scene_variant = build_variant_prompts(payload)["B_raw_scene"]
+
+        self.assertIn("At 00:00.000, Maya reaches for the door.", raw_scene_variant)
+        self.assertIn("At 00:03.000, she opens it.", raw_scene_variant)
 
     def test_compact_variant_skips_when_no_timestamps_exist(self):
         payload = fixture()

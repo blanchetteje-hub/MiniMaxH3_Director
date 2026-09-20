@@ -1110,7 +1110,7 @@ _H3_LEADING_CAMERA_MOTION_RE = re.compile(
     r"^\s*(?:the\s+|a\s+|an\s+)?camera\s+"
     r"(?:(?:slowly|quickly|smoothly|steadily|gradually)\s+)*"
     r"(?:moves?|pans?|tilts?|pushes?|pulls?|tracks?|zooms?|"
-    r"pedestals?|arcs?|rolls?|shakes?|follows?|holds?)\b",
+    r"pedestals?|arcs?|rolls?|shakes?|follows?|holds?|continues?)\b",
     re.IGNORECASE,
 )
 
@@ -4465,20 +4465,37 @@ def format_authoritative_opening_state(
         if subjects
         else "lighting, spatial layout, and environmental continuity"
     )
-    lines = [
-        "<Video 1> is the immediately preceding successfully rendered video "
-        "and provides the authoritative continuation starting point. Preserve "
-        f"its {location_text}, {continuation_details} until an action in this "
-        "target video visibly changes them.",
-        "",
-        "summary:",
-        "",
-    ]
-
-    summary_sentences = [
-        "[video continuation + reference generation] The target video continues "
-        "directly from the final observable state of <Video 1>."
-    ]
+    clean_refresh = conditioning_mode == "clean_refresh"
+    if clean_refresh:
+        lines = [
+            "The supplied first frame establishes the authoritative opening "
+            "composition, framing, and camera position. The canonical continuity "
+            f"state provides semantic and physical context for its {location_text}, "
+            f"{continuation_details} until an action in this target video visibly "
+            "changes them.",
+            "",
+            "summary:",
+            "",
+        ]
+        summary_sentences = [
+            "[first-frame refresh + reference generation] The target video begins "
+            "from the supplied first frame; the canonical continuity state provides "
+            "semantic and physical context."
+        ]
+    else:
+        lines = [
+            "<Video 1> is the immediately preceding successfully rendered video "
+            "and provides the authoritative continuation starting point. Preserve "
+            f"its {location_text}, {continuation_details} until an action in this "
+            "target video visibly changes them.",
+            "",
+            "summary:",
+            "",
+        ]
+        summary_sentences = [
+            "[video continuation + reference generation] The target video continues "
+            "directly from the final observable state of <Video 1>."
+        ]
     summary_sentences.extend(
         sentence
         for subject_id, name, record in subjects
@@ -4515,9 +4532,14 @@ def format_authoritative_opening_state(
             ) + " identities"
         )
         picture_verb = "preserves" if len(picture_numbers) == 1 else "preserve"
+        picture_source = (
+            "the physical state represented by the supplied first frame"
+            if clean_refresh
+            else "the physical continuation established by <Video 1>"
+        )
         summary_sentences.append(
             f"{picture_label} {picture_verb} {identity_label} without overriding "
-            "the physical continuation established by <Video 1>."
+            f"{picture_source}."
         )
     lines.append(" ".join(summary_sentences))
     lines.extend(["", "retention_analysis:", ""])
@@ -4538,8 +4560,9 @@ def format_authoritative_opening_state(
         elif details:
             line = f"<Subject {subject_id}>: fully_preserved - {details}"
         else:
-            # Identity is already in subject_definitions and <Video 1> carries
-            # appearance. Avoid repeating an empty dynamic Subject three times.
+            # Identity is already in subject_definitions and the canonical
+            # opening state carries appearance. Avoid repeating an empty dynamic
+            # Subject three times.
             continue
         lines.extend([line, ""])
 
@@ -4564,11 +4587,26 @@ def format_authoritative_opening_state(
         video_details.append(f"ongoing audio: {ongoing_audio}")
     if subjects:
         subject_names = _english_join(name for _, name, _ in subjects)
+        if clean_refresh:
+            video_line = (
+                "supplied first frame: fully_preserved - Preserve the "
+                f"{location_text}, lighting, spatial layout, positions of "
+                f"{subject_names}, wardrobe condition, physical states, props, "
+                "and immediate visual continuity established by the supplied "
+                "first frame."
+            )
+        else:
+            video_line = (
+                f"<Video 1>: fully_preserved - Preserve the {location_text}, lighting, "
+                f"spatial layout, positions of {subject_names}, wardrobe condition, "
+                "physical states, props, and immediate physical continuity from the "
+                "final frame of the preceding video."
+            )
+    elif clean_refresh:
         video_line = (
-            f"<Video 1>: fully_preserved - Preserve the {location_text}, lighting, "
-            f"spatial layout, positions of {subject_names}, wardrobe condition, "
-            "physical states, props, and immediate physical continuity from the "
-            "final frame of the preceding video."
+            "supplied first frame: fully_preserved - Preserve the "
+            f"{location_text}, lighting, spatial layout, and immediate visual "
+            "continuity established by the supplied first frame."
         )
     else:
         video_line = (
@@ -13827,6 +13865,7 @@ def build_h3_formatter_messages(
     is_final_story_segment=False,
     dialogue_exclusions=(),
     phrase_exclusions=(),
+    conditioning_mode=None,
 ):
     """Build Request 2 with deterministic story-ending handoff rules."""
     mode = str(mode or "T2VA").strip().upper()
@@ -13852,18 +13891,32 @@ def build_h3_formatter_messages(
         "AUTHORITATIVE OPENING STATE:\n"
         + (continuity_text if continuity_text else "N/A")
     )
-    continuation_opening_rule = (
-        "CONTINUATION OPENING RULE:\n"
-        "The authoritative opening state and <Video 1> already establish the "
-        "opening composition, framing, and camera position. Begin the visual "
-        "description with the visible subject or action, not a camera movement. "
-        "Do not repeat the words 'Live-action, cinematic' in the description "
-        "when continuing from <Video 1>; the final H3 prompt supplies that "
-        "continuation opener. Camera movement may occur later when the RAW SCENE "
-        "requires it.\n\n"
-        if continuity_text
-        else ""
-    )
+    conditioning_mode = str(conditioning_mode or "").strip().lower()
+    if conditioning_mode == "clean_refresh":
+        continuation_opening_rule = (
+            "CLEAN-REFRESH OPENING RULE:\n"
+            "The supplied first frame establishes the opening composition, framing, "
+            "and camera position. Use the authoritative opening state for semantic "
+            "and physical context, but do not treat <Video 1> as the visual "
+            "conditioning source. Do not re-narrate the full opening frame.\n\n"
+            if continuity_text
+            else ""
+        )
+    elif conditioning_mode == "continuation" or (
+        not conditioning_mode and continuity_text
+    ):
+        continuation_opening_rule = (
+            "CONTINUATION OPENING RULE:\n"
+            "The authoritative opening state and <Video 1> already establish the "
+            "opening composition, framing, and camera position. Begin the visual "
+            "description with the visible subject or action, not a camera movement. "
+            "Do not repeat the words 'Live-action, cinematic' in the description "
+            "when continuing from <Video 1>; the final H3 prompt supplies that "
+            "continuation opener. Camera movement may occur later when the RAW SCENE "
+            "requires it.\n\n"
+        )
+    else:
+        continuation_opening_rule = ""
     user_content = (
         f"MODE: {mode}\n"
         f"DURATION: {float(segment_seconds):g} seconds \n\n"
@@ -19100,7 +19153,14 @@ def build_h3_prompt(
                 continuation_description = (
                     continuation_description[timestamp_match.end():].lstrip()
                 )
-            if _H3_LEADING_CAMERA_MOTION_RE.match(continuation_description):
+            # A timestamped opening camera clause is segment choreography, not
+            # redundant setup prose.  Only strip an untimed leading camera
+            # clause; preserve the complete RAW SCENE action when it begins at
+            # 00:00.000.
+            if (
+                timestamp_match is None
+                and _H3_LEADING_CAMERA_MOTION_RE.match(continuation_description)
+            ):
                 opening_camera_match = re.search(
                     r"\s+(?:as|while|when)\s+",
                     continuation_description,
@@ -22077,13 +22137,25 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     # framing, and weak audio are not offered as H3-facing opening prose.
     h3_opening_summary = ""
     if segment_number > 1:
-        h3_opening_summary = format_authoritative_opening_state(
-            bundle.get("registry_state") or bundle.get("opening_state") or {},
-            bundle.get("subject_definitions", ""),
-            include_camera=False,
-            current_scene=raw_scene,
-            conditioning_mode=conditioning_mode,
-        )
+        registry_state = bundle.get("registry_state")
+        if isinstance(registry_state, dict) and registry_state:
+            h3_opening_summary = format_authoritative_opening_state(
+                registry_state,
+                bundle.get("subject_definitions", ""),
+                include_camera=False,
+                current_scene=raw_scene,
+                conditioning_mode=conditioning_mode,
+            )
+        else:
+            # Preserve legacy prose when callers have not supplied the newer
+            # structured registry state. This remains semantic continuity input;
+            # the conditioning-aware Request 2 rule still selects the visual
+            # anchor separately.
+            h3_opening_summary = str(
+                bundle.get("opening_state")
+                or bundle.get("h3_opening_summary")
+                or ""
+            ).strip()
 
     formatter_messages = build_h3_formatter_messages(
         raw_scene,
@@ -22097,6 +22169,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         is_final_story_segment=bool(bundle.get("is_final_story_segment", False)),
         dialogue_exclusions=bundle.get("dialogue_exclusions", ()),
         phrase_exclusions=bundle.get("phrase_exclusions", ()),
+        conditioning_mode=conditioning_mode,
     )
     _verify_authoritative_opening_state_handoff(
         formatter_messages,
