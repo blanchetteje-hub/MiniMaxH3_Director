@@ -1579,6 +1579,15 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
+        "--test-prompt-generation",
+        action="store_true",
+        default=False,
+        help=(
+            "generate and print all prompts without submitting anything to "
+            "ComfyUI or rendering video (default: disabled)"
+        ),
+    )
+    parser.add_argument(
         "--vision-continuity",
         type=int,
         default=0,
@@ -1695,6 +1704,17 @@ def parse_args(arguments=None):
         if args.capture_h3_segment is not None or args.capture_h3_fixture is not None:
             parser.error("H3 fixture capture requires normal video generation.")
         return args
+
+    if args.test_prompt_generation and args.repair is not None:
+        parser.error(
+            "--test-prompt-generation cannot be combined with --repair."
+        )
+    if args.test_prompt_generation and (
+        args.capture_h3_segment is not None or args.capture_h3_fixture is not None
+    ):
+        parser.error(
+            "--test-prompt-generation cannot be combined with H3 fixture capture."
+        )
 
     if any(
         value is None
@@ -2327,6 +2347,7 @@ def build_run_config(
     vision_continuity=1,
     trim_frames=TRIM_FRAMES_AFTER_FIRST,
     retention=False,
+    test_prompt_generation=False,
 ):
     # Auto-discovered video subjects are durable continuity metadata, not a
     # user edit to the creative source. Excluding those appended lines keeps a
@@ -2348,6 +2369,7 @@ def build_run_config(
             "refresh_interval": refresh_interval,
             "vision_continuity": int(vision_continuity),
             "retention": bool(retention),
+            "test_prompt_generation": bool(test_prompt_generation),
             "subject_definitions": source_subject_definitions,
         },
         ensure_ascii=False,
@@ -2362,6 +2384,7 @@ def build_run_config(
         "vision_continuity": int(vision_continuity),
         "trim_frames": int(trim_frames),
         "retention": bool(retention),
+        "test_prompt_generation": bool(test_prompt_generation),
         "source_sha256": hashlib.sha256(source_payload).hexdigest(),
     }
 
@@ -2543,6 +2566,22 @@ def _subject_identity_mismatch(expected, actual):
     return None
 
 
+# Preserve an established identity value when a later source supplies N/A.
+def _inherit_na_subject_identity_values(expected, actual, context, subject_id):
+    """Treat an incoming ``N/A`` gender as omitted identity metadata."""
+    if (
+        actual.get("gender") == "N/A"
+        and expected.get("gender") != "N/A"
+    ):
+        original = expected.get("gender")
+        print(
+            f"WARNING: Subject identity field gender for Subject ID "
+            f"{subject_id} was passed as 'N/A' in {context}; keeping the "
+            f"original value {original!r}."
+        )
+        actual["gender"] = original
+
+
 # Require every expected identity to exist unchanged in ``actual``.
 def _require_subject_snapshot_match(actual, expected, context):
     """Require every expected identity to exist unchanged in ``actual``."""
@@ -2553,6 +2592,12 @@ def _require_subject_snapshot_match(actual, expected, context):
                 f"Subject identity mismatch in {context}: Subject ID "
                 f"{subject_id} is missing."
             )
+        _inherit_na_subject_identity_values(
+            expected_record,
+            actual_record,
+            context,
+            subject_id,
+        )
         mismatch = _subject_identity_mismatch(expected_record, actual_record)
         if mismatch:
             field, expected_value, actual_value = mismatch
@@ -2580,6 +2625,12 @@ def _validate_subject_snapshot_against_lock(lock, snapshot, context):
                 and locked.get("origin_segment") is not None
             ):
                 actual["origin_segment"] = locked["origin_segment"]
+            _inherit_na_subject_identity_values(
+                locked,
+                actual,
+                context,
+                subject_id,
+            )
             mismatch = _subject_identity_mismatch(locked, actual)
             if mismatch:
                 field, expected, received = mismatch
@@ -2622,6 +2673,33 @@ def _inherit_locked_subject_origin_segments(lock, registry_state):
             and locked.get("origin_segment") is not None
         ):
             record["origin_segment"] = locked["origin_segment"]
+
+
+# Copy locked Subject genders into registry records that explicitly say N/A.
+def _inherit_na_subject_genders_in_registry(lock, registry_state, context):
+    """Treat explicit N/A Subject genders as omitted identity metadata."""
+    if not isinstance(registry_state, dict):
+        return
+    subjects = registry_state.get("subjects")
+    if not isinstance(subjects, dict):
+        return
+    for record in subjects.values():
+        if not isinstance(record, dict):
+            continue
+        subject_id = _subject_numeric_id(record)
+        locked = lock.get(str(subject_id)) if subject_id is not None else None
+        if (
+            locked is not None
+            and normalize_subject_gender(record.get("gender")) == "N/A"
+            and locked.get("gender") != "N/A"
+        ):
+            original = locked.get("gender")
+            print(
+                f"WARNING: Subject identity field gender for Subject ID "
+                f"{subject_id} was passed as 'N/A' in {context}; keeping the "
+                f"original value {original!r}."
+            )
+            record["gender"] = original
 
 
 # Enforce immutable Subject identity across the whole checkpoint.
@@ -2709,8 +2787,23 @@ def validate_subject_identity_state(
                 f"Generation checkpoint segment {index} has no Subject registry state."
             )
         _inherit_locked_subject_origin_segments(lock, registry_state)
+        _inherit_na_subject_genders_in_registry(
+            lock,
+            registry_state,
+            f"segment {index}",
+        )
         snapshot = subject_identity_snapshot(registry_state)
         stored_snapshot = record.get("subject_identity_snapshot")
+        if isinstance(stored_snapshot, dict):
+            for subject_id, stored in stored_snapshot.items():
+                locked = lock.get(str(subject_id))
+                if isinstance(stored, dict) and locked is not None:
+                    _inherit_na_subject_identity_values(
+                        locked,
+                        stored,
+                        f"stored snapshot for segment {index}",
+                        subject_id,
+                    )
         if stored_snapshot is not None and stored_snapshot != snapshot:
             if isinstance(stored_snapshot, dict):
                 for subject_id, stored in stored_snapshot.items():
@@ -2759,6 +2852,11 @@ def validate_subject_identity_state(
         # before taking its snapshot, so the original Subject ID metadata is
         # retained instead of turning an omission into a fatal mismatch.
         _inherit_locked_subject_origin_segments(lock, current_registry_state)
+        _inherit_na_subject_genders_in_registry(
+            lock,
+            current_registry_state,
+            "current state",
+        )
         snapshot = subject_identity_snapshot(current_registry_state)
         if not records and source_snapshot is not None:
             _require_subject_snapshot_match(
@@ -5502,10 +5600,23 @@ def restore_generation_state(
                 "Generation checkpoint segment records are missing or out of order."
             )
         video_path = record.get("video_path")
-        if not isinstance(video_path, str) or not os.path.isfile(video_path):
+        prompt_only_checkpoint = bool(
+            (state.get("config") or {}).get("test_prompt_generation", False)
+        )
+        if (
+            not prompt_only_checkpoint
+            and (not isinstance(video_path, str) or not os.path.isfile(video_path))
+        ):
             raise RuntimeError(
                 f"Cannot resume: video for segment {expected_segment} is "
                 f"missing: {video_path!r}"
+            )
+        if prompt_only_checkpoint and video_path is not None and not isinstance(
+            video_path, str
+        ):
+            raise RuntimeError(
+                f"Cannot resume: prompt-only segment {expected_segment} has an "
+                f"invalid video path: {video_path!r}"
             )
         llm_result = record.get("llm_result")
         if not isinstance(llm_result, dict):
@@ -5516,7 +5627,8 @@ def restore_generation_state(
         record = copy.deepcopy(record)
         record.pop("additional_subject_definitions", None)
         restored_records.append(record)
-        video_paths.append(video_path)
+        if video_path:
+            video_paths.append(video_path)
         recent_results.append((expected_segment, llm_result))
         completed_beat_ids = normalize_completed_beat_ids(
             beats,
@@ -5656,7 +5768,11 @@ def record_completed_segment(
         )
     record = {
         "segment_number": segment_number,
-        "video_path": os.path.abspath(video_path),
+        "video_path": (
+            os.path.abspath(video_path)
+            if video_path is not None
+            else None
+        ),
         "llm_result": llm_result,
         "dialogues": extract_spoken_dialogues(llm_result),
         "completed_beat_ids": sorted(completed_beat_ids),
@@ -13907,13 +14023,15 @@ def build_h3_formatter_messages(
     ):
         continuation_opening_rule = (
             "CONTINUATION OPENING RULE:\n"
-            "The authoritative opening state and <Video 1> already establish the "
-            "opening composition, framing, and camera position. Begin the visual "
-            "description with the visible subject or action, not a camera movement. "
+            "The authoritative opening state and <Video 1> establish the starting "
+            "composition, framing, and camera position. Do not invent or add a "
+            "redundant opening-camera setup. Preserve every camera movement "
+            "explicitly present in RAW SCENE, including camera movement beginning "
+            "at 00:00.000. Keep it at its original timestamp and do not move it "
+            "later. "
             "Do not repeat the words 'Live-action, cinematic' in the description "
             "when continuing from <Video 1>; the final H3 prompt supplies that "
-            "continuation opener. Camera movement may occur later when the RAW SCENE "
-            "requires it.\n\n"
+            "continuation opener.\n\n"
         )
     else:
         continuation_opening_rule = ""
@@ -15475,6 +15593,34 @@ def _explicit_wardrobe_from_description(description, subject_name):
     }
 
 
+# Seed only unknown wardrobe slots from the source story's opening description.
+def seed_story_wardrobe(subject_definitions, story, state=None):
+    """Carry explicit opening clothing from story text into continuity state.
+
+    The continuity LLM normally sees the generated segment prompt rather than
+    the original story.  That means a source-level opening fact can disappear
+    when the Director paraphrases the scene or when prompt-only continuity is
+    used.  Treat explicit story clothing as an opening baseline, while leaving
+    an already-known rendered or prompt-authoritative slot untouched.
+    """
+    seeded = continuity_state_for_registry(
+        subject_definitions,
+        copy.deepcopy(state) if isinstance(state, dict) else state,
+    )
+    for name, record in seeded.get("subjects", {}).items():
+        if not isinstance(record, dict):
+            continue
+        extracted = _explicit_wardrobe_from_description(story, name)
+        wardrobe = record.setdefault("wardrobe", {})
+        for field, value in extracted.items():
+            if _known_replacement_value(
+                wardrobe.get(field),
+                f"wardrobe.{field}",
+            ) is None:
+                wardrobe[field] = value
+    return seeded
+
+
 # Find wardrobe slots whose absence is explicitly established.
 def _wardrobe_absence_fields(description, subject_name):
     """Find wardrobe slots whose absence is explicitly established."""
@@ -15979,22 +16125,36 @@ def _subject_description_context(newest_description, subject_name=None):
             clauses = [c.strip() for c in re.split(r"[,;:\n]+|\b(?:and|but|while|when)\b", sentence) if c.strip()]
             clause_matches_idx = [i for i, c in enumerate(clauses) if re.search(rf"(?i)(?<!\w){re.escape(name)}(?!\w)", c)]
             clause_matches = [clauses[i] for i in clause_matches_idx]
-            # Include adjacent clauses that lack proper-name tokens (likely
-            # modifiers such as appositives: "Maya, wearing a red jacket...").
+            # Include the complete run of descriptive clauses that follows a
+            # named subject until another proper name starts a new subject
+            # clause.  The old one-clause lookahead truncated enumerated
+            # outfits such as "wearing a tight, black tank top and denim
+            # jeans" to just "wearing a tight" before wardrobe extraction saw
+            # it.  Do not borrow a second subject's facts from the same
+            # sentence.
             for i in clause_matches_idx:
-                if i - 1 >= 0:
-                    prev = clauses[i - 1]
-                    if not re.search(r"\b[A-Z][a-z]{1,}\b", prev):
-                        clause_matches.insert(0, prev)
-                if i + 1 < len(clauses):
-                    nxt = clauses[i + 1]
-                    if not re.search(r"\b[A-Z][a-z]{1,}\b", nxt):
-                        clause_matches.append(nxt)
+                # A name at the end of a clause is often an object ("beside
+                # Leo"), not the owner of the preceding clauses.  Starting at
+                # the matching clause avoids assigning Maya's outfit to Leo.
+                start = i
+                end = i + 1
+                while end < len(clauses):
+                    nxt = clauses[end]
+                    if re.search(r"\b[A-Z][a-z]{1,}\b", nxt):
+                        break
+                    end += 1
+                clause_matches.extend(
+                    clauses[index]
+                    for index in range(start, end)
+                    if clauses[index] not in clause_matches
+                )
             if clause_matches:
                 matching.extend(clause_matches)
             else:
                 matching.append(sentence)
-    return " ".join(matching) if matching else text
+    # Preserve clause boundaries: wardrobe extraction uses commas and
+    # conjunctions to split an enumerated outfit into canonical slots.
+    return ", ".join(matching) if matching else text
 
 
 # Require field-specific visible evidence before [] erases old state.
@@ -22323,6 +22483,9 @@ def _run_main(
     refresh_interval = getattr(args, "refresh", None)
     trim_frames = getattr(args, "trim_frames", TRIM_FRAMES_AFTER_FIRST)
     retention = bool(getattr(args, "retention", False))
+    test_prompt_generation = bool(
+        getattr(args, "test_prompt_generation", False)
+    )
     total_segments = (
         int(generate_beats_count)
         if generate_beats_only
@@ -22391,7 +22554,14 @@ def _run_main(
 
     # Beat generation deliberately happens before external runtime and workflow
     # validation so an empty beats.txt is populated before normal startup work.
-    validate_runtime_environment()
+    if not test_prompt_generation:
+        validate_runtime_environment()
+    else:
+        print(
+            "Prompt-generation test mode enabled: ComfyUI rendering and "
+            "stitching are disabled.",
+            flush=True,
+        )
 
     run_config = build_run_config(
         segment_length,
@@ -22406,6 +22576,7 @@ def _run_main(
         vision_continuity=args.vision_continuity,
         trim_frames=trim_frames,
         retention=retention,
+        test_prompt_generation=test_prompt_generation,
     )
     if resume_segment == 1:
         generation_state = new_generation_state(run_config)
@@ -22422,6 +22593,11 @@ def _run_main(
         continuity_state = continuity_state_for_registry(
             subject_definitions,
             new_continuity_state(),
+        )
+        continuity_state = seed_story_wardrobe(
+            subject_definitions,
+            story,
+            continuity_state,
         )
         generation_state["subject_registry_state"] = migrate_continuity_state(
             continuity_state
@@ -22443,8 +22619,11 @@ def _run_main(
                 base_subject_definitions=base_subject_definitions,
             )
             if (
-                not isinstance(restored.get("previous_video_path"), str)
-                or not restored["previous_video_path"].strip()
+                not test_prompt_generation
+                and (
+                    not isinstance(restored.get("previous_video_path"), str)
+                    or not restored["previous_video_path"].strip()
+                )
             ):
                 raise RuntimeError(
                     "Generation checkpoint does not identify the previous "
@@ -22486,6 +22665,11 @@ def _run_main(
             continuity_state = continuity_state_for_registry(
                 subject_definitions,
                 new_continuity_state(),
+            )
+            continuity_state = seed_story_wardrobe(
+                subject_definitions,
+                story,
+                continuity_state,
             )
             generation_state["subject_registry_state"] = migrate_continuity_state(
                 continuity_state
@@ -22559,9 +22743,26 @@ def _run_main(
     print(f"Starting segment:     {resume_segment}")
     print(f"Initial megapixels:   {megapixels:g}")
     print(f"Steps:                {args.steps}")
-    print(f"Visual Continuity:    {args.vision_continuity == 0 and 'disabled' or args.vision_continuity == 1 and 'every segment' or f'every {args.vision_continuity} segments'}")
+    visual_continuity_label = (
+        "disabled (prompt-generation test)"
+        if test_prompt_generation
+        else (
+            "disabled"
+            if args.vision_continuity == 0
+            else (
+                "every segment"
+                if args.vision_continuity == 1
+                else f"every {args.vision_continuity} segments"
+            )
+        )
+    )
+    print(f"Visual Continuity:    {visual_continuity_label}")
     print(f"Stitch trim:          {trim_frames} frames after segment 1")
     print(f"Retention analysis:   {'enabled' if retention else 'disabled'}")
+    print(
+        "Prompt generation test: "
+        + ("enabled" if test_prompt_generation else "disabled")
+    )
     print(f"Formatter:            {getattr(args, 'model', 'mistral')}")
     print(f"Global LoRAs:         {len(global_loras)}")
     print(
@@ -22572,18 +22773,7 @@ def _run_main(
             else "disabled"
         )
     )
-    print(
-        "Vision continuity:    "
-        + (
-            "disabled"
-            if args.vision_continuity == 0
-            else (
-                "every segment"
-                if args.vision_continuity == 1
-                else f"every {args.vision_continuity} segment(s)"
-            )
-        )
-    )
+    print(f"Vision continuity:    {visual_continuity_label}")
     print("Director prompting:    2-stage raw scene -> H3 formatter")
     if beats:
         print(f"Story beats:          {len(beats)}")
@@ -22594,26 +22784,29 @@ def _run_main(
         print("Persistent state:     generation_state.json")
     print("=" * 64)
 
-    # Validate both workflows before spending time on generation.
+    # Workflow validation remains local-only; prompt-only mode still performs
+    # image and LoRA verification so its console output matches a normal run.
     initial_test = load_workflow(INITIAL_WORKFLOW_FILE)
     append_test = load_workflow(APPEND_WORKFLOW_FILE)
     refresh_test = None
-    validate_workflow(
-        initial_test,
-        f"initial workflow '{INITIAL_WORKFLOW_FILE}'",
-        is_append=False
-    )
-    validate_workflow(
-        append_test,
-        f"append workflow '{APPEND_WORKFLOW_FILE}'",
-        is_append=True
-    )
+    if not test_prompt_generation:
+        validate_workflow(
+            initial_test,
+            f"initial workflow '{INITIAL_WORKFLOW_FILE}'",
+            is_append=False
+        )
+        validate_workflow(
+            append_test,
+            f"append workflow '{APPEND_WORKFLOW_FILE}'",
+            is_append=True
+        )
     if refresh_interval is not None:
         refresh_test = load_workflow(REFRESH_WORKFLOW_FILE)
-        validate_refresh_workflow(
-            refresh_test,
-            f"refresh workflow '{REFRESH_WORKFLOW_FILE}'",
-        )
+        if not test_prompt_generation:
+            validate_refresh_workflow(
+                refresh_test,
+                f"refresh workflow '{REFRESH_WORKFLOW_FILE}'",
+            )
         copy_reference_image_inputs(
             initial_test,
             refresh_test,
@@ -22633,7 +22826,11 @@ def _run_main(
             f"({len(phrase_exclusions)} {exclusion_count_label})."
         )
     verify_global_loras(global_loras, lora_directory)
-    print("Workflow validation passed.")
+    print(
+        "Workflow validation passed."
+        if not test_prompt_generation
+        else "Prompt-only setup validation passed."
+    )
     if resume_segment == 1:
         checkpoint_generation_state()
 
@@ -23055,7 +23252,14 @@ def _run_main(
                 defer_opening=True,
                 subject_definitions=subject_definitions,
             )
-            print(f"Combined continuity requested for segment {segment} during render.")
+            print(
+                f"Combined continuity requested for segment {segment} "
+                + (
+                    "during prompt generation."
+                    if test_prompt_generation
+                    else "during render."
+                )
+            )
         else:
             print(
                 f"Skipping continuity for final segment {segment}; "
@@ -23099,12 +23303,14 @@ def _run_main(
             finally:
                 pending_previous_render_future = None
 
-        if render_executor is None:
-            raise RuntimeError("A background ComfyUI render executor is required.")
-        vision_required = should_run_vision_continuity(
-            segment,
-            getattr(args, "vision_continuity", 1),
-            refresh_interval,
+        vision_required = (
+            False
+            if test_prompt_generation
+            else should_run_vision_continuity(
+                segment,
+                getattr(args, "vision_continuity", 1),
+                refresh_interval,
+            )
         )
         render_started = threading.Event()
         h3_fixture_path = getattr(args, "capture_h3_fixture", None)
@@ -23139,46 +23345,57 @@ def _run_main(
                 "subject_definitions": subject_definitions,
                 "loras": loras,
             }
-        render_future = render_executor.submit(
-            render_segment_with_retries,
-            segment,
-            segment_bundle["current_duration"],
-            megapixels,
-            h3_prompt,
-            previous_video_path,
-            args.steps,
-            loras=loras,
-            render_started_event=render_started,
-            refresh_interval=refresh_interval,
-            continuity_state=continuity_state,
-            # Validate against the same filtered opening summary that was
-            # inserted into this segment's H3 prompt.
-            continuity_summary=payload.get(
-                "h3_opening_summary",
-                segment_bundle.get("h3_opening_summary", ""),
-            ),
-            subject_definitions=subject_definitions,
-            segment_length=segment_length,
-            h3_fixture_context=h3_fixture_context,
-            h3_fixture_path=h3_fixture_path if h3_fixture_context else None,
-        )
-        render_futures_by_segment[int(segment)] = render_future
-        # A cadence-skipped final render must still be completed on the main
-        # path. If it is submitted as a background render, the loop can reach
-        # stitch_videos after Future.result() but before the future's done
-        # callback has appended the final path. The reusable completion event
-        # is not sufficient here: it may already be set by an earlier segment.
-        if not vision_required and segment < total_segments:
-            pending_previous_render_future = render_future
-        while not render_started.wait(0.05):
-            if render_future.done():
-                # Surface workflow preparation/queue failures instead of waiting
-                # forever for a render-start signal that cannot arrive.
-                render_future.result()
-        print(
-            f"ComfyUI render started for segment {segment}; building the "
-            "prompt-derived end-state prediction while the video renders."
-        )
+        render_future = None
+        if test_prompt_generation:
+            print(
+                f"ComfyUI render skipped for segment {segment}; continuing "
+                "with prompt-derived continuity only."
+            )
+        else:
+            if render_executor is None:
+                raise RuntimeError(
+                    "A background ComfyUI render executor is required."
+                )
+            render_future = render_executor.submit(
+                render_segment_with_retries,
+                segment,
+                segment_bundle["current_duration"],
+                megapixels,
+                h3_prompt,
+                previous_video_path,
+                args.steps,
+                loras=loras,
+                render_started_event=render_started,
+                refresh_interval=refresh_interval,
+                continuity_state=continuity_state,
+                # Validate against the same filtered opening summary that was
+                # inserted into this segment's H3 prompt.
+                continuity_summary=payload.get(
+                    "h3_opening_summary",
+                    segment_bundle.get("h3_opening_summary", ""),
+                ),
+                subject_definitions=subject_definitions,
+                segment_length=segment_length,
+                h3_fixture_context=h3_fixture_context,
+                h3_fixture_path=h3_fixture_path if h3_fixture_context else None,
+            )
+            render_futures_by_segment[int(segment)] = render_future
+            # A cadence-skipped final render must still be completed on the main
+            # path. If it is submitted as a background render, the loop can reach
+            # stitch_videos after Future.result() but before the future's done
+            # callback has appended the final path. The reusable completion event
+            # is not sufficient here: it may already be set by an earlier segment.
+            if not vision_required and segment < total_segments:
+                pending_previous_render_future = render_future
+            while not render_started.wait(0.05):
+                if render_future.done():
+                    # Surface workflow preparation/queue failures instead of waiting
+                    # forever for a render-start signal that cannot arrive.
+                    render_future.result()
+            print(
+                f"ComfyUI render started for segment {segment}; building the "
+                "prompt-derived end-state prediction while the video renders."
+            )
 
         # The combined continuity call predicts the ending from the prompt while
         # H3 renders. Phase 2 is deferred until rendered visual facts are
@@ -23204,6 +23421,14 @@ def _run_main(
         if continuity_pipeline_result is not None:
             prompt_reduced_continuity_state = copy.deepcopy(
                 continuity_pipeline_result["reduced_state"]
+            )
+            # The source story is the only authority for the opening outfit;
+            # restore it when the combined continuity response omitted the
+            # still-unknown slots. Rendered observations below may override it.
+            prompt_reduced_continuity_state = seed_story_wardrobe(
+                subject_definitions,
+                story,
+                prompt_reduced_continuity_state,
             )
             if vision_required:
                 print(
@@ -23241,6 +23466,11 @@ def _run_main(
             # prompt-requested clothing into current rendered wardrobe.
             prompt_reduced_continuity_state = clear_unrendered_wardrobes(
                 prompt_reduced_continuity_state
+            )
+            prompt_reduced_continuity_state = seed_story_wardrobe(
+                subject_definitions,
+                story,
+                prompt_reduced_continuity_state,
             )
             prompt_only_opening_summary = request_continuity_opening_state(
                 prompt_reduced_continuity_state,
@@ -23292,6 +23522,11 @@ def _run_main(
             continuity_state = continuity_state_for_registry(
                 subject_definitions,
                 clear_unrendered_wardrobes(continuity_state),
+            )
+            continuity_state = seed_story_wardrobe(
+                subject_definitions,
+                story,
+                continuity_state,
             )
         if appended_subject_lines:
             print("Registered video-created subject definition(s) internally:")
@@ -23346,6 +23581,53 @@ def _run_main(
             f"Prompt-derived continuity prediction saved before the ComfyUI "
             f"response for segment {segment}."
         )
+
+        if test_prompt_generation:
+            # Prompt-only runs have no rendered pixels or video path to commit.
+            # Persist the prompt result and prompt-derived continuity so the
+            # run remains inspectable and can be resumed in the same mode.
+            reduced_continuity_state = clear_unrendered_wardrobes(
+                prompt_reduced_continuity_state
+            )
+            reduced_continuity_state = seed_story_wardrobe(
+                subject_definitions,
+                story,
+                reduced_continuity_state,
+            )
+            continuity_state = continuity_state_for_registry(
+                subject_definitions,
+                reduced_continuity_state,
+            )
+            continuity_source = "prompt"
+            generation_state["continuity_state"] = copy.deepcopy(
+                reduced_continuity_state
+            )
+            generation_state["continuity_source"] = continuity_source
+            with generation_state_lock:
+                completed_record = record_completed_segment(
+                    generation_state,
+                    segment,
+                    None,
+                    llm_result,
+                    completed_beat_ids,
+                    continuity_summary,
+                    continuity_state=reduced_continuity_state,
+                    continuity_summary_pending=False,
+                    subject_registry_state=continuity_state,
+                )
+                completed_record["continuity_prompt_state"] = copy.deepcopy(
+                    prompt_reduced_continuity_state
+                )
+                completed_record["continuity_source"] = continuity_source
+                generation_state["continuity_prompt_state"] = copy.deepcopy(
+                    prompt_reduced_continuity_state
+                )
+                save_generation_state(generation_state)
+            print(
+                f"Completed prompt generation for segment {segment}; "
+                "no ComfyUI request was sent."
+            )
+            continue
 
         # When the cadence skips rendered-frame vision continuity, the prompt-
         # derived continuity state is authoritative and the next Director prompt
@@ -23543,6 +23825,11 @@ def _run_main(
             reduced_continuity_state = clear_unrendered_wardrobes(
                 prompt_reduced_continuity_state
             )
+            reduced_continuity_state = seed_story_wardrobe(
+                subject_definitions,
+                story,
+                reduced_continuity_state,
+            )
             print(
                 f"Skipping rendered-frame vision continuity for segment {segment} "
                 f"(cadence={getattr(args, 'vision_continuity', 1)}); using the "
@@ -23706,6 +23993,13 @@ def _run_main(
             print(f"All {len(beats)} story beats were marked complete.")
     else:
         print("Story beat tracking was disabled for this run.")
+
+    if test_prompt_generation:
+        print(
+            "Prompt-generation test completed: prompts were generated for all "
+            "requested segments and no data was sent to ComfyUI."
+        )
+        return
 
     # Barrier: every submitted render must be complete before FFmpeg sees the
     # stitch list. Do not rely on the single mutable pending-future reference;

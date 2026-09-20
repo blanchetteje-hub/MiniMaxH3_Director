@@ -871,7 +871,7 @@ app.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--vision-continuity N] [--repair SEGMENT] [--model {mistral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--test-prompt-generation] [--vision-continuity N] [--repair SEGMENT] [--model {mistral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -888,6 +888,7 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `--trim-frames FRAMES` | Trim this many leading frames from every segment after the first when stitching; defaults to `2`, and `0` disables the trim. |
 | `--refresh SEGMENTS` | Auto refresh on every Nth segment using `Minimax_auto_refresh_API.json`; defaults to every `4` segments. |
 | `--retention` | Add retention analysis to non-initial H3 prompts; disabled by default. |
+| `--test-prompt-generation` | Generate and print all prompts without submitting anything to ComfyUI or rendering video; disabled by default. |
 | `--vision-continuity N` | Run rendered-frame continuity checks every `N` segments; `0` disables them, `1` checks every segment, and larger values check on a cadence. |
 | `--repair SEGMENT` | Rerender one existing middle segment using its checkpoint and neighboring clips; cannot be combined with a resume segment other than `1`. |
 | `--model {mistral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `mistral`. |
@@ -911,6 +912,13 @@ on the active beat are added after them:
 
 ```powershell
 python minimax.py 5 60 0.5 --lora style.safetensors:0.7 --lora motion.safetensors:0.35
+```
+
+To exercise the full prompt-generation pipeline without contacting ComfyUI or
+creating video, add `--test-prompt-generation`:
+
+```powershell
+python minimax.py 5 60 0.5 --test-prompt-generation
 ```
 
 ### Example: new 60-second run

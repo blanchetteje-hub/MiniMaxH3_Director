@@ -177,6 +177,36 @@ class ResumeTests(unittest.TestCase):
                 subject_registry_state=registry,
             )
 
+    def test_na_gender_keeps_locked_value_and_only_warns(self):
+        subjects = "<Subject 2> is Zombie, unknown, referenced in <Picture 2>."
+        state = minimax.new_generation_state({"subject_definitions": subjects})
+        state["subject_identity_lock"]["subjects"]["2"]["gender"] = "unknown"
+        registry = minimax.continuity_state_for_registry(subjects)
+        registry["subjects"]["Zombie"]["gender"] = "N/A"
+
+        with mock.patch("builtins.print") as print_mock:
+            minimax.record_completed_segment(
+                state,
+                1,
+                "/tmp/segment-1.mp4",
+                formatted_result(1),
+                [],
+                subject_registry_state=registry,
+            )
+
+        self.assertEqual(registry["subjects"]["Zombie"]["gender"], "unknown")
+        self.assertEqual(
+            state["segments"][0]["subject_identity_snapshot"]["2"]["gender"],
+            "unknown",
+        )
+        warning_text = " ".join(
+            str(call.args[0])
+            for call in print_mock.call_args_list
+            if call.args
+        )
+        self.assertIn("WARNING:", warning_text)
+        self.assertIn("passed as 'N/A'", warning_text)
+
     def test_subject_identity_lock_rejects_later_id_or_metadata_drift(self):
         subjects = "<Subject 1> is Amy, a woman referenced in <Picture 1>."
         state = minimax.new_generation_state({"subject_definitions": subjects})

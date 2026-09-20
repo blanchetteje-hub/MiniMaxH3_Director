@@ -557,8 +557,12 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn("At 00:02.000 seconds, Amy fires", user_prompt)
 
     def test_request_two_opening_instructions_follow_conditioning_mode(self):
+        raw_scene = (
+            "At 00:00.000 seconds, the camera tracks behind Amy as she runs "
+            "down the hallway."
+        )
         continuation = minimax.build_h3_formatter_messages(
-            "Mark continues down the street.",
+            raw_scene,
             "T2VA",
             6,
             continuity_summary="Mark remains on the street.",
@@ -579,7 +583,21 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )[1]["content"]
 
         self.assertIn("<Video 1>", continuation)
-        self.assertIn("opening composition, framing, and camera position", continuation)
+        self.assertIn(
+            "Preserve every camera movement explicitly present in RAW SCENE",
+            continuation,
+        )
+        self.assertIn(
+            "including camera movement beginning at 00:00.000",
+            continuation,
+        )
+        self.assertIn(
+            "Keep it at its original timestamp and do not move it later",
+            continuation,
+        )
+        self.assertIn(raw_scene, continuation)
+        self.assertNotIn("not a camera movement", continuation)
+        self.assertNotIn("Camera movement may occur later", continuation)
         self.assertIn("supplied first frame", clean_refresh)
         self.assertIn("CLEAN-REFRESH OPENING RULE", clean_refresh)
         self.assertNotIn(
