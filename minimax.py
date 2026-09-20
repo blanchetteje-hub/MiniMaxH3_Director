@@ -62,8 +62,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 LM_STUDIO_URL = os.environ.get(
     "MINIMAX_LM_STUDIO_URL",
-    #"http://192.168.0.203:1234"
-    "http://127.0.0.1:1234"
+    "http://192.168.0.203:1234"
+    #"http://127.0.0.1:1234"
 ).rstrip("/")
 
 VISION_LM_STUDIO_URL = os.environ.get(
@@ -780,132 +780,46 @@ Do not add something from the STORY that happens later, such as another person e
 End continuity state: Alice is standing in a room with a table to her right, holding a vial of black liquid that she is drinking.
 """
 
-H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a minimalist MiniMax H3 audiovisual prompt formatter.
 
-- PRIORITY: Make sure each timestamp from the RAW SCENE is accounted for and established in the same format, EX: (\"At [timestamp], \").
-- Write only what is provided: do not invent any new details, dialogue, subject details, or events.
-- Only have [Shot 1], do not add additional shots, follow all camera movements given in the user prompt.
-- No dialogue can be outside of <d> tags or without a speaker ID, EX: ("Ahhh!") becomes (S1) <d> [English] Ahhh!</d>
-- Spoken <d></d> tags must always be preceeded with the speaker_id of the subject.
-- The assigned beat's primary action must visibly occur during this segment; do not merely set it up, hint at it, reveal its consequences, or end on a reaction to it.
-- If an AUTHORITATIVE OPENING STATE is supplied, use that continuity once at the beginning of Shot 1. Do not repeat the opening continuity later in the description.
-- When subjects are referred to by name, do not use a speaker_id or <subject id>.
-- If the beat has multiple required actions, show them in order and complete the visible progression before the segment ends. For example, if the beat says a werewolf emerges, chases Elias, and gains ground, visibly show the werewolf emerge, Elias flee, the werewolf chase him, and the distance between them decrease before the segment ends.
-- Any clothing specified in the beat must be part of the response.
-- Make sure each timestamp from the RAW SCENE is accounted for and established in the same format, EX: ("At [timestamp], ".
-- assume 'Live-action, cinematic' unless otherwise specified.
-- Format this user prompt following these rules. Return ONLY one valid JSON object containing the four required properties below.
-Video Prompt Writing Guide
+# Request 2 is a formatter/translator. Request 1 owns creative direction.
+H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a strict formatter/translator for the final MiniMax H3 prompt.
 
-- 2. Final Prompt Structure
+Request 1's RAW SCENE is authoritative for this segment. Convert it into a
+clean, concise prompt without creatively reinterpreting, expanding, or
+redirecting it.
 
-`subject_genders` must be a JSON object whose keys are only newly introduced,
-named Subjects in the supplied context and whose values are exactly `male`,
-`female`, or `unknown`.
+Rules:
+- Preserve every visible action and its order, every timestamp, and every
+  camera movement explicitly supplied by RAW SCENE. Make the segment's action
+  the main content of detailed_description.
+- Preserve dialogue verbatim. Put spoken dialogue in the existing form `(S1)
+  <d>[English] exact words</d>` with the established stable speaker ID when
+  applicable. Do not put spoken dialogue outside <d>, invent dialogue, or put
+  speaker IDs on ordinary visual prose when names are used.
+- Use AUTHORITATIVE OPENING STATE only to establish the minimum facts needed
+  for the image at frame 0. Do not copy unrelated continuity facts, repeat the
+  opening state later, or carry stale facts into this segment.
+- Do not invent actions, props, people, injuries, locations, sounds, camera
+  movements, reactions, visual details, or consequences. Do not advance the
+  next beat. Make only the grammatical changes needed for a coherent prompt.
+- Use one [Shot 1]. Keep `Live-action, cinematic` as the default only when no
+  other style is supplied, and use it no more than once. For continuation
+  segments, do not re-narrate the previous final frame or duplicate its opener.
+- overall_soundscape may contain only sounds supported by RAW SCENE or directly
+  relevant visible actions. Do not perpetuate unrelated opening-state sounds.
+- Set non_diegetic_music to `N/A` unless music is explicitly requested or
+  supported by the supplied input. Do not invent a soundtrack.
+- `subject_genders` contains only newly introduced named Subjects, with values
+  exactly `male`, `female`, or `unknown`; use `{}` when there are none.
 
-Return exactly one JSON object with these four properties in this order:
-
+Return only one valid JSON object with exactly these four properties, in this
+order:
 {
-  "subject_genders": {"Subject Name": "unknown"},
+  "subject_genders": {},
   "detailed_description": "[Shot 1] ...",
   "overall_soundscape": "...",
   "non_diegetic_music": "..."
-}
-
-- detailed_description: Describes visuals, actions, shots, speakers, dialogue, singing, and diegetic audio along the timeline established in RAW SCENE. Include all timestamps, camera movements, and subject actions.
-- overall_soundscape: Summarizes ambient sound, physical action sounds, and non-verbal human sounds across the entire video.
-- non_diegetic_music: Describes background music that the characters cannot hear and only the audience can hear.
-- subject_genders: For every newly introduced named Subject, report gender
-  only when it is clearly established by the supplied context. Otherwise use
-  `unknown`. Never infer gender from a Subject's name, species, appearance
-  stereotype, or outside knowledge. Use `{}` when no new named Subjects are
-  introduced.
-
-HOW TO WRITE THE H3 PROMPT:
-
-- 4.1 Develop the Multimodal Description Along the Timeline
-
-`detailed_description` is the main body of the rewritten prompt. Every detail should correspond to something visible or audible: visual style, initial composition, subject appearance and position, scene and key props, actions and reactions, shot changes, spoken language, and synchronized diegetic sound.
-
-At the beginning of `[Shot 1]`, state the overall style and initial composition. Common styles include `Cinematic`, `live-action`, `2D-animated`, `3D CG`, `claymation`, `watercolor`, and `vintage film`. For keyframe tasks, derive the style from the reference image; for T2VA, select it from the user's text.
-
-Example: [Shot 1] Live-action, cinematic, a medium-wide shot frames...
-
-- 4.2 Camera Motion: Motion Type + Amplitude + Speed
-
-A complete camera-motion expression has three dimensions: the **motion type** defines how the camera moves, **amplitude** defines the range of compositional change, and **speed** defines the pacing of that change. Add amplitude and speed only when they are meaningful; medium amplitude and normal speed are usually omitted.
-
-| Dimension | Available Expression | Description |
-|-|-|-|
-| Motion type | `Zoom In / Zoom Out` | The focal length changes while the camera body remains stationary |
-| Motion type | `Push In / Pull Out` | The camera moves forward / backward |
-| Motion type | `Pan Left / Pan Right` | The camera remains in place while the lens pivots horizontally |
-| Motion type | `Truck Left / Truck Right` | The camera translates horizontally |
-| Motion type | `Tilt Up / Tilt Down` | The camera remains in place while the lens pivots vertically |
-| Motion type | `Pedestal Up / Pedestal Down` | The entire camera moves upward / downward |
-| Motion type | `Arc Shot` | The camera moves in an arc around the subject |
-| Motion type | `Tracking Shot` | The camera follows a moving subject |
-| Motion type | `Static Shot` | The camera position and lens remain still |
-| Motion type | `Shake Slightly / Shake Strongly` | Slight / strong camera shake |
-| Motion type | `POV` | The subject's point of view |
-| Motion type | `Roll Clockwise / Roll Counterclockwise` | The camera rolls clockwise / counterclockwise around the lens axis |
-| Amplitude | `with small amplitude` | Small-range change |
-| Amplitude | `with large amplitude` | Large-range change |
-| Speed | `at slow speed` | Slow movement |
-| Speed | `at fast speed` | Fast movement |
-
-Camera motion should be written as a natural English action within the shot, rather than stacked as separate labels at the end of a sentence:
-
-The camera pushes in with small amplitude at slow speed toward the folded letter in her hands.
-The camera pans right with large amplitude at fast speed, revealing the open doorway.
-The camera holds a static shot as the runner exits the frame.
-
-- 4.3 Speakers, Dialogue, and Singing
-
-Subjects who speak, sing, or produce an off-screen human voice use stable IDs such as `(S1)` and `(S2)`. When multiple already-numbered speakers speak or sing together, use a compound ID such as `(S1,S2)`. A speaker keeps the same ID across shots; characters who never vocalize receive no speaker ID.
-
-When a speaker first appears, provide enough information from the visual and audio context to establish a stable identity, such as character type, age, gender, whether the person is on-screen, pitch, timbre, speaking rate, or accent. Place the speaker's identifying phrase, ID, action, and delivery outside `<d>`. Inside `<d>`, include only the language tag and the actual user-provided spoken content. Preserve every original word and punctuation mark verbatim; do not translate or rewrite them.
-
-Example:
-The young woman with a quiet, breathy voice (S1) says: <d>[English] I get off at the next station.</d>
-The two children (S1,S2) shout together, <d>[English] Wait for us!</d>
-
-For voiceover, use the exact phrase `says in an off-screen voiceover`. Immediately after every voiceover `<d>` block, state that the corresponding on-screen character's lips remain closed:
-
-The man (S1) says in an off-screen voiceover: <d>[English] I still remember that road.</d> while his lips remain completely closed.
-
-When the same line of dialogue or lyrics crosses a cut, use `<scenetrans>` at the connecting points in both parts and explicitly state that the audio continues across the cut. Use `<cutoff>` when speech is truncated by the end of the video. Continuity may be expressed with `continues seamlessly across the cut`, `continues uninterrupted into the next shot`, `carries over from the previous shot`, or `remains audible across the transition`.
-
-- 4.4 On-Screen Text
-
-Place any banner, sign, label, subtitle, or neon text that is actually visible on screen in English double quotation marks. Preserve the original text and punctuation verbatim, without translation.
-
-A red neon sign reading "Hello" glows above the doorway.
-
-- 4.5 overall_soundscape
-
-Use 1 to 4 English sentences in one continuous paragraph to summarize the ambient sound, physical action sounds, and non-verbal human sounds across the full video, such as wind, rain, traffic, footsteps, fabric movement, impacts, breathing, laughter, or panting. Dialogue, singing, and diegetic music already belong in the multimodal description and should not be repeated here. Use `N/A` only when the user explicitly requests complete silence throughout the video.
-
-overall_soundscape: Steady rain taps against the café windows while low room ambience continues underneath. The entrance bell rings once, followed by wet footsteps and the soft scrape of a chair.
-
-- 4.6 non_diegetic_music
-
-Use 1 to 3 English sentences to describe background music that the characters cannot hear and only the audience can hear. Focus on instrumentation, speed, rhythm, and dynamic changes; do not use abstract mood words or explain the emotional function of the score. Singing, instruments, radio, television, or phone music audible to the characters are diegetic events and should appear in the multimodal description. Use `N/A` when there is no non-diegetic music.
-
-non_diegetic_music: Sparse piano notes at a slow tempo, joined by sustained low strings that gradually increase in volume before fading out.
-
-- 5. Construction Example
-Construct the complete timeline directly from the text. You may add scene, character, action, and sound details that remain consistent with the user's intent:
-
-detailed_description: [Shot 1] Live-action, cinematic, a medium-wide shot frames a baker opening the shutters of a small street bakery before sunrise. The camera pushes in with small amplitude at slow speed as the middle-aged baker with a calm, slightly raspy voice (S1) places a fresh loaf on the wooden counter and says: <d>[English] First batch of the morning.</d> 
-
-At 00:05.000, the camera cuts to a close-up of steam rising from the sliced bread.
-
-At 00:07.000, the camera pans right with small amplitude at slow speed to follow a customer entering the bakery.
-
-overall_soundscape: Wooden shutters scrape open over a quiet street as trays clink softly inside the bakery. The doorbell rings once, followed by light footsteps and the crisp sound of bread being sliced.
-
-non_diegetic_music: A soft acoustic-guitar pattern at a moderate tempo, joined by sparse upright-bass notes and a gentle fade at the end."""
+}"""
 
 _H3_MARKDOWN_FENCE_LINE_RE = re.compile(
     r"(?im)^[ \t]*```(?:[ \t]*[A-Za-z][A-Za-z0-9_+.-]*)?[ \t]*(?:\r?\n|$)"
@@ -1185,6 +1099,24 @@ _H3_CONTINUATION_PREFIX_TEXT = (
 
 _H3_APPEND_DESCRIPTION_PREFIX = (
     "[Shot 1] Live-action, cinematic, continues from <Video 1>."
+)
+
+_H3_CONTINUATION_STYLE_PREFIX_RE = re.compile(
+    r"^\s*(?:live-action\s*,\s*cinematic\s*,\s*)+",
+    re.IGNORECASE,
+)
+
+_H3_LEADING_CAMERA_MOTION_RE = re.compile(
+    r"^\s*(?:the\s+|a\s+|an\s+)?camera\s+"
+    r"(?:(?:slowly|quickly|smoothly|steadily|gradually)\s+)*"
+    r"(?:moves?|pans?|tilts?|pushes?|pulls?|tracks?|zooms?|"
+    r"pedestals?|arcs?|rolls?|shakes?|follows?|holds?)\b",
+    re.IGNORECASE,
+)
+
+_H3_OPENING_TIMESTAMP_RE = re.compile(
+    r"^\s*(?P<timestamp>At\s+00:00\.000(?:\s+seconds)?\s*,\s*)",
+    re.IGNORECASE,
 )
 
 _H3_CONTINUATION_PREFIX_RE = re.compile(
@@ -1666,6 +1598,22 @@ def parse_args(arguments=None):
         help="rerender only this existing one-based middle segment",
     )
     parser.add_argument(
+        "--capture-h3-segment",
+        type=int,
+        default=None,
+        metavar="SEGMENT",
+        help=(
+            "capture one rendered segment as a development-only H3 fixture; "
+            "requires --capture-h3-fixture"
+        ),
+    )
+    parser.add_argument(
+        "--capture-h3-fixture",
+        default=None,
+        metavar="PATH",
+        help="write the selected development-only H3 fixture to PATH",
+    )
+    parser.add_argument(
         "--generate-beats",
         type=int,
         default=None,
@@ -1744,6 +1692,8 @@ def parse_args(arguments=None):
                 "--generate-beats accepts only its COUNT argument, not video "
                 "generation positionals."
             )
+        if args.capture_h3_segment is not None or args.capture_h3_fixture is not None:
+            parser.error("H3 fixture capture requires normal video generation.")
         return args
 
     if any(
@@ -1776,6 +1726,16 @@ def parse_args(arguments=None):
         parser.error("--repair requires a middle segment; Segment 1 is not repairable.")
     if args.repair is not None and args.resume != 1:
         parser.error("--repair cannot be combined with --resume other than 1.")
+    if args.repair is not None and (
+        args.capture_h3_segment is not None or args.capture_h3_fixture is not None
+    ):
+        parser.error("H3 fixture capture cannot be combined with --repair.")
+    if (args.capture_h3_segment is None) != (args.capture_h3_fixture is None):
+        parser.error(
+            "--capture-h3-segment and --capture-h3-fixture must be used together."
+        )
+    if args.capture_h3_segment is not None and args.capture_h3_segment <= 0:
+        parser.error("--capture-h3-segment must be a positive one-based segment.")
 
     return args
 
@@ -4087,6 +4047,260 @@ def _h3_continuity_state_for_visible_subjects(state, visible_subject_ids):
     return rendered
 
 
+# Continuity facts that are safe to expose for one current scene.
+_H3_OPENING_VISIBLE_STATE_RE = re.compile(
+    r"(?i)\b(?:visible|see|shows?|wear(?:s|ing)|hold(?:s|ing)|carry|"
+    r"aim(?:s|ing)?|point(?:s|ing)?|use(?:s|ing)?|wield(?:s|ing)?|"
+    r"injur\w*|wound\w*|blood\w*|bleed\w*|hurt|pain|limp\w*|"
+    r"missing|damag\w*|burn\w*|scar\w*|bandage\w*|scrap\w*|"
+    r"cut\w*|bruise\w*|fracture\w*)\b"
+)
+_H3_OPENING_SPATIAL_RE = re.compile(
+    r"(?i)\b(?:near|beside|behind|in front of|inside|within|under|"
+    r"through|across|between|next to|against|by|at|on|in)\b"
+)
+_H3_OPENING_ACTION_RE = re.compile(
+    r"(?i)\b(?:continue\w*|ongoing|still|remain\w*|resume\w*|"
+    r"approach\w*|aim\w*|hold\w*|carry\w*|use\w*|wield\w*|"
+    r"point\w*|reach\w*|open\w*|close\w*|enter\w*|exit\w*)\b"
+)
+_H3_OPENING_ONE_SHOT_AUDIO_RE = re.compile(
+    r"(?i)\b(?:gunshot\w*|shot\w*|impact\w*|crash\w*|bang\w*|"
+    r"scream\w*|shout\w*|explosion\w*|blast\w*|thud\w*|"
+    r"one[- ]time|sudden)\b"
+)
+_H3_OPENING_PERSISTENT_AUDIO_RE = re.compile(
+    r"(?i)\b(?:rain\w*|alarm\w*|siren\w*|wind\w*|storm\w*|"
+    r"footstep\w*|drone\w*|hum\w*|ring\w*|buzz\w*|hiss\w*|"
+    r"sizzle\w*|sound\w*|noise\w*|ongoing|continuous|continues?|"
+    r"still|active|sounding)\b"
+)
+_H3_OPENING_AUDIO_LOCATION_RE = re.compile(
+    r"(?i)\b(?:in|from|inside|near|at|by)\s+(?:the\s+)?"
+    r"[a-z][a-z0-9 -]{1,48}\b"
+)
+
+
+def _h3_opening_subject_ids_in_scene(scene, state, subject_definitions):
+    """Return canonical Subjects explicitly named by the current scene."""
+    text = str(scene or "")
+    visible = _subject_ids_referenced_by_description(
+        text,
+        subject_definitions,
+    )
+    for subject_id, name, _record in _ordered_continuity_subjects(state):
+        if name and re.search(rf"(?i)(?<!\w){re.escape(name)}(?!\w)", text):
+            visible.add(subject_id)
+    return visible
+
+
+def _h3_opening_value_matches_scene(value, scene):
+    """Return whether distinctive words in a fact occur in the scene."""
+    generic = {
+        "a", "an", "and", "at", "by", "for", "from", "in", "into",
+        "is", "near", "of", "on", "the", "to", "with",
+    }
+    return bool(
+        (_continuity_fact_tokens(value) - generic)
+        & (_continuity_fact_tokens(scene) - generic)
+    )
+
+
+def _h3_opening_audio_is_relevant(audio, scene, location):
+    """Keep only audio with a deterministic reason to remain audible."""
+    audio = _known_continuity_value(audio)
+    if not audio:
+        return False
+    if _h3_opening_value_matches_scene(audio, scene):
+        return not (
+            _H3_OPENING_ONE_SHOT_AUDIO_RE.search(audio)
+            and not _H3_OPENING_PERSISTENT_AUDIO_RE.search(audio)
+        )
+    if _H3_OPENING_ONE_SHOT_AUDIO_RE.search(audio):
+        return False
+    if not _H3_OPENING_PERSISTENT_AUDIO_RE.search(audio):
+        return False
+    # A persistent sound can cross nearby shots, but a known different
+    # location is enough reason to omit it from H3-facing text.
+    if location and not _h3_opening_value_matches_scene(location, scene):
+        if _h3_opening_value_matches_scene(location, audio):
+            return False
+        scene_text = str(scene or "")
+        if _H3_OPENING_SPATIAL_RE.search(scene_text):
+            return False
+    if location and _H3_OPENING_AUDIO_LOCATION_RE.search(audio):
+        if not _h3_opening_value_matches_scene(location, audio):
+            return False
+    return True
+
+
+def _h3_opening_state_for_scene(
+    state,
+    subject_definitions,
+    scene,
+    conditioning_mode=None,
+):
+    """Project canonical continuity into the minimum scene-relevant state.
+
+    This is deliberately a lexical gate over the existing structured state. It
+    does not infer a world model or mutate the canonical continuity record.
+    """
+    if not isinstance(state, dict) or not str(scene or "").strip():
+        return copy.deepcopy(state)
+
+    rendered = copy.deepcopy(state)
+    scene_text = str(scene or "")
+    clean_refresh = conditioning_mode == "clean_refresh"
+    visible_ids = _h3_opening_subject_ids_in_scene(
+        scene_text,
+        rendered,
+        subject_definitions,
+    )
+    filtered_subjects = {}
+    for subject_id, name, record in _ordered_continuity_subjects(rendered):
+        if subject_id not in visible_ids:
+            continue
+        filtered = copy.deepcopy(record)
+        position = _known_continuity_value(record.get("position"))
+        pose = _known_continuity_value(record.get("pose_action"))
+        body = _known_continuity_value(record.get("body_state"))
+        condition = _known_continuity_value(record.get("physical_condition"))
+
+        # Append videos already supply the prior pixels. Keep only state that
+        # can disambiguate the next action; refreshes need a fuller frame-0
+        # description because their first frame is newly conditioned.
+        if not clean_refresh:
+            filtered["position"] = (
+                position
+                if _h3_opening_value_matches_scene(position, scene_text)
+                else "N/A"
+            )
+            filtered["pose_action"] = (
+                pose
+                if pose
+                and not _COMPLETED_ACTION_RE.match(pose)
+                and _h3_opening_value_matches_scene(pose, scene_text)
+                else "N/A"
+            )
+            wardrobe = {}
+            for field, value in (record.get("wardrobe") or {}).items():
+                if _h3_opening_value_matches_scene(value, scene_text):
+                    wardrobe[field] = value
+                else:
+                    wardrobe[field] = "N/A"
+            filtered["wardrobe"] = wardrobe
+        else:
+            filtered["position"] = position or "N/A"
+            filtered["pose_action"] = (
+                pose
+                if pose and not _COMPLETED_ACTION_RE.match(pose)
+                and _h3_opening_value_matches_scene(pose, scene_text)
+                else "N/A"
+            )
+
+        if body and (
+            _h3_opening_value_matches_scene(body, scene_text)
+            or _H3_OPENING_VISIBLE_STATE_RE.search(body)
+        ):
+            filtered["body_state"] = body
+        else:
+            filtered["body_state"] = "N/A"
+        if condition and (
+            _h3_opening_value_matches_scene(condition, scene_text)
+            or _H3_OPENING_VISIBLE_STATE_RE.search(condition)
+        ):
+            filtered["physical_condition"] = condition
+        else:
+            filtered["physical_condition"] = "N/A"
+
+        for field in ("held_props", "attached_objects", "injuries", "substances"):
+            values = record.get(field, [])
+            if not isinstance(values, list):
+                filtered[field] = []
+                continue
+            filtered[field] = [
+                value for value in values
+                if clean_refresh
+                or _h3_opening_value_matches_scene(value, scene_text)
+                or (
+                    field == "held_props"
+                    and _H3_OPENING_ACTION_RE.search(scene_text)
+                )
+                or (
+                    field == "injuries"
+                    and _H3_OPENING_VISIBLE_STATE_RE.search(str(value))
+                )
+            ]
+        topology = _known_continuity_value(record.get("topology"))
+        filtered["topology"] = (
+            topology
+            if topology
+            and (
+                _h3_opening_value_matches_scene(topology, scene_text)
+                or _H3_OPENING_VISIBLE_STATE_RE.search(topology)
+            )
+            else "N/A"
+        )
+        effects = record.get("persistent_effects", [])
+        filtered["persistent_effects"] = [
+            value for value in effects
+            if isinstance(effects, list)
+            and (
+                _h3_opening_value_matches_scene(value, scene_text)
+                or _H3_OPENING_VISIBLE_STATE_RE.search(str(value))
+            )
+        ] if isinstance(effects, list) else []
+        relationships = record.get("spatial_relationships", [])
+        filtered["spatial_relationships"] = [
+            value for value in relationships
+            if clean_refresh
+            or _h3_opening_value_matches_scene(value, scene_text)
+            or _H3_OPENING_SPATIAL_RE.search(str(value))
+            and _H3_OPENING_SPATIAL_RE.search(scene_text)
+        ] if isinstance(relationships, list) else []
+        filtered_subjects[name] = filtered
+    rendered["subjects"] = filtered_subjects
+
+    environment = rendered.get("environment")
+    if not isinstance(environment, dict):
+        environment = {}
+        rendered["environment"] = environment
+    location = _known_continuity_value(environment.get("location"))
+    if not location or not _h3_opening_value_matches_scene(location, scene_text):
+        environment["location"] = "N/A"
+    persistent_state = _known_continuity_value(
+        environment.get("persistent_state")
+    )
+    if not persistent_state or not (
+        _h3_opening_value_matches_scene(persistent_state, scene_text)
+        or _H3_OPENING_VISIBLE_STATE_RE.search(persistent_state)
+    ):
+        environment["persistent_state"] = "N/A"
+
+    rendered["camera"] = "N/A"
+    ongoing_action = _known_continuity_value(rendered.get("ongoing_action"))
+    rendered["ongoing_action"] = (
+        ongoing_action
+        if ongoing_action
+        and not _COMPLETED_ACTION_RE.match(ongoing_action)
+        and (
+            _h3_opening_value_matches_scene(ongoing_action, scene_text)
+            or _H3_OPENING_ACTION_RE.search(scene_text)
+        )
+        else "N/A"
+    )
+    rendered["ongoing_audio"] = (
+        rendered.get("ongoing_audio")
+        if _h3_opening_audio_is_relevant(
+            rendered.get("ongoing_audio"),
+            scene_text,
+            location,
+        )
+        else "N/A"
+    )
+    return rendered
+
+
 # Remove structured continuity fragments from H3 scene prose.
 def inject_persistent_state_into_description(detailed_description):
     """Remove structured continuity fragments from H3 scene prose.
@@ -4192,9 +4406,26 @@ def format_authoritative_opening_state(
     include_camera=True,
     excluded_picture_ids=None,
     visible_subject_ids=None,
+    current_scene="",
+    conditioning_mode=None,
 ):
-    """Render continuation/reference guidance, optionally including camera state."""
+    """Render H3 opening guidance from canonical, scene-relevant state.
+
+    With no ``current_scene`` this retains the historical diagnostic rendering
+    used by checkpoint/inspection paths.  The H3 Request 2 path supplies the
+    current RAW SCENE, which enables the deterministic relevance projection.
+    """
     state = continuity_state_for_registry(subject_definitions, state)
+    if str(current_scene or "").strip():
+        state = _h3_opening_state_for_scene(
+            state,
+            subject_definitions,
+            current_scene,
+            conditioning_mode=conditioning_mode,
+        )
+        # The previous video or refresh first-frame anchor establishes camera
+        # composition. Do not resurrect an older camera description here.
+        include_camera = False
     excluded_picture_ids = {
         int(value)
         for value in (excluded_picture_ids or ())
@@ -4220,7 +4451,7 @@ def format_authoritative_opening_state(
         if visible_ids is None or subject[0] in visible_ids
     ]
     if not subjects:
-        if visible_ids is None:
+        if visible_ids is None and not str(current_scene or "").strip():
             raise RuntimeError(
                 "Cannot render authoritative continuation guidance: no subjects "
                 "were available."
@@ -7186,6 +7417,95 @@ def new_beat_canonical_state():
     }
 
 
+_BEAT_STATE_DEFAULT_STRINGS = frozenset({"n/a", "null"})
+_BEAT_INJURY_FIELDS = frozenset({
+    "injury", "injuries", "current_injury", "current_injuries",
+    "injury_status",
+})
+_BEAT_INJURY_DEFAULT_STRINGS = frozenset({
+    "none", "no injury", "no injuries", "not injured", "uninjured",
+})
+
+
+def compact_beat_validation_state(state):
+    """Return a deterministic, loss-aware view of canonical beat state.
+
+    This helper only removes representation noise. It does not select facts by
+    narrative relevance, entity name, or keyword matching.
+    """
+    if not isinstance(state, dict):
+        return {}
+
+    def lookup_path(root, path):
+        cursor = root
+        for part in str(path).split("."):
+            if not isinstance(cursor, dict) or part not in cursor:
+                return False, None
+            cursor = cursor[part]
+        return True, cursor
+
+    def persistent_effects_are_redundant():
+        progress = state.get("story_progress")
+        effects = progress.get("persistent_state_effects") if isinstance(progress, dict) else None
+        if not isinstance(effects, dict):
+            return True
+        for path, value in effects.items():
+            found, existing = lookup_path(state, path)
+            if not found or existing != value:
+                return False
+        return True
+
+    drop_persistent_effects = persistent_effects_are_redundant()
+    progress_bookkeeping = frozenset({
+        "completed_required_event_ids",
+        "pending_required_event_ids",
+        "current_macro_phase",
+    })
+
+    def prune(value, key=None, path=()):
+        if value is None:
+            return None, True
+        if isinstance(value, str):
+            normalized = value.strip().casefold()
+            if normalized in _BEAT_STATE_DEFAULT_STRINGS:
+                return None, True
+            if key in _BEAT_INJURY_FIELDS and normalized in _BEAT_INJURY_DEFAULT_STRINGS:
+                return None, True
+            return value, False
+        if isinstance(value, list):
+            compacted = []
+            for item in value:
+                compact_item, omitted = prune(item, key=key, path=path)
+                if not omitted:
+                    compacted.append(compact_item)
+            return compacted, not compacted
+        if isinstance(value, dict):
+            compacted = {}
+            for child_key, child_value in value.items():
+                if not path and child_key == "version":
+                    continue
+                if path == ("story_progress",) and child_key in progress_bookkeeping:
+                    continue
+                if (
+                    path == ("story_progress",)
+                    and child_key == "persistent_state_effects"
+                    and drop_persistent_effects
+                ):
+                    continue
+                compact_child, omitted = prune(
+                    child_value,
+                    key=child_key,
+                    path=path + (str(child_key),),
+                )
+                if not omitted:
+                    compacted[child_key] = compact_child
+            return compacted, not compacted
+        return copy.deepcopy(value), False
+
+    compacted, _ = prune(state)
+    return compacted
+
+
 def _state_string_list(value):
     """Normalize a JSON scalar/list into an ordered list of non-empty strings."""
     if value is None:
@@ -7198,20 +7518,29 @@ def _state_string_list(value):
 
 
 def _normalize_clothing(value):
-    """Return the compact persistent clothing representation used by beat state."""
-    if isinstance(value, dict):
-        # Accept checkpoints written by the old object-shaped contract. Preserve
-        # deterministic field order while discarding empty/non-text values.
-        preferred = ("upper", "lower", "outer", "footwear", "accessories", "condition", "state")
-        keys = [key for key in preferred if key in value]
-        keys.extend(sorted(key for key in value if key not in keys))
-        value = [value[key] for key in keys]
-    elif isinstance(value, str):
-        text = " ".join(value.split()).strip()
-        if not text:
-            return []
-        value = re.split(r"\s*(?:,|;|\band\b)\s*", text, flags=re.IGNORECASE)
-    return _state_string_list(value)
+    """Return the strict two-slot clothing representation used by beat state."""
+    if not isinstance(value, dict):
+        raise ValueError("Canonical clothing must be an object with upper and lower slots.")
+    unknown = set(value) - {"upper", "lower"}
+    if unknown:
+        raise ValueError(
+            "Canonical clothing has unsupported slots: " + ", ".join(sorted(unknown))
+        )
+    normalized = {}
+    for slot in ("upper", "lower"):
+        raw_slot = value.get(slot, {})
+        if not isinstance(raw_slot, dict):
+            raise ValueError(f"Canonical clothing slot {slot!r} must be an object.")
+        if set(raw_slot) - {"item", "damage"}:
+            raise ValueError(f"Canonical clothing slot {slot!r} has unsupported fields.")
+        item = raw_slot.get("item", "N/A")
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError(f"Canonical clothing slot {slot!r}.item must be a non-empty string.")
+        damage = raw_slot.get("damage", "none")
+        if not isinstance(damage, str) or damage not in {"none", "damaged", "destroyed"}:
+            raise ValueError(f"Canonical clothing slot {slot!r}.damage has an invalid value.")
+        normalized[slot] = {"item": " ".join(item.split()), "damage": damage}
+    return normalized
 
 
 # Normalize one LLM-produced beat state without turning it into narrative prose.
@@ -7269,7 +7598,7 @@ def normalize_beat_canonical_state(state):
         record.setdefault("physical_position", "N/A")
         record.setdefault("orientation", "N/A")
         record.setdefault("posture", "N/A")
-        record.setdefault("clothing", [])
+        record.setdefault("clothing", {})
         record.setdefault("held_objects", [])
         record.setdefault("equipped_objects", [])
         record.setdefault("stored_objects", [])
@@ -7522,35 +7851,93 @@ def _canonicalize_character_patch(state, patch):
     return result
 
 
+_STATE_EFFECT_OPERATIONS = frozenset({
+    "set_location", "set_item_state", "set_barrier_state", "set_threat_state",
+    "set_object_state", "set_containment", "set_condition", "set_clothing",
+})
+_STATE_EFFECT_FIELDS = {
+    "set_location": {"op", "entity", "value"},
+    "set_item_state": {"op", "entity", "owner", "value"},
+    "set_barrier_state": {"op", "entity", "value"},
+    "set_threat_state": {"op", "entity", "value"},
+    "set_object_state": {"op", "entity", "value"},
+    "set_containment": {"op", "entity", "container", "value"},
+    "set_condition": {"op", "entity", "value"},
+    "set_clothing": {"op", "entity", "slot", "item", "damage"},
+}
+_ITEM_STATES = frozenset({"stored", "held", "equipped", "dropped", "lost"})
+_BARRIER_STATES = frozenset({
+    "open", "closed", "locked", "unlocked", "blocked", "broken", "destroyed",
+})
+_THREAT_STATES = frozenset({"active", "incapacitated", "dead", "removed", "cleared"})
+_OBJECT_STATES = frozenset({"intact", "damaged", "destroyed", "active", "inactive", "used"})
+_CONTAINMENT_STATES = frozenset({"contained", "free"})
+_CLOTHING_SLOTS = frozenset({"upper", "lower"})
+_CLOTHING_DAMAGE = frozenset({"none", "damaged", "destroyed"})
+
+
+def _effect_text(value, field):
+    if not isinstance(value, str):
+        raise ValueError(f"State effect {field} must be a string.")
+    normalized = " ".join(value.split()).strip()
+    if not normalized or any(ord(char) < 32 for char in normalized):
+        raise ValueError(f"State effect {field} must be a non-empty name or value.")
+    return normalized
+
+
 def _validate_state_effects(effects):
-    """Validate event-owned persistent effects without imposing story vocabulary."""
-    if not isinstance(effects, dict):
-        raise ValueError("Required-event state_effects must be an object.")
-    _validate_state_patch_value(effects, ("state_effects",))
-    for raw_path in effects:
-        if not isinstance(raw_path, str) or not raw_path.strip():
-            raise ValueError("Required-event state_effects keys must be non-empty strings.")
-    flattened = _flatten_state_effects(effects)
-    python_owned_paths = {
-        "current_macro_phase",
-        "completed_required_event_ids",
-        "pending_required_event_ids",
-        "irreversible_states",
-        "phase_end_states",
-        "persistent_state_effects",
-    }
-    for path in flattened:
-        parts = path.split(".")
-        if len(parts) >= 2 and parts[0] == "story_progress" and parts[1] in python_owned_paths:
+    """Validate and normalize the typed event-owned state operations."""
+    if not isinstance(effects, list):
+        raise ValueError("Required-event state_effects must be an array of typed operations.")
+    normalized = []
+    for index, effect in enumerate(effects):
+        if not isinstance(effect, dict):
+            raise ValueError(f"Required-event state_effect {index + 1} must be an object.")
+        op = effect.get("op")
+        if not isinstance(op, str) or op not in _STATE_EFFECT_OPERATIONS:
+            raise ValueError(f"Required-event state_effect {index + 1} has unknown op: {op!r}.")
+        allowed = _STATE_EFFECT_FIELDS[op]
+        missing = allowed - set(effect)
+        extra = set(effect) - allowed
+        if missing:
             raise ValueError(
-                "Required-event state_effects cannot write Python-owned "
-                f"bookkeeping field: {path!r}."
+                f"Required-event state_effect {index + 1} ({op}) is missing: "
+                + ", ".join(sorted(missing))
             )
-    # Validate the complete path, including its canonical root, while the arc
-    # is still being parsed. Otherwise a malformed effect can survive arc
-    # validation and fail later during Beat N application, where the old outer
-    # retry handler incorrectly discarded the whole story arc.
-    _state_effects_patch(effects)
+        if extra:
+            raise ValueError(
+                f"Required-event state_effect {index + 1} ({op}) has unsupported fields: "
+                + ", ".join(sorted(extra))
+            )
+        item = {"op": op}
+        for field in ("entity", "owner", "container"):
+            if field in effect:
+                item[field] = _effect_text(effect[field], field)
+        if op == "set_clothing":
+            item["slot"] = effect["slot"]
+            item["item"] = _effect_text(effect["item"], "item")
+            item["damage"] = effect["damage"]
+            if not isinstance(item["slot"], str) or item["slot"] not in _CLOTHING_SLOTS:
+                raise ValueError(f"Required-event set_clothing has invalid slot: {item['slot']!r}.")
+            if not isinstance(item["damage"], str) or item["damage"] not in _CLOTHING_DAMAGE:
+                raise ValueError(
+                    f"Required-event set_clothing has invalid damage: {item['damage']!r}."
+                )
+        else:
+            item["value"] = _effect_text(effect["value"], "value")
+            enum = {
+                "set_item_state": _ITEM_STATES,
+                "set_barrier_state": _BARRIER_STATES,
+                "set_threat_state": _THREAT_STATES,
+                "set_object_state": _OBJECT_STATES,
+                "set_containment": _CONTAINMENT_STATES,
+            }.get(op)
+            if enum is not None and item["value"] not in enum:
+                raise ValueError(
+                    f"Required-event {op} has invalid value: {item['value']!r}."
+                )
+        normalized.append(item)
+    return normalized
 
 
 def _flatten_state_effects(effects, prefix=()):
@@ -7569,28 +7956,146 @@ def _flatten_state_effects(effects, prefix=()):
 
 
 def _state_effects_patch(effects):
-    """Convert event effects to a normal nested state patch."""
-    _validate_canonical_state_namespace(effects)
-    patch = {}
-    for path, value in _flatten_state_effects(effects).items():
-        parts = path.split(".")
-        if parts[0] not in _BEAT_STATE_ROOTS:
+    """Reject the removed free-form patch contract."""
+    _validate_state_effects(effects)
+    raise ValueError("Typed state effects do not have a free-form state patch representation.")
+
+
+def _casefold_key(mapping, name):
+    key = str(name).casefold()
+    return next((known for known in mapping if str(known).casefold() == key), None)
+
+
+def _ensure_character_record(state, name):
+    characters = state.setdefault("characters", {})
+    canonical = _casefold_key(characters, name)
+    if canonical is None:
+        canonical = name
+        characters[canonical] = {}
+    return canonical, characters[canonical]
+
+
+def _ensure_threat_record(state, name):
+    threats = state.setdefault("threats", {})
+    canonical = _casefold_key(threats, name)
+    if canonical is None:
+        canonical = name
+        threats[canonical] = {}
+    return canonical, threats[canonical]
+
+
+def _find_tracked_record(state, name):
+    for root in ("characters", "threats"):
+        records = state.get(root, {})
+        canonical = _casefold_key(records, name)
+        if canonical is not None:
+            return root, canonical, records[canonical]
+    environment = state.get("environment", {})
+    for field in ("objects", "barriers", "doors", "windows"):
+        records = environment.get(field, {})
+        canonical = _casefold_key(records, name)
+        if canonical is not None:
+            return f"environment.{field}", canonical, records[canonical]
+    return None, None, None
+
+
+def _ensure_environment_record(state, field, name):
+    records = state.setdefault("environment", {}).setdefault(field, {})
+    canonical = _casefold_key(records, name)
+    if canonical is None:
+        canonical = name
+        records[canonical] = {}
+    return canonical, records[canonical]
+
+
+def _remove_object_from_inventory(record, item):
+    for field in ("held_objects", "equipped_objects", "stored_objects"):
+        record[field] = [
+            value for value in record.get(field, [])
+            if str(value).casefold() != str(item).casefold()
+        ]
+
+
+def _apply_state_operation(state, effect):
+    """Apply one validated operation and return its canonical ledger updates."""
+    effect = _validate_state_effects([effect])[0]
+    op = effect["op"]
+    updates = {}
+
+    def record_update(path, value):
+        _set_state_path(state, path, value)
+        updates[path] = copy.deepcopy(value)
+
+    if op == "set_location":
+        root, entity, record = _find_tracked_record(state, effect["entity"])
+        if record is None:
             raise ValueError(
-                f"Required-event state effect must target canonical state: {path!r}."
+                f"set_location references an untracked entity: {effect['entity']!r}."
             )
-        cursor = patch
-        for part in parts[:-1]:
-            if part.startswith("_"):
-                raise ValueError(f"Invalid required-event state effect path: {path!r}.")
-            cursor = cursor.setdefault(part, {})
-        if parts[-1].startswith("_"):
-            raise ValueError(f"Invalid required-event state effect path: {path!r}.")
-        cursor[parts[-1]] = copy.deepcopy(value)
-    # Required-event effects bypass the model patch parser when Python applies
-    # them, so validate the reconstructed patch here as well. In particular,
-    # canonical entity records under characters/threats must be objects rather
-    # than scalar labels/status strings.
-    return normalize_beat_state_patch(patch)
+        record_update(f"{root}.{entity}.location", effect["value"])
+    elif op == "set_item_state":
+        owner, _owner_record = _ensure_character_record(state, effect["owner"])
+        item = effect["entity"]
+        for character_id, record in state["characters"].items():
+            _remove_object_from_inventory(record, item)
+            for field in ("held_objects", "equipped_objects", "stored_objects"):
+                updates[f"characters.{character_id}.{field}"] = copy.deepcopy(record[field])
+        field_for_state = {
+            "stored": "stored_objects",
+            "held": "held_objects",
+            "equipped": "equipped_objects",
+        }.get(effect["value"])
+        owner_record = state["characters"][owner]
+        if field_for_state:
+            owner_record[field_for_state].append(item)
+        else:
+            object_id, object_record = _ensure_environment_record(state, "objects", item)
+            object_record["inventory_state"] = effect["value"]
+            updates[f"environment.objects.{object_id}.inventory_state"] = effect["value"]
+        for field in ("held_objects", "equipped_objects", "stored_objects"):
+            updates[f"characters.{owner}.{field}"] = copy.deepcopy(owner_record[field])
+    elif op == "set_barrier_state":
+        found_root, entity, record = _find_tracked_record(state, effect["entity"])
+        if record is None or not found_root.startswith("environment.") or found_root.endswith("objects"):
+            field = "barriers"
+            entity, record = _ensure_environment_record(state, field, effect["entity"])
+            found_root = f"environment.{field}"
+        record_update(f"{found_root}.{entity}.status", effect["value"])
+    elif op == "set_threat_state":
+        entity, _record = _ensure_threat_record(state, effect["entity"])
+        record_update(f"threats.{entity}.status", effect["value"])
+    elif op == "set_object_state":
+        entity, _record = _ensure_environment_record(state, "objects", effect["entity"])
+        record_update(f"environment.objects.{entity}.status", effect["value"])
+    elif op == "set_containment":
+        root, entity, record = _find_tracked_record(state, effect["entity"])
+        if record is None:
+            entity, record = _ensure_character_record(state, effect["entity"])
+            root = "characters"
+        if effect["value"] == "contained":
+            record_update(f"{root}.{entity}.containment", "contained")
+            record_update(f"{root}.{entity}.contained_in", effect["container"])
+            record_update(f"{root}.{entity}.accessible", False)
+        else:
+            record_update(f"{root}.{entity}.containment", "free")
+            record_update(f"{root}.{entity}.contained_in", None)
+            record_update(f"{root}.{entity}.accessible", True)
+    elif op == "set_condition":
+        root, entity, record = _find_tracked_record(state, effect["entity"])
+        if record is None or root.endswith("barriers") or root.endswith("doors") or root.endswith("windows"):
+            entity, record = _ensure_environment_record(state, "objects", effect["entity"])
+            root = "environment.objects"
+        record_update(f"{root}.{entity}.condition", effect["value"])
+    elif op == "set_clothing":
+        entity, record = _ensure_character_record(state, effect["entity"])
+        clothing = _normalize_clothing(record.get("clothing", {}))
+        clothing[effect["slot"]] = {
+            "item": effect["item"],
+            "damage": effect["damage"],
+        }
+        record_update(f"characters.{entity}.clothing.{effect['slot']}.item", effect["item"])
+        record_update(f"characters.{entity}.clothing.{effect['slot']}.damage", effect["damage"])
+    return updates
 
 
 def _set_state_path(state, path, value):
@@ -7643,12 +8148,10 @@ def _reapply_persistent_state_effects(state):
         ] = canonical_effects
     effect_items = canonical_effects.items()
     for path, value in effect_items:
-        try:
-            _validate_state_effects({str(path): value})
-        except ValueError as error:
-            raise ValueError(
-                f"Persisted canonical state effect {path!r} is invalid: {error}"
-            ) from error
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError("Persisted canonical state effect paths must be non-empty strings.")
+        if path.split(".", 1)[0] not in _BEAT_STATE_ROOTS:
+            raise ValueError(f"Persisted canonical state effect has an invalid root: {path!r}.")
         _set_state_path(state, str(path), value)
     return normalize_beat_canonical_state(state)
 
@@ -8006,9 +8509,20 @@ def _required_event_records(macro_arc):
                 if not record["depends_on"]:
                     record.pop("depends_on")
                 if "state_effects" in event:
-                    _validate_state_effects(event["state_effects"])
-                    record["state_effects"] = copy.deepcopy(event["state_effects"])
+                    record["state_effects"] = _validate_state_effects(
+                        event["state_effects"]
+                    )
                 records.append(record)
+    # The causal cursor follows actual global beat order, never event-ID or
+    # source-list order.  Valid production arcs have one event per beat; the
+    # None branch keeps diagnostics deterministic for callers inspecting an
+    # incomplete arc before the strict parser rejects it.
+    records.sort(
+        key=lambda record: (
+            record.get("beat_number") is None,
+            record.get("beat_number") if record.get("beat_number") is not None else 0,
+        )
+    )
     return records
 
 
@@ -8062,28 +8576,32 @@ def _apply_required_event_state_effects(state, events):
     )
     progress["persistent_state_effects"] = persistent
     for event in events or ():
-        effects = event.get("state_effects", {}) if isinstance(event, dict) else {}
+        effects = event.get("state_effects", []) if isinstance(event, dict) else []
         if not effects:
             continue
-        _validate_state_effects(effects)
-        effect_patch = _canonicalize_character_patch(
-            state,
-            _state_effects_patch(effects),
-        )
-        flattened_effects = _flatten_state_effects(effect_patch)
-        if all(
-            path in persistent and persistent[path] == value
-            for path, value in flattened_effects.items()
-        ):
-            continue
-        state = normalize_beat_canonical_state(_deep_merge_state(state, effect_patch))
-        for path, value in flattened_effects.items():
-            persistent[path] = copy.deepcopy(value)
+        effects = _validate_state_effects(effects)
+        # Seed operation-specific entity namespaces before applying the list so
+        # a location operation may precede the state operation that introduces
+        # the same threat/object in this event.
+        for effect in effects:
+            if effect["op"] == "set_threat_state":
+                _ensure_threat_record(state, effect["entity"])
+            elif effect["op"] == "set_object_state":
+                _ensure_environment_record(state, "objects", effect["entity"])
+            elif effect["op"] == "set_item_state":
+                _ensure_character_record(state, effect["owner"])
+            elif effect["op"] in {"set_clothing", "set_containment"}:
+                _ensure_character_record(state, effect["entity"])
+        for effect in effects:
+            updates = _apply_state_operation(state, effect)
+            for path, value in updates.items():
+                persistent[path] = copy.deepcopy(value)
             print(
                 f"Required event {event.get('id', '?')} applied persistent state: "
-                f"{path} = {json.dumps(value, ensure_ascii=False)}",
+                f"{effect['op']} = {json.dumps(effect, ensure_ascii=False)}",
                 flush=True,
             )
+        state = normalize_beat_canonical_state(state)
     state["story_progress"]["persistent_state_effects"] = persistent
     return normalize_beat_canonical_state(state)
 
@@ -8397,8 +8915,6 @@ def _connective_beat_job():
 
 
 def build_beat_validation_messages(
-    story,
-    phase_goal,
     previous_final_beat,
     current_state,
     beat_job,
@@ -8407,196 +8923,70 @@ def build_beat_validation_messages(
     settings=None,
     assigned_state_effects=None,
 ):
-    """Build the single immutable-candidate validator prompt used in tests."""
+    """Build the compact single-candidate beat-validation prompt."""
     settings = settings or _active_beat_validation_settings()
-    state = current_state if isinstance(current_state, dict) else {}
-    state_effects_section = ""
-    state_effects_rules = ""
-    if assigned_state_effects is not None:
-        state_effects_section = f"""
-
-STATE EFFECTS TO COMMIT IF VALID
-{json.dumps(assigned_state_effects, ensure_ascii=False, separators=(",", ":"))}
-"""
-        state_effects_rules = """
-
-   7. CHECK STATE EFFECTS TO COMMIT.
-   If the candidate explicitly states the opposite of a listed state effect, or
-   explicitly says that effect does not occur, return INVALID.
-
-   VALID is allowed only when the candidate agrees with the listed effects
-   Python will commit if this beat passes.
-
-   Every listed state effect must actually be established by the candidate. If
-   a state effect says an entity is dead, destroyed, opened, released, moved,
-   equipped, or has another complete result, the candidate must clearly perform
-   enough action to establish that result. Do not accept partial progress when
-   the committed state effect is terminal or complete.
-
-   If the candidate creates a new persistent change, including structural
-   damage, that change must be represented by the assigned state effects.
-   Temporary motion, combat actions, reactions, poses, and other non-persistent
-   details do not need state effects.
-"""
+    state = compact_beat_validation_state(current_state)
+    state_effects = assigned_state_effects if assigned_state_effects is not None else []
     system = (
-        "You validate concise story beats. Judge the candidate against the "
-        "authoritative current state and the current beat job. The current state "
-        "is true at the start of the beat. Apply explicit candidate actions from "
-        "left to right. Do not invent hidden actions or facts. Do not require "
-        "details the beat job does not require. Only the current beat job defines "
-        "work required now, but every explicit candidate action must still be "
-        "consistent with authoritative state and history. Return only one JSON "
-        "object with boolean valid and string issue."
+        "You validate one candidate story beat. Judge meaning, not exact wording. "
+        "Accept reasonable paraphrases and clear semantic implications. Reject "
+        "only clear errors. Return one JSON object with boolean valid and string issue."
     )
     user = f"""
-STORY
-{story}
-
-PHASE GOAL
-{phase_goal}
-
 PREVIOUS FINAL BEAT
 {previous_final_beat or "None; this is the first beat."}
 
-CURRENT STATE — authoritative snapshot before this beat
-{json.dumps(state, ensure_ascii=False)}
+CURRENT STATE
+{json.dumps(state, ensure_ascii=False, separators=(",", ":"))}
 
-CURRENT BEAT JOB
+CURRENT JOB
 {beat_job}
 
-NEXT BEAT MUST DO (context only; not required for this beat)
+NEXT JOB
 {next_beat_job or "None; this is the final beat."}
 
-DO NOT COMPLETE YET
-{next_beat_job or "There is no later beat job."}
-{state_effects_section}
+STATE EFFECTS IF VALID
+{json.dumps(state_effects, ensure_ascii=False, separators=(",", ":"))}
 
 CANDIDATE BEAT
 {candidate_beat}
 
-VALIDATION METHOD
+CHECKS
+A. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept
+paraphrases and clear implications, but require every materially required action
+or result when the job has multiple parts. Do not reject harmless visible detail.
 
-1. CHECK PRIOR HISTORY.
-   Treat CURRENT STATE and PREVIOUS FINAL BEAT as complete evidence of what
-   happened before this beat.
+B. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as
+authoritative history. Reject only clear contradictions or physical impossibilities,
+such as repeating an irreversible action, using an unavailable object, crossing a
+known closed or locked barrier without resolving it, escaping containment without
+release, contradicting a known location, or reviving a dead, destroyed, removed,
+or otherwise terminal entity. Unknown is not automatically contradictory. Apply
+explicit candidate actions in order when they change what becomes possible.
 
-   If the candidate says or implies that an injury, damage, event, possession,
-   knowledge, permission, or other condition happened earlier, that history must
-   be supported by CURRENT STATE or PREVIOUS FINAL BEAT.
+C. NEXT JOB: Do not materially complete the distinct NEXT JOB early. Preparation
+and incidental overlap that naturally belongs to the current action are allowed.
+Reject only when the distinct work of the next beat has actually been completed,
+including semantic equivalents of terminal or exhaustive results.
 
-   If claimed prior history is absent, it did not happen and the candidate is
-   invalid.
-
-2. CHECK FOR REPEATED COMPLETED ACTIONS.
-   CURRENT STATE contains the effects of completed earlier actions.
-
-   If an object is already held by a character, retrieving that same object again
-   is a repeated completed action unless CURRENT STATE explicitly says it was
-   subsequently put away, dropped, lost, or transferred.
-
-   If an object is already ready, making it ready again is repeated unless
-   CURRENT STATE explicitly says it became unready.
-
-   Check every explicit candidate action, including extra actions before or after
-   the CURRENT BEAT JOB. Any repeated completed action makes the candidate
-   invalid.
-
-3. CHECK CURRENT BEAT JOB.
-   Split CURRENT BEAT JOB into its required actions or facts and compare their
-   meaning with the candidate.
-
-   Paraphrases and unambiguous implications count.
-
-   Do not require a separate sentence for each requirement.
-
-   If the current job is an action, the candidate must explicitly perform or
-   unambiguously show that action occurring during THIS beat. A result or
-   state left behind by an earlier action is not enough. For example, when the
-   job is "Unlock the final gate", "The final gate stands unlocked" is invalid;
-   "The operator turns the key and unlocks the final gate" performs the action.
-   A state-only candidate may satisfy a job that explicitly asks for a state,
-   but it must not substitute for an action-type job.
-
-   If CURRENT BEAT JOB contains multiple required actions, people, objects, or
-   results, the candidate must satisfy ALL of them. Completing only one item from
-   an explicit list or one side of a compound requirement is invalid.
-
-4. CHECK CURRENT STATE.
-   Read object, barrier, containment, location, threat, and irreversible-status
-   facts literally.
-
-   For present-state facts, missing information is unknown.
-
-   This does NOT apply to claims about events before this beat: prior history is
-   complete as described in Rule 1.
-
-5. APPLY CANDIDATE ACTIONS IN ORDER.
-   Explicit actions may legitimately change state during the beat.
-
-   Opening or unlocking a barrier can permit later crossing.
-   Releasing someone can permit later departure.
-   Entering, leaving, crossing, returning, or traveling can establish a new
-   location.
-
-   Do not compare a later candidate action against the untouched start state when
-   an earlier explicit action already changed that state.
-
-6. CHECK FOR OTHER CLEAR VIOLATIONS:
-   - the required current beat job is not completed;
-   - an unavailable object is used or possessed;
-   - a closed or locked barrier is crossed without being opened;
-   - a contained entity appears outside containment without release;
-   - location changes without explicit movement or transition;
-   - something in an explicitly terminal, inactive, removed, exited, or
-     finished state becomes active again;
-   - a new threat appears after CURRENT STATE explicitly says the immediate
-     threat area is clear;
-   - an important person, threat, object, or event is introduced without support
-     from STORY, PHASE GOAL, CURRENT BEAT JOB, or CURRENT STATE;
-   - the candidate completes the distinct NEXT BEAT MUST DO action early.
-
-   Treat terminal or exhaustive wording in NEXT BEAT MUST DO semantically, not
-   by exact word matching. If the next job says last, final, all remaining,
-   final remaining, only remaining, completely resolves, or an equivalent
-   terminal condition, the current candidate must not explicitly establish that
-   condition early. For example, if the next job is "Complete the final
-   checkpoint", a candidate that marks the only remaining checkpoint complete is
-   early completion even when the wording differs.
-
-DECISION RULES
-
-- Completing CURRENT BEAT JOB does not excuse another violation.
-- Check every explicit candidate action, not only the required action.
-- Explicit movement establishes a location change.
-- Explicit opening or unlocking can resolve a barrier.
-- Explicit release can resolve containment.
-- A known entity returning from a permanent state is invalid.
-- A new threat violates a cleared-area condition only when CURRENT STATE
-  explicitly says that area is already clear.
-- Preparation for the current job is allowed.
-- Completing the distinct next beat job early is not allowed.
-- Terminal or exhaustive next-beat completion includes semantic equivalents,
-  not only exact repeated wording.
-- A result-only description does not perform a required current action.
-- Ordinary descriptive detail is allowed unless it contradicts established
-  state, invents prior history, repeats completed history, or introduces an
-  unsupported important fact.
-- Report only clear violations. Do not invent possible problems.
-{state_effects_rules}
+D. TYPED STATE EFFECTS: Every listed typed effect must be supported by what
+visibly happens in the candidate. Judge meaning, not exact verbs. Possession is
+not automatically equipped; breaking a barrier is not automatically entering
+through it; a wound is not automatically death. Reject explicit contradiction or
+partial action when the assigned effect requires a complete result. Do not require
+state effects for temporary detail that is not assigned. Any new persistent change
+created by the candidate must be represented by an assigned typed effect.
 
 OUTPUT CONTRACT
-
 If valid:
 {{"valid": true, "issue": ""}}
 
 If invalid:
 {{"valid": false, "issue": "short concrete explanation"}}
 
-Return exactly one JSON object and no markdown.
-The issue value must always be a string.
-Do not output category names, issue codes, lists, or arrays.
+Return exactly one JSON object and no markdown. The issue value must always be a
+string. Do not output category names, issue codes, lists, or arrays.
 """.strip()
-
     if settings.get("user_prompt_only"):
         user = f"{system}\n\n{user}"
         system = ""
@@ -9311,13 +9701,6 @@ def _run_forward_beat_validation(
     def phase_for_beat(beat_number):
         return story_arc_phase_for_beat(macro_arc, beat_number) or {}
 
-    def phase_goal_for_beat(phase):
-        return " ".join(
-            str(phase.get(field, "")).strip()
-            for field in ("narrative_purpose", "broad_progression", "required_end_state")
-            if str(phase.get(field, "")).strip()
-        ) or "Continue the story clearly from the previous beat."
-
     def job_for_beat(beat_number, planned_candidate, phase):
         assigned = [
             event["event"]
@@ -9459,8 +9842,6 @@ def _run_forward_beat_validation(
                 continue
 
             messages = build_beat_validation_messages(
-                story=story,
-                phase_goal=phase_goal_for_beat(phase),
                 previous_final_beat=(
                     finalized_texts[-1] if finalized_texts else ""
                 ),
@@ -9472,7 +9853,7 @@ def _run_forward_beat_validation(
                 assigned_state_effects=[
                     {
                         "id": event["id"],
-                        "state_effects": copy.deepcopy(event.get("state_effects", {})),
+                        "state_effects": copy.deepcopy(event.get("state_effects", [])),
                     }
                     for event in assigned_current_events
                 ],
@@ -9788,44 +10169,45 @@ For each phase return only the JSON properties:
 - required_end_state
 - required_events
 
-Each required event MUST include a non-empty state_effects object when the
-event directly establishes a persistent canonical fact in a modeled category:
-character location or containment, door or barrier state, named object
-possession or equipment, irreversible object state, terminal threat state, or
-an explicitly required persistent environmental condition. Temporary actions,
-emotion, reaction, and optional embellishment do not require state_effects.
-Do not invent unrelated state merely to fill the field.
+Each required event may also include optional state_effects, but only when the
+event itself directly establishes a persistent fact. state_effects is an array of
+typed operations. Use only: set_location, set_item_state, set_barrier_state,
+set_threat_state, set_object_state, set_containment, set_condition, and
+set_clothing. Do not invent operation names or state fields. Do not add effects
+for temporary actions, emotion, reaction, or optional embellishment.
 
-required_events is a short ordered list of concrete mandatory events. Derive
-them only from SOURCE STORY or explicit beat instructions. Preserve source
-order, split compound requirements into atomic visible events, and do not
-promote optional connective actions into requirements. Give every event a
-unique ID within the complete arc, preferably E1, E2, E3, and so on. Assign
-each event to the exact global beat number where its human-readable job belongs
-using beat_number. Add an
-optional depends_on array only when the source or macro semantics define a real
-prerequisite; never infer one from event IDs or list position. When a required
-event directly establishes one of the modeled persistent categories above, do
-not omit its state_effects merely because the event contains other prose. A
-corrected arc must retain existing state_effects for every unchanged event.
-Python will apply those effects deterministically after completion.
+There must be exactly one concrete required event/job for every global beat.
+The complete arc must therefore contain one event at every beat in the
+requested range; there may be no gaps or duplicate
+beat assignments. Derive source-required events from SOURCE STORY or explicit
+beat instructions, preserve their order, and split compound requirements into
+atomic visible events. When the source is sparse, fill the remaining beats
+with plausible connective/action jobs that stay within the established
+characters, setting, conflict, and outcome. These connective jobs are
+mandatory jobs for their beats, but must not introduce a different plot or
+unsupported major event. Use different authorized encounters, movement,
+reloading, checks, aftermath, or other concrete actions as appropriate rather
+than repeating source prose mechanically.
+
+Give every event a unique ID within the complete arc, preferably E1, E2, E3,
+and so on in actual beat order. Assign each event to its exact global beat
+number using beat_number. Required events must form one causal chain: the first
+event may omit depends_on or use an empty array; every later event must include
+the immediately preceding required event's actual ID in depends_on, including
+across phase boundaries. Add additional dependencies only when genuinely
+needed; never infer dependencies from event IDs alone or from list position.
+Add state_effects only for a direct, logically necessary persistent consequence
+of that event. Python will apply those effects deterministically after
+completion.
 
 STATE_EFFECTS JSON CONTRACT
-`state_effects` is a nested partial patch of Python's canonical state. Its first
-key must be exactly one of `characters`, `environment`, `threats`, `story`, or
-`story_progress`; it must never be a free-standing state label. For example,
-when a storage door becomes locked, return:
-{"environment": {"doors": {"storage_door": {"status": "locked"}}}}
-When an authorized event places named characters inside that locked area,
-record the direct containment/location consequence under those character IDs.
-When an authorized event explicitly equips or retrieves a named item, record
-the direct possession consequence under the character's `held_objects` or
-`equipped_objects` field. Do not infer unrelated inventory, conditions, or
-temporary actions.
-Do not return {"storage_locked": true}. Python records the accepted effect
-in `story_progress.persistent_state_effects` and reapplies it after later beat
-patches. Use canonical stable keys for event effects; do not invent Python
-bookkeeping fields."""
+Examples:
+[{"op":"set_location","entity":"Amy","value":"kitchen"}]
+[{"op":"set_item_state","entity":"pistol","owner":"Amy","value":"equipped"}]
+[{"op":"set_clothing","entity":"Amy","slot":"upper","item":"black tank top","damage":"none"}]
+
+Python validates and translates these operations into canonical state. Do not emit
+nested canonical-state dictionaries or arbitrary inventory/clothing fields."""
             ),
         },
         {
@@ -9864,6 +10246,12 @@ def build_macro_arc_validation_messages(
     beat_instructions="",
 ):
     subject_text = str(subject_information or "").strip() or "N/A"
+    phase_ends = [
+        phase.get("beat_end")
+        for phase in (macro_arc or {}).get("phases", [])
+        if isinstance(phase, dict) and isinstance(phase.get("beat_end"), int)
+    ]
+    declared_total = max(phase_ends) if phase_ends else "the requested total"
     return [
         {
             "role": "system",
@@ -9889,13 +10277,21 @@ Reject when:
   stage boundary is lost.
 - A defined human Subject has no concrete clothing when first shown. Clothing
   may be added when that Subject is introduced later.
-- Dependencies are missing, incoherent, or in the wrong order.
+  - Any global beat from 1 through {declared_total} has no required event,
+  has more than one required event, or is assigned outside its phase range.
+- Any required event after the first omits the immediately preceding required
+  event from depends_on, including across phase boundaries. Additional
+  dependencies are allowed when they are genuinely needed.
+- Dependencies are otherwise incoherent or in the wrong order.
 - A phase end state contains a fact that is not true by that phase boundary.
 - A persistent state effect is missing, owned by the wrong entity, unrelated,
   malformed, or has the wrong value.
 
 Required events:
-- Must be directly supported by the source or explicit instructions.
+- There must be exactly one concrete required event/job for every global beat.
+- Source-required events must be directly supported by the source or explicit
+  instructions. Sparse-source connective jobs may be plausible visible actions
+  that remain within the established story and do not add a different plot.
 - Must keep the source order.
 - Check the actual event meaning and location against the source order. Do not
   trust event IDs, list order, or a phase summary. If a later source event is
@@ -9903,7 +10299,7 @@ Required events:
 - Must be concrete enough to show in a beat.
 - May use a clear paraphrase, a named item being equipped, a source-stated
   condition, or the minimum physical action needed by a source event.
-- Must not promote optional connective action into a required event.
+- Do not add unsupported major plot events merely to fill a beat.
 - Do not require optional timing, route, gesture, choreography, or item use.
 
 Required end states:
@@ -9916,25 +10312,36 @@ Required end states:
 - A statement that all items are complete requires all items, not just some.
 
 State effects:
-- Require effects for persistent modeled facts such as location, containment,
-  release, held/equipped objects, barriers, persistent objects, terminal
-  entities, and persistent environment conditions.
-- Do not require effects for temporary actions, feelings, reactions, or detail.
+- `state_effects` is an array of typed operations, not a nested state patch.
+- Accept only set_location, set_item_state, set_barrier_state, set_threat_state,
+  set_object_state, set_containment, set_condition, and set_clothing.
+- CHECK PERSISTENT STATE COVERAGE: if a required event explicitly establishes a
+  persistent canonical fact represented by one of these typed operations, that
+  same event must include the matching state_effect. Reject the arc when the
+  event says the persistent change or result occurs but its typed effect is
+  missing. Apply this generically to persistent modeled facts such as location,
+  containment, release, held/equipped objects, barriers, persistent objects,
+  terminal entities, clothing, and persistent environment conditions.
+- Do not require state effects for temporary actions, feelings, reactions, or
+  detail.
 - Attach each persistent effect to the required event that actually establishes
   that fact. If a later event retrieves or equips named equipment, an earlier
   ordinary setup event must not carry that held/equipped effect; reject the arc
   even if the later event also carries the effect.
 - Do not copy an old effect onto an unrelated event just to satisfy coverage.
+- Treat stored, held, and equipped as distinct item results; retrieving an item
+  does not establish equipped. Treat dead/removed/cleared and clothing slot or
+  damage values according to the typed operation contract.
 
 Do not reject because:
 - Phase sizes are unequal.
 - One process uses most of the beats.
-- Required-event beat numbers have gaps. They must be ordered, not consecutive.
 - A one-phase arc is used for one continuous source purpose.
 - Wording differs slightly but the meaning is source-authorized.
 
-Python already checks JSON shape, numeric ranges, duplicate IDs, and dependency
-field shape. Judge the semantic meaning, not exact wording.
+Python checks JSON shape, numeric ranges, duplicate IDs, phase coverage, exact
+one-event-per-beat coverage, and the mandatory sequential dependency edge.
+Judge the semantic meaning, not exact wording.
 
 SOURCE STORY
 --- STORY START ---
@@ -10004,11 +10411,83 @@ VALIDATOR ISSUES
 {json.dumps([str(issue).strip() for issue in (issues or []) if str(issue).strip()], ensure_ascii=False, indent=2)}
 
 Return the complete corrected macro arc with phases covering Beats 1-{total_segments}
-exactly once. Preserve all correct material and include state_effects on events that
+exactly once. Treat these as hard structural requirements: exactly one concrete
+required event/job per global beat, no missing or duplicate beat assignments, and
+every event after the first must include the immediately preceding required
+event's actual ID in depends_on, including across phase boundaries. Preserve all
+correct event content where possible, add plausible connective jobs for sparse
+sections without changing the plot, and include state_effects on events that
 establish persistent modeled facts. Return only the normal macro-arc JSON object.
 """.strip(),
         },
     ]
+
+
+def _validate_macro_arc_structure(normalized_phases, total_segments):
+    """Enforce the Python-owned one-job-per-beat causal arc contract.
+
+    This runs after the ordinary JSON/schema normalization and before any LLM
+    semantic arc validation.  Beat numbers, rather than event IDs or the
+    model's list order, define the required-event sequence.
+    """
+    assignments = {}
+    all_events = []
+    for phase in normalized_phases:
+        for event in phase["required_events"]:
+            event_id = event["id"]
+            beat_number = event.get("beat_number")
+            all_events.append(event)
+            if beat_number is None:
+                raise ValueError(
+                    f"Macro required event {event_id} must have an explicit beat_number."
+                )
+            if beat_number in assignments:
+                previous = assignments[beat_number]
+                raise ValueError(
+                    f"Macro beat {beat_number} has duplicate required-event "
+                    f"assignments: {previous['id']} and {event_id}."
+                )
+            assignments[beat_number] = event
+
+    missing = [
+        beat_number
+        for beat_number in range(1, int(total_segments) + 1)
+        if beat_number not in assignments
+    ]
+    if missing:
+        raise ValueError(
+            "Macro arc has no required event for beat(s): "
+            + ", ".join(map(str, missing))
+            + "."
+        )
+
+    # The phase-range and event-range checks above make this count check mostly
+    # defensive, but it makes the exact one-to-one invariant explicit.
+    if len(all_events) != int(total_segments):
+        raise ValueError(
+            "Macro arc must contain exactly one required event for every beat "
+            f"(expected {int(total_segments)}, found {len(all_events)})."
+        )
+
+    ordered_events = [assignments[beat_number] for beat_number in range(1, int(total_segments) + 1)]
+    for index, event in enumerate(ordered_events):
+        dependencies = {
+            dependency.casefold()
+            for dependency in event.get("depends_on", [])
+        }
+        if index == 0:
+            if dependencies:
+                raise ValueError(
+                    f"First macro required event {event['id']} must not have "
+                    "a dependency."
+                )
+            continue
+        previous_id = ordered_events[index - 1]["id"]
+        if previous_id.casefold() not in dependencies:
+            raise ValueError(
+                f"Macro required event {event['id']} at beat {event['beat_number']} "
+                f"must depend on the immediately preceding required event {previous_id}."
+            )
 
 
 def parse_beat_arc_plan(
@@ -10183,19 +10662,14 @@ def parse_beat_arc_plan(
                 )
             state_effects = event.get("state_effects")
             if state_effects is not None:
-                if not isinstance(state_effects, dict):
-                    raise ValueError(
-                        f"Macro arc phase {phase_number} required event {event_index} "
-                        "state_effects must be an object."
-                    )
-                _validate_state_effects(state_effects)
+                state_effects = _validate_state_effects(state_effects)
             normalized_event = {"id": event_id, "event": event_text}
             if beat_number is not None:
                 normalized_event["beat_number"] = beat_number
             if dependencies:
                 normalized_event["depends_on"] = dependencies
             if state_effects is not None:
-                normalized_event["state_effects"] = copy.deepcopy(state_effects)
+                normalized_event["state_effects"] = state_effects
             normalized_events.append(normalized_event)
         normalized_phases.append({
             "phase_number": phase_number,
@@ -10215,6 +10689,21 @@ def parse_beat_arc_plan(
         for phase in normalized_phases
         for event in phase["required_events"]
     }
+    if expected_start != total_segments + 1:
+        raise ValueError(
+            f"Macro story arc ends at Beat {expected_start - 1}; it must cover "
+            f"through Beat {total_segments}."
+        )
+    # Check beat coverage before dependency references so a missing event is
+    # reported as a coverage defect instead of being masked by its absent ID.
+    for phase in normalized_phases:
+        phase["required_events"].sort(
+            key=lambda event: (
+                event.get("beat_number") is None,
+                event.get("beat_number") if event.get("beat_number") is not None else 0,
+            )
+        )
+    _validate_macro_arc_structure(normalized_phases, total_segments)
     for phase in normalized_phases:
         for event in phase["required_events"]:
             unknown = [
@@ -10226,11 +10715,6 @@ def parse_beat_arc_plan(
                     f"Macro required event {event['id']} has unknown explicit "
                     "dependency: " + ", ".join(unknown)
                 )
-    if expected_start != total_segments + 1:
-        raise ValueError(
-            f"Macro story arc ends at Beat {expected_start - 1}; it must cover "
-            f"through Beat {total_segments}."
-        )
     return {"phases": normalized_phases}
 
 
@@ -10294,6 +10778,93 @@ def parse_macro_arc_validation_result(raw_result, formatter=None, llm_request=No
     return {"valid": valid, "issues": issues}
 
 
+def _typed_state_effect_json_schema():
+    """Return the strict JSON schema exposed to the arc-planning model."""
+    common = {
+        "set_location": {
+            "properties": {
+                "op": {"const": "set_location"},
+                "entity": {"type": "string", "minLength": 1},
+                "value": {"type": "string", "minLength": 1},
+            },
+            "required": ["op", "entity", "value"],
+        },
+        "set_item_state": {
+            "properties": {
+                "op": {"const": "set_item_state"},
+                "entity": {"type": "string", "minLength": 1},
+                "owner": {"type": "string", "minLength": 1},
+                "value": {"type": "string", "enum": sorted(_ITEM_STATES)},
+            },
+            "required": ["op", "entity", "owner", "value"],
+        },
+        "set_barrier_state": {
+            "properties": {
+                "op": {"const": "set_barrier_state"},
+                "entity": {"type": "string", "minLength": 1},
+                "value": {"type": "string", "enum": sorted(_BARRIER_STATES)},
+            },
+            "required": ["op", "entity", "value"],
+        },
+        "set_threat_state": {
+            "properties": {
+                "op": {"const": "set_threat_state"},
+                "entity": {"type": "string", "minLength": 1},
+                "value": {"type": "string", "enum": sorted(_THREAT_STATES)},
+            },
+            "required": ["op", "entity", "value"],
+        },
+        "set_object_state": {
+            "properties": {
+                "op": {"const": "set_object_state"},
+                "entity": {"type": "string", "minLength": 1},
+                "value": {"type": "string", "enum": sorted(_OBJECT_STATES)},
+            },
+            "required": ["op", "entity", "value"],
+        },
+        "set_containment": {
+            "properties": {
+                "op": {"const": "set_containment"},
+                "entity": {"type": "string", "minLength": 1},
+                "container": {"type": "string", "minLength": 1},
+                "value": {"type": "string", "enum": sorted(_CONTAINMENT_STATES)},
+            },
+            "required": ["op", "entity", "container", "value"],
+        },
+        "set_condition": {
+            "properties": {
+                "op": {"const": "set_condition"},
+                "entity": {"type": "string", "minLength": 1},
+                "value": {"type": "string", "minLength": 1},
+            },
+            "required": ["op", "entity", "value"],
+        },
+        "set_clothing": {
+            "properties": {
+                "op": {"const": "set_clothing"},
+                "entity": {"type": "string", "minLength": 1},
+                "slot": {"type": "string", "enum": sorted(_CLOTHING_SLOTS)},
+                "item": {"type": "string", "minLength": 1},
+                "damage": {"type": "string", "enum": sorted(_CLOTHING_DAMAGE)},
+            },
+            "required": ["op", "entity", "slot", "item", "damage"],
+        },
+    }
+    return {
+        "type": "array",
+        "items": {
+            "anyOf": [
+                {
+                    "type": "object",
+                    **schema,
+                    "additionalProperties": False,
+                }
+                for schema in common.values()
+            ],
+        },
+    }
+
+
 # Build beat arc response format.
 def build_beat_arc_response_format(total_segments):
     if total_segments <= 0:
@@ -10341,14 +10912,7 @@ def build_beat_arc_response_format(total_segments):
                                                 "maximum": total_segments,
                                             },
                             "state_effects": {
-                                "type": "object",
-                                "description": (
-                                    "Nested canonical persistent-state patch; "
-                                    "its first key must be characters, "
-                                    "environment, threats, story, or "
-                                    "story_progress."
-                                ),
-                                "additionalProperties": True,
+                                **_typed_state_effect_json_schema(),
                             },
                                             "depends_on": {
                                                 "type": "array",
@@ -11368,7 +11932,7 @@ def build_beat_generation_messages(
     required_events_text = (
         json.dumps(required_events, ensure_ascii=False, indent=2)
         if required_events
-        else "N/A (this phase has no explicit atomic required events)"
+        else "N/A (invalid arc: every phase beat must have one required event/job)"
     )
     if previous_phase_final_beat is None and phase_number > 1 and previous_beats:
         previous_phase_final_beat = previous_beats[-1]
@@ -11479,8 +12043,15 @@ Specificity is not invention:
 
 Beat-writing rules:
 - Follow SOURCE STORY first and CURRENT PHASE second.
-- Every event in REQUIRED EVENTS FOR THIS PHASE must visibly occur within this
-  phase, in the listed order. Do not merely imply that it happened between beats.
+- Every beat in this phase has exactly one corresponding required event/job in
+  REQUIRED EVENTS FOR THIS PHASE. Perform that beat's assigned job visibly in
+  that beat; do not skip it, merge it into another beat, or imply it happened
+  between beats. Preserve the causal depends_on chain from the macro arc,
+  including the dependency handed off from the prior phase.
+- Source-required events must remain faithful to the source. For sparse source
+  sections, the assigned jobs may be plausible connective actions within the
+  established characters, setting, conflict, and outcome. Keep those jobs
+  concrete and varied without inventing a different plot.
 - Continue naturally from PREVIOUS PHASE FINAL BEAT and recent accepted beats.
 - Progress chronologically; do not repeat or restage an earlier beat.
 - Treat each beat's visible end state as the next beat's opening state: preserve
@@ -11511,8 +12082,8 @@ Beat-writing rules:
 - Do not include atmosphere, sound effects, measurements, lens choices, or
   decorative details unless they are necessary to understand the required
   physical action.
-- Use the beat budget to EXPAND required source events into clear visible steps,
-  never to manufacture additional events.
+- Use each beat's assigned job to expand the arc into a clear visible action;
+  never skip an assigned job or manufacture an unsupported major plot event.
 - Only create one sentence per beat.
 - Reach CURRENT PHASE.required_end_state by the final beat of this phase.
 - The first generated beat must continue from PREVIOUS PHASE FINAL BEAT —
@@ -12100,6 +12671,19 @@ def generate_beats_from_story(
     # Provide a deterministic linear arc when LLM planning is unavailable.
     def best_effort_macro_arc():
         """Provide a deterministic linear arc when LLM planning is unavailable."""
+        required_events = []
+        for beat_number in range(1, int(total_segments) + 1):
+            event = {
+                "id": f"E{beat_number}",
+                "event": (
+                    "Advance the source story with one concrete visible "
+                    f"connective action for beat {beat_number}."
+                ),
+                "beat_number": beat_number,
+            }
+            if beat_number > 1:
+                event["depends_on"] = [f"E{beat_number - 1}"]
+            required_events.append(event)
         return {
             "phases": [{
                 "phase_number": 1,
@@ -12112,7 +12696,7 @@ def generate_beats_from_story(
                 ),
                 "characters_introduced": [],
                 "location": "As established by the source story.",
-                "required_events": [],
+                "required_events": required_events,
                 "required_end_state": (
                     "End at the source story's stated conclusion or latest "
                     "available point."
@@ -13268,10 +13852,23 @@ def build_h3_formatter_messages(
         "AUTHORITATIVE OPENING STATE:\n"
         + (continuity_text if continuity_text else "N/A")
     )
+    continuation_opening_rule = (
+        "CONTINUATION OPENING RULE:\n"
+        "The authoritative opening state and <Video 1> already establish the "
+        "opening composition, framing, and camera position. Begin the visual "
+        "description with the visible subject or action, not a camera movement. "
+        "Do not repeat the words 'Live-action, cinematic' in the description "
+        "when continuing from <Video 1>; the final H3 prompt supplies that "
+        "continuation opener. Camera movement may occur later when the RAW SCENE "
+        "requires it.\n\n"
+        if continuity_text
+        else ""
+    )
     user_content = (
         f"MODE: {mode}\n"
         f"DURATION: {float(segment_seconds):g} seconds \n\n"
         f"{opening_block}\n\n"
+        f"{continuation_opening_rule}"
         f"{phrase_exclusion_block}"
         f"{dialogue_block}"
         "RAW SCENE:\n"
@@ -16556,7 +17153,9 @@ def build_segment_request(
     else:
         continuity = (
             "Continue from the supplied previous final frame. OPENING STATE is "
-            "already true; do not replay the action that created it."
+            "already true; do not replay the action that created it. The camera "
+            "is already established by the previous video, so do not begin with "
+            "a camera movement."
         )
 
     dialogue_rule = ""
@@ -18455,58 +19054,95 @@ def build_h3_prompt(
             "<Picture 1>."
         )
     if segment_number is not None and int(segment_number) > 1:
-        # Clean-refresh prompts open with the continuity summary. Append
-        # prompts receive the preceding segment through Load_Video instead,
-        # so their generated description remains the first H3 description.
-        summary_text = str(previous_state or "").strip() or ""
-        # The Phase-2 opening summary is already rendered from the canonical
-        # continuity state. Appending the legacy hard-cut reminder here would
-        # inject the same wardrobe a second time (and can reintroduce stale
-        # clothing), so use it only when no authoritative summary exists.
-        if hard_cut_clothing_reiteration and not summary_text:
-            summary_text = (
-                (summary_text + "\n" + hard_cut_clothing_reiteration).
-                strip()
-            )
-        if summary_text:
-            summary_text = sanitize_h3_prompt_component(summary_text)
+        # Request 2 has already incorporated the scene-relevant opening state.
+        # The preceding clip/refresh anchor supplies the visual handoff, so
+        # Python must not prepend the Phase-2 prose or reconstruct frame 0.
+        # Keep only the concise Request 2 description at this boundary.
         if conditioning_mode == "clean_refresh":
-            integrated = _open_h3_continuation_description(
-                summary_text,
-                _H3_CONTINUATION_SHOT_PREFIX.sub("", integrated),
-                conditioning_mode=conditioning_mode,
+            integrated = _H3_CONTINUATION_SHOT_PREFIX.sub(
+                "",
+                integrated,
+                count=1,
+            ).strip()
+            integrated = " ".join(
+                part
+                for part in (
+                    "[Shot 1] The opening composition is established by the supplied first frame.",
+                    integrated,
+                )
+                if part
             )
         elif conditioning_mode == "continuation":
+            continuation_description = _H3_CONTINUATION_SHOT_PREFIX.sub(
+                "",
+                integrated,
+                count=1,
+            ).strip()
+            # The append opener owns the style and Video 1 handoff. Formatter
+            # output often repeats the style immediately after its [Shot 1]
+            # label, which otherwise produces:
+            # ``...<Video 1>. Live-action, cinematic, ...``.
+            continuation_description = _H3_CONTINUATION_STYLE_PREFIX_RE.sub(
+                "",
+                continuation_description,
+                count=1,
+            ).strip()
+            # Load_Video already establishes the opening camera. If formatter
+            # output nevertheless starts with a camera move, drop that opening
+            # clause while retaining the visible action and any later camera
+            # directions from the description.
+            opening_timestamp = ""
+            timestamp_match = _H3_OPENING_TIMESTAMP_RE.match(
+                continuation_description,
+            )
+            if timestamp_match is not None:
+                opening_timestamp = timestamp_match.group("timestamp")
+                continuation_description = (
+                    continuation_description[timestamp_match.end():].lstrip()
+                )
+            if _H3_LEADING_CAMERA_MOTION_RE.match(continuation_description):
+                opening_camera_match = re.search(
+                    r"\s+(?:as|while|when)\s+",
+                    continuation_description,
+                    flags=re.IGNORECASE,
+                )
+                if opening_camera_match is not None:
+                    continuation_description = (
+                        continuation_description[opening_camera_match.end():]
+                        .lstrip()
+                    )
+                    if continuation_description:
+                        continuation_description = (
+                            continuation_description[0].upper()
+                            + continuation_description[1:]
+                        )
+                else:
+                    first_sentence = re.search(
+                        r"[.!?](?:[\"'\u2019\u201d)]*)?(?:\s+|$)",
+                        continuation_description,
+                    )
+                    continuation_description = (
+                        continuation_description[first_sentence.end():].lstrip()
+                        if first_sentence is not None
+                        else ""
+                    )
+            if opening_timestamp and continuation_description:
+                continuation_description = (
+                    opening_timestamp + continuation_description
+                )
             integrated = " ".join(
                 part
                 for part in (
                     _H3_APPEND_DESCRIPTION_PREFIX,
-                    _H3_CONTINUATION_SHOT_PREFIX.sub("", integrated).strip(),
+                    continuation_description,
                 )
                 if part
             )
     sections = []
     _append_h3_prompt_section(sections, "subject_definitions", subject_text)
-    if (
-        segment_number is not None
-        and int(segment_number) > 1
-        and (conditioning_mode == "clean_refresh" or retention)
-    ):
-        sections.append(
-            format_h3_structural_continuity_guard(
-                subject_text,
-                current_visible_subject_ids,
-                # Retention for append segments intentionally reuses the same
-                # clean-refresh block.
-                conditioning_mode=(
-                    "clean_refresh" if retention else conditioning_mode
-                ),
-                h3_opening_state=summary_text,
-                continuity_state=continuity_state,
-                retention_json=retention_json,
-                retention_subjects_only=retention,
-            )
-        )
+    # Continuity is an input to Request 2, not a trailing H3 prompt section.
+    # In particular, do not append retention_analysis or a second opening
+    # summary after detailed_description; that resurrects omitted stale facts.
     if reference_alignment:
         cleaned_alignment = sanitize_h3_prompt_component(reference_alignment)
         if cleaned_alignment:
@@ -18523,8 +19159,7 @@ def build_h3_prompt(
         sections.append(spoken_dialogue_constraint)
     # Keep formatter-only fields out even when a malformed response embeds
     # them inside a free-form field that reached the assembly boundary.
-    # Keep an output-boundary guarantee for sections that are assembled
-    # directly, such as the continuity/retention block.
+    # Keep an output-boundary guarantee for the directly assembled sections.
     final_prompt = separate_h3_timed_sentences(
         _strip_h3_markdown_emphasis(
             _strip_formatter_metadata("\n\n".join(sections))
@@ -19733,41 +20368,208 @@ def _assert_h3_prompt_contains_continuity(
     segment_number,
     require_in_prompt=True,
 ):
-    """Validate the continuity summary and return the value to use for queuing.
+    """Return the continuity metadata associated with a queued H3 prompt.
 
-    A missing summary is recoverable: the prompt can still be rendered without
-    continuity metadata, so warn and let the caller continue with an empty
-    value instead of aborting the render. Append prompts intentionally omit the
-    summary because their Load_Video input supplies the preceding segment.
+    The summary is consumed by Request 2 and is intentionally not required to
+    appear verbatim in the final H3 prompt. Request 2's concise
+    ``detailed_description`` is now the sole textual continuity path.
+    ``require_in_prompt`` remains for caller compatibility with older callers.
     """
-    if int(segment_number) <= 1:
-        return str(continuity_summary or "").strip()
-    summary_text = str(continuity_summary or "").strip()
-    if not summary_text:
-        return ""
-    if not require_in_prompt:
-        return summary_text
-    prompt_text = str(h3_prompt or "")
-    norm_prompt = re.sub(r"\s+", " ", prompt_text)
-    candidate_summaries = [summary_text]
-    # build_h3_prompt sanitizes every H3 component before assembly. In
-    # particular, it removes N/A placeholders and formatter-only structure.
-    # Validate the rendered form as well as the checkpoint's original text so
-    # a harmless H3-only cleanup is not reported as a dropped summary.
-    sanitized_summary = sanitize_h3_prompt_component(summary_text).strip()
-    if sanitized_summary and sanitized_summary != summary_text:
-        candidate_summaries.append(sanitized_summary)
-    if not any(
-        re.sub(r"\s+", " ", candidate) in norm_prompt
-        for candidate in candidate_summaries
+    del h3_prompt, segment_number, require_in_prompt
+    return str(continuity_summary or "").strip()
+
+
+# Return the small, reproducibility-relevant subset of a prepared workflow.
+def _h3_workflow_input_snapshot(workflow):
+    """Return named workflow inputs without serializing the whole graph."""
+    snapshot = {}
+    for node in workflow.values():
+        if not isinstance(node, dict):
+            continue
+        metadata = node.get("_meta")
+        if not isinstance(metadata, dict):
+            continue
+        title = str(metadata.get("title") or "").strip()
+        inputs = node.get("inputs")
+        if not title or not isinstance(inputs, dict):
+            continue
+        selected = {}
+        for key in (
+            "image",
+            "video",
+            "format",
+            "value",
+            "steps",
+            "noise_seed",
+            "megapixels",
+            "filename_prefix",
+        ):
+            if key in inputs and not isinstance(inputs[key], (list, dict)):
+                selected[key] = inputs[key]
+        if title.startswith("Reference Image") or title in {
+            LOAD_VIDEO_NODE_NAME,
+            REFRESH_FIRST_FRAME_NODE_NAME,
+            PROMPT_NODE_NAME,
+            NOISE_NODE_NAME,
+            SCHEDULER_NODE_NAME,
+            DURATION_NODE_NAME,
+            RESOLUTION_NODE_NAME,
+            SAVE_VIDEO_NODE_NAME,
+        }:
+            if selected:
+                snapshot[title] = selected
+    return snapshot
+
+
+# Return a stable digest for a small workflow file.
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+# Capture one exact, development-only H3 render case.
+def capture_h3_fixture(
+    path,
+    context,
+    workflow,
+    workflow_type,
+    video_path,
+    previous_video_path=None,
+    refresh_frame_path=None,
+):
+    """Write a compact fixture after the prepared workflow renders."""
+    if not path:
+        return
+    workflow_paths = {
+        "initial": INITIAL_WORKFLOW_FILE,
+        "append": APPEND_WORKFLOW_FILE,
+        "clean_refresh": REFRESH_WORKFLOW_FILE,
+        "refresh": REFRESH_WORKFLOW_FILE,
+    }
+    workflow_file = workflow_paths.get(workflow_type)
+    if workflow_file is None:
+        raise ValueError(f"Unknown H3 workflow type: {workflow_type!r}")
+    _, prompt_node = find_workflow_node(
+        workflow,
+        PROMPT_NODE_NAME,
+        "captured H3 workflow",
+        "DPRandomGenerator",
+    )
+    prompt = prompt_node["inputs"].get("text")
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise RuntimeError("Prepared H3 workflow has no usable prompt text.")
+    _, noise_node = find_workflow_node(
+        workflow,
+        NOISE_NODE_NAME,
+        "captured H3 workflow",
+        "RandomNoise",
+    )
+    _, duration_node = find_workflow_node(
+        workflow,
+        DURATION_NODE_NAME,
+        "captured H3 workflow",
+        "PrimitiveFloat",
+    )
+    _, scheduler_node = find_workflow_node(
+        workflow,
+        SCHEDULER_NODE_NAME,
+        "captured H3 workflow",
+        "BasicScheduler",
+    )
+    _, resolution_node = find_workflow_node(
+        workflow,
+        RESOLUTION_NODE_NAME,
+        "captured H3 workflow",
+        "ResolutionSelector",
+    )
+    segment = int(context["segment_number"])
+    output_path = os.path.abspath(os.fspath(path))
+    stored_refresh_frame_path = refresh_frame_path
+    if (
+        refresh_frame_path
+        and os.path.isfile(refresh_frame_path)
+        and workflow_type == "clean_refresh"
     ):
-        print(
-            f"WARNING: Segment {segment_number} H3 prompt is missing the "
-            "continuity summary before queueing the ComfyUI Prompt node; "
-            "continuing with an empty value."
+        stable_frame_directory = os.path.join(
+            COMFY_OUTPUT,
+            "h3_experiment_inputs",
         )
-        return ""
-    return summary_text
+        os.makedirs(stable_frame_directory, exist_ok=True)
+        stable_frame_name = (
+            f"{os.path.splitext(os.path.basename(output_path))[0]}"
+            f"_segment_{segment:04d}_refresh.png"
+        )
+        stored_refresh_frame_path = os.path.join(
+            stable_frame_directory,
+            stable_frame_name,
+        )
+        shutil.copy2(refresh_frame_path, stored_refresh_frame_path)
+    fixture = {
+        "schema_version": 1,
+        "segment": {
+            "number": segment,
+            "conditioning_mode": context.get("conditioning_mode"),
+            "duration": context.get("duration"),
+            "current_beat_text": context.get("current_beat_text", ""),
+            "next_beat_boundary_text": context.get(
+                "next_beat_boundary_text", ""
+            ),
+        },
+        "inputs": {
+            "raw_scene": context.get("raw_scene", ""),
+            "authoritative_opening_state": context.get(
+                "authoritative_opening_state", ""
+            ),
+            "request2_result": {
+                field: copy.deepcopy(
+                    (context.get("request2_result") or {}).get(field, "")
+                )
+                for field in (
+                    "detailed_description",
+                    "overall_soundscape",
+                    "non_diegetic_music",
+                )
+            },
+            "final_h3_prompt": prompt,
+            "subject_definitions": context.get("subject_definitions", ""),
+        },
+        "render": {
+            "workflow_type": workflow_type,
+            "workflow_file": os.path.abspath(workflow_file),
+            "workflow_sha256": _sha256_file(workflow_file),
+            "duration": duration_node["inputs"].get("value"),
+            "segment_length": context.get("segment_length"),
+            "megapixels": resolution_node["inputs"].get("megapixels"),
+            "steps": scheduler_node["inputs"].get("steps"),
+            "seed": noise_node["inputs"].get("noise_seed"),
+            "loras": copy.deepcopy(context.get("loras") or []),
+            "previous_video_path": (
+                os.path.abspath(previous_video_path)
+                if previous_video_path else None
+            ),
+            "refresh_frame_path": (
+                os.path.abspath(stored_refresh_frame_path)
+                if stored_refresh_frame_path else None
+            ),
+            "workflow_inputs": _h3_workflow_input_snapshot(workflow),
+        },
+        "capture": {
+            "video_path": os.path.abspath(video_path),
+            "captured_at": time.strftime(
+                "%Y-%m-%dT%H:%M:%SZ", time.gmtime()
+            ),
+        },
+    }
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    temporary_path = f"{output_path}.tmp-{os.getpid()}"
+    with open(temporary_path, "w", encoding="utf-8") as handle:
+        json.dump(fixture, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+    os.replace(temporary_path, output_path)
+    print(f"Saved H3 experiment fixture to {output_path}", flush=True)
 
 
 # Render one segment, retrying only recoverable ComfyUI failures.
@@ -19787,6 +20589,8 @@ def _render_segment_with_retries(
     continuity_summary="",
     subject_definitions="",
     segment_length=None,
+    h3_fixture_context=None,
+    h3_fixture_path=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     h3_prompt = _assert_h3_subject_identity(
@@ -19851,6 +20655,7 @@ def _render_segment_with_retries(
 
         lora_kwargs = {"loras": loras} if loras else {}
         if segment == 1:
+            workflow_type = "initial"
             workflow = prepare_initial_workflow(
                 current_duration,
                 current_megapixels,
@@ -19860,6 +20665,7 @@ def _render_segment_with_retries(
                 **lora_kwargs,
             )
         elif refresh_segment:
+            workflow_type = "clean_refresh"
             workflow = prepare_refresh_workflow(
                 current_duration,
                 current_megapixels,
@@ -19871,6 +20677,7 @@ def _render_segment_with_retries(
                 continuity_state=continuity_state,
             )
         else:
+            workflow_type = "append"
             workflow = prepare_append_workflow(
                 current_duration,
                 h3_prompt,
@@ -19896,6 +20703,16 @@ def _render_segment_with_retries(
             comfy_result = wait_for_completion(prompt_id)
             video_path = get_video_path(comfy_result, workflow)
             width, height = get_video_resolution(video_path)
+            if h3_fixture_path and h3_fixture_context:
+                capture_h3_fixture(
+                    h3_fixture_path,
+                    h3_fixture_context,
+                    workflow,
+                    workflow_type,
+                    video_path,
+                    previous_video_path=previous_video_path,
+                    refresh_frame_path=refresh_frame_name,
+                )
             return workflow, video_path, width, height, current_megapixels
         except (ComfyUIExecutionError, ComfyUIRenderTimeout) as error:
             print(
@@ -20020,6 +20837,8 @@ def prepare_initial_workflow(
     steps=6,
     loras=None,
     lora_override=None,
+    noise_seed=None,
+    output_prefix=None,
 ):
     if lora_override is not None:
         if loras:
@@ -20044,7 +20863,7 @@ def prepare_initial_workflow(
     )
     set_node_input(
         workflow, NOISE_NODE_NAME, "noise_seed",
-        generate_random_seed(),
+        generate_random_seed() if noise_seed is None else int(noise_seed),
         label, "RandomNoise"
     )
     set_node_input(
@@ -20053,7 +20872,7 @@ def prepare_initial_workflow(
     )
     set_node_input(
         workflow, SAVE_VIDEO_NODE_NAME, "filename_prefix",
-        f"video/segment_{segment_number:04d}",
+        output_prefix or f"video/segment_{segment_number:04d}",
         label, "SaveVideo"
     )
     configure_lora_chain(workflow, loras, label)
@@ -20073,6 +20892,8 @@ def prepare_refresh_workflow(
     reference_workflow=None,
     continuity_state=None,
     excluded_picture_ids=None,
+    noise_seed=None,
+    output_prefix=None,
 ):
     """Prepare a fresh reference-to-video segment from the prior last frame."""
 
@@ -20146,7 +20967,7 @@ def prepare_refresh_workflow(
         workflow,
         NOISE_NODE_NAME,
         "noise_seed",
-        generate_random_seed(),
+        generate_random_seed() if noise_seed is None else int(noise_seed),
         label,
         "RandomNoise",
     )
@@ -20162,7 +20983,7 @@ def prepare_refresh_workflow(
         workflow,
         SAVE_VIDEO_NODE_NAME,
         "filename_prefix",
-        f"video/segment_{segment_number:04d}",
+        output_prefix or f"video/segment_{segment_number:04d}",
         label,
         "SaveVideo",
     )
@@ -20387,6 +21208,8 @@ def prepare_append_workflow(
     continuity_state=None,
     excluded_picture_ids=None,
     segment_length=None,
+    noise_seed=None,
+    output_prefix=None,
 ):
     if lora_override is not None:
         if loras:
@@ -20472,18 +21295,22 @@ def prepare_append_workflow(
         workflow,
         SAVE_CONTINUATION_VIDEO_NODE_NAME,
         "filename_prefix",
-        f"video/continuation_frames/segment_{segment_number:04d}",
+        (
+            f"{output_prefix}_continuation"
+            if output_prefix
+            else f"video/continuation_frames/segment_{segment_number:04d}"
+        ),
         label,
         "SaveVideo",
     )
     set_node_input(
         workflow, SAVE_VIDEO_NODE_NAME, "filename_prefix",
-        f"video/segment_{segment_number:04d}",
+        output_prefix or f"video/segment_{segment_number:04d}",
         label, "SaveVideo"
     )
     set_node_input(
         workflow, NOISE_NODE_NAME, "noise_seed",
-        generate_random_seed(),
+        generate_random_seed() if noise_seed is None else int(noise_seed),
         label, "RandomNoise"
     )
     connect_append_workflow_inputs(workflow, label)
@@ -20859,7 +21686,7 @@ def repair_existing_segment(
         llm_result,
         historical_subject_definitions,
         hard_cut_subject_continuity,
-        h3_opening_summary,
+        director_payload.get("h3_opening_summary", h3_opening_summary),
         segment_number,
         ff=False,
         conditioning_mode=conditioning_mode,
@@ -21244,12 +22071,26 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     print(raw_scene)
     print("=" * 64)
 
+    # Request 2 gets a scene-scoped projection of canonical continuity. The
+    # full registry remains available to Request 1 and the continuity store,
+    # but irrelevant subjects, stale props, completed actions, old camera
+    # framing, and weak audio are not offered as H3-facing opening prose.
+    h3_opening_summary = ""
+    if segment_number > 1:
+        h3_opening_summary = format_authoritative_opening_state(
+            bundle.get("registry_state") or bundle.get("opening_state") or {},
+            bundle.get("subject_definitions", ""),
+            include_camera=False,
+            current_scene=raw_scene,
+            conditioning_mode=conditioning_mode,
+        )
+
     formatter_messages = build_h3_formatter_messages(
         raw_scene,
         mode,
         duration,
         continuity_summary=(
-            bundle.get("opening_state")
+            h3_opening_summary
             or bundle.get("h3_opening_summary")
             or ""
         ),
@@ -21259,7 +22100,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     )
     _verify_authoritative_opening_state_handoff(
         formatter_messages,
-        bundle.get("opening_state") or bundle.get("h3_opening_summary") or "",
+        h3_opening_summary
+        or bundle.get("h3_opening_summary")
+        or "",
         segment_number,
     )
     request2_metadata = {
@@ -21359,6 +22202,11 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     payload = dict(bundle)
     payload["raw_scene"] = raw_scene
     payload["h3_mode"] = mode
+    payload["authoritative_opening_state"] = h3_opening_summary or (
+        bundle.get("opening_state") or bundle.get("h3_opening_summary") or ""
+    )
+    if segment_number > 1:
+        payload["h3_opening_summary"] = h3_opening_summary
     payload["llm_result"] = llm_result
     return payload
 
@@ -21999,6 +22847,7 @@ def _run_main(
                 run_config,
             )
 
+        request2_result_for_fixture = copy.deepcopy(payload["llm_result"])
         llm_result = dict(payload["llm_result"])
         llm_result["detailed_description"] = (
             inject_persistent_state_into_description(
@@ -22185,6 +23034,38 @@ def _run_main(
             refresh_interval,
         )
         render_started = threading.Event()
+        h3_fixture_path = getattr(args, "capture_h3_fixture", None)
+        h3_fixture_context = None
+        if (
+            h3_fixture_path
+            and getattr(args, "capture_h3_segment", None) == segment
+        ):
+            current_beat_text = ""
+            next_beat_text = ""
+            if segment <= len(beats):
+                current_beat = beats[segment - 1]
+                current_beat_text = str(
+                    getattr(current_beat, "text", current_beat)
+                )
+            if segment < len(beats):
+                next_beat = beats[segment]
+                next_beat_text = str(getattr(next_beat, "text", next_beat))
+            h3_fixture_context = {
+                "segment_number": segment,
+                "conditioning_mode": segment_bundle["conditioning_mode"],
+                "duration": segment_bundle["current_duration"],
+                "segment_length": segment_length,
+                "current_beat_text": current_beat_text,
+                "next_beat_boundary_text": next_beat_text,
+                "raw_scene": payload.get("raw_scene", ""),
+                "authoritative_opening_state": payload.get(
+                    "authoritative_opening_state",
+                    payload.get("h3_opening_summary", ""),
+                ),
+                "request2_result": request2_result_for_fixture,
+                "subject_definitions": subject_definitions,
+                "loras": loras,
+            }
         render_future = render_executor.submit(
             render_segment_with_retries,
             segment,
@@ -22205,6 +23086,8 @@ def _run_main(
             ),
             subject_definitions=subject_definitions,
             segment_length=segment_length,
+            h3_fixture_context=h3_fixture_context,
+            h3_fixture_path=h3_fixture_path if h3_fixture_context else None,
         )
         render_futures_by_segment[int(segment)] = render_future
         # A cadence-skipped final render must still be completed on the main

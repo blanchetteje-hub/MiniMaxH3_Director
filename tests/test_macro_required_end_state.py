@@ -18,17 +18,24 @@ class MacroArcContractTests(unittest.TestCase):
         }]}
 
     def test_complete_arc_schema_preserves_state_effects(self):
-        effects = {"environment": {"barriers": {"primary": {"status": "open"}}}}
-        parsed = minimax.parse_beat_arc_plan(self.arc({
+        effects = [{"op": "set_barrier_state", "entity": "primary", "value": "open"}]
+        candidate = self.arc({
             "id": "E1",
             "event": "Operator opens the primary barrier.",
             "beat_number": 1,
             "state_effects": effects,
-        }), 2)
+        })
+        candidate["phases"][0]["required_events"].append({
+            "id": "E2",
+            "event": "Operator confirms the open barrier.",
+            "beat_number": 2,
+            "depends_on": ["E1"],
+        })
+        parsed = minimax.parse_beat_arc_plan(candidate, 2)
         self.assertEqual(parsed["phases"][0]["required_events"][0]["state_effects"], effects)
 
     def test_python_rejects_malformed_effects_without_semantic_interpretation(self):
-        with self.assertRaisesRegex(ValueError, "must be an object"):
+        with self.assertRaisesRegex(ValueError, "array"):
             minimax.parse_beat_arc_plan(self.arc({
                 "id": "E1",
                 "event": "Operator opens the primary barrier.",

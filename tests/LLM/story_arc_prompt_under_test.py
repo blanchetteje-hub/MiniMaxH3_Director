@@ -65,14 +65,27 @@ Required end states:
 - A statement that all items are complete requires all items, not just some.
 
 State effects:
-- Require effects for persistent modeled facts such as location, containment,
-  release, held/equipped objects, barriers, persistent objects, terminal
-  entities, and persistent environment conditions.
-- Do not require effects for temporary actions, feelings, reactions, or detail.
-- Attach each persistent effect to the required event that actually establishes
+- state_effects is optional and must be a list of typed operations representing
+  persistent facts directly established by that required event.
+- Use only these operation names: set_location, set_item_state,
+  set_barrier_state, set_threat_state, set_object_state, set_containment,
+  set_condition, and set_clothing. Do not invent operation names, nested state
+  fields, or arbitrary canonical paths.
+- Examples: {"op":"set_location","entity":"Will","value":"basement"};
+  {"op":"set_item_state","entity":"pistol","owner":"Amy","value":"equipped"}.
+- CHECK PERSISTENT STATE COVERAGE: if a required event explicitly establishes a
+  persistent canonical fact represented by one of these typed operations, that
+  same event must include the matching state_effect. Reject the arc when the
+  event says the persistent change or result occurs but its typed effect is
+  missing. Apply this generically to persistent modeled facts such as location,
+  containment, release, held/equipped objects, barriers, persistent objects,
+  terminal entities, clothing, and persistent environment conditions.
+- Do not require state effects for temporary actions, feelings, reactions, or
+  detail.
+- Attach each typed operation to the required event that actually establishes
   that fact. If a later event retrieves or equips named equipment, an earlier
-  ordinary setup event must not carry that held/equipped effect; reject the arc
-  even if the later event also carries the effect.
+  ordinary setup event must not carry that held/equipped operation; reject the
+  arc even if the later event also carries the operation.
 - Do not copy an old effect onto an unrelated event just to satisfy coverage.
 
 Do not reject because:

@@ -17,6 +17,18 @@ from tests.LLM.story_arc_cases import (
 from tests.LLM.story_arc_prompt_under_test import build_messages
 
 
+STATE_EFFECT_FIELDS = {
+    "set_location": {"op", "entity", "value"},
+    "set_item_state": {"op", "entity", "owner", "value"},
+    "set_barrier_state": {"op", "entity", "value"},
+    "set_threat_state": {"op", "entity", "value"},
+    "set_object_state": {"op", "entity", "value"},
+    "set_containment": {"op", "entity", "container", "value"},
+    "set_condition": {"op", "entity", "value"},
+    "set_clothing": {"op", "entity", "slot", "item", "damage"},
+}
+
+
 def test_story_arc_fixture_contract():
     contract = fixture_contract()
 
@@ -65,6 +77,13 @@ def test_story_arc_cases_are_structurally_well_formed():
                 event_ids.add(event["id"])
                 assert phase["beat_start"] <= event["beat_number"] <= phase["beat_end"], case.case_id
                 dependencies.extend(event.get("depends_on", []))
+                if "state_effects" in event:
+                    assert isinstance(event["state_effects"], list), case.case_id
+                    for effect in event["state_effects"]:
+                        assert isinstance(effect, dict), case.case_id
+                        op = effect.get("op")
+                        assert op in STATE_EFFECT_FIELDS, case.case_id
+                        assert set(effect) == STATE_EFFECT_FIELDS[op], case.case_id
             expected_start = phase["beat_end"] + 1
         assert expected_start == case.beat_count + 1, case.case_id
         assert all(dependency in event_ids for dependency in dependencies), case.case_id

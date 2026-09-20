@@ -85,9 +85,9 @@ class MacroArcPipelineTests(unittest.TestCase):
         )
 
     def test_arc_state_effects_are_applied_only_after_valid_beat(self):
-        arc = neutral_arc(effects={"environment": {"barriers": {
-            "primary": {"status": "open"}
-        }}})
+        arc = neutral_arc(effects=[
+            {"op": "set_barrier_state", "entity": "primary", "value": "open"}
+        ])
         purposes = []
 
         def llm(messages, **kwargs):

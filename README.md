@@ -76,24 +76,21 @@ low-resolution test before committing to a longer story.
 ### Beat-plan validation
 
 Before directing shots, the initially generated beats are treated as a
-provisional framework. Validation moves forward through small overlapping
-windows. Once finalized, a beat and its canonical state snapshot are immutable.
+provisional framework. Validation moves forward one beat at a time. Each
+candidate is checked by one semantic validator against the previous finalized
+beat, a compacted canonical state snapshot, the current and next beat jobs, and
+the Python-assigned typed state effects. The validator accepts paraphrases and
+reasonable implications; it does not perform exact string matching or
+revalidate the complete source story or phase goal.
 
-Each window uses three focused local stages:
+The compact state removes empty/default values and bookkeeping noise such as
+version, required-event progress lists, and duplicated persistent-effect
+metadata while preserving established facts. Python remains the authority for
+committing typed effects: rejected candidates cannot mutate state, and effects
+are applied only after the single validator returns `valid: true`.
 
-1. **Local source/story fidelity:** checks only the provisional beats against
-   the source, current macro phase, and required-event progress.
-2. **Local physical/state continuity:** checks only the provisional beats against
-   the canonical state after the immutable anchor.
-3. **Local finalization:** walks the provisional beats in order, minimally repairs
-   confirmed problems, returns partial state patches, and reports completed
-   required-event IDs separately. Python owns the complete canonical state and
-   cumulative event tally.
-
-For a 20-beat plan, the windows are `1-4`, `4-8`, `8-12`, `12-16`, and `16-20`.
-The first window has four mutable beats; later windows have one immutable anchor
-and up to four new mutable beats. A future framework beat can be supplied as
-non-authoritative lookahead, but it can never change finalized history.
+Validation progress is checkpointed after each finalized beat, so a resumed run
+continues from the last committed beat without revalidating immutable history.
 
 Beat validation progress is checkpointed in `beat_validation_state.json`,
 including finalized beat text, state-after snapshots, current state,
@@ -643,11 +640,14 @@ validity is owned by the single beat validator; Python owns only deterministic
 formatting, checkpoint, and canonical-state integrity.
 
 Macro arcs use one semantic KISS loop: create the complete arc, validate its
-narrative fidelity, structure, required end states, dependencies, and event
+narrative fidelity, structure, required end states, dependencies, and typed event
 `state_effects`, then repair the complete arc when validation fails and validate
-the repair again. Python enforces only deterministic schema and data-integrity
-rules. There is no independent state-preparation, enrichment, coverage, or
-claim-tracking stage.
+the repair again. Every global beat has exactly one required event/job, and
+required events form a sequential dependency chain across phase boundaries.
+Python enforces those assignments and dependencies deterministically before LLM
+arc validation. State effects are explicit operations owned and translated by
+Python; arbitrary nested state-field dictionaries are rejected. There is no
+independent state-preparation, enrichment, coverage, or claim-tracking stage.
 
 Initial beat generation retries a phase normally through attempt 9. If attempt
 10 still fails content validation but contains the required number of

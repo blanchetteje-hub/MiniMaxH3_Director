@@ -19,9 +19,9 @@ ARC = {"phases": [{
         "id": "E1",
         "event": "Operator opens the primary barrier.",
         "beat_number": 1,
-        "state_effects": {"environment": {"barriers": {
-            "primary": {"status": "open"}
-        }}},
+        "state_effects": [
+            {"op": "set_barrier_state", "entity": "primary", "value": "open"}
+        ],
     }],
 }]}
 
@@ -29,8 +29,6 @@ ARC = {"phases": [{
 class ForwardBeatValidationTests(unittest.TestCase):
     def test_validator_contract_is_immutable_and_minimal(self):
         messages = minimax.build_beat_validation_messages(
-            "The operator opens the primary barrier.",
-            "Complete the authorized action.",
             "",
             minimax.new_beat_canonical_state(),
             "Operator opens the primary barrier.",
@@ -40,11 +38,59 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("CURRENT STATE", messages[1]["content"])
         self.assertIn('valid": true', messages[1]["content"])
         self.assertNotIn("state_patch", messages[1]["content"])
+        self.assertNotIn("STORY", messages[1]["content"])
+        self.assertNotIn("PHASE GOAL", messages[1]["content"])
+        self.assertIn("CURRENT JOB", messages[1]["content"])
+        self.assertIn("NEXT JOB", messages[1]["content"])
+        self.assertIn("STATE EFFECTS IF VALID", messages[1]["content"])
+        self.assertIn("C. NEXT JOB", messages[1]["content"])
+
+    def test_compact_validator_state_removes_noise_but_preserves_facts(self):
+        state = {
+            "version": 1,
+            "characters": {
+                "Amy": {
+                    "location": "home",
+                    "held_objects": ["katana"],
+                    "equipped_objects": ["pistol"],
+                    "injuries": [],
+                    "posture": "N/A",
+                    "orientation": "N/A",
+                    "custom_fact": False,
+                    "clothing": {
+                        "upper": {"item": "black tank top", "damage": "none"},
+                        "lower": {"item": "denim jeans", "damage": "none"},
+                    },
+                }
+            },
+            "environment": {
+                "doors": {},
+                "barriers": {"front": {"status": "locked"}},
+            },
+            "story_progress": {
+                "completed_required_event_ids": ["E1"],
+                "pending_required_event_ids": [],
+                "persistent_state_effects": {
+                    "environment.barriers.front.status": "locked",
+                },
+            },
+        }
+        original = json.loads(json.dumps(state))
+        compacted = minimax.compact_beat_validation_state(state)
+
+        self.assertEqual(state, original)
+        self.assertNotIn("version", compacted)
+        self.assertNotIn("injuries", compacted["characters"]["Amy"])
+        self.assertNotIn("posture", compacted["characters"]["Amy"])
+        self.assertFalse(compacted["characters"]["Amy"]["custom_fact"])
+        self.assertEqual(
+            compacted["environment"]["barriers"]["front"],
+            {"status": "locked"},
+        )
+        self.assertNotIn("story_progress", compacted)
 
     def test_validator_prompt_includes_assigned_state_effects(self):
         messages = minimax.build_beat_validation_messages(
-            "The operator opens the primary barrier.",
-            "Complete the authorized action.",
             "",
             minimax.new_beat_canonical_state(),
             "Operator opens the primary barrier.",
@@ -53,19 +99,17 @@ class ForwardBeatValidationTests(unittest.TestCase):
             assigned_state_effects=[
                 {
                     "id": "E1",
-                    "state_effects": {
-                        "environment": {
-                            "barriers": {"primary": {"status": "open"}}
-                        }
-                    },
+                    "state_effects": [
+                        {"op": "set_barrier_state", "entity": "primary", "value": "open"}
+                    ],
                 }
             ],
         )
         prompt = messages[1]["content"]
-        self.assertIn("STATE EFFECTS TO COMMIT IF VALID", prompt)
+        self.assertIn("STATE EFFECTS IF VALID", prompt)
         self.assertIn('"id":"E1"', prompt)
-        self.assertIn('"status":"open"', prompt)
-        self.assertIn("Every listed state effect must actually be established", prompt)
+        self.assertIn('"value":"open"', prompt)
+        self.assertIn("Every listed typed effect must be supported", prompt)
 
     def test_invalid_candidate_regenerates_same_beat_without_state_mutation(self):
         validation_states = []
@@ -77,8 +121,8 @@ class ForwardBeatValidationTests(unittest.TestCase):
 
         def validator(messages, **kwargs):
             content = messages[1]["content"]
-            marker = "CURRENT STATE — authoritative snapshot before this beat\n"
-            state_text = content.split(marker, 1)[1].split("\n\nCURRENT BEAT JOB", 1)[0]
+            marker = "CURRENT STATE\n"
+            state_text = content.split(marker, 1)[1].split("\n\nCURRENT JOB", 1)[0]
             validation_states.append(json.loads(state_text))
             return next(responses)
 

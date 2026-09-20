@@ -88,52 +88,35 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
                         "id": "E1",
                         "beat_number": 1,
                         "event": "Will enters and is contained in the basement.",
-                        "state_effects": {
-                            "characters": {
-                                "Will": {
-                                    "location": "basement",
-                                    "containment": "contained",
-                                    "contained_in": "basement",
-                                    "accessible": False,
-                                },
-                            },
-                        },
+                        "state_effects": [
+                            {"op": "set_location", "entity": "Will", "value": "basement"},
+                            {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+                        ],
                     },
                     {
                         "id": "E2",
                         "beat_number": 2,
                         "event": "Amy locks the basement door.",
-                        "state_effects": {
-                            "environment": {
-                                "doors": {
-                                    "basement_door": {"status": "locked"},
-                                },
-                            },
-                        },
+                        "state_effects": [
+                            {"op": "set_barrier_state", "entity": "basement_door", "value": "locked"},
+                        ],
                     },
                     {
                         "id": "E3",
                         "beat_number": 3,
                         "event": "Amy equips the pistol.",
-                        "state_effects": {
-                            "characters": {
-                                "Amy": {"equipped_objects": ["pistol"]},
-                            },
-                        },
+                        "state_effects": [
+                            {"op": "set_item_state", "entity": "pistol", "owner": "Amy", "value": "equipped"},
+                        ],
                     },
                     {
                         "id": "E4",
                         "beat_number": 4,
                         "event": "Amy destroys the final threat.",
-                        "state_effects": {
-                            "threats": {
-                                "threat_1": {
-                                    "location": "basement",
-                                    "status": "destroyed",
-                                    "has_exited": False,
-                                },
-                            },
-                        },
+                        "state_effects": [
+                            {"op": "set_location", "entity": "threat_1", "value": "basement"},
+                            {"op": "set_threat_state", "entity": "threat_1", "value": "dead"},
+                        ],
                     },
                 ],
             }],
@@ -157,7 +140,7 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         self.assertEqual(
             [
                 self._prompt_section(
-                    call[0], "CURRENT BEAT JOB\n", "\n\nNEXT BEAT MUST DO"
+                    call[0], "CURRENT JOB\n", "\n\nNEXT JOB"
                 )
                 for call in calls
             ],
@@ -166,7 +149,7 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         self.assertEqual(
             [
                 self._prompt_section(
-                    call[0], "NEXT BEAT MUST DO (context only; not required for this beat)\n", "\n\nDO NOT COMPLETE YET"
+                    call[0], "NEXT JOB\n", "\n\nSTATE EFFECTS IF VALID"
                 )
                 for call in calls
             ],
@@ -224,18 +207,14 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
 
         next_job = self._prompt_section(
             calls[0],
-            "NEXT BEAT MUST DO (context only; not required for this beat)\n",
-            "\n\nDO NOT COMPLETE YET",
+            "NEXT JOB\n",
+            "\n\nSTATE EFFECTS IF VALID",
         )
         self.assertEqual(next_job, "Amy continues the authorized process.")
 
     def test_accepted_required_event_is_committed_at_phase_boundary(self):
         macro_arc = self._required_event_arc(event_count=1, state_effects={
-            1: {
-                "environment": {
-                    "doors": {"basement": {"status": "open"}},
-                },
-            },
+            1: [{"op": "set_barrier_state", "entity": "basement", "value": "open"}],
         })
         result, checkpoint, _ = self._run(
             ["Amy completes required action 1."],
@@ -248,7 +227,7 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         self.assertEqual(checkpoint["completed_required_event_ids"], ["E1"])
         self.assertEqual(checkpoint["pending_required_event_ids"], [])
         self.assertEqual(
-            checkpoint["current_beat_state"]["environment"]["doors"]["basement"]["status"],
+            checkpoint["current_beat_state"]["environment"]["barriers"]["basement"]["status"],
             "open",
         )
 
@@ -268,9 +247,9 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
                         "id": "E7",
                         "beat_number": 1,
                         "event": "Amy keeps fighting and kills additional zombies.",
-                        "state_effects": {
-                            "story": {"persistent_facts": {"horde": "reduced"}},
-                        },
+                        "state_effects": [
+                            {"op": "set_condition", "entity": "horde", "value": "reduced"},
+                        ],
                     },
                     {
                         "id": "E8",
@@ -290,14 +269,14 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         self.assertEqual(checkpoint["completed_required_event_ids"], ["E7", "E8"])
         self.assertEqual(checkpoint["pending_required_event_ids"], [])
         self.assertEqual(
-            checkpoint["current_beat_state"]["story"]["persistent_facts"]["horde"],
+            checkpoint["current_beat_state"]["environment"]["objects"]["horde"]["condition"],
             "reduced",
         )
 
     def test_rejected_candidate_does_not_change_completed_pending_state_or_history(self):
         macro_arc = self._required_event_arc(event_count=2, state_effects={
-            1: {"story": {"persistent_facts": {"first_action": "done"}}},
-            2: {"story": {"persistent_facts": {"second_action": "done"}}},
+            1: [{"op": "set_condition", "entity": "first_action", "value": "done"}],
+            2: [{"op": "set_condition", "entity": "second_action", "value": "done"}],
         })
         snapshots = []
 
@@ -306,8 +285,8 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             state = json.loads(
                 self._prompt_section(
                     messages,
-                    "CURRENT STATE — authoritative snapshot before this beat\n",
-                    "\n\nCURRENT BEAT JOB",
+                    "CURRENT STATE\n",
+                    "\n\nCURRENT JOB",
                 )
             )
             previous = self._prompt_section(
@@ -356,37 +335,26 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         rejected_state = snapshots[1]["state"]
         accepted_retry_state = snapshots[2]["state"]
         self.assertEqual(rejected_state, accepted_retry_state)
-        self.assertEqual(
-            rejected_state["story_progress"]["completed_required_event_ids"],
-            ["E1"],
-        )
-        self.assertEqual(
-            rejected_state["story_progress"]["pending_required_event_ids"],
-            ["E2"],
-        )
+        self.assertNotIn("completed_required_event_ids", rejected_state.get("story_progress", {}))
+        self.assertNotIn("pending_required_event_ids", rejected_state.get("story_progress", {}))
         self.assertEqual(snapshots[1]["previous"], snapshots[2]["previous"])
         self.assertEqual(snapshots[1]["previous"], "Amy completes required action 1.")
         self.assertNotIn("Rejected candidate", checkpoint["finalized_beats"][1]["beat_text"])
         self.assertEqual(checkpoint["completed_required_event_ids"], ["E1", "E2"])
         self.assertEqual(checkpoint["pending_required_event_ids"], [])
         self.assertEqual(
-            checkpoint["current_beat_state"]["story"]["persistent_facts"],
-            {"first_action": "done", "second_action": "done"},
+            checkpoint["current_beat_state"]["environment"]["objects"]["first_action"]["condition"],
+            "done",
+        )
+        self.assertEqual(
+            checkpoint["current_beat_state"]["environment"]["objects"]["second_action"]["condition"],
+            "done",
         )
         self.assertNotEqual(first_beat_state, rejected_state)
 
     def test_nested_required_event_state_effect_persists_into_next_beat(self):
         macro_arc = self._required_event_arc(event_count=2, state_effects={
-            1: {
-                "environment": {
-                    "doors": {
-                        "basement": {
-                            "status": "open",
-                            "material": "wood",
-                        },
-                    },
-                },
-            },
+            1: [{"op": "set_barrier_state", "entity": "basement", "value": "open"}],
         })
         states = []
 
@@ -394,8 +362,8 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             states.append(json.loads(
                 self._prompt_section(
                     messages,
-                    "CURRENT STATE — authoritative snapshot before this beat\n",
-                    "\n\nCURRENT BEAT JOB",
+                    "CURRENT STATE\n",
+                    "\n\nCURRENT JOB",
                 )
             ))
             return {"valid": True, "issue": ""}
@@ -419,15 +387,12 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
 
         self.assertEqual(len(states), 2)
         self.assertEqual(
-            states[1]["environment"]["doors"]["basement"],
-            {"status": "open", "material": "wood"},
+            states[1]["environment"]["barriers"]["basement"],
+            {"status": "open"},
         )
         self.assertEqual(
             checkpoint["current_beat_state"]["story_progress"]["persistent_state_effects"],
-            {
-                "environment.doors.basement.status": "open",
-                "environment.doors.basement.material": "wood",
-            },
+            {"environment.barriers.basement.status": "open"},
         )
 
     def test_four_event_arc_carries_canonical_facts_into_each_next_snapshot(self):
@@ -444,8 +409,8 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             validator_states.append(json.loads(
                 self._prompt_section(
                     messages,
-                    "CURRENT STATE — authoritative snapshot before this beat\n",
-                    "\n\nCURRENT BEAT JOB",
+                    "CURRENT STATE\n",
+                    "\n\nCURRENT JOB",
                 )
             ))
             return {"valid": True, "issue": ""}
@@ -460,9 +425,7 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         self.assertEqual(result, framework)
         self.assertEqual(len(validator_states), 4)
 
-        self.assertEqual(
-            validator_states[0]["characters"]["Will"]["location"], "N/A"
-        )
+        self.assertNotIn("location", validator_states[0]["characters"]["Will"])
         self.assertEqual(
             validator_states[1]["characters"]["Will"]["location"],
             "basement",
@@ -478,7 +441,7 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         self.assertFalse(validator_states[1]["characters"]["Will"]["accessible"])
 
         self.assertEqual(
-            validator_states[2]["environment"]["doors"]["basement_door"]["status"],
+            validator_states[2]["environment"]["barriers"]["basement_door"]["status"],
             "locked",
         )
         self.assertEqual(
@@ -491,12 +454,12 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             ["pistol"],
         )
         self.assertEqual(
-            validator_states[3]["environment"]["doors"]["basement_door"]["status"],
+            validator_states[3]["environment"]["barriers"]["basement_door"]["status"],
             "locked",
         )
 
         final_state = checkpoint["current_beat_state"]
-        self.assertEqual(final_state["threats"]["threat_1"]["status"], "destroyed")
+        self.assertEqual(final_state["threats"]["threat_1"]["status"], "dead")
         self.assertEqual(
             final_state["story_progress"]["completed_required_event_ids"],
             ["E1", "E2", "E3", "E4"],
@@ -516,11 +479,11 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         )
         self.assertFalse(changed["characters"]["Will"]["accessible"])
         self.assertEqual(
-            changed["environment"]["doors"]["basement_door"]["status"],
+            changed["environment"]["barriers"]["basement_door"]["status"],
             "locked",
         )
         self.assertEqual(changed["characters"]["Amy"]["equipped_objects"], ["pistol"])
-        self.assertEqual(changed["threats"]["threat_1"]["status"], "destroyed")
+        self.assertEqual(changed["threats"]["threat_1"]["status"], "dead")
         self.assertEqual(
             changed["environment"]["paths"]["stairwell"]["status"], "clear"
         )
@@ -592,13 +555,9 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
                     "id": "E1",
                     "beat_number": 1,
                     "event": "Amy opens the basement door.",
-                    "state_effects": {
-                        "environment": {
-                            "doors": {
-                                "basement_door": {"status": "open"},
-                            },
-                        },
-                    },
+                    "state_effects": [
+                        {"op": "set_barrier_state", "entity": "basement_door", "value": "open"},
+                    ],
                 }],
             }],
         }
@@ -609,8 +568,8 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
 
         def validator(messages, **kwargs):
             state_start = messages[1]["content"].split(
-                "CURRENT STATE — authoritative snapshot before this beat\n", 1
-            )[1].split("\n\nCURRENT BEAT JOB", 1)[0]
+                "CURRENT STATE\n", 1
+            )[1].split("\n\nCURRENT JOB", 1)[0]
             validator_states.append(json.loads(state_start))
             return (
                 {"valid": False, "issue": "Revise the door action."}
@@ -637,7 +596,7 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         self.assertEqual(len(validator_states), 2)
         self.assertEqual(validator_states[0], validator_states[1])
         self.assertEqual(
-            checkpoint["current_beat_state"]["environment"]["doors"][
+            checkpoint["current_beat_state"]["environment"]["barriers"][
                 "basement_door"
             ]["status"],
             "open",

@@ -1,0 +1,76 @@
+import copy
+import unittest
+
+import minimax
+
+
+def make_arc(events_by_phase):
+    phases = []
+    for phase_number, (beat_start, beat_end, events) in enumerate(
+        events_by_phase, start=1
+    ):
+        phases.append({
+            "phase_number": phase_number,
+            "beat_start": beat_start,
+            "beat_end": beat_end,
+            "narrative_purpose": "Advance the story.",
+            "broad_progression": "Advance the story.",
+            "characters_introduced": ["Amy"],
+            "location": "the house",
+            "required_end_state": "The story reaches the requested outcome.",
+            "required_events": events,
+        })
+    return {"phases": phases}
+
+
+class StoryArcStructuralGuaranteeTests(unittest.TestCase):
+    def setUp(self):
+        self.events = [
+            {"id": "E1", "event": "Amy acts.", "beat_number": 1},
+            {
+                "id": "E2",
+                "event": "Amy continues.",
+                "beat_number": 2,
+                "depends_on": ["E1"],
+            },
+            {
+                "id": "E3",
+                "event": "Amy reaches the next room.",
+                "beat_number": 3,
+                "depends_on": ["E2", "E1"],
+            },
+        ]
+
+    def test_accepts_one_event_per_beat_and_cross_phase_chain(self):
+        arc = make_arc([
+            (1, 2, self.events[:2]),
+            (3, 3, self.events[2:]),
+        ])
+        parsed = minimax.parse_beat_arc_plan(arc, 3)
+        self.assertEqual(
+            parsed["phases"][1]["required_events"][0]["depends_on"],
+            ["E2", "E1"],
+        )
+
+    def test_rejects_missing_beat_assignment(self):
+        arc = make_arc([(1, 3, [self.events[0], self.events[2]])])
+        with self.assertRaisesRegex(ValueError, "no required event for beat.*2"):
+            minimax.parse_beat_arc_plan(arc, 3)
+
+    def test_rejects_duplicate_beat_assignment(self):
+        duplicate = copy.deepcopy(self.events[1])
+        duplicate["id"] = "E4"
+        duplicate["depends_on"] = ["E1"]
+        arc = make_arc([(1, 3, [self.events[0], self.events[1], duplicate, self.events[2]])])
+        with self.assertRaisesRegex(ValueError, "duplicate required-event assignments"):
+            minimax.parse_beat_arc_plan(arc, 3)
+
+    def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
+        invalid = copy.deepcopy(self.events)
+        invalid[2]["depends_on"] = ["E1"]
+        with self.assertRaisesRegex(ValueError, "immediately preceding required event E2"):
+            minimax.parse_beat_arc_plan(make_arc([(1, 3, invalid)]), 3)
+
+
+if __name__ == "__main__":
+    unittest.main()

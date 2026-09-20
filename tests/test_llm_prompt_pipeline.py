@@ -253,7 +253,8 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
 
         self.assertIn(clothing_requirement, director_rules)
-        self.assertIn(clothing_requirement, formatter_messages[0]["content"])
+        self.assertNotIn(clothing_requirement, formatter_messages[0]["content"])
+        self.assertIn("Mark enters wearing a red coat.", formatter_messages[1]["content"])
 
     def test_generation_messages_scope_beats_to_current_phase_and_carry_summary(self):
         phase = {"phase_number": 2, "beat_start": 2, "beat_end": 3}
@@ -525,20 +526,55 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "I2VA",
         )
 
-    def test_h3_formatter_prompt_requires_visible_beat_execution(self):
+    def test_h3_formatter_prompt_is_a_conservative_raw_scene_translator(self):
         messages = minimax.build_h3_formatter_messages(
-            "The werewolf emerges, chases Elias, and gains ground.",
+            (
+                "At 00:00.000 seconds, Amy raises the pistol.\n"
+                "At 00:02.000 seconds, Amy fires and the zombie collapses."
+            ),
             "T2VA",
             5,
-            continuity_summary="Elias stands at the edge of the forest.",
+            continuity_summary=(
+                "Amy is in the hallway holding a pistol. The children are in the basement."
+            ),
         )
         system_prompt = " ".join(messages[0]["content"].split())
 
-        self.assertIn("assigned beat's primary action must", system_prompt)
-        self.assertIn("continuity once at the beginning of Shot 1", system_prompt)
-        self.assertIn("Do not repeat the opening continuity", system_prompt)
-        self.assertIn("the werewolf emerge, Elias flee", system_prompt)
-        self.assertIn("distance between them decrease", system_prompt)
+        self.assertIn("RAW SCENE is authoritative", system_prompt)
+        self.assertIn("Preserve every visible action and its order", system_prompt)
+        self.assertIn("Do not invent actions, props, people", system_prompt)
+        self.assertIn("Do not copy unrelated continuity facts", system_prompt)
+        self.assertIn("overall_soundscape", system_prompt)
+        self.assertIn("non_diegetic_music", system_prompt)
+        self.assertNotIn("Video Prompt Writing Guide", system_prompt)
+        self.assertNotIn("Motion type", system_prompt)
+        self.assertNotIn("Construction Example", system_prompt)
+        self.assertEqual(system_prompt.count("Live-action, cinematic"), 1)
+
+        user_prompt = messages[1]["content"]
+        self.assertIn("AUTHORITATIVE OPENING STATE:", user_prompt)
+        self.assertIn("The children are in the basement.", user_prompt)
+        self.assertIn("At 00:02.000 seconds, Amy fires", user_prompt)
+
+    def test_h3_formatter_contract_preserves_schema_and_audio_constraints(self):
+        messages = minimax.build_h3_formatter_messages(
+            "Mark crosses the room.",
+            "T2VA",
+            6,
+        )
+        system_prompt = messages[0]["content"]
+        schema = (
+            '"subject_genders": {},',
+            '"detailed_description": "[Shot 1] ...",',
+            '"overall_soundscape": "...",',
+            '"non_diegetic_music": "..."',
+        )
+
+        positions = [system_prompt.index(item) for item in schema]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn("only sounds supported by RAW SCENE", system_prompt)
+        self.assertIn("Set non_diegetic_music to `N/A`", system_prompt)
+        self.assertIn("Do not advance the", system_prompt)
 
     def test_nonfinal_story_segment_protects_the_handoff_frame(self):
         rules = minimax.build_director_rules(

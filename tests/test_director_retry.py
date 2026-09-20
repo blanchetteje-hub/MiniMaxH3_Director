@@ -175,6 +175,36 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(parsed["detailed_description"], "[Shot 1] Werewolf enters.")
         self.assertEqual(parsed["overall_soundscape"], "Footsteps.")
 
+    def test_append_h3_description_has_one_opener_and_no_leading_camera_move(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 2] Live-action, cinematic, The camera pushes in "
+                    "toward Mark as Mark opens the door. At 00:02.000, the "
+                    "camera pans right as Jill enters."
+                ),
+                "overall_soundscape": "Footsteps.",
+                "non_diegetic_music": "N/A",
+            },
+            "<Subject 1> is Mark, referenced in <Picture 1>.",
+            segment_number=2,
+            conditioning_mode="continuation",
+        )
+
+        description = prompt.split("detailed_description: ", 1)[1].split(
+            "\n\noverall_soundscape:",
+            1,
+        )[0]
+        self.assertTrue(
+            description.startswith(
+                "[Shot 1] Live-action, cinematic, continues from <Video 1>."
+                " Mark opens the door."
+            )
+        )
+        self.assertEqual(description.count("Live-action, cinematic"), 1)
+        self.assertNotIn("camera pushes in", description.lower())
+        self.assertIn("camera pans right", description.lower())
+
     def test_formatter_metadata_never_reaches_final_h3_prompt(self):
         prompt = minimax.build_h3_prompt(
             {

@@ -21,7 +21,9 @@ def test_regression_cases_preserve_validator_contract() -> None:
         prompt = "\n".join(message["content"] for message in messages)
         assert '"valid": true' in prompt
         assert '"issue": ""' in prompt
-        assert "last standing" in prompt
+        assert "terminal or exhaustive" in prompt
+        assert "STORY" not in prompt
+        assert "PHASE GOAL" not in prompt
 
 
 @pytest.mark.skipif(

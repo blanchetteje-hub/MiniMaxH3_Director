@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import random
-import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -266,14 +265,6 @@ INVALID_KINDS = (
 )
 
 
-def _slug(text: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", text.casefold()).strip("_")
-
-
-def _stable_key(text: str) -> str:
-    return _slug(text) or "item"
-
-
 def _spread_positions(start: int, end: int, count: int) -> list[int]:
     if count <= 0:
         return []
@@ -330,45 +321,46 @@ def _make_world(rng: random.Random, theme: str, case_number: int) -> World:
     )
 
 
-def _core_objective(world: World, index: int, case_number: int) -> tuple[str, dict[str, Any]]:
+def _core_objective(world: World, index: int, case_number: int) -> tuple[str, list[dict[str, Any]]]:
     location = world.location_words[index % len(world.location_words)]
     mode = index % 4
 
     if mode == 0:
         name = f"{world.object_words[index % len(world.object_words)]} {case_number}-{index + 1}"
-        key = _stable_key(name)
         text = (
             f"At {location}, {world.protagonist} deactivates {name}, "
             "permanently leaving it inactive."
         )
-        effects = {"environment": {"objects": {key: {"status": "inactive", "label": name}}}}
+        effects = [
+            {"op": "set_object_state", "entity": name, "value": "inactive"}
+        ]
     elif mode == 1:
         name = f"{world.barrier_words[index % len(world.barrier_words)]} {case_number}-{index + 1}"
-        key = _stable_key(name)
         text = (
             f"At {location}, {world.protagonist} opens {name} and passes through it."
         )
-        effects = {
-            "environment": {"barriers": {key: {"status": "open", "label": name}}},
-            "characters": {world.protagonist: {"location": location}},
-        }
+        effects = [
+            {"op": "set_barrier_state", "entity": name, "value": "open"},
+            {"op": "set_location", "entity": world.protagonist, "value": location},
+        ]
     elif mode == 2:
         name = f"{world.threat_words[index % len(world.threat_words)]} {case_number}-{index + 1}"
-        key = f"threat_{case_number}_{index + 1}"
         text = (
             f"At {location}, {world.protagonist} permanently destroys {name} "
             "before continuing."
         )
-        effects = {
-            "threats": {key: {"status": "destroyed", "label": name}},
-            "characters": {world.protagonist: {"location": location}},
-        }
+        effects = [
+            {"op": "set_threat_state", "entity": name, "value": "dead"},
+            {"op": "set_location", "entity": world.protagonist, "value": location},
+        ]
     else:
         text = (
             f"{world.protagonist} reaches {location} and crosses it before "
             "moving to the next objective."
         )
-        effects = {"characters": {world.protagonist: {"location": location}}}
+        effects = [
+            {"op": "set_location", "entity": world.protagonist, "value": location}
+        ]
 
     return text, effects
 
@@ -394,7 +386,12 @@ def _build_valid_story_and_arc(
     source_sentences: list[str] = []
     next_id = 1
 
-    def add_event(text: str, beat_number: int, effects: dict[str, Any] | None, phase: int):
+    def add_event(
+        text: str,
+        beat_number: int,
+        effects: list[dict[str, Any]] | None,
+        phase: int,
+    ):
         nonlocal next_id
         event = {
             "id": f"E{next_id}",
@@ -414,36 +411,30 @@ def _build_valid_story_and_arc(
         f"closes {world.refuge_barrier}, and locks it; {world.companion} must "
         "remain secured there until the rescue is complete."
     )
-    setup_one_effect = {
-        "characters": {
-            world.companion: {
-                "location": world.refuge,
-                "contained_in": world.refuge,
-            }
+    setup_one_effect = [
+        {"op": "set_location", "entity": world.companion, "value": world.refuge},
+        {
+            "op": "set_containment",
+            "entity": world.companion,
+            "container": world.refuge,
+            "value": "contained",
         },
-        "environment": {
-            "barriers": {
-                _stable_key(world.refuge_barrier): {
-                    "status": "locked",
-                    "label": world.refuge_barrier,
-                }
-            }
+        {
+            "op": "set_barrier_state",
+            "entity": world.refuge_barrier,
+            "value": "locked",
         },
-    }
+    ]
     add_event(setup_one, setup_positions[0], setup_one_effect, 1)
 
     setup_two = (
         f"{world.protagonist} retrieves {world.tool} from {world.tool_storage} "
         "and keeps it for the route ahead."
     )
-    setup_two_effect = {
-        "characters": {
-            world.protagonist: {
-                "held_objects": [world.tool],
-                "location": world.start,
-            }
-        }
-    }
+    setup_two_effect = [
+        {"op": "set_item_state", "entity": world.tool, "owner": world.protagonist, "value": "held"},
+        {"op": "set_location", "entity": world.protagonist, "value": world.start},
+    ]
     add_event(setup_two, setup_positions[1], setup_two_effect, 1)
 
     core_positions = _spread_positions(setup_end + 1, core_end, core_count)
@@ -458,15 +449,16 @@ def _build_valid_story_and_arc(
         f"After the ordered objectives are complete, {world.protagonist} reaches "
         f"{world.destination} and frees {world.rescue_target}."
     )
-    rescue_effect = {
-        "characters": {
-            world.protagonist: {"location": world.destination},
-            world.rescue_target: {
-                "location": world.destination,
-                "contained_in": None,
-            },
-        }
-    }
+    rescue_effect = [
+        {"op": "set_location", "entity": world.protagonist, "value": world.destination},
+        {"op": "set_location", "entity": world.rescue_target, "value": world.destination},
+        {
+            "op": "set_containment",
+            "entity": world.rescue_target,
+            "container": world.destination,
+            "value": "free",
+        },
+    ]
     add_event(rescue_text, resolution_positions[0], rescue_effect, 3)
 
     if resolution_count == 3:
@@ -474,38 +466,33 @@ def _build_valid_story_and_arc(
             f"{world.protagonist} returns with {world.rescue_target} to {world.refuge}, "
             f"unlocks {world.refuge_barrier}, and releases {world.companion}."
         )
-        reunite_effect = {
-            "characters": {
-                world.protagonist: {"location": world.refuge},
-                world.rescue_target: {"location": world.refuge},
-                world.companion: {
-                    "location": world.refuge,
-                    "contained_in": None,
-                },
+        reunite_effect = [
+            {"op": "set_location", "entity": world.protagonist, "value": world.refuge},
+            {"op": "set_location", "entity": world.rescue_target, "value": world.refuge},
+            {"op": "set_location", "entity": world.companion, "value": world.refuge},
+            {
+                "op": "set_containment",
+                "entity": world.companion,
+                "container": world.refuge,
+                "value": "free",
             },
-            "environment": {
-                "barriers": {
-                    _stable_key(world.refuge_barrier): {
-                        "status": "unlocked",
-                        "label": world.refuge_barrier,
-                    }
-                }
+            {
+                "op": "set_barrier_state",
+                "entity": world.refuge_barrier,
+                "value": "unlocked",
             },
-        }
+        ]
         add_event(reunite_text, resolution_positions[1], reunite_effect, 3)
 
         exit_text = (
             f"The reunited group travels to {world.exit_location} and exits, "
             "ending the immediate crisis."
         )
-        exit_effect = {
-            "characters": {
-                world.protagonist: {"location": world.exit_location},
-                world.companion: {"location": world.exit_location},
-                world.rescue_target: {"location": world.exit_location},
-            },
-            "story": {"complete": True},
-        }
+        exit_effect = [
+            {"op": "set_location", "entity": world.protagonist, "value": world.exit_location},
+            {"op": "set_location", "entity": world.companion, "value": world.exit_location},
+            {"op": "set_location", "entity": world.rescue_target, "value": world.exit_location},
+        ]
         add_event(exit_text, resolution_positions[2], exit_effect, 3)
     else:
         exit_text = (
@@ -513,25 +500,22 @@ def _build_valid_story_and_arc(
             f"unlocks {world.refuge_barrier}, releases {world.companion}, and the "
             f"reunited group travels to {world.exit_location} and exits."
         )
-        exit_effect = {
-            "characters": {
-                world.protagonist: {"location": world.exit_location},
-                world.companion: {
-                    "location": world.exit_location,
-                    "contained_in": None,
-                },
-                world.rescue_target: {"location": world.exit_location},
+        exit_effect = [
+            {"op": "set_location", "entity": world.protagonist, "value": world.exit_location},
+            {"op": "set_location", "entity": world.companion, "value": world.exit_location},
+            {"op": "set_location", "entity": world.rescue_target, "value": world.exit_location},
+            {
+                "op": "set_containment",
+                "entity": world.companion,
+                "container": world.refuge,
+                "value": "free",
             },
-            "environment": {
-                "barriers": {
-                    _stable_key(world.refuge_barrier): {
-                        "status": "unlocked",
-                        "label": world.refuge_barrier,
-                    }
-                }
+            {
+                "op": "set_barrier_state",
+                "entity": world.refuge_barrier,
+                "value": "unlocked",
             },
-            "story": {"complete": True},
-        }
+        ]
         add_event(exit_text, resolution_positions[1], exit_effect, 3)
 
     setup_events = [copy.deepcopy(event) for event in events if event["_phase"] == 1]
@@ -685,7 +669,7 @@ def _mutate_invalid(
             f"The group remains inside {world.refuge} and decides not to use "
             f"{world.exit_location}."
         )
-        last["state_effects"] = {"story": {"complete": False}}
+        last.pop("state_effects", None)
         phases[-1]["required_end_state"] = (
             f"The group remains inside {world.refuge}; the crisis is unresolved."
         )
@@ -701,11 +685,13 @@ def _mutate_invalid(
                     "permanent immortality and uses it before continuing."
                 ),
                 "beat_number": beat,
-                "state_effects": {
-                    "characters": {
-                        world.protagonist: {"body_state": "immortal"}
+                "state_effects": [
+                    {
+                        "op": "set_condition",
+                        "entity": world.protagonist,
+                        "value": "immortal",
                     }
-                },
+                ],
             },
         )
 
@@ -715,22 +701,20 @@ def _mutate_invalid(
             f"{world.protagonist} leaves {world.companion} outside {world.refuge} "
             f"and leaves {world.refuge_barrier} open."
         )
-        first["state_effects"] = {
-            "characters": {
-                world.companion: {
-                    "location": world.start,
-                    "contained_in": None,
-                }
+        first["state_effects"] = [
+            {"op": "set_location", "entity": world.companion, "value": world.start},
+            {
+                "op": "set_containment",
+                "entity": world.companion,
+                "container": world.refuge,
+                "value": "free",
             },
-            "environment": {
-                "barriers": {
-                    _stable_key(world.refuge_barrier): {
-                        "status": "open",
-                        "label": world.refuge_barrier,
-                    }
-                }
+            {
+                "op": "set_barrier_state",
+                "entity": world.refuge_barrier,
+                "value": "open",
             },
-        }
+        ]
 
     elif kind == "collapsed_phases":
         merged_events = _all_events(arc)
@@ -797,16 +781,20 @@ def _mutate_invalid(
 
     elif kind == "state_effect_wrong_owner":
         source = phases[0]["required_events"][0]
-        effect = source.pop("state_effects", {})
+        effect = source.pop("state_effects", [])
         destination = core[len(core) // 2] if core else phases[-1]["required_events"][0]
         destination["state_effects"] = effect
 
     elif kind == "state_effect_unrelated":
         candidate = core[len(core) // 2] if core else phases[-1]["required_events"][0]
-        effects = copy.deepcopy(candidate.get("state_effects", {}))
-        effects.setdefault("characters", {}).setdefault(world.protagonist, {})[
-            "injuries"
-        ] = ["broken arm"]
+        effects = copy.deepcopy(candidate.get("state_effects", []))
+        effects.append(
+            {
+                "op": "set_condition",
+                "entity": world.protagonist,
+                "value": "broken_arm",
+            }
+        )
         candidate["state_effects"] = effects
 
     elif kind == "state_effect_wrong_value":
@@ -814,22 +802,29 @@ def _mutate_invalid(
             (
                 event for event in core
                 if "state_effects" in event
-                and "environment" in event["state_effects"]
-                and event["state_effects"]["environment"].get("objects")
+                and any(
+                    effect.get("op") == "set_object_state"
+                    for effect in event["state_effects"]
+                )
             ),
             None,
         )
         if candidate is None:
             candidate = core[0]
-            candidate["state_effects"] = {
-                "environment": {
-                    "objects": {"wrong_state_object": {"status": "active"}}
+            candidate["state_effects"] = [
+                {
+                    "op": "set_object_state",
+                    "entity": "wrong_state_object",
+                    "value": "active",
                 }
-            }
+            ]
         else:
-            objects = candidate["state_effects"]["environment"]["objects"]
-            first_key = next(iter(objects))
-            objects[first_key]["status"] = "active"
+            object_effect = next(
+                effect
+                for effect in candidate["state_effects"]
+                if effect.get("op") == "set_object_state"
+            )
+            object_effect["value"] = "active"
 
     else:
         raise ValueError(f"Unknown invalid kind: {kind}")
