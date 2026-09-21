@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-validator-setup-coverage-001",
+  "kind": "llama_chat",
+  "started_at": 1790028237.3953404,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one complete story arc. Use simple semantic checks. Return one small JSON object only."
+      },
+      {
+        "role": "user",
+        "content": "Check the proposed arc against the source story and instructions.\n\nReject the arc only when there is a real blocking error.\n\nReject when:\n- The premise, main conflict, or required ending changes.\n- A required major source event is missing or out of order.\n- AN EXPLICIT SOURCE SETUP IS OMITTED: if the source explicitly shows the initial ordinary situation, activity, or state before the inciting threat/change, that setup must receive a required event before the threat/change. Do not treat an explicit calm setup as optional merely because it is less dramatic than the conflict.\n- The arc adds an unsupported major character, change, procedure, myth, time event, plot device, required event, or required end-state fact.\n- The arc contradicts an explicit source fact.\n- Clearly separate source stages are collapsed into one phase and a meaningful stage boundary is lost.\n- Any global beat from 1 through 8 has no required event or more than one required event.\n- Any required event after the first omits the immediately preceding required event from depends_on.\n- Dependencies are incoherent or in the wrong order.\n- A phase end state contains a fact that is not true by that phase boundary.\n\nRequired events:\n- There must be exactly one concrete required event/job for every global beat.\n- Source-required events must preserve source order.\n- Sparse-source connective jobs may fill remaining beats only AFTER all explicit source actions/states that matter to the visible progression have been preserved.\n- Must be concrete enough to show in a beat.\n\nSOURCE STORY\n--- STORY START ---\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n--- STORY END ---\n\nDEFINED SUBJECTS\n- Amy is a woman shown in Picture 1.\n- Will is a 10-year-old boy.\n- Amber is a 14-year-old girl.\n\nEXPLICIT BEAT INSTRUCTIONS\nN/A\n\nPROPOSED MACRO STORY ARC\n{\n  \"phases\": [\n    {\n      \"phase_number\": 1,\n      \"beat_start\": 1,\n      \"beat_end\": 2,\n      \"narrative_purpose\": \"Introduction and initial threat\",\n      \"broad_progression\": \"Amy is introduced in her home with her kids. A zombie breaks in, prompting Amy to rush her kids to the basement.\",\n      \"characters_introduced\": [\n        \"Amy\",\n        \"Will\",\n        \"Amber\"\n      ],\n      \"location\": \"Home\",\n      \"required_end_state\": \"Amy has rushed her kids to the basement and locked the door.\",\n      \"required_events\": [\n        {\n          \"id\": \"E1\",\n          \"event\": \"A zombie breaks the kitchen door window, alerting Amy to the danger.\",\n          \"beat_number\": 1\n        },\n        {\n          \"id\": \"E2\",\n          \"event\": \"Amy rushes her kids, Will and Amber, to the basement and locks the door.\",\n          \"beat_number\": 2,\n          \"depends_on\": [\n            \"E1\"\n          ]\n        }\n      ]\n    },\n    {\n      \"phase_number\": 2,\n      \"beat_start\": 3,\n      \"beat_end\": 8,\n      \"narrative_purpose\": \"Main conflict and resolution\",\n      \"broad_progression\": \"Amy retrieves her weapons and spends the majority of the film killing zombies as they attack her. She kills the last zombie, ending the threat.\",\n      \"characters_introduced\": [],\n      \"location\": \"Home\",\n      \"required_end_state\": \"Amy has killed all the zombies and lets her kids out of the basement.\",\n      \"required_events\": [\n        {\n          \"id\": \"E3\",\n          \"event\": \"Amy retrieves her hidden arsenal consisting of a pistol and a katana.\",\n          \"beat_number\": 3,\n          \"depends_on\": [\n            \"E2\"\n          ]\n        },\n        {\n          \"id\": \"E4\",\n          \"event\": \"Amy equips the pistol and katana.\",\n          \"beat_number\": 4,\n          \"depends_on\": [\n            \"E3\"\n          ]\n        },\n        {\n          \"id\": \"E5\",\n          \"event\": \"Amy kills several zombies as they try to attack her.\",\n          \"beat_number\": 5,\n          \"depends_on\": [\n            \"E4\"\n          ]\n        },\n        {\n          \"id\": \"E6\",\n          \"event\": \"Amy continues killing more zombies.\",\n          \"beat_number\": 6,\n          \"depends_on\": [\n            \"E5\"\n          ]\n        },\n        {\n          \"id\": \"E7\",\n          \"event\": \"Amy kills the last of the zombies.\",\n          \"beat_number\": 7,\n          \"depends_on\": [\n            \"E6\"\n          ]\n        },\n        {\n          \"id\": \"E8\",\n          \"event\": \"Amy lets her kids, Will and Amber, out of the basement.\",\n          \"beat_number\": 8,\n          \"depends_on\": [\n            \"E7\"\n          ]\n        }\n      ]\n    }\n  ]\n}\n\nOutput exactly one JSON object and nothing else.\nUse this exact shape: {\"valid\": true, \"issues\": []} for a valid arc, or\n{\"valid\": false, \"issues\": [\"one concise blocking issue\"]} for an invalid arc."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 180,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-w70brlwdm8zcxwcbt2ysj",
+    "object": "chat.completion",
+    "created": 1790028237,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\"valid\": true, \"issues\": []}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 1302,
+      "completion_tokens": 15,
+      "total_tokens": 1317,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790028240.2244794,
+  "status": "ok"
+}
