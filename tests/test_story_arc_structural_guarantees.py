@@ -65,6 +65,49 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate required-event assignments"):
             minimax.parse_beat_arc_plan(arc, 3)
 
+    def test_arc_validator_requires_explicit_source_timeline_coverage(self):
+        story = (
+            "Amy is at home on a normal day, cooking breakfast for her kids. "
+            "Suddenly, a zombie breaks the kitchen door window."
+        )
+        arc = make_arc([
+            (
+                1,
+                2,
+                [
+                    {
+                        "id": "E1",
+                        "event": "A zombie breaks the kitchen door window.",
+                        "beat_number": 1,
+                    },
+                    {
+                        "id": "E2",
+                        "event": "Amy reacts to the zombie.",
+                        "beat_number": 2,
+                        "depends_on": ["E1"],
+                    },
+                ],
+            ),
+        ])
+
+        messages = minimax.build_macro_arc_validation_messages(story, arc)
+        prompt = "\n".join(message["content"] for message in messages)
+
+        self.assertIn(
+            "Every explicit visible action or visible state that establishes "
+            "a distinct point in the source timeline",
+            prompt,
+        )
+        self.assertIn(
+            "Do not dismiss an explicit source action merely because it is "
+            "calm, introductory, mundane, or outside the main conflict.",
+            prompt,
+        )
+        self.assertIn(
+            "only after all explicit source timeline actions/states are represented",
+            prompt,
+        )
+
     def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
         invalid = copy.deepcopy(self.events)
         invalid[2]["depends_on"] = ["E1"]
