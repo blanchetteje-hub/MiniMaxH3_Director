@@ -392,13 +392,72 @@ def sync_branch(worktree: Path, branch: str) -> None:
 
 
 def commit_result(worktree: Path, branch: str, result_dir: Path, job_id: str) -> None:
+    """Publish one result without losing it when ChatGPT updates the mailbox.
+
+    The assistant may add another job to gpt-runtime while the local worker is
+    finishing a long llama/acceptance run.  That makes a normal push race with
+    the newer remote commit.  Rebase this result-only commit onto the latest
+    mailbox tip and retry instead of letting the next poll reset/discard it and
+    execute the expensive job again.
+    """
+
     relative = result_dir.relative_to(worktree)
+    result_json = relative / "result.json"
     run_git(["add", str(relative)], worktree)
     status = run_git(["status", "--porcelain"], worktree).stdout.strip()
     if not status:
         return
     run_git(["commit", "-m", f"Bridge result {job_id}"], worktree, capture=False)
-    run_git(["push", "origin", branch], worktree, capture=False)
+
+    last_error = ""
+    for attempt in range(1, 4):
+        pushed = run_git(
+            ["push", "origin", branch],
+            worktree,
+            check=False,
+            timeout=60,
+        )
+        if pushed.returncode == 0:
+            return
+
+        last_error = (pushed.stderr or pushed.stdout or "").strip()
+        run_git(["fetch", "--no-tags", "origin", branch], worktree, timeout=30)
+
+        # Another worker/process may already have published this exact job.
+        remote_has_result = run_git(
+            [
+                "cat-file",
+                "-e",
+                f"origin/{branch}:{result_json.as_posix()}",
+            ],
+            worktree,
+            check=False,
+            timeout=15,
+        ).returncode == 0
+        if remote_has_result:
+            run_git(["reset", "--hard", f"origin/{branch}"], worktree, timeout=15)
+            return
+
+        try:
+            run_git(
+                ["rebase", f"origin/{branch}"],
+                worktree,
+                capture=False,
+                timeout=60,
+            )
+        except (subprocess.CalledProcessError, RuntimeError):
+            run_git(["rebase", "--abort"], worktree, check=False, timeout=15)
+            raise
+
+        print(
+            f"Mailbox advanced while publishing {job_id}; "
+            f"rebased result and retrying push ({attempt}/3).",
+            flush=True,
+        )
+
+    raise RuntimeError(
+        f"Could not publish bridge result {job_id} after 3 attempts: {last_error}"
+    )
 
 
 def write_result(result_dir: Path, payload: dict) -> None:
