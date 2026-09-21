@@ -172,9 +172,9 @@ TRIM_FRAMES_AFTER_FIRST = 2
 
 TRIM_SECONDS_AFTER_FIRST = TRIM_FRAMES_AFTER_FIRST / FRAME_RATE
 
-APPEND_CONTEXT_SECONDS = 3
-
-APPEND_CONTEXT_FRAMES = APPEND_CONTEXT_SECONDS * FRAME_RATE
+# The H3 reference-video node only needs the short continuation tail. Keep the
+# decoded input bounded so append conditioning never receives the full prior clip.
+APPEND_CONTEXT_FRAMES = 22
 
 DEFAULT_CONTEXT_FRAMES = 7
 
@@ -22023,6 +22023,14 @@ def prepare_append_workflow(
         LOAD_VIDEO_NODE_NAME,
         "skip_first_frames",
         skip_first_frames,
+        label,
+        "VHS_LoadVideoPath",
+    )
+    set_node_input(
+        workflow,
+        LOAD_VIDEO_NODE_NAME,
+        "frame_load_cap",
+        APPEND_CONTEXT_FRAMES,
         label,
         "VHS_LoadVideoPath",
     )
