@@ -6,7 +6,7 @@ Security model:
 - worker only contacts the local endpoint supplied on its command line
 - jobs cannot choose another URL
 - jobs cannot execute shell commands
-- supported operations are limited to llama_chat and collect_files
+- supported operations are limited to llama_chat, collect_files, run_tests, and run_acceptance
 - file collection is confined to the repository root
 - jobs/results travel through the dedicated gpt-runtime Git branch
 
@@ -23,3 +23,13 @@ For another port:
 The first launch creates .chatgpt_bridge_worktree, checks out the gpt-runtime mailbox branch there, verifies /v1/models, and starts polling.
 
 Leave the process running while ChatGPT is doing prompt experiments. Ctrl+C stops it.
+
+## Local test execution
+
+The bridge also supports two fixed, allowlisted execution jobs.
+
+`run_tests` runs only Python unittest module names under `tests.*` against a detached worktree synchronized to the latest `origin/gpt-test-branch`.
+
+`run_acceptance` runs `tests/acceptance/run_acceptance.py` in prompt-generation mode against that same synchronized worktree. It uses the main checkout's project virtualenv when present and defaults to `amy.jpg` plus model selector `mistral`. The newest `acceptance_run.json` and `run.log` are copied into the mailbox result automatically.
+
+The bridge does not accept arbitrary shell commands.

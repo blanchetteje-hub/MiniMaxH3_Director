@@ -6,8 +6,9 @@ JSON jobs to bridge/jobs/ on that branch. This process polls, sends allowed
 requests only to the configured local llama.cpp endpoint, writes results under
 bridge/results/, then commits and pushes them.
 
-No inbound port is opened. The bridge never executes shell commands supplied by
-jobs and never lets jobs choose the network endpoint.
+No inbound port is opened. The bridge never executes arbitrary shell commands supplied by jobs and never
+lets jobs choose the network endpoint. Local execution is limited to explicit
+allowlisted test/acceptance job kinds.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ import argparse
 import glob
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -29,6 +31,8 @@ DEFAULT_BRANCH = "gpt-runtime"
 DEFAULT_ENDPOINT = "http://127.0.0.1:1234"
 DEFAULT_POLL_SECONDS = 2.0
 DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
+DEFAULT_CODE_BRANCH = "gpt-test-branch"
+DEFAULT_EXEC_WORKTREE_NAME = ".chatgpt_exec_worktree"
 
 
 def run_git(args, cwd, *, check=True, capture=True, timeout=30):
@@ -145,6 +149,158 @@ def collect_files(source_root: Path, patterns, destination: Path, max_bytes: int
     return collected
 
 
+def local_python(source_root: Path) -> Path:
+    """Use the project's virtualenv Python when available."""
+
+    candidates = [
+        source_root / ".venv" / "Scripts" / "python.exe",
+        source_root / ".venv" / "bin" / "python",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return Path(sys.executable).resolve()
+
+
+def ensure_exec_worktree(source_root: Path, branch: str = DEFAULT_CODE_BRANCH) -> Path:
+    """Create/update a detached worktree for unattended test execution."""
+
+    worktree = source_root / DEFAULT_EXEC_WORKTREE_NAME
+    run_git(["fetch", "--no-tags", "origin", branch], source_root, timeout=30)
+    if not worktree.exists():
+        run_git(
+            [
+                "worktree",
+                "add",
+                "--detach",
+                "--force",
+                str(worktree),
+                f"origin/{branch}",
+            ],
+            source_root,
+            capture=False,
+            timeout=30,
+        )
+    elif not (worktree / ".git").exists():
+        raise RuntimeError(
+            f"Execution worktree path exists but is not a git worktree: {worktree}"
+        )
+    run_git(
+        ["reset", "--hard", f"origin/{branch}"],
+        worktree,
+        timeout=15,
+    )
+    return worktree
+
+
+def run_local_process(command, cwd: Path, timeout: int) -> dict:
+    """Run one allowlisted local process and capture its complete text output."""
+
+    started = time.time()
+    completed = subprocess.run(
+        [str(part) for part in command],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        timeout=timeout,
+        env=os.environ.copy(),
+    )
+    return {
+        "command": [str(part) for part in command],
+        "returncode": completed.returncode,
+        "stdout": completed.stdout,
+        "stderr": completed.stderr,
+        "started_at": started,
+        "finished_at": time.time(),
+    }
+
+
+def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
+    """Copy the newest acceptance report/log into the mailbox result."""
+
+    results_root = exec_root / "tests" / "acceptance" / "results"
+    candidates = sorted(
+        (
+            path for path in results_root.glob("amy_zombie_house-*")
+            if path.is_dir() and (path / "acceptance_run.json").is_file()
+        ),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    if not candidates:
+        raise RuntimeError("Acceptance runner produced no acceptance_run.json.")
+    latest = candidates[0]
+    artifacts_dir = result_dir / "files"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    copied = {}
+    for filename in ("acceptance_run.json", "run.log"):
+        source = latest / filename
+        if source.is_file():
+            target = artifacts_dir / filename
+            shutil.copy2(source, target)
+            copied[filename] = str(target.relative_to(result_dir))
+    copied["source_result_dir"] = str(latest.relative_to(exec_root))
+    return copied
+
+
+def execute_local_tests(job: dict, source_root: Path) -> dict:
+    """Run only explicitly named unittest modules from the repository tests tree."""
+
+    tests = job.get("tests")
+    if tests is None:
+        tests = [
+            "tests.test_story_arc_structural_guarantees",
+            "tests.test_refresh_context_latents",
+            "tests.test_continuation_frame_anchor",
+            "tests.test_reference_pruning",
+        ]
+    if not isinstance(tests, list) or not tests:
+        raise ValueError("run_tests requires a non-empty tests array.")
+    safe_tests = []
+    for test in tests:
+        value = str(test).strip()
+        if not re.fullmatch(r"tests(?:\.[A-Za-z_][A-Za-z0-9_]*)+", value):
+            raise ValueError(f"Unsupported unittest module: {value!r}")
+        safe_tests.append(value)
+
+    exec_root = ensure_exec_worktree(source_root)
+    python = local_python(source_root)
+    return run_local_process(
+        [python, "-m", "unittest", *safe_tests],
+        exec_root,
+        timeout=int(job.get("timeout_seconds") or 900),
+    )
+
+
+def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
+    """Run the fixed prompt-generation acceptance suite on latest gpt-test-branch."""
+
+    exec_root = ensure_exec_worktree(source_root)
+    python = local_python(source_root)
+    image1_raw = str(job.get("image1") or "amy.jpg").strip()
+    image1 = safe_source_path(source_root, image1_raw)
+    if not image1.is_file():
+        raise FileNotFoundError(f"Acceptance image not found: {image1}")
+    model = str(job.get("model") or "mistral").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", model):
+        raise ValueError(f"Unsupported model selector: {model!r}")
+
+    process = run_local_process(
+        [
+            python,
+            "tests/acceptance/run_acceptance.py",
+            "--image1",
+            image1,
+            "--model",
+            model,
+        ],
+        exec_root,
+        timeout=int(job.get("timeout_seconds") or 3600),
+    )
+    process["artifacts"] = copy_acceptance_artifacts(exec_root, result_dir)
+    return process
+
+
 def execute_job(job: dict, endpoint: str, source_root: Path, result_dir: Path,
                 max_file_bytes: int) -> dict:
     job_id = str(job.get("job_id") or "").strip()
@@ -188,6 +344,10 @@ def execute_job(job: dict, endpoint: str, source_root: Path, result_dir: Path,
             payload=payload,
             timeout=int(job.get("timeout_seconds") or 600),
         )
+    elif kind == "run_tests":
+        result["process"] = execute_local_tests(job, source_root)
+    elif kind == "run_acceptance":
+        result["process"] = execute_acceptance(job, source_root, result_dir)
     elif kind == "collect_files":
         pass
     else:
@@ -201,6 +361,10 @@ def execute_job(job: dict, endpoint: str, source_root: Path, result_dir: Path,
             result_dir / "files",
             max_file_bytes,
         )
+
+    process = result.get("process")
+    if isinstance(process, dict) and process.get("returncode") not in (None, 0):
+        result["local_process_failed"] = True
 
     result["finished_at"] = time.time()
     return result

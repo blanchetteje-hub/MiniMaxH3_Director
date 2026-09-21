@@ -31,3 +31,6 @@ tests/requirements-test.txt
 \n# Local acceptance-run outputs\ntests/acceptance/results/\n
 # Dedicated local mailbox worktree for ChatGPT/llama.cpp bridge
 .chatgpt_bridge_worktree/
+
+# Detached worktree used by the ChatGPT bridge for allowlisted local tests
+.chatgpt_exec_worktree/
