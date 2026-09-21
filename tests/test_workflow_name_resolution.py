@@ -114,6 +114,30 @@ class WorkflowNameResolutionTests(unittest.TestCase):
         definitions = "<Picture 1> is Amy."
         self.assertEqual(minimax.parse_defined_subjects(definitions), [(1, "Amy")])
 
+    def test_user_defined_subject_without_picture_is_supported(self):
+        definitions = (
+            "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+            "<Subject 2> is Will, a 10-year-old boy.\n"
+            "<Subject 3> is Amber, a 14-year-old girl."
+        )
+
+        registry = minimax.parse_subject_registry(definitions)
+
+        self.assertEqual(registry[2]["name"], "Will")
+        self.assertEqual(registry[2]["gender"], "male")
+        self.assertEqual(registry[2]["picture_ids"], [])
+        self.assertIsNone(registry[2]["picture_id"])
+        self.assertEqual(registry[2]["speaker_id"], "S2")
+        self.assertEqual(registry[3]["name"], "Amber")
+        self.assertEqual(registry[3]["gender"], "female")
+        self.assertEqual(registry[3]["picture_ids"], [])
+        self.assertIsNone(registry[3]["picture_id"])
+        self.assertEqual(registry[3]["speaker_id"], "S3")
+
+        rendered = minimax.format_beat_generation_subjects(definitions)
+        self.assertIn("- Will is a 10-year-old boy.", rendered)
+        self.assertIn("- Amber is a 14-year-old girl.", rendered)
+
     def test_canonical_subject_definitions_are_authoritative(self):
         definitions = (
             "<Subject 1> is Amy, referenced in <Picture 1>.\n"

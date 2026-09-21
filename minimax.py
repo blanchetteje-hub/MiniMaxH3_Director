@@ -3528,8 +3528,6 @@ def parse_subject_registry(subject_definitions):
             )
         if match is None:
             continue
-        if not picture_ids and not video_origin:
-            continue
         picture_ids = list(dict.fromkeys(picture_ids))
         if subject_id in registry:
             raise ValueError(f"Duplicate subject ID: {subject_id}")
@@ -3660,8 +3658,8 @@ def continuity_state_for_registry(subject_definitions, state=None):
             "refusing to render an empty AUTHORITATIVE OPENING STATE. "
             "Expected one definition per line, for example: "
             "<Subject 1> is the operator, an adult person referenced in "
-            "<Picture 1>. Video-only subjects use: <Subject 2> is creature, "
-            "N/A (S2), continued from <Video 1>."
+            "<Picture 1>. User-defined characters may omit a Picture mapping, "
+            "for example: <Subject 2> is Will, a 10-year-old boy."
         )
     # Copy preserved continuity fields into a subject record.
     def copy_continuity_fields(record, existing):
@@ -5252,9 +5250,9 @@ def format_beat_generation_subjects(subject_definitions):
         if not parsed_line:
             raise ValueError(
                 f"Could not parse subjects.txt line {line_number}: {line!r}. "
-                "Expected '<Subject N> is Name, optional description "
-                "referenced in <Picture N>.' or a generated video subject "
-                "entry written by this program."
+                "Expected '<Subject N> is Name, optional description.' "
+                "A '<Picture N>' reference is optional for user-defined "
+                "characters."
             )
 
     definition_lines = {

@@ -159,6 +159,10 @@ For 8-second segments, H3 frame count is 192 and the loader skips 170 frames.
 
 The old `MiniMaxH3HybridRefAndKeyframe` graph is preserved as `Minimax_auto_repair_API.json` and is used only by `--repair`, so the refresh migration does not remove two-keyframe repair behavior.
 
+## Subject input rule
+
+User-defined named Subjects may be declared without a Picture reference, e.g. `<Subject 2> is Will, a 10-year-old boy.`. These are stable Python-owned identities with no initial reference image. Do not force every named character to have `<Picture N>`.
+
 ## Continuity philosophy
 
 Principle:
