@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import Mock
 
 import minimax
 
@@ -82,6 +83,35 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         self.assertEqual(set(first["subjects"]), {"Amy"})
         self.assertEqual(set(second["subjects"]), {"Amy"})
 
+    def test_zombie_is_not_created_as_a_durable_subject(self):
+        subjects = "<Subject 1> is Amy, referenced in <Picture 1>."
+        committed = minimax.continuity_state_for_registry(subjects)
+        candidate = {
+            "subjects": {
+                "Amy": {
+                    "name": "Amy",
+                    "subject_id": 1,
+                    "position": "beside the window",
+                },
+                "Zombie": {
+                    "name": "Zombie",
+                    "injuries": ["decapitated"],
+                    "position": "near the doorway",
+                },
+            },
+        }
+
+        guarded = minimax._guard_combined_continuity_subjects(
+            candidate,
+            "detailed_description: [Shot 1] Amy stands beside the window while "
+            "a zombie is visible near the doorway.",
+            subjects,
+            committed_state=committed,
+        )
+
+        self.assertEqual(set(guarded["subjects"]), {"Amy"})
+        self.assertNotIn("Zombie", guarded["subjects"])
+
     def test_explicitly_registered_named_subject_can_be_updated(self):
         committed = minimax.continuity_state_for_registry(SUBJECTS)
         candidate = {
@@ -105,6 +135,167 @@ class RequestedPromptRegressionTests(unittest.TestCase):
             guarded["subjects"]["Will"]["position"],
             "in the doorway",
         )
+
+    def test_merge_boundary_discards_arbitrary_subject_fields(self):
+        committed = minimax.continuity_state_for_registry(SUBJECTS)
+        guarded = minimax._guard_combined_continuity_subjects(
+            {
+                "subjects": {
+                    "Amy": {
+                        "name": "Amy",
+                        "subject_id": 1,
+                        "position": "beside the window",
+                        "made_up_field": "must not persist",
+                    },
+                },
+                "made_up_top_level": "must not persist",
+            },
+            "detailed_description: Amy stands beside the window.",
+            SUBJECTS,
+            committed_state=committed,
+        )
+
+        self.assertEqual(
+            guarded["subjects"]["Amy"]["position"],
+            "beside the window",
+        )
+        self.assertNotIn("made_up_field", guarded["subjects"]["Amy"])
+        self.assertNotIn("made_up_top_level", guarded)
+
+    def test_offscreen_registered_subject_reenters_with_same_identity(self):
+        committed = minimax.continuity_state_for_registry(SUBJECTS)
+        committed["subjects"]["Will"]["position"] = "in the basement"
+        committed["subjects"]["Will"]["injuries"] = ["bruise"]
+
+        projected = minimax._phase2_continuity_state_for_scene(
+            committed,
+            SUBJECTS,
+            "detailed_description: [Shot 1] Amy closes and locks the basement door.",
+        )
+        self.assertNotIn("Will", projected["subjects"])
+        self.assertIn("Will", committed["subjects"])
+
+        later = minimax._guard_combined_continuity_subjects(
+            {
+                "subjects": {
+                    "Will": {
+                        "name": "Will",
+                        "subject_id": 2,
+                        "position": "at the basement doorway",
+                    },
+                },
+            },
+            "detailed_description: [Shot 1] Will stands at the basement doorway.",
+            SUBJECTS,
+            committed_state=committed,
+        )
+
+        self.assertEqual(later["subjects"]["Will"]["subject_id"], 2)
+        self.assertEqual(later["subjects"]["Will"]["injuries"], ["bruise"])
+        self.assertEqual(
+            later["subjects"]["Will"]["position"],
+            "at the basement doorway",
+        )
+
+    def test_phase_two_prunes_empty_and_unknown_values_without_mutating_state(self):
+        state = minimax.continuity_state_for_registry(SUBJECTS)
+        state["subjects"]["Amy"].update({
+            "position": "by the doorway",
+            "held_props": [],
+            "injuries": [],
+            "physical_condition": "N/A",
+        })
+        request = Mock(return_value="Amy is by the doorway.")
+
+        minimax.request_continuity_opening_state(
+            state,
+            {},
+            llm_request=request,
+            subject_definitions=SUBJECTS,
+            ending_scene="End continuity state: Amy stands by the doorway.",
+        )
+
+        user_prompt = request.call_args.args[0][1]["content"]
+        self.assertIn('"position": "by the doorway"', user_prompt)
+        self.assertNotIn("held_props", user_prompt)
+        self.assertNotIn("injuries", user_prompt)
+        self.assertNotIn("physical_condition", user_prompt)
+        self.assertEqual(state["subjects"]["Amy"]["held_props"], [])
+        self.assertEqual(state["subjects"]["Amy"]["physical_condition"], "N/A")
+
+    def test_phase_two_keeps_false_and_zero_values(self):
+        state = {
+            "environment": {"location": "room"},
+            "subjects": {
+                "Amy": {
+                    "position": "by the doorway",
+                    "flag": False,
+                    "count": 0,
+                },
+            },
+        }
+        request = Mock(return_value="Amy is by the doorway.")
+
+        minimax.request_continuity_opening_state(
+            state,
+            {},
+            llm_request=request,
+            ending_scene="End continuity state: Amy stands by the doorway.",
+        )
+
+        user_prompt = request.call_args.args[0][1]["content"]
+        self.assertIn('"flag": false', user_prompt)
+        self.assertIn('"count": 0', user_prompt)
+
+    def test_end_state_projection_does_not_delete_offscreen_registered_subjects(self):
+        definitions = (
+            "<Subject 1> is Alex, referenced in <Picture 1>.\n"
+            "<Subject 2> is Blair, referenced in <Picture 2>.\n"
+            "<Subject 3> is Casey, referenced in <Picture 3>."
+        )
+        state = minimax.continuity_state_for_registry(definitions)
+        projected = minimax._phase2_continuity_state_for_scene(
+            state,
+            definitions,
+            "Earlier: Alex, Blair, and Casey are visible.\n"
+            "Alex closes a door behind Blair and Casey.\n"
+            "End continuity state: Alex stands outside the closed door.",
+        )
+
+        self.assertEqual(set(state["subjects"]), {"Alex", "Blair", "Casey"})
+        self.assertEqual(set(projected["subjects"]), {"Alex"})
+
+    def test_held_prop_survives_phase_two_and_can_be_cleared_generically(self):
+        committed = minimax.continuity_state_for_registry(SUBJECTS)
+        committed["subjects"]["Amy"]["held_props"] = ["metal tool"]
+        request = Mock(return_value="Amy stands by the doorway holding a metal tool.")
+
+        minimax.request_continuity_opening_state(
+            committed,
+            {},
+            llm_request=request,
+            subject_definitions=SUBJECTS,
+            ending_scene=(
+                "End continuity state: Amy stands by the doorway holding a metal tool."
+            ),
+        )
+        self.assertIn("metal tool", request.call_args.args[0][1]["content"])
+
+        cleared = minimax._guard_combined_continuity_subjects(
+            {
+                "subjects": {
+                    "Amy": {
+                        "name": "Amy",
+                        "subject_id": 1,
+                        "held_props": [],
+                    },
+                },
+            },
+            "detailed_description: Amy stands by the doorway.",
+            SUBJECTS,
+            committed_state=committed,
+        )
+        self.assertEqual(cleared["subjects"]["Amy"]["held_props"], [])
 
     def test_continuity_cannot_create_a_new_named_subject(self):
         subjects = "<Subject 1> is Amy, referenced in <Picture 1>."

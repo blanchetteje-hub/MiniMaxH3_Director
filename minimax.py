@@ -220,6 +220,20 @@ PERSISTENT_SUBJECT_LIST_FIELDS = (
     "persistent_effects",
 )
 
+CONTINUITY_TOP_LEVEL_FIELDS = (
+    "version",
+    "environment",
+    "camera",
+    "ongoing_action",
+    "ongoing_audio",
+    "subjects",
+)
+
+CONTINUITY_ENVIRONMENT_FIELDS = (
+    "location",
+    "persistent_state",
+)
+
 CURRENT_SUBJECT_SCALAR_FIELDS = (
     "position",
     "pose_action",
@@ -463,6 +477,18 @@ SUBJECT_IDENTITY_FIELDS = (
     "picture_id",
     "speaker_id",
     "origin_segment",
+)
+
+SUBJECT_CANONICAL_METADATA_FIELDS = (
+    "persistent_structural_change",
+)
+
+SUBJECT_CANONICAL_STATE_FIELDS = (
+    *SUBJECT_CANONICAL_METADATA_FIELDS,
+    *CURRENT_SUBJECT_SCALAR_FIELDS,
+    *PERSISTENT_SUBJECT_SCALAR_FIELDS,
+    *SUBJECT_LIST_FIELDS,
+    "wardrobe",
 )
 
 # ------------------------------------------------------------
@@ -981,36 +1007,54 @@ _LOCATION_TRANSITION_RE = re.compile(
 )
 
 COMBINED_CONTINUITY_SYSTEM = (
-    "You are a state continuity maintainer and editor. You take the end state "
-    "of characters and setting from a scene and output the "
-    "reduced continuity state needed to open the next segment of the same "
-    "movie. Determine what is visibly or audibly true when the segment has "
-    "ended. Keep only the facts necessary to maintain continuity into the next "
-    "segment. Remove temporary, completed, redundant, historical, or "
-    "non-visual/non-audio information. Describe only the final state, with no "
-    "timestamps and no sequence of earlier actions. Do not invent anything "
-    "that is not established by the input. Make sure to include all known subject states "
-    "including wardrobe (upper, lower, footwear, other), position, pose, body state, condition, props, injuries, and spatial relationship. "
-    "Take extra consideration for the following states and where to apply them: {additional_states}. "
-    "If any of the subject information is unknown or unchanged, return 'N/A'.\n\n"
-    "SUBJECT IDENTITY CONTRACT:\n"
-    "Return one object per Subject in the subjects array. The fields id, name, "
-    "and speaker_id are immutable once established. Use id as <Subject N>, "
-    "name as the plain display name, and speaker_id as (SN); never combine "
-    "the name into id, and never emit a second S1/Subject 1 alias object. "
-    "When gender is present on a Subject object, that object is authoritative "
-    "over any parallel subject_genders map.\n\n"
-    "MANDATORY OUTPUT CONTRACT:\n"
-    "Return exactly one valid JSON object.\n"
-    "Do not use Markdown fences.\n"
-    "Do not write commentary before or after the JSON.\n"
-    "Use double quotes for all JSON property names and strings.\n"
-    "Every array element must be a complete quoted JSON string. Never place "
-    "a bare word after a quoted value; merge descriptive words into the "
-    "string or separate array items with a comma.\n"
-    "Do not use trailing commas.\n"
-    "The object must contain only the reduced continuity state.\n"
-    "Return as a JSON object"
+    "Read the FINAL FRAME of the supplied video prompt. Return one reduced continuity "
+    "state as one JSON object.\n\n"
+    "TOP-LEVEL KEYS ONLY: version, environment, camera, ongoing_action, "
+    "ongoing_audio, subjects.\n"
+    "environment KEYS ONLY: location, persistent_state.\n"
+    "Each Subject may contain established identity fields plus ONLY: position, "
+    "pose_action, wardrobe, topology, body_state, physical_condition, "
+    "attached_objects, injuries, substances, spatial_relationships, "
+    "persistent_effects, held_props.\n"
+    "wardrobe KEYS ONLY: upper, lower, footwear, other.\n\n"
+    "FINAL-FRAME FIELD RULES:\n"
+    "position = where the Subject is at the final frame.\n"
+    "pose_action = visible pose or action still true at the final frame.\n"
+    "physical_condition = current non-structural physical condition.\n"
+    "topology = persistent structural configuration.\n"
+    "body_state = persistent body configuration or state.\n"
+    "held_props = objects physically held at the final frame.\n"
+    "attached_objects = non-wardrobe objects physically attached or worn.\n"
+    "spatial_relationships = current final-frame relationships to other things.\n"
+    "injuries, substances, persistent_effects = lasting visible state.\n\n"
+    "Use only registered Subjects already established in the supplied prompt. Do "
+    "not create Subject identities. Report final-frame state only. Unknown scalar "
+    "= \"N/A\". Unknown list = [].\n"
+    "Never use alternate keys such as pose, condition, props, spatial_relationship, "
+    "setting, sound, body state, or other synonyms. Use the canonical key.\n"
+    "Additional registered state labels, if any: {additional_states}.\n\n"
+    "JSON SHAPE:\n"
+    "{\n"
+    "  \"version\": 5,\n"
+    "  \"environment\": {\"location\": \"N/A\", \"persistent_state\": \"N/A\"},\n"
+    "  \"camera\": \"N/A\",\n"
+    "  \"ongoing_action\": \"N/A\",\n"
+    "  \"ongoing_audio\": \"N/A\",\n"
+    "  \"subjects\": {\n"
+    "    \"<registered Subject name>\": {\n"
+    "      \"id\": \"Subject 1\", \"subject_id\": 1, \"name\": \"N/A\",\n"
+    "      \"position\": \"N/A\", \"pose_action\": \"N/A\",\n"
+    "      \"wardrobe\": {\"upper\": \"N/A\", \"lower\": \"N/A\", "
+    "\"footwear\": \"N/A\", \"other\": \"N/A\"},\n"
+    "      \"topology\": \"N/A\", \"body_state\": \"N/A\",\n"
+    "      \"physical_condition\": \"N/A\", \"attached_objects\": [],\n"
+    "      \"injuries\": [], \"substances\": [], \"spatial_relationships\": [],\n"
+    "      \"persistent_effects\": [], \"held_props\": []\n"
+    "    }\n"
+    "  }\n"
+    "}\n\n"
+    "MANDATORY OUTPUT CONTRACT: Return JSON only. No Markdown, commentary, "
+    "timestamps, or earlier actions."
 )
 
 PHASE_2_CONTINUITY_H3_SYSTEM = (
@@ -3260,9 +3304,14 @@ def _guard_combined_continuity_subjects(
             continue
         target = guarded_subjects[existing_name]
         for field, value in record.items():
-            if field not in SUBJECT_IDENTITY_FIELDS:
+            if field in SUBJECT_CANONICAL_STATE_FIELDS:
                 target[field] = copy.deepcopy(value)
-    guarded = copy.deepcopy(candidate)
+    allowed_top_level = set(CONTINUITY_TOP_LEVEL_FIELDS)
+    guarded = {
+        key: copy.deepcopy(value)
+        for key, value in candidate.items()
+        if key in allowed_top_level
+    }
     guarded["subjects"] = guarded_subjects
     return guarded
 
@@ -4288,6 +4337,55 @@ def _h3_continuity_state_for_visible_subjects(state, visible_subject_ids):
     return rendered
 
 
+# Extract the final-frame boundary written by Director Request 1.
+def _extract_end_continuity_state(raw_scene):
+    """Return Request 1's trailing End continuity state without rewriting it."""
+    text = str(raw_scene or "")
+    matches = list(
+        re.finditer(
+            r"(?i)\bend\s+continuity\s+state\s*:\s*",
+            text,
+        )
+    )
+    if not matches:
+        return text.strip()
+    return text[matches[-1].end():].strip()
+
+
+_PHASE2_OMITTED = object()
+
+
+def _prune_phase2_continuity_placeholders(value):
+    """Return a Phase-2-only copy without unknown or empty placeholders."""
+    def prune(item):
+        if item is None:
+            return _PHASE2_OMITTED
+        if isinstance(item, str):
+            return (
+                _PHASE2_OMITTED
+                if not item.strip() or item.strip().upper() == "N/A"
+                else item
+            )
+        if isinstance(item, dict):
+            cleaned = {}
+            for key, child in item.items():
+                pruned = prune(child)
+                if pruned is not _PHASE2_OMITTED:
+                    cleaned[key] = pruned
+            return cleaned if cleaned else _PHASE2_OMITTED
+        if isinstance(item, list):
+            cleaned = []
+            for child in item:
+                pruned = prune(child)
+                if pruned is not _PHASE2_OMITTED:
+                    cleaned.append(pruned)
+            return cleaned if cleaned else _PHASE2_OMITTED
+        return copy.deepcopy(item)
+
+    pruned = prune(value)
+    return {} if pruned is _PHASE2_OMITTED else pruned
+
+
 # Return an ephemeral Phase 2 copy scoped to the ending scene.
 def _phase2_continuity_state_for_scene(
     state,
@@ -4296,7 +4394,9 @@ def _phase2_continuity_state_for_scene(
 ):
     """Project continuity for Phase 2 without mutating canonical state."""
     projected = copy.deepcopy(state)
-    scene = _continuity_scene_description(ending_scene)
+    scene = _continuity_scene_description(
+        _extract_end_continuity_state(ending_scene)
+    )
     if not str(scene or "").strip():
         return projected
 
@@ -14118,9 +14218,9 @@ def _director_timestamps(value):
     return timestamps
 
 
-# Require Request 2 to preserve Request 1's non-opening timestamps.
+# Require Request 2 to preserve every Request 1 timestamp, including 00:00.000.
 def _validate_director_timestamp_correspondence(raw_scene, detailed_description):
-    """Require Request 2 to preserve Request 1's non-opening timestamps."""
+    """Require Request 2 to preserve Request 1's complete timestamp sequence."""
     raw_timestamps = _director_timestamps(raw_scene)
     formatted_timestamps = _director_timestamps(detailed_description)
     if raw_timestamps == formatted_timestamps:
@@ -16888,6 +16988,139 @@ def _continuity_json_text(value):
     return json.dumps(value, ensure_ascii=False, indent=2)
 
 
+def _validate_combined_continuity_schema(candidate):
+    """Validate the structural schema emitted by combined continuity Phase 1."""
+    errors = []
+    top_level = set(CONTINUITY_TOP_LEVEL_FIELDS)
+    subject_fields = set(
+        (*SUBJECT_IDENTITY_FIELDS, *SUBJECT_CANONICAL_STATE_FIELDS)
+    )
+    scalar_subject_fields = set(
+        (
+            *CURRENT_SUBJECT_SCALAR_FIELDS,
+            *PERSISTENT_SUBJECT_SCALAR_FIELDS,
+        )
+    )
+    list_subject_fields = set(SUBJECT_LIST_FIELDS)
+    identity_string_fields = {
+        "id",
+        "name",
+        "gender",
+        "speaker_id",
+    }
+
+    if not isinstance(candidate, dict):
+        raise ValueError("SCHEMA ERROR: result must be a JSON object")
+
+    for key in candidate:
+        if key not in top_level:
+            errors.append(str(key))
+
+    version = candidate.get("version")
+    if version is not None and (
+        not isinstance(version, int) or isinstance(version, bool)
+    ):
+        errors.append("version (must be an integer)")
+
+    environment = candidate.get("environment")
+    if environment is not None:
+        if not isinstance(environment, dict):
+            errors.append("environment (must be an object)")
+        else:
+            for key in environment:
+                if key not in CONTINUITY_ENVIRONMENT_FIELDS:
+                    errors.append(f"environment.{key}")
+            for key in CONTINUITY_ENVIRONMENT_FIELDS:
+                if key in environment and not isinstance(environment[key], str):
+                    errors.append(f"environment.{key} (must be a string)")
+
+    for key in ("camera", "ongoing_action", "ongoing_audio"):
+        if key in candidate and not isinstance(candidate[key], str):
+            errors.append(f"{key} (must be a string)")
+
+    def validate_subject(path, record):
+        if not isinstance(record, dict):
+            errors.append(f"{path} (must be an object)")
+            return
+        for key in record:
+            if key not in subject_fields:
+                errors.append(f"{path}.{key}")
+        for key in identity_string_fields:
+            if key in record and not isinstance(record[key], str):
+                errors.append(f"{path}.{key} (must be a string)")
+        if "subject_id" in record and (
+            not isinstance(record["subject_id"], int)
+            or isinstance(record["subject_id"], bool)
+        ):
+            errors.append(f"{path}.subject_id (must be an integer)")
+        if "picture_id" in record and (
+            not isinstance(record["picture_id"], int)
+            or isinstance(record["picture_id"], bool)
+        ):
+            errors.append(f"{path}.picture_id (must be an integer)")
+        if "origin_segment" in record and (
+            not isinstance(record["origin_segment"], int)
+            or isinstance(record["origin_segment"], bool)
+        ):
+            errors.append(f"{path}.origin_segment (must be an integer)")
+        if "picture_ids" in record:
+            picture_ids = record["picture_ids"]
+            if not isinstance(picture_ids, list):
+                errors.append(f"{path}.picture_ids (must be an array)")
+            elif any(
+                not isinstance(item, int) or isinstance(item, bool)
+                for item in picture_ids
+            ):
+                errors.append(f"{path}.picture_ids (must contain integers)")
+        if "persistent_structural_change" in record and not isinstance(
+            record["persistent_structural_change"], bool
+        ):
+            errors.append(
+                f"{path}.persistent_structural_change (must be a boolean)"
+            )
+        for key in scalar_subject_fields:
+            if key in record and not isinstance(record[key], str):
+                errors.append(f"{path}.{key} (must be a string)")
+        for key in list_subject_fields:
+            if key not in record:
+                continue
+            values = record[key]
+            if not isinstance(values, list):
+                errors.append(f"{path}.{key} (must be an array)")
+            elif any(not isinstance(item, str) for item in values):
+                errors.append(f"{path}.{key} (must contain strings)")
+        wardrobe = record.get("wardrobe")
+        if wardrobe is not None:
+            if not isinstance(wardrobe, dict):
+                errors.append(f"{path}.wardrobe (must be an object)")
+            else:
+                for key in wardrobe:
+                    if key not in _WARDROBE_FIELDS:
+                        errors.append(f"{path}.wardrobe.{key}")
+                for key in _WARDROBE_FIELDS:
+                    if key in wardrobe and not isinstance(wardrobe[key], str):
+                        errors.append(
+                            f"{path}.wardrobe.{key} (must be a string)"
+                        )
+
+    subjects = candidate.get("subjects")
+    if subjects is not None:
+        if isinstance(subjects, dict):
+            for name, record in subjects.items():
+                validate_subject(f"subjects.{name}", record)
+        elif isinstance(subjects, list):
+            for index, record in enumerate(subjects):
+                validate_subject(f"subjects[{index}]", record)
+        else:
+            errors.append("subjects (must be an object or array)")
+
+    if errors:
+        unique_errors = list(dict.fromkeys(errors))
+        raise ValueError("SCHEMA ERROR: " + ", ".join(unique_errors))
+
+    return candidate
+
+
 # Remove non-canonical clothing-condition claims from prompt state.
 _WARDROBE_CONTINUITY_ALIASES = (
     "clothing",
@@ -16998,6 +17231,7 @@ def _parse_continuity_json_result(
     raw_result,
     phase_name,
     llm_request=None,
+    strict_schema=False,
 ):
     """Parse and normalize one combined-continuity JSON response."""
     candidate = raw_result
@@ -17037,6 +17271,8 @@ def _parse_continuity_json_result(
                 return candidate
     if not isinstance(candidate, dict):
         raise ValueError(f"{phase_name} must return a JSON object.")
+    if strict_schema:
+        _validate_combined_continuity_schema(candidate)
     wrapped_state = candidate.get("continuity_state")
     if isinstance(wrapped_state, dict):
         candidate = wrapped_state
@@ -17113,6 +17349,9 @@ def request_continuity_opening_state(
         subject_definitions=subject_definitions,
         ending_scene=ending_scene,
     )
+    state_for_opening = _prune_phase2_continuity_placeholders(
+        state_for_opening
+    )
     state_text = _continuity_json_text(state_for_opening)
     phase2_messages = [
         {"role": "system", "content": PHASE_2_CONTINUITY_H3_SYSTEM},
@@ -17177,6 +17416,7 @@ def request_combined_continuity(
     defer_opening=False,
     subject_definitions="",
     committed_state=None,
+    ending_scene="",
 ):
     """Run the single combined continuity extraction/reduction call.
 
@@ -17205,18 +17445,24 @@ def request_combined_continuity(
     ]
     reduced_state = None
     combined_error = None
+    schema_feedback = ""
     for attempt in range(1, attempts + 1):
         metadata = dict(history_metadata or {})
         metadata.update({"purpose": "continuity_combined_reduced_state", "content_attempt": attempt})
         messages = copy.deepcopy(combined_messages)
         if attempt > 1:
-            messages[-1]["content"] += (
-                "\n\nCORRECTION: The previous response was not usable JSON because it "
-                "was syntactically invalid JSON. Return exactly one valid JSON "
-                "object now, with double-quoted "
-                "keys and strings, no Markdown fences, commentary, or trailing "
-                "commas."
-            )
+            retry_feedback = schema_feedback
+            if retry_feedback:
+                messages[-1]["content"] += "\n\n" + retry_feedback
+            else:
+                messages[-1]["content"] += (
+                    "\n\nCORRECTION: The previous response was not usable JSON because it "
+                    "was syntactically invalid JSON. Return exactly one valid JSON "
+                    "object now, with double-quoted "
+                    "keys and strings, no Markdown fences, commentary, or trailing "
+                    "commas."
+                )
+        schema_feedback = ""
         raw = None
         raw_received = False
         try:
@@ -17237,6 +17483,7 @@ def request_combined_continuity(
                 raw,
                 "Continuity",
                 llm_request=llm_request,
+                strict_schema=True,
             )
             if str(subject_definitions or "").strip() or isinstance(
                 committed_state,
@@ -17275,6 +17522,11 @@ def request_combined_continuity(
             raise
         except Exception as error:
             combined_error = error
+            schema_feedback = (
+                str(error).strip()
+                if str(error).strip().startswith("SCHEMA ERROR:")
+                else ""
+            )
             if raw_received:
                 parse_error = error.__cause__ or error
                 print("CONTINUITY RAW RESPONSE - PARSE FAILURE:")
@@ -17283,13 +17535,18 @@ def request_combined_continuity(
             if attempt < attempts:
                 print(f"[Continuity] returned unusable JSON; retrying: {error}")
     if reduced_state is None:
+        fallback_state = (
+            copy.deepcopy(committed_state)
+            if isinstance(committed_state, dict)
+            else new_continuity_state()
+        )
         reduced_state = continuity_state_for_registry(
             subject_definitions,
-            new_continuity_state(),
-        ) if str(subject_definitions or "").strip() else new_continuity_state()
+            fallback_state,
+        )
         print(
             "WARNING: Continuity exhausted its JSON/content retries; using "
-            f"best-effort empty state: {combined_error}"
+            f"the last canonical state: {combined_error}"
         )
     _print_continuity_phase_result(1, "COMBINED CONTINUITY", reduced_state)
 
@@ -17305,7 +17562,7 @@ def request_combined_continuity(
         llm_request=llm_request,
         history_metadata=history_metadata,
         subject_definitions=subject_definitions,
-        ending_scene=h3_prompt,
+        ending_scene=ending_scene or h3_prompt,
     )
     return {
         "reduced_state": reduced_state,
@@ -23507,6 +23764,9 @@ def _run_main(
                 prompt_reduced_continuity_state if retention else None
             ),
         )
+        request1_ending_scene = _extract_end_continuity_state(
+            payload.get("raw_scene", "")
+        )
         # Phase 2 writes the opening of the NEXT segment, so give it the phase
         # that contains the next beat when one exists. On the final segment,
         # retain the current phase for a complete debug record.
@@ -23535,6 +23795,7 @@ def _run_main(
                 defer_opening=True,
                 subject_definitions=subject_definitions,
                 committed_state=copy.deepcopy(continuity_state),
+                ending_scene=request1_ending_scene,
             )
             print(
                 f"Combined continuity requested for segment {segment} "
@@ -23769,7 +24030,7 @@ def _run_main(
                     "state_source": "prompt_only",
                 },
                 subject_definitions=subject_definitions,
-                ending_scene=h3_prompt,
+                ending_scene=request1_ending_scene,
             )
             continuity_summary = prompt_only_opening_summary
             continuity_source = "prompt"
@@ -24138,7 +24399,7 @@ def _run_main(
                 phase2_state_for_opening = _phase2_continuity_state_for_scene(
                     reduced_continuity_state,
                     subject_definitions=subject_definitions,
-                    ending_scene=h3_prompt,
+                    ending_scene=request1_ending_scene,
                 )
                 next_opening_summary = request_continuity_opening_state(
                     reduced_continuity_state,
@@ -24153,7 +24414,7 @@ def _run_main(
                         "state_source": state_source,
                     },
                     subject_definitions=subject_definitions,
-                    ending_scene=h3_prompt,
+                    ending_scene=request1_ending_scene,
                 )
                 if not _meaningful_director_continuity(next_opening_summary):
                     next_opening_summary = _best_effort_continuity_opening_state(

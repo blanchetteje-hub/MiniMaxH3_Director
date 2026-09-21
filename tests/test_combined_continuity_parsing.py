@@ -200,6 +200,143 @@ class CombinedContinuityParserTests(unittest.TestCase):
         self.assertIn("syntactically invalid JSON", correction)
         self.assertNotIn("not JSON", correction)
 
+    def test_noncanonical_subject_keys_retry_and_canonical_keys_are_accepted(self):
+        request = Mock(side_effect=[
+            {
+                "subjects": {
+                    "Mark": {
+                        "name": "Mark",
+                        "pose": "standing",
+                        "condition": "unhurt",
+                        "props": ["tool"],
+                    },
+                },
+            },
+            {
+                "subjects": {
+                    "Mark": {
+                        "name": "Mark",
+                        "pose_action": "standing",
+                        "physical_condition": "unhurt",
+                        "held_props": ["tool"],
+                    },
+                },
+            },
+        ])
+
+        with patch("minimax._print_continuity_phase_result"):
+            result = minimax.request_combined_continuity(
+                "detailed_description: Mark stands in the room.",
+                {},
+                llm_request=request,
+                content_attempts=2,
+                defer_opening=True,
+                subject_definitions="<Subject 1> is Mark, referenced in <Picture 1>.",
+                committed_state=minimax.continuity_state_for_registry(
+                    "<Subject 1> is Mark, referenced in <Picture 1>."
+                ),
+            )
+
+        self.assertEqual(request.call_count, 2)
+        correction = request.call_args_list[1].args[0][1]["content"]
+        self.assertIn('SCHEMA ERROR: subjects.Mark.pose', correction)
+        self.assertIn("subjects.Mark.condition", correction)
+        self.assertIn("subjects.Mark.props", correction)
+        self.assertEqual(
+            result["reduced_state"]["subjects"]["Mark"]["pose_action"],
+            "standing",
+        )
+        self.assertNotIn("pose", result["reduced_state"]["subjects"]["Mark"])
+
+    def test_noncanonical_top_level_keys_retry_and_canonical_keys_are_accepted(self):
+        request = Mock(side_effect=[
+            {
+                "setting": "room",
+                "sound": "room tone",
+                "environmental_state": "quiet",
+            },
+            {
+                "environment": {
+                    "location": "room",
+                    "persistent_state": "quiet",
+                },
+                "ongoing_audio": "room tone",
+            },
+        ])
+
+        with patch("minimax._print_continuity_phase_result"):
+            result = minimax.request_combined_continuity(
+                "PROMPT",
+                {},
+                llm_request=request,
+                content_attempts=2,
+                defer_opening=True,
+            )
+
+        self.assertEqual(request.call_count, 2)
+        correction = request.call_args_list[1].args[0][1]["content"]
+        self.assertIn("SCHEMA ERROR:", correction)
+        self.assertIn("setting", correction)
+        self.assertIn("sound", correction)
+        self.assertIn("environmental_state", correction)
+        self.assertEqual(result["reduced_state"]["environment"]["location"], "room")
+        self.assertEqual(result["reduced_state"]["ongoing_audio"], "room tone")
+
+    def test_schema_retry_exhaustion_preserves_committed_canonical_state(self):
+        request = Mock(return_value={"subjects": {"Mark": {"props": ["tool"]}}})
+        committed = minimax.continuity_state_for_registry(
+            "<Subject 1> is Mark, referenced in <Picture 1>."
+        )
+        committed["subjects"]["Mark"]["position"] = "beside the window"
+
+        with patch("minimax._print_continuity_phase_result"):
+            result = minimax.request_combined_continuity(
+                "detailed_description: Mark stands beside the window.",
+                {},
+                llm_request=request,
+                content_attempts=2,
+                defer_opening=True,
+                subject_definitions="<Subject 1> is Mark, referenced in <Picture 1>.",
+                committed_state=committed,
+            )
+
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(
+            result["reduced_state"]["subjects"]["Mark"]["position"],
+            "beside the window",
+        )
+        self.assertNotIn("props", result["reduced_state"]["subjects"]["Mark"])
+
+    def test_phase_two_uses_request_one_end_state_boundary(self):
+        definitions = (
+            "<Subject 1> is Alex, referenced in <Picture 1>.\n"
+            "<Subject 2> is Blair, referenced in <Picture 2>."
+        )
+        committed = minimax.continuity_state_for_registry(definitions)
+        request = Mock(side_effect=[
+            {
+                "subjects": {
+                    "Alex": {"name": "Alex", "subject_id": 1, "position": "outside"},
+                    "Blair": {"name": "Blair", "subject_id": 2, "position": "inside"},
+                },
+            },
+            "Alex stands outside the closed door.",
+        ])
+
+        minimax.request_combined_continuity(
+            "Earlier: Alex and Blair are visible. Alex closes a door behind Blair.\n"
+            "End continuity state: Alex stands outside the closed door.",
+            {},
+            llm_request=request,
+            content_attempts=1,
+            subject_definitions=definitions,
+            committed_state=committed,
+        )
+
+        phase2_user_prompt = request.call_args_list[1].args[0][1]["content"]
+        self.assertIn('"Alex"', phase2_user_prompt)
+        self.assertNotIn('"Blair"', phase2_user_prompt)
+
     def test_exhausted_retries_use_an_empty_best_effort_state(self):
         continuity_request = Mock(side_effect=[ValueError("bad"), ValueError("bad")])
 
