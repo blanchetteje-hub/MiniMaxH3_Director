@@ -465,11 +465,16 @@ class DirectorPromptCallContractTests(unittest.TestCase):
     def test_request_segment_llm_passes_bundle_context_to_h3_formatter(self):
         request = Mock(side_effect=[
             {
-                "raw_scene": "Mark crosses the room.",
+                "raw_scene": (
+                    "At 00:00.000 seconds, Mark crosses the room.\\n"
+                    "End continuity state: Mark stands across the room."
+                ),
                 "beat_complete": True,
             },
             {
-                "detailed_description": "[Shot 1] Mark crosses the room.",
+                "detailed_description": (
+                    "[Shot 1] At 00:00.000 seconds, Mark crosses the room."
+                ),
                 "overall_soundscape": "Footsteps.",
                 "non_diegetic_music": "N/A",
             },
@@ -530,6 +535,77 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertEqual(
             request.call_args_list[1].kwargs["history_metadata"]["h3_mode"],
             "I2VA",
+        )
+
+    def test_request_segment_llm_retries_missing_end_continuity_state(self):
+        request = Mock(side_effect=[
+            {
+                "raw_scene": "At 00:00.000 seconds, Mark crosses the room.",
+                "beat_complete": True,
+            },
+            {
+                "raw_scene": (
+                    "At 00:00.000 seconds, Mark crosses the room.\\n"
+                    "End continuity state: Mark stands across the room."
+                ),
+                "beat_complete": True,
+            },
+            {
+                "detailed_description": (
+                    "[Shot 1] At 00:00.000 seconds, Mark crosses the room."
+                ),
+                "overall_soundscape": "Footsteps.",
+                "non_diegetic_music": "N/A",
+            },
+        ])
+        bundle = {
+            "segment": 1,
+            "active_beat_id": 1,
+            "current_duration": 4,
+            "conditioning_mode": "continuation",
+            "opening_state": "",
+            "messages": [{"role": "user", "content": "Director input."}],
+            "opening_state_sha256": "hash-1",
+            "dialogue_exclusions": [],
+            "phrase_exclusions": [],
+        }
+
+        with patch("minimax.ask_llm", request):
+            payload = minimax.request_segment_llm(
+                bundle,
+                [],
+                "run-1",
+                {"source_sha256": "source-1"},
+            )
+
+        self.assertEqual(request.call_count, 3)
+        retry_user = request.call_args_list[1].args[0][-1]["content"]
+        self.assertIn("RAW SCENE STRUCTURE ERROR", retry_user)
+        self.assertIn("End continuity state", retry_user)
+        self.assertTrue(payload["request1_result"]["beat_complete"])
+        self.assertIn(
+            "End continuity state: Mark stands across the room.",
+            payload["raw_scene"],
+        )
+
+    def test_director_raw_scene_structure_requires_trailing_end_state(self):
+        self.assertTrue(
+            minimax._director_raw_scene_structure_errors(
+                "At 00:00.000 seconds, Mark crosses the room."
+            )
+        )
+        self.assertTrue(
+            minimax._director_raw_scene_structure_errors(
+                "At 00:00.000 seconds, Mark crosses the room.\\n"
+                "End continuity state:"
+            )
+        )
+        self.assertEqual(
+            minimax._director_raw_scene_structure_errors(
+                "At 00:00.000 seconds, Mark crosses the room.\\n"
+                "End continuity state: Mark stands across the room."
+            ),
+            [],
         )
 
     def test_h3_formatter_prompt_is_a_conservative_raw_scene_translator(self):
