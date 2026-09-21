@@ -31,14 +31,24 @@ DEFAULT_POLL_SECONDS = 2.0
 DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 
 
-def run_git(args, cwd, *, check=True, capture=True):
-    return subprocess.run(
-        ["git", *args],
-        cwd=cwd,
-        check=check,
-        text=True,
-        capture_output=capture,
-    )
+def run_git(args, cwd, *, check=True, capture=True, timeout=30):
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GCM_INTERACTIVE"] = "Never"
+    try:
+        return subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            check=check,
+            text=True,
+            capture_output=capture,
+            timeout=timeout,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            f"git command timed out after {timeout}s: git {' '.join(args)}"
+        ) from error
 
 
 def repo_root():
@@ -207,7 +217,14 @@ def processed_ids(results_root: Path) -> set[str]:
 
 
 def sync_branch(worktree: Path, branch: str) -> None:
-    run_git(["pull", "--ff-only", "origin", branch], worktree)
+    """Make the isolated mailbox worktree exactly match the remote branch."""
+
+    run_git(["fetch", "--no-tags", "origin", branch], worktree, timeout=30)
+    run_git(
+        ["reset", "--hard", f"origin/{branch}"],
+        worktree,
+        timeout=15,
+    )
 
 
 def commit_result(worktree: Path, branch: str, result_dir: Path, job_id: str) -> None:
@@ -314,6 +331,7 @@ def main(argv=None):
     max_file_bytes = int(args.max_file_mb * 1024 * 1024)
     while True:
         try:
+            print("Checking mailbox...", flush=True)
             handled = process_once(
                 source_root,
                 worktree,
@@ -330,7 +348,10 @@ def main(argv=None):
                 f"git bridge error ({error.returncode}): "
                 f"{error.stderr or error.stdout or error}",
                 file=sys.stderr,
+                flush=True,
             )
+        except RuntimeError as error:
+            print(f"bridge error: {error}", file=sys.stderr, flush=True)
         if args.once:
             return 0
         time.sleep(max(0.5, args.poll_seconds))
