@@ -111,6 +111,17 @@ Implementation must remain generic and never special-case literal characters, cr
 
 ## H3 gold-standard acceptance suite
 
+### Locked benchmark artifact
+
+The first complete 8-beat gold benchmark is now locked and version-controlled at:
+
+`tests/acceptance/gold/amy_zombie_house.json`
+
+That file is the authoritative benchmark artifact for the Amy story. Do not duplicate the full gold prompts in this notes file.
+
+The benchmark is intended to be consumed by the future acceptance runner and reviewed fuzzily by GPT-5.6 Sol. Generated prompts are not required to string-match the gold prompt; they must preserve the gold behavior, timing discipline, continuity, scene intent, exclusions, sound/music progression, and expected end state.
+
+
 The project needs a concrete end goal, not endless "looks better" debugging.
 
 The acceptance suite will use human-authored gold-standard H3 prompts.
