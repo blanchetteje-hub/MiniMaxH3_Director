@@ -158,6 +158,12 @@ The AR-15 is not part of this story and must not be reintroduced.
 
 MiniMax H3 responds best when each timestamp describes one specific action.
 
+Canonical timestamp syntax:
+
+`At mm:ss.nnn,`
+
+Do not append the word `seconds` after the timestamp.
+
 Rules:
 
 - do not impose an arbitrary maximum number of timestamps;
