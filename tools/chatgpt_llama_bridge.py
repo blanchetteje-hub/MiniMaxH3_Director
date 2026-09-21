@@ -18,6 +18,8 @@ import glob
 import json
 import os
 import re
+import signal
+import threading
 from pathlib import Path
 import shutil
 import subprocess
@@ -33,6 +35,72 @@ DEFAULT_POLL_SECONDS = 2.0
 DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 DEFAULT_CODE_BRANCH = "gpt-test-branch"
 DEFAULT_EXEC_WORKTREE_NAME = ".chatgpt_exec_worktree"
+
+_ACTIVE_LOCAL_PROCESS = None
+
+
+def _bridge_emergency_stop(_signum=None, _frame=None):
+    """Hard-stop the bridge and any active allowlisted local child process."""
+
+    process = _ACTIVE_LOCAL_PROCESS
+    if process is not None and process.poll() is None:
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    [
+                        "taskkill",
+                        "/PID",
+                        str(process.pid),
+                        "/T",
+                        "/F",
+                    ],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                )
+            else:
+                process.kill()
+        except Exception:
+            pass
+    try:
+        os.write(2, b"\nBridge emergency stop requested; exiting immediately.\n")
+    finally:
+        os._exit(130)
+
+
+def install_bridge_interrupt_handlers():
+    """Make Ctrl+C and Windows Ctrl+Q stop the bridge immediately."""
+
+    signal.signal(signal.SIGINT, _bridge_emergency_stop)
+    if os.name == "nt" and hasattr(signal, "SIGBREAK"):
+        signal.signal(signal.SIGBREAK, _bridge_emergency_stop)
+
+
+def start_bridge_emergency_stop_listener():
+    """On Windows, make Ctrl+Q work even while waiting on a child process."""
+
+    if os.name != "nt":
+        return None
+
+    import msvcrt
+
+    def watch_keyboard():
+        while True:
+            try:
+                key = msvcrt.getwch()
+            except (EOFError, OSError):
+                return
+            if key == "\x11":  # Ctrl+Q
+                _bridge_emergency_stop()
+
+    listener = threading.Thread(
+        target=watch_keyboard,
+        name="bridge-emergency-stop-listener",
+        daemon=True,
+    )
+    listener.start()
+    return listener
 
 
 def run_git(args, cwd, *, check=True, capture=True, timeout=30):
@@ -196,20 +264,40 @@ def ensure_exec_worktree(source_root: Path, branch: str = DEFAULT_CODE_BRANCH) -
 def run_local_process(command, cwd: Path, timeout: int) -> dict:
     """Run one allowlisted local process and capture its complete text output."""
 
+    global _ACTIVE_LOCAL_PROCESS
     started = time.time()
-    completed = subprocess.run(
+    process = subprocess.Popen(
         [str(part) for part in command],
         cwd=cwd,
         text=True,
-        capture_output=True,
-        timeout=timeout,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         env=os.environ.copy(),
     )
+    _ACTIVE_LOCAL_PROCESS = process
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+            )
+        else:
+            process.kill()
+        stdout, stderr = process.communicate()
+        raise
+    finally:
+        _ACTIVE_LOCAL_PROCESS = None
+
     return {
         "command": [str(part) for part in command],
-        "returncode": completed.returncode,
-        "stdout": completed.stdout,
-        "stderr": completed.stderr,
+        "returncode": process.returncode,
+        "stdout": stdout,
+        "stderr": stderr,
         "started_at": started,
         "finished_at": time.time(),
     }
@@ -581,4 +669,7 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    install_bridge_interrupt_handlers()
+    start_bridge_emergency_stop_listener()
+    print("Bridge emergency stop: press Ctrl+C (or Ctrl+Q on Windows).")
     raise SystemExit(main())
