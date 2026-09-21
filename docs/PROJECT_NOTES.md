@@ -175,6 +175,8 @@ This is a gold-standard and generation target. Beat 3 is expected to provide a c
 
 Use names instead of pronouns whenever practical, especially instead of ambiguous `they`.
 
+This is a clarity preference, not a blanket ban on pronouns. A pronoun is fine within a sentence when the subject has already been explicitly established and the referent is unambiguous. Prefer repeating the name when multiple subjects are present or a pronoun could attach to the wrong person.
+
 ### Visual subject disambiguation
 
 H3 can visually confuse similar human subjects even when subject IDs and names are correct.
