@@ -1,0 +1,52 @@
+{
+  "job_id": "bridge-smoke-001",
+  "kind": "llama_chat",
+  "started_at": 1790028017.9163408,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a connectivity test. Follow the user's instruction exactly."
+      },
+      {
+        "role": "user",
+        "content": "Reply with exactly: BRIDGE_OK"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 20
+  },
+  "response": {
+    "id": "chatcmpl-lr6mxs3wi5ftm20g9mfcsq",
+    "object": "chat.completion",
+    "created": 1790028017,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "BRIDGE_OK",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 26,
+      "completion_tokens": 5,
+      "total_tokens": 31,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790028018.4913602,
+  "status": "ok"
+}
