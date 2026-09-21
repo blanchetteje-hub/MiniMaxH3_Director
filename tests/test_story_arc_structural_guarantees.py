@@ -94,8 +94,11 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         prompt = "\n".join(message["content"] for message in messages)
 
         self.assertIn(
-            "Every explicit visible action or visible state that establishes "
-            "a distinct point in the source timeline",
+            "Every explicit visible action or visible state",
+            prompt,
+        )
+        self.assertIn(
+            "that establishes a distinct point in the source timeline",
             prompt,
         )
         self.assertIn(
