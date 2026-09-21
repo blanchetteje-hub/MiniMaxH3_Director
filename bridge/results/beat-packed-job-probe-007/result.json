@@ -1,0 +1,53 @@
+{
+  "job_id": "beat-packed-job-probe-007",
+  "kind": "llama_chat",
+  "started_at": 1790031965.3240244,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Expand one assigned macro beat job into one concise visible video beat. Preserve every materially required action/result in the assigned job and their order. Do not drop a later clause merely to simplify the beat. Return only the beat sentence."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED JOB: A zombie breaks the kitchen door window. Amy rushes Will and Amber to the basement and locks the door.\n\nWrite one concise beat sentence for an 8-second clip. The beat must visibly accomplish the entire assigned job. Do not perform the next job (retrieving weapons)."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 160,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-5hgw75pav6mjuau9y7d65a",
+    "object": "chat.completion",
+    "created": 1790031965,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "Amy herds Will and Amber towards the basement as a zombie smashes through the kitchen door window, then swiftly locks the basement door behind them.",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 114,
+      "completion_tokens": 30,
+      "total_tokens": 144,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790031967.5668852,
+  "status": "ok"
+}
