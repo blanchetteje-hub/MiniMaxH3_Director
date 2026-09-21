@@ -440,3 +440,15 @@ Active development branch:
 `gpt-test-branch`
 
 Use the current GitHub branch head as authoritative. Do not rely on stale SHA values from handoff documents.
+
+## Local llama.cpp bridge
+
+A GitHub-backed mailbox bridge is implemented in tools/chatgpt_llama_bridge.py.
+
+Reason: the ChatGPT runtime can write/read GitHub but does not expose a general arbitrary HTTP POST client. A Cloudflare tunnel alone therefore does not provide reliable direct access to /v1/chat/completions.
+
+The bridge uses the dedicated gpt-runtime branch. ChatGPT commits JSON jobs under bridge/jobs; the user's local worker polls that branch, sends only allowlisted requests to the locally configured llama.cpp endpoint, and commits responses/requested artifacts under bridge/results. No inbound port or Cloudflare tunnel is required.
+
+### First Amy gold acceptance baseline
+
+The first complete 8-segment acceptance capture completed successfully at the harness level. The earliest semantic divergence is the ARC stage: the generated story arc omitted the ordinary breakfast setup from required events and assigned the zombie-window break-in to Beat 1. The generated Beat 1 therefore depicts the threat immediately, while gold Beat 1 is the calm breakfast scene. Downstream Director/H3 mismatches should not be repaired before this upstream arc/beat planning loss is corrected.

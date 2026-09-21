@@ -29,3 +29,5 @@ CLAUDE.md
 tests/requirements-test.txt
 .vscode/settings.json
 \n# Local acceptance-run outputs\ntests/acceptance/results/\n
+# Dedicated local mailbox worktree for ChatGPT/llama.cpp bridge
+.chatgpt_bridge_worktree/

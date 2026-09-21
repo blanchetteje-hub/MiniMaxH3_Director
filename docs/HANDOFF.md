@@ -224,3 +224,23 @@ When a new acceptance run arrives:
 7. User pulls and reruns the same locked benchmark.
 
 The benchmark is the finish line. Do not move the gold target simply because production output misses it unless the gold itself is demonstrably wrong.
+
+## Local llama.cpp access
+
+Use tools/chatgpt_llama_bridge.py rather than exposing llama.cpp to the public Internet.
+
+Mailbox branch: gpt-runtime.
+
+The local worker polls ChatGPT-authored JSON jobs, calls the configured local llama.cpp OpenAI-compatible API, then commits responses and requested artifacts back to the mailbox branch.
+
+Normal command:
+
+    python tools/chatgpt_llama_bridge.py
+
+Default endpoint is http://127.0.0.1:8080; override with --endpoint.
+
+This is intentionally not a remote-shell bridge. Supported job kinds are constrained to model chat calls and file collection.
+
+## Current acceptance finding
+
+The first complete Amy acceptance run proves the harness works. The earliest failure is in story-arc planning: the generated arc dropped the calm breakfast scene as a required event and made the zombie breach Beat 1. Fix the ARC create/validate/repair boundary before tuning Director Request 1 or Request 2 against later gold prompts.
