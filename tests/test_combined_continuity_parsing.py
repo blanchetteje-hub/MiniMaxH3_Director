@@ -272,7 +272,7 @@ class CombinedContinuityParserTests(unittest.TestCase):
 
         user_content = request.call_args.args[0][1]["content"]
         self.assertIn(
-            "FINAL FRAME AUTHORITY:\\nMark stands beside the closed door.",
+            "FINAL FRAME AUTHORITY:\nMark stands beside the closed door.",
             user_content,
         )
         self.assertIn("FULL SEGMENT CONTEXT:", user_content)
