@@ -10756,16 +10756,24 @@ for temporary actions, emotion, reaction, or optional embellishment.
 
 There must be exactly one concrete required event/job for every global beat.
 The complete arc must therefore contain one event at every beat in the
-requested range; there may be no gaps or duplicate
-beat assignments. Derive source-required events from SOURCE STORY or explicit
-beat instructions, preserve their order, and split compound requirements into
-atomic visible events. When the source is sparse, fill the remaining beats
-with plausible connective/action jobs that stay within the established
-characters, setting, conflict, and outcome. These connective jobs are
-mandatory jobs for their beats, but must not introduce a different plot or
-unsupported major event. Use different authorized encounters, movement,
-reloading, checks, aftermath, or other concrete actions as appropriate rather
-than repeating source prose mechanically.
+requested range; there may be no gaps or duplicate beat assignments. Derive
+source-required events from SOURCE STORY or explicit beat instructions and
+preserve their order.
+
+A required_event is a BEAT JOB, not necessarily one atomic action. Preserve
+every explicit visible source action/state. When the source contains more
+explicit timeline actions than the requested beat count can represent one by
+one, bundle only adjacent, causally continuous source actions into the same
+beat job. Never drop an explicit source action merely to satisfy the beat
+count. Do not bundle distant story stages or reverse source order.
+
+When the source is sparse, fill the remaining beats with plausible
+connective/action jobs that stay within the established characters, setting,
+conflict, and outcome. These connective jobs are mandatory jobs for their
+beats, but must not introduce a different plot or unsupported major event.
+Use different authorized encounters, movement, reloading, checks, aftermath,
+or other concrete actions as appropriate rather than repeating source prose
+mechanically.
 
 Give every event a unique ID within the complete arc, preferably E1, E2, E3,
 and so on in actual beat order. Assign each event to its exact global beat
@@ -10878,6 +10886,11 @@ Required events:
   their own event.
 - Reject if any explicit source timeline action/state is missing from
   required_events. Report the FIRST missing source action/state as the issue.
+- One required_event may cover multiple adjacent, causally continuous source
+  actions when necessary to fit the requested beat count. Judge coverage by
+  whether all source actions are present in order, not by requiring one event
+  per source sentence or action. Do not accept bundling that skips, reorders,
+  or joins distant story stages.
 - Source-required events must be directly supported by the source or explicit
   instructions. Sparse-source connective jobs may be plausible visible actions
   that remain within the established story and do not add a different plot,
@@ -11005,9 +11018,13 @@ exactly once. Treat these as hard structural requirements: exactly one concrete
 required event/job per global beat, no missing or duplicate beat assignments, and
 every event after the first must include the immediately preceding required
 event's actual ID in depends_on, including across phase boundaries. Preserve all
-correct event content where possible, add plausible connective jobs for sparse
-sections without changing the plot, and include state_effects on events that
-establish persistent modeled facts. Return only the normal macro-arc JSON object.
+correct event content where possible. Preserve every explicit visible source
+action/state in source order. If there are more explicit source timeline actions
+than available beats, bundle only adjacent, causally continuous source actions
+inside one beat job rather than dropping source content. Add plausible connective
+jobs only for genuinely sparse sections without changing the plot, and include
+state_effects on events that establish persistent modeled facts. Return only the
+normal macro-arc JSON object.
 """.strip(),
         },
     ]

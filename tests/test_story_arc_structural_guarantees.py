@@ -108,6 +108,11 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             prompt,
         )
 
+        self.assertIn(
+            "One required_event may cover multiple adjacent, causally continuous source",
+            prompt,
+        )
+
     def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
         invalid = copy.deepcopy(self.events)
         invalid[2]["depends_on"] = ["E1"]
