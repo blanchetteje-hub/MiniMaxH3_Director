@@ -140,22 +140,24 @@ Implemented on `gpt-test-branch`:
 
 Do not revert this to the old 72-frame / 3-second behavior.
 
-## Refresh workflow — IMPORTANT OPEN ITEM
+## Refresh workflow
 
-The user has tested a newer refresh graph successfully in ComfyUI:
+The user's tested Extend Backport refresh graph is integrated on `gpt-test-branch`.
 
-- Extend Backport video-extend node;
-- decode the previous video's final 22 frames into `context_latents`;
+Runtime behavior:
+
+- load the previous segment directly;
+- calculate its exact H3-aligned frame count from the configured segment length;
+- load only the final 22 frames;
+- VAE-encode those frames as `context_latent`;
 - `context_frames = 7`;
-- quality is comparable to the prior clean refresh.
+- pass prior video audio as `ref_audio`;
+- reverse/select the tail frame using the user's tested first-frame selector path;
+- batch active reference images densely and remap render-only `<Picture N>` tags when missing/excluded references require compaction.
 
-The repository does **not** yet implement this graph.
+For 8-second segments, H3 frame count is 192 and the loader skips 170 frames.
 
-Current checked-in `Minimax_auto_refresh_API.json` still uses the older `MiniMaxH3HybridRefAndKeyframe` plus extracted first-frame path.
-
-The exact Extend Backport node family publicly exposes `MiniMaxH3EncodeAVPatched` and `MiniMaxH3VideoExtendPatched`, but the user's known-good local graph should be preferred over reconstructing a possibly different local node/version by guesswork.
-
-Next integration input needed from the user: export the tested refresh workflow in **API format** and provide that JSON. The user should not manually port code; ChatGPT should integrate the export and update Python/tests.
+The old `MiniMaxH3HybridRefAndKeyframe` graph is preserved as `Minimax_auto_repair_API.json` and is used only by `--repair`, so the refresh migration does not remove two-keyframe repair behavior.
 
 ## Continuity philosophy
 

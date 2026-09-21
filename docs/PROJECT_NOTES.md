@@ -340,8 +340,11 @@ The append workflow should pass only the final 22 frames of the previous video i
 
 Current implementation:
 
+- compute the previous segment's exact H3-aligned frame count using the same `17n+5` length rule as the workflow;
 - skip to the final 22 frames;
 - set `frame_load_cap = 22`.
+
+The shared calculation is used by both append and refresh. For an 8-second segment it yields 192 total frames and `skip_first_frames = 170`; for a 6-second segment it yields 158 total frames and `skip_first_frames = 136`.
 
 Reason: the H3 node internally only needs the relevant tail and should not receive the full prior clip.
 
@@ -394,7 +397,7 @@ Tested settings:
 
 This tested as effectively as a quality refresh and is the desired refresh baseline.
 
-**Repository integration status:** pending. The checked-in `Minimax_auto_refresh_API.json` still uses the older `MiniMaxH3HybridRefAndKeyframe` / first-frame refresh graph and does not yet contain `context_latents` wiring. Do not claim the context-latent refresh is implemented until the workflow JSON and preparation code are updated and tested. Prefer importing the user's known-good ComfyUI API export rather than guessing the exact local node graph.
+**Repository integration status:** implemented on `gpt-test-branch`. The checked-in refresh graph uses `MiniMaxH3VideoExtendPatched`, VAE-encoded context latents from the final 22 frames of the prior video, `context_frames = 7`, the prior audio, and the user's tested first-frame selector path. The old hybrid keyframe graph is preserved separately as `Minimax_auto_repair_API.json` for `--repair`.
 
 ### Fade-to-black end states
 

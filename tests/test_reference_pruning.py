@@ -59,26 +59,35 @@ class MissingReferenceImageTests(unittest.TestCase):
                     )
 
                     self.assertEqual(removed, [2, 4, 6])
-                    destination_name = {
-                        "initial": minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-                        "append": minimax.INITIAL_REFERENCE_CONDITIONING_NODE_NAME,
-                        "refresh": minimax.REFRESH_CONDITIONING_NODE_NAME,
-                    }[workflow_kind]
-                    _, destination = minimax.find_workflow_node(
-                        workflow,
-                        destination_name,
-                        f"{workflow_kind} test workflow",
-                    )
-                    for image_number in range(1, 7):
-                        input_name = f"ref_images.ref_image_{image_number - 1}"
-                        container, leaf_name = minimax._reference_input_container(
-                            destination,
-                            input_name,
+                    if workflow_kind == "refresh":
+                        _, destination = minimax.find_workflow_node(
+                            workflow,
+                            minimax.REFRESH_REFERENCE_BATCH_NODE_NAME,
+                            f"{workflow_kind} test workflow",
+                            "ImageBatchMulti",
                         )
-                        self.assertEqual(
-                            leaf_name in container,
-                            image_number in {1, 3, 5},
+                        self.assertEqual(destination["inputs"]["inputcount"], 3)
+                        self.assertTrue(all(
+                            f"image_{slot}" in destination["inputs"]
+                            for slot in (1, 2, 3)
+                        ))
+                        self.assertNotIn("image_4", destination["inputs"])
+                    else:
+                        _, destination = minimax._reference_destination(
+                            workflow,
+                            f"{workflow_kind} test workflow",
+                            workflow_kind,
                         )
+                        for image_number in range(1, 7):
+                            input_name = f"ref_images.ref_image_{image_number - 1}"
+                            container, leaf_name = minimax._reference_input_container(
+                                destination,
+                                input_name,
+                            )
+                            self.assertEqual(
+                                leaf_name in container,
+                                image_number in {1, 3, 5},
+                            )
 
     def test_absolute_existing_image_and_comfy_suffix_are_accepted(self):
         with tempfile.TemporaryDirectory() as input_directory:
@@ -135,10 +144,20 @@ class MissingReferenceImageTests(unittest.TestCase):
                             input_directory=input_directory,
                         )
 
-                        self.assertEqual(
-                            destination["inputs"][input_name],
-                            [node_id, 0],
-                        )
+                        if workflow_kind == "refresh":
+                            self.assertIn(
+                                [node_id, 0],
+                                [
+                                    value
+                                    for key, value in destination["inputs"].items()
+                                    if key.startswith("image_")
+                                ],
+                            )
+                        else:
+                            self.assertEqual(
+                                destination["inputs"][input_name],
+                                [node_id, 0],
+                            )
 
     def test_existing_but_undecodable_image_is_disconnected(self):
         with tempfile.TemporaryDirectory() as input_directory:

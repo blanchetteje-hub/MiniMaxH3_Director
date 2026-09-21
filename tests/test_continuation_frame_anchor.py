@@ -126,8 +126,10 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
             "prepared append workflow",
             "VHS_LoadVideoPath",
         )
-        self.assertEqual(load_video["inputs"]["skip_first_frames"], 122)
+        self.assertEqual(load_video["inputs"]["skip_first_frames"], 136)
         self.assertEqual(load_video["inputs"]["frame_load_cap"], 22)
+        self.assertEqual(minimax.h3_frame_count_for_duration(6.0), 158)
+        self.assertEqual(minimax.h3_context_tail_skip_frames(6.0), 136)
 
         _, batch_after = minimax.find_workflow_node(
             prepared,

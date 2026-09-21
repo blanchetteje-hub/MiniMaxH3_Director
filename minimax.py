@@ -133,6 +133,8 @@ APPEND_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_append_API.json")
 
 REFRESH_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_refresh_API.json")
 
+REPAIR_WORKFLOW_FILE = os.path.join(SCRIPT_DIR, "Minimax_auto_repair_API.json")
+
 STORY_FILE = os.path.join(SCRIPT_DIR, "story.txt")
 
 STORY_ARC_FILE = os.path.join(SCRIPT_DIR, "story_arc.json")
@@ -357,11 +359,24 @@ MATH_NODE_NAME = "Math Expression"
 
 LOAD_VIDEO_NODE_NAME = "Load_Video"
 
-REFRESH_FIRST_FRAME_NODE_NAME = "Refresh First Frame"
+REFRESH_LOAD_VIDEO_NODE_NAME = "Load Video"
+
+REFRESH_EXTEND_NODE_NAME = "MiniMax H3 Video Extend (Backported)"
+
+REFRESH_REFERENCE_BATCH_NODE_NAME = "Image Batch Multi"
+
+REFRESH_VAE_ENCODE_NODE_NAME = "VAE Encode"
+
+REFRESH_FIRST_FRAME_SELECTOR_NODE_NAME = "ImageSelector"
+
+REPAIR_FIRST_FRAME_NODE_NAME = "Refresh First Frame"
 
 REPAIR_LAST_FRAME_NODE_NAME = "Repair Last Frame"
 
-REFRESH_CONDITIONING_NODE_NAME = "MiniMax H3 Hybrid Cond (R2V + I2V)"
+REPAIR_CONDITIONING_NODE_NAME = "MiniMax H3 Hybrid Cond (R2V + I2V)"
+
+# Compatibility alias retained for external callers; refresh now means Extend.
+REFRESH_CONDITIONING_NODE_NAME = REFRESH_EXTEND_NODE_NAME
 
 INITIAL_REFERENCE_CONDITIONING_NODE_NAME = "MiniMax H3 Reference to Video"
 
@@ -1580,6 +1595,24 @@ def generate_random_llm_seed():
     return secrets.randbelow(MAX_LLM_SEED) + 1
 
 
+# Return the exact frame count produced by the H3 length expression.
+def h3_frame_count_for_duration(duration):
+    """Return H3's aligned 24-fps frame count (17n+5 constraint)."""
+
+    base_frames = max(5, round(float(duration) * FRAME_RATE))
+    return base_frames + (5 - (base_frames % 17)) % 17
+
+
+# Return how many leading frames to skip to keep only the final context tail.
+def h3_context_tail_skip_frames(duration, context_frames=APPEND_CONTEXT_FRAMES):
+    """Return the leading-frame skip required for a final context tail."""
+
+    return max(
+        0,
+        h3_frame_count_for_duration(duration) - int(context_frames),
+    )
+
+
 # ============================================================
 # COMMAND LINE
 # ============================================================
@@ -2087,7 +2120,11 @@ def _reference_destination(workflow, workflow_label, workflow_kind):
         destination_class = "MiniMaxH3ReferenceToVideo"
         input_names = [f"ref_images.ref_image_{number}" for number in range(6)]
     elif workflow_kind == "refresh":
-        destination_name = REFRESH_CONDITIONING_NODE_NAME
+        destination_name = REFRESH_REFERENCE_BATCH_NODE_NAME
+        destination_class = "ImageBatchMulti"
+        input_names = [f"image_{number}" for number in range(1, 7)]
+    elif workflow_kind == "repair":
+        destination_name = REPAIR_CONDITIONING_NODE_NAME
         destination_class = "MiniMaxH3HybridRefAndKeyframe"
         input_names = [f"ref_images.ref_image_{number}" for number in range(6)]
     else:
@@ -2100,7 +2137,6 @@ def _reference_destination(workflow, workflow_label, workflow_kind):
         destination_class,
     )
     return destination_name, destination, input_names
-
 
 # Return the actual input mapping and key for flat or nested API JSON.
 def _reference_input_container(destination, input_name):
@@ -2139,6 +2175,48 @@ def prune_missing_reference_images(
         for value in (excluded_picture_ids or ())
         if str(value).isdigit() and 1 <= int(value) <= 6
     }
+
+    # The Extend Backport node receives one dense IMAGE batch, so refresh
+    # references must be compacted while preserving canonical->packed Picture
+    # numbering for the render-only H3 prompt.
+    if workflow_kind == "refresh":
+        retained = []
+        for image_number, node_name in enumerate(
+            REFERENCE_IMAGE_NODE_NAMES,
+            start=1,
+        ):
+            node_id, image_node = find_workflow_node(
+                workflow,
+                node_name,
+                workflow_label,
+                "LoadImage",
+            )
+            image_name = image_node["inputs"].get("image")
+            image_path, decode_error = _validate_comfy_input_image(
+                image_name,
+                input_directory,
+            )
+            if image_number in excluded:
+                decode_error = "excluded by continuity state"
+            if decode_error is None:
+                retained.append((image_number, node_id))
+            else:
+                removed.append(image_number)
+
+        inputs = destination["inputs"]
+        for input_name in list(inputs):
+            if re.fullmatch(r"image_\d+", input_name):
+                del inputs[input_name]
+        picture_slot_map = {}
+        for packed_slot, (picture_number, node_id) in enumerate(retained, start=1):
+            inputs[f"image_{packed_slot}"] = [node_id, 0]
+            picture_slot_map[picture_number] = packed_slot
+        inputs["inputcount"] = len(retained)
+
+        if return_picture_slot_map:
+            return removed, picture_slot_map
+        return removed
+
     for image_number, (node_name, input_name) in enumerate(
         zip(REFERENCE_IMAGE_NODE_NAMES, input_names),
         start=1,
@@ -2171,11 +2249,7 @@ def prune_missing_reference_images(
         if connection is not None:
             del container[leaf_name]
         removed.append(image_number)
-        #print(
-        #    f"WARNING: {workflow_label} disconnected Reference Image "
-        #    f"{image_number} from '{destination_name}.{input_name}' because "
-        #    f"{decode_error}: {image_path or image_name!r}"
-        #)
+
     if return_picture_slot_map:
         picture_slot_map = {
             picture_number: picture_number
@@ -2184,7 +2258,6 @@ def prune_missing_reference_images(
         }
         return removed, picture_slot_map
     return removed
-
 
 # Disconnect selected Picture slots from one workflow's conditioning.
 def disconnect_reference_images(
@@ -2199,9 +2272,14 @@ def disconnect_reference_images(
     if workflow_kind in {"initial", "append"}:
         destination_name = INITIAL_REFERENCE_CONDITIONING_NODE_NAME
         input_names = [f"ref_images.ref_image_{number}" for number in range(6)]
-    elif workflow_kind == "refresh":
-        destination_name = REFRESH_CONDITIONING_NODE_NAME
+    elif workflow_kind == "repair":
+        destination_name = REPAIR_CONDITIONING_NODE_NAME
         input_names = [f"ref_images.ref_image_{number}" for number in range(6)]
+    elif workflow_kind == "refresh":
+        raise ValueError(
+            "Refresh references are a dense batch; pass exclusions through "
+            "prune_missing_reference_images instead."
+        )
     else:
         raise ValueError(f"Unknown workflow kind: {workflow_kind!r}")
 
@@ -2325,9 +2403,9 @@ def verify_reference_images(
         refresh_references = active_references(
             refresh_workflow,
             "refresh workflow",
-            REFRESH_CONDITIONING_NODE_NAME,
+            REFRESH_REFERENCE_BATCH_NODE_NAME,
             [
-                (image_number, f"ref_images.ref_image_{image_number - 1}")
+                (image_number, f"image_{image_number}")
                 for image_number in range(1, 7)
             ],
         )
@@ -6224,6 +6302,35 @@ def connect_append_workflow_inputs(workflow, workflow_label):
         )
 
 
+# Restore the Extend Backport refresh graph by stable node title.
+def connect_refresh_workflow_inputs(workflow, workflow_label):
+    """Restore refresh video/context connections after a GUI API export."""
+
+    connections = (
+        (MATH_NODE_NAME, "values.a", DURATION_NODE_NAME, 0),
+        (REFRESH_EXTEND_NODE_NAME, "length", MATH_NODE_NAME, 1),
+        (REFRESH_EXTEND_NODE_NAME, "prompt", PROMPT_NODE_NAME, 0),
+        (REFRESH_VAE_ENCODE_NODE_NAME, "pixels", REFRESH_LOAD_VIDEO_NODE_NAME, 0),
+        (REFRESH_EXTEND_NODE_NAME, "context_latent", REFRESH_VAE_ENCODE_NODE_NAME, 0),
+        ("Image Batch Reverse", "images", REFRESH_LOAD_VIDEO_NODE_NAME, 0),
+        (REFRESH_FIRST_FRAME_SELECTOR_NODE_NAME, "images", "Image Batch Reverse", 0),
+        (REFRESH_EXTEND_NODE_NAME, "first_frame", REFRESH_FIRST_FRAME_SELECTOR_NODE_NAME, 0),
+        (REFRESH_EXTEND_NODE_NAME, "ref_images", REFRESH_REFERENCE_BATCH_NODE_NAME, 0),
+        (REFRESH_EXTEND_NODE_NAME, "ref_audio", REFRESH_LOAD_VIDEO_NODE_NAME, 2),
+        ("Basic Guider", "conditioning", REFRESH_EXTEND_NODE_NAME, 0),
+        ("SamplerCustomAdvanced", "latent_image", REFRESH_EXTEND_NODE_NAME, 1),
+    )
+    for destination_name, input_name, source_name, output_index in connections:
+        connect_named_connection(
+            workflow,
+            destination_name,
+            input_name,
+            source_name,
+            output_index,
+            workflow_label,
+        )
+
+
 # Validate workflow.
 def validate_workflow(workflow, workflow_label, is_append=False):
     required = (
@@ -6344,31 +6451,83 @@ def validate_workflow(workflow, workflow_label, is_append=False):
         )
 
 
-# Validate the refresh graph, including its frame and reference inputs.
+# Validate the refresh graph, including its latent context inputs.
 def validate_refresh_workflow(workflow, workflow_label):
-    """Validate the refresh graph, including its frame and reference inputs."""
+    """Validate the Extend Backport refresh graph."""
 
     validate_workflow(workflow, workflow_label, is_append=False)
     find_workflow_node(
         workflow,
-        REFRESH_FIRST_FRAME_NODE_NAME,
+        REFRESH_LOAD_VIDEO_NODE_NAME,
+        workflow_label,
+        "VHS_LoadVideoPath",
+    )
+    _, extend = find_workflow_node(
+        workflow,
+        REFRESH_EXTEND_NODE_NAME,
+        workflow_label,
+        "MiniMaxH3VideoExtendPatched",
+    )
+    if "context_frames" not in extend["inputs"]:
+        raise RuntimeError(
+            f"Node '{REFRESH_EXTEND_NODE_NAME}' in {workflow_label} is "
+            "missing input 'context_frames'."
+        )
+    find_workflow_node(
+        workflow,
+        REFRESH_REFERENCE_BATCH_NODE_NAME,
+        workflow_label,
+        "ImageBatchMulti",
+    )
+    connect_refresh_workflow_inputs(workflow, workflow_label)
+
+    required_connections = (
+        (MATH_NODE_NAME, "values.a", DURATION_NODE_NAME, 0),
+        (REFRESH_EXTEND_NODE_NAME, "length", MATH_NODE_NAME, 1),
+        (REFRESH_EXTEND_NODE_NAME, "prompt", PROMPT_NODE_NAME, 0),
+        (REFRESH_VAE_ENCODE_NODE_NAME, "pixels", REFRESH_LOAD_VIDEO_NODE_NAME, 0),
+        (REFRESH_EXTEND_NODE_NAME, "context_latent", REFRESH_VAE_ENCODE_NODE_NAME, 0),
+        (REFRESH_EXTEND_NODE_NAME, "first_frame", REFRESH_FIRST_FRAME_SELECTOR_NODE_NAME, 0),
+        (REFRESH_EXTEND_NODE_NAME, "ref_images", REFRESH_REFERENCE_BATCH_NODE_NAME, 0),
+        (REFRESH_EXTEND_NODE_NAME, "ref_audio", REFRESH_LOAD_VIDEO_NODE_NAME, 2),
+        ("Basic Guider", "conditioning", REFRESH_EXTEND_NODE_NAME, 0),
+        ("SamplerCustomAdvanced", "latent_image", REFRESH_EXTEND_NODE_NAME, 1),
+    )
+    for args in required_connections:
+        validate_named_connection(
+            workflow,
+            *args,
+            workflow_label=workflow_label,
+        )
+
+
+# Validate the legacy two-keyframe graph reserved for --repair.
+def validate_repair_base_workflow(workflow, workflow_label):
+    """Validate the old hybrid keyframe graph used only by repair."""
+
+    validate_workflow(workflow, workflow_label, is_append=False)
+    find_workflow_node(
+        workflow,
+        REPAIR_FIRST_FRAME_NODE_NAME,
         workflow_label,
         "LoadImage",
     )
     find_workflow_node(
         workflow,
-        REFRESH_CONDITIONING_NODE_NAME,
+        REPAIR_CONDITIONING_NODE_NAME,
         workflow_label,
         "MiniMaxH3HybridRefAndKeyframe",
     )
     validate_named_connection(
         workflow,
-        REFRESH_CONDITIONING_NODE_NAME,
+        REPAIR_CONDITIONING_NODE_NAME,
         "first_frame",
-        REFRESH_FIRST_FRAME_NODE_NAME,
+        REPAIR_FIRST_FRAME_NODE_NAME,
         0,
         workflow_label,
     )
+
+
 # Normalize lora list.
 def normalize_lora_list(loras):
     normalized = []
@@ -18989,6 +19148,25 @@ def _condition_append_prompt_for_h3(
     )
 
 
+# Apply clean-refresh Picture exclusion and dense batch packing at render time.
+def _condition_refresh_prompt_for_h3(
+    h3_prompt,
+    excluded_picture_ids,
+    picture_slot_map,
+):
+    """Apply refresh Picture exclusion and dense batch packing at H3 boundary."""
+
+    conditioned = _replace_excluded_picture_tags_for_h3(
+        h3_prompt,
+        "clean_refresh",
+        excluded_picture_ids,
+    )
+    return _remap_append_picture_tags_for_h3(
+        conditioned,
+        picture_slot_map,
+    )
+
+
 # Remove incompatible Picture conditioning from continuation subject text.
 def _h3_subject_definitions_for_conditioning(
     subject_definitions,
@@ -21143,7 +21321,7 @@ def _h3_workflow_input_snapshot(workflow):
                 selected[key] = inputs[key]
         if title.startswith("Reference Image") or title in {
             LOAD_VIDEO_NODE_NAME,
-            REFRESH_FIRST_FRAME_NODE_NAME,
+            REPAIR_FIRST_FRAME_NODE_NAME,
             PROMPT_NODE_NAME,
             NOISE_NODE_NAME,
             SCHEDULER_NODE_NAME,
@@ -21339,29 +21517,12 @@ def _render_segment_with_retries(
         loras = [lora_override]
     loras = normalize_lora_list(loras)
     refresh_segment = is_refresh_segment(segment, refresh_interval)
-    refresh_frame_name = None
-    continuation_anchor_path = None
     if refresh_segment:
-        continuation_anchor_path = extract_continuation_frame(
-            segment,
-            previous_video_path,
-        )
-    if continuation_anchor_path is not None:
         print(
-            f"Continuation first-frame anchor: {os.path.abspath(continuation_anchor_path)}",
-            flush=True,
-        )
-    if refresh_segment:
-        refresh_notice = (
             f"AUTO REFRESH: segment {segment} is using "
-            f"'{os.path.basename(REFRESH_WORKFLOW_FILE)}'."
-        )
-        print(refresh_notice, flush=True)
-        refresh_frame_name = continuation_anchor_path
-        print(refresh_notice, flush=True)
-        print(
-            f"AUTO REFRESH: extracted the final frame of segment {segment - 1} "
-            f"as {os.path.abspath(refresh_frame_name)}.",
+            f"'{os.path.basename(REFRESH_WORKFLOW_FILE)}' with the final "
+            f"{APPEND_CONTEXT_FRAMES} frames as context latents "
+            f"(context_frames={DEFAULT_CONTEXT_FRAMES}).",
             flush=True,
         )
     for retry_number in range(COMFY_RENDER_RETRIES + 1):
@@ -21405,11 +21566,12 @@ def _render_segment_with_retries(
                 current_duration,
                 current_megapixels,
                 h3_prompt,
-                refresh_frame_name,
+                previous_video_path,
                 segment,
                 steps,
                 **lora_kwargs,
                 continuity_state=continuity_state,
+                segment_length=segment_length,
             )
         else:
             workflow_type = "append"
@@ -21446,7 +21608,7 @@ def _render_segment_with_retries(
                     workflow_type,
                     video_path,
                     previous_video_path=previous_video_path,
-                    refresh_frame_path=refresh_frame_name,
+                    refresh_frame_path=None,
                 )
             return workflow, video_path, width, height, current_megapixels
         except (ComfyUIExecutionError, ComfyUIRenderTimeout) as error:
@@ -21614,12 +21776,12 @@ def prepare_initial_workflow(
     return workflow
 
 
-# Prepare a fresh reference-to-video segment from the prior last frame.
+# Prepare a context-latent refresh from the prior video tail.
 def prepare_refresh_workflow(
     duration,
     megapixels,
     h3_prompt,
-    refresh_frame_name,
+    previous_video_path,
     segment_number,
     steps=6,
     loras=None,
@@ -21627,10 +21789,11 @@ def prepare_refresh_workflow(
     reference_workflow=None,
     continuity_state=None,
     excluded_picture_ids=None,
+    segment_length=None,
     noise_seed=None,
     output_prefix=None,
 ):
-    """Prepare a fresh reference-to-video segment from the prior last frame."""
+    """Prepare the Extend Backport context-latent refresh graph."""
 
     if lora_override is not None:
         if loras:
@@ -21640,8 +21803,15 @@ def prepare_refresh_workflow(
     label = f"refresh workflow '{REFRESH_WORKFLOW_FILE}'"
     validate_refresh_workflow(workflow, label)
 
-    if not isinstance(refresh_frame_name, str) or not refresh_frame_name.strip():
-        raise ValueError("A refresh frame filename is required.")
+    previous_video_path = os.path.abspath(os.fspath(previous_video_path))
+    if (
+        not os.path.isfile(previous_video_path)
+        or os.path.getsize(previous_video_path) == 0
+    ):
+        raise FileNotFoundError(
+            f"Previous video is missing or empty: {previous_video_path}"
+        )
+
     if reference_workflow is None:
         reference_workflow = load_workflow(INITIAL_WORKFLOW_FILE)
     copy_reference_image_inputs(reference_workflow, workflow, label)
@@ -21649,70 +21819,103 @@ def prepare_refresh_workflow(
     incompatible_picture_ids.update(
         get_refresh_incompatible_picture_ids(continuity_state)
     )
-    prune_missing_reference_images(workflow, label, "refresh")
-    disconnect_reference_images(
+    removed_picture_ids, picture_slot_map = prune_missing_reference_images(
         workflow,
         label,
         "refresh",
-        incompatible_picture_ids,
-        reason="an active persistent structural change",
+        excluded_picture_ids=incompatible_picture_ids,
+        return_picture_slot_map=True,
+    )
+    h3_prompt = _condition_refresh_prompt_for_h3(
+        h3_prompt,
+        removed_picture_ids,
+        picture_slot_map,
     )
 
-    set_node_input(
+    _, extend = find_workflow_node(
         workflow,
-        REFRESH_FIRST_FRAME_NODE_NAME,
-        "image",
-        _comfy_image_reference(refresh_frame_name),
+        REFRESH_EXTEND_NODE_NAME,
         label,
-        "LoadImage",
+        "MiniMaxH3VideoExtendPatched",
+    )
+    if picture_slot_map:
+        connect_named_connection(
+            workflow,
+            REFRESH_EXTEND_NODE_NAME,
+            "ref_images",
+            REFRESH_REFERENCE_BATCH_NODE_NAME,
+            0,
+            label,
+        )
+    else:
+        extend["inputs"].pop("ref_images", None)
+
+    set_node_input(
+        workflow, DURATION_NODE_NAME, "value", duration,
+        label, "PrimitiveFloat",
     )
     set_node_input(
-        workflow,
-        REFRESH_CONDITIONING_NODE_NAME,
-        "also_ref_first_frame",
-        False,
-        label,
-        "MiniMaxH3HybridRefAndKeyframe",
+        workflow, PROMPT_NODE_NAME, "text", h3_prompt,
+        label, "DPRandomGenerator",
     )
     set_node_input(
-        workflow,
-        DURATION_NODE_NAME,
-        "value",
-        duration,
-        label,
-        "PrimitiveFloat",
+        workflow, SCHEDULER_NODE_NAME, "steps", steps,
+        label, "BasicScheduler",
     )
     set_node_input(
-        workflow,
-        PROMPT_NODE_NAME,
-        "text",
-        h3_prompt,
-        label,
-        "DPRandomGenerator",
-    )
-    set_node_input(
-        workflow,
-        SCHEDULER_NODE_NAME,
-        "steps",
-        steps,
-        label,
-        "BasicScheduler",
-    )
-    set_node_input(
-        workflow,
-        NOISE_NODE_NAME,
-        "noise_seed",
+        workflow, NOISE_NODE_NAME, "noise_seed",
         generate_random_seed() if noise_seed is None else int(noise_seed),
-        label,
-        "RandomNoise",
+        label, "RandomNoise",
+    )
+    set_node_input(
+        workflow, RESOLUTION_NODE_NAME, "megapixels", megapixels,
+        label, "ResolutionSelector",
     )
     set_node_input(
         workflow,
-        RESOLUTION_NODE_NAME,
-        "megapixels",
-        megapixels,
+        REFRESH_LOAD_VIDEO_NODE_NAME,
+        "video",
+        previous_video_path,
         label,
-        "ResolutionSelector",
+        "VHS_LoadVideoPath",
+    )
+    set_node_input(
+        workflow,
+        REFRESH_LOAD_VIDEO_NODE_NAME,
+        "format",
+        "H3",
+        label,
+        "VHS_LoadVideoPath",
+    )
+    context_segment_length = (
+        duration if segment_length is None else segment_length
+    )
+    set_node_input(
+        workflow,
+        REFRESH_LOAD_VIDEO_NODE_NAME,
+        "skip_first_frames",
+        h3_context_tail_skip_frames(
+            context_segment_length,
+            APPEND_CONTEXT_FRAMES,
+        ),
+        label,
+        "VHS_LoadVideoPath",
+    )
+    set_node_input(
+        workflow,
+        REFRESH_LOAD_VIDEO_NODE_NAME,
+        "frame_load_cap",
+        APPEND_CONTEXT_FRAMES,
+        label,
+        "VHS_LoadVideoPath",
+    )
+    set_node_input(
+        workflow,
+        REFRESH_EXTEND_NODE_NAME,
+        "context_frames",
+        DEFAULT_CONTEXT_FRAMES,
+        label,
+        "MiniMaxH3VideoExtendPatched",
     )
     set_node_input(
         workflow,
@@ -21724,7 +21927,6 @@ def prepare_refresh_workflow(
     )
     configure_lora_chain(workflow, loras, label)
     return workflow
-
 
 # Next workflow node id.
 def _next_workflow_node_id(workflow):
@@ -21756,7 +21958,7 @@ def _repair_last_frame_node(workflow, conditioning, label):
             if (
                 isinstance(title, str)
                 and title.strip()
-                and title.strip() != REFRESH_FIRST_FRAME_NODE_NAME
+                and title.strip() != REPAIR_FIRST_FRAME_NODE_NAME
                 and title.strip() not in REFERENCE_IMAGE_NODE_NAMES
             ):
                 return str(connection[0]), source, title.strip()
@@ -21769,7 +21971,7 @@ def _repair_last_frame_node(workflow, conditioning, label):
         if (
             isinstance(title, str)
             and title.strip().lower().endswith("last frame")
-            and title != REFRESH_FIRST_FRAME_NODE_NAME
+            and title != REPAIR_FIRST_FRAME_NODE_NAME
         ):
             candidates.append((str(node_id), node, title.strip()))
     if len(candidates) > 1:
@@ -21798,27 +22000,27 @@ def validate_repair_workflow(
 
     find_workflow_node(
         workflow,
-        REFRESH_FIRST_FRAME_NODE_NAME,
+        REPAIR_FIRST_FRAME_NODE_NAME,
         workflow_label,
         "LoadImage",
     )
     find_workflow_node(
         workflow,
-        REFRESH_CONDITIONING_NODE_NAME,
+        REPAIR_CONDITIONING_NODE_NAME,
         workflow_label,
         "MiniMaxH3HybridRefAndKeyframe",
     )
     validate_named_connection(
         workflow,
-        REFRESH_CONDITIONING_NODE_NAME,
+        REPAIR_CONDITIONING_NODE_NAME,
         "first_frame",
-        REFRESH_FIRST_FRAME_NODE_NAME,
+        REPAIR_FIRST_FRAME_NODE_NAME,
         0,
         workflow_label,
     )
     _, conditioning = find_workflow_node(
         workflow,
-        REFRESH_CONDITIONING_NODE_NAME,
+        REPAIR_CONDITIONING_NODE_NAME,
         workflow_label,
         "MiniMaxH3HybridRefAndKeyframe",
     )
@@ -21828,7 +22030,7 @@ def validate_repair_workflow(
             continue
         validate_named_connection(
             workflow,
-            REFRESH_CONDITIONING_NODE_NAME,
+            REPAIR_CONDITIONING_NODE_NAME,
             input_name,
             reference_node_name,
             0,
@@ -21848,13 +22050,13 @@ def validate_repair_workflow(
     )
     validate_named_connection(
         workflow,
-        REFRESH_CONDITIONING_NODE_NAME,
+        REPAIR_CONDITIONING_NODE_NAME,
         "last_frame",
         last_frame_node_name,
         0,
         workflow_label,
     )
-# Prepare the refresh graph as an isolated first/last-keyframe bridge.
+# Prepare the legacy hybrid graph as an isolated first/last-keyframe bridge.
 def prepare_repair_workflow(
     duration,
     megapixels,
@@ -21867,27 +22069,65 @@ def prepare_repair_workflow(
     lora_override=None,
     reference_workflow=None,
 ):
-    """Prepare the refresh graph as an isolated first/last-keyframe bridge."""
+    """Prepare the dedicated two-keyframe repair graph."""
 
+    if lora_override is not None:
+        if loras:
+            raise ValueError("Pass loras or lora_override, not both.")
+        loras = [lora_override]
     if not isinstance(first_frame_name, str) or not first_frame_name.strip():
         raise ValueError("A repair first-frame filename is required.")
     if not isinstance(last_frame_name, str) or not last_frame_name.strip():
         raise ValueError("A repair last-frame filename is required.")
-    workflow = prepare_refresh_workflow(
-        duration,
-        megapixels,
-        h3_prompt,
-        first_frame_name,
-        segment_number,
-        steps=steps,
-        loras=loras,
-        lora_override=lora_override,
-        reference_workflow=reference_workflow,
+
+    workflow = load_workflow(REPAIR_WORKFLOW_FILE)
+    label = f"repair workflow '{REPAIR_WORKFLOW_FILE}'"
+    validate_repair_base_workflow(workflow, label)
+    if reference_workflow is None:
+        reference_workflow = load_workflow(INITIAL_WORKFLOW_FILE)
+    copy_reference_image_inputs(reference_workflow, workflow, label)
+    prune_missing_reference_images(workflow, label, "repair")
+
+    set_node_input(
+        workflow,
+        REPAIR_FIRST_FRAME_NODE_NAME,
+        "image",
+        _comfy_image_reference(first_frame_name),
+        label,
+        "LoadImage",
     )
-    label = f"repair workflow '{REFRESH_WORKFLOW_FILE}'"
+    set_node_input(
+        workflow,
+        REPAIR_CONDITIONING_NODE_NAME,
+        "also_ref_first_frame",
+        False,
+        label,
+        "MiniMaxH3HybridRefAndKeyframe",
+    )
+    set_node_input(
+        workflow, DURATION_NODE_NAME, "value", duration,
+        label, "PrimitiveFloat",
+    )
+    set_node_input(
+        workflow, PROMPT_NODE_NAME, "text", h3_prompt,
+        label, "DPRandomGenerator",
+    )
+    set_node_input(
+        workflow, SCHEDULER_NODE_NAME, "steps", steps,
+        label, "BasicScheduler",
+    )
+    set_node_input(
+        workflow, NOISE_NODE_NAME, "noise_seed", generate_random_seed(),
+        label, "RandomNoise",
+    )
+    set_node_input(
+        workflow, RESOLUTION_NODE_NAME, "megapixels", megapixels,
+        label, "ResolutionSelector",
+    )
+
     _, conditioning = find_workflow_node(
         workflow,
-        REFRESH_CONDITIONING_NODE_NAME,
+        REPAIR_CONDITIONING_NODE_NAME,
         label,
         "MiniMaxH3HybridRefAndKeyframe",
     )
@@ -21922,6 +22162,7 @@ def prepare_repair_workflow(
         label,
         "SaveVideo",
     )
+    configure_lora_chain(workflow, loras, label)
     validate_repair_workflow(
         workflow,
         label,
@@ -21929,7 +22170,6 @@ def prepare_repair_workflow(
         preserved_conditioning=preserved_conditioning,
     )
     return workflow
-
 
 # Prepare append workflow.
 def prepare_append_workflow(
@@ -22013,10 +22253,9 @@ def prepare_append_workflow(
     context_segment_length = (
         duration if segment_length is None else segment_length
     )
-    skip_first_frames = max(
-        0,
-        round(float(context_segment_length) * FRAME_RATE)
-        - APPEND_CONTEXT_FRAMES,
+    skip_first_frames = h3_context_tail_skip_frames(
+        context_segment_length,
+        APPEND_CONTEXT_FRAMES,
     )
     set_node_input(
         workflow,
