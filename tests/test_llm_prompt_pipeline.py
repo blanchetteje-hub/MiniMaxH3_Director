@@ -466,7 +466,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         request = Mock(side_effect=[
             {
                 "raw_scene": (
-                    "At 00:00.000 seconds, Mark crosses the room.\\n"
+                    "At 00:00.000 seconds, Mark crosses the room.\n"
                     "End continuity state: Mark stands across the room."
                 ),
                 "beat_complete": True,
@@ -545,7 +545,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             },
             {
                 "raw_scene": (
-                    "At 00:00.000 seconds, Mark crosses the room.\\n"
+                    "At 00:00.000 seconds, Mark crosses the room.\n"
                     "End continuity state: Mark stands across the room."
                 ),
                 "beat_complete": True,
@@ -596,13 +596,13 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
         self.assertTrue(
             minimax._director_raw_scene_structure_errors(
-                "At 00:00.000 seconds, Mark crosses the room.\\n"
+                "At 00:00.000 seconds, Mark crosses the room.\n"
                 "End continuity state:"
             )
         )
         self.assertEqual(
             minimax._director_raw_scene_structure_errors(
-                "At 00:00.000 seconds, Mark crosses the room.\\n"
+                "At 00:00.000 seconds, Mark crosses the room.\n"
                 "End continuity state: Mark stands across the room."
             ),
             [],
