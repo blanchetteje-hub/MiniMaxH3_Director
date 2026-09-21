@@ -73,7 +73,7 @@ class MissingReferenceImageTests(unittest.TestCase):
                         ))
                         self.assertNotIn("image_4", destination["inputs"])
                     else:
-                        _, destination = minimax._reference_destination(
+                        _, destination, _ = minimax._reference_destination(
                             workflow,
                             f"{workflow_kind} test workflow",
                             workflow_kind,
