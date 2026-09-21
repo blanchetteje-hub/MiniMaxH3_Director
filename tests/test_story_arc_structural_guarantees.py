@@ -92,31 +92,26 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
 
         messages = minimax.build_macro_arc_validation_messages(story, arc)
         prompt = "\n".join(message["content"] for message in messages)
+        normalized = " ".join(prompt.split())
 
         self.assertIn(
-            "Every explicit visible action or visible state",
-            prompt,
+            "Every explicit visible action or visible state that establishes "
+            "a distinct point in the source timeline",
+            normalized,
         )
         self.assertIn(
-            "that establishes a distinct point in the source timeline",
-            prompt,
-        )
-        self.assertIn(
-            "Do not dismiss an explicit source action merely because it is calm,",
-            prompt,
-        )
-        self.assertIn(
+            "Do not dismiss an explicit source action merely because it is calm, "
             "introductory, mundane, or outside the main conflict.",
-            prompt,
+            normalized,
         )
         self.assertIn(
-            "only after all explicit source timeline actions/states are represented",
-            prompt,
+            "only AFTER all explicit source timeline actions/states are represented",
+            normalized,
         )
-
         self.assertIn(
-            "One required_event may cover multiple adjacent, causally continuous source",
-            prompt,
+            "One required_event may cover multiple adjacent, causally continuous "
+            "source actions",
+            normalized,
         )
 
     def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
