@@ -119,7 +119,9 @@ The first complete 8-beat gold benchmark is now locked and version-controlled at
 
 That file is the authoritative benchmark artifact for the Amy story. Do not duplicate the full gold prompts in this notes file.
 
-The benchmark is intended to be consumed by the future acceptance runner and reviewed fuzzily by GPT-5.6 Sol. Generated prompts are not required to string-match the gold prompt; they must preserve the gold behavior, timing discipline, continuity, scene intent, exclusions, sound/music progression, and expected end state.
+The benchmark is consumed by `tests/acceptance/run_acceptance.py` and reviewed fuzzily by GPT-5.6 Sol. Generated prompts are not required to string-match the gold prompt; they must preserve the gold behavior, timing discipline, continuity, scene intent, exclusions, sound/music progression, and expected end state.
+
+The runner executes `minimax.py` in an isolated temporary copy of the repository, injects the locked story/subject inputs, forces a fresh story-arc/beat generation, runs all eight prompt-only segments against the user's local LM Studio model, and writes `acceptance_run.json` plus diagnostic artifacts under `tests/acceptance/results/`. It intentionally performs no local semantic grading.
 
 
 The project needs a concrete end goal, not endless "looks better" debugging.
@@ -383,14 +385,16 @@ Example: if only Amy's upper body is visible in the prior context, explicitly re
 
 ### Refresh using context latents
 
-The current quality-refresh approach uses the extend backport node with decoded `context_latents` from the prior video.
+The tested quality-refresh approach uses the Extend Backport node with decoded `context_latents` from the prior video.
 
-Current tested settings:
+Tested settings:
 
-- pass the usual final 22 decoded frames;
+- pass the final 22 decoded frames;
 - set `context_frames = 7`.
 
-This tested as effectively as a quality refresh and should be treated as the current refresh baseline unless later evidence contradicts it.
+This tested as effectively as a quality refresh and is the desired refresh baseline.
+
+**Repository integration status:** pending. The checked-in `Minimax_auto_refresh_API.json` still uses the older `MiniMaxH3HybridRefAndKeyframe` / first-frame refresh graph and does not yet contain `context_latents` wiring. Do not claim the context-latent refresh is implemented until the workflow JSON and preparation code are updated and tested. Prefer importing the user's known-good ComfyUI API export rather than guessing the exact local node graph.
 
 ### Fade-to-black end states
 

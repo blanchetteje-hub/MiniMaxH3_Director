@@ -28,3 +28,4 @@ frontend/dist/assets/*
 CLAUDE.md
 tests/requirements-test.txt
 .vscode/settings.json
+\n# Local acceptance-run outputs\ntests/acceptance/results/\n

@@ -416,5 +416,20 @@
         "Literal final frame: black after the fade completes."
       ]
     }
-  ]
+  ],
+  "input_subjects": [
+    "<Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.",
+    "<Subject 2> is Will, a 10-year-old boy.",
+    "<Subject 3> is Amber, a 14-year-old girl."
+  ],
+  "acceptance_run": {
+    "segment_length_seconds": 8,
+    "total_length_seconds": 64,
+    "megapixels_default": 0.5,
+    "refresh_segments": [
+      7
+    ],
+    "vision_continuity": 0,
+    "mode": "prompt_generation"
+  }
 }
