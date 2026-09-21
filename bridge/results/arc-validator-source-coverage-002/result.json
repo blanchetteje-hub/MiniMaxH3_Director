@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-validator-source-coverage-002",
+  "kind": "llama_chat",
+  "started_at": 1790028294.455611,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one complete story arc. Return one small JSON object only. Missing source coverage is a blocking error."
+      },
+      {
+        "role": "user",
+        "content": "Check the proposed arc against the source story.\n\nSOURCE COVERAGE RULE:\nWalk through the SOURCE STORY in chronological order before judging the arc.\nEvery explicit visible action or visible state that establishes a distinct point in the source timeline must be represented by at least one required_event in the arc, in the same order.\nDo not dismiss an explicit source action merely because it is calm, introductory, mundane, or not part of the main conflict.\nExamples of source actions/states that require coverage when explicitly stated: a character cooking breakfast before danger arrives; a character already driving before a crash; a character sleeping before an intruder enters.\nDescriptive attributes such as hair color alone do not require their own event.\nOnly after all explicit source timeline actions/states are represented may sparse beats be filled with connective jobs.\n\nReject if any explicit source timeline action/state is missing from required_events.\nReturn the FIRST missing source action/state as the issue.\n\nSOURCE STORY\n--- STORY START ---\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n--- STORY END ---\n\nPROPOSED MACRO STORY ARC\n{\n  \"phases\": [\n    {\n      \"phase_number\": 1,\n      \"beat_start\": 1,\n      \"beat_end\": 2,\n      \"narrative_purpose\": \"Introduction and initial threat\",\n      \"broad_progression\": \"Amy is introduced in her home with her kids. A zombie breaks in, prompting Amy to rush her kids to the basement.\",\n      \"characters_introduced\": [\n        \"Amy\",\n        \"Will\",\n        \"Amber\"\n      ],\n      \"location\": \"Home\",\n      \"required_end_state\": \"Amy has rushed her kids to the basement and locked the door.\",\n      \"required_events\": [\n        {\n          \"id\": \"E1\",\n          \"event\": \"A zombie breaks the kitchen door window, alerting Amy to the danger.\",\n          \"beat_number\": 1\n        },\n        {\n          \"id\": \"E2\",\n          \"event\": \"Amy rushes her kids, Will and Amber, to the basement and locks the door.\",\n          \"beat_number\": 2,\n          \"depends_on\": [\n            \"E1\"\n          ]\n        }\n      ]\n    },\n    {\n      \"phase_number\": 2,\n      \"beat_start\": 3,\n      \"beat_end\": 8,\n      \"narrative_purpose\": \"Main conflict and resolution\",\n      \"broad_progression\": \"Amy retrieves her weapons and spends the majority of the film killing zombies as they attack her. She kills the last zombie, ending the threat.\",\n      \"characters_introduced\": [],\n      \"location\": \"Home\",\n      \"required_end_state\": \"Amy has killed all the zombies and lets her kids out of the basement.\",\n      \"required_events\": [\n        {\n          \"id\": \"E3\",\n          \"event\": \"Amy retrieves her hidden arsenal consisting of a pistol and a katana.\",\n          \"beat_number\": 3,\n          \"depends_on\": [\n            \"E2\"\n          ]\n        },\n        {\n          \"id\": \"E4\",\n          \"event\": \"Amy equips the pistol and katana.\",\n          \"beat_number\": 4,\n          \"depends_on\": [\n            \"E3\"\n          ]\n        },\n        {\n          \"id\": \"E5\",\n          \"event\": \"Amy kills several zombies as they try to attack her.\",\n          \"beat_number\": 5,\n          \"depends_on\": [\n            \"E4\"\n          ]\n        },\n        {\n          \"id\": \"E6\",\n          \"event\": \"Amy continues killing more zombies.\",\n          \"beat_number\": 6,\n          \"depends_on\": [\n            \"E5\"\n          ]\n        },\n        {\n          \"id\": \"E7\",\n          \"event\": \"Amy kills the last of the zombies.\",\n          \"beat_number\": 7,\n          \"depends_on\": [\n            \"E6\"\n          ]\n        },\n        {\n          \"id\": \"E8\",\n          \"event\": \"Amy lets her kids, Will and Amber, out of the basement.\",\n          \"beat_number\": 8,\n          \"depends_on\": [\n            \"E7\"\n          ]\n        }\n      ]\n    }\n  ]\n}\n\nOutput exactly one JSON object:\n{\"valid\": true, \"issues\": []}\nor\n{\"valid\": false, \"issues\": [\"one concise blocking issue\"]}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 180,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-m8wp0f01ib672k4k46apk",
+    "object": "chat.completion",
+    "created": 1790028294,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\"valid\": false, \"issues\": [\"Amy cooking breakfast is missing from required_events.\"]}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 1105,
+      "completion_tokens": 24,
+      "total_tokens": 1129,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790028297.6666481,
+  "status": "ok"
+}
