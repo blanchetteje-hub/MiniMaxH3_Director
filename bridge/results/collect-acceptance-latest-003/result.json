@@ -1,0 +1,29 @@
+{
+  "job_id": "collect-acceptance-latest-003",
+  "kind": "collect_files",
+  "started_at": 1790029248.7131863,
+  "collected_files": [
+    {
+      "path": "tests\\acceptance\\results\\amy_zombie_house-20260921-180851\\acceptance_run.json",
+      "status": "copied",
+      "size": 88467
+    },
+    {
+      "path": "tests\\acceptance\\results\\amy_zombie_house-20260921-181858\\acceptance_run.json",
+      "status": "copied",
+      "size": 37355
+    },
+    {
+      "path": "tests\\acceptance\\results\\amy_zombie_house-20260921-180851\\run.log",
+      "status": "copied",
+      "size": 58450
+    },
+    {
+      "path": "tests\\acceptance\\results\\amy_zombie_house-20260921-181858\\run.log",
+      "status": "copied",
+      "size": 572
+    }
+  ],
+  "finished_at": 1790029248.7131863,
+  "status": "ok"
+}
