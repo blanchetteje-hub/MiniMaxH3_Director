@@ -10867,16 +10867,21 @@ Reject when:
 
 Required events:
 - There must be exactly one concrete required event/job for every global beat.
-- Walk through the SOURCE STORY in chronological order before judging coverage.
-  Every explicit visible action or visible state that establishes a distinct
-  point in the source timeline must be represented by at least one required
-  event in the same order. Do not dismiss an explicit source action merely
-  because it is calm, introductory, mundane, or outside the main conflict.
-  Descriptive attributes alone do not require their own event.
+- SOURCE COVERAGE IS MANDATORY. Walk through the SOURCE STORY in chronological
+  order before judging the arc. Every explicit visible action or visible state
+  that establishes a distinct point in the source timeline must be represented
+  by at least one required_event in the arc, in the same order.
+- Do not dismiss an explicit source action merely because it is calm,
+  introductory, mundane, or outside the main conflict. A stated ordinary
+  activity before an inciting threat/change is still part of the visible
+  timeline and requires coverage. Descriptive attributes alone do not require
+  their own event.
+- Reject if any explicit source timeline action/state is missing from
+  required_events. Report the FIRST missing source action/state as the issue.
 - Source-required events must be directly supported by the source or explicit
   instructions. Sparse-source connective jobs may be plausible visible actions
   that remain within the established story and do not add a different plot,
-  but only after all explicit source timeline actions/states are represented.
+  but only AFTER all explicit source timeline actions/states are represented.
 - Must keep the source order.
 - Check the actual event meaning and location against the source order. Do not
   trust event IDs, list order, or a phase summary. If a later source event is
