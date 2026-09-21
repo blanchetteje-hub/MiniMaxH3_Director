@@ -12668,9 +12668,12 @@ Beat-writing rules:
 - Keep explicit physical states mutually consistent across adjacent beats. If a
   lower body or lower half is absent, removed, or gone, do not say the legs are
   still visible; torso absent with visible legs is allowed.
-- Center each beat on ONE primary physical operation or one tightly coupled
-  cause -> action -> visible result. If several distinct operations are needed,
-  split them across separate beats.
+- Center each beat on its ASSIGNED JOB. If the assigned required event/job
+  intentionally packs multiple adjacent, causally continuous source actions into
+  this beat, perform EVERY materially required action/result in that job in the
+  same beat and preserve their order. Never drop a later clause merely to make
+  the beat simpler. Only optional connective choreography should be limited to
+  one primary operation; do not split an assigned packed job across other beats.
 - When the source requires a repeated remove/replace, destroy/rebuild, or other
   paired process for each item, keep the pair local: establish the removal/change
   and its corresponding replacement/result before moving to an unrelated item,

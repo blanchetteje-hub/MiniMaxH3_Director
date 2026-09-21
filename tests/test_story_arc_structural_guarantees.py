@@ -102,8 +102,11 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             prompt,
         )
         self.assertIn(
-            "Do not dismiss an explicit source action merely because it is "
-            "calm, introductory, mundane, or outside the main conflict.",
+            "Do not dismiss an explicit source action merely because it is calm,",
+            prompt,
+        )
+        self.assertIn(
+            "introductory, mundane, or outside the main conflict.",
             prompt,
         )
         self.assertIn(
