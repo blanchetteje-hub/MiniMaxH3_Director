@@ -310,6 +310,14 @@ def build_report(
         if copied:
             artifact_paths[filename] = copied
 
+    expected_segments = len(benchmark["beats"])
+    captured_segments = sorted(generated_prompts)
+    missing_segments = [
+        number
+        for number in range(1, expected_segments + 1)
+        if number not in generated_prompts
+    ]
+
     return {
         "acceptance_report_version": 1,
         "story_id": benchmark["story_id"],
@@ -320,6 +328,12 @@ def build_report(
         "created_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "command": command,
         "exit_code": exit_code,
+        "capture_status": {
+            "complete": not missing_segments,
+            "expected_segments": expected_segments,
+            "captured_segments": captured_segments,
+            "missing_segments": missing_segments,
+        },
         "refresh_interval": refresh_interval,
         "grading": {
             "local_pass_fail": None,
@@ -486,9 +500,18 @@ def main(argv=None) -> int:
     print()
     print(f"Acceptance capture complete: {report_path}")
     print("Upload acceptance_run.json for GPT-5.6 Sol review.")
+    capture_complete = bool(report["capture_status"]["complete"])
+    if not capture_complete:
+        missing = report["capture_status"]["missing_segments"]
+        print(
+            "Acceptance capture is structurally incomplete; missing H3 prompt "
+            f"segment(s): {missing}. Include run.log for diagnosis."
+        )
     if exit_code != 0:
         print(f"MiniMax exited with code {exit_code}; include run.log for diagnosis.")
-    return exit_code
+    if exit_code != 0:
+        return exit_code
+    return 0 if capture_complete else 2
 
 
 if __name__ == "__main__":

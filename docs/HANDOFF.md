@@ -110,7 +110,7 @@ The runner:
 
 The user should normally upload `acceptance_run.json` first. Ask for `run.log` when diagnosis needs the LLM exchange/trace.
 
-The runner intentionally produces no semantic pass/fail score.
+The runner intentionally produces no semantic pass/fail score. It does perform deterministic capture validation: all eight H3 prompts must be present. A structurally incomplete capture exits nonzero even if `minimax.py` returned best-effort success.
 
 ## Gold H3 formatting discoveries
 
