@@ -1,0 +1,18 @@
+{
+  "job_id": "beat-packed-job-probe-007",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Expand one assigned macro beat job into one concise visible video beat. Preserve every materially required action/result in the assigned job and their order. Do not drop a later clause merely to simplify the beat. Return only the beat sentence."
+    },
+    {
+      "role": "user",
+      "content": "ASSIGNED JOB: A zombie breaks the kitchen door window. Amy rushes Will and Amber to the basement and locks the door.\n\nWrite one concise beat sentence for an 8-second clip. The beat must visibly accomplish the entire assigned job. Do not perform the next job (retrieving weapons)."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "max_tokens": 160,
+  "timeout_seconds": 120
+}
