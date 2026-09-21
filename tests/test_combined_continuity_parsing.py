@@ -200,6 +200,87 @@ class CombinedContinuityParserTests(unittest.TestCase):
         self.assertIn("syntactically invalid JSON", correction)
         self.assertNotIn("not JSON", correction)
 
+    def test_python_owned_identity_metadata_is_stripped_without_retry(self):
+        definitions = "<Subject 1> is Mark, referenced in <Picture 1>."
+        committed = minimax.continuity_state_for_registry(definitions)
+        request = Mock(return_value={
+            "version": 5,
+            "environment": {"location": "room", "persistent_state": "N/A"},
+            "camera": "N/A",
+            "ongoing_action": "N/A",
+            "ongoing_audio": "N/A",
+            "subjects": {
+                "Mark": {
+                    "id": "<Subject 1>",
+                    "subject_id": "Mark",
+                    "name": "Mark",
+                    "gender": "male",
+                    "picture_ids": ["<Picture 1>"],
+                    "picture_id": "<Picture 1>",
+                    "speaker_id": "(S1)",
+                    "origin_segment": "Shot 1",
+                    "persistent_structural_change": True,
+                    "position": "beside the window",
+                    "held_props": ["tool"],
+                },
+            },
+        })
+
+        with patch("minimax._print_continuity_phase_result"):
+            result = minimax.request_combined_continuity(
+                "FULL SEGMENT",
+                {},
+                llm_request=request,
+                content_attempts=2,
+                defer_opening=True,
+                subject_definitions=definitions,
+                committed_state=committed,
+                ending_scene="Mark stands beside the window holding a tool.",
+            )
+
+        self.assertEqual(request.call_count, 1)
+        mark = result["reduced_state"]["subjects"]["Mark"]
+        self.assertEqual(mark["subject_id"], 1)
+        self.assertEqual(mark["picture_ids"], [1])
+        self.assertEqual(mark["speaker_id"], "(S1)")
+        self.assertEqual(mark["position"], "beside the window")
+        self.assertEqual(mark["held_props"], ["tool"])
+
+    def test_combined_continuity_marks_end_state_as_final_frame_authority(self):
+        definitions = "<Subject 1> is Mark, referenced in <Picture 1>."
+        committed = minimax.continuity_state_for_registry(definitions)
+        request = Mock(return_value={
+            "version": 5,
+            "environment": {"location": "room", "persistent_state": "N/A"},
+            "camera": "N/A",
+            "ongoing_action": "N/A",
+            "ongoing_audio": "N/A",
+            "subjects": {"Mark": {"position": "beside the closed door"}},
+        })
+
+        with patch("minimax._print_continuity_phase_result"):
+            minimax.request_combined_continuity(
+                "At 00:00 Mark fires a tool. Loud impact.",
+                {},
+                llm_request=request,
+                content_attempts=1,
+                defer_opening=True,
+                subject_definitions=definitions,
+                committed_state=committed,
+                ending_scene="Mark stands beside the closed door.",
+            )
+
+        user_content = request.call_args.args[0][1]["content"]
+        self.assertIn(
+            "FINAL FRAME AUTHORITY:\\nMark stands beside the closed door.",
+            user_content,
+        )
+        self.assertIn("FULL SEGMENT CONTEXT:", user_content)
+        self.assertIn(
+            "Use FINAL FRAME AUTHORITY for all current-frame fields.",
+            user_content,
+        )
+
     def test_noncanonical_subject_keys_retry_and_canonical_keys_are_accepted(self):
         request = Mock(side_effect=[
             {
