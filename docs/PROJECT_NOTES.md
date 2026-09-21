@@ -332,6 +332,64 @@ Current implementation:
 
 Reason: the H3 node internally only needs the relevant tail and should not receive the full prior clip.
 
+## Additional H3 production heuristics
+
+### Avoid ending append segments on dialogue when practical
+
+If the preceding video ends with dialogue, H3 may carry that vocal momentum into the next append and make it difficult to begin silently.
+
+Prefer ending a segment on a visual/action beat rather than spoken dialogue when the story allows it.
+
+### Stage difficult body-disconnection effects
+
+H3 may resist or incompletely render decapitation/dismemberment when all consequences are requested at once.
+
+For difficult body-disconnection actions, stage the event across separate timestamps when useful:
+
+- strike;
+- detachment;
+- separated part falling;
+- reaction / close-up;
+- remaining body collapse.
+
+The Beat 5 gold prompt is a concrete example.
+
+### Re-establish visual details not proven by append context
+
+If the incoming reference video/start context does not visibly show a persistent detail, H3 may invent a replacement.
+
+Re-state important details when the current context does not clearly prove them, especially:
+
+- full outfit;
+- lower-body clothing;
+- belt/holster details;
+- carried or attached weapons;
+- injuries;
+- blood/substance coverage;
+- other visually persistent body details.
+
+Example: if only Amy's upper body is visible in the prior context, explicitly restate `black tank top and denim jeans` rather than assuming the jeans remain preserved.
+
+### Refresh using context latents
+
+The current quality-refresh approach uses the extend backport node with decoded `context_latents` from the prior video.
+
+Current tested settings:
+
+- pass the usual final 22 decoded frames;
+- set `context_frames = 7`.
+
+This tested as effectively as a quality refresh and should be treated as the current refresh baseline unless later evidence contradicts it.
+
+### Fade-to-black end states
+
+For a segment ending in a fade to black, distinguish:
+
+- semantic scene end state immediately before the fade;
+- literal final rendered frame, which may be black.
+
+Acceptance review should judge story/continuity state from the pre-fade scene, not interpret the black final frame as loss of subjects/environment.
+
 ## Deferred action item: environment / room continuity
 
 Problem:
