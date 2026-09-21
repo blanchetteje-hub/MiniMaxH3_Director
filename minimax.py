@@ -14198,7 +14198,7 @@ def _director_raw_scene_structure_errors(raw_scene):
     text_value = str(raw_scene or "").strip()
     markers = list(
         re.finditer(
-            r"(?im)^[ \\t]*End continuity state[ \\t]*:[ \\t]*",
+            r"(?im)^[ \t]*End continuity state[ \t]*:[ \t]*",
             text_value,
         )
     )
@@ -17448,11 +17448,11 @@ def request_combined_continuity(
     )
     if final_frame_authority:
         combined_user_content = (
-            "FINAL FRAME AUTHORITY:\\n"
+            "FINAL FRAME AUTHORITY:\n"
             + final_frame_authority
-            + "\\n\\nFULL SEGMENT CONTEXT:\\n"
+            + "\n\nFULL SEGMENT CONTEXT:\n"
             + str(h3_prompt or "").strip()
-            + "\\n\\nUse FINAL FRAME AUTHORITY for all current-frame fields. "
+            + "\n\nUse FINAL FRAME AUTHORITY for all current-frame fields. "
             "Use FULL SEGMENT CONTEXT only for persistent facts that are still "
             "true at the final frame."
         )
