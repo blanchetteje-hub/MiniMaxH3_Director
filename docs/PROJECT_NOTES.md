@@ -175,6 +175,18 @@ This is a gold-standard and generation target. Beat 3 is expected to provide a c
 
 Use names instead of pronouns whenever practical, especially instead of ambiguous `they`.
 
+### Visual subject disambiguation
+
+H3 can visually confuse similar human subjects even when subject IDs and names are correct.
+
+When a segment contains visually confusable named subjects, restate the minimum useful visual discriminator in the opening `detailed_description` setup. Prefer concrete appearance/clothing cues already established by the story or reference image rather than inventing new traits.
+
+Current Amy benchmark example:
+
+`Amy, still wearing her black tank top and denim jeans, ...`
+
+This is intentional identity reinforcement, not redundant prose. Do not strip it merely because the reference image or previous video already defines Amy.
+
 For H3 dialogue speaker IDs:
 
 - use `(S1)`, `(S2)`, etc. only when the subject is speaking;
@@ -194,6 +206,12 @@ Dialogue:
 Gold prompts should intentionally test both ambient sound and music-state transitions.
 
 Keep them simple.
+
+For every append segment, `non_diegetic_music` must explicitly begin from the prior segment's musical state using `continues from <Video 1>` before describing any change in cue, intensity, or style. The new segment may then transition the music as needed.
+
+Example:
+
+`non_diegetic_music: continues from <Video 1>. The tense suspense cue builds into a restrained action pulse.`
 
 Examples of useful categories:
 
