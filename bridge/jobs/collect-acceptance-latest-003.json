@@ -1,0 +1,8 @@
+{
+  "job_id": "collect-acceptance-latest-003",
+  "kind": "collect_files",
+  "collect": [
+    "tests/acceptance/results/amy_zombie_house-*/acceptance_run.json",
+    "tests/acceptance/results/amy_zombie_house-*/run.log"
+  ]
+}
