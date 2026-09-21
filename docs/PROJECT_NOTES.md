@@ -154,6 +154,21 @@ Amy kills the last of the zombies, her house now soaked in blood. She lets her k
 
 The AR-15 is not part of this story and must not be reintroduced.
 
+## Timestamp/action rule
+
+MiniMax H3 responds best when each timestamp describes one specific action.
+
+Rules:
+
+- do not impose an arbitrary maximum number of timestamps;
+- use one timestamp per discrete action;
+- if multiple distinct actions occur in sequence, give each action its own timestamp;
+- do not bundle unrelated actions into one timestamp merely to reduce timestamp count;
+- dialogue is its own timed action when spoken;
+- camera movement may share a timestamp only when it is inseparable from the single action being described; otherwise give the camera change its own timestamp.
+
+This is a gold-standard and generation target. Beat 3 is expected to provide a concrete example of the preferred structure.
+
 ## Gold-prompt formatting rules
 
 ### Names vs pronouns
