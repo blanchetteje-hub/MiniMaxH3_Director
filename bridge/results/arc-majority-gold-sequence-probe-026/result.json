@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-majority-gold-sequence-probe-026",
+  "kind": "llama_chat",
+  "started_at": 1790044910.2330484,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Identify which required-event beats materially belong to the source-emphasized action sequence. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE EMPHASIS:\n\"The majority of the film is Amy killing zombies as they try and attack her.\"\n\nBEATS:\n1. Amy cooks and serves breakfast.\n2. A zombie breaks the kitchen window; Amy gathers the kids and runs them to the safe-room door.\n3. The kids enter the safe room; Amy closes the door, retrieves her pistol and katana, and turns back toward the zombie.\n4. Amy shoots attacking zombies and empties the pistol.\n5. Amy switches to the katana and kills more zombies.\n6. A zombie grabs Amy, tries to bite her, and vomits bile on her while she fights free.\n7. Amy repeatedly attacks the zombie with the katana, leaving it mortally wounded.\n8. The final zombie falls from the preceding attack; Amy then drops the weapon, lets her kids out, and reunites with them.\n\nMATCH RULE:\nCount a beat if the emphasized action is actively occurring, if immediate opposition/setback occurs DURING that already-active action sequence, or if the beat contains the terminal physical result of that action. A beat may also contain immediate aftermath/resolution and still count.\nDo NOT count ordinary setup, escape before the action sequence begins, weapon retrieval/equipping before combat begins, or other preparation merely because it enables the emphasized action.\n\nReturn exactly {\"matching_beats\":[...]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 120,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-pxtpoxx7b9q2tmsvfa7tt8",
+    "object": "chat.completion",
+    "created": 1790044910,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\"matching_beats\": [2, 3, 4, 5, 6, 7, 8]}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 313,
+      "completion_tokens": 32,
+      "total_tokens": 345,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790044912.8841233,
+  "status": "ok"
+}
