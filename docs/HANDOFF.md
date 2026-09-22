@@ -247,64 +247,80 @@ This is intentionally not a remote-shell bridge. Supported job kinds are constra
 
 ## Current acceptance finding
 
-The majority gate is now wired correctly, and acceptance 067 exposed the next real issue: ARC majority repair did not converge.
+ARC majority allocation is now converging. Acceptance 071 completed successfully and moved the earliest real failure downstream into Beat -> Director Request 1 -> H3 prompt generation.
 
-### Acceptance 067: timeout caused by contradictory repair instructions
+### Acceptance 071: majority problem cleared
 
-`run-acceptance-amy-current-067` timed out after the full 3600-second acceptance budget. The bridge produced only `result.json` with `TimeoutExpired`; no acceptance artifact was available because the process never completed.
+`run-acceptance-amy-current-071` completed with return code 0.
 
-The timeout was not random. A direct repair probe against the same bad 3/8-style ARC (`arc-majority-repair-convergence-probe-068`) reproduced the semantic failure: Mistral understood the majority issue but still preserved four pre-conflict beats, moving conflict only to Beats 5-8 (4/8). That repair remained invalid and would re-enter validation/repair repeatedly.
+Its accepted ARC allocated the source emphasis successfully:
+- Beat 1: ordinary breakfast setup
+- Beat 2: zombie breach + kids to basement + lock + retrieve/equip
+- Beats 3-7: active zombie conflict
+- Beat 8: let the kids out
 
-The existing repair contract contained a contradiction:
-- fix the validator's allocation issue;
-- while preserving every unaffected phase, event assignment, and dependency.
+The accepted ARC therefore satisfied the strict majority requirement. The prior one-hour ARC non-convergence from 067 was fixed by the generic repair-contract correction in `c7eeded1faa2487b1fd7d78347ca28afdd52199e`.
 
-For an allocation rejection, the phase ranges, beat assignments, and event grouping are exactly the structures that must change. Preserving them prevents convergence.
+### New earliest failure: Request 1 treats an activity underway as complete
 
-### Repair-contract correction
+071 Segment 1 beat:
+> Amy, wearing a tight black tank top and denim jeans, stands at the kitchen stove cooking breakfast for Will and Amber.
 
-Focused probe `arc-majority-repair-budget-probe-069` changed that contract to preserve source meaning/chronology rather than the rejected layout. It explicitly allowed:
-- phase ranges, event grouping, and beat assignments to change when allocation is the issue;
-- no more than the allowed outside-sequence beat budget before the emphasized process;
-- adjacent causally continuous setup actions to share a beat when needed;
-- the ordinary baseline to remain separate from the sudden inciting change;
-- the inciting action to share with its immediate reaction/escape/containment sequence;
-- retrieval and equipping of the same named equipment to share a beat;
-- the emphasized sequence to begin by the first beat after the outside budget.
+Request 1 expanded that into:
+- Amy cooking/stirring;
+- Will and Amber seated at the table;
+- Amy plates the food at 00:06;
+- End continuity says Amy has “just finished cooking breakfast.”
 
-That probe converged immediately to:
-- Beat 1: breakfast baseline
-- Beat 2: zombie breach + immediate rush/lock sequence
-- Beat 3: retrieve + equip weapons
-- Beats 4-8: active zombie conflict, with final immediate resolution
+But it did **not** visibly:
+- deliver the completed breakfast to both named beneficiaries;
+- settle/turn off the active stove before the handoff.
 
-That is 5/8 materially emphasized beats while preserving all explicit source actions in order.
+Request 2 faithfully preserved Request 1, so the loss occurred in Request 1 rather than the H3 stenographer stage.
 
-Production commit `c7eeded1faa2487b1fd7d78347ca28afdd52199e` applies the generic repair-contract correction.
-Regression commit `e7ab38d27d8a7eb5bbde2a2a49ad93392949fce4` asserts the new repair instructions.
+This is a generic completion-semantics failure: the Director considered “subject is visibly performing the finite activity” sufficient for `beat_complete=true`, even though the activity had not reached its natural observable result.
 
-`current-regressions-070`: **PASS, 103/103 tests green**.
+### Focused Director probe 072
+
+`director-finite-action-completion-probe-072` tested a stronger generic contract:
+- finite actions are incomplete when merely shown underway;
+- an activity done FOR named people must visibly reach those beneficiaries when physically possible;
+- when natural completion ends use of an active tool/appliance, settle it before handoff unless continuity/next beat requires otherwise.
+
+Mistral then produced a completed breakfast progression, including finished plates delivered to the table and the stove turned off.
+
+### Production correction
+
+Production commit `1f607d7c75fb28d43ad6bf26c099b870429fca34` strengthens `DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE`:
+
+- finite actions must reach a natural observable result/stable endpoint unless explicitly interrupted/unfinished;
+- `beat_complete=true` for an activity done FOR named people requires each beneficiary to visibly receive/participate in the completed result when physically possible;
+- active tools/appliances used only for the completed activity should be stopped/set down/settled at the natural endpoint when doing so does not conflict with current/next/opening state;
+- the output contract repeats that an activity merely underway is insufficient.
+
+Prompt regression assertions are now in the active `tests.test_llm_prompt_pipeline` suite via commit `ccc7f2c15a45df41fd7f547a901e7433abbe3c3b`.
+
+An exploratory run that temporarily added the stale `tests.test_director_retry` suite exposed unrelated old mocks that already violate the current timed RAW SCENE structural contract. The temporary test-only edit was reverted in `4693872e297b27a0a411a73b56f1c9a3474d8b8b`; those stale tests are not the current acceptance boundary.
+
+`current-regressions-074`: **PASS, 103/103 tests green**.
 
 ### Current verification
 
-- `run-acceptance-amy-current-071`: queued/running against the corrected repair contract.
-- First check: ARC validation should reject an under-allocated initial plan and repair it without timing out.
-- Second check: final accepted ARC must classify at least 5/8 beats inside the source-emphasized zombie-conflict sequence.
-- If that holds, compare generated prompts to gold from Segment 1 onward and fix the next earliest behavioral divergence only.
+- `run-acceptance-amy-current-075`: queued/running against the strengthened Request 1 completion contract.
+- First check: Segment 1 Request 1 must visibly complete the ordinary breakfast action rather than leave it merely underway.
+- Request 2 should preserve that completed progression without dropping timestamps/actions.
+- If Segment 1 now passes behaviorally, continue comparing from Segment 2 onward and fix the next earliest divergence only.
 
-### Majority design still in force
+### Current architectural conclusion
 
-- Production gate regex fixed in `a427d0b3440cef0de13df5f5045b3000fbdc2be0`.
-- Per-beat majority evidence remains inside ARC VALIDATE (`52bc9dfe191bd2bada77336b27ae3e3716266213`).
-- Mistral owns the semantic question: which exact required-event beats materially belong to the already-active emphasized sequence?
-- Python owns only deterministic beat-number validation and strict-majority counting.
-- Under-allocation returns through normal ARC REPAIR. No extra semantic pipeline was introduced.
+The KISS architecture still holds:
+- ARC = CREATE -> VALIDATE -> REPAIR
+- BEATS = CREATE -> VALIDATE -> REPAIR
+- Request 1 owns concrete beat execution/completion.
+- Request 2 is a stenographer/formatter and does not own story completion.
+- Python owns deterministic structure/counting/state mechanics.
 
-### Retry architecture observation
-
-The current code can amplify non-convergence because ARC creation/validation/repair has nested retry budgets (10 repair/validation rounds inside up to 10 process rounds). Acceptance 067 demonstrated the consequence: a semantic repair loop can consume the full one-hour test timeout.
-
-Do **not** change the retry architecture yet. The immediate cause was a contradictory repair contract, and probe 069 showed the corrected contract can converge. Only simplify retry layering if 071 still fails to converge with the corrected repair semantics.
+The latest work is now squarely in Beat -> H3 behavior rather than ARC design.
 
 ### Other observed but non-current semantic weaknesses
 
