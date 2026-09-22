@@ -10792,6 +10792,13 @@ PHASE BOUNDARY RULES
   order. Never satisfy an emphasis requirement by deleting an ordinary setup,
   transition, preparation, climax, aftermath, or resolution action that the
   source explicitly states.
+- PRESERVE EXPLICIT CONTRAST BOUNDARIES. When the source deliberately establishes
+  an ordinary/baseline activity and then marks a sudden disruptive or inciting
+  change, normally end the baseline beat before the disruption begins. Do not
+  combine the calm baseline and its inciting threat/change into one required_event
+  merely to reserve more beats for the later conflict. When allocation is tight,
+  prefer sharing the final emphasized action with its immediate resolution over
+  destroying an explicit baseline-to-disruption contrast.
 - Explicit relative-duration or emphasis statements in the source are binding on
   beat allocation. If the source says the majority of the film/story is a
   process or conflict, more than half of the TOTAL global beats must belong to
@@ -11020,6 +11027,13 @@ Required events:
   other semantic concern. Every explicit visible action or visible state that
   establishes a distinct point in the source timeline must be represented by at
   least one required_event in the arc, in the same order.
+- PRESERVE EXPLICIT CONTRAST BOUNDARIES. If the source establishes an ordinary
+  baseline activity and then explicitly introduces a sudden disruptive/inciting
+  change, reject an arc that unnecessarily combines both into the same beat job
+  when the requested beat budget can preserve the transition. A later conflict
+  emphasis does not justify leaking its inciting threat into the baseline beat.
+  Prefer combining the final emphasized action with immediate resolution when
+  that is the available way to preserve both source contrast and allocation.
 - Do not dismiss an explicit source action merely because it is calm,
   introductory, mundane, or outside the main conflict. A stated ordinary
   activity before an inciting threat/change is still part of the visible
