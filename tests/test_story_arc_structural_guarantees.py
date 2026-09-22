@@ -122,6 +122,39 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             normalized.index("SOURCE EMPHASIS IS MANDATORY"),
         )
 
+    def test_arc_prompts_reject_inferred_internal_state_effects(self):
+        story = "Amy cooks breakfast for Will and Amber."
+        arc = make_arc([(1, 3, self.events)])
+        create_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_beat_arc_plan_messages(story, 3)
+            ).split()
+        )
+        validate_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_macro_arc_validation_messages(story, arc)
+            ).split()
+        )
+
+        self.assertIn(
+            "set_condition requires the event/source to actually establish that condition",
+            create_prompt,
+        )
+        self.assertIn(
+            "Cooking or serving food does not establish hunger",
+            create_prompt,
+        )
+        self.assertIn(
+            "Reject unsupported optional state effects as well as missing required ones",
+            validate_prompt,
+        )
+        self.assertIn(
+            "Cooking or serving food does not establish hunger",
+            validate_prompt,
+        )
+
     def test_majority_evidence_is_counted_deterministically(self):
         invalid_arc = {
             "phases": [
