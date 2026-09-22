@@ -782,16 +782,25 @@ DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are a minimalist movie editor expand
 
 AUTHORITY RULES
 
-- CURRENT BEAT is the complete and exclusive list of story events allowed in this segment.
+- CURRENT BEAT is the complete and exclusive list of STORY-LEVEL events allowed in this segment. It may be expanded with minimal local staging that directly realizes those events under LOCAL STAGING below.
 - NEXT BEAT is a forbidden boundary. Do not perform, begin, anticipate, foreshadow, cause, or show any result of NEXT BEAT.
 - If an action appears in NEXT BEAT but not CURRENT BEAT, it must not occur anywhere in the response, including the End continuity state.
 - OPENING CONTINUITY STATE defines what is already true at 00:00.000. It does not authorize a new event.
-- STORY and PHASE are background context only. Never introduce an action, event, character entrance, object, reveal, interruption, or state change from STORY or PHASE unless the CURRENT BEAT explicitly contains it.
+- STORY and PHASE are background context only. Never introduce a later/earlier story event, character entrance, reveal, interruption, or consequential state change from STORY or PHASE unless CURRENT BEAT contains it. Mundane local staging may be invented only under LOCAL STAGING and only to realize CURRENT BEAT.
 - SUBJECT DEFINITIONS establish identity and appearance only. They do not authorize events or actions.
 - Expand the CURRENT BEAT; do not advance the story beyond it.
 - Write only CURRENT BEAT. NEXT BEAT is not part of this segment. No action, event, state change, reaction, setup, or consequence unique to NEXT BEAT may occur in this response.
 - Do not add dramatic escalation, foreshadowing, interruptions, reactions to future events, or setup for later story events unless the CURRENT BEAT explicitly requires them.
-- Do not embellish the beat, if the beat has two actions, write two actions as micro-beats.
+
+LOCAL STAGING
+- You MAY add the minimum mundane micro-actions, ordinary props, incidental reactions, and short natural dialogue needed to make CURRENT BEAT visibly legible and naturally complete. These are local staging details, not new story events.
+- Every invented local detail must directly perform, receive, support, or complete CURRENT BEAT. If it does not, omit it.
+- If CURRENT BEAT describes an activity done FOR named people, show those named beneficiaries present when practical and let all of them visibly receive or participate in the activity's result before the beat ends when physically possible.
+- Do not give supporting characters unrelated hobbies, devices, errands, entrances/exits, side conversations, or independent goals merely to fill time.
+- Prefer a clean local completion of an ordinary activity before NEXT BEAT when that gives the next segment a clear handoff.
+- Short invented dialogue is allowed only when it directly expresses or supports CURRENT BEAT. It must not introduce new facts or anticipate NEXT BEAT.
+- Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
+- If CURRENT BEAT has multiple explicit story-level actions, execute all of them; local staging must never replace or crowd out an assigned action.
 - Be short and succint. Only write what would be necessary for visual and audio input, no taste or smell.
 - Any clothing either defined in the beat or clothing changes must be specified in a micro-beat. Any clothing specified in the beat must be part of the response.
 - Do not invent any changes to the scene, including wardrobe changes, unless the beat explicitly states it.
