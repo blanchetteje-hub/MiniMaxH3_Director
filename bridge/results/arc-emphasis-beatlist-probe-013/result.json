@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-emphasis-beatlist-probe-013",
+  "kind": "llama_chat",
+  "started_at": 1790037600.5812695,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Identify matching required-event beat numbers. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "TARGET ACTION: Amy killing zombies as they try to attack her.\n\nREQUIRED EVENTS:\n1. Amy cooks breakfast for her kids.\n2. A zombie breaks the kitchen door window, Amy rushes her kids to the basement and locks the door.\n3. Amy retrieves her hidden arsenal consisting of a pistol and a katana, and equips the weapons.\n4. Amy kills several zombies as they try to attack her.\n5. Amy continues killing zombies, dismembering and decapitating them.\n6. Amy kills more zombies in different encounters.\n7. Amy kills the last of the zombies, her house now soaked in blood.\n8. Amy lets her kids out of the basement.\n\nReturn exactly {\"matching_beats\":[...]}.\nInclude a beat only if its required event materially performs or continues TARGET ACTION. Do not include setup, preparation, or resolution."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 100,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-lwcjqeav059nty7s2o5p1",
+    "object": "chat.completion",
+    "created": 1790037600,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\"matching_beats\": [4, 5, 6, 7]}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 202,
+      "completion_tokens": 23,
+      "total_tokens": 225,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790037602.5998225,
+  "status": "ok"
+}
