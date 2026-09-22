@@ -1,0 +1,53 @@
+{
+  "job_id": "director-complete-activity-probe-027",
+  "kind": "llama_chat",
+  "started_at": 1790044953.1013415,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You expand one CURRENT BEAT into timed micro-beats for an 8-second video.\n\nCURRENT BEAT is the only story event allowed. NEXT BEAT is a hard forbidden boundary.\n\nCOMPLETE THE ASSIGNED ACTIVITY:\n- If CURRENT BEAT states a broad, bounded activity, show the minimum concrete steps needed to make that activity visibly complete within the clip when physically plausible.\n- If the activity is explicitly \"for\" named people, show those recipients already present and receiving the result when that is the natural completion of the activity.\n- Choose only mundane props/details necessary to execute the activity.\n- Every depicted action must directly advance CURRENT BEAT toward completion. No independent hobbies, errands, entrances, exits, side conversations, unrelated gestures, or extra goals.\n- At the end, leave a clean physical handoff into NEXT BEAT. Finish or set down ordinary tools/controls when that naturally marks completion.\n- Do not foreshadow, begin, or react to NEXT BEAT.\n- Dialogue is optional and only allowed if it directly serves CURRENT BEAT.\n\nReturn only JSON {\"raw_scene\":\"...\",\"beat_complete\":true}."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT:\nAmy is cooking breakfast for her young kids in the kitchen. Amy wears a tight black tank top and denim jeans.\n\nNEXT BEAT:\nA zombie breaks the kitchen door window and Amy sees the danger.\n\nSUBJECTS:\nAmy; Will, a 10-year-old boy; Amber, a 14-year-old girl.\n\nWrite timed actions from 00:00.000 through about 00:07.000. Keep the scene ordinary and safe."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 450,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-3x6hb61v9yut2pir6kudu",
+    "object": "chat.completion",
+    "created": 1790044953,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"raw_scene\": [\n    {\n      \"time\": \"00:00.000\",\n      \"action\": \"Amy stands at the stove, flipping pancakes on a frying pan.\"\n    },\n    {\n      \"time\": \"00:01.500\",\n      \"action\": \"Will and Amber sit at the kitchen table, watching Amy cook.\"\n    },\n    {\n      \"time\": \"00:03.000\",\n      \"action\": \"Amy places a few cooked pancakes on a plate.\"\n    },\n    {\n      \"time\": \"00:04.500\",\n      \"action\": \"Amy pours syrup from a bottle onto the pancakes.\"\n    },\n    {\n      \"time\": \"00:06.000\",\n      \"action\": \"Amy carries the plate of pancakes to the table and sets it down in front of Will and Amber.\"\n    },\n    {\n      \"time\": \"00:07.500\",\n      \"action\": \"Amy returns to the stove, turning off the burner.\"\n    }\n  ],\n  \"beat_complete\": true\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 355,
+      "completion_tokens": 251,
+      "total_tokens": 606,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790044968.6240048,
+  "status": "ok"
+}
