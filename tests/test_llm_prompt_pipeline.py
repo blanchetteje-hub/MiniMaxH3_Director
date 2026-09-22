@@ -253,6 +253,15 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "Local staging may not invent consequential persistent changes",
             rules,
         )
+        self.assertIn(
+            "assign it a simple functional stable label formed from its role/type "
+            "plus a number",
+            rules,
+        )
+        self.assertIn(
+            "Do not assign Subject-style labels to crowds, collective groups",
+            rules,
+        )
         self.assertIn("NEXT BEAT is a forbidden boundary", rules)
         self.assertIn(
             'Use the canonical timestamp syntax exactly: "At 00:ss.mmm,"',
