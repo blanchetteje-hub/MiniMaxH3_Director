@@ -267,3 +267,61 @@ Important negative result: `beat-local-completion-probe-029` leaked the NEXT EVE
 - `director-sequence-tests-033`: focused ARC + Director regressions on current code.
 - `run-acceptance-amy-director-staging-034`: current full acceptance; this is the important next result for final gold-prompt comparison.
 
+## 2026-09-21 direct locked-gold contract fixes after staging discovery
+
+The locked benchmark file `tests/acceptance/gold/amy_zombie_house.json` was inspected directly. It explicitly says the short `story_text` is the low-burden input and the hand-authored prompts are fuzzy behavioral targets. This confirms the program itself must create the rich cinematic realization.
+
+### Director timestamp/density contract
+
+Locked gold requires canonical timestamps `At mm:ss.nnn,` with no trailing word `seconds`, one discrete action per timestamp, and **no arbitrary maximum timestamp count**. Gold Beat 3 uses far more than eight timestamps in an eight-second clip.
+
+The prior Director template contradicted this by requiring `At ... seconds`, capping micro-beats at segment seconds, and forcing the final timestamp at least one second before the endpoint.
+
+Fixed:
+- `71a1b8cf8284bcf8e00451f19fb1294ec01ffa4b` — canonical timestamp syntax, unlimited needed timestamps, discrete actions, late valid handoffs, body-disconnection staging.
+- `767d04dca03df92be2ab6c210fc5058ec4bb42ab` — regression assertions.
+
+### Named beneficiary loss in BEAT validation
+
+Observed in acceptance: ARC E1 represented breakfast **for the kids**, but generated Beat 1 collapsed to Amy cooking alone; the single-beat validator accepted it. This removed Will/Amber from the Director's actual execution target.
+
+Fixed:
+- `36295840e9cc5c0b8d91ff10495feb948f5fc303` — named relational participants (`for/with/to`) are material in CURRENT JOB; reject solo rewrites that drop named beneficiaries/participants.
+- `6e06bda1cb118aef3a3b4bc93940f4bc92ba6e23` — regression test.
+- Bridge probe `beat-beneficiary-validator-probe-035` queued to confirm local Mistral behavior.
+
+### Soundtrack behavior
+
+Observed generated acceptance prompts used `non_diegetic_music: N/A` because Request 2 explicitly forbade inventing a soundtrack, while locked gold consistently supplies scene-appropriate score and requires append music to begin `continues from <Video 1>.`.
+
+Fixed without a new LLM stage:
+- `6f42195594ea355085f129f16cfef84e515be5b0` — Request 2's only creative finishing responsibility may be minimal scene-appropriate non-diegetic music; continuation segments must begin music exactly with `continues from <Video 1>.`.
+- `c804abc7324ae802124f5d258c6f8ea35b5138d7` — formatter music-rule regression test.
+
+Visual/action creativity remains owned by Director Request 1; Request 2 remains a strict translator except for this soundtrack finishing choice.
+
+### ARC clip-scale boundaries, not source-sentence packing
+
+Locked gold splits one long source action chain across Beat 2 and Beat 3:
+- Beat 2: threat appears + escape toward/open safe-room boundary.
+- Beat 3: finish securing kids + arm Amy + turn back toward conflict.
+
+The current planner had overpacked whole source sentences into one required_event. A source sentence is not a video-clip boundary.
+
+Fixed:
+- `9f9447d2c9b7b2f0143e651896bb9dd915ccfd12` — when beat budget permits, split long adjacent source chains across consecutive clip-sized jobs at a natural physical/narrative handoff; punctuation is not a mandatory boundary.
+- `1ff496f94a690bf8f83a754c7c63c27439d69650` — prompt regression test.
+
+This is generic, not Amy-specific: ARC jobs should be executable clip-sized story progression.
+
+### Current verification status
+
+A long earlier acceptance `run-acceptance-amy-sequence-032` was still occupying the serial bridge when these later fixes were committed, so it may be stale for final prompt quality. Check its `repository_revision` before using it.
+
+Pending/queued behind it at the time of this update:
+- `director-sequence-tests-033`
+- `run-acceptance-amy-director-staging-034`
+- `beat-beneficiary-validator-probe-035`
+
+Because bridge execution resets the exec worktree to latest `origin/gpt-test-branch` when each job begins, jobs that have not started yet will include the latest code regardless of when their JSON was queued. Always verify `repository_revision` for acceptance results.
+
