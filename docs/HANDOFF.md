@@ -247,55 +247,71 @@ This is intentionally not a remote-shell bridge. Supported job kinds are constra
 
 ## Current acceptance finding
 
-The current earliest boundary is still ARC emphasis allocation, but a wiring defect that invalidated the last acceptance has now been fixed.
+The majority gate is now wired correctly, and acceptance 067 exposed the next real issue: ARC majority repair did not converge.
 
-### Acceptance 065: focused majority validator was bypassed
+### Acceptance 067: timeout caused by contradictory repair instructions
 
-Acceptance `run-acceptance-amy-current-065` still accepted an ARC with only 3 materially emphasized zombie-conflict beats. Inspection showed the per-beat majority validator did **not run at all**.
+`run-acceptance-amy-current-067` timed out after the full 3600-second acceptance budget. The bridge produced only `result.json` with `TimeoutExpired`; no acceptance artifact was available because the process never completed.
 
-Root cause: the gate inside `generate_beats_from_story()` used:
+The timeout was not random. A direct repair probe against the same bad 3/8-style ARC (`arc-majority-repair-convergence-probe-068`) reproduced the semantic failure: Mistral understood the majority issue but still preserved four pre-conflict beats, moving conflict only to Beats 5-8 (4/8). That repair remained invalid and would re-enter validation/repair repeatedly.
 
-`re.search(r"\\bmajority\\b", str(story or ""), re.IGNORECASE)`
+The existing repair contract contained a contradiction:
+- fix the validator's allocation issue;
+- while preserving every unaffected phase, event assignment, and dependency.
 
-That regex searches for literal backslashes around `majority`, so `has_majority` was false for the real source sentence. The focused evidence request was therefore skipped even though the source contains the word `majority`.
+For an allocation rejection, the phase ranges, beat assignments, and event grouping are exactly the structures that must change. Preserving them prevents convergence.
 
-Production fix `a427d0b3440cef0de13df5f5045b3000fbdc2be0` changes that exact gate to:
+### Repair-contract correction
 
-`re.search(r"\bmajority\b", str(story or ""), re.IGNORECASE)`
+Focused probe `arc-majority-repair-budget-probe-069` changed that contract to preserve source meaning/chronology rather than the rejected layout. It explicitly allowed:
+- phase ranges, event grouping, and beat assignments to change when allocation is the issue;
+- no more than the allowed outside-sequence beat budget before the emphasized process;
+- adjacent causally continuous setup actions to share a beat when needed;
+- the ordinary baseline to remain separate from the sudden inciting change;
+- the inciting action to share with its immediate reaction/escape/containment sequence;
+- retrieval and equipping of the same named equipment to share a beat;
+- the emphasized sequence to begin by the first beat after the outside budget.
 
-The two other majority regex uses were already correct.
+That probe converged immediately to:
+- Beat 1: breakfast baseline
+- Beat 2: zombie breach + immediate rush/lock sequence
+- Beat 3: retrieve + equip weapons
+- Beats 4-8: active zombie conflict, with final immediate resolution
 
-`current-regressions-066`: **PASS, 103/103 tests green** after the wiring fix.
+That is 5/8 materially emphasized beats while preserving all explicit source actions in order.
+
+Production commit `c7eeded1faa2487b1fd7d78347ca28afdd52199e` applies the generic repair-contract correction.
+Regression commit `e7ab38d27d8a7eb5bbde2a2a49ad93392949fce4` asserts the new repair instructions.
+
+`current-regressions-070`: **PASS, 103/103 tests green**.
+
+### Current verification
+
+- `run-acceptance-amy-current-071`: queued/running against the corrected repair contract.
+- First check: ARC validation should reject an under-allocated initial plan and repair it without timing out.
+- Second check: final accepted ARC must classify at least 5/8 beats inside the source-emphasized zombie-conflict sequence.
+- If that holds, compare generated prompts to gold from Segment 1 onward and fix the next earliest behavioral divergence only.
 
 ### Majority design still in force
 
-Production commit `52bc9dfe191bd2bada77336b27ae3e3716266213` uses exact per-beat semantic evidence inside ARC VALIDATE:
+- Production gate regex fixed in `a427d0b3440cef0de13df5f5045b3000fbdc2be0`.
+- Per-beat majority evidence remains inside ARC VALIDATE (`52bc9dfe191bd2bada77336b27ae3e3716266213`).
+- Mistral owns the semantic question: which exact required-event beats materially belong to the already-active emphasized sequence?
+- Python owns only deterministic beat-number validation and strict-majority counting.
+- Under-allocation returns through normal ARC REPAIR. No extra semantic pipeline was introduced.
 
-- Mistral sees the source plus every ARC required_event keyed by its Python-owned beat number.
-- It classifies each beat independently as belonging or not belonging to the already-active emphasized sequence.
-- Standalone setup, escape, retrieval, equipping, travel, or preparation before the emphasized process begins does not count.
-- A terminal emphasized action counts even when the same beat also contains immediate aftermath/resolution.
-- Attacks, counterattacks, reversals, setbacks, weapon transitions after the process begins, continued action, and terminal results may count when they materially continue the emphasized sequence.
-- Python validates the returned beat numbers and deterministically enforces the strict-majority threshold.
-- Under-allocation returns through the normal ARC REPAIR path. This remains ARC CREATE -> VALIDATE -> REPAIR, not a separate planning/enrichment pipeline.
+### Retry architecture observation
 
-Direct terminal-aware probe `arc-majority-061-beat-evidence-terminal-probe-063` returned **[6, 7, 8]** for the bad 061-shaped ARC, correctly identifying only 3/8 materially emphasized beats.
+The current code can amplify non-convergence because ARC creation/validation/repair has nested retry budgets (10 repair/validation rounds inside up to 10 process rounds). Acceptance 067 demonstrated the consequence: a semantic repair loop can consume the full one-hour test timeout.
 
-### Verification now in progress
-
-- `run-acceptance-amy-current-067`: queued/running after the regex wiring fix.
-- First check: confirm the runtime log contains the focused `macro_arc_majority_validate` path and that an under-allocated initial ARC is rejected/repaired rather than accepted.
-- Second check: the final accepted ARC must have at least 5/8 beats classified as materially belonging to the source-emphasized zombie-conflict sequence.
-- If that holds, evaluate the generated prompts from Segment 1 onward and fix the next earliest behavioral divergence only.
+Do **not** change the retry architecture yet. The immediate cause was a contradictory repair contract, and probe 069 showed the corrected contract can converge. Only simplify retry layering if 071 still fails to converge with the corrected repair semantics.
 
 ### Other observed but non-current semantic weaknesses
 
 - `arc-optional-state-effect-strong-probe-053`: Mistral accepted unsupported Hungry state inferred from cooking.
 - `beat-lock-omission-current-probe-055` / `056`: Mistral accepted rushing children into the basement as completing a job that also required locking the door.
 
-Do not create separate semantic subsystems just for these probes. Work them only when end-to-end acceptance makes one the earliest real failure.
-
-The obsolete helper artifact `patches/fix_majority_gate_regex.patch` may remain in history; its change is now applied directly to production `minimax.py`.
+Do not create separate semantic subsystems merely for these probes. Work them only when end-to-end acceptance makes one the earliest real failure.
 
 Always re-read the current `gpt-test-branch` head, this handoff, and newest `gpt-runtime` results before acting.
 
