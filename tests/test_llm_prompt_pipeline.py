@@ -302,6 +302,30 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             initial[0]["content"],
         )
 
+    def test_previous_visible_subjects_resolve_plain_names_for_video_origin(self):
+        definitions = (
+            "<Subject 1> is Amy, a woman.\n"
+            "<Subject 2> is Will, a 10-year-old boy.\n"
+            "<Subject 3> is Amber, a 14-year-old girl."
+        )
+        recent = [(
+            1,
+            {
+                "detailed_description": (
+                    "[Shot 1] Amy stands by the stove while Will and Amber sit "
+                    "at the kitchen table."
+                )
+            },
+        )]
+        self.assertEqual(
+            minimax.extract_previous_visible_subject_ids(
+                recent,
+                2,
+                definitions,
+            ),
+            {1, 2, 3},
+        )
+
     def test_director_dialogue_uses_canonical_h3_form_and_detector_handles_quotes(self):
         rules = minimax.build_director_rules(
             8,
