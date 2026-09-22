@@ -44,6 +44,14 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             "Reject a solo rewrite that drops named beneficiaries or participants",
             prompt,
         )
+        self.assertIn(
+            "A prerequisite, approach, or partial progress is NOT completion",
+            prompt,
+        )
+        self.assertIn(
+            "Entering a room does not imply locking its door",
+            prompt,
+        )
 
     def _run(
         self,
