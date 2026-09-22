@@ -7,6 +7,21 @@ import minimax
 
 
 class BeatAtATimeValidatorTests(unittest.TestCase):
+    def test_validator_treats_named_beneficiaries_as_material(self):
+        messages = minimax.build_beat_validation_messages(
+            previous_final_beat="None",
+            current_state=minimax.new_beat_canonical_state(),
+            beat_job="Amy cooks breakfast for Will and Amber.",
+            next_beat_job="A zombie breaks the window.",
+            candidate_beat="Amy cooks breakfast.",
+        )
+        prompt = messages[1]["content"]
+        self.assertIn("Named relational participants are material", prompt)
+        self.assertIn(
+            "Reject a solo rewrite that drops named beneficiaries or participants",
+            prompt,
+        )
+
     def _run(
         self,
         framework,
