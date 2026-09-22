@@ -262,6 +262,36 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertNotIn("Create between", rules)
         self.assertNotIn("At 00:ss.mmm seconds", rules)
 
+    def test_formatter_music_rule_matches_locked_gold_modes(self):
+        initial = minimax.build_h3_formatter_messages(
+            "At 00:00.000, Amy cooks breakfast.",
+            "T2VA",
+            8,
+            conditioning_mode="initial",
+        )
+        continuation = minimax.build_h3_formatter_messages(
+            "At 00:00.000, Amy runs.",
+            "T2VA",
+            8,
+            continuity_summary="Amy is in the kitchen.",
+            conditioning_mode="continuation",
+        )
+
+        self.assertIn(
+            "Choose a minimal scene-appropriate non-diegetic underscore",
+            initial[1]["content"],
+        )
+        self.assertIn(
+            "non_diegetic_music MUST begin exactly with "
+            "'continues from <Video 1>.'",
+            continuation[1]["content"],
+        )
+        self.assertIn(
+            "non_diegetic_music is the formatter's one allowed creative "
+            "finishing choice",
+            initial[0]["content"],
+        )
+
     def test_first_two_director_prompts_require_beat_clothing(self):
         clothing_requirement = (
             "Any clothing specified in the beat must be part of the response."
