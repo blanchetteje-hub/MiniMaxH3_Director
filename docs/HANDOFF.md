@@ -247,69 +247,72 @@ This is intentionally not a remote-shell bridge. Supported job kinds are constra
 
 ## Current acceptance finding
 
-ARC majority allocation is now converging. Acceptance 071 completed successfully and moved the earliest real failure downstream into Beat -> Director Request 1 -> H3 prompt generation.
+Acceptance 075 exposed an ARC-repair scoping regression before the strengthened Director completion rule could be meaningfully judged.
 
-### Acceptance 071: majority problem cleared
+### Acceptance 075: ARC majority repair contaminated a later unrelated repair
 
-`run-acceptance-amy-current-071` completed with return code 0.
+`run-acceptance-amy-current-075` completed with return code 0.
 
-Its accepted ARC allocated the source emphasis successfully:
-- Beat 1: ordinary breakfast setup
-- Beat 2: zombie breach + kids to basement + lock + retrieve/equip
-- Beats 3-7: active zombie conflict
-- Beat 8: let the kids out
+ARC creation initially behaved correctly:
+- Beat 1: ordinary breakfast
+- Beat 2: zombie breaks the kitchen door window
+- Beat 3: Amy rushes kids to basement and locks the door
+- Beat 4: retrieve arsenal
+- Beat 5: equip weapons
+- Beats 6-8: zombie conflict / terminal resolution
 
-The accepted ARC therefore satisfied the strict majority requirement. The prior one-hour ARC non-convergence from 067 was fixed by the generic repair-contract correction in `c7eeded1faa2487b1fd7d78347ca28afdd52199e`.
+That initial plan failed the strict-majority check at only 3/8 emphasized beats, so ARC REPAIR correctly needed to reallocate setup.
 
-### New earliest failure: Request 1 treats an activity underway as complete
+The next validation after majority repair failed only because **Amy's clothing was missing on first show**.
 
-071 Segment 1 beat:
-> Amy, wearing a tight black tank top and denim jeans, stands at the kitchen stove cooking breakfast for Will and Amber.
+However, `build_macro_arc_repair_messages()` was still injecting the full majority-allocation budget whenever the STORY contained the word `majority`, regardless of the *current validator issue*. Its prompt literally told Mistral:
+> This validator issue is specifically about allocation
 
-Request 1 expanded that into:
-- Amy cooking/stirring;
-- Will and Amber seated at the table;
-- Amy plates the food at 00:06;
-- End continuity says Amy has “just finished cooking breakfast.”
+even during the unrelated clothing repair.
 
-But it did **not** visibly:
-- deliver the completed breakfast to both named beneficiaries;
-- settle/turn off the active stove before the handoff.
+That second repair was therefore allowed/invited to restructure the arc again and collapsed:
+- breakfast
+- zombie breach
+- evacuation/locking
 
-Request 2 faithfully preserved Request 1, so the loss occurred in Request 1 rather than the H3 stenographer stage.
+into Beat 1.
 
-This is a generic completion-semantics failure: the Director considered “subject is visibly performing the finite activity” sufficient for `beat_complete=true`, even though the activity had not reached its natural observable result.
+The resulting accepted 075 ARC started danger inside Segment 1, violating the locked gold's ordinary safe breakfast baseline. Request 1 and Request 2 then correctly executed/transcribed the bad assigned beat, so the earliest failure was ARC repair scoping rather than Director formatting.
 
-### Focused Director probe 072
+### Repair-scope correction
 
-`director-finite-action-completion-probe-072` tested a stronger generic contract:
-- finite actions are incomplete when merely shown underway;
-- an activity done FOR named people must visibly reach those beneficiaries when physically possible;
-- when natural completion ends use of an active tool/appliance, settle it before handoff unless continuity/next beat requires otherwise.
+The intended rule is now:
 
-Mistral then produced a completed breakfast progression, including finished plates delivered to the table and the stove turned off.
+- ARC creation gets source-level majority planning instructions whenever the source explicitly says `majority`.
+- ARC repair gets majority reallocation instructions **only when the current validator issue itself is a majority issue**.
+- A later unrelated repair (clothing, state detail, etc.) must preserve the already-correct allocation rather than reopening it.
 
-### Production correction
+Production commit `d28667371906596277d8a4832d4c44b3c3e21f14` implements the correct function-level scoping.
+Regression commit `922c23b18b94b7ec9b6e15f4f5fda70559001e7c` verifies that a story containing a majority instruction receives `EXPLICIT MAJORITY BEAT BUDGET N/A` during a non-majority repair and does not receive the allocation-repair wording.
 
-Production commit `1f607d7c75fb28d43ad6bf26c099b870429fca34` strengthens `DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE`:
+An intermediate edit `1483f089f65aa90a87ea016817bd650f617d0332` accidentally matched the analogous create-time code block and was caught immediately by `current-regressions-076` with a NameError. It was corrected in `d286673...`; no acceptance was run against the broken intermediate state.
 
-- finite actions must reach a natural observable result/stable endpoint unless explicitly interrupted/unfinished;
-- `beat_complete=true` for an activity done FOR named people requires each beneficiary to visibly receive/participate in the completed result when physically possible;
-- active tools/appliances used only for the completed activity should be stopped/set down/settled at the natural endpoint when doing so does not conflict with current/next/opening state;
-- the output contract repeats that an activity merely underway is insufficient.
+`current-regressions-077`: **PASS, 103/103 tests green**.
 
-Prompt regression assertions are now in the active `tests.test_llm_prompt_pipeline` suite via commit `ccc7f2c15a45df41fd7f547a901e7433abbe3c3b`.
+### Director finite-action completion fix remains in force
 
-An exploratory run that temporarily added the stale `tests.test_director_retry` suite exposed unrelated old mocks that already violate the current timed RAW SCENE structural contract. The temporary test-only edit was reverted in `4693872e297b27a0a411a73b56f1c9a3474d8b8b`; those stale tests are not the current acceptance boundary.
+The earlier downstream correction is still present in production:
 
-`current-regressions-074`: **PASS, 103/103 tests green**.
+`1f607d7c75fb28d43ad6bf26c099b870429fca34`
+- finite activities must reach a natural observable result/stable endpoint unless explicitly interrupted/unfinished;
+- activities done FOR named people must visibly reach those beneficiaries when physically possible;
+- active tools/appliances used only for the completed activity should be stopped/set down/settled at the natural endpoint when consistent with current/next/opening state;
+- an activity merely underway is insufficient for `beat_complete=true`.
+
+075 could not fairly test this because its assigned Beat 1 itself contained the zombie inciting event.
 
 ### Current verification
 
-- `run-acceptance-amy-current-075`: queued/running against the strengthened Request 1 completion contract.
-- First check: Segment 1 Request 1 must visibly complete the ordinary breakfast action rather than leave it merely underway.
-- Request 2 should preserve that completed progression without dropping timestamps/actions.
-- If Segment 1 now passes behaviorally, continue comparing from Segment 2 onward and fix the next earliest divergence only.
+- `run-acceptance-amy-current-078`: queued/running.
+- First check: ARC majority repair must still produce >=5/8 emphasized beats.
+- Second check: any later non-majority repair must preserve the ordinary-baseline / inciting-event separation.
+- Third check: with a clean breakfast Beat 1, Request 1 should visibly complete breakfast and Request 2 should preserve it.
+- If Segment 1 passes, continue forward to Segment 2 and fix the next earliest real divergence only.
 
 ### Current architectural conclusion
 
@@ -317,10 +320,10 @@ The KISS architecture still holds:
 - ARC = CREATE -> VALIDATE -> REPAIR
 - BEATS = CREATE -> VALIDATE -> REPAIR
 - Request 1 owns concrete beat execution/completion.
-- Request 2 is a stenographer/formatter and does not own story completion.
+- Request 2 is a stenographer/formatter.
 - Python owns deterministic structure/counting/state mechanics.
 
-The latest work is now squarely in Beat -> H3 behavior rather than ARC design.
+The latest failure did not require a new subsystem; it was a repair-prompt scope bug inside the existing ARC loop.
 
 ### Other observed but non-current semantic weaknesses
 
