@@ -4,11 +4,11 @@ This file is the persistent source of truth for current architecture, testing go
 
 ## Primary goal
 
-The goal is not to preserve the current architecture for its own sake.
+The goal is NOT to preserve the current architecture for its own sake.
 
 The goal is:
 
-> Given one story, reliably produce the proper MiniMax H3 prompts needed to render that story well.
+> Given one story, reliably produce the proper MiniMax H3 prompts needed to render that story well. Proper MiniMax H3 prompts are defined by the gold prompts.
 
 Anything may change if evidence shows it is necessary, including:
 
@@ -22,6 +22,8 @@ Anything may change if evidence shows it is necessary, including:
 - Python plumbing.
 
 KISS remains the default, but not at the expense of a real architectural correction.
+
+When altering prompts, remember you are writing prompts for a 24b LLM. These are MUCH dumber than you, so keep directions simple.
 
 ## Working development loop
 
