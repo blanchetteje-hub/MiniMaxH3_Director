@@ -1,0 +1,20 @@
+{
+  "job_id": "run-tests-arc-coverage-priority-019",
+  "kind": "run_tests",
+  "started_at": 1790038664.6220315,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_story_arc_structural_guarantees"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \n",
+    "stderr": "........\n----------------------------------------------------------------------\nRan 8 tests in 0.001s\n\nOK\n",
+    "started_at": 1790038665.5075982,
+    "finished_at": 1790038666.3351114
+  },
+  "finished_at": 1790038666.3361096,
+  "status": "ok"
+}
