@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-emphasis-create-probe-009",
+  "kind": "llama_chat",
+  "started_at": 1790035534.9170525,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Create an 8-beat story arc. Return only JSON with a phases array. Preserve all explicit source actions in order. A beat job may bundle adjacent causally continuous source actions. Explicit relative-duration/emphasis language is binding: if the source says the majority of the film is X, more than half the beat/runtime budget must materially perform or continue X. Do not invent a different plot."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nTOTAL BEATS: 8\n\nUse exactly one required_event per beat, IDs E1-E8, sequential depends_on. Include phase_number, beat_start, beat_end, narrative_purpose, broad_progression, required_end_state, characters_introduced, location, required_events."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1600,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-m4jtrhhuoray41tj81e64h",
+    "object": "chat.completion",
+    "created": 1790035534,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"phases\": [\n    {\n      \"phase_number\": 1,\n      \"beat_start\": 0,\n      \"beat_end\": 1,\n      \"narrative_purpose\": \"Introduce the protagonist and her normal life\",\n      \"broad_progression\": \"Introduction\",\n      \"required_end_state\": \"Amy is cooking breakfast for her kids in a peaceful home environment.\",\n      \"characters_introduced\": [\"Amy\", \"Will\", \"Amber\"],\n      \"location\": \"Home kitchen\",\n      \"required_events\": [\n        {\n          \"id\": \"E1\",\n          \"description\": \"Amy cooks breakfast for her kids.\"\n        }\n      ]\n    },\n    {\n      \"phase_number\": 2,\n      \"beat_start\": 1,\n      \"beat_end\": 2,\n      \"narrative_purpose\": \"Introduce the primary conflict\",\n      \"broad_progression\": \"Inciting Incident\",\n      \"required_end_state\": \"A zombie breaks into the kitchen, and Amy rushes her kids to the basement.\",\n      \"characters_introduced\": [],\n      \"location\": \"Home kitchen and basement\",\n      \"required_events\": [\n        {\n          \"id\": \"E2\",\n          \"description\": \"A zombie breaks the kitchen door window.\"\n        },\n        {\n          \"id\": \"E3\",\n          \"description\": \"Amy rushes her kids to the basement and locks the door.\"\n        }\n      ]\n    },\n    {\n      \"phase_number\": 3,\n      \"beat_start\": 2,\n      \"beat_end\": 3,\n      \"narrative_purpose\": \"Protagonist prepares for the conflict\",\n      \"broad_progression\": \"Preparation\",\n      \"required_end_state\": \"Amy retrieves her hidden arsenal and equips herself with a pistol and a katana.\",\n      \"characters_introduced\": [],\n      \"location\": \"Home\",\n      \"required_events\": [\n        {\n          \"id\": \"E4\",\n          \"description\": \"Amy retrieves her hidden arsenal consisting of a pistol and a katana.\"\n        },\n        {\n          \"id\": \"E5\",\n          \"description\": \"Amy equips the weapons.\"\n        }\n      ]\n    },\n    {\n      \"phase_number\": 4,\n      \"beat_start\": 3,\n      \"beat_end\": 4,\n      \"narrative_purpose\": \"Protagonist engages in the primary conflict\",\n      \"broad_progression\": \"Action\",\n      \"required_end_state\": \"Amy starts killing zombies as they attack her.\",\n      \"characters_introduced\": [],\n      \"location\": \"Home and surrounding area\",\n      \"required_events\": [\n        {\n          \"id\": \"E6\",\n          \"description\": \"Amy begins killing zombies.\"\n        }\n      ]\n    },\n    {\n      \"phase_number\": 5,\n      \"beat_start\": 4,\n      \"beat_end\": 5,\n      \"narrative_purpose\": \"Protagonist continues to engage in the primary conflict\",\n      \"broad_progression\": \"Action\",\n      \"required_end_state\": \"Amy continues killing zombies as they try and attack her.\",\n      \"characters_introduced\": [],\n      \"location\": \"Home and surrounding area\",\n      \"required_events\": [\n        {\n          \"id\": \"E7\",\n          \"description\": \"Amy continues to kill zombies.\"\n        }\n      ]\n    },\n    {\n      \"phase_number\": 6,\n      \"beat_start\": 5,\n      \"beat_end\": 6,\n      \"narrative_purpose\": \"Protagonist resolves the primary conflict\",\n      \"broad_progression\": \"Climax\",\n      \"required_end_state\": \"Amy kills the last of the zombies.\",\n      \"characters_introduced\": [],\n      \"location\": \"Home and surrounding area\",\n      \"required_events\": [\n        {\n          \"id\": \"E8\",\n          \"description\": \"Amy kills the last zombie.\"\n        }\n      ]\n    },\n    {\n      \"phase_number\": 7,\n      \"beat_start\": 6,\n      \"beat_end\": 7,\n      \"narrative_purpose\": \"Protagonist deals with the aftermath of the conflict\",\n      \"broad_progression\": \"Resolution\",\n      \"required_end_state\": \"Amy lets her kids out of the basement.\",\n      \"characters_introduced\": [],\n      \"location\": \"Home basement and main area\",\n      \"required_events\": [\n        {\n          \"id\": \"E9\",\n          \"description\": \"Amy lets her kids out of the basement.\"\n        }\n      ]\n    },\n    {\n      \"phase_number\": 8,\n      \"beat_start\": 7,\n      \"beat_end\": 8,\n      \"narrative_purpose\": \"Show the new status quo after the conflict\",\n      \"broad_progression\": \"Conclusion\",\n      \"required_end_state\": \"Amy and her kids are safe in their home, which is now soaked in blood.\",\n      \"characters_introduced\": [],\n      \"location\": \"Home\",\n      \"required_events\": [\n        {\n          \"id\": \"E10\",\n          \"description\": \"Amy and her kids are safe in their home.\"\n        }\n      ]\n    }\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 311,
+      "completion_tokens": 1108,
+      "total_tokens": 1419,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790035599.4145062,
+  "status": "ok"
+}
