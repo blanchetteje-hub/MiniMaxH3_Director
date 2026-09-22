@@ -433,3 +433,73 @@ the Segment-1 boundary; then fix the earliest remaining observed failure only.
 
 Always re-read the current `gpt-test-branch` head, this handoff, and newest `gpt-runtime` results before acting.
 
+## Acceptance 102 follow-up: typed clothing effect is the next ARC defect
+
+`run-acceptance-amy-condition-grounding-102` completed against revision
+`851dbfd9fe1a5825fa1ff0a1f35993cafac26bab`.
+
+The lexical `set_condition` grounding fix removed the earlier invented
+Will/Amber eating effects. Segment 1 improved materially: Request 1 plated
+breakfast for both children and ended the cooking action rather than leaving it
+underway.
+
+The accepted ARC still contained an earlier architecture defect before Beat
+generation:
+
+- E1 correctly described Amy cooking breakfast while wearing the source-defined
+  black tank top and denim jeans.
+- E1 encoded that clothing with
+  `{"op":"set_condition","entity":"Amy","value":"wearing ..."}`.
+- Clothing has a dedicated typed operation, `set_clothing`; using
+  `set_condition` for wardrobe makes the typed state contract semantically
+  inconsistent.
+- The same accepted ARC also had later allocation/end-state problems, but they
+  remain downstream of this malformed E1 state effect and are not the current
+  fix target.
+
+### Targeted probes 103-104
+
+`arc-clothing-op-validation-probe-103` gave Mistral one short rule:
+clothing must use `set_clothing`, never `set_condition`. The 24B model
+correctly returned INVALID and named the operation mismatch. This shows the
+existing ARC VALIDATE/REPAIR loop can own the fix without a new subsystem.
+
+`beat-phase1-simple-prompt-probe-104` used the exact Acceptance-102 Phase-1
+events with a much shorter Beat-generation prompt. It produced a concrete
+completed breakfast endpoint instead of simply restating that Amy was cooking.
+This is evidence that Beat prompting is currently too instruction-heavy for the
+24B model, consistent with `docs/PROJECT_NOTES.md`: keep 24B instructions
+simple. Do not apply that Beat change until the earlier ARC defect is verified
+fixed.
+
+### ARC clothing-operation correction
+
+Production commit `dc083ab4d0277dbb53cf1f45b71211c09999ce13` adds one
+direct rule to ARC create/validate/repair:
+
+> Clothing must use set_clothing; never use set_condition for clothing or what
+> someone is wearing.
+
+It also shortens the nearby lexical-grounding wording rather than piling on more
+instructions.
+
+Regression commit `1065b54cd55c61713f4375e94f1befa97e12bd3a` adds prompt
+contract coverage.
+
+`run-tests-arc-clothing-op-106`: **PASS, 29/29 tests green** across:
+- `tests.test_story_arc_structural_guarantees`
+- `tests.test_state_effect_canonicalization`
+- `tests.test_macro_state_enrichment`
+
+### Verification in progress
+
+`run-acceptance-amy-arc-clothing-107` is queued/running against the ARC-only
+change. Inspect its accepted ARC before any further production edit.
+
+If 107 removes the clothing/`set_condition` mismatch, then evaluate the
+earliest remaining behavior. The already-observed next candidate is Beat 1
+completion: Acceptance 102 still omitted some gold completion staging (notably
+stove/tool shutdown), and probe 104 shows that concise high-priority Beat rules
+may solve the overabstract Beat target. Keep any next prompt change short and
+24B-friendly rather than adding more bullets.
+
