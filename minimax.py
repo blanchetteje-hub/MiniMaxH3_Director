@@ -23105,6 +23105,7 @@ def repair_existing_segment(
         "messages": messages,
         "opening_state": director_opening_summary,
         "registry_state": opening_state,
+        "subject_definitions": historical_subject_definitions,
         "dialogue_exclusions": dialogue_exclusions,
         "phrase_exclusions": phrase_exclusions,
         "opening_state_sha256": hashlib.sha256(
