@@ -11099,12 +11099,15 @@ Required events:
   allocation.
 - For every explicit source statement using the word "majority", populate one
   majority_checks entry. Its matching_phases must contain ONLY macro phase
-  numbers whose MAIN progression materially IS the broad emphasized narrative
-  sequence. Do not include ordinary setup, escape, or preparation phases merely
-  because they enable that sequence. A phase may include the terminal result
-  and immediate resolution at its end and still match when its main progression
-  is the emphasized process. Judge the phase's actual broad progression and
-  required events, not its narrative_purpose label alone.
+  numbers whose ENTIRE beat_start..beat_end span may safely be counted as the
+  broad emphasized narrative sequence. Every required_event in a matching phase
+  must materially belong to that already-active sequence, except the final beat
+  may also include its immediate terminal aftermath/resolution. Standalone
+  setup, escape, retrieval, equipping, or other preparation BEFORE the process
+  begins does NOT belong; if such an event shares a phase with later emphasized
+  action, that mixed phase is NOT safe to count in full and must not be listed.
+  Judge the phase's actual required_events and progression, not its
+  narrative_purpose label alone.
 - majority_checks is semantic evidence for deterministic counting. Do NOT decide
   whether the numeric majority threshold passes inside valid/issues; Python will
   expand each returned matching phase to its Python-owned beat_start..beat_end
@@ -11198,10 +11201,11 @@ or
 For every explicit SOURCE STORY sentence using the word "majority", include one
 majority_checks object with exactly:
 {{"source_requirement": "concise source requirement", "matching_phases": [2]}}.
-matching_phases means macro phases whose MAIN progression is the broad emphasized
-narrative sequence as defined above. Do not include setup/preparation phases just
-because they lead into it. If the source has no explicit "majority" statement,
-return an empty majority_checks array. Keep issues empty when valid is true.
+matching_phases means macro phases whose ENTIRE beat span is safe to count as
+the broad emphasized narrative sequence under the rule above. A mixed phase that
+contains standalone pre-sequence setup/preparation must not be listed. If the
+source has no explicit "majority" statement, return an empty majority_checks
+array. Keep issues empty when valid is true.
 """.strip(),
         },
     ]
