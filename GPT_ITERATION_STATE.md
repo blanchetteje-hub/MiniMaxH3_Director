@@ -10,29 +10,39 @@ Everything in the ARC, BEATS, state, continuity, validation, repair, and formatt
 
 The system should therefore be judged by the final generated H3 prompts, not by whether intermediate ARC/beat JSON looks elegant in isolation.
 
-The acceptance/gold prompts are the behavioral target. Intermediate representations are implementation details and may change if needed, provided the KISS architecture is preserved and the final prompts move closer to gold behavior.
+The acceptance/gold prompts are the behavioral target. **No current intermediate representation or pipeline stage is sacred.** ARC, BEATS, canonical state, continuity stages, validators, repair loops, or the entire current decomposition may be changed, collapsed, replaced, or removed if evidence shows a different architecture gets from the user input to gold-quality prompts more reliably.
 
-The intended pipeline is conceptually:
+The only durable product contract is:
+
+`LOW-BURDEN STORY INPUT -> GOLD-QUALITY FINAL H3 PROMPTS`
+
+"Story input" may be free-flow prose such as `story.txt` or a modestly structured format if that materially improves reliability, but the user must **not** be required to manually author pages of planning metadata, arc definitions, beat-by-beat instructions, continuity bookkeeping, state transitions, or prompt engineering.
+
+The current pipeline:
 
 `STORY INPUT -> ARC -> BEATS -> DIRECTOR/CONTINUITY -> FINAL H3 PROMPTS`
 
-A successful system should let the user provide the story, run the program, and get the equivalent of the gold-quality prompt sequence without hand-authoring the intermediate arc, beats, continuity state, or final prompts.
+is a **working hypothesis**, not the end goal and not an architectural invariant. Keep using and improving it while acceptance evidence says it is productive. If repeated evidence shows that this decomposition cannot reach the gold prompts reliably, redesign it—even radically.
+
+A successful system should let the user describe the story with reasonable author effort, run the program, and receive the equivalent of the hand-authored gold prompt sequence automatically.
 
 This file is the durable handoff/source-of-truth for autonomous GPT iteration on `gpt-test-branch`.
 
 **Update rule:** after every meaningful finding, architectural decision, proven probe, failed approach, focused code change, or new next step, update this file. New chats/automations should read this file before making architectural changes.
 
-## Architectural invariants
+## Current working architecture — PROVISIONAL, NOT SACRED
 
-Keep the semantic architecture simple:
+For the **current implementation**, keep the semantic architecture simple unless acceptance evidence justifies changing it:
 
 - **ARC:** create -> validate -> repair -> validate until valid.
 - **BEATS:** create -> validate -> repair -> validate until valid.
-- Do not add separate semantic enrichment, coverage, claim, state-preparation, effect-proof, or audit pipelines when the responsibility belongs inside ARC or BEATS.
-- Python owns deterministic structure/data-integrity checks and deterministic arithmetic. It should not independently interpret arbitrary English semantics.
-- Canonical persistent state is Python-owned. ARC required_events carry typed `state_effects`; Python applies those effects only after a beat validates.
-- The proven single-beat validator remains conceptually frozen: one beat at a time, validity-first, with story/phase/previous beat/canonical state/current job/next job/candidate beat context.
+- Do not casually add separate semantic enrichment, coverage, claim, state-preparation, effect-proof, or audit pipelines when the same responsibility can live inside the current ARC or BEATS loop.
+- Python should own deterministic structure/data-integrity checks and deterministic arithmetic rather than pretending to understand arbitrary English semantics.
+- In the current design, canonical persistent state is Python-owned; ARC required_events carry typed `state_effects`; Python applies those effects only after a beat validates.
+- The proven single-beat validator is a strong known-good component and should not be disturbed without evidence that it is blocking the final goal.
 - Fix observed acceptance failures, not hypothetical ones.
+
+**These are not permanent product constraints.** They describe the best current implementation we have. If the ARC/BEATS architecture itself becomes the demonstrated reason the system cannot reproduce the gold prompts, replace it. KISS means choosing the simplest architecture that actually reaches the end goal, not preserving today's architecture forever.
 
 ## Bridge workflow
 
@@ -158,4 +168,4 @@ Read this file first, then inspect:
 - newest entries under `bridge/results/` on `gpt-runtime`;
 - newest queued jobs under `bridge/jobs/`.
 
-Do not restart architectural brainstorming from scratch. Treat the invariants, proven probes, failed approaches, and current earliest failure above as the working checkpoint unless newer repo evidence supersedes them.
+Do not restart architectural brainstorming from scratch. Treat the proven probes, failed approaches, current implementation, and earliest failure above as the working checkpoint unless newer repo evidence supersedes them. Preserve the **input/output product contract**, not the current internal decomposition: if evidence eventually shows ARC -> BEATS -> prompts is the wrong route to gold-quality prompts, architectural replacement is explicitly allowed.
