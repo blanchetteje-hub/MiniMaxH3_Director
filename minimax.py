@@ -11041,10 +11041,10 @@ completion.
   Do not encode cooking, eating, running, fighting, looking, speaking, waiting,
   or another in-progress action as set_condition. Temporary action stays in the
   required event text only.
-- DATA-INTEGRITY CONTRACT FOR set_condition: every meaningful word in its free-form
-  value must also occur in the SAME required event text that owns the effect.
-  Reuse the event's wording; do not paraphrase or infer a new condition value.
-  Python checks only this lexical ownership rule and does not interpret prose.
+- For set_condition, reuse meaningful words from the SAME required event text;
+  Python rejects ungrounded free-form values.
+- Clothing must use set_clothing. Never use set_condition for clothing or what
+  someone is wearing.
 
 STATE_EFFECTS JSON CONTRACT
 Examples:
@@ -11240,8 +11240,9 @@ State effects:
   Never use it to record cooking, eating, running, fighting, looking, speaking,
   waiting, or another temporary activity.
 - For set_condition, every meaningful word in the free-form value must also occur
-  in the SAME required event text that owns the effect. This is a lexical
-  data-integrity requirement, not permission to infer a condition from context.
+  in the SAME required event text that owns the effect.
+- Clothing must use set_clothing. set_condition must never encode clothing or
+  what someone is wearing.
 - Attach each persistent effect to the required event that actually establishes
   that fact. If a later event retrieves or equips named equipment, an earlier
   ordinary setup event must not carry that held/equipped effect; reject the arc
@@ -11402,10 +11403,10 @@ A state_effect becomes authoritative canonical history after that beat, so omit
 temporary actions and plausible/inferred conditions. set_condition is a persistent
 post-beat condition, not a current activity: do not encode cooking, eating,
 running, fighting, looking, speaking, waiting, or another in-progress action as
-set_condition. For every set_condition, every meaningful word in its free-form
-value must also occur in the SAME required event text that owns the effect; reuse
-that event's wording rather than paraphrasing or inferring a new condition. Return
-only the normal macro-arc JSON object.
+set_condition. For every set_condition, reuse meaningful words from the SAME
+required event text. Clothing must use set_clothing; never encode clothing or
+what someone is wearing with set_condition. Return only the normal macro-arc JSON
+object.
 """.strip(),
         },
     ]
