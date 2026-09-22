@@ -9509,6 +9509,33 @@ def _connective_beat_job():
     )
 
 
+def _missing_named_job_subjects(beat_job, candidate_beat, subject_information=""):
+    """Return known Subject names explicitly present in the job but absent from candidate.
+
+    This is deliberately a deterministic string-coverage check, not semantic
+    interpretation. The semantic validator still owns meaning; Python only
+    prevents a generated beat from silently deleting a known named Subject that
+    the assigned job itself explicitly names.
+    """
+    known_names = []
+    for line in str(subject_information or "").splitlines():
+        raw = line.strip().lstrip("- ").strip()
+        name, separator, _details = raw.partition(" is ")
+        if separator and name.strip():
+            known_names.append(name.strip())
+
+    job_text = str(beat_job or "")
+    candidate_text = str(candidate_beat or "")
+    missing = []
+    for name in known_names:
+        pattern = rf"(?<![\w]){re.escape(name)}(?![\w])"
+        if re.search(pattern, job_text, re.IGNORECASE) and not re.search(
+            pattern, candidate_text, re.IGNORECASE
+        ):
+            missing.append(name)
+    return missing
+
+
 def build_beat_validation_messages(
     previous_final_beat,
     current_state,
@@ -10416,6 +10443,16 @@ def _run_forward_beat_validation(
                 [candidate], phrase_exclusions, beat_start=beat_number
             )
             structural_issues.extend(validate_beat_planning_metadata(candidate))
+            missing_named_subjects = _missing_named_job_subjects(
+                current_job,
+                candidate,
+                subject_information,
+            )
+            if missing_named_subjects:
+                structural_issues.append(
+                    "Beat dropped named Subject(s) explicitly required by CURRENT JOB: "
+                    + ", ".join(missing_named_subjects)
+                )
             try:
                 parse_generated_beats(
                     {"beats": [candidate]},
