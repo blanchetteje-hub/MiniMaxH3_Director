@@ -10707,9 +10707,13 @@ PHASE BOUNDARY RULES
 - Phase sizes do not need to be similar.
 - Explicit relative-duration or emphasis statements in the source are binding on
   beat allocation. If the source says the majority of the film/story is a
-  process or conflict, more than half of the total beats must materially perform
-  or continue that process/conflict. Setup, preparation, and resolution beats do
-  not count unless that emphasized process materially occurs in the same beat.
+  process or conflict, more than half of the TOTAL global beats must have a
+  required_event that materially performs or continues that process/conflict.
+  Count the actual beat jobs, not phase sizes, phase names, broad_progression,
+  preparation, or resolution. With 8 total beats, "majority" therefore requires
+  at least 5 beats whose required_event materially performs/continues the
+  emphasized action. Setup, preparation, and resolution beats do not count
+  unless that emphasized process materially occurs in the same required_event.
   Preserve explicit "most", "half", "briefly", and similar relative emphasis
   according to their ordinary meaning. Bundle adjacent setup actions when needed
   to preserve both source coverage and the stated emphasis.
@@ -10885,13 +10889,20 @@ Reject when:
 Required events:
 - There must be exactly one concrete required event/job for every global beat.
 - SOURCE EMPHASIS IS MANDATORY. Explicit relative-duration or emphasis statements
-  in the source are binding on beat allocation. If the source says the majority
-  of the film/story is X, more than half of all global beats must materially
-  perform or continue X. Beats that are only setup, preparation, or resolution
-  do not count toward X; a transition beat counts only when X materially occurs
-  in that beat. Preserve explicit "most", "half", "briefly", and similar
-  relative emphasis according to their ordinary meaning. Reject the arc when its
-  beat allocation violates an explicit source emphasis statement.
+  in the source are binding on beat allocation.
+- For each such statement, inspect the actual required_event assigned to EVERY
+  global beat and count only beats whose required_event materially performs or
+  continues the emphasized action X. Do NOT count a beat merely because its
+  phase name, narrative_purpose, broad_progression, or required_end_state
+  mentions X. Setup, preparation, and resolution do not count unless X
+  materially occurs in that beat's required_event.
+- For "the majority ... is X", let N be the total global beat count and K be the
+  number of required_event jobs that materially perform or continue X. Accept
+  that emphasis only when K * 2 > N. For 8 beats, 4/8 is NOT a majority and at
+  least 5/8 beats must materially perform/continue X.
+- Preserve explicit "most", "half", "briefly", and similar relative emphasis
+  according to their ordinary meaning. Reject the arc when its beat allocation
+  violates an explicit source emphasis statement.
 - SOURCE COVERAGE IS MANDATORY. Walk through the SOURCE STORY in chronological
   order before judging the arc. Every explicit visible action or visible state
   that establishes a distinct point in the source timeline must be represented
