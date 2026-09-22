@@ -7,6 +7,29 @@ import minimax
 
 
 class BeatAtATimeValidatorTests(unittest.TestCase):
+    def test_python_detects_named_subject_dropped_from_assigned_job(self):
+        subject_information = (
+            "- Amy is a main character.\n"
+            "- Will is a 10-year-old boy.\n"
+            "- Amber is a 14-year-old girl."
+        )
+        self.assertEqual(
+            minimax._missing_named_job_subjects(
+                "Amy cooks breakfast for Will and Amber.",
+                "Amy cooks breakfast.",
+                subject_information,
+            ),
+            ["Will", "Amber"],
+        )
+        self.assertEqual(
+            minimax._missing_named_job_subjects(
+                "Amy cooks breakfast for Will and Amber.",
+                "Amy cooks breakfast while Will and Amber wait at the table.",
+                subject_information,
+            ),
+            [],
+        )
+
     def test_validator_treats_named_beneficiaries_as_material(self):
         messages = minimax.build_beat_validation_messages(
             previous_final_beat="None",
