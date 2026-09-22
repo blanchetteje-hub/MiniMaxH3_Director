@@ -10757,7 +10757,11 @@ def build_beat_arc_plan_messages(
             "sequence. Preserve distinct earlier source stages instead of "
             "compressing them merely to manufacture literal repetitions. When the "
             "source presents the emphasized material as one continuous block, "
-            "prefer one contiguous beat span for that sequence."
+            "prefer one contiguous beat span for that sequence. If the source's "
+            "terminal emphasized action is immediately followed by resolution, "
+            "put that terminal result and immediate resolution in the SAME final "
+            "sequence beat whenever a resolution-only beat would otherwise make "
+            "the emphasized sequence too short."
         )
     correction_text = ""
     if correction:
@@ -10908,6 +10912,12 @@ state forward across beats. Appropriate local setpiece structure may include:
 - a setback followed by recovery/counterattack;
 - a terminal enemy/result delayed until the next beat so the sequence has a
   real unresolved handoff.
+When a sparse repeated conflict has several beats available, do not make every
+invented complication self-contained. Prefer at least one meaningful adjacent
+cross-beat handoff: the same threat, obstacle, weapon problem, contamination, or
+other temporary complication remains unresolved at the end of one beat and is
+continued/resolved in the next. This creates one coherent setpiece instead of a
+series of interchangeable mini-fights.
 These are execution-level developments inside an already authorized conflict,
 not new mythology or a different plot. Do NOT invent a new major character,
 location change, supernatural rule, mission, injury that changes the required
@@ -11189,7 +11199,10 @@ def build_macro_arc_repair_messages(
             "resolution sharing the final sequence beat may count. Standalone "
             "preparation before that conflict begins does NOT count, so fit "
             "adjacent setup/preparation into the non-sequence beat budget when "
-            "physically reasonable. Preserve every explicit source action."
+            "physically reasonable. Preserve every explicit source action. If the "
+            "terminal emphasized action is immediately followed by resolution, "
+            "share them in the final sequence beat rather than spending a separate "
+            "resolution-only beat when that would under-allocate the majority."
         )
     return [
         {
@@ -11242,7 +11255,10 @@ treating one source sentence as indivisible. For genuinely sparse long processes
 source-authorized setpiece jobs with coherent cross-beat handoffs rather than
 generic repetition; local attacks, setbacks, weapon transitions, temporary
 complications, and unresolved threats may be repaired in when they stay inside
-the established conflict and required outcome. Include state_effects on events
+the established conflict and required outcome. When several conflict beats are
+available, prefer at least one complication/threat that remains unresolved across
+an adjacent beat boundary instead of resolving every invented setback immediately.
+Include state_effects on events
 that establish persistent modeled facts. Return only the normal macro-arc JSON
 object.
 """.strip(),
