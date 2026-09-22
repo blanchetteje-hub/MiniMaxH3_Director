@@ -302,6 +302,34 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             initial[0]["content"],
         )
 
+    def test_director_dialogue_uses_canonical_h3_form_and_detector_handles_quotes(self):
+        rules = minimax.build_director_rules(
+            8,
+            4,
+            1,
+            "<Subject 1> is Amy, a woman.",
+            2,
+        )
+        self.assertIn(
+            "Amy (S1) says <d>[English]The eggs are ready.</d>",
+            rules,
+        )
+        self.assertIn(
+            "Do NOT put spoken words in bare single/double quotation marks",
+            rules,
+        )
+        self.assertTrue(
+            minimax._h3_contains_spoken_dialogue(
+                "Amy asks, 'Who wants eggs?'"
+            )
+        )
+        self.assertEqual(
+            minimax.format_h3_spoken_dialogue_constraint(
+                "Amy asks, 'Who wants eggs?'"
+            ),
+            "",
+        )
+
     def test_first_two_director_prompts_require_beat_clothing(self):
         clothing_requirement = (
             "Any clothing specified in the beat must be part of the response."
