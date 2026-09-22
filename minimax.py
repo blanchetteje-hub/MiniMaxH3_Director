@@ -9612,11 +9612,15 @@ CANDIDATE BEAT
 CHECKS
 A. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept
 paraphrases and clear implications, but require every materially required action
-or result when the job has multiple parts. Named relational participants are
-material: if CURRENT JOB says an action is done for, with, or to named people,
-the candidate must preserve those named participants or their direct visible
-participation/result. Reject a solo rewrite that drops named beneficiaries or
-participants. Do not reject harmless visible detail.
+or result when the job has multiple parts. A prerequisite, approach, or partial
+progress is NOT completion of a later required result: if CURRENT JOB requires
+A then B, doing only A is invalid. Entering a room does not imply locking its
+door; reaching a door does not imply opening it; retrieving a weapon does not
+imply equipping it; drawing a weapon does not imply firing it. Named relational
+participants are material: if CURRENT JOB says an action is done for, with, or
+to named people, the candidate must preserve those named participants or their
+direct visible participation/result. Reject a solo rewrite that drops named
+beneficiaries or participants. Do not reject harmless visible detail.
 
 B. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as
 authoritative history. Reject only clear contradictions or physical impossibilities,
