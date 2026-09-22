@@ -449,3 +449,23 @@ Focused production changes:
 - `5b802656f350d5c2acb1aa5d9f28ad65ff085d7c` — regression assertions for those contracts.
 
 This is still inside ARC create/validate/repair. No new semantic stage was added.
+
+
+## 2026-09-21 late-session: regression cleanup and H3 continuation dedup
+
+Current-head regression bundle `current-regressions-039` still reported four non-production failures:
+- two Windows-only temp-file replacement errors caused by tests keeping `NamedTemporaryFile` handles open while `save_generation_state` uses atomic `os.replace`;
+- two stale continuity assertions expecting legacy `retention_analysis`/hard-cut wardrobe text in the final H3 prompt even though clean-refresh now relies on the supplied first frame and intentionally keeps internal continuity text out of final H3 output.
+
+Test-only fix:
+- `218da775ca2d83e4fdbdea3340063a20d0ff1043` — use closed temp paths on Windows and align stale expectations with the current final-H3 contract.
+
+A separate observed formatter defect from acceptance `-034` was still possible on current code: Request 2 could return
+`[Shot 1] Live-action, cinematic, continues from <Video 1>...`
+and Python would prepend its own canonical continuation opener, producing duplicate `continues from <Video 1>.`.
+
+Production/test fixes:
+- `3fdfb0ae7ffc7a92765e91d1517f82b46f991ffd` — strip Request 2's duplicate leading Video 1 continuation clause before Python prepends the canonical opener.
+- `6c29c79a70a9ddf0650107a8af238b8df01f2cc5` — regression coverage.
+
+No production behavior was changed merely to satisfy the obsolete continuity tests.
