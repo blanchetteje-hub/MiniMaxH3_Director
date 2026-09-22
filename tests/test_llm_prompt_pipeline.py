@@ -585,7 +585,13 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             normalized,
         )
         self.assertIn(
-            "stopping, setting down, closing, or turning it off",
+            "Do NOT add durable tool, appliance, object-placement, ownership, "
+            "barrier, injury, or environment-state changes merely to prove completion",
+            normalized,
+        )
+        self.assertIn(
+            "Mundane local staging such as setting down a utensil or turning off "
+            "an appliance belongs to Director Request 1",
             normalized,
         )
 
