@@ -9544,6 +9544,34 @@ def _missing_named_job_subjects(beat_job, candidate_beat, subject_information=""
     return missing
 
 
+def _missing_named_director_subjects(
+    current_beat,
+    raw_scene,
+    subject_definitions="",
+):
+    # Deterministic identity/coverage guard only; semantic completion remains
+    # owned by Director Request 1.
+    try:
+        registry = parse_subject_registry(subject_definitions)
+    except (TypeError, ValueError):
+        registry = {}
+
+    beat_text = str(current_beat or "")
+    scene_text = str(raw_scene or "")
+    missing = []
+    for _subject_id, name, _record in _subject_registry_records(registry):
+        name = str(name or "").strip()
+        if not name:
+            continue
+        pattern = rf"(?<![\\w]){re.escape(name)}(?![\\w])"
+        if re.search(pattern, beat_text, re.IGNORECASE) and not re.search(
+            pattern,
+            scene_text,
+            re.IGNORECASE,
+        ):
+            missing.append(name)
+    return missing
+
 def build_beat_validation_messages(
     previous_final_beat,
     current_state,
