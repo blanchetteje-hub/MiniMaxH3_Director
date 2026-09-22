@@ -48,8 +48,9 @@ class ContinuityCallContractTests(unittest.TestCase):
         self.assertEqual(request.call_count, 1)
         messages = request.call_args.args[0]
         self.assertEqual([message["role"] for message in messages], ["system", "user"])
-        self.assertIn("reduced continuity state", messages[0]["content"])
-        self.assertIn("MANDATORY OUTPUT CONTRACT", messages[0]["content"])
+        self.assertIn("FINAL FRAME", messages[0]["content"])
+        self.assertIn("TOP-LEVEL KEYS ONLY", messages[0]["content"])
+        self.assertIn("Return JSON only", messages[0]["content"])
         self.assertIn("FINAL H3 PROMPT", messages[1]["content"])
         self.assertIsNone(request.call_args.kwargs["response_format"])
         self.assertEqual(request.call_args.kwargs["temperature"], 0.10)
@@ -798,7 +799,15 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         positions = [system_prompt.index(item) for item in schema]
         self.assertEqual(positions, sorted(positions))
         self.assertIn("only sounds supported by RAW SCENE", system_prompt)
-        self.assertIn("Set non_diegetic_music to `N/A`", system_prompt)
+        self.assertIn(
+            "non_diegetic_music is the formatter's one allowed creative "
+            "finishing choice",
+            system_prompt,
+        )
+        self.assertIn(
+            "Use `N/A` only when silence/no score is explicitly required",
+            system_prompt,
+        )
         self.assertIn("Do not advance the", system_prompt)
 
     def test_nonfinal_story_segment_protects_the_handoff_frame(self):
