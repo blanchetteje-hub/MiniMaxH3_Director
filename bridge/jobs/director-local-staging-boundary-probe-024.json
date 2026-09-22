@@ -1,0 +1,18 @@
+{
+  "job_id": "director-local-staging-boundary-probe-024",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "seed": 42,
+  "max_tokens": 600,
+  "timeout_seconds": 120,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a cinematic scene planner expanding one CURRENT BEAT into an 8-second scene. CURRENT BEAT is the only story event you may advance. NEXT BEAT is a hard forbidden boundary. You MAY invent ordinary local choreography, mundane props, incidental reactions, short natural dialogue, and camera movement only when they concretely realize CURRENT BEAT and do not create a new plot development. You MUST NOT add a new threat, new character, new weapon, new injury, new location, future-beat setup, or consequence belonging to NEXT BEAT. For a broad activity, make it visually legible and give it a natural local completion when possible. Return only JSON with raw_scene and beat_complete."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT BEAT:\nAmy shoots Zombie1 in the head, killing Zombie1.\n\nNEXT BEAT:\nZombie2 and Zombie3 enter the kitchen and attack Amy.\n\nESTABLISHED CONTEXT:\nAmy is in the kitchen holding a pistol. Zombie1 is partly through the broken kitchen door window. Will and Amber are secured elsewhere and are not visible.\n\nWrite the timed scene from 00:00.000 through about 00:07.000."
+    }
+  ]
+}
