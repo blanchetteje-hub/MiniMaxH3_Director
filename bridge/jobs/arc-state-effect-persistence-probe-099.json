@@ -1,0 +1,18 @@
+{
+  "job_id": "arc-state-effect-persistence-probe-099",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "seed": 42,
+  "max_tokens": 260,
+  "timeout_seconds": 120,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate one macro-arc event. Return JSON only: {\"valid\":boolean,\"issues\":[string]}."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE:\nAmy is at home on a normal day, wearing a black tank top and denim jeans, cooking breakfast for her young kids Will and Amber.\nSuddenly, a zombie breaks the kitchen door window.\n\nARC EVENT:\n{\"id\":\"E1\",\"event\":\"Amy is cooking breakfast for her kids in the kitchen.\",\"beat_number\":1,\"state_effects\":[{\"op\":\"set_condition\",\"entity\":\"Amy\",\"value\":\"cooking\"},{\"op\":\"set_condition\",\"entity\":\"Will\",\"value\":\"eating\"},{\"op\":\"set_condition\",\"entity\":\"Amber\",\"value\":\"eating\"}]}\n\nSTATE-EFFECT PERSISTENCE / ENTAILMENT RULE:\nA state_effect is written into canonical state AFTER this beat validates and becomes authoritative history for later beats. Therefore every state_effect must be a durable result/fact established by this event, not merely something happening during the shot and not something that is only plausible.\n\nFor EACH effect, independently ask: does the SOURCE or ARC EVENT actually assert that this exact entity has this persistent result? Do not use common-sense completion, beneficiary inference, or likely behavior.\n\nset_condition is for a persistent condition/result, not an ongoing activity. Do not encode activities such as cooking, eating, running, fighting, looking, speaking, or waiting as set_condition. Temporary action belongs in the beat text only.\n\nA relation like \"Amy is cooking breakfast for Will and Amber\" does NOT assert that Will or Amber are eating, hungry, holding food, or have received food. \"for\" identifies beneficiaries, not their actions.\n\nIf ANY effect fails this test, valid must be false and issues must name the first unsupported effect.\n\nEvaluate E1. Return JSON only."
+    }
+  ]
+}
