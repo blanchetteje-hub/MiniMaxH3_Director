@@ -247,105 +247,118 @@ This is intentionally not a remote-shell bridge. Supported job kinds are constra
 
 ## Current acceptance finding
 
-The Beat endpoint state-authority correction is regression-clean, and acceptance 086 exposed the next real failure back inside ARC majority repair: it can still destroy an explicitly authored ordinary-baseline / sudden-inciting-event contrast while compressing setup.
+Acceptance 091 completed successfully and finally preserved the ARC baseline boundary. The earliest remaining failure is now Beat generation / Request 1 completion for Segment 1.
 
-### Verification through 085/086
+### Acceptance 091: ARC boundary passes; Beat 1 still too abstract
 
-`current-regressions-085`: **PASS, 104/104 tests green** for the corrected Beat endpoint state-authority contract.
+`run-acceptance-amy-current-091` completed with return code 0 against repo revision `39898bd2abce7b978be272b35fc4d4a908d5101e`.
 
-`run-acceptance-amy-current-086`: **PASS as a process, return code 0**, against repo revision `3991db995fbb63e1a49c2cee412bb7fd99a54602` (which includes the Beat endpoint authority correction).
-
-However, the accepted 086 ARC was behaviorally wrong at the first gold boundary:
-
-- Beat 1 required event became: “Amy cooks breakfast for Will and Amber; a zombie breaks the kitchen door window, revealing the threat.”
-- Therefore Segment 1 contained the zombie breach and suspense instead of remaining an ordinary safe breakfast.
-- Request 1 and Request 2 correctly executed/transcribed that bad assigned Beat 1.
-
-The earliest failure is therefore ARC majority repair again, not Director or formatter behavior.
-
-### 086 causal trace
-
-The **initial created ARC was correct**:
-
-- Beat 1: Amy cooks breakfast for Will and Amber.
-- Beat 2: zombie breaks the kitchen door window.
-- Beat 3: Amy rushes Will and Amber to the basement and locks the door.
-- Later setup/retrieval/equip followed.
-
-After unrelated ARC semantic repairs, validation eventually reached the explicit majority issue at attempt 4:
-> Explicit source majority sequence is under-allocated ... 3/8 beats; more than half is required.
-
-The majority-allocation repair then produced the final accepted ARC that merged the breakfast baseline with the zombie breach.
-
-So the merge happens specifically inside **ARC majority allocation repair**.
-
-### Focused probes 087/088
-
-`arc-majority-baseline-boundary-probe-087` reproduced the current production failure using the 086-shaped pre-majority ARC and current repair wording:
-
-> Beat 1: Amy cooks breakfast for Will and Amber; a zombie breaks the kitchen door window...
-
-This confirms the current majority repair contract is sufficient to cause the bad merge independently of the full acceptance.
-
-`arc-majority-protected-baseline-probe-088` added a stronger generic contrast rule:
-
-- when source explicitly establishes an ordinary/calm/safe/normal baseline;
-- and then explicitly introduces a sudden/inciting threat/change;
-- **never merge the inciting threat/change into the baseline beat**;
-- let that baseline consume one outside-sequence beat;
-- compress later setup/preparation instead;
-- the inciting action may still share with its immediate reaction/escape/containment sequence.
-
-Under that contract Mistral preserved:
-
+Accepted ARC:
 - Beat 1: ordinary breakfast only.
-- Beat 2: zombie breach + immediate evacuation/lock sequence.
+- Beat 2: zombie breach + Amy sees danger + rush kids to basement + lock door.
+- Beat 3: retrieve/equip weapons.
+- Beats 4-8: majority zombie conflict and resolution.
 
-The raw probe omitted one later beat, but production's Python structural validation already rejects missing beat assignments. The semantic contrast behavior itself was corrected.
+So the protected ordinary-baseline / sudden-inciting-event rule held, and the majority allocation remained acceptable.
+
+Generated Beat 1 was still:
+> Amy cooks breakfast for Will and Amber at the kitchen stove.
+
+Request 1 then produced:
+- Amy stirring/flipping eggs;
+- Will and Amber seated watching;
+- Amy takes the pan off the stove;
+- but breakfast is still visibly underway;
+- neither child receives the finished food;
+- stove/tool shutdown is not completed.
+
+Request 2 faithfully preserved that incomplete Request 1 scene.
+
+The earliest failure is therefore Beat creation failing to turn the finite required event into the concrete executable endpoint requested by its prompt.
+
+### Sampling probes 092-095
+
+`beat-phase1-endpoint-repro-092` used the same endpoint contract with deterministic sampling:
+- temperature 0
+- top_p 0.95
+- min_p 0.05
+- seed 42
+- repeat_penalty 1.15
+
+It produced:
+> Amy cooks breakfast in the kitchen, placing food on plates for Will and Amber.
+
+`beat-phase1-formatter-sampling-probe-093` used the H3 formatter sampling profile with seed 42 and also produced a concrete completed breakfast endpoint.
+
+`beat-phase1-declared-sampling-probe-094` used the declared `BEAT_LLM_SAMPLING_PARAMETERS`:
+- temperature 0.65
+- top_p 0.90
+- presence_penalty 0.15
+- frequency_penalty 0.15
+- repeat_penalty 1.05
+- seed 42
+
+It produced:
+> Amy cooks breakfast for Will and Amber in the kitchen, and the food is ready on the table when the shot ends.
+
+`beat-phase1-declared-plus-inherited-probe-095` added formatter-default top_k=20/min_p=0 and still preserved the correct endpoint.
+
+The endpoint prompt is therefore viable. The discrepancy was in sampling transport.
+
+### Production sampling-routing bug
+
+ARC create/validate/repair and Beat generation explicitly call `ask_llm(..., **BEAT_LLM_SAMPLING_PARAMETERS)`.
+
+However, `ask_llm()` previously replaced those caller values with `_active_formatter_llm_settings()` for every non-Beat-validator request. Under the Mistral formatter this silently changed Beat/ARC sampling to roughly:
+- temperature 0.7
+- top_p 0.8
+- top_k 20
+- min_p 0
+- presence_penalty 1.5
+- repeat_penalty 1.0
+
+and generated a random seed.
+
+That meant the named Beat sampling profile was effectively ignored. An existing integration test already stated that explicit caller sampling should be forwarded, but that pytest-based module is not runnable in the current bridge worker environment because pytest is not installed.
 
 ### Production correction
 
-Production commit `c2f2aa9828b1bc017384bfb20e55d1bf634f198a` strengthens the existing ARC majority repair prompt with a **PROTECTED CONTRAST BOUNDARY**:
+Production commit `4ad97cbf79050cb76a49945bc0890fa0612ae631` changes `ask_llm()` routing:
 
-- explicit ordinary/calm/safe/normal baseline remains its own beat;
-- sudden/inciting threat/change cannot be merged into that baseline;
-- the protected baseline consumes one outside-sequence beat;
-- later setup/preparation should be compressed instead;
-- inciting action may still share with immediate reaction/escape/containment.
+- **Beat validation remains frozen** to `MISTRAL_24B_SETTINGS`, overriding caller values exactly as before.
+- For all other calls, explicit per-call sampling values are authoritative.
+- Active formatter defaults only fill sampling/template fields that the caller did not supply.
+- Existing formatter thinking/chat-template/jinja defaults still fill missing values.
 
-This remains entirely inside ARC CREATE -> VALIDATE -> REPAIR. No new semantic subsystem was added.
+This restores the intended meaning of `BEAT_LLM_SAMPLING_PARAMETERS` without changing the frozen 400/400 Beat validator.
 
-Regression commit `94733acff47e2b280ed17fae0be922e39d66e31d` asserts the new prompt contract.
-A case-sensitive assertion typo was fixed in `25d778d2e90cd0680c5d0c75671e465fcaf209d6`.
+Regression work:
+- an initial test was placed in `tests/test_minimax_integration.py`, but that module cannot import on the bridge worker because pytest is absent; that test-only change was reverted in `dc3aa04741d731cd8d52e0f19d614c9805b6140e`.
+- active unittest coverage was added in `fa24e6809eabb59bc85fc70f8b0b2854f3beb5c0`:
+  - Beat-generation explicit sampling beats formatter defaults;
+  - Beat validation remains pinned to benchmark settings.
 
-`current-regressions-090`: **PASS, 104/104 tests green**.
-
-### Beat endpoint correction still in force
-
-Production commit `4cb0d75e19e0c6c3768a2b28a0cce41f5e315b29` remains active:
-
-- Beat generation turns finite assigned story activities into concrete observable execution targets.
-- When explicitly done FOR named people, beneficiaries should visibly receive/participate in the completed result when physically reasonable.
-- Beat generation does **not** add durable untyped state changes merely to prove completion.
-- Mundane local staging such as setting down utensils / turning off an appliance remains Director Request 1 responsibility.
+`current-regressions-097`: **PASS, 106/106 tests green**.
 
 ### Current verification
 
-- `run-acceptance-amy-current-091`: next locked acceptance against the protected-baseline majority repair contract.
-- First check: Beat 1 must remain pure ordinary breakfast with no zombie/threat content.
-- Second check: majority allocation must still reach at least 5/8 materially emphasized beats.
-- Third check: with a clean breakfast beat, evaluate whether the concrete Beat endpoint + Request 1 completion now reaches both kids and natural local completion.
-- If Segment 1 passes, continue forward to Segment 2 and fix the next earliest behavioral divergence only.
+- Next locked acceptance: `run-acceptance-amy-current-098`.
+- First check: ARC Beat 1 must remain pure ordinary breakfast.
+- Second check: generated Beat 1 should now be a concrete executable endpoint, ideally visibly delivering breakfast to Will and Amber or otherwise clearly completing the finite activity.
+- Third check: Request 1 should realize that concrete endpoint and add only mundane local completion staging (for example utensil/stove settling) without entering Beat 2.
+- Request 2 should preserve the completed scene.
+- If Segment 1 passes, continue to Segment 2 and identify the next earliest divergence.
 
 ### Current architectural conclusion
 
 KISS still holds:
 - ARC = CREATE -> VALIDATE -> REPAIR
 - BEATS = CREATE -> VALIDATE -> REPAIR
-- Beat generation = concrete story-level execution target within typed-state authority.
-- Request 1 = timed mundane/local staging needed to realize the assigned beat.
+- Beat generation = concrete story-level execution target.
+- Request 1 = timed mundane/local staging.
 - Request 2 = stenographer/formatter.
-- Python = deterministic structure/counting/state mechanics.
+- Python = deterministic structure/state mechanics.
+- Sampling profiles are now routed according to the calling stage rather than silently replaced by formatter defaults.
 
 ### Other observed but non-current semantic weaknesses
 
