@@ -891,8 +891,11 @@ Rules:
   segments, do not re-narrate the previous final frame or duplicate its opener.
 - overall_soundscape may contain only sounds supported by RAW SCENE or directly
   relevant visible actions. Do not perpetuate unrelated opening-state sounds.
-- Set non_diegetic_music to `N/A` unless music is explicitly requested or
-  supported by the supplied input. Do not invent a soundtrack.
+- non_diegetic_music is the formatter's one allowed creative finishing choice.
+  If RAW SCENE does not specify music, choose a minimal scene-appropriate
+  non-diegetic underscore that supports the visible tone without adding story
+  information. Use `N/A` only when silence/no score is explicitly required.
+  Follow any SEGMENT MUSIC RULE in the user message exactly.
 - `subject_genders` contains only newly introduced named Subjects, with values
   exactly `male`, `female`, or `unknown`; use `{}` when there are none.
 
@@ -14718,6 +14721,26 @@ def build_h3_formatter_messages(
         + (continuity_text if continuity_text else "N/A")
     )
     conditioning_mode = str(conditioning_mode or "").strip().lower()
+    if conditioning_mode == "continuation":
+        music_rule = (
+            "SEGMENT MUSIC RULE:\n"
+            "non_diegetic_music MUST begin exactly with "
+            "'continues from <Video 1>.' Then briefly describe the continued "
+            "underscore or a scene-appropriate musical transition. Do not use "
+            "N/A for an ordinary scored continuation segment.\n\n"
+        )
+    elif conditioning_mode == "clean_refresh":
+        music_rule = (
+            "SEGMENT MUSIC RULE:\n"
+            "Choose a minimal scene-appropriate non-diegetic underscore unless "
+            "silence/no score is explicitly required.\n\n"
+        )
+    else:
+        music_rule = (
+            "SEGMENT MUSIC RULE:\n"
+            "Choose a minimal scene-appropriate non-diegetic underscore unless "
+            "silence/no score is explicitly required.\n\n"
+        )
     if conditioning_mode == "clean_refresh":
         continuation_opening_rule = (
             "CLEAN-REFRESH OPENING RULE:\n"
@@ -14750,6 +14773,7 @@ def build_h3_formatter_messages(
         f"DURATION: {float(segment_seconds):g} seconds \n\n"
         f"{opening_block}\n\n"
         f"{continuation_opening_rule}"
+        f"{music_rule}"
         f"{phrase_exclusion_block}"
         f"{dialogue_block}"
         "RAW SCENE:\n"
