@@ -73,13 +73,25 @@ The Amy zombie-house acceptance story has progressed through several earlier fai
 
 ## Current earliest real failure
 
-Source requirement:
+The deterministic majority-evidence change succeeded at forcing five materially zombie-killing beats in the next Amy acceptance run, but it exposed a more important gold mismatch: **the explicit breakfast setup disappeared entirely.**
 
-> The majority of the film is Amy killing zombies as they try and attack her.
+Acceptance `run-acceptance-amy-majority-016` produced an ARC beginning with the zombie breaking the kitchen window; the source's explicit ordinary action "Amy ... cooking breakfast for her young kids" was absent. Segment 1 therefore began with the zombie attack instead of the locked gold's ordinary breakfast scene.
 
-A finalized 8-beat acceptance ARC allocated actual zombie-killing jobs only to Beats 4-7: **4/8**, which is not a majority.
+The gold benchmark also clarified the correct compression direction: the gold keeps breakfast/setup early and lets Beat 8 begin with the final zombie falling before transitioning into the family reunion. Therefore, when emphasis and beat budget conflict, the system should preserve early explicit source stages and bundle the final emphasized action with its immediate aftermath/resolution when appropriate, rather than delete setup.
 
-The original ARC validator incorrectly accepted that allocation.
+## Latest coverage-priority finding
+
+Targeted probes after `run-acceptance-amy-majority-016`:
+
+- `arc-coverage-emphasis-validator-probe-018`: when explicitly told to validate source coverage before other concerns, Mistral correctly rejected the bad ARC and identified **"Amy is cooking breakfast for her young kids"** as the first missing source action.
+- `arc-coverage-emphasis-create-probe-017`: creation preserved breakfast when explicitly told never to sacrifice source coverage, but still did not reliably satisfy the majority arithmetic on its own. This reinforces the current split: semantic matching by the LLM, deterministic threshold counting by Python.
+
+Focused production changes:
+
+- `38b147790c99fbfabe0d4c7629476d5441eaa157` — make source coverage the first ARC semantic check and instruct planning to preserve all explicit source stages before satisfying emphasis through adjacent bundling.
+- `428a843b4d6cc7f6e47643d16690756bc363926e` — regression-test that source coverage appears before source emphasis in the ARC validator prompt.
+- `run-tests-arc-coverage-priority-019` passed **8/8** ARC structural/semantic prompt regressions.
+- Full Amy acceptance `run-acceptance-amy-coverage-priority-019` is queued/running. Its result determines the next real failure.
 
 ## What did NOT work
 
@@ -153,12 +165,11 @@ Do not build a generalized relative-emphasis subsystem for `most`, `half`, `brie
 
 ## Immediate next steps
 
-1. Let the currently queued local regression/acceptance jobs finish.
-2. Confirm the deterministic majority-evidence tests pass locally.
-3. Run Amy acceptance again on the latest `gpt-test-branch`.
-4. Verify the accepted ARC contains at least 5/8 actual zombie-killing required_event jobs.
-5. If it does, inspect the resulting beats/prompts and fix the **next earliest real acceptance failure only**.
-6. Update this file with the result before moving on.
+1. Read `run-acceptance-amy-coverage-priority-019` when it lands.
+2. Verify Beat/Segment 1 restores the explicit ordinary breakfast setup while the accepted ARC still satisfies the current majority evidence check.
+3. Compare generated prompts against the locked gold in chronological order and identify the **earliest semantic mismatch**.
+4. Fix that observed mismatch only; do not optimize later beats first.
+5. Update this file again with the acceptance outcome and next blocker.
 
 ## Recovery instructions for a new chat/context
 
