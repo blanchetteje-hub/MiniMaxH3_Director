@@ -201,6 +201,10 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             "does NOT count toward the majority sequence",
             create_prompt,
         )
+        self.assertIn(
+            "terminal result and immediate resolution in the SAME final sequence beat",
+            create_prompt,
+        )
 
         arc = make_arc([(1, 3, self.events)])
         repair_messages = minimax.build_macro_arc_repair_messages(
@@ -260,6 +264,15 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("weapon running empty", normalized)
         self.assertIn("enemy surviving one beat", normalized)
         self.assertIn("temporary obstacle, contamination", normalized)
+        self.assertIn(
+            "do not make every invented complication self-contained",
+            normalized,
+        )
+        self.assertIn(
+            "remains unresolved at the end of one beat and is continued/resolved "
+            "in the next",
+            normalized,
+        )
 
         validator = minimax.build_macro_arc_validation_messages(
             story,
