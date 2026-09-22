@@ -1,0 +1,18 @@
+{
+  "job_id": "director-direct-instantiation-probe-027",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "seed": 42,
+  "max_tokens": 450,
+  "timeout_seconds": 120,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Expand one CURRENT BEAT into an 8-second cinematic scene.\n\nCURRENT BEAT is the only story event allowed. NEXT BEAT is forbidden.\n\nLOCAL REALIZATION RULE:\nYou may invent only mundane details that DIRECTLY instantiate the CURRENT BEAT.\nEvery invented action must answer: \"How does this visibly perform, receive, or complete the CURRENT BEAT?\" If it does not, omit it.\n\nFor a broad activity involving other named people:\n- show those people already present and passively ready for the activity;\n- give them no unrelated hobbies, devices, errands, entrances, exits, or side business;\n- they may act only to directly receive/participate in the main activity;\n- choose the minimum ordinary props needed to make the activity visible;\n- when practical, bring the activity to a natural local completion before NEXT BEAT;\n- short dialogue is allowed only if it directly states or supports the current activity.\n\nDo not foreshadow or begin NEXT BEAT.\nReturn only JSON {\"raw_scene\":\"...\",\"beat_complete\":true}."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT BEAT:\nAmy is cooking breakfast for her young kids in the kitchen. Amy wears a tight black tank top and denim jeans.\n\nNEXT BEAT:\nA zombie breaks the kitchen door window and Amy sees the danger.\n\nSUBJECTS:\nAmy; Will, a 10-year-old boy; Amber, a 14-year-old girl.\n\nWrite timed actions from 00:00.000 through about 00:07.000. Keep the scene ordinary and safe."
+    }
+  ]
+}
