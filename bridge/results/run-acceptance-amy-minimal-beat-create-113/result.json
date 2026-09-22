@@ -1,0 +1,7 @@
+{
+  "job_id": "run-acceptance-amy-minimal-beat-create-113",
+  "status": "error",
+  "error_type": "TimeoutExpired",
+  "error": "Command '['C:\\\\Program Files (x86)\\\\Python311\\\\python.exe', 'tests/acceptance/run_acceptance.py', '--image1', 'C:\\\\Users\\\\J\\\\Source\\\\Repos\\\\MiniMaxH3_Director\\\\amy.jpg', '--model', 'mistral']' timed out after 3600 seconds",
+  "finished_at": 1790114974.6665907
+}
