@@ -1,0 +1,53 @@
+{
+  "job_id": "beat-beneficiary-validator-probe-035",
+  "kind": "llama_chat",
+  "started_at": 1790043923.1043081,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Reject only clear errors. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nAmy is cooking breakfast for her young kids Will and Amber in the kitchen.\n\nNEXT JOB\nA zombie breaks the kitchen door window and Amy reacts.\n\nCANDIDATE BEAT\nAmy stands at the kitchen counter cooking breakfast.\n\nCHECKS\nA. CURRENT JOB: Candidate must accomplish every materially required part of CURRENT JOB. Relational requirements are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result. Do not accept a solo version that drops named beneficiaries/participants.\nB. NEXT JOB: Do not materially complete NEXT JOB early.\n\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"...\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 120,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-0jir5m3bsdx8cw042tuuv7u",
+    "object": "chat.completion",
+    "created": 1790043923,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 202,
+      "completion_tokens": 11,
+      "total_tokens": 213,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790043924.4050963,
+  "status": "ok"
+}
