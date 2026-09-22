@@ -23095,6 +23095,11 @@ def repair_existing_segment(
         "segment": segment_number,
         "current_duration": duration,
         "active_beat_id": segment_number,
+        "current_beat_text": (
+            str(beats[segment_number - 1])
+            if beats and 1 <= int(segment_number) <= len(beats)
+            else ""
+        ),
         "conditioning_mode": conditioning_mode,
         "is_final_story_segment": segment_number == repair["total_segments"],
         "messages": messages,
@@ -24244,6 +24249,12 @@ def _run_main(
             "segment": segment_number,
             "current_duration": current_duration,
             "active_beat_id": active_beat_id,
+            "current_beat_text": (
+                str(beats[active_beat_id - 1])
+                if beats and active_beat_id is not None
+                and 1 <= int(active_beat_id) <= len(beats)
+                else ""
+            ),
             "conditioning_mode": conditioning_mode,
             "is_final_story_segment": segment_number == total_segments,
             "loras": beat_loras(beats, active_beat_id, global_loras),
