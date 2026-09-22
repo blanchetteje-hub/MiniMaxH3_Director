@@ -108,7 +108,10 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         self.assertNotIn("<Subject 1>", definitions)
         self.assertIn("Werewolf enters", description)
         self.assertNotIn("<Subject 2> Werewolf", description)
-        self.assertIn("retention_analysis:", prompt)
+        # Clean-refresh final H3 prompts rely on the supplied first frame for
+        # retained visual state. Internal retention_analysis text must not leak
+        # into the final prompt.
+        self.assertNotIn("retention_analysis:", prompt)
         self.assertNotIn("fully_preserved", prompt)
 
     def test_continuation_keeps_dynamic_subject_registry_marker(self):
@@ -455,9 +458,10 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             subject_registry_state=registry_state,
         )
 
-        with tempfile.NamedTemporaryFile(mode="w+", suffix=".json") as checkpoint:
-            minimax.save_generation_state(state, checkpoint.name)
-            loaded = minimax.load_generation_state(checkpoint.name)
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint_path = os.path.join(directory, "generation_state.json")
+            minimax.save_generation_state(state, checkpoint_path)
+            loaded = minimax.load_generation_state(checkpoint_path)
 
         saved = loaded["segments"][0]["subject_registry_state"]
         self.assertEqual(saved["subjects"]["Elias"]["picture_ids"], [1])
@@ -492,9 +496,10 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
             ["We need to leave."],
         )
 
-        with tempfile.NamedTemporaryFile(mode="w+", suffix=".json") as checkpoint:
-            minimax.save_generation_state(state, checkpoint.name)
-            loaded = minimax.load_generation_state(checkpoint.name)
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint_path = os.path.join(directory, "generation_state.json")
+            minimax.save_generation_state(state, checkpoint_path)
+            loaded = minimax.load_generation_state(checkpoint_path)
 
         self.assertEqual(
             loaded["recent_dialogue_exclusions"],
@@ -536,7 +541,10 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         description = prompt.split("detailed_description: ", 1)[1].split(
             "\n\noverall_soundscape:", 1
         )[0]
-        self.assertEqual(description.count("blue shirt"), 1)
+        # A clean refresh is visually anchored by the supplied first frame;
+        # do not redundantly inject legacy hard-cut wardrobe reminders into the
+        # final H3 description.
+        self.assertEqual(description.count("blue shirt"), 0)
         self.assertNotIn("Hard-cut subject continuity", description)
 
     def test_feature_one_first_frame_anchor_remains_exact(self):
