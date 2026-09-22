@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-emphasis-validator-probe-009",
+  "kind": "llama_chat",
+  "started_at": 1790035601.7054455,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate a story arc against source emphasis. Return only JSON {\"valid\":boolean,\"issues\":[string]}."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE EMPHASIS RULE:\nExplicit relative-duration or emphasis statements in the source are binding on beat allocation.\nIf the source says \"the majority of the film is X\", then more than half of the total beat/runtime budget must materially perform or continue X. Beats that are only setup, preparation, or resolution do not count toward X. A transition beat counts only if X materially occurs in that beat.\nLikewise preserve explicit \"most\", \"half\", \"briefly\", or similar relative emphasis according to their ordinary meaning.\nAdjacent source setup actions may be bundled into one beat job when necessary to preserve the source emphasis.\n\nSOURCE:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nARC:\n{\n  \"phases\": [\n    {\n      \"phase_number\": 1,\n      \"beat_start\": 1,\n      \"beat_end\": 2,\n      \"narrative_purpose\": \"Setup and initial danger\",\n      \"broad_progression\": \"Amy is at home cooking breakfast when a zombie breaks in, prompting her to protect her kids.\",\n      \"required_end_state\": \"Amy's kids are safe in the basement.\",\n      \"required_events\": [\n        {\n          \"id\": \"E1\",\n          \"event\": \"Amy is cooking breakfast for her kids at home.\",\n          \"beat_number\": 1\n        },\n        {\n          \"id\": \"E2\",\n          \"event\": \"A zombie breaks the kitchen door window, Amy rushes her kids to the basement and locks the door.\",\n          \"beat_number\": 2,\n          \"depends_on\": [\n            \"E1\"\n          ]\n        }\n      ]\n    },\n    {\n      \"phase_number\": 2,\n      \"beat_start\": 3,\n      \"beat_end\": 7,\n      \"narrative_purpose\": \"Main conflict\",\n      \"broad_progression\": \"Amy defends her home by killing zombies.\",\n      \"required_end_state\": \"Amy has killed all zombies.\",\n      \"required_events\": [\n        {\n          \"id\": \"E3\",\n          \"event\": \"Amy retrieves her hidden arsenal consisting of a pistol and katana.\",\n          \"beat_number\": 3,\n          \"depends_on\": [\n            \"E2\"\n          ]\n        },\n        {\n          \"id\": \"E4\",\n          \"event\": \"Amy equips the pistol and katana.\",\n          \"beat_number\": 4,\n          \"depends_on\": [\n            \"E3\"\n          ]\n        },\n        {\n          \"id\": \"E5\",\n          \"event\": \"Amy kills several zombies that attack her.\",\n          \"beat_number\": 5,\n          \"depends_on\": [\n            \"E4\"\n          ]\n        },\n        {\n          \"id\": \"E6\",\n          \"event\": \"Amy continues to kill more zombies as they attack.\",\n          \"beat_number\": 6,\n          \"depends_on\": [\n            \"E5\"\n          ]\n        },\n        {\n          \"id\": \"E7\",\n          \"event\": \"Amy kills the last zombies.\",\n          \"beat_number\": 7,\n          \"depends_on\": [\n            \"E6\"\n          ]\n        }\n      ]\n    },\n    {\n      \"phase_number\": 3,\n      \"beat_start\": 8,\n      \"beat_end\": 8,\n      \"narrative_purpose\": \"Resolution\",\n      \"broad_progression\": \"Amy lets her kids out.\",\n      \"required_end_state\": \"Kids are out.\",\n      \"required_events\": [\n        {\n          \"id\": \"E8\",\n          \"event\": \"Amy lets her kids out of the basement.\",\n          \"beat_number\": 8,\n          \"depends_on\": [\n            \"E7\"\n          ]\n        }\n      ]\n    }\n  ]\n}\n\nReturn one JSON object only."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 180,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-ooifb9uzit3ewppoi3qkx",
+    "object": "chat.completion",
+    "created": 1790035601,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"valid\": true,\n  \"issues\": []\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 972,
+      "completion_tokens": 18,
+      "total_tokens": 990,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790035604.3542576,
+  "status": "ok"
+}
