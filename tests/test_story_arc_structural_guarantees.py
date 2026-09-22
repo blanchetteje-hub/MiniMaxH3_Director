@@ -123,31 +123,47 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         )
 
     def test_majority_evidence_is_counted_deterministically(self):
-        invalid = {
+        invalid_arc = {
+            "phases": [
+                {"phase_number": 1, "beat_start": 1, "beat_end": 2},
+                {"phase_number": 2, "beat_start": 3, "beat_end": 4},
+                {"phase_number": 3, "beat_start": 5, "beat_end": 8},
+            ]
+        }
+        evidence = {
             "valid": True,
             "issues": [],
             "majority_checks": [{
                 "source_requirement": "The majority of the film is Amy killing zombies.",
-                "matching_beats": [4, 5, 6, 7],
+                "matching_phases": [3],
             }],
         }
         parsed = minimax.parse_macro_arc_validation_result(
-            invalid,
+            evidence,
             total_segments=8,
             require_majority_checks=True,
+            macro_arc=invalid_arc,
         )
         self.assertFalse(parsed["valid"])
-        self.assertIn("4/8 beats belong to the emphasized sequence", parsed["issues"][0])
+        self.assertIn("4/8 beats; more than half is required", parsed["issues"][0])
+        self.assertEqual(parsed["majority_checks"][0]["matching_beats"], [5, 6, 7, 8])
 
-        valid = copy.deepcopy(invalid)
-        valid["majority_checks"][0]["matching_beats"] = [3, 4, 5, 6, 7]
+        valid_arc = {
+            "phases": [
+                {"phase_number": 1, "beat_start": 1, "beat_end": 1},
+                {"phase_number": 2, "beat_start": 2, "beat_end": 3},
+                {"phase_number": 3, "beat_start": 4, "beat_end": 8},
+            ]
+        }
         parsed = minimax.parse_macro_arc_validation_result(
-            valid,
+            evidence,
             total_segments=8,
             require_majority_checks=True,
+            macro_arc=valid_arc,
         )
         self.assertTrue(parsed["valid"])
         self.assertEqual(parsed["issues"], [])
+        self.assertEqual(parsed["majority_checks"][0]["matching_beats"], [4, 5, 6, 7, 8])
 
     def test_majority_source_requires_validator_evidence(self):
         with self.assertRaisesRegex(ValueError, "returned no majority_checks evidence"):
@@ -172,8 +188,13 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             normalized,
         )
         self.assertIn(
-            "matching_beats must contain ONLY global beat numbers that materially "
-            "belong to the broad emphasized narrative sequence",
+            "matching_phases must contain ONLY macro phase numbers whose MAIN "
+            "progression materially IS the broad emphasized narrative sequence",
+            normalized,
+        )
+        self.assertIn(
+            "Python will expand each returned matching phase to its Python-owned "
+            "beat_start..beat_end span",
             normalized,
         )
 
