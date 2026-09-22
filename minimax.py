@@ -10680,20 +10680,22 @@ def build_beat_arc_plan_messages(
     phrase_exclusions_text = format_phrase_exclusions_section(phrase_exclusions)
     majority_budget_text = ""
     if re.search(r"\bmajority\b", str(story or ""), re.IGNORECASE):
-        minimum_emphasis_beats = int(total_segments) // 2 + 1
-        maximum_non_emphasis_beats = int(total_segments) - minimum_emphasis_beats
+        minimum_sequence_beats = int(total_segments) // 2 + 1
+        maximum_outside_beats = int(total_segments) - minimum_sequence_beats
         majority_budget_text = (
-            "\nEXPLICIT MAJORITY BEAT BUDGET\n"
+            "\nEXPLICIT MAJORITY SEQUENCE BUDGET\n"
             f"This story has {int(total_segments)} total beats. A strict majority "
-            f"requires at least {minimum_emphasis_beats} required_event beat jobs "
-            "that materially perform or continue the source-emphasized action. "
-            f"That leaves at most {maximum_non_emphasis_beats} beats that do not "
-            "materially perform/continue it. Reserve the required majority beats "
-            "first, then fit EVERY other explicit source action into the remaining "
-            "beat budget by bundling only adjacent, causally continuous actions. "
-            "Never omit source content to meet this budget. When needed, the final "
-            "emphasized action may share a beat with its immediately following "
-            "aftermath/resolution."
+            f"requires at least {minimum_sequence_beats} beats allocated to the "
+            "broad source-emphasized narrative sequence. These beats do NOT each "
+            "need to literally repeat the emphasized verb. Immediate preparation "
+            "entering that sequence, enemy attacks, reversals, setbacks, weapon "
+            "transitions, continued action, the terminal result, and immediate "
+            "resolution sharing the final sequence beat may all belong to it. "
+            f"At most {maximum_outside_beats} beats may sit outside the emphasized "
+            "sequence. Preserve distinct earlier source stages instead of "
+            "compressing them merely to manufacture literal repetitions. When the "
+            "source presents the emphasized material as one continuous block, "
+            "prefer one contiguous beat span for that sequence."
         )
     correction_text = ""
     if correction:
@@ -10730,18 +10732,16 @@ PHASE BOUNDARY RULES
   source explicitly states.
 - Explicit relative-duration or emphasis statements in the source are binding on
   beat allocation. If the source says the majority of the film/story is a
-  process or conflict, more than half of the TOTAL global beats must have a
-  required_event that materially performs or continues that process/conflict.
-  Count the actual beat jobs, not phase sizes, phase names, broad_progression,
-  preparation, or resolution. With 8 total beats, "majority" therefore requires
-  at least 5 beats whose required_event materially performs/continues the
-  emphasized action. Setup, preparation, and resolution beats do not count
-  unless that emphasized process materially occurs in the same required_event.
-  When the beat budget is tight, satisfy both coverage and emphasis by bundling
-  only adjacent, causally continuous source actions. In particular, when the
-  final emphasized action is immediately followed by aftermath/resolution,
-  combining those adjacent actions in the same beat is preferable to dropping
-  an earlier explicit source stage.
+  process or conflict, more than half of the TOTAL global beats must belong to
+  that broad narrative sequence. Do NOT require every beat in the sequence to
+  literally repeat the emphasized verb. Immediate preparation entering the
+  sequence, enemy attacks, reversals, setbacks, weapon transitions, continued
+  action, the terminal result, and immediate resolution sharing the final beat
+  may all count when they are genuinely part of the same ongoing sequence.
+  Ordinary setup before the emphasized sequence does not count. With 8 total
+  beats, the emphasized sequence must occupy at least 5 beats, leaving at most
+  3 beats outside it. Preserve distinct earlier source stages rather than
+  compressing them merely to manufacture literal repetitions.
 - Preserve explicit "most", "half", "briefly", and similar relative emphasis
   according to their ordinary meaning.
 - Otherwise, give most beats to the stage containing most of the required visible
@@ -10942,14 +10942,17 @@ Required events:
   allocation.
 - For every explicit source statement using the word "majority", populate one
   majority_checks entry. Its matching_beats must contain ONLY global beat
-  numbers whose actual required_event materially performs or continues the
-  emphasized action. Do NOT infer matches from phase names, narrative_purpose,
-  broad_progression, or required_end_state. Setup, preparation, and resolution
-  do not count unless the emphasized action materially occurs in that same
-  required_event.
+  numbers that materially belong to the broad emphasized narrative sequence.
+  A beat may match because it directly performs the emphasized action OR because
+  it is an immediate preparation entering that sequence, enemy attack, reversal,
+  setback, weapon transition, continuation, terminal result, or immediate
+  resolution sharing the end of that ongoing sequence. Ordinary setup before
+  the emphasized sequence does not count. Do NOT infer matches merely from a
+  phase label; judge the actual required_event in story context.
 - majority_checks is semantic evidence for deterministic counting. Do NOT decide
   whether the numeric majority threshold passes inside valid/issues; Python will
-  compare the returned matching beat numbers with the total global beat count.
+  compare the returned sequence-membership beat numbers with the total global
+  beat count.
 - Preserve explicit "most", "half", "briefly", and similar relative emphasis
   according to their ordinary meaning in the normal semantic validation.
 - Source-required events must be directly supported by the source or explicit
@@ -11030,7 +11033,9 @@ or
 For every explicit SOURCE STORY sentence using the word "majority", include one
 majority_checks object with exactly:
 {{"source_requirement": "concise source requirement", "matching_beats": [1, 2]}}.
-If the source has no explicit "majority" statement, return an empty
+matching_beats means membership in the broad emphasized narrative sequence as
+defined above; it does not mean every listed beat literally repeats the same
+verb. If the source has no explicit "majority" statement, return an empty
 majority_checks array. Keep issues empty when valid is true.
 """.strip(),
         },
@@ -11048,17 +11053,19 @@ def build_macro_arc_repair_messages(
     """Build the one complete-arc repair request used after validation fails."""
     majority_budget_text = ""
     if re.search(r"\bmajority\b", str(story or ""), re.IGNORECASE):
-        minimum_emphasis_beats = int(total_segments) // 2 + 1
-        maximum_non_emphasis_beats = int(total_segments) - minimum_emphasis_beats
+        minimum_sequence_beats = int(total_segments) // 2 + 1
+        maximum_outside_beats = int(total_segments) - minimum_sequence_beats
         majority_budget_text = (
             f"For this {int(total_segments)}-beat arc, the source's explicit "
-            f"majority requires at least {minimum_emphasis_beats} required_event "
-            "beat jobs that materially perform or continue the emphasized action, "
-            f"leaving at most {maximum_non_emphasis_beats} non-emphasis beats. "
-            "Preserve every explicit source action while meeting that budget. "
-            "Bundle only adjacent, causally continuous source actions when needed; "
-            "the final emphasized action may share its beat with immediate "
-            "aftermath/resolution."
+            f"majority requires at least {minimum_sequence_beats} beats allocated "
+            "to the broad emphasized narrative sequence, leaving at most "
+            f"{maximum_outside_beats} beats outside that sequence. Sequence beats "
+            "do not each need to literally repeat the emphasized verb: immediate "
+            "preparation entering the sequence, enemy attacks, reversals, setbacks, "
+            "weapon transitions, continued action, the terminal result, and "
+            "immediate resolution sharing the final sequence beat may count. "
+            "Preserve every explicit source action and do not compress distinct "
+            "earlier stages merely to manufacture literal repetitions."
         )
     return [
         {
@@ -11524,9 +11531,9 @@ def parse_macro_arc_validation_result(
             matched = len(check["matching_beats"])
             if matched * 2 <= total_segments:
                 issues.append(
-                    "Explicit source majority is under-allocated: "
+                    "Explicit source majority sequence is under-allocated: "
                     f'{check["source_requirement"]} is materially represented in '
-                    f"{matched}/{total_segments} required-event beats; more than "
+                    f"{matched}/{total_segments} beats belong to the emphasized sequence; more than "
                     "half is required."
                 )
                 break
