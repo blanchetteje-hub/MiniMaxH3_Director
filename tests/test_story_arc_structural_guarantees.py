@@ -427,6 +427,23 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             repair_prompt,
         )
 
+        non_majority_repair_messages = minimax.build_macro_arc_repair_messages(
+            story,
+            arc,
+            ["Amy's clothing was missing on first show"],
+            8,
+        )
+        non_majority_repair_prompt = " ".join(
+            "\n".join(
+                message["content"] for message in non_majority_repair_messages
+            ).split()
+        )
+        self.assertIn("EXPLICIT MAJORITY BEAT BUDGET N/A", non_majority_repair_prompt)
+        self.assertNotIn(
+            "This validator issue is specifically about allocation",
+            non_majority_repair_prompt,
+        )
+
     def test_arc_planner_prefers_clip_scale_handoffs_when_budget_allows(self):
         messages = minimax.build_beat_arc_plan_messages(
             "Amy runs to the safe room, gets the kids inside, locks the door, "
