@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-sequence-budget-create-probe-026",
+  "kind": "llama_chat",
+  "started_at": 1790043033.5102103,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Create an 8-beat story arc from the source. Preserve every explicit source action in order.\n\nFor an explicit \"majority of the film is X\" statement, reserve more than half of the beats for the broad X narrative sequence, not for literal repetition of the verb X. Beats inside that sequence may include direct preparation immediately entering the conflict, enemy attacks, reversals, setbacks, weapon transitions, continued fighting, the final kill, and immediate resolution sharing the final beat. Ordinary setup before the conflict does not count.\n\nDo not compress multiple earlier source stages merely to manufacture five literal X actions. Prefer keeping distinct setup stages readable, then use varied concrete beats inside the emphasized sequence.\n\nReturn JSON only with {\"beats\":[{\"beat_number\":1,\"event\":\"...\"}]}."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nTOTAL BEATS: 8"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1200,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-tjsh1qy4x9g0m8s9r0yr",
+    "object": "chat.completion",
+    "created": 1790043033,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"beats\": [\n    {\n      \"beat_number\": 1,\n      \"event\": \"Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\"\n    },\n    {\n      \"beat_number\": 2,\n      \"event\": \"A zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\"\n    },\n    {\n      \"beat_number\": 3,\n      \"event\": \"She retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\"\n    },\n    {\n      \"beat_number\": 4,\n      \"event\": \"Amy kills zombies as they try to attack her, dismembering and decapitating them.\"\n    },\n    {\n      \"beat_number\": 5,\n      \"event\": \"Amy continues killing zombies, using both her pistol and katana effectively.\"\n    },\n    {\n      \"beat_number\": 6,\n      \"event\": \"Amy faces a reversal or setback during the fight but manages to overcome it.\"\n    },\n    {\n      \"beat_number\": 7,\n      \"event\": \"Amy kills the last of the zombies, her house now soaked in blood.\"\n    },\n    {\n      \"beat_number\": 8,\n      \"event\": \"She lets her kids out of the basement.\"\n    }\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 337,
+      "completion_tokens": 307,
+      "total_tokens": 644,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790043052.1032073,
+  "status": "ok"
+}
