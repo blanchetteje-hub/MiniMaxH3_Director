@@ -531,3 +531,47 @@ Fresh end-to-end acceptance queued:
 ### Optional state-effect evidence
 
 `arc-optional-state-effect-probe-050` showed Mistral still accepted unsupported persistent `set_condition` values such as Will/Amber = Hungry even when told state effects must be directly source/event-authorized. Do not add a Python keyword blacklist. A stronger generic semantic probe is queued as `arc-optional-state-effect-strong-probe-053`; prefer fixing ARC create/validate wording if that reliably rejects inferred internal conditions.
+
+
+## 2026-09-21 late-session: two more upstream semantic failures from acceptance -040
+
+### ARC optional internal conditions
+
+Probe `arc-optional-state-effect-probe-050` demonstrated that Mistral accepted unsupported persistent conditions:
+- source/event: Amy cooks breakfast for Will and Amber;
+- state effects: Will=Hungry, Amber=Hungry;
+- validator incorrectly returned valid.
+
+This must stay semantic inside ARC rather than becoming a Python keyword blacklist.
+
+Production fix:
+- `d9ef740fa136ad51c13e565550610a9e448cb1d3` — ARC create/validate now states that state effects are authoritative persistent facts, not inferred motivations/emotions/reactions/context. `set_condition` must be actually established by source/event. Generic counterexamples: cooking != hungry, running != tired, danger != afraid, fighting != angry.
+- `42e565af98288fc8f0154d60b30ab00103b56744` — regression contract.
+- Strong semantic confirmation probe queued: `arc-optional-state-effect-strong-probe-053`.
+
+### BEAT prerequisite mistaken for required result
+
+Acceptance `run-acceptance-amy-current-040` at revision `bd66958...` produced:
+- ARC job E3: `Amy locks the basement door after securing Will and Amber inside.`
+- generated Beat 3: `Amy rushes Will and Amber into the basement.`
+- single-beat validator incorrectly accepted it.
+
+The beat creator already said every assigned action/result must be performed, so the observed false negative is specifically that Mistral treated a prerequisite/partial progress as completion of the later required result.
+
+Production fix:
+- `d5313f05683b421f8224aad4ea59679aa21f80e7` — same single-beat validator, stronger Check A: prerequisite/approach/partial progress is not completion; examples include entering != locking, reaching != opening, retrieving != equipping, drawing != firing.
+- `b0479488ee815605ac90a3f154ced378d0a557db` — regression contract.
+- Direct old-vs-strong probes queued as `beat-lock-omission-current-probe-055` and `beat-lock-omission-strong-probe-056`.
+
+No new semantic pipeline was introduced. BEAT remains CREATE -> VALIDATE -> REPAIR.
+
+### Span-safe majority refinement
+
+Because Python expands an entire matching phase range, the validator evidence must not count a phase containing standalone pre-sequence preparation.
+- `a245f44cd460a96ebc4f8dea6c263090ebd1680a` — matching phase evidence is now explicitly whole-span safe.
+- `c2bb8c75cc7d06312a86b4eb0ef9e4332d87cc34` — regression contract.
+- mixed-phase probe queued: `arc-majority-mixed-phase-probe-054`.
+
+Fresh current-head verification:
+- regression job `current-regressions-057`;
+- final current-head Amy acceptance `run-acceptance-amy-current-058`.
