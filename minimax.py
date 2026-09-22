@@ -23534,6 +23534,16 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         request1_result = _parse_director_raw_scene_result(raw_scene_result)
         raw_scene = request1_result["raw_scene"]
         structure_errors = _director_raw_scene_structure_errors(raw_scene)
+        missing_director_subjects = _missing_named_director_subjects(
+            bundle.get("current_beat_text", ""),
+            raw_scene,
+            bundle.get("subject_definitions", ""),
+        )
+        if missing_director_subjects:
+            structure_errors.append(
+                "RAW SCENE dropped named Subject(s) explicitly required by "
+                "CURRENT BEAT: " + ", ".join(missing_director_subjects) + "."
+            )
         if (
             request1_result["beat_complete"]
             and raw_scene.strip()
