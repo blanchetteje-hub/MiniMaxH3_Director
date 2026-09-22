@@ -1,0 +1,18 @@
+{
+  "job_id": "arc-optional-state-effect-strong-probe-053",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "seed": 42,
+  "max_tokens": 220,
+  "timeout_seconds": 120,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate one macro arc. Return JSON only: {\"valid\":boolean,\"issues\":[string]}."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE:\nAmy is at home on a normal day, wearing a black tank top and denim jeans, cooking breakfast for her kids Will and Amber. Suddenly a zombie breaks the kitchen window.\n\nARC EVENT:\n{\"id\":\"E1\",\"event\":\"Amy cooks breakfast for Will and Amber.\",\"beat_number\":1,\"state_effects\":[{\"op\":\"set_condition\",\"entity\":\"Will\",\"value\":\"Hungry\"},{\"op\":\"set_condition\",\"entity\":\"Amber\",\"value\":\"Hungry\"}]}\n\nSTATE-EFFECT AUTHORITY RULE:\nA state_effect is an authoritative persistent story fact, not an inferred motivation, emotion, reaction, or plausible context.\nReject any state_effect whose fact is neither explicitly established by the event/source nor mechanically necessary to execute an explicit source event.\nDo NOT infer internal conditions from surrounding activity. For example:\n- cooking or serving food does not establish that someone is hungry;\n- running does not establish tiredness;\n- danger does not establish fear;\n- fighting does not establish anger.\nPlausible is not enough. If the event text/source never actually establishes the condition, reject it.\n\nEvaluate E1. Return JSON only."
+    }
+  ]
+}
