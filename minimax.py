@@ -795,7 +795,9 @@ AUTHORITY RULES
 LOCAL STAGING
 - You MAY add the minimum mundane micro-actions, ordinary props, incidental reactions, and short natural dialogue needed to make CURRENT BEAT visibly legible and naturally complete. These are local staging details, not new story events.
 - Every invented local detail must directly perform, receive, support, or complete CURRENT BEAT. If it does not, omit it.
-- If CURRENT BEAT describes an activity done FOR named people, show those named beneficiaries present when practical and let all of them visibly receive or participate in the activity's result before the beat ends when physically possible.
+- A finite action in CURRENT BEAT is NOT complete merely because RAW SCENE shows the subject performing it. Unless CURRENT BEAT explicitly says the action remains unfinished or is interrupted, stage it through its natural observable result or stable endpoint before the segment ends.
+- If CURRENT BEAT describes an activity done FOR named people, show those named beneficiaries present when practical. `beat_complete=true` requires each named beneficiary to visibly receive or participate in the completed result when physically possible; merely preparing the result is not enough.
+- When the natural completion of CURRENT BEAT ends use of an active tool or appliance used only for that activity, visibly stop, set down, close, or otherwise settle it before the handoff when physically reasonable and when doing so does not contradict CURRENT BEAT, NEXT BEAT, or OPENING CONTINUITY STATE.
 - Do not give supporting characters unrelated hobbies, devices, errands, entrances/exits, side conversations, or independent goals merely to fill time.
 - When CURRENT BEAT introduces an unnamed but visually significant INDIVIDUAL entity that may persist, act again, speak, fight, or matter to continuity, assign it a simple functional stable label formed from its role/type plus a number, such as Zombie1, Guard1, or Creature1. Reuse an already established label from SUBJECT DEFINITIONS or continuity instead of renaming it. Do not assign Subject-style labels to crowds, collective groups, scenery, props, or incidental background figures.
 - Once you assign such a functional label, use that exact label consistently throughout RAW SCENE so Request 2 can expose it as a newly introduced Subject.
@@ -845,8 +847,12 @@ OUTPUT CONTRACT
 - `raw_scene` must contain the complete timed scene and the one-sentence END
   CONTINUITY STATE.
 - Set `beat_complete` to true only when RAW SCENE visibly executes every
-  explicit required action, object, and outcome in CURRENT BEAT. If any
-  requirement is missing, set it to false.
+  explicit required action, object, and outcome in CURRENT BEAT. For a finite
+  activity, showing the activity underway is insufficient: its natural visible
+  result or stable endpoint must be reached unless CURRENT BEAT explicitly says
+  it remains unfinished or interrupted. If the activity is FOR named people,
+  each named beneficiary must visibly receive or participate in the completed
+  result when physically possible. If any requirement is missing, set it to false.
 - Compress timing when necessary to fit the segment. Never omit an explicit
   CURRENT BEAT requirement and never advance into NEXT BEAT.
 
