@@ -10705,6 +10705,12 @@ PHASE BOUNDARY RULES
   purpose from beginning through ending. For a long multi-stage story, a
   one-phase arc should be unusual.
 - Phase sizes do not need to be similar.
+- SOURCE COVERAGE HAS PRIORITY OVER BEAT ALLOCATION. Before allocating emphasis,
+  silently walk the source from beginning to end and ensure every explicit
+  visible source action/state is assigned to some required_event in the same
+  order. Never satisfy an emphasis requirement by deleting an ordinary setup,
+  transition, preparation, climax, aftermath, or resolution action that the
+  source explicitly states.
 - Explicit relative-duration or emphasis statements in the source are binding on
   beat allocation. If the source says the majority of the film/story is a
   process or conflict, more than half of the TOTAL global beats must have a
@@ -10714,9 +10720,13 @@ PHASE BOUNDARY RULES
   at least 5 beats whose required_event materially performs/continues the
   emphasized action. Setup, preparation, and resolution beats do not count
   unless that emphasized process materially occurs in the same required_event.
-  Preserve explicit "most", "half", "briefly", and similar relative emphasis
-  according to their ordinary meaning. Bundle adjacent setup actions when needed
-  to preserve both source coverage and the stated emphasis.
+  When the beat budget is tight, satisfy both coverage and emphasis by bundling
+  only adjacent, causally continuous source actions. In particular, when the
+  final emphasized action is immediately followed by aftermath/resolution,
+  combining those adjacent actions in the same beat is preferable to dropping
+  an earlier explicit source stage.
+- Preserve explicit "most", "half", "briefly", and similar relative emphasis
+  according to their ordinary meaning.
 - Otherwise, give most beats to the stage containing most of the required visible
   events.
 
@@ -10888,8 +10898,30 @@ Reject when:
 
 Required events:
 - There must be exactly one concrete required event/job for every global beat.
-- SOURCE EMPHASIS IS MANDATORY. Explicit relative-duration or emphasis statements
-  in the source are binding on beat allocation.
+- SOURCE COVERAGE IS THE FIRST SEMANTIC CHECK. Walk through the SOURCE STORY in
+  chronological order before judging clothing, state effects, emphasis, or any
+  other semantic concern. Every explicit visible action or visible state that
+  establishes a distinct point in the source timeline must be represented by at
+  least one required_event in the arc, in the same order.
+- Do not dismiss an explicit source action merely because it is calm,
+  introductory, mundane, or outside the main conflict. A stated ordinary
+  activity before an inciting threat/change is still part of the visible
+  timeline and requires coverage. Descriptive attributes alone do not require
+  their own event, but a description attached to an explicit action does not
+  substitute for performing that action.
+- If any explicit source timeline action/state is missing, valid MUST be false
+  and issues MUST report the FIRST missing source action/state. A valid emphasis
+  allocation never excuses missing source coverage. Still populate any required
+  majority_checks evidence for the response schema, but do not let it replace
+  the missing-source issue.
+- One required_event may cover multiple adjacent, causally continuous source
+  actions when necessary to fit the requested beat count. Judge coverage by
+  whether all source actions are present in order, not by requiring one event
+  per source sentence or action. Do not accept bundling that skips, reorders,
+  or joins distant story stages.
+- SOURCE EMPHASIS IS MANDATORY after source coverage is confirmed. Explicit
+  relative-duration or emphasis statements in the source are binding on beat
+  allocation.
 - For every explicit source statement using the word "majority", populate one
   majority_checks entry. Its matching_beats must contain ONLY global beat
   numbers whose actual required_event materially performs or continues the
@@ -10902,22 +10934,6 @@ Required events:
   compare the returned matching beat numbers with the total global beat count.
 - Preserve explicit "most", "half", "briefly", and similar relative emphasis
   according to their ordinary meaning in the normal semantic validation.
-- SOURCE COVERAGE IS MANDATORY. Walk through the SOURCE STORY in chronological
-  order before judging the arc. Every explicit visible action or visible state
-  that establishes a distinct point in the source timeline must be represented
-  by at least one required_event in the arc, in the same order.
-- Do not dismiss an explicit source action merely because it is calm,
-  introductory, mundane, or outside the main conflict. A stated ordinary
-  activity before an inciting threat/change is still part of the visible
-  timeline and requires coverage. Descriptive attributes alone do not require
-  their own event.
-- Reject if any explicit source timeline action/state is missing from
-  required_events. Report the FIRST missing source action/state as the issue.
-- One required_event may cover multiple adjacent, causally continuous source
-  actions when necessary to fit the requested beat count. Judge coverage by
-  whether all source actions are present in order, not by requiring one event
-  per source sentence or action. Do not accept bundling that skips, reorders,
-  or joins distant story stages.
 - Source-required events must be directly supported by the source or explicit
   instructions. Sparse-source connective jobs may be plausible visible actions
   that remain within the established story and do not add a different plot,
