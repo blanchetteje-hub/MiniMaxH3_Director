@@ -274,6 +274,51 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             validation_prompt,
         )
 
+    def test_arc_prompts_preserve_baseline_to_inciting_contrast(self):
+        story = (
+            "Amy is at home on a normal day cooking breakfast for her kids. "
+            "Suddenly, a zombie breaks the kitchen door window."
+        )
+        arc = make_arc([
+            (
+                1,
+                2,
+                [
+                    {
+                        "id": "E1",
+                        "event": "Amy cooks breakfast and a zombie breaks the kitchen door window.",
+                        "beat_number": 1,
+                    },
+                    {
+                        "id": "E2",
+                        "event": "Amy reacts to the zombie.",
+                        "beat_number": 2,
+                        "depends_on": ["E1"],
+                    },
+                ],
+            ),
+        ])
+
+        plan_messages = minimax.build_beat_arc_plan_messages(story, 2)
+        validation_messages = minimax.build_macro_arc_validation_messages(story, arc)
+        plan_prompt = " ".join(
+            "\n".join(message["content"] for message in plan_messages).split()
+        )
+        validation_prompt = " ".join(
+            "\n".join(message["content"] for message in validation_messages).split()
+        )
+
+        self.assertIn("PRESERVE EXPLICIT CONTRAST BOUNDARIES", plan_prompt)
+        self.assertIn(
+            "ordinary/baseline activity and then marks a sudden disruptive or inciting change",
+            plan_prompt,
+        )
+        self.assertIn("PRESERVE EXPLICIT CONTRAST BOUNDARIES", validation_prompt)
+        self.assertIn(
+            "ordinary baseline activity and then explicitly introduces a sudden disruptive/inciting change",
+            validation_prompt,
+        )
+
     def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
         invalid = copy.deepcopy(self.events)
         invalid[2]["depends_on"] = ["E1"]
