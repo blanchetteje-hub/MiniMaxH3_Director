@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-coverage-emphasis-create-probe-017",
+  "kind": "llama_chat",
+  "started_at": 1790038569.9978933,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Create exactly 8 ordered beat jobs from the source. Return JSON only with {\"beats\":[string,...]}. Preserve every explicit visible source action/state in chronological order. Explicit majority emphasis is binding. Never satisfy emphasis by deleting an earlier source action. When the beat budget is tight, bundle only adjacent causally continuous source actions. Prefer bundling the final emphasized action with its immediate aftermath/resolution when that preserves earlier source stages."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nREQUIREMENTS:\n- Exactly 8 beat jobs.\n- Beat 1 must not skip the explicit ordinary setup if the source has one.\n- \"majority of the film is Amy killing zombies\" means at least 5 of 8 beat jobs must materially perform or continue Amy killing zombies.\n- A beat may count toward killing while also containing the immediate aftermath/resolution if the killing materially occurs in that same beat.\n- Preserve the window break, moving/locking kids in basement, retrieving AND equipping pistol+katana, last-zombie result, bloody-house result, and letting kids out.\nReturn JSON only."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1200,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-j9ro2f4wlw1q2q7vtzcr7",
+    "object": "chat.completion",
+    "created": 1790038570,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"beats\": [\n    \"Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\",\n    \"Suddenly, a zombie breaks the kitchen door window and Amy sees the danger.\",\n    \"She rushes her kids to the basement, gets them inside, and then locks the door.\",\n    \"Amy retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\",\n    \"The majority of the film is Amy killing zombies as they try and attack her.\",\n    \"The majority of the film is Amy killing zombies as they try and attack her.\",\n    \"The majority of the film is Amy killing zombies as they try and attack her.\",\n    \"Amy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\"\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 390,
+      "completion_tokens": 189,
+      "total_tokens": 579,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790038582.052395,
+  "status": "ok"
+}
