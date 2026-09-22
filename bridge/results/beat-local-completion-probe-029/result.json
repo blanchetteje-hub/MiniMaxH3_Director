@@ -1,0 +1,53 @@
+{
+  "job_id": "beat-local-completion-probe-029",
+  "kind": "llama_chat",
+  "started_at": 1790043136.3851998,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Expand one assigned source event into one concise execution-target beat sentence for an 8-second video clip.\n\nPreserve the assigned story event. For a broad ordinary activity, you MAY add the minimum mundane choreography needed to make the activity visibly complete and self-contained:\n- include named beneficiaries/participants already implied by the event;\n- choose ordinary props/details needed to show the activity;\n- finish the local activity when practical before the next event;\n- do not add unrelated actions, entrances/exits, hobbies, side conversations, new goals, or later plot events.\n\nReturn only one beat sentence."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED EVENT:\nAmy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids Will and Amber.\n\nNEXT EVENT:\nA zombie breaks the kitchen door window and Amy sees the danger.\n\nWrite the execution target."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 220,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-7j2xuergjc7leiabsws92h",
+    "object": "chat.completion",
+    "created": 1790043136,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "Amy flips pancakes on the stove while her kids Will and Amber sit at the table, then she turns to grab plates from the cabinet as the kitchen door window shatters behind her.",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 187,
+      "completion_tokens": 40,
+      "total_tokens": 227,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790043139.3317595,
+  "status": "ok"
+}
