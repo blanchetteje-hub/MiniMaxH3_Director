@@ -35,6 +35,27 @@ def director_response(raw_scene, beat_complete=True):
 
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
+    def test_request_one_template_requires_observable_finite_action_completion(self):
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE
+        self.assertIn(
+            "A finite action in CURRENT BEAT is NOT complete merely because RAW SCENE "
+            "shows the subject performing it",
+            prompt,
+        )
+        self.assertIn(
+            "beat_complete=true` requires each named beneficiary to visibly receive "
+            "or participate in the completed result",
+            prompt,
+        )
+        self.assertIn(
+            "visibly stop, set down, close, or otherwise settle it before the handoff",
+            prompt,
+        )
+        self.assertIn(
+            "showing the activity underway is insufficient",
+            prompt,
+        )
+
     def test_request_one_completion_contract_retries_same_segment(self):
         formatted = formatter_response("[Shot 1] Mark completes the action.")
         request = mock.Mock(side_effect=[
