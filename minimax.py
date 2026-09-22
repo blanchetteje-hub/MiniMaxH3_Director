@@ -10678,6 +10678,23 @@ def build_beat_arc_plan_messages(
 ):
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
     phrase_exclusions_text = format_phrase_exclusions_section(phrase_exclusions)
+    majority_budget_text = ""
+    if re.search(r"\bmajority\b", str(story or ""), re.IGNORECASE):
+        minimum_emphasis_beats = int(total_segments) // 2 + 1
+        maximum_non_emphasis_beats = int(total_segments) - minimum_emphasis_beats
+        majority_budget_text = (
+            "\nEXPLICIT MAJORITY BEAT BUDGET\n"
+            f"This story has {int(total_segments)} total beats. A strict majority "
+            f"requires at least {minimum_emphasis_beats} required_event beat jobs "
+            "that materially perform or continue the source-emphasized action. "
+            f"That leaves at most {maximum_non_emphasis_beats} beats that do not "
+            "materially perform/continue it. Reserve the required majority beats "
+            "first, then fit EVERY other explicit source action into the remaining "
+            "beat budget by bundling only adjacent, causally continuous actions. "
+            "Never omit source content to meet this budget. When needed, the final "
+            "emphasized action may share a beat with its immediately following "
+            "aftermath/resolution."
+        )
     correction_text = ""
     if correction:
         correction_text = f"""
@@ -10833,6 +10850,7 @@ EXPLICIT BEAT INSTRUCTIONS
 
 TOTAL BEATS:
 {total_segments}
+{majority_budget_text}
 
 The phases must cover Beats 1-{total_segments} exactly once,
 with no gaps or overlaps.
@@ -11028,6 +11046,20 @@ def build_macro_arc_repair_messages(
     beat_instructions="",
 ):
     """Build the one complete-arc repair request used after validation fails."""
+    majority_budget_text = ""
+    if re.search(r"\bmajority\b", str(story or ""), re.IGNORECASE):
+        minimum_emphasis_beats = int(total_segments) // 2 + 1
+        maximum_non_emphasis_beats = int(total_segments) - minimum_emphasis_beats
+        majority_budget_text = (
+            f"For this {int(total_segments)}-beat arc, the source's explicit "
+            f"majority requires at least {minimum_emphasis_beats} required_event "
+            "beat jobs that materially perform or continue the emphasized action, "
+            f"leaving at most {maximum_non_emphasis_beats} non-emphasis beats. "
+            "Preserve every explicit source action while meeting that budget. "
+            "Bundle only adjacent, causally continuous source actions when needed; "
+            "the final emphasized action may share its beat with immediate "
+            "aftermath/resolution."
+        )
     return [
         {
             "role": "system",
@@ -11054,6 +11086,9 @@ EXPLICIT BEAT INSTRUCTIONS
 
 REQUESTED BEAT COUNT
 {total_segments}
+
+EXPLICIT MAJORITY BEAT BUDGET
+{majority_budget_text or 'N/A'}
 
 CURRENT MACRO ARC
 {json.dumps(macro_arc, ensure_ascii=False, indent=2)}
