@@ -19587,8 +19587,17 @@ def _h3_subject_definitions_for_conditioning(
 
 
 # Return Subject IDs tagged in the immediately preceding Director result.
-def extract_previous_visible_subject_ids(recent_results, segment_number):
-    """Return Subject IDs tagged in the immediately preceding Director result."""
+def extract_previous_visible_subject_ids(
+    recent_results,
+    segment_number,
+    subject_definitions="",
+):
+    """Return registered Subjects visible in the immediately preceding result.
+
+    Request 2 normally writes canonical Subject names rather than literal
+    `<Subject N>` tags, so tag-only detection loses the Video 1 identity
+    handoff. Resolve both explicit tags and registered plain names.
+    """
     if not recent_results or segment_number is None:
         return set()
     previous_segment, previous_result = recent_results[-1]
@@ -19601,10 +19610,16 @@ def extract_previous_visible_subject_ids(recent_results, segment_number):
     description = previous_result.get("detailed_description")
     if not isinstance(description, str):
         return set()
-    return {
+    explicit = {
         int(subject_id)
         for subject_id in re.findall(r"(?i)<Subject\s+(\d+)>", description)
     }
+    if not str(subject_definitions or "").strip():
+        return explicit
+    return explicit | _subject_ids_referenced_by_description(
+        description,
+        subject_definitions,
+    )
 
 
 # Return the Subject IDs explicitly tagged in the target Director prose.
@@ -24381,6 +24396,7 @@ def _run_main(
         previous_visible_subject_ids = extract_previous_visible_subject_ids(
             recent_results,
             segment,
+            subject_definitions,
         )
         h3_prompt = build_h3_prompt(
             llm_result,
