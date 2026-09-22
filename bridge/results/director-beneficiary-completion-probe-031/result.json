@@ -1,0 +1,53 @@
+{
+  "job_id": "director-beneficiary-completion-probe-031",
+  "kind": "llama_chat",
+  "started_at": 1790043196.3746076,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Expand CURRENT BEAT into an 8-second timed scene.\n\nCURRENT BEAT is the complete and exclusive story event allowed. NEXT BEAT is a hard forbidden boundary: do not show, begin, foreshadow, cause, or react to it.\n\nYou may add only minimal mundane micro-actions and props that directly realize CURRENT BEAT.\nIf CURRENT BEAT describes an activity done FOR named people, all named beneficiaries must be visibly present and must visibly receive or participate in the result of that activity before the beat ends when physically possible.\nDo not invent unrelated hobbies, devices, errands, entrances/exits, side conversations, new goals, or new plot facts.\nShort dialogue is allowed only when directly about CURRENT BEAT.\nPrefer a natural local completion of CURRENT BEAT before the segment ends.\n\nReturn only JSON {\"raw_scene\":\"...\",\"beat_complete\":true}."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT:\nAmy is cooking breakfast for her young kids Will and Amber in the kitchen. Amy wears a tight black tank top and denim jeans.\n\nNEXT BEAT:\nA zombie breaks the kitchen door window and Amy sees the danger.\n\nWrite timed actions from 00:00.000 through 00:07.000. The scene remains completely ordinary and safe."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 500,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-cqy3ndh6vw0f8kfauhp8yh",
+    "object": "chat.completion",
+    "created": 1790043196,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"raw_scene\": [\n    {\n      \"time\": \"00:00.000\",\n      \"action\": \"Amy stands at the stove, flipping pancakes on a frying pan.\"\n    },\n    {\n      \"time\": \"00:01.500\",\n      \"action\": \"Will and Amber sit at the kitchen table, watching Amy with anticipation.\"\n    },\n    {\n      \"time\": \"00:03.000\",\n      \"action\": \"Amy turns off the stove and places a few pancakes on a plate.\"\n    },\n    {\n      \"time\": \"00:04.500\",\n      \"action\": \"She walks over to the table and sets the plate of pancakes in front of Will and Amber.\"\n    },\n    {\n      \"time\": \"00:06.000\",\n      \"action\": \"Will and Amber smile and start eating their pancakes.\"\n    }\n  ],\n  \"beat_complete\": true\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 273,
+      "completion_tokens": 219,
+      "total_tokens": 492,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790043209.6785796,
+  "status": "ok"
+}
