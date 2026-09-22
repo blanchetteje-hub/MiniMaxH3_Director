@@ -41,6 +41,80 @@ Story format, story arc generation, whether an arc exists at all, beat generatio
 
 KISS is the default, not a prohibition against real architectural correction.
 
+## Current architectural conclusions / lessons learned
+
+These are the main conclusions from the acceptance history so far. Read this
+section before adding new architecture or new prompt rules.
+
+- **The two-loop KISS architecture still holds.** Nothing in the current gold
+  benchmark has demonstrated a need for separate semantic enrichment, coverage,
+  claims, effect-proof, or state-preparation pipelines. Keep ARC and BEATS as
+  CREATE -> VALIDATE -> REPAIR loops unless end-to-end evidence directly
+  implicates the architecture itself.
+
+- **24B prompt overload is the dominant recurring failure mode.** Several real
+  failures occurred even when the correct rule was already present in the prompt.
+  When the same task was reduced to a few simple rules, Mistral often produced the
+  correct result immediately. Do not respond to every model mistake by adding more
+  instructions. Prefer deleting, narrowing, and separating responsibilities.
+
+- **Each LLM stage should have one narrow job.**
+  - ARC decides story allocation, required clip jobs, and persistent state effects.
+  - Beat CREATE turns one assigned ARC event into one executable visual endpoint.
+  - Beat VALIDATE judges that beat; the proven single-beat validator remains the
+    semantic backstop.
+  - Director Request 1 expands the accepted beat into timed physical staging and
+    mundane completion details.
+  - Director Request 2 is a stenographer/H3 formatter and should not creatively
+    repair upstream semantics.
+  - Continuity describes current rendered/prompt-derived state; it does not own
+    durable Subject identity.
+
+- **Python owns deterministic integrity, not arbitrary story semantics.** Good
+  Python checks include schema/range/ID/dependency integrity, typed state
+  operations, and narrow lexical ownership constraints that prevent fabricated
+  authoritative data. Python should not decide whether a character ought to be
+  afraid, whether an action is narratively appropriate, or other free-form English
+  semantics.
+
+- **Canonical state is authoritative and therefore must be conservative.** An
+  invented state_effect can bias every downstream stage. Only persistent facts
+  actually established by the owning required_event should be committed. Temporary
+  activities such as cooking, eating, running, or fighting are not persistent
+  conditions. Clothing belongs in set_clothing, not free-form set_condition.
+
+- **Director Request 1 / Request 2 separation is currently supported by evidence.**
+  Request 1 has successfully supplied mundane local staging such as turning off an
+  appliance or setting down a utensil. Request 2 generally preserves Request 1
+  faithfully. When the story-level endpoint is missing, fix Beat/ARC upstream
+  rather than asking Request 2 to compensate.
+
+- **Sampling transport matters, but sampling was not the root cause of everything.**
+  Explicit ARC/Beat sampling was previously overwritten by formatter defaults and
+  that plumbing bug was fixed. Later probes showed that even with correct sampling,
+  oversized prompts could still make the 24B model ignore important rules.
+
+- **The locked gold benchmark is the authority.** Do not accept "looks pretty good"
+  output when the behavioral boundary is wrong. Trace each mismatch back to the
+  earliest incorrect stage and fix that stage only.
+
+- **Current direction: simplify before redesigning.** The evidence does not yet
+  justify removing ARC, BEATS, or Director. It does justify aggressively reducing
+  24B prompt scope, especially ARC create/validate/repair prompts when acceptance
+  proves they are overloaded.
+
+Recurring anti-pattern to avoid:
+
+> A local-model mistake leads to another prompt instruction; accumulated
+> instructions overload the model; the overloaded model causes a new mistake;
+> another instruction gets added.
+
+Prefer instead:
+
+> Give each 24B call the minimum information needed for one job, let the existing
+> validator/repair loop handle semantic mistakes, and keep deterministic
+> bookkeeping in Python.
+
 ## Current semantic architecture
 
 Current source of truth uses two semantic planning loops:
