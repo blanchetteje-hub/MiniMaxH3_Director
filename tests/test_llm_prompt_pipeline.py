@@ -254,6 +254,13 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             rules,
         )
         self.assertIn("NEXT BEAT is a forbidden boundary", rules)
+        self.assertIn(
+            'Use the canonical timestamp syntax exactly: "At 00:ss.mmm,"',
+            rules,
+        )
+        self.assertIn("NO arbitrary maximum timestamp count", rules)
+        self.assertNotIn("Create between", rules)
+        self.assertNotIn("At 00:ss.mmm seconds", rules)
 
     def test_first_two_director_prompts_require_beat_clothing(self):
         clothing_requirement = (
