@@ -569,23 +569,24 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             current_phase=phase,
         )
         user_content = messages[1]["content"]
+        normalized = " ".join(user_content.split())
         self.assertIn(
             "Make every finite assigned activity an EXECUTABLE CLIP JOB",
-            user_content,
+            normalized,
         )
         self.assertIn(
             "concrete observable endpoint rather than merely restating that the "
             "activity is underway",
-            user_content,
+            normalized,
         )
         self.assertIn(
             "named beneficiaries visibly receiving or participating in the completed "
             "result",
-            user_content,
+            normalized,
         )
         self.assertIn(
             "stopping, setting down, closing, or turning it off",
-            user_content,
+            normalized,
         )
 
     def test_phrase_exclusions_are_added_to_beat_generation_prompt(self):
