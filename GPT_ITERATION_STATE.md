@@ -484,3 +484,23 @@ Focused fix:
 - `efa5192492cc7cfb95213a22f76726ecdfaf3175` — integration regression: a `beat_complete:true` scene that opens the door but omits Will/Amber must retry; the corrected scene includes them exiting.
 
 This remains a narrow deterministic identity/coverage guard. Python is not interpreting whether the action itself is semantically complete; Director Request 1 still owns that.
+
+
+### Follow-up corrections to the Director named-Subject guard
+
+Static review after the initial guard found and fixed two wiring defects before relying on its regression result:
+
+- `75efcde02161c2125589c0acfb78e82acddfdaea` — repair-mode Director bundles now also carry the historical `subject_definitions`, so the named-Subject completion guard works during `--repair` as well as normal generation.
+- `8f7386bcbf3590de0e40a349d802f65fc31b3f92` — correct an over-escaped regex in the new helper so Subject-name boundaries use actual regex word characters.
+- `e0e1716e3d50b3431676ff61a2dfed6d27f8f5a2` — add the missing `os` import required by the Windows-safe regression-test temp-path change.
+
+A clean current regression bundle is queued as `current-regressions-048`.
+
+### Next observed ARC risk under probe
+
+Acceptance `-034` also showed unsupported persistent flavor state in ARC output: breakfast E1 added `set_condition` values marking Will/Amber as `Hungry`, although the source never established hunger. Because ARC state_effects become authoritative canonical state, optional inferred emotions/hunger/fatigue must not be accepted as harmless flavor.
+
+Queued targeted probe:
+- `arc-optional-state-effect-probe-050`
+
+Do not add Python keyword heuristics for hunger/emotion unless probe/acceptance evidence shows the ARC semantic validator cannot enforce the existing generic rule. Semantic interpretation should remain with ARC validation when possible.
