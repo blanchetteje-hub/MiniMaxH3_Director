@@ -1,0 +1,54 @@
+{
+  "job_id": "arc-majority-061-beat-evidence-probe-062",
+  "kind": "llama_chat",
+  "started_at": 1790050508.7114851,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify which exact beat numbers materially belong to the source-emphasized majority sequence. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE EMPHASIS:\n\"The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\"\n\nARC BEATS:\n1. Amy cooks breakfast for her kids in the kitchen.\n2. A zombie breaks the kitchen door window.\n3. Amy rushes her kids to the basement and locks the door.\n4. Amy retrieves her hidden arsenal (pistol and katana).\n5. Amy equips her pistol and katana.\n6. Amy kills several zombies with her weapons.\n7. Amy continues to fight and kill more zombies.\n8. Amy kills the last zombie and lets her kids out of the basement.\n\nCLASSIFICATION RULE:\nReturn a beat number only when that beat materially belongs to the ALREADY-ACTIVE emphasized sequence.\nThe final emphasized beat may also include immediate terminal aftermath/resolution.\nStandalone setup, escape, retrieval, equipping, travel, or preparation BEFORE the emphasized process begins does not belong.\nJudge each beat independently from phase labels.\n\nReturn exactly {\"matching_beats\":[...]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-tb5txymqwtgssg4pvvt1dk",
+    "object": "chat.completion",
+    "created": 1790050508,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\"matching_beats\": [6, 7]}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 256,
+      "completion_tokens": 17,
+      "total_tokens": 273,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790050510.449274,
+  "status": "ok"
+}
