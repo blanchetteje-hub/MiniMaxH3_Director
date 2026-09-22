@@ -19096,6 +19096,32 @@ def repair_h3_subject_identity(prompt, subject_definitions, continuity_state=Non
         if identity["speaker_id"]
     }
 
+    # Add a missing canonical speaker ID when a registered Subject is explicitly
+    # attributed dialogue but Request 1/2 omitted the token. This runs after
+    # dynamic Subject registration, so Python never guesses an S-number.
+    speech_verbs = (
+        r"says?|asks?|answers?|replies|shouts?|whispers?|yells?|tells?|"
+        r"exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|mutters?|"
+        r"growls?|screams?"
+    )
+    for subject_id, identity in identities.items():
+        name = identity.get("name")
+        speaker_id = identity.get("speaker_id")
+        if not name or not speaker_id:
+            continue
+        pattern = re.compile(
+            rf"(?i)(?<!\w)(?P<name>{re.escape(name)})(?!\w)"
+            rf"(?P<space>\s+)(?P<verb>{speech_verbs})(?P<tail>\s+)(?=<d>)"
+        )
+        repaired_name = identity["name"]
+        text = pattern.sub(
+            lambda match: (
+                f"{repaired_name} ({speaker_id}) "
+                f"{match.group('verb')} "
+            ),
+            text,
+        )
+
     # Find canonical Subject names mentioned in text.
     def names_in(text_value):
         return [
