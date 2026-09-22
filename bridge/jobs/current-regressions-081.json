@@ -1,0 +1,11 @@
+{
+  "job_id": "current-regressions-081",
+  "kind": "run_tests",
+  "tests": [
+    "tests.test_story_arc_structural_guarantees",
+    "tests.test_llm_prompt_pipeline",
+    "tests.test_beat_at_a_time_validator",
+    "tests.test_subject_identity_continuity"
+  ],
+  "timeout_seconds": 900
+}
