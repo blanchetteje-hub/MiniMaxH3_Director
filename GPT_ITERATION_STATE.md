@@ -416,3 +416,23 @@ Fixed by:
 
 Do not treat the old `-033` failure count as evidence that the current production code is broken; use `current-regressions-037`.
 
+
+
+## 2026-09-21 late-session: baseline/inciting contrast is a real clip boundary
+
+Fresh review of stale acceptance `run-acceptance-amy-director-staging-034` plus the current setpiece probe showed the ARC planner still merged the ordinary breakfast baseline with the zombie window break into Beat 1. That directly violates the locked gold, which keeps Beat 1 completely ordinary/safe and begins the disruption in Beat 2.
+
+Observed failure:
+- E1: breakfast + zombie window break in the same beat.
+- This forced suspense/music/danger into Segment 1 and destroyed the intended ordinary-to-danger contrast.
+
+Generic production fix:
+- `5a126afa922feff97c93160f6f558a566941001d` — ARC create/validate now explicitly preserves an ordinary/baseline activity -> sudden disruptive/inciting change as a beat boundary when the requested beat budget can support it.
+- When allocation is tight, prefer sharing the final emphasized action with its immediate resolution rather than leaking the inciting threat into the baseline beat.
+- `fe137851a61a889584f398ea392d3ac4dc90273c` — regression contract for this rule.
+
+This is not Amy-specific. It is a generic cinematic segmentation rule: an explicitly established safe/ordinary baseline should remain intact long enough to create the source-specified contrast with the inciting disruption.
+
+### Current verification queue after this change
+
+Queue a clean regression run and full Amy acceptance on/after `fe137851...`. Ignore older acceptance results for final-prompt quality when their `repository_revision` predates this checkpoint.
