@@ -325,3 +325,94 @@ Pending/queued behind it at the time of this update:
 
 Because bridge execution resets the exec worktree to latest `origin/gpt-test-branch` when each job begins, jobs that have not started yet will include the latest code regardless of when their JSON was queued. Always verify `repository_revision` for acceptance results.
 
+## 2026-09-21 late checkpoint: beneficiary guard, stable threats, and sparse-setpiece planning
+
+### Beneficiary semantic validator probe FAILED
+
+Bridge probe `beat-beneficiary-validator-probe-035` tested:
+
+- CURRENT JOB: Amy is cooking breakfast for Will and Amber.
+- CANDIDATE: Amy cooks breakfast.
+
+Even with an explicit instruction that named relational participants are material, Mistral returned:
+
+`{"valid": true, "issue": ""}`
+
+Conclusion: as with the earlier majority arithmetic failure, do not rely on this Mistral validator to enforce that semantic coverage rule by prose instruction alone.
+
+### Deterministic named-Subject preservation
+
+Observed requirement was narrow enough to move only the structural portion into Python without making Python interpret arbitrary story semantics:
+
+- If CURRENT JOB explicitly contains a known Subject name from `subject_information`,
+- the generated candidate beat must also contain that Subject name,
+- otherwise structural validation rejects the candidate and regeneration receives the missing names.
+
+Commits:
+- `132d53f6af353e601611991a9460c5f2d37844b2` — `_missing_named_job_subjects(...)` and structural check before semantic beat validation.
+- `043aeda57fb0e5f636e099f1200a3761045a0163` — deterministic coverage tests.
+
+This remains KISS-compliant: Python compares known explicit names; it does not decide the meaning of the action.
+
+A separate generator probe `beat-beneficiary-generation-probe-036` was queued to determine whether generation already usually preserves the names even without the guard.
+
+### Stable functional labels for recurring unnamed individuals
+
+Old acceptance left the first attacker anonymous, preventing stable Subject continuity.
+
+Commits:
+- `4b89a2f86371eb47f053b840f1b3231390a6cbbb`
+- `a8598deb675973ea8fa5d61575a8a9d425937332`
+
+Director Request 1 may assign a simple stable functional label such as `Zombie1`, `Guard1`, or `Creature1` to an unnamed visually significant individual that may persist, act again, speak, or matter to continuity. Do not label crowds/scenery/incidental background figures.
+
+The existing Request2 `subject_genders` + dynamic Subject registry can register such names before final H3 prompt assembly.
+
+### Sparse repeated conflict must become a coherent multi-beat setpiece
+
+Locked gold Beats 4-8 demonstrate cross-beat stateful escalation rather than generic repeated kills:
+- pistol becomes empty/discarded;
+- katana is drawn later;
+- threats persist between beats;
+- Amy is contaminated with bile and remains contaminated;
+- katana becomes stuck then is freed;
+- final threat remains unresolved until the next beat;
+- Beat 8 resolves threat + family reunion.
+
+This kind of cross-beat creative state cannot safely be invented independently by each Director call. It must be planned upstream inside the existing ARC create/validate/repair loop.
+
+Commits:
+- `8f55465b69c4d0ca88fee49d5daad3fde88168ae` — ARC creation/validation/repair explicitly allows and encourages coherent local setpiece developments inside a source-authorized long conflict.
+- `8e34bdcb5ff0790186fb0dc2e96e57b5048a92ce` — contract tests.
+
+Allowed execution-level developments within an already authorized conflict include:
+- attack/counterattack;
+- weapon empty/drop/stuck/recovered/switch;
+- enemy survives across beats;
+- temporary contamination/mess;
+- setback then recovery;
+- delayed terminal result.
+
+They are NOT permission to invent a new plot, major character, location, mythology, mission, outcome-changing injury, or alternate ending.
+
+Persistent modeled facts authored by ARC still require typed `state_effects`.
+
+### Current test/acceptance queue
+
+Because the bridge sorts job filenames alphabetically and processes them serially:
+- `aaa-current-regressions-037` was queued before the long acceptance.
+- `arc-setpiece-create-probe-038` was queued to verify Mistral actually produces stateful escalation.
+- `beat-beneficiary-generation-probe-036` was queued to measure generation behavior.
+- `run-acceptance-amy-director-staging-034` is the next full behavioral run after those jobs.
+
+The earlier `director-sequence-tests-033` had three failures, all test-contract/staleness issues rather than discovered production regressions:
+1. stale continuity prompt wording assertion;
+2. stale expectation that music must be N/A;
+3. unnormalized wrapped string assertion in the new beneficiary test.
+
+Fixed by:
+- `81ac3b7a8a80dc767e7d6d687733d37e0b45f6c5`
+- `fe7f9c92319e62cc5a32c4830a399292de885c3c`
+
+Do not treat the old `-033` failure count as evidence that the current production code is broken; use `current-regressions-037`.
+
