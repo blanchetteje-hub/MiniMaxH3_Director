@@ -1,0 +1,56 @@
+{
+  "job_id": "director-beneficiary-completion-probe-094",
+  "kind": "llama_chat",
+  "started_at": 1790100795.039439,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Expand CURRENT BEAT into an 8-second timed raw scene. CURRENT BEAT is the only story progression allowed. NEXT BEAT is a forbidden boundary. A finite action is NOT complete merely because the subject is shown performing it. If CURRENT BEAT describes making/preparing/cooking something FOR named beneficiaries, beat_complete=true requires each named beneficiary to visibly receive or participate in the completed result when physically reasonable. Showing the activity underway is insufficient. Use local staging needed to finish the action, but do not begin NEXT BEAT. Return JSON only with raw_scene and beat_complete."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT: Amy cooks breakfast for Will and Amber at the kitchen stove.\nNEXT BEAT: A zombie smashes through the kitchen door window, Amy sees it, grabs Will and Amber, and rushes them into the basement.\n\nWrite the complete CURRENT BEAT."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.65,
+    "top_p": 0.9,
+    "max_tokens": 900,
+    "repeat_penalty": 1.05,
+    "presence_penalty": 0.15,
+    "frequency_penalty": 0.15
+  },
+  "response": {
+    "id": "chatcmpl-xolhappyqjnxoegghtikor",
+    "object": "chat.completion",
+    "created": 1790100795,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"raw_scene\": \"Amy flips pancakes on the stove, bacon sizzles in a pan beside her. She turns to the table where Will and Amber are seated. She places a plate with two pancakes and a strip of bacon in front of each child. Will reaches for his fork while Amber eagerly picks up a slice of bacon.\",\n  \"beat_complete\": true\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 185,
+      "completion_tokens": 86,
+      "total_tokens": 271,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790100800.0238137,
+  "status": "ok"
+}
