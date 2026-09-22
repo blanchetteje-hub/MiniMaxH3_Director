@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-majority-phase-valid-probe-047",
+  "kind": "llama_chat",
+  "started_at": 1790047133.7985802,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Identify which macro phase numbers materially ARE the source-emphasized process itself. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE EMPHASIS:\n\"The majority of the film is Amy killing zombies as they try and attack her.\"\n\nARC:\nPhase 1, Beat 1, purpose Baseline, progression: Amy cooks breakfast for her kids.\nPhase 2, Beats 2-3, purpose Inciting danger and preparation, progression: a zombie breaks in; Amy gets the kids to safety, locks the safe-room door, retrieves and equips her weapons.\nPhase 3, Beats 4-8, purpose Zombie conflict, progression: Amy fights and kills attacking zombies across several encounters; the final zombie falls in Beat 8 and Amy immediately lets her kids out.\n\nRULE:\nInclude only phases whose MAIN progression is the emphasized process itself. Do not include ordinary setup, escape, or preparation merely because they enable it. A phase may include the terminal result and immediate resolution at its end and still count if its main progression is the emphasized process.\n\nReturn exactly {\"matching_phases\":[...]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 160,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-p1i0d1psgormm2jglods2e",
+    "object": "chat.completion",
+    "created": 1790047133,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\"matching_phases\": [3]}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 232,
+      "completion_tokens": 15,
+      "total_tokens": 247,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790047135.2970042,
+  "status": "ok"
+}
