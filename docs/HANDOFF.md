@@ -247,83 +247,107 @@ This is intentionally not a remote-shell bridge. Supported job kinds are constra
 
 ## Current acceptance finding
 
-Acceptance 075 exposed an ARC-repair scoping regression before the strengthened Director completion rule could be meaningfully judged.
+Acceptance 078 completed successfully and moved the earliest failure fully into Beat -> Director behavior.
 
-### Acceptance 075: ARC majority repair contaminated a later unrelated repair
+### Acceptance 078: ARC boundary is now good enough; Beat 1 remains too abstract
 
-`run-acceptance-amy-current-075` completed with return code 0.
+`run-acceptance-amy-current-078` completed with return code 0.
 
-ARC creation initially behaved correctly:
-- Beat 1: ordinary breakfast
-- Beat 2: zombie breaks the kitchen door window
-- Beat 3: Amy rushes kids to basement and locks the door
-- Beat 4: retrieve arsenal
-- Beat 5: equip weapons
-- Beats 6-8: zombie conflict / terminal resolution
+The accepted ARC preserved the ordinary baseline separately from the inciting zombie event:
+- Beat 1: Amy is cooking breakfast for the kids.
+- Beat 2: zombie breach + kids to basement + lock + retrieve/equip.
+- Beats 3-7: active zombie conflict.
+- Beat 8: release kids.
 
-That initial plan failed the strict-majority check at only 3/8 emphasized beats, so ARC REPAIR correctly needed to reallocate setup.
+The majority allocation still satisfied the strict-majority requirement, and the prior repair-scope fix held.
 
-The next validation after majority repair failed only because **Amy's clothing was missing on first show**.
+So the earliest real failure is no longer ARC.
 
-However, `build_macro_arc_repair_messages()` was still injecting the full majority-allocation budget whenever the STORY contained the word `majority`, regardless of the *current validator issue*. Its prompt literally told Mistral:
-> This validator issue is specifically about allocation
+### Segment 1 failure in 078
 
-even during the unrelated clothing repair.
+Generated Beat 1:
+> Amy cooks breakfast for her kids in the kitchen.
 
-That second repair was therefore allowed/invited to restructure the arc again and collapsed:
-- breakfast
-- zombie breach
-- evacuation/locking
+Director Request 1 then produced:
+- Amy cooking at the stove;
+- Will and Amber watching;
+- Amy flips a pancake;
+- Amy turns toward the kids holding a plate.
 
-into Beat 1.
+It still ended before:
+- the completed breakfast visibly reached both kids;
+- the stove/tool state was visibly settled.
 
-The resulting accepted 075 ARC started danger inside Segment 1, violating the locked gold's ordinary safe breakfast baseline. Request 1 and Request 2 then correctly executed/transcribed the bad assigned beat, so the earliest failure was ARC repair scoping rather than Director formatting.
+Request 2 faithfully transcribed Request 1, so the H3 formatter was not the loss point.
 
-### Repair-scope correction
+### Focused completion-check probe 079 failed
 
-The intended rule is now:
+`director-completion-validator-probe-079` tested a tiny separate semantic judge on the exact bad 078 RAW SCENE.
 
-- ARC creation gets source-level majority planning instructions whenever the source explicitly says `majority`.
-- ARC repair gets majority reallocation instructions **only when the current validator issue itself is a majority issue**.
-- A later unrelated repair (clothing, state detail, etc.) must preserve the already-correct allocation rather than reopening it.
+Despite explicit rules saying:
+- finite activity underway != complete;
+- named beneficiaries must visibly receive the result;
+- tools/appliances should be settled at natural completion;
 
-Production commit `d28667371906596277d8a4832d4c44b3c3e21f14` implements the correct function-level scoping.
-Regression commit `922c23b18b94b7ec9b6e15f4f5fda70559001e7c` verifies that a story containing a majority instruction receives `EXPLICIT MAJORITY BEAT BUDGET N/A` during a non-majority repair and does not receive the allocation-repair wording.
+Mistral returned:
+`{"valid":true,"issue":""}`
 
-An intermediate edit `1483f089f65aa90a87ea016817bd650f617d0332` accidentally matched the analogous create-time code block and was caught immediately by `current-regressions-076` with a NameError. It was corrected in `d286673...`; no acceptance was run against the broken intermediate state.
+Therefore adding a separate Director completion-validator call would only duplicate the same semantic weakness and add latency/complexity. Do not add that extra semantic stage.
 
-`current-regressions-077`: **PASS, 103/103 tests green**.
+### Earlier-boundary probe 080 succeeded
 
-### Director finite-action completion fix remains in force
+`beat-executable-endpoint-probe-080` reframed the same requirement one stage earlier:
 
-The earlier downstream correction is still present in production:
+Required event:
+> Amy is cooking breakfast for her kids in the kitchen.
 
-`1f607d7c75fb28d43ad6bf26c099b870429fca34`
-- finite activities must reach a natural observable result/stable endpoint unless explicitly interrupted/unfinished;
-- activities done FOR named people must visibly reach those beneficiaries when physically possible;
-- active tools/appliances used only for the completed activity should be stopped/set down/settled at the natural endpoint when consistent with current/next/opening state;
-- an activity merely underway is insufficient for `beat_complete=true`.
+Contract:
+- convert it into one executable 8-second video beat job;
+- preserve story meaning;
+- give finite activities a concrete observable endpoint;
+- when done for named people, visibly reach those beneficiaries;
+- settle tools/appliances at the natural endpoint;
+- do not include NEXT EVENT.
 
-075 could not fairly test this because its assigned Beat 1 itself contained the zombie inciting event.
+Mistral returned:
+> Amy places three plates of scrambled eggs and toast on the kitchen table for Will and Amber.
+
+This is the right kind of executable beat job and does not leak into the zombie event.
+
+### Production correction
+
+Production commit `905d54635d262c1f60f8b8a2c958b1a7bee5d96f` strengthens `build_beat_generation_messages()`:
+
+- finite assigned activities must become EXECUTABLE CLIP JOBS with concrete observable endpoints;
+- if the job is explicitly ongoing/interrupted/unresolved, it may remain incomplete;
+- finite activities done FOR named people should end with those beneficiaries visibly receiving/participating in the completed result when physically reasonable;
+- ordinary tool/appliance shutdown/settling belongs in the beat endpoint when it naturally completes the authorized activity and does not conflict with the next job.
+
+Regression commit `03ec1b4c5d66c6c8405935f4b431dee9133e3d54` adds prompt coverage.
+A whitespace-only assertion issue in the new test was fixed in `f296d140aca3b06ee61c563ad606cc144df91912`.
+
+`current-regressions-082`: **PASS, 104/104 tests green**.
 
 ### Current verification
 
-- `run-acceptance-amy-current-078`: queued/running.
-- First check: ARC majority repair must still produce >=5/8 emphasized beats.
-- Second check: any later non-majority repair must preserve the ordinary-baseline / inciting-event separation.
-- Third check: with a clean breakfast Beat 1, Request 1 should visibly complete breakfast and Request 2 should preserve it.
-- If Segment 1 passes, continue forward to Segment 2 and fix the next earliest real divergence only.
+- `run-acceptance-amy-current-083`: queued/running.
+- First check: generated Beat 1 itself should now be a concrete executable endpoint rather than the abstract phrase “cooks breakfast.”
+- Second check: Director Request 1 should then visibly realize that endpoint.
+- Request 2 should preserve it.
+- If Segment 1 passes, continue to Segment 2 and fix the next earliest real divergence only.
 
 ### Current architectural conclusion
 
 The KISS architecture still holds:
 - ARC = CREATE -> VALIDATE -> REPAIR
 - BEATS = CREATE -> VALIDATE -> REPAIR
-- Request 1 owns concrete beat execution/completion.
+- Beat generation owns turning macro required-events into concrete clip execution targets.
+- Request 1 owns timed realization of the assigned beat.
 - Request 2 is a stenographer/formatter.
 - Python owns deterministic structure/counting/state mechanics.
 
-The latest failure did not require a new subsystem; it was a repair-prompt scope bug inside the existing ARC loop.
+Important lesson from 079/080:
+> When Mistral cannot reliably judge semantic completion after the fact, prefer giving it a clearer executable target earlier rather than adding another validator stage.
 
 ### Other observed but non-current semantic weaknesses
 
