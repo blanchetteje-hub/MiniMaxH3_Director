@@ -573,3 +573,89 @@ the next boundary is likely Director Request 1's mundane completion staging
 (e.g. stove/tool shutdown) or Segment 2 allocation/ordering; diagnose the actual
 first divergence rather than preemptively changing either.
 
+## Acceptance 109 follow-up: Beat prompt still too large; exact five-rule prompt succeeds
+
+`run-acceptance-amy-beat-prompt-simple-109` completed against revision
+`32012b4970c9092966dcaf56e150026852618c6d`.
+
+The first Beat remained too abstract:
+
+> Amy, wearing a tight black tank top and denim jeans, cooks breakfast for Will
+> and Amber in the kitchen.
+
+Director Request 1 did improve mundane shutdown by turning off the stove and
+setting down the spatula, but neither child actually received breakfast. The
+locked Segment-1 target therefore still failed at Beat creation before Director
+formatting.
+
+The accepted 109 ARC also contains a separate later defect: Phase 1's
+`required_end_state` claims Amy and the kids are in the basement and that Amy
+has retrieved her weapons, even though Phase-1 events do not retrieve the
+weapons. This later ARC issue must be addressed after the earlier Segment-1
+boundary is cleared.
+
+### Probes 110-111
+
+`beat-phase1-production-simple-probe-110` reproduced the production failure
+with the then-current roughly ten-rule prompt: it again returned only that Amy
+cooks breakfast.
+
+`beat-phase1-four-rule-exact-probe-111` used the same source story and exact
+Phase-1 required events but stripped Beat creation to the essential rules. It
+returned:
+
+> Amy serves breakfast to Will and Amber at the kitchen table.
+
+This isolates prompt overload as the cause. The 24B model can infer the correct
+finite endpoint from the existing ARC event when the Beat task is kept small.
+
+### Minimal Beat-creation correction
+
+Production commit `427069ed07e75e1d267cd84793e62892a332f429` rewrites
+`build_beat_generation_messages()` as a deliberately small 24B prompt.
+
+Beat creation now receives only:
+
+- SOURCE STORY;
+- the current phase's numbered required-event text;
+- an optional immediately previous Beat for continuity;
+- explicit correction/beat-instruction/phrase-exclusion text when present;
+- the required JSON shape.
+
+The high-priority behavior is reduced to:
+- complete each assigned required event visibly;
+- finish finite everyday activities to their natural visible result;
+- show named beneficiaries receiving/participating in the result when reasonable;
+- do not start the next required event early;
+- continue from the previous Beat without repeating it;
+- one concise sentence per Beat with exact numbering.
+
+Full CURRENT PHASE JSON, NEXT PHASE prose, phase end-state summaries, recent-beat
+blocks, state-effect metadata, and the previous large instruction list are no
+longer sent to Beat CREATE. ARC owns allocation; the frozen Beat validator owns
+semantic rejection afterward.
+
+Regression commit `d095952f5b3cd3342297cc814d543b7adffcc46e` updates prompt
+contract tests so they enforce the minimal prompt rather than rewarding prompt
+bulk.
+
+`run-tests-minimal-beat-create-112`: **PASS, 72/72 tests green** across:
+- `tests.test_llm_prompt_pipeline`
+- `tests.test_forward_beat_validation`
+- `tests.test_beat_at_a_time_validator`
+- `tests.test_beat_retry_hierarchy`
+- `tests.test_beat_plan_localization`
+- `tests.test_generate_beats_mode`
+
+### Verification in progress
+
+`run-acceptance-amy-minimal-beat-create-113` is queued against the minimal
+Beat CREATE prompt.
+
+Inspect Segment 1 first. If Beat 1 now serves breakfast and Request 1 preserves
+that result, move to the next earliest divergence. Acceptance 109 already
+suggests the next upstream candidate may be ARC allocation/end-state integrity:
+its Phase-1 end state claimed weapon retrieval too early, and its Beat-2/Beat-3
+boundary does not match the locked gold's safe-room handoff. Do not patch that
+until 113 establishes that Segment 1 has moved.
+
