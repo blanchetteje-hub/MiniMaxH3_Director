@@ -157,6 +157,18 @@ At `f853902...`:
 - missing majority evidence -> parser rejection;
 - validator prompt -> requests matching beats from actual required_events.
 
+## Exact majority-budget follow-up
+
+Probe `arc-coverage-emphasis-create-probe-017` exposed a separate creator weakness: even when told that an 8-beat story needs at least five emphasized beats, Mistral preserved source coverage but still allocated four non-emphasis setup/preparation beats and only four materially zombie-killing beats (counting the final kill/resolution beat).
+
+Focused response:
+
+- `6f10e94b251e18ebdb416d87023e79e37af73086` — when the source contains explicit `majority`, ARC creation and repair now receive exact Python-computed arithmetic: for 8 beats, reserve at least 5 emphasis beats and allow at most 3 non-emphasis beats. The prompt explicitly says to preserve every source action by adjacent bundling and allows the final emphasized action to share its beat with immediate aftermath/resolution.
+- `ca255c9359f05cc48f6ca029196bca2c041e824a` — regression coverage for the exact create/repair majority budget.
+- `arc-budget-tests-021` queued on the local bridge.
+
+This remains within the current KISS boundary: Python supplies only deterministic arithmetic; the LLM still decides what source action is emphasized and how adjacent source actions should be semantically bundled.
+
 ## Important caution
 
 The evidence LLM can undercount individual matches (one probe returned [4,5,6] instead of [4,5,6,7]), but for the observed bad 4/8 case it still produces evidence below the threshold. Continue evaluating false negatives/false positives through acceptance before generalizing beyond the observed `majority` failure.
