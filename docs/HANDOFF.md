@@ -287,8 +287,8 @@ The prior deterministic regression set was 101/101 green at `current-regressions
 
 ### Verification now in progress
 
-- `current-regressions-060`: regression suite against current head `01df1cce6cc42b60e682d1a304afb21a9d8f34f9`.
-- After it passes, queue a fresh locked Amy acceptance on the same/current head.
+- `current-regressions-060`: **PASS**, 102/102 tests green against the focused-majority implementation.
+- `run-acceptance-amy-current-061`: queued/running against the current production code. This is the next source of truth; do not make additional production changes until its ARC result is inspected.
 
 Expected ARC behavior for this 8-beat source is at least 5/8 beats materially inside the broad zombie-conflict sequence. Do not hard-code the Amy benchmark's choreography or literal entities; the generic majority constraint should force setup/preparation into at most three beats while preserving every explicit source action.
 
