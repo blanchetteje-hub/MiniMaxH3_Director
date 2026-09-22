@@ -797,6 +797,8 @@ LOCAL STAGING
 - Every invented local detail must directly perform, receive, support, or complete CURRENT BEAT. If it does not, omit it.
 - If CURRENT BEAT describes an activity done FOR named people, show those named beneficiaries present when practical and let all of them visibly receive or participate in the activity's result before the beat ends when physically possible.
 - Do not give supporting characters unrelated hobbies, devices, errands, entrances/exits, side conversations, or independent goals merely to fill time.
+- When CURRENT BEAT introduces an unnamed but visually significant INDIVIDUAL entity that may persist, act again, speak, fight, or matter to continuity, assign it a simple functional stable label formed from its role/type plus a number, such as Zombie1, Guard1, or Creature1. Reuse an already established label from SUBJECT DEFINITIONS or continuity instead of renaming it. Do not assign Subject-style labels to crowds, collective groups, scenery, props, or incidental background figures.
+- Once you assign such a functional label, use that exact label consistently throughout RAW SCENE so Request 2 can expose it as a newly introduced Subject.
 - Prefer a clean local completion of an ordinary activity before NEXT BEAT when that gives the next segment a clear handoff.
 - Short invented dialogue is allowed only when it directly expresses or supports CURRENT BEAT. It must not introduce new facts or anticipate NEXT BEAT.
 - Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
