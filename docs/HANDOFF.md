@@ -367,5 +367,69 @@ KISS still holds:
 
 Do not create separate semantic subsystems merely for these probes. Work them only when end-to-end acceptance makes one the earliest real failure.
 
+## Acceptance 098 follow-up: ARC state-effect contamination is now the earliest observed failure
+
+`run-acceptance-amy-current-098` completed successfully against repo revision
+`8485d3e6b224675906ce18e3774db3a8e9719470`.
+
+The sampling-routing correction was active, but the accepted repaired ARC itself
+introduced an earlier defect before Beat generation:
+
+- E1 remained the ordinary breakfast event: Amy is cooking breakfast for the kids.
+- E1 also acquired `set_condition` effects claiming Amy=`cooking`,
+  Will=`eating`, and Amber=`eating`.
+- The source/event never states that Will or Amber are eating.
+- Beat generation receives the ARC's full required_events including state_effects,
+  so those invented authoritative facts directly bias Beat 1 toward the kids
+  already eating instead of the finite breakfast endpoint.
+- Segment 1 consequently still failed the locked gold behavior: breakfast remained
+  underway instead of being served and settled.
+
+The same model weakness had previously appeared in
+`arc-optional-state-effect-strong-probe-053`, where Mistral accepted an inferred
+`Hungry` condition from cooking. A new exact-current probe,
+`arc-state-effect-persistence-probe-099`, added even stronger semantic wording
+and Mistral still returned VALID. Prompt emphasis alone is therefore not a
+reliable guard for this class.
+
+### Focused correction
+
+Production commit `629e9d01225f6fcaa1843889d5a35e7e77c08b18` adds a
+small deterministic data-integrity rule for free-form `set_condition` values:
+
+- Python does **not** decide whether a condition is narratively true.
+- Every meaningful word in a `set_condition.value` must occur in the same
+  required-event text that owns the effect.
+- This rejects invented values such as `eating` or `Hungry` when the event only
+  says Amy cooks breakfast.
+- Source/event-grounded values remain legal; for example `blood_soaked` is
+  accepted for an event saying the house becomes soaked in blood.
+- ARC create/validate/repair prompts now state the same lexical ownership
+  contract and explicitly say that temporary activities such as cooking/eating/
+  running/fighting are not persistent `set_condition` facts.
+
+Regression commit `851dbfd9fe1a5825fa1ff0a1f35993cafac26bab` adds parser
+coverage for rejected ungrounded and accepted grounded free-form conditions.
+
+`run-tests-arc-condition-grounding-101`: **PASS, 28/28 tests green** across:
+- `tests.test_state_effect_canonicalization`
+- `tests.test_story_arc_structural_guarantees`
+- `tests.test_macro_state_enrichment`
+
+This remains within KISS: the rule is deterministic state-data integrity inside
+the existing ARC loop, not a new semantic validator or enrichment subsystem.
+
+### Verification in progress
+
+`run-acceptance-amy-condition-grounding-102` is queued against the new code.
+Inspect its earliest divergence before making any further change.
+
+Acceptance 098 also produced a later ARC-allocation regression:
+- Beat 2 became only the window breach;
+- Beat 3 packed kid evacuation/locking plus arsenal retrieval/equipping.
+
+Do **not** repair that allocation preemptively. First determine whether 102 moves
+the Segment-1 boundary; then fix the earliest remaining observed failure only.
+
 Always re-read the current `gpt-test-branch` head, this handoff, and newest `gpt-runtime` results before acting.
 
