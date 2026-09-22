@@ -175,13 +175,26 @@ The evidence LLM can undercount individual matches (one probe returned [4,5,6] i
 
 Do not build a generalized relative-emphasis subsystem for `most`, `half`, `briefly`, etc. until an actual acceptance failure requires it.
 
+## Superseded long-running acceptance
+
+`run-acceptance-amy-coverage-priority-019` began before the exact majority-budget creator/repair fix was committed. While it remained active, the branch advanced through `6f10e94...` and `ca255c9...`, making the running acceptance stale relative to the code now intended for evaluation.
+
+Mailbox handling:
+
+- queued latest full acceptance: `run-acceptance-amy-majority-budget-022`
+- removed the stale `run-acceptance-amy-coverage-priority-019.json` job from `gpt-runtime` so it will not restart after the bridge is restarted
+- `arc-budget-tests-021` and `arc-repair-missing-breakfast-probe-020` remain queued ahead of the latest acceptance
+
+Because the already-running local child process cannot be cancelled remotely through the mailbox, the next required local action is to stop the current bridge process with Ctrl+Q (or Ctrl+C) and restart `python tools/chatgpt_llama_bridge.py`. The restarted worker should then consume the latest pending jobs instead of the superseded acceptance.
+
 ## Immediate next steps
 
-1. Read `run-acceptance-amy-coverage-priority-019` when it lands.
-2. Verify Beat/Segment 1 restores the explicit ordinary breakfast setup while the accepted ARC still satisfies the current majority evidence check.
-3. Compare generated prompts against the locked gold in chronological order and identify the **earliest semantic mismatch**.
-4. Fix that observed mismatch only; do not optimize later beats first.
-5. Update this file again with the acceptance outcome and next blocker.
+1. Restart the local bridge so the superseded in-flight `-019` acceptance is cancelled and the latest pending jobs can run.
+2. Confirm `arc-budget-tests-021` passes.
+3. Inspect `arc-repair-missing-breakfast-probe-020` for whether repair can restore breakfast while retaining the exact majority budget.
+4. Inspect `run-acceptance-amy-majority-budget-022`.
+5. Verify Segment 1 restores the ordinary breakfast setup and compare final H3 prompts against gold chronologically.
+6. Fix the **next earliest observed semantic mismatch only**, then update this file again.
 
 ## Recovery instructions for a new chat/context
 
