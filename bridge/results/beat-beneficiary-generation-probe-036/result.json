@@ -1,0 +1,53 @@
+{
+  "job_id": "beat-beneficiary-generation-probe-036",
+  "kind": "llama_chat",
+  "started_at": 1790044796.5566177,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Write one concise visible video beat from the assigned job. Preserve every materially required action, result, and named direct participant. Do not perform the next job. Return only the beat sentence."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB:\nAmy is cooking breakfast for her young kids Will and Amber in the kitchen.\n\nNEXT JOB:\nA zombie breaks the kitchen door window and Amy sees the danger.\n\nWrite the current beat."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 160,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-w1uatykccpj5097cnid06o",
+    "object": "chat.completion",
+    "created": 1790044796,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "Amy cracks eggs into a bowl while Will and Amber watch, their faces lighting up with anticipation.",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 87,
+      "completion_tokens": 20,
+      "total_tokens": 107,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790044798.2385793,
+  "status": "ok"
+}
