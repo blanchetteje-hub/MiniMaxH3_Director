@@ -1,0 +1,53 @@
+{
+  "job_id": "director-local-staging-probe-023",
+  "kind": "llama_chat",
+  "started_at": 1790042957.5305493,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a cinematic scene planner expanding one CURRENT BEAT into an 8-second scene.\n\nCURRENT BEAT is the only story event you may advance. NEXT BEAT is a hard forbidden boundary.\n\nYou MAY invent ordinary local choreography, mundane props, incidental reactions, and short natural dialogue when they are only a concrete realization of CURRENT BEAT and do not create a new plot development. For a broad everyday activity, make the activity visually legible and give it a natural local completion when possible. Include people who are inherent participants in the stated activity. Do not foreshadow or begin NEXT BEAT.\n\nReturn only JSON {\"raw_scene\":\"...\",\"beat_complete\":true}."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT:\nAmy is cooking breakfast for her young kids in the kitchen. Amy wears a tight black tank top and denim jeans.\n\nNEXT BEAT:\nA zombie breaks the kitchen door window and Amy sees the danger.\n\nSUBJECTS:\nAmy; Will, a 10-year-old boy; Amber, a 14-year-old girl.\n\nWrite the timed scene from 00:00.000 through about 00:07.000. Keep it ordinary and safe."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 500,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-c3w4s97dw2svl0a89l3b",
+    "object": "chat.completion",
+    "created": 1790042957,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"raw_scene\": \"00:00.000 - Amy stands at the stove, flipping pancakes on a griddle. She wears a tight black tank top and denim jeans, her hair tied back in a messy bun.\\n\\n00:01.500 - Will, a 10-year-old boy, sits at the kitchen table, coloring in a picture book. He looks up at Amy and says, 'Mom, can I have some juice?' \\n\\n00:03.000 - Amber, a 14-year-old girl, enters the kitchen, yawning and rubbing her eyes. She walks over to the fridge and grabs a carton of orange juice.\\n\\n00:04.500 - Amy turns around with a plate of pancakes in her hand and smiles at Will. 'Sure, honey,' she says, pouring syrup on the pancakes.\\n\\n00:06.000 - Amber pours herself a glass of juice and sits down next to Will at the table. She looks at his picture book and comments, 'Nice drawing, Will.' \\n\\n00:07.500 - Amy places the plate of pancakes in front of Will and ruffles his hair affectionately.\",\n  \"beat_complete\": true\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 255,
+      "completion_tokens": 288,
+      "total_tokens": 543,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790042974.9989123,
+  "status": "ok"
+}
