@@ -239,6 +239,36 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             normalized,
         )
 
+    def test_arc_planner_allows_coherent_setpieces_inside_authorized_process(self):
+        story = (
+            "Amy fights zombies in her house. The majority of the film is Amy "
+            "killing zombies as they attack her. Amy kills the last zombie."
+        )
+        messages = minimax.build_beat_arc_plan_messages(story, 8)
+        normalized = " ".join(
+            "\n".join(message["content"] for message in messages).split()
+        )
+        self.assertIn(
+            "PLAN A COHERENT ESCALATION inside that authorized process",
+            normalized,
+        )
+        self.assertIn("weapon running empty", normalized)
+        self.assertIn("enemy surviving one beat", normalized)
+        self.assertIn("temporary obstacle, contamination", normalized)
+
+        validator = minimax.build_macro_arc_validation_messages(
+            story,
+            make_arc([(1, 3, self.events)]),
+        )
+        validation_prompt = " ".join(
+            "\n".join(message["content"] for message in validator).split()
+        )
+        self.assertIn(
+            "do NOT reject local setpiece developments merely because the source "
+            "did not dictate their exact choreography",
+            validation_prompt,
+        )
+
     def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
         invalid = copy.deepcopy(self.events)
         invalid[2]["depends_on"] = ["E1"]
