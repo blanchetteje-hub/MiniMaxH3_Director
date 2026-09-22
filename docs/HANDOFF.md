@@ -19,6 +19,10 @@ Loop:
 
 Do not default to Codex prompts. Minimize cognitive load for the user.
 
+### Scheduled H3 iteration
+
+The hourly `H3 Iteration` task should target the currently active GPT-Driven H3 conversation. Each run must read this handoff before acting and update it whenever substantive project state, decisions, or the next acceptance target changes.
+
 Repository: `blanchetteje-hub/MiniMaxH3_Director`
 
 Active branch: `gpt-test-branch`
@@ -243,4 +247,23 @@ This is intentionally not a remote-shell bridge. Supported job kinds are constra
 
 ## Current acceptance finding
 
-The first complete Amy acceptance run proves the harness works. The earliest failure is in story-arc planning: the generated arc dropped the calm breakfast scene as a required event and made the zombie breach Beat 1. Fix the ARC create/validate/repair boundary before tuning Director Request 1 or Request 2 against later gold prompts.
+The original missing-breakfast ARC failure has been fixed and is no longer the current boundary.
+
+Current branch head when this handoff was refreshed: `27830e63bb41b6d0830727c18b403546ae1c8e08` (`Record latest ARC and BEAT semantic fixes`). Always re-read branch head rather than assuming this SHA is still current.
+
+Latest Amy acceptance evidence (`run-acceptance-amy-current-040`) exposed three upstream semantic issues that have now received focused production fixes without adding new semantic pipelines:
+
+- **ARC emphasis / majority span allocation:** when the source says most of the film is a repeated sequence such as Amy killing zombies, ARC validation must identify whole phases that are safe to expand. Python may deterministically count/expand the validated phase span, but Mistral owns the semantic judgment of which phases actually represent the emphasized sequence. Standalone preparation inside a phase disqualifies that whole phase from majority evidence. Latest refinement: `a245f44cd460a96ebc4f8dea6c263090ebd1680a`; regression contract: `c2bb8c75cc7d06312a86b4eb0ef9e4332d87cc34`.
+- **ARC unsupported persistent conditions:** state effects are authoritative persistent facts, not inferred motivations/emotions/context. Cooking does not establish Hungry; running does not establish Tired; danger does not establish Afraid; fighting does not establish Angry. Production fix: `d9ef740fa136ad51c13e565550610a9e448cb1d3`; regression contract: `42e565af98288fc8f0154d60b30ab00103b56744`.
+- **BEAT prerequisite mistaken for completion:** a prerequisite or partial-progress action cannot satisfy a later required result (entering != locking, reaching != opening, retrieving != equipping, drawing != firing). Production fix: `d5313f05683b421f8224aad4ea59679aa21f80e7`; regression contract: `b0479488ee815605ac90a3f154ced378d0a557db`.
+
+Fresh bridge verification queued at that head:
+
+- `arc-optional-state-effect-strong-probe-053`
+- `arc-majority-mixed-phase-probe-054`
+- `beat-lock-omission-current-probe-055`
+- `beat-lock-omission-strong-probe-056`
+- `current-regressions-057`
+- `run-acceptance-amy-current-058`
+
+Next action: inspect the newest `gpt-runtime` results first. If regressions pass, use `run-acceptance-amy-current-058` to identify the earliest remaining behavioral divergence and fix that boundary only.
