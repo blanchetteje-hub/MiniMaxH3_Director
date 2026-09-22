@@ -217,6 +217,28 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             repair_prompt,
         )
 
+    def test_arc_planner_prefers_clip_scale_handoffs_when_budget_allows(self):
+        messages = minimax.build_beat_arc_plan_messages(
+            "Amy runs to the safe room, gets the kids inside, locks the door, "
+            "then retrieves and equips her weapons.",
+            3,
+        )
+        normalized = " ".join(
+            "\n".join(message["content"] for message in messages).split()
+        )
+        self.assertIn(
+            "split a long adjacent source action chain across consecutive beat jobs",
+            normalized,
+        )
+        self.assertIn(
+            "not automatically one whole source sentence",
+            normalized,
+        )
+        self.assertIn(
+            "Choose boundaries for executable clip-sized story progression",
+            normalized,
+        )
+
     def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
         invalid = copy.deepcopy(self.events)
         invalid[2]["depends_on"] = ["E1"]
