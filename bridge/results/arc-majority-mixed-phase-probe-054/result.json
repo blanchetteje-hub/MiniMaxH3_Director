@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-majority-mixed-phase-probe-054",
+  "kind": "llama_chat",
+  "started_at": 1790048177.1637611,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Identify which macro phase numbers may be counted in full toward the source-emphasized majority sequence. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE EMPHASIS:\n\"The majority of the film is Amy killing zombies as they try and attack her.\"\n\nARC:\nPhase 1, Beat 1: Amy cooks breakfast.\nPhase 2, Beats 2-3: zombie breaks in; Amy gets the kids safe and locks the door.\nPhase 3, Beats 4-8:\n- Beat 4: Amy retrieves and equips her pistol and katana before combat begins.\n- Beats 5-7: Amy fights and kills attacking zombies.\n- Beat 8: Amy kills the last zombie and immediately lets her kids out.\n\nCOUNTING RULE:\nA returned phase will have its ENTIRE beat_start..beat_end span counted by Python.\nTherefore return a phase ONLY when every beat in that phase materially belongs to the emphasized ongoing sequence, except that the final beat may also include immediate terminal aftermath/resolution.\nStandalone preparation BEFORE the emphasized process begins does not belong and makes a mixed phase unsafe to count in full. Do not count only the main idea of a mixed phase.\n\nReturn exactly {\"matching_phases\":[...]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 180,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-rlrfrr9fggmdprf59u9xal",
+    "object": "chat.completion",
+    "created": 1790048177,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\"matching_phases\": [3]}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 262,
+      "completion_tokens": 15,
+      "total_tokens": 277,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790048178.8030357,
+  "status": "ok"
+}
