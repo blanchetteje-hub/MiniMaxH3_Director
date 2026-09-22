@@ -113,6 +113,14 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             "source actions",
             normalized,
         )
+        self.assertIn(
+            "SOURCE COVERAGE IS THE FIRST SEMANTIC CHECK",
+            normalized,
+        )
+        self.assertLess(
+            normalized.index("SOURCE COVERAGE IS THE FIRST SEMANTIC CHECK"),
+            normalized.index("SOURCE EMPHASIS IS MANDATORY"),
+        )
 
     def test_majority_evidence_is_counted_deterministically(self):
         invalid = {
