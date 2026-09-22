@@ -235,6 +235,26 @@ class ContinuityCallContractTests(unittest.TestCase):
 
 
 class DirectorPromptCallContractTests(unittest.TestCase):
+    def test_director_allows_only_controlled_local_staging(self):
+        rules = minimax.build_director_rules(
+            8,
+            4,
+            1,
+            SUBJECTS,
+            2,
+        )
+
+        self.assertIn("LOCAL STAGING", rules)
+        self.assertIn(
+            "all of them visibly receive or participate in the activity's result",
+            rules,
+        )
+        self.assertIn(
+            "Local staging may not invent consequential persistent changes",
+            rules,
+        )
+        self.assertIn("NEXT BEAT is a forbidden boundary", rules)
+
     def test_first_two_director_prompts_require_beat_clothing(self):
         clothing_requirement = (
             "Any clothing specified in the beat must be part of the response."
