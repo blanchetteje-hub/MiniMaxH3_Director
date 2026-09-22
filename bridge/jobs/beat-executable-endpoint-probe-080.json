@@ -1,0 +1,18 @@
+{
+  "job_id": "beat-executable-endpoint-probe-080",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "max_tokens": 260,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You convert a required story event into one executable 8-second video beat job. Preserve story meaning and chronology. Add only mundane local staging needed to make the event visibly complete.\n\nRules:\n- The beat must have a concrete observable endpoint, not merely name an activity.\n- For a finite activity done for named people, specify the completed result reaching those people when physically reasonable.\n- Settle tools/appliances at the endpoint when that is the natural completion and not a new story event.\n- Do not include any action from NEXT EVENT.\nReturn exactly {\"beat\":\"...\"}."
+    },
+    {
+      "role": "user",
+      "content": "REQUIRED EVENT:\nAmy is cooking breakfast for her kids in the kitchen.\n\nNAMED PEOPLE:\nAmy, Will, Amber\n\nNEXT EVENT:\nA zombie breaks the kitchen door window.\n\nReturn one beat job only."
+    }
+  ]
+}
