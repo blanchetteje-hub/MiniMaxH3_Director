@@ -122,6 +122,38 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             normalized.index("SOURCE EMPHASIS IS MANDATORY"),
         )
 
+    def test_arc_prompts_keep_clothing_out_of_set_condition(self):
+        story = "Amy wears a black tank top and cooks breakfast."
+        arc = make_arc([(1, 3, self.events)])
+
+        create_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_beat_arc_plan_messages(story, 3)
+            ).split()
+        )
+        validate_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_macro_arc_validation_messages(story, arc)
+            ).split()
+        )
+        repair_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_macro_arc_repair_messages(
+                    story,
+                    arc,
+                    ["Clothing used the wrong state operation."],
+                    3,
+                )
+            ).split()
+        )
+
+        for prompt in (create_prompt, validate_prompt, repair_prompt):
+            self.assertIn("Clothing must use set_clothing", prompt)
+            self.assertIn("set_condition", prompt)
+
     def test_arc_prompts_reject_inferred_internal_state_effects(self):
         story = "Amy cooks breakfast for Will and Amber."
         arc = make_arc([(1, 3, self.events)])
