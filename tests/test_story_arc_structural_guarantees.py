@@ -235,6 +235,111 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             normalized,
         )
 
+    def test_focused_majority_evidence_uses_whole_phase_spans(self):
+        story = (
+            "Amy cooks breakfast, gets her kids safe, and equips weapons. "
+            "The majority of the film is Amy killing zombies as they attack her. "
+            "Amy kills the last zombie and lets her kids out."
+        )
+        arc = {
+            "phases": [
+                {
+                    "phase_number": 1,
+                    "beat_start": 1,
+                    "beat_end": 2,
+                    "required_events": [
+                        {"id": "E1", "event": "Amy cooks breakfast.", "beat_number": 1},
+                        {
+                            "id": "E2",
+                            "event": "Amy gets her kids to the basement.",
+                            "beat_number": 2,
+                        },
+                    ],
+                },
+                {
+                    "phase_number": 2,
+                    "beat_start": 3,
+                    "beat_end": 5,
+                    "required_events": [
+                        {
+                            "id": "E3",
+                            "event": "Amy locks the basement door.",
+                            "beat_number": 3,
+                        },
+                        {
+                            "id": "E4",
+                            "event": "Amy retrieves her weapons.",
+                            "beat_number": 4,
+                        },
+                        {
+                            "id": "E5",
+                            "event": "Amy equips her weapons.",
+                            "beat_number": 5,
+                        },
+                    ],
+                },
+                {
+                    "phase_number": 3,
+                    "beat_start": 6,
+                    "beat_end": 8,
+                    "required_events": [
+                        {
+                            "id": "E6",
+                            "event": "Amy fights and kills several zombies.",
+                            "beat_number": 6,
+                        },
+                        {
+                            "id": "E7",
+                            "event": "Amy survives another zombie wave.",
+                            "beat_number": 7,
+                        },
+                        {
+                            "id": "E8",
+                            "event": "Amy kills the last zombie and lets her kids out.",
+                            "beat_number": 8,
+                        },
+                    ],
+                },
+            ]
+        }
+        messages = minimax.build_macro_arc_majority_evidence_messages(story, arc)
+        normalized = " ".join(
+            "\n".join(message["content"] for message in messages).split()
+        )
+        self.assertIn(
+            "matching_phases may contain ONLY phase numbers whose ENTIRE "
+            "beat_start..beat_end span materially belongs",
+            normalized,
+        )
+        self.assertIn(
+            "Standalone setup, escape, retrieval, equipping, travel, or other "
+            "preparation BEFORE the emphasized process begins does NOT belong",
+            normalized,
+        )
+        self.assertIn("Phase 2, Beats 3-5", normalized)
+        self.assertIn("Beat 5: Amy equips her weapons.", normalized)
+
+        parsed = minimax.parse_macro_arc_validation_result(
+            {
+                "valid": True,
+                "issues": [],
+                "majority_checks": [
+                    {
+                        "source_requirement": (
+                            "The majority of the film is Amy killing zombies "
+                            "as they attack her."
+                        ),
+                        "matching_phases": [3],
+                    }
+                ],
+            },
+            total_segments=8,
+            require_majority_checks=True,
+            macro_arc=arc,
+        )
+        self.assertFalse(parsed["valid"])
+        self.assertIn("3/8 beats; more than half is required", parsed["issues"][0])
+
     def test_majority_story_gets_exact_sequence_budget(self):
         story = "The majority of the film is Amy killing zombies."
         create_messages = minimax.build_beat_arc_plan_messages(story, 8)
