@@ -10975,6 +10975,12 @@ needed; never infer dependencies from event IDs alone or from list position.
 Add state_effects only for a direct, logically necessary persistent consequence
 of that event. Python will apply those effects deterministically after
 completion.
+- A state_effect is an authoritative persistent story fact, never inferred
+  motivation, emotion, reaction, or plausible context. In particular,
+  set_condition requires the event/source to actually establish that condition.
+  Cooking or serving food does not establish hunger; running does not establish
+  tiredness; danger does not establish fear; fighting does not establish anger.
+  Plausible is not enough. Omit an optional inferred condition entirely.
 
 STATE_EFFECTS JSON CONTRACT
 Examples:
@@ -11159,6 +11165,13 @@ State effects:
   terminal entities, clothing, and persistent environment conditions.
 - Do not require state effects for temporary actions, feelings, reactions, or
   detail.
+- Reject unsupported optional state effects as well as missing required ones.
+  A state_effect is an authoritative persistent story fact, never inferred
+  motivation, emotion, reaction, or plausible context. set_condition is valid
+  only when the event/source actually establishes that persistent condition.
+  Cooking or serving food does not establish hunger; running does not establish
+  tiredness; danger does not establish fear; fighting does not establish anger.
+  Plausible is not enough.
 - Attach each persistent effect to the required event that actually establishes
   that fact. If a later event retrieves or equips named equipment, an earlier
   ordinary setup event must not carry that held/equipped effect; reject the arc
