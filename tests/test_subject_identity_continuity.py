@@ -129,6 +129,20 @@ class SubjectIdentityContinuityTests(unittest.TestCase):
         self.assertNotIn("<Subject 2> Werewolf", prompt)
         self.assertNotIn("retention_analysis:", prompt)
 
+    def test_identity_repair_adds_missing_dynamic_speaker_id_after_registration(self):
+        definitions = (
+            "<Subject 1> is Amy, female (S1), referenced in <Picture 1>.\n"
+            "<Subject 4> is Zombie1, unknown (S4), continued from <Video 1>."
+        )
+        repaired = minimax.repair_h3_subject_identity(
+            "Zombie1 says <d>[English]BRAINS!</d>",
+            definitions,
+        )
+        self.assertEqual(
+            repaired,
+            "Zombie1 (S4) says <d>[English]BRAINS!</d>",
+        )
+
     def test_continuation_adds_video_origin_to_visible_subject_definitions(self):
         definitions = (
             "<Subject 1> is Elias, a man referenced in <Picture 1>.\n"
