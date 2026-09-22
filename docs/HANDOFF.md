@@ -247,63 +247,105 @@ This is intentionally not a remote-shell bridge. Supported job kinds are constra
 
 ## Current acceptance finding
 
-Acceptance 083 timed out after 3600 seconds with no acceptance artifact. A longer retry, `run-acceptance-amy-current-084`, was already queued on `gpt-runtime` with a 7200-second timeout before this iteration began.
+The Beat endpoint state-authority correction is regression-clean, and acceptance 086 exposed the next real failure back inside ARC majority repair: it can still destroy an explicitly authored ordinary-baseline / sudden-inciting-event contrast while compressing setup.
 
-The timeout followed the new Beat-layer finite-endpoint rule introduced after acceptance 078.
+### Verification through 085/086
 
-### Acceptance 078 remains the last completed semantic source of truth
+`current-regressions-085`: **PASS, 104/104 tests green** for the corrected Beat endpoint state-authority contract.
 
-078 completed successfully and established:
-- ARC majority allocation is good enough.
-- Beat 1 remained too abstract: “Amy cooks breakfast for her kids in the kitchen.”
-- Director Request 1 then treated “cooking / holding a plate” as a completed finite activity.
-- Request 2 faithfully transcribed Request 1.
+`run-acceptance-amy-current-086`: **PASS as a process, return code 0**, against repo revision `3991db995fbb63e1a49c2cee412bb7fd99a54602` (which includes the Beat endpoint authority correction).
 
-Focused probe `director-completion-validator-probe-079` showed that adding a separate semantic completion validator would not help: Mistral falsely accepted the exact bad 078 raw scene as complete.
+However, the accepted 086 ARC was behaviorally wrong at the first gold boundary:
 
-Focused probe `beat-executable-endpoint-probe-080` showed that moving the completion requirement earlier into Beat generation can produce a concrete executable endpoint without leaking into the next story event.
+- Beat 1 required event became: “Amy cooks breakfast for Will and Amber; a zombie breaks the kitchen door window, revealing the threat.”
+- Therefore Segment 1 contained the zombie breach and suspense instead of remaining an ordinary safe breakfast.
+- Request 1 and Request 2 correctly executed/transcribed that bad assigned Beat 1.
 
-### 083 timeout diagnosis: Beat endpoint rule crossed validator state authority
+The earliest failure is therefore ARC majority repair again, not Director or formatter behavior.
 
-Production commit `905d54635d262c1f60f8b8a2c958b1a7bee5d96f` originally told Beat generation to:
-- make finite jobs concrete observable endpoints;
-- reach named beneficiaries;
-- also settle tools/appliances at the endpoint, including turning them off.
+### 086 causal trace
 
-The proven beat validator still has its frozen state authority rule:
-> Any new persistent change created by the candidate must be represented by an assigned typed effect.
+The **initial created ARC was correct**:
 
-For Amy's breakfast required event, no persistent stove/plate/tool state effects are assigned. Therefore the Beat generator was being encouraged to invent durable state facts solely to prove completion while the validator could reject exactly those untyped persistent changes. With up to 10 generation/validation attempts per beat, that semantic mismatch can amplify into a long/non-converging acceptance run.
+- Beat 1: Amy cooks breakfast for Will and Amber.
+- Beat 2: zombie breaks the kitchen door window.
+- Beat 3: Amy rushes Will and Amber to the basement and locks the door.
+- Later setup/retrieval/equip followed.
 
-This is an architectural contract mismatch inside the existing BEATS loop, not evidence for another semantic subsystem.
+After unrelated ARC semantic repairs, validation eventually reached the explicit majority issue at attempt 4:
+> Explicit source majority sequence is under-allocated ... 3/8 beats; more than half is required.
 
-### Current production correction
+The majority-allocation repair then produced the final accepted ARC that merged the breakfast baseline with the zombie breach.
 
-Production commit `4cb0d75e19e0c6c3768a2b28a0cce41f5e315b29` narrows Beat-layer completion:
+So the merge happens specifically inside **ARC majority allocation repair**.
 
-- Beat generation still must turn finite activities into concrete observable execution targets.
-- If an activity is explicitly done FOR named people, those named beneficiaries should visibly receive/participate in the completed result when physically reasonable.
-- Beat generation must NOT add durable tool, appliance, object-placement, ownership, barrier, injury, or environment-state changes merely to prove completion unless the required event or typed state effects authorize them.
-- Mundane local staging such as setting down a utensil or turning off an appliance remains Director Request 1 responsibility, where it is a non-story completion detail.
+### Focused probes 087/088
 
-Regression commit `17c0091c5798428bfc1bc2341e2d790e9ef13381` updates the prompt contract test.
+`arc-majority-baseline-boundary-probe-087` reproduced the current production failure using the 086-shaped pre-majority ARC and current repair wording:
 
-This preserves the KISS split:
-- BEAT generation = concrete story-level execution target within state authority.
-- Request 1 = mundane timed local staging needed to realize that target.
-- Request 2 = H3 stenographer/formatter.
-- Python = deterministic state/structure mechanics.
+> Beat 1: Amy cooks breakfast for Will and Amber; a zombie breaks the kitchen door window...
 
-### Current verification queue
+This confirms the current majority repair contract is sufficient to cause the bad merge independently of the full acceptance.
 
-- `run-acceptance-amy-current-084`: already running/queued against the older endpoint rule with a 7200-second timeout. Treat its result as diagnostic for the old branch revision only.
-- `current-regressions-085`: queued behind it against the corrected production branch.
-- Do not queue another full acceptance until regressions 085 pass.
-- After 085 passes, queue a fresh locked Amy acceptance against `4cb0d75...` + regression-test commit and judge Segment 1 again.
+`arc-majority-protected-baseline-probe-088` added a stronger generic contrast rule:
 
-### Retry amplification observation
+- when source explicitly establishes an ordinary/calm/safe/normal baseline;
+- and then explicitly introduces a sudden/inciting threat/change;
+- **never merge the inciting threat/change into the baseline beat**;
+- let that baseline consume one outside-sequence beat;
+- compress later setup/preparation instead;
+- the inciting action may still share with its immediate reaction/escape/containment sequence.
 
-Both ARC and BEAT loops can consume a large wall-clock budget when a semantic repair contract cannot converge. Do not reduce retry counts merely because of one timeout; first remove semantic contradictions. Only simplify retry layering if corrected semantics still demonstrate excessive repeated attempts.
+Under that contract Mistral preserved:
+
+- Beat 1: ordinary breakfast only.
+- Beat 2: zombie breach + immediate evacuation/lock sequence.
+
+The raw probe omitted one later beat, but production's Python structural validation already rejects missing beat assignments. The semantic contrast behavior itself was corrected.
+
+### Production correction
+
+Production commit `c2f2aa9828b1bc017384bfb20e55d1bf634f198a` strengthens the existing ARC majority repair prompt with a **PROTECTED CONTRAST BOUNDARY**:
+
+- explicit ordinary/calm/safe/normal baseline remains its own beat;
+- sudden/inciting threat/change cannot be merged into that baseline;
+- the protected baseline consumes one outside-sequence beat;
+- later setup/preparation should be compressed instead;
+- inciting action may still share with immediate reaction/escape/containment.
+
+This remains entirely inside ARC CREATE -> VALIDATE -> REPAIR. No new semantic subsystem was added.
+
+Regression commit `94733acff47e2b280ed17fae0be922e39d66e31d` asserts the new prompt contract.
+A case-sensitive assertion typo was fixed in `25d778d2e90cd0680c5d0c75671e465fcaf209d6`.
+
+`current-regressions-090`: **PASS, 104/104 tests green**.
+
+### Beat endpoint correction still in force
+
+Production commit `4cb0d75e19e0c6c3768a2b28a0cce41f5e315b29` remains active:
+
+- Beat generation turns finite assigned story activities into concrete observable execution targets.
+- When explicitly done FOR named people, beneficiaries should visibly receive/participate in the completed result when physically reasonable.
+- Beat generation does **not** add durable untyped state changes merely to prove completion.
+- Mundane local staging such as setting down utensils / turning off an appliance remains Director Request 1 responsibility.
+
+### Current verification
+
+- `run-acceptance-amy-current-091`: next locked acceptance against the protected-baseline majority repair contract.
+- First check: Beat 1 must remain pure ordinary breakfast with no zombie/threat content.
+- Second check: majority allocation must still reach at least 5/8 materially emphasized beats.
+- Third check: with a clean breakfast beat, evaluate whether the concrete Beat endpoint + Request 1 completion now reaches both kids and natural local completion.
+- If Segment 1 passes, continue forward to Segment 2 and fix the next earliest behavioral divergence only.
+
+### Current architectural conclusion
+
+KISS still holds:
+- ARC = CREATE -> VALIDATE -> REPAIR
+- BEATS = CREATE -> VALIDATE -> REPAIR
+- Beat generation = concrete story-level execution target within typed-state authority.
+- Request 1 = timed mundane/local staging needed to realize the assigned beat.
+- Request 2 = stenographer/formatter.
+- Python = deterministic structure/counting/state mechanics.
 
 ### Other observed but non-current semantic weaknesses
 
