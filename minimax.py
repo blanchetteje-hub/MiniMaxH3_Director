@@ -10747,10 +10747,12 @@ def build_beat_arc_plan_messages(
             f"This story has {int(total_segments)} total beats. A strict majority "
             f"requires at least {minimum_sequence_beats} beats allocated to the "
             "broad source-emphasized narrative sequence. These beats do NOT each "
-            "need to literally repeat the emphasized verb. Immediate preparation "
-            "entering that sequence, enemy attacks, reversals, setbacks, weapon "
-            "transitions, continued action, the terminal result, and immediate "
+            "need to literally repeat the emphasized verb. Enemy attacks, "
+            "reversals, setbacks, weapon transitions AFTER the conflict/process "
+            "has begun, continued action, the terminal result, and immediate "
             "resolution sharing the final sequence beat may all belong to it. "
+            "Standalone preparation before the emphasized conflict/process begins "
+            "does NOT count toward the majority sequence. "
             f"At most {maximum_outside_beats} beats may sit outside the emphasized "
             "sequence. Preserve distinct earlier source stages instead of "
             "compressing them merely to manufacture literal repetitions. When the "
@@ -10794,14 +10796,16 @@ PHASE BOUNDARY RULES
   beat allocation. If the source says the majority of the film/story is a
   process or conflict, more than half of the TOTAL global beats must belong to
   that broad narrative sequence. Do NOT require every beat in the sequence to
-  literally repeat the emphasized verb. Immediate preparation entering the
-  sequence, enemy attacks, reversals, setbacks, weapon transitions, continued
-  action, the terminal result, and immediate resolution sharing the final beat
-  may all count when they are genuinely part of the same ongoing sequence.
-  Ordinary setup before the emphasized sequence does not count. With 8 total
-  beats, the emphasized sequence must occupy at least 5 beats, leaving at most
-  3 beats outside it. Preserve distinct earlier source stages rather than
-  compressing them merely to manufacture literal repetitions.
+  literally repeat the emphasized verb. Enemy attacks, reversals, setbacks,
+  weapon transitions after the conflict/process has begun, continued action,
+  the terminal result, and immediate resolution sharing the final beat may all
+  count when they are genuinely part of the same ongoing sequence.
+  Standalone preparation before the emphasized conflict/process begins does NOT
+  count toward the sequence. With 8 total beats, the emphasized sequence must
+  occupy at least 5 beats, leaving at most 3 beats outside it. Fit adjacent
+  setup/preparation into that non-sequence budget when physically reasonable;
+  preserve distinct meaningful stages rather than manufacturing literal
+  repetitions.
 - Preserve explicit "most", "half", "briefly", and similar relative emphasis
   according to their ordinary meaning.
 - Otherwise, give most beats to the stage containing most of the required visible
@@ -11039,11 +11043,12 @@ Required events:
   majority_checks entry. Its matching_beats must contain ONLY global beat
   numbers that materially belong to the broad emphasized narrative sequence.
   A beat may match because it directly performs the emphasized action OR because
-  it is an immediate preparation entering that sequence, enemy attack, reversal,
-  setback, weapon transition, continuation, terminal result, or immediate
-  resolution sharing the end of that ongoing sequence. Ordinary setup before
-  the emphasized sequence does not count. Do NOT infer matches merely from a
-  phase label; judge the actual required_event in story context.
+  it is an enemy attack, reversal, setback, weapon transition after the ongoing
+  conflict/process has begun, continuation, terminal result, or immediate
+  resolution sharing the end of that ongoing sequence. Standalone preparation
+  before the emphasized conflict/process begins does NOT count. Do NOT infer
+  matches merely from a phase label; judge the actual required_event in story
+  context.
 - majority_checks is semantic evidence for deterministic counting. Do NOT decide
   whether the numeric majority threshold passes inside valid/issues; Python will
   compare the returned sequence-membership beat numbers with the total global
@@ -11164,12 +11169,13 @@ def build_macro_arc_repair_messages(
             f"majority requires at least {minimum_sequence_beats} beats allocated "
             "to the broad emphasized narrative sequence, leaving at most "
             f"{maximum_outside_beats} beats outside that sequence. Sequence beats "
-            "do not each need to literally repeat the emphasized verb: immediate "
-            "preparation entering the sequence, enemy attacks, reversals, setbacks, "
-            "weapon transitions, continued action, the terminal result, and "
-            "immediate resolution sharing the final sequence beat may count. "
-            "Preserve every explicit source action and do not compress distinct "
-            "earlier stages merely to manufacture literal repetitions."
+            "do not each need to literally repeat the emphasized verb: enemy "
+            "attacks, reversals, setbacks, weapon transitions after the conflict "
+            "has begun, continued action, the terminal result, and immediate "
+            "resolution sharing the final sequence beat may count. Standalone "
+            "preparation before that conflict begins does NOT count, so fit "
+            "adjacent setup/preparation into the non-sequence beat budget when "
+            "physically reasonable. Preserve every explicit source action."
         )
     return [
         {
