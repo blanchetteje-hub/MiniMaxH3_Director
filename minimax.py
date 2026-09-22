@@ -10843,10 +10843,33 @@ explicit visible source action/state.
 When the source is sparse, fill the remaining beats with plausible
 connective/action jobs that stay within the established characters, setting,
 conflict, and outcome. These connective jobs are mandatory jobs for their
-beats, but must not introduce a different plot or unsupported major event.
-Use different authorized encounters, movement, reloading, checks, aftermath,
-or other concrete actions as appropriate rather than repeating source prose
-mechanically.
+beats, but must not introduce a different plot or unsupported MAJOR event.
+
+When the source explicitly authorizes a long repeated process/conflict but does
+not specify each individual encounter, treat the unused beat budget as room to
+PLAN A COHERENT ESCALATION inside that authorized process rather than writing
+several generic repetitions. Use varied concrete clip-sized jobs that hand
+state forward across beats. Appropriate local setpiece structure may include:
+- an attack/counterattack rather than another effortless success;
+- a weapon running empty, being dropped, getting stuck, being recovered, or a
+  source-authorized switch to another already established weapon;
+- an enemy surviving one beat so the same confrontation continues next beat;
+- a temporary obstacle, contamination, mess, or other visible complication;
+- a setback followed by recovery/counterattack;
+- a terminal enemy/result delayed until the next beat so the sequence has a
+  real unresolved handoff.
+These are execution-level developments inside an already authorized conflict,
+not new mythology or a different plot. Do NOT invent a new major character,
+location change, supernatural rule, mission, injury that changes the required
+outcome, or alternate ending. Prefer a small number of stable functional
+individual labels (for example Zombie1, Zombie2) when an individual threat must
+persist across beats instead of repeatedly using anonymous interchangeable
+entities.
+
+If one of these planned jobs establishes a persistent modeled fact (held/dropped
+weapon, active/dead threat, persistent condition, location, barrier, clothing
+damage, etc.), put the matching typed state_effect on the exact required_event
+that establishes it.
 
 Give every event a unique ID within the complete arc, preferably E1, E2, E3,
 and so on in actual beat order. Assign each event to its exact global beat
@@ -10992,6 +11015,15 @@ Required events:
   instructions. Sparse-source connective jobs may be plausible visible actions
   that remain within the established story and do not add a different plot,
   but only AFTER all explicit source timeline actions/states are represented.
+- When the source explicitly authorizes a long repeated process/conflict but
+  leaves its individual encounters unspecified, do NOT reject local setpiece
+  developments merely because the source did not dictate their exact
+  choreography. Attacks/counterattacks, weapon exhaustion/drop/switch, an enemy
+  persisting into the next beat, temporary obstacles/contamination, setbacks,
+  recovery, and delayed terminal results are allowed when they stay inside that
+  authorized process, preserve its setting/premise/outcome, and do not become a
+  new major plot event. Persistent modeled results still require correctly
+  attached state_effects.
 - Must keep the source order.
 - Check the actual event meaning and location against the source order. Do not
   trust event IDs, list order, or a phase summary. If a later source event is
@@ -11147,10 +11179,13 @@ than available beats, bundle only adjacent, causally continuous source actions
 inside one beat job rather than dropping source content. When the beat budget
 permits, do the opposite for an overpacked source chain: split it across
 consecutive clip-sized jobs at a natural physical/narrative handoff rather than
-treating one source sentence as indivisible. Add plausible connective jobs only
-for genuinely sparse sections without changing the plot, and include
-state_effects on events that establish persistent modeled facts. Return only the
-normal macro-arc JSON object.
+treating one source sentence as indivisible. For genuinely sparse long processes/conflicts, use varied concrete
+source-authorized setpiece jobs with coherent cross-beat handoffs rather than
+generic repetition; local attacks, setbacks, weapon transitions, temporary
+complications, and unresolved threats may be repaired in when they stay inside
+the established conflict and required outcome. Include state_effects on events
+that establish persistent modeled facts. Return only the normal macro-arc JSON
+object.
 """.strip(),
         },
     ]
