@@ -707,6 +707,67 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             payload["raw_scene"],
         )
 
+    def test_request_segment_llm_retries_when_named_subjects_are_dropped(self):
+        subjects = (
+            "<Subject 1> is Amy, referenced in <Picture 1>.\n"
+            "<Subject 2> is Will, a 10-year-old boy.\n"
+            "<Subject 3> is Amber, a 14-year-old girl."
+        )
+        request = Mock(side_effect=[
+            {
+                "raw_scene": (
+                    "At 00:00.000, Amy opens the basement door.\n"
+                    "End continuity state: Amy stands beside the open basement door."
+                ),
+                "beat_complete": True,
+            },
+            {
+                "raw_scene": (
+                    "At 00:00.000, Amy opens the basement door.\n"
+                    "At 00:02.000, Will and Amber step out beside Amy.\n"
+                    "End continuity state: Amy stands with Will and Amber outside the basement."
+                ),
+                "beat_complete": True,
+            },
+            {
+                "subject_genders": {},
+                "detailed_description": (
+                    "[Shot 1] At 00:00.000, Amy opens the basement door. "
+                    "At 00:02.000, Will and Amber step out beside Amy."
+                ),
+                "overall_soundscape": "Door opening and footsteps.",
+                "non_diegetic_music": "Quiet underscore.",
+            },
+        ])
+        bundle = {
+            "segment": 8,
+            "active_beat_id": 8,
+            "current_beat_text": "Amy opens the basement door and lets Will and Amber out.",
+            "current_duration": 4,
+            "conditioning_mode": "continuation",
+            "opening_state": "",
+            "subject_definitions": subjects,
+            "messages": [{"role": "user", "content": "Director input."}],
+            "opening_state_sha256": "hash-8",
+            "dialogue_exclusions": [],
+            "phrase_exclusions": [],
+        }
+
+        with patch("minimax.ask_llm", request):
+            payload = minimax.request_segment_llm(
+                bundle,
+                [],
+                "run-8",
+                {"source_sha256": "source-8"},
+            )
+
+        self.assertEqual(request.call_count, 3)
+        retry_user = request.call_args_list[1].args[0][-1]["content"]
+        self.assertIn("RAW SCENE dropped named Subject(s)", retry_user)
+        self.assertIn("Will", retry_user)
+        self.assertIn("Amber", retry_user)
+        self.assertIn("Will and Amber step out", payload["raw_scene"])
+
     def test_director_raw_scene_structure_requires_trailing_end_state(self):
         self.assertTrue(
             minimax._director_raw_scene_structure_errors(
