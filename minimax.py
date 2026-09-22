@@ -11628,6 +11628,7 @@ def parse_macro_arc_validation_result(
     llm_request=None,
     total_segments=None,
     require_majority_checks=False,
+    macro_arc=None,
 ):
     """Parse one semantic ARC validation result and enforce deterministic counts."""
     formatter = formatter or ACTIVE_FORMATTER
@@ -11662,32 +11663,67 @@ def parse_macro_arc_validation_result(
         raise ValueError(
             "The macro-arc validation 'majority_checks' field must be an array."
         )
+
+    phase_ranges = {}
+    if isinstance(macro_arc, dict):
+        for phase in macro_arc.get("phases", []):
+            if not isinstance(phase, dict):
+                continue
+            phase_number = phase.get("phase_number")
+            beat_start = phase.get("beat_start")
+            beat_end = phase.get("beat_end")
+            if (
+                isinstance(phase_number, int)
+                and not isinstance(phase_number, bool)
+                and isinstance(beat_start, int)
+                and not isinstance(beat_start, bool)
+                and isinstance(beat_end, int)
+                and not isinstance(beat_end, bool)
+                and beat_start > 0
+                and beat_end >= beat_start
+            ):
+                phase_ranges[phase_number] = (beat_start, beat_end)
+
     checks = []
     for check in raw_checks:
         if not isinstance(check, dict) or set(check) != {
             "source_requirement",
-            "matching_beats",
+            "matching_phases",
         }:
             raise ValueError(
                 "Each majority check must contain only source_requirement and "
-                "matching_beats."
+                "matching_phases."
             )
         requirement = check.get("source_requirement")
-        beats = check.get("matching_beats")
+        phases = check.get("matching_phases")
         if not isinstance(requirement, str) or not requirement.strip():
             raise ValueError("Majority source_requirement must be non-empty.")
-        if not isinstance(beats, list) or any(
-            isinstance(beat, bool) or not isinstance(beat, int) or beat <= 0
-            for beat in beats
+        if not isinstance(phases, list) or any(
+            isinstance(phase, bool) or not isinstance(phase, int) or phase <= 0
+            for phase in phases
         ):
-            raise ValueError("Majority matching_beats must contain positive integers.")
-        if len(set(beats)) != len(beats):
-            raise ValueError("Majority matching_beats must not contain duplicates.")
-        if total_segments is not None and any(beat > int(total_segments) for beat in beats):
-            raise ValueError("Majority matching_beats contains an out-of-range beat.")
+            raise ValueError("Majority matching_phases must contain positive integers.")
+        if len(set(phases)) != len(phases):
+            raise ValueError("Majority matching_phases must not contain duplicates.")
+        if phases and not phase_ranges:
+            raise ValueError(
+                "Macro arc phase ranges are required to count majority evidence."
+            )
+        unknown_phases = sorted(set(phases) - set(phase_ranges))
+        if unknown_phases:
+            raise ValueError(
+                "Majority matching_phases contains unknown phase number(s): "
+                + ", ".join(map(str, unknown_phases))
+            )
+
+        matching_beats = []
+        for phase_number in sorted(phases):
+            beat_start, beat_end = phase_ranges[phase_number]
+            matching_beats.extend(range(beat_start, beat_end + 1))
         checks.append({
             "source_requirement": " ".join(requirement.split()),
-            "matching_beats": sorted(beats),
+            "matching_phases": sorted(phases),
+            "matching_beats": sorted(set(matching_beats)),
         })
 
     if require_majority_checks and not checks:
@@ -11711,8 +11747,7 @@ def parse_macro_arc_validation_result(
                 issues.append(
                     "Explicit source majority sequence is under-allocated: "
                     f'{check["source_requirement"]} is materially represented in '
-                    f"{matched}/{total_segments} beats belong to the emphasized sequence; more than "
-                    "half is required."
+                    f"{matched}/{total_segments} beats; more than half is required."
                 )
                 break
 
@@ -11721,6 +11756,7 @@ def parse_macro_arc_validation_result(
         "issues": issues,
         "majority_checks": checks,
     }
+
 
 def _typed_state_effect_json_schema():
     """Return the strict JSON schema exposed to the arc-planning model."""
@@ -13807,6 +13843,7 @@ def generate_beats_from_story(
                     require_majority_checks=bool(
                         re.search(r"\\bmajority\\b", str(story or ""), re.IGNORECASE)
                     ),
+                    macro_arc=macro_arc,
                 )
                 return (validation, True)
             except ValueError as error:
