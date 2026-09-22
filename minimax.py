@@ -1212,6 +1212,12 @@ _H3_CONTINUATION_STYLE_PREFIX_RE = re.compile(
     re.IGNORECASE,
 )
 
+_H3_DUPLICATE_VIDEO_CONTINUATION_PREFIX_RE = re.compile(
+    r"^\s*(?:continues?|continuing)\s+(?:directly\s+)?from\s+"
+    r"<Video\s+1>\s*[.,:]?\s*",
+    re.IGNORECASE,
+)
+
 _H3_LEADING_CAMERA_MOTION_RE = re.compile(
     r"^\s*(?:the\s+|a\s+|an\s+)?camera\s+"
     r"(?:(?:slowly|quickly|smoothly|steadily|gradually)\s+)*"
@@ -20423,6 +20429,14 @@ def build_h3_prompt(
             # label, which otherwise produces:
             # ``...<Video 1>. Live-action, cinematic, ...``.
             continuation_description = _H3_CONTINUATION_STYLE_PREFIX_RE.sub(
+                "",
+                continuation_description,
+                count=1,
+            ).strip()
+            # Python owns the canonical append opener. Request 2 may repeat the
+            # same Video 1 handoff immediately after its style prefix; strip that
+            # duplicate before prepending the canonical opener below.
+            continuation_description = _H3_DUPLICATE_VIDEO_CONTINUATION_PREFIX_RE.sub(
                 "",
                 continuation_description,
                 count=1,
