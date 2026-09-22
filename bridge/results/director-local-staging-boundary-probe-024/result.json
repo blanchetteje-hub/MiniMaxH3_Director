@@ -1,0 +1,53 @@
+{
+  "job_id": "director-local-staging-boundary-probe-024",
+  "kind": "llama_chat",
+  "started_at": 1790043080.8454697,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a cinematic scene planner expanding one CURRENT BEAT into an 8-second scene. CURRENT BEAT is the only story event you may advance. NEXT BEAT is a hard forbidden boundary. You MAY invent ordinary local choreography, mundane props, incidental reactions, short natural dialogue, and camera movement only when they concretely realize CURRENT BEAT and do not create a new plot development. You MUST NOT add a new threat, new character, new weapon, new injury, new location, future-beat setup, or consequence belonging to NEXT BEAT. For a broad activity, make it visually legible and give it a natural local completion when possible. Return only JSON with raw_scene and beat_complete."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT:\nAmy shoots Zombie1 in the head, killing Zombie1.\n\nNEXT BEAT:\nZombie2 and Zombie3 enter the kitchen and attack Amy.\n\nESTABLISHED CONTEXT:\nAmy is in the kitchen holding a pistol. Zombie1 is partly through the broken kitchen door window. Will and Amber are secured elsewhere and are not visible.\n\nWrite the timed scene from 00:00.000 through about 00:07.000."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 600,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-7rikqny138dk16gan6a6zb",
+    "object": "chat.completion",
+    "created": 1790043080,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"raw_scene\": [\n    {\n      \"timecode\": \"00:00.000\",\n      \"description\": \"The camera is positioned over Amy's shoulder, looking down the barrel of her pistol at Zombie1.\",\n      \"dialogue\": \"\"\n    },\n    {\n      \"timecode\": \"00:01.000\",\n      \"description\": \"Amy fires the pistol. The gunshot echoes through the kitchen.\",\n      \"dialogue\": \"Bang!\"\n    },\n    {\n      \"timecode\": \"00:02.000\",\n      \"description\": \"Zombie1's head jerks back, and a small cloud of blood and gore bursts from its skull.\",\n      \"dialogue\": \"\"\n    },\n    {\n      \"timecode\": \"00:03.000\",\n      \"description\": \"Zombie1's body slumps to the ground, partly inside and partly outside the broken kitchen door window.\",\n      \"dialogue\": \"\"\n    },\n    {\n      \"timecode\": \"00:04.000\",\n      \"description\": \"Amy lowers her pistol slightly, her breath visible in the cool air of the kitchen.\",\n      \"dialogue\": \"\"\n    },\n    {\n      \"timecode\": \"00:05.000\",\n      \"description\": \"The camera pans slightly to show Amy's determined expression as she scans the room for more threats.\",\n      \"dialogue\": \"\"\n    },\n    {\n      \"timecode\": \"00:06.000\",\n      \"description\": \"Amy takes a step back, her eyes still focused on the broken door window.\",\n      \"dialogue\": \"\"\n    },\n    {\n      \"timecode\": \"00:07.000\",\n      \"description\": \"The camera zooms out slightly to show Amy standing in the middle of the kitchen, pistol ready.\",\n      \"dialogue\": \"\"\n    }\n  ],\n  \"beat_complete\": true\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 259,
+      "completion_tokens": 424,
+      "total_tokens": 683,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790043106.2726977,
+  "status": "ok"
+}
