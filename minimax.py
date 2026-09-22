@@ -18894,6 +18894,14 @@ def sanitize_h3_prompt_component(value):
     if not isinstance(value, str):
         return ""
     text = value.replace("\r\n", "\n").replace("\r", "\n")
+    # Locked H3 gold uses `At mm:ss.nnn,` and never the legacy
+    # `At mm:ss.nnn seconds,` form. Canonicalize this deterministically at the
+    # final H3 boundary so model formatting drift cannot leak into output.
+    text = re.sub(
+        r"(?i)\bAt\s+(?P<timestamp>\d{1,2}:\d{2}\.\d{3})\s+seconds\s*,",
+        lambda match: f"At {match.group('timestamp')},",
+        text,
+    )
     # Mistral may use asterisks for Markdown emphasis. H3 consumes plain
     # prose, so remove those markers from every sanitized component.
     text = _strip_h3_markdown_emphasis(text)
