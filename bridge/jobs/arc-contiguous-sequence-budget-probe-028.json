@@ -1,0 +1,18 @@
+{
+  "job_id": "arc-contiguous-sequence-budget-probe-028",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "seed": 42,
+  "max_tokens": 1200,
+  "timeout_seconds": 120,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Create an 8-beat story arc from the source and preserve every explicit source action in order.\n\nWhen the source says \"the majority of the film is X\":\n- allocate a contiguous emphasized narrative sequence of at least 5 of the 8 beats;\n- these are beats devoted to the X conflict/process, not necessarily five literal repetitions of verb X;\n- immediate preparation entering X, enemy attacks/setbacks within X, weapon transitions, continued fighting, the final kill, and immediate aftermath/resolution may all belong to that sequence;\n- there may be at most 3 beats total outside that emphasized sequence;\n- do not compress distinct earlier setup stages just to create literal X actions;\n- when needed, put the final X result and immediate resolution in the same final sequence beat.\n\nUse varied concrete events inside the emphasized sequence rather than mechanically repeating \"kills more\".\nReturn JSON only with {\"beats\":[{\"beat_number\":1,\"event\":\"...\"}]}."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nTOTAL BEATS: 8"
+    }
+  ]
+}
