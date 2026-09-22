@@ -11643,6 +11643,83 @@ def build_phase_generation_batches(macro_arc, max_batch_size=None):
     return batches
 
 
+def build_macro_arc_majority_evidence_messages(story, macro_arc):
+    """Build the focused majority-phase evidence request used inside ARC validation."""
+    phase_sections = []
+    for phase in (macro_arc or {}).get("phases", []):
+        if not isinstance(phase, dict):
+            continue
+        phase_number = phase.get("phase_number")
+        beat_start = phase.get("beat_start")
+        beat_end = phase.get("beat_end")
+        events = []
+        for event in phase.get("required_events", []):
+            if not isinstance(event, dict):
+                continue
+            beat_number = event.get("beat_number")
+            event_text = " ".join(str(event.get("event") or "").split())
+            if event_text:
+                events.append(f"- Beat {beat_number}: {event_text}")
+        phase_sections.append(
+            f"Phase {phase_number}, Beats {beat_start}-{beat_end}:\n"
+            + ("\n".join(events) if events else "- No required events")
+        )
+    phases_text = "\n\n".join(phase_sections) or "N/A"
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You perform one focused semantic judgment inside ARC VALIDATE: "
+                "identify which complete macro phases may be counted toward each "
+                "explicit source majority sequence. Do not judge any other arc "
+                "property. Return one JSON object only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+SOURCE STORY
+--- STORY START ---
+{story}
+--- STORY END ---
+
+ARC PHASES AND REQUIRED EVENTS
+{phases_text}
+
+COUNTING RULE
+For every explicit SOURCE STORY statement containing the word "majority", return
+one majority_checks entry. matching_phases may contain ONLY phase numbers whose
+ENTIRE beat_start..beat_end span materially belongs to that already-active broad
+emphasized narrative sequence.
+
+Judge the actual required events, not phase labels or phase summaries.
+
+A beat may belong to the emphasized sequence without literally repeating the
+emphasized verb when it is part of the already-active process: attacks,
+counterattacks, reversals, setbacks, weapon transitions after the conflict/process
+has begun, continued action, or the terminal result. The final sequence beat may
+also include its immediate aftermath/resolution.
+
+Standalone setup, escape, retrieval, equipping, travel, or other preparation
+BEFORE the emphasized process begins does NOT belong. If even one such
+pre-sequence beat shares a phase with later emphasized action, that whole mixed
+phase is unsafe to count and must not be returned.
+
+Do NOT decide whether the numeric majority threshold passes. Python owns the
+phase ranges and will expand matching_phases to exact beat counts.
+
+This request is evidence-only. Always return valid=true and issues=[]; Python
+will convert insufficient evidence into the blocking validation issue.
+
+Return exactly:
+{{"valid": true, "issues": [], "majority_checks": [
+  {{"source_requirement": "the source majority statement", "matching_phases": [1]}}
+]}}
+""".strip(),
+        },
+    ]
+
+
 def parse_macro_arc_validation_result(
     raw_result,
     formatter=None,
@@ -13857,15 +13934,50 @@ def generate_beats_from_story(
                 **BEAT_LLM_SAMPLING_PARAMETERS,
             )
             try:
+                has_majority = bool(
+                    re.search(r"\\bmajority\\b", str(story or ""), re.IGNORECASE)
+                )
                 validation = parse_macro_arc_validation_result(
                     raw_validation,
                     llm_request=llm_request,
                     total_segments=total_segments,
-                    require_majority_checks=bool(
-                        re.search(r"\\bmajority\\b", str(story or ""), re.IGNORECASE)
-                    ),
+                    # The full ARC validator is intentionally broad. Its
+                    # majority_checks field is not trusted for counting because
+                    # that overloaded judgment produced false whole-phase matches
+                    # in end-to-end acceptance. A focused evidence call below
+                    # owns only phase classification; Python still owns counting.
+                    require_majority_checks=False,
                     macro_arc=macro_arc,
                 )
+                if validation.get("valid") and has_majority:
+                    raw_majority = llm_request(
+                        build_macro_arc_majority_evidence_messages(
+                            story,
+                            macro_arc,
+                        ),
+                        response_format=build_macro_arc_validation_response_format(),
+                        history_metadata={
+                            **(history_metadata or {}),
+                            "purpose": "macro_arc_majority_validate",
+                            "attempt": combined_attempt,
+                            "response_attempt": response_attempt,
+                            "total_segments": total_segments,
+                        },
+                        **BEAT_LLM_SAMPLING_PARAMETERS,
+                    )
+                    majority_validation = parse_macro_arc_validation_result(
+                        raw_majority,
+                        llm_request=llm_request,
+                        total_segments=total_segments,
+                        require_majority_checks=True,
+                        macro_arc=macro_arc,
+                    )
+                    validation["majority_checks"] = majority_validation[
+                        "majority_checks"
+                    ]
+                    if not majority_validation["valid"]:
+                        validation["valid"] = False
+                        validation["issues"] = majority_validation["issues"]
                 return (validation, True)
             except ValueError as error:
                 last_error = error
