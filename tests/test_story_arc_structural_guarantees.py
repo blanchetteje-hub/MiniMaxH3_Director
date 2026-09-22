@@ -177,6 +177,37 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             normalized,
         )
 
+    def test_majority_story_gets_exact_create_and_repair_beat_budget(self):
+        story = "The majority of the film is Amy killing zombies."
+        create_messages = minimax.build_beat_arc_plan_messages(story, 8)
+        create_prompt = " ".join(
+            "\n".join(message["content"] for message in create_messages).split()
+        )
+        self.assertIn(
+            "strict majority requires at least 5 required_event beat jobs",
+            create_prompt,
+        )
+        self.assertIn(
+            "leaves at most 3 beats that do not materially perform/continue it",
+            create_prompt,
+        )
+
+        arc = make_arc([(1, 3, self.events)])
+        repair_messages = minimax.build_macro_arc_repair_messages(
+            story,
+            arc,
+            ["Majority is under-allocated."],
+            8,
+        )
+        repair_prompt = " ".join(
+            "\n".join(message["content"] for message in repair_messages).split()
+        )
+        self.assertIn(
+            "majority requires at least 5 required_event beat jobs",
+            repair_prompt,
+        )
+        self.assertIn("leaving at most 3 non-emphasis beats", repair_prompt)
+
     def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
         invalid = copy.deepcopy(self.events)
         invalid[2]["depends_on"] = ["E1"]
