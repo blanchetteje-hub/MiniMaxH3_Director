@@ -13246,75 +13246,49 @@ def build_beat_generation_messages(
     audit_correction="",
     phrase_exclusions=(),
 ):
+    """Build the deliberately small 24B Beat-creation prompt.
+
+    ARC already owns story allocation. Beat creation only turns this phase's
+    assigned required events into executable clip jobs; the frozen Beat
+    validator catches semantic mistakes afterward.
+    """
     batch_start = 1 if batch_start is None else int(batch_start)
     batch_end = total_segments if batch_end is None else int(batch_end)
     batch_size = batch_end - batch_start + 1
     previous_beats = list(previous_beats or [])
-    macro_arc = macro_arc or {"phases": []}
     current_phase = current_phase or {}
-    phase_number = int(current_phase.get("phase_number", 1))
-    subject_names = _format_beat_arc_subject_names(subject_information) or "N/A"
 
-    phases = macro_arc.get("phases", [])
-    previous_phase = next(
-        (phase for phase in phases if phase.get("phase_number") == phase_number - 1),
-        None,
-    )
-    next_phase = next(
-        (phase for phase in phases if phase.get("phase_number") == phase_number + 1),
-        None,
-    )
-    previous_phase_end_state = (
-        previous_phase.get("required_end_state", "N/A") if previous_phase else "N/A"
-    )
     required_events = current_phase.get("required_events", [])
+    event_lines = []
+    for event in required_events:
+        if not isinstance(event, dict):
+            continue
+        beat_number = event.get("beat_number")
+        event_text = " ".join(str(event.get("event", "")).split()).strip()
+        if beat_number is not None and event_text:
+            event_lines.append(f"{int(beat_number)}. {event_text}")
     required_events_text = (
-        json.dumps(required_events, ensure_ascii=False, indent=2)
-        if required_events
-        else "N/A (invalid arc: every phase beat must have one required event/job)"
+        "\n".join(event_lines)
+        if event_lines
+        else "N/A (invalid arc: this phase has no assigned required events)"
     )
-    if previous_phase_final_beat is None and phase_number > 1 and previous_beats:
+
+    if previous_phase_final_beat is None and previous_beats:
         previous_phase_final_beat = previous_beats[-1]
-    previous_boundary_text = (
-        f"Beat {batch_start - 1}: {previous_phase_final_beat}"
+    previous_context = (
+        f"{batch_start - 1}. {previous_phase_final_beat}"
         if previous_phase_final_beat is not None and batch_start > 1
-        else "N/A (this is the first phase)"
-    )
-    end_boundary_text = (
-        f"Beat {batch_end + 1}: {end_boundary_beat}"
-        if end_boundary_beat is not None and batch_end < total_segments
         else "N/A"
     )
-
-    # Only a small amount of already-accepted action history is useful here.
-    recent_previous = previous_beats[-3:]
-    previous_context = "N/A"
-    if recent_previous:
-        previous_start = batch_start - len(recent_previous)
-        previous_context = "\n".join(
-            f"Beat {number}: {beat}"
-            for number, beat in enumerate(recent_previous, start=previous_start)
-        )
-
-    next_phase_boundary = "N/A"
-    if next_phase:
-        next_phase_boundary = json.dumps(
-            {
-                "phase_number": next_phase.get("phase_number"),
-                "broad_progression": next_phase.get("broad_progression"),
-                "required_end_state": next_phase.get("required_end_state"),
-                "location": next_phase.get("location"),
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
 
     supplemental_sections = []
     if correction:
         supplemental_sections.append(
-            "CORRECTION REQUIRED\n"
-            + str(correction).strip()
-            + "\nRegenerate the requested beat list."
+            "CORRECTION REQUIRED\n" + str(correction).strip()
+        )
+    if audit_correction:
+        supplemental_sections.append(
+            "WHOLE-PLAN CORRECTION\n" + str(audit_correction).strip()
         )
     if beat_instructions:
         supplemental_sections.append(
@@ -13323,10 +13297,6 @@ def build_beat_generation_messages(
     phrase_exclusions_section = format_phrase_exclusions_section(phrase_exclusions)
     if phrase_exclusions_section:
         supplemental_sections.append(phrase_exclusions_section.strip())
-    if audit_correction:
-        supplemental_sections.append(
-            "WHOLE-PLAN CORRECTION\n" + str(audit_correction).strip()
-        )
     supplemental_text = (
         "\n\n" + "\n\n".join(supplemental_sections)
         if supplemental_sections else ""
@@ -13343,81 +13313,44 @@ def build_beat_generation_messages(
         },
         ensure_ascii=False,
     )
+
     return [
         {
             "role": "system",
             "content": (
-                "You expand one macro story phase into concrete chronological "
-                "simple video beats. Expand the supplied story; do not reinterpret or "
-                "embellish it into a different story. Return only the requested "
-                "JSON object."
+                "Turn required story events into simple executable video beats. "
+                "Return JSON only."
             ),
         },
         {
             "role": "user",
             "content": f"""
-Write exactly {batch_size} beats for Phase {phase_number}, global Beats
-{batch_start}-{batch_end}.
+SOURCE STORY:
+{story}
 
-Each beat is one concise EXECUTION TARGET for one H3 video clip.
-
-HIGH-PRIORITY RULES
-- Match each beat to its same-numbered REQUIRED EVENT. Complete every materially
-  required action and result in that event, in order. If one required event has
-  several clauses, complete all of them in the same beat.
-- Make every finite assigned activity an EXECUTABLE CLIP JOB with a concrete
-  observable endpoint rather than merely restating that the activity is underway.
-  Carry an ordinary finite task through its natural visible result unless the
-  required event explicitly says it remains ongoing or interrupted.
-- When a finite activity is done for named people, show the named beneficiaries
-  visibly receiving or participating in the completed result when physically
-  reasonable.
-- Do not begin the next required event or NEXT PHASE early.
-- Use SOURCE STORY and the assigned REQUIRED EVENT as authority. Do not invent a
-  new plot event, character, location change, transformation, tool system, injury,
-  or outcome merely to add detail.
-- Continue from the previous accepted beat without repeating it. Preserve explicit
-  lasting physical states and spatial relationships unless this beat changes them.
-- Do NOT add durable tool, appliance, object-placement, ownership, barrier, injury,
-  or environment-state changes merely to prove completion unless the required
-  event or its typed state effects authorize them. Mundane local staging such as
-  setting down a utensil or turning off an appliance belongs to Director Request 1.
-- Do not add camera directions, sound, atmosphere, dialogue, or reactions unless
-  the SOURCE STORY or explicit beat instructions require them.
-- Reach CURRENT PHASE.required_end_state by the final beat of this phase.
-- Return exactly {batch_size} ordered beats for global Beats {batch_start}-{batch_end}.
-  Each beat must be one sentence beginning with its exact number and a period; the
-  beat_number field must match. Return only JSON shaped exactly as {response_shape}.
-{supplemental_text}
-
-MAIN CHARACTER(S)
-{subject_names}
-
-CURRENT PHASE
-{json.dumps(current_phase, ensure_ascii=False, indent=2)}
-
-REQUIRED EVENTS FOR THIS PHASE
+REQUIRED EVENTS FOR THIS PHASE:
 {required_events_text}
 
-PREVIOUS PHASE FINAL BEAT — CONTINUITY ONLY
-{previous_boundary_text}
+Write exactly {batch_size} video beats, one per required event.
 
-PREVIOUS PHASE REQUIRED END STATE
-{previous_phase_end_state}
+Rules:
+- Complete each required event visibly in its beat.
+- For a finite everyday activity, show its natural visible result instead of
+  leaving it merely underway.
+- When an activity is for named people, show those people receiving or
+  participating in the completed result when reasonable.
+- Do not start the next required event early.
+- If PREVIOUS BEAT is present, continue from it without repeating it.
+- One concise sentence per beat.
+- Each beat string begins with its exact global beat number and a period, and
+  beat_number matches that prefix.
+{supplemental_text}
 
-RECENT ACCEPTED BEATS
+PREVIOUS BEAT:
 {previous_context}
 
-NEXT PHASE - BOUNDARY ONLY
-{next_phase_boundary}
-
-END BOUNDARY — CONTINUITY ONLY
-{end_boundary_text}
-
-SOURCE STORY
---- STORY START ---
-{story}
---- STORY END ---
+Return:
+{response_shape}
 """.strip(),
         },
     ]
