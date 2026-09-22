@@ -205,3 +205,65 @@ Read this file first, then inspect:
 - newest queued jobs under `bridge/jobs/`.
 
 Do not restart architectural brainstorming from scratch. Treat the proven probes, failed approaches, current implementation, and earliest failure above as the working checkpoint unless newer repo evidence supersedes them. Preserve the **input/output product contract**, not the current internal decomposition: if evidence eventually shows ARC -> BEATS -> prompts is the wrong route to gold-quality prompts, architectural replacement is explicitly allowed.
+
+## 2026-09-21 late-session architecture correction: gold is richer than story text
+
+Full acceptance `run-acceptance-amy-majority-budget-022` exposed that the literal majority implementation was optimizing the intermediate ARC away from the actual gold target.
+
+The generated ARC preserved breakfast but packed the zombie break + kids-to-basement + lock + arsenal retrieval/equip into Beat 2, then used Beats 3-7 for literal zombie kills and Beat 8 for reunion.
+
+The hand-authored gold instead uses the available runtime as a **broad conflict sequence**:
+- Beat 1: fully staged ordinary breakfast.
+- Beat 2: zombie arrival + escape toward/opening safe-room door.
+- Beat 3: finish securing kids + reveal/equip arsenal + turn back toward conflict.
+- Beats 4-7: varied zombie fight, including attacks on Amy, reversals, weapon transitions, and continued killing.
+- Beat 8: final zombie falls + immediate family resolution.
+
+Therefore the source statement "the majority of the film is Amy killing zombies" must NOT be interpreted as "more than half of required_events must literally contain a kill verb."
+
+### Superseded approach
+
+The earlier `majority_checks` evidence path originally counted only beats whose required_event materially performed/continued the literal emphasized action. That forced five literal kill jobs and compressed setup unnaturally.
+
+### Current corrected approach
+
+Commits:
+- `fef71d4843e20444bdbc92788031e1dd8b2aeac0` — reinterpret majority as allocation to the **broad emphasized narrative sequence**.
+- `337796b69e33b0f2a2bcb428b9ef86147af59dc6` — update regression expectations.
+
+For an explicit majority:
+- Python still supplies/counts the deterministic numeric threshold.
+- The LLM supplies semantic sequence membership.
+- Sequence membership may include immediate preparation entering the conflict, enemy attacks, reversals, setbacks, weapon transitions, continued action, terminal result, and immediate resolution at the end of that ongoing sequence.
+- Ordinary pre-conflict setup does not count.
+- Distinct earlier setup stages should not be compressed merely to manufacture literal repetitions.
+- For an 8-beat continuous emphasized section, at least 5 beats must belong to that broad section.
+
+Probe `arc-majority-sequence-probe-024` showed Mistral can classify a gold-like broad conflict span rather than only literal kills.
+`arc-sequence-tests-030` passed 9/9.
+
+## Director local-staging finding
+
+The gold prompts contain substantial **local cinematic realization** that the short story does not explicitly spell out: breakfast food/plates, children receiving breakfast, short dialogue, weapon handling, enemy reactions, setbacks, etc.
+
+The previous Director contract was too strict: it treated CURRENT BEAT as not only the exclusive story event, but effectively the exclusive list of all micro-actions. This made gold-quality prompt generation impossible from a low-burden story input.
+
+Probes:
+- `director-local-staging-probe-023`: proved Request 1 can enrich a broad activity, but over-invented unrelated side business.
+- `director-minimal-staging-probe-025` and `director-direct-instantiation-probe-027`: still added unrelated participant behavior.
+- `director-beneficiary-completion-probe-031`: succeeded with the tighter rule. It kept Will/Amber present, staged breakfast, turned off the stove, served the food, let both children participate, kept the scene ordinary/safe, and did not begin the zombie beat.
+
+Production response:
+- `62814ee4db1354cdebe5b2a15a97b07c1a175754` — Director Request 1 now has controlled **LOCAL STAGING** authority.
+- `cc1cb2e29f48c7b5209010581fe59c79b02c6203` — regression test for that contract.
+
+Local staging may add only minimal mundane micro-actions, props, reactions, and short dialogue that directly realize CURRENT BEAT. It may NOT invent unrelated side business or consequential persistent story changes. When an activity is explicitly done FOR named beneficiaries, they should be present and visibly receive/participate when practical.
+
+Important negative result: `beat-local-completion-probe-029` leaked the NEXT EVENT into the current beat when BEAT generation itself was relaxed. Therefore do **not** broadly move this creative authority into BEAT generation yet. Keep BEATS as the story-event execution targets and let Director Request 1 perform controlled local cinematic realization.
+
+## Current queued verification
+
+- `run-acceptance-amy-sequence-032`: evaluates corrected broad-sequence ARC allocation; it started before the Director staging commit and is therefore stale for final prompt quality.
+- `director-sequence-tests-033`: focused ARC + Director regressions on current code.
+- `run-acceptance-amy-director-staging-034`: current full acceptance; this is the important next result for final gold-prompt comparison.
+
