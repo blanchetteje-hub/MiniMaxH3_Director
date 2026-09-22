@@ -436,3 +436,16 @@ This is not Amy-specific. It is a generic cinematic segmentation rule: an explic
 ### Current verification queue after this change
 
 Queue a clean regression run and full Amy acceptance on/after `fe137851...`. Ignore older acceptance results for final-prompt quality when their `repository_revision` predates this checkpoint.
+
+
+## 2026-09-21 late-session: sparse conflict needs unresolved cross-beat handoffs
+
+Probe `arc-setpiece-create-probe-038` showed the ARC creator could invent varied conflict actions, but it still resolved each complication inside the same beat and ended the conflict before a resolution-only final beat. That remained too episodic compared with the locked gold's stateful multi-beat setpiece.
+
+Focused production changes:
+- `b20ae8ce72751f83abf81cad429d23a133c2bdbb` — strengthen sparse repeated-conflict planning:
+  - when several conflict beats are available, prefer at least one meaningful complication/threat/weapon problem/contamination state that remains unresolved across an adjacent beat boundary;
+  - when a source's terminal emphasized action is immediately followed by resolution, put terminal result + immediate resolution in the same final sequence beat whenever a resolution-only beat would otherwise shorten the emphasized majority sequence.
+- `5b802656f350d5c2acb1aa5d9f28ad65ff085d7c` — regression assertions for those contracts.
+
+This is still inside ARC create/validate/repair. No new semantic stage was added.
