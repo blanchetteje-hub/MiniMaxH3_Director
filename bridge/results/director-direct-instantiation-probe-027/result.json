@@ -1,0 +1,53 @@
+{
+  "job_id": "director-direct-instantiation-probe-027",
+  "kind": "llama_chat",
+  "started_at": 1790043059.460335,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Expand one CURRENT BEAT into an 8-second cinematic scene.\n\nCURRENT BEAT is the only story event allowed. NEXT BEAT is forbidden.\n\nLOCAL REALIZATION RULE:\nYou may invent only mundane details that DIRECTLY instantiate the CURRENT BEAT.\nEvery invented action must answer: \"How does this visibly perform, receive, or complete the CURRENT BEAT?\" If it does not, omit it.\n\nFor a broad activity involving other named people:\n- show those people already present and passively ready for the activity;\n- give them no unrelated hobbies, devices, errands, entrances, exits, or side business;\n- they may act only to directly receive/participate in the main activity;\n- choose the minimum ordinary props needed to make the activity visible;\n- when practical, bring the activity to a natural local completion before NEXT BEAT;\n- short dialogue is allowed only if it directly states or supports the current activity.\n\nDo not foreshadow or begin NEXT BEAT.\nReturn only JSON {\"raw_scene\":\"...\",\"beat_complete\":true}."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT:\nAmy is cooking breakfast for her young kids in the kitchen. Amy wears a tight black tank top and denim jeans.\n\nNEXT BEAT:\nA zombie breaks the kitchen door window and Amy sees the danger.\n\nSUBJECTS:\nAmy; Will, a 10-year-old boy; Amber, a 14-year-old girl.\n\nWrite timed actions from 00:00.000 through about 00:07.000. Keep the scene ordinary and safe."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 450,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-zx124orxlwp3pro8zsp944",
+    "object": "chat.completion",
+    "created": 1790043059,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"raw_scene\": [\n    {\n      \"time\": \"00:00.000\",\n      \"action\": \"Amy stands at the stove, flipping pancakes on a frying pan.\"\n    },\n    {\n      \"time\": \"00:01.500\",\n      \"action\": \"Will sits at the kitchen table, watching Amy cook, his eyes wide with anticipation.\"\n    },\n    {\n      \"time\": \"00:03.000\",\n      \"action\": \"Amber enters the kitchen, carrying a carton of orange juice, and places it on the table.\"\n    },\n    {\n      \"time\": \"00:04.500\",\n      \"action\": \"Amy turns off the stove and places the pancakes on a plate.\"\n    },\n    {\n      \"time\": \"00:06.000\",\n      \"action\": \"Will claps his hands together, excitedly saying, 'Pancakes! My favorite!'\"\n    },\n    {\n      \"time\": \"00:07.500\",\n      \"action\": \"Amy smiles and starts to bring the plate of pancakes to the table.\"\n    }\n  ],\n  \"beat_complete\": true\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 336,
+      "completion_tokens": 269,
+      "total_tokens": 605,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790043075.835514,
+  "status": "ok"
+}
