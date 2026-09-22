@@ -247,107 +247,63 @@ This is intentionally not a remote-shell bridge. Supported job kinds are constra
 
 ## Current acceptance finding
 
-Acceptance 078 completed successfully and moved the earliest failure fully into Beat -> Director behavior.
+Acceptance 083 timed out after 3600 seconds with no acceptance artifact. A longer retry, `run-acceptance-amy-current-084`, was already queued on `gpt-runtime` with a 7200-second timeout before this iteration began.
 
-### Acceptance 078: ARC boundary is now good enough; Beat 1 remains too abstract
+The timeout followed the new Beat-layer finite-endpoint rule introduced after acceptance 078.
 
-`run-acceptance-amy-current-078` completed with return code 0.
+### Acceptance 078 remains the last completed semantic source of truth
 
-The accepted ARC preserved the ordinary baseline separately from the inciting zombie event:
-- Beat 1: Amy is cooking breakfast for the kids.
-- Beat 2: zombie breach + kids to basement + lock + retrieve/equip.
-- Beats 3-7: active zombie conflict.
-- Beat 8: release kids.
+078 completed successfully and established:
+- ARC majority allocation is good enough.
+- Beat 1 remained too abstract: “Amy cooks breakfast for her kids in the kitchen.”
+- Director Request 1 then treated “cooking / holding a plate” as a completed finite activity.
+- Request 2 faithfully transcribed Request 1.
 
-The majority allocation still satisfied the strict-majority requirement, and the prior repair-scope fix held.
+Focused probe `director-completion-validator-probe-079` showed that adding a separate semantic completion validator would not help: Mistral falsely accepted the exact bad 078 raw scene as complete.
 
-So the earliest real failure is no longer ARC.
+Focused probe `beat-executable-endpoint-probe-080` showed that moving the completion requirement earlier into Beat generation can produce a concrete executable endpoint without leaking into the next story event.
 
-### Segment 1 failure in 078
+### 083 timeout diagnosis: Beat endpoint rule crossed validator state authority
 
-Generated Beat 1:
-> Amy cooks breakfast for her kids in the kitchen.
+Production commit `905d54635d262c1f60f8b8a2c958b1a7bee5d96f` originally told Beat generation to:
+- make finite jobs concrete observable endpoints;
+- reach named beneficiaries;
+- also settle tools/appliances at the endpoint, including turning them off.
 
-Director Request 1 then produced:
-- Amy cooking at the stove;
-- Will and Amber watching;
-- Amy flips a pancake;
-- Amy turns toward the kids holding a plate.
+The proven beat validator still has its frozen state authority rule:
+> Any new persistent change created by the candidate must be represented by an assigned typed effect.
 
-It still ended before:
-- the completed breakfast visibly reached both kids;
-- the stove/tool state was visibly settled.
+For Amy's breakfast required event, no persistent stove/plate/tool state effects are assigned. Therefore the Beat generator was being encouraged to invent durable state facts solely to prove completion while the validator could reject exactly those untyped persistent changes. With up to 10 generation/validation attempts per beat, that semantic mismatch can amplify into a long/non-converging acceptance run.
 
-Request 2 faithfully transcribed Request 1, so the H3 formatter was not the loss point.
+This is an architectural contract mismatch inside the existing BEATS loop, not evidence for another semantic subsystem.
 
-### Focused completion-check probe 079 failed
+### Current production correction
 
-`director-completion-validator-probe-079` tested a tiny separate semantic judge on the exact bad 078 RAW SCENE.
+Production commit `4cb0d75e19e0c6c3768a2b28a0cce41f5e315b29` narrows Beat-layer completion:
 
-Despite explicit rules saying:
-- finite activity underway != complete;
-- named beneficiaries must visibly receive the result;
-- tools/appliances should be settled at natural completion;
+- Beat generation still must turn finite activities into concrete observable execution targets.
+- If an activity is explicitly done FOR named people, those named beneficiaries should visibly receive/participate in the completed result when physically reasonable.
+- Beat generation must NOT add durable tool, appliance, object-placement, ownership, barrier, injury, or environment-state changes merely to prove completion unless the required event or typed state effects authorize them.
+- Mundane local staging such as setting down a utensil or turning off an appliance remains Director Request 1 responsibility, where it is a non-story completion detail.
 
-Mistral returned:
-`{"valid":true,"issue":""}`
+Regression commit `17c0091c5798428bfc1bc2341e2d790e9ef13381` updates the prompt contract test.
 
-Therefore adding a separate Director completion-validator call would only duplicate the same semantic weakness and add latency/complexity. Do not add that extra semantic stage.
+This preserves the KISS split:
+- BEAT generation = concrete story-level execution target within state authority.
+- Request 1 = mundane timed local staging needed to realize that target.
+- Request 2 = H3 stenographer/formatter.
+- Python = deterministic state/structure mechanics.
 
-### Earlier-boundary probe 080 succeeded
+### Current verification queue
 
-`beat-executable-endpoint-probe-080` reframed the same requirement one stage earlier:
+- `run-acceptance-amy-current-084`: already running/queued against the older endpoint rule with a 7200-second timeout. Treat its result as diagnostic for the old branch revision only.
+- `current-regressions-085`: queued behind it against the corrected production branch.
+- Do not queue another full acceptance until regressions 085 pass.
+- After 085 passes, queue a fresh locked Amy acceptance against `4cb0d75...` + regression-test commit and judge Segment 1 again.
 
-Required event:
-> Amy is cooking breakfast for her kids in the kitchen.
+### Retry amplification observation
 
-Contract:
-- convert it into one executable 8-second video beat job;
-- preserve story meaning;
-- give finite activities a concrete observable endpoint;
-- when done for named people, visibly reach those beneficiaries;
-- settle tools/appliances at the natural endpoint;
-- do not include NEXT EVENT.
-
-Mistral returned:
-> Amy places three plates of scrambled eggs and toast on the kitchen table for Will and Amber.
-
-This is the right kind of executable beat job and does not leak into the zombie event.
-
-### Production correction
-
-Production commit `905d54635d262c1f60f8b8a2c958b1a7bee5d96f` strengthens `build_beat_generation_messages()`:
-
-- finite assigned activities must become EXECUTABLE CLIP JOBS with concrete observable endpoints;
-- if the job is explicitly ongoing/interrupted/unresolved, it may remain incomplete;
-- finite activities done FOR named people should end with those beneficiaries visibly receiving/participating in the completed result when physically reasonable;
-- ordinary tool/appliance shutdown/settling belongs in the beat endpoint when it naturally completes the authorized activity and does not conflict with the next job.
-
-Regression commit `03ec1b4c5d66c6c8405935f4b431dee9133e3d54` adds prompt coverage.
-A whitespace-only assertion issue in the new test was fixed in `f296d140aca3b06ee61c563ad606cc144df91912`.
-
-`current-regressions-082`: **PASS, 104/104 tests green**.
-
-### Current verification
-
-- `run-acceptance-amy-current-083`: queued/running.
-- First check: generated Beat 1 itself should now be a concrete executable endpoint rather than the abstract phrase “cooks breakfast.”
-- Second check: Director Request 1 should then visibly realize that endpoint.
-- Request 2 should preserve it.
-- If Segment 1 passes, continue to Segment 2 and fix the next earliest real divergence only.
-
-### Current architectural conclusion
-
-The KISS architecture still holds:
-- ARC = CREATE -> VALIDATE -> REPAIR
-- BEATS = CREATE -> VALIDATE -> REPAIR
-- Beat generation owns turning macro required-events into concrete clip execution targets.
-- Request 1 owns timed realization of the assigned beat.
-- Request 2 is a stenographer/formatter.
-- Python owns deterministic structure/counting/state mechanics.
-
-Important lesson from 079/080:
-> When Mistral cannot reliably judge semantic completion after the fact, prefer giving it a clearer executable target earlier rather than adding another validator stage.
+Both ARC and BEAT loops can consume a large wall-clock budget when a semantic repair contract cannot converge. Do not reduce retry counts merely because of one timeout; first remove semantic contradictions. Only simplify retry layering if corrected semantics still demonstrate excessive repeated attempts.
 
 ### Other observed but non-current semantic weaknesses
 
