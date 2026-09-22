@@ -1,5 +1,23 @@
 # GPT-Driven H3 Iteration State
 
+## END GOAL — DO NOT LOSE THIS
+
+The end goal of this project is:
+
+> **Take a user-authored story input (whether free-flow prose like `story.txt` or a somewhat more structured story format) and automatically produce MiniMax H3-ready prompts that are semantically and structurally equivalent in quality to the hand-authored GOLD prompts in the acceptance suite.**
+
+Everything in the ARC, BEATS, state, continuity, validation, repair, and formatting pipeline exists only to serve that transformation.
+
+The system should therefore be judged by the final generated H3 prompts, not by whether intermediate ARC/beat JSON looks elegant in isolation.
+
+The acceptance/gold prompts are the behavioral target. Intermediate representations are implementation details and may change if needed, provided the KISS architecture is preserved and the final prompts move closer to gold behavior.
+
+The intended pipeline is conceptually:
+
+`STORY INPUT -> ARC -> BEATS -> DIRECTOR/CONTINUITY -> FINAL H3 PROMPTS`
+
+A successful system should let the user provide the story, run the program, and get the equivalent of the gold-quality prompt sequence without hand-authoring the intermediate arc, beats, continuity state, or final prompts.
+
 This file is the durable handoff/source-of-truth for autonomous GPT iteration on `gpt-test-branch`.
 
 **Update rule:** after every meaningful finding, architectural decision, proven probe, failed approach, focused code change, or new next step, update this file. New chats/automations should read this file before making architectural changes.
