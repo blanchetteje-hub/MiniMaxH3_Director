@@ -13323,6 +13323,19 @@ Beat-writing rules:
   same beat and preserve their order. Never drop a later clause merely to make
   the beat simpler. Only optional connective choreography should be limited to
   one primary operation; do not split an assigned packed job across other beats.
+- Make every finite assigned activity an EXECUTABLE CLIP JOB with a concrete
+  observable endpoint rather than merely restating that the activity is underway.
+  Unless the assigned job explicitly says the action remains ongoing, interrupted,
+  or unresolved, carry mundane local staging through the activity's natural visible
+  result without adding a new story-level event.
+- When a finite activity is explicitly done FOR named people, the beat should
+  normally end with those named beneficiaries visibly receiving or participating
+  in the completed result when physically reasonable. Merely preparing or holding
+  the result is not a complete execution target.
+- When the natural endpoint of that finite activity ends use of a tool or appliance
+  used only for the activity, include the ordinary settled endpoint (for example,
+  stopping, setting down, closing, or turning it off) when physically reasonable
+  and when it does not conflict with the assigned job or the next required event.
 - When the source requires a repeated remove/replace, destroy/rebuild, or other
   paired process for each item, keep the pair local: establish the removal/change
   and its corresponding replacement/result before moving to an unrelated item,
