@@ -247,7 +247,21 @@ class DirectorPromptCallContractTests(unittest.TestCase):
 
         self.assertIn("LOCAL STAGING", rules)
         self.assertIn(
-            "all of them visibly receive or participate in the activity's result",
+            "A finite action in CURRENT BEAT is NOT complete merely because RAW SCENE "
+            "shows the subject performing it",
+            rules,
+        )
+        self.assertIn(
+            "beat_complete=true` requires each named beneficiary to visibly receive "
+            "or participate in the completed result",
+            rules,
+        )
+        self.assertIn(
+            "visibly stop, set down, close, or otherwise settle it before the handoff",
+            rules,
+        )
+        self.assertIn(
+            "showing the activity underway is insufficient",
             rules,
         )
         self.assertIn(
