@@ -74,6 +74,53 @@ class StateEffectCanonicalizationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "array"):
             minimax._validate_state_effects({"characters": {"Amy": {"inventory": ["pistol"]}}})
 
+    def test_arc_parser_rejects_ungrounded_freeform_condition_value(self):
+        arc = {"phases": [{
+            "phase_number": 1,
+            "beat_start": 1,
+            "beat_end": 1,
+            "narrative_purpose": "Establish the ordinary breakfast setup.",
+            "broad_progression": "Amy cooks breakfast.",
+            "characters_introduced": ["Amy", "Will", "Amber"],
+            "location": "kitchen",
+            "required_end_state": "Amy has cooked breakfast.",
+            "required_events": [{
+                "id": "E1",
+                "event": "Amy cooks breakfast for Will and Amber.",
+                "beat_number": 1,
+                "state_effects": [
+                    {"op": "set_condition", "entity": "Will", "value": "eating"},
+                ],
+            }],
+        }]}
+        with self.assertRaisesRegex(ValueError, "not lexically grounded"):
+            minimax.parse_beat_arc_plan(arc, 1)
+
+    def test_arc_parser_accepts_grounded_freeform_condition_vocabulary(self):
+        arc = {"phases": [{
+            "phase_number": 1,
+            "beat_start": 1,
+            "beat_end": 1,
+            "narrative_purpose": "Establish the persistent aftermath.",
+            "broad_progression": "The house becomes soaked in blood.",
+            "characters_introduced": [],
+            "location": "house",
+            "required_end_state": "The house is soaked in blood.",
+            "required_events": [{
+                "id": "E1",
+                "event": "The house becomes soaked in blood.",
+                "beat_number": 1,
+                "state_effects": [
+                    {"op": "set_condition", "entity": "house", "value": "blood_soaked"},
+                ],
+            }],
+        }]}
+        parsed = minimax.parse_beat_arc_plan(arc, 1)
+        self.assertEqual(
+            parsed["phases"][0]["required_events"][0]["state_effects"][0]["value"],
+            "blood_soaked",
+        )
+
     def test_deep_canonical_state_remains_stable_after_sequential_operations(self):
         state = minimax.new_beat_canonical_state()
         state["characters"]["Amy"] = {"clothing": {"upper": {"item": "shirt", "damage": "none"}}}
