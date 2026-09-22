@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-contiguous-sequence-budget-probe-028",
+  "kind": "llama_chat",
+  "started_at": 1790043113.849225,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Create an 8-beat story arc from the source and preserve every explicit source action in order.\n\nWhen the source says \"the majority of the film is X\":\n- allocate a contiguous emphasized narrative sequence of at least 5 of the 8 beats;\n- these are beats devoted to the X conflict/process, not necessarily five literal repetitions of verb X;\n- immediate preparation entering X, enemy attacks/setbacks within X, weapon transitions, continued fighting, the final kill, and immediate aftermath/resolution may all belong to that sequence;\n- there may be at most 3 beats total outside that emphasized sequence;\n- do not compress distinct earlier setup stages just to create literal X actions;\n- when needed, put the final X result and immediate resolution in the same final sequence beat.\n\nUse varied concrete events inside the emphasized sequence rather than mechanically repeating \"kills more\".\nReturn JSON only with {\"beats\":[{\"beat_number\":1,\"event\":\"...\"}]}."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nTOTAL BEATS: 8"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1200,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-4p60zug3zcqwmifsr0joap",
+    "object": "chat.completion",
+    "created": 1790043113,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"beats\": [\n    {\n      \"beat_number\": 1,\n      \"event\": \"Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\"\n    },\n    {\n      \"beat_number\": 2,\n      \"event\": \"A zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\"\n    },\n    {\n      \"beat_number\": 3,\n      \"event\": \"Amy retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\"\n    },\n    {\n      \"beat_number\": 4,\n      \"event\": \"Amy decapitates a zombie with her katana as it lunges at her from the broken kitchen door.\"\n    },\n    {\n      \"beat_number\": 5,\n      \"event\": \"Amy shoots multiple zombies with her pistol, dismembering their arms and legs to slow them down.\"\n    },\n    {\n      \"beat_number\": 6,\n      \"event\": \"A large group of zombies surrounds Amy. She uses her katana to slice through several of them, creating a path to the living room.\"\n    },\n    {\n      \"beat_number\": 7,\n      \"event\": \"Amy kills the last zombie with a well-aimed pistol shot to its head, her house now soaked in blood.\"\n    },\n    {\n      \"beat_number\": 8,\n      \"event\": \"Amy lets her kids out of the basement.\"\n    }\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 368,
+      "completion_tokens": 336,
+      "total_tokens": 704,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790043134.1868927,
+  "status": "ok"
+}
