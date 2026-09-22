@@ -11644,33 +11644,33 @@ def build_phase_generation_batches(macro_arc, max_batch_size=None):
 
 
 def build_macro_arc_majority_evidence_messages(story, macro_arc):
-    """Build the focused majority-phase evidence request used inside ARC validation."""
-    phase_sections = []
+    """Build the focused per-beat majority evidence request inside ARC validation."""
+    events = []
     for phase in (macro_arc or {}).get("phases", []):
         if not isinstance(phase, dict):
             continue
-        phase_number = phase.get("phase_number")
-        beat_start = phase.get("beat_start")
-        beat_end = phase.get("beat_end")
-        events = []
         for event in phase.get("required_events", []):
             if not isinstance(event, dict):
                 continue
             beat_number = event.get("beat_number")
             event_text = " ".join(str(event.get("event") or "").split())
-            if event_text:
-                events.append(f"- Beat {beat_number}: {event_text}")
-        phase_sections.append(
-            f"Phase {phase_number}, Beats {beat_start}-{beat_end}:\n"
-            + ("\n".join(events) if events else "- No required events")
-        )
-    phases_text = "\n\n".join(phase_sections) or "N/A"
+            if (
+                isinstance(beat_number, int)
+                and not isinstance(beat_number, bool)
+                and event_text
+            ):
+                events.append((beat_number, event_text))
+    events.sort(key=lambda item: item[0])
+    beats_text = "\n".join(
+        f"{beat_number}. {event_text}"
+        for beat_number, event_text in events
+    ) or "N/A"
     return [
         {
             "role": "system",
             "content": (
                 "You perform one focused semantic judgment inside ARC VALIDATE: "
-                "identify which complete macro phases may be counted toward each "
+                "classify which exact beat numbers materially belong to each "
                 "explicit source majority sequence. Do not judge any other arc "
                 "property. Return one JSON object only."
             ),
@@ -11683,41 +11683,173 @@ SOURCE STORY
 {story}
 --- STORY END ---
 
-ARC PHASES AND REQUIRED EVENTS
-{phases_text}
+ARC REQUIRED EVENTS BY BEAT
+{beats_text}
 
-COUNTING RULE
+CLASSIFICATION RULE
 For every explicit SOURCE STORY statement containing the word "majority", return
-one majority_checks entry. matching_phases may contain ONLY phase numbers whose
-ENTIRE beat_start..beat_end span materially belongs to that already-active broad
-emphasized narrative sequence.
+one majority_checks entry.
 
-Judge the actual required events, not phase labels or phase summaries.
+Judge EACH beat independently. matching_beats may contain only beat numbers whose
+required event materially belongs to the ALREADY-ACTIVE emphasized sequence.
 
-A beat may belong to the emphasized sequence without literally repeating the
-emphasized verb when it is part of the already-active process: attacks,
-counterattacks, reversals, setbacks, weapon transitions after the conflict/process
-has begun, continued action, or the terminal result. The final sequence beat may
-also include its immediate aftermath/resolution.
-
-Standalone setup, escape, retrieval, equipping, travel, or other preparation
-BEFORE the emphasized process begins does NOT belong. If even one such
-pre-sequence beat shares a phase with later emphasized action, that whole mixed
-phase is unsafe to count and must not be returned.
+- Standalone setup, escape, retrieval, equipping, travel, or preparation BEFORE
+  the emphasized process begins does NOT belong.
+- A beat containing a terminal emphasized action DOES belong even when it also
+  contains immediate aftermath/resolution. For example, "kills the last zombie
+  and then reunites with the kids" belongs because the emphasized process is
+  still being completed in that beat.
+- Do not require every word/action in a qualifying beat to be part of the
+  emphasized sequence; the beat must materially perform, continue, oppose, or
+  complete that already-active process.
+- Attacks, counterattacks, reversals, setbacks, weapon transitions AFTER the
+  emphasized conflict/process has begun, continued action, and terminal results
+  may belong when they materially continue the emphasized sequence.
+- Do not count a beat merely because it enables the process later.
+- Ignore phase labels and phase summaries.
 
 Do NOT decide whether the numeric majority threshold passes. Python owns the
-phase ranges and will expand matching_phases to exact beat counts.
-
-This request is evidence-only. Always return valid=true and issues=[]; Python
-will convert insufficient evidence into the blocking validation issue.
+total beat count and will compare the returned matching_beats against it.
 
 Return exactly:
-{{"valid": true, "issues": [], "majority_checks": [
-  {{"source_requirement": "the source majority statement", "matching_phases": [1]}}
+{{"majority_checks": [
+  {{"source_requirement": "the source majority statement", "matching_beats": [1]}}
 ]}}
 """.strip(),
         },
     ]
+
+
+def build_macro_arc_majority_evidence_response_format(total_segments):
+    """Return the strict response schema for focused majority beat evidence."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_macro_arc_majority_evidence",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "majority_checks": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "source_requirement": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                },
+                                "matching_beats": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": int(total_segments),
+                                    },
+                                    "uniqueItems": True,
+                                },
+                            },
+                            "required": [
+                                "source_requirement",
+                                "matching_beats",
+                            ],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["majority_checks"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_macro_arc_majority_evidence_result(
+    raw_result,
+    total_segments,
+    formatter=None,
+    llm_request=None,
+):
+    """Parse focused majority beat evidence and enforce the numeric threshold."""
+    if (
+        isinstance(total_segments, bool)
+        or not isinstance(total_segments, int)
+        or total_segments <= 0
+    ):
+        raise ValueError(
+            "A positive total_segments value is required for majority evidence."
+        )
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate, llm_request=llm_request)
+            if isinstance(candidate, UnrepairedJSON):
+                return candidate
+        except json.JSONDecodeError as error:
+            raise ValueError(
+                "The focused majority evidence response must be valid JSON."
+            ) from error
+    if not isinstance(candidate, dict) or set(candidate) != {"majority_checks"}:
+        raise ValueError(
+            "Focused majority evidence must contain only majority_checks."
+        )
+    raw_checks = candidate.get("majority_checks")
+    if not isinstance(raw_checks, list) or not raw_checks:
+        raise ValueError(
+            "The source contains an explicit majority statement but the focused "
+            "validator returned no majority_checks evidence."
+        )
+
+    checks = []
+    for check in raw_checks:
+        if not isinstance(check, dict) or set(check) != {
+            "source_requirement",
+            "matching_beats",
+        }:
+            raise ValueError(
+                "Each focused majority check must contain only source_requirement "
+                "and matching_beats."
+            )
+        requirement = check.get("source_requirement")
+        beats = check.get("matching_beats")
+        if not isinstance(requirement, str) or not requirement.strip():
+            raise ValueError("Majority source_requirement must be non-empty.")
+        if not isinstance(beats, list) or any(
+            isinstance(beat, bool)
+            or not isinstance(beat, int)
+            or beat <= 0
+            or beat > total_segments
+            for beat in beats
+        ):
+            raise ValueError(
+                "Majority matching_beats must contain valid positive beat numbers."
+            )
+        if len(set(beats)) != len(beats):
+            raise ValueError("Majority matching_beats must not contain duplicates.")
+        checks.append({
+            "source_requirement": " ".join(requirement.split()),
+            "matching_beats": sorted(beats),
+        })
+
+    issues = []
+    for check in checks:
+        matched = len(check["matching_beats"])
+        if matched * 2 <= total_segments:
+            issues.append(
+                "Explicit source majority sequence is under-allocated: "
+                f'{check["source_requirement"]} is materially represented in '
+                f"{matched}/{total_segments} beats; more than half is required."
+            )
+            break
+
+    return {
+        "valid": not issues,
+        "issues": issues,
+        "majority_checks": checks,
+    }
 
 
 def parse_macro_arc_validation_result(
@@ -13955,7 +14087,9 @@ def generate_beats_from_story(
                             story,
                             macro_arc,
                         ),
-                        response_format=build_macro_arc_validation_response_format(),
+                        response_format=build_macro_arc_majority_evidence_response_format(
+                            total_segments
+                        ),
                         history_metadata={
                             **(history_metadata or {}),
                             "purpose": "macro_arc_majority_validate",
@@ -13965,12 +14099,10 @@ def generate_beats_from_story(
                         },
                         **BEAT_LLM_SAMPLING_PARAMETERS,
                     )
-                    majority_validation = parse_macro_arc_validation_result(
+                    majority_validation = parse_macro_arc_majority_evidence_result(
                         raw_majority,
                         llm_request=llm_request,
                         total_segments=total_segments,
-                        require_majority_checks=True,
-                        macro_arc=macro_arc,
                     )
                     validation["majority_checks"] = majority_validation[
                         "majority_checks"
