@@ -1,0 +1,54 @@
+{
+  "job_id": "arc-majority-protected-baseline-probe-088",
+  "kind": "llama_chat",
+  "started_at": 1790098777.8592224,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Repair the rejected macro arc. Preserve source meaning, chronology, and explicit contrast boundaries. When allocation is rejected, you may change phase ranges, event grouping, and beat assignments, but you must preserve any explicitly established ordinary baseline separately from a later sudden inciting change. Return only the complete repaired macro arc JSON."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE STORY\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nREQUESTED BEAT COUNT\n8\n\nCURRENT MACRO ARC\n{\n  \"phases\": [\n    {\n      \"phase_number\": 1,\n      \"beat_start\": 1,\n      \"beat_end\": 3,\n      \"narrative_purpose\": \"Setup\",\n      \"broad_progression\": \"Amy prepares her kids and herself for the zombie threat.\",\n      \"required_end_state\": \"Amy has secured her kids in the basement, retrieved her weapons, and is ready to fight.\",\n      \"required_events\": [\n        {\n          \"id\": \"E1\",\n          \"event\": \"Amy cooks breakfast for Will and Amber.\",\n          \"beat_number\": 1,\n          \"depends_on\": []\n        },\n        {\n          \"id\": \"E2\",\n          \"event\": \"A zombie breaks the kitchen door window, revealing the threat.\",\n          \"beat_number\": 2,\n          \"depends_on\": [\n            \"E1\"\n          ]\n        },\n        {\n          \"id\": \"E3\",\n          \"event\": \"Amy rushes Will and Amber to the basement and locks the door.\",\n          \"beat_number\": 3,\n          \"depends_on\": [\n            \"E2\"\n          ]\n        }\n      ],\n      \"characters_introduced\": [\n        \"Amy\",\n        \"Will\",\n        \"Amber\"\n      ],\n      \"location\": \"Home kitchen\"\n    },\n    {\n      \"phase_number\": 2,\n      \"beat_start\": 4,\n      \"beat_end\": 8,\n      \"narrative_purpose\": \"Main Conflict\",\n      \"broad_progression\": \"Amy fights and kills zombies to protect her kids.\",\n      \"required_end_state\": \"Amy has killed all the zombies and lets Will and Amber out of the basement.\",\n      \"required_events\": [\n        {\n          \"id\": \"E4\",\n          \"event\": \"Amy retrieves her hidden arsenal (pistol and katana).\",\n          \"beat_number\": 4,\n          \"depends_on\": [\n            \"E3\"\n          ]\n        },\n        {\n          \"id\": \"E5\",\n          \"event\": \"Amy equips the pistol and katana.\",\n          \"beat_number\": 5,\n          \"depends_on\": [\n            \"E4\"\n          ]\n        },\n        {\n          \"id\": \"E6\",\n          \"event\": \"Amy kills several zombies with her weapons.\",\n          \"beat_number\": 6,\n          \"depends_on\": [\n            \"E5\"\n          ]\n        },\n        {\n          \"id\": \"E7\",\n          \"event\": \"Amy faces a particularly tough zombie and overcomes it.\",\n          \"beat_number\": 7,\n          \"depends_on\": [\n            \"E6\"\n          ]\n        },\n        {\n          \"id\": \"E8\",\n          \"event\": \"Amy kills the last zombie and lets Will and Amber out of the basement.\",\n          \"beat_number\": 8,\n          \"depends_on\": [\n            \"E7\"\n          ]\n        }\n      ],\n      \"characters_introduced\": [],\n      \"location\": \"Home\"\n    }\n  ]\n}\n\nVALIDATOR ISSUE\nThe explicit majority sequence is under-allocated at 3/8 beats; at least 5/8 are required.\n\nALLOCATION REPAIR RULES\n- More than half of all beats must materially belong to the emphasized zombie-conflict sequence.\n- At most 3 beats may occur outside that sequence.\n- IMPORTANT CONTRAST BOUNDARY: when SOURCE STORY explicitly establishes an ordinary/calm/normal baseline and then explicitly introduces a sudden/inciting threat or change (\"suddenly\", \"then the attack begins\", etc.), NEVER merge that inciting threat/change into the baseline beat. The baseline must remain its own beat so the contrast is visible.\n- Treat that protected baseline beat as one of the available outside-sequence beats. Compress the remaining setup/preparation instead.\n- The inciting threat MAY share its beat with its immediate reaction/escape/containment sequence.\n- Retrieval and equipping of the same named equipment MAY share one beat.\n- Preserve every explicit source action in order.\n- The emphasized conflict must begin by Beat 4 at the latest.\n- The final conflict beat may also contain immediate resolution.\n\nFor this source, Beat 1 must remain the ordinary breakfast baseline with no zombie/threat content. Reallocate Beats 2-3 as needed so Beats 4-8 are the emphasized conflict.\n\nReturn the complete repaired 8-beat macro arc JSON only."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-9p986uovyzdxr6mjm3gasd",
+    "object": "chat.completion",
+    "created": 1790098777,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"phases\": [\n    {\n      \"phase_number\": 1,\n      \"beat_start\": 1,\n      \"beat_end\": 2,\n      \"narrative_purpose\": \"Setup\",\n      \"broad_progression\": \"Amy prepares her kids and herself for the zombie threat.\",\n      \"required_end_state\": \"Amy has secured her kids in the basement, retrieved her weapons, and is ready to fight.\",\n      \"required_events\": [\n        {\n          \"id\": \"E1\",\n          \"event\": \"Amy cooks breakfast for Will and Amber.\",\n          \"beat_number\": 1,\n          \"depends_on\": []\n        },\n        {\n          \"id\": \"E2\",\n          \"event\": \"A zombie breaks the kitchen door window, revealing the threat. Amy rushes Will and Amber to the basement and locks the door.\",\n          \"beat_number\": 2,\n          \"depends_on\": [\n            \"E1\"\n          ]\n        }\n      ],\n      \"characters_introduced\": [\n        \"Amy\",\n        \"Will\",\n        \"Amber\"\n      ],\n      \"location\": \"Home kitchen\"\n    },\n    {\n      \"phase_number\": 2,\n      \"beat_start\": 3,\n      \"beat_end\": 8,\n      \"narrative_purpose\": \"Main Conflict\",\n      \"broad_progression\": \"Amy fights and kills zombies to protect her kids.\",\n      \"required_end_state\": \"Amy has killed all the zombies and lets Will and Amber out of the basement.\",\n      \"required_events\": [\n        {\n          \"id\": \"E3\",\n          \"event\": \"Amy retrieves her hidden arsenal (pistol and katana) and equips them.\",\n          \"beat_number\": 3,\n          \"depends_on\": [\n            \"E2\"\n          ]\n        },\n        {\n          \"id\": \"E4\",\n          \"event\": \"Amy kills several zombies with her weapons.\",\n          \"beat_number\": 4,\n          \"depends_on\": [\n            \"E3\"\n          ]\n        },\n        {\n          \"id\": \"E5\",\n          \"event\": \"Amy faces a particularly tough zombie and overcomes it.\",\n          \"beat_number\": 5,\n          \"depends_on\": [\n            \"E4\"\n          ]\n        },\n        {\n          \"id\": \"E6\",\n          \"event\": \"Amy kills more zombies as they try to attack her.\",\n          \"beat_number\": 6,\n          \"depends_on\": [\n            \"E5\"\n          ]\n        },\n        {\n          \"id\": \"E7\",\n          \"event\": \"Amy kills the last zombie and lets Will and Amber out of the basement.\",\n          \"beat_number\": 7,\n          \"depends_on\": [\n            \"E6\"\n          ]\n        }\n      ],\n      \"characters_introduced\": [],\n      \"location\": \"Home\"\n    }\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 1189,
+      "completion_tokens": 611,
+      "total_tokens": 1800,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790098815.449333,
+  "status": "ok"
+}
