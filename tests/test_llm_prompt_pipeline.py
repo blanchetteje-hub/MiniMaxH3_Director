@@ -650,30 +650,19 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
         user_content = messages[1]["content"]
         normalized = " ".join(user_content.split())
+        self.assertIn("Complete each required event visibly in its beat", normalized)
         self.assertIn(
-            "Make every finite assigned activity an EXECUTABLE CLIP JOB",
+            "For a finite everyday activity, show its natural visible result instead "
+            "of leaving it merely underway",
             normalized,
         )
         self.assertIn(
-            "concrete observable endpoint rather than merely restating that the "
-            "activity is underway",
+            "When an activity is for named people, show those people receiving or "
+            "participating in the completed result when reasonable",
             normalized,
         )
-        self.assertIn(
-            "named beneficiaries visibly receiving or participating in the completed "
-            "result",
-            normalized,
-        )
-        self.assertIn(
-            "Do NOT add durable tool, appliance, object-placement, ownership, "
-            "barrier, injury, or environment-state changes merely to prove completion",
-            normalized,
-        )
-        self.assertIn(
-            "Mundane local staging such as setting down a utensil or turning off "
-            "an appliance belongs to Director Request 1",
-            normalized,
-        )
+        self.assertNotIn("CURRENT PHASE", normalized)
+        self.assertNotIn("NEXT PHASE", normalized)
 
     def test_phrase_exclusions_are_added_to_beat_generation_prompt(self):
         phase = {
