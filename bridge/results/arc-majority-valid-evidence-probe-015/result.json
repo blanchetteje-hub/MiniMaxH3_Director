@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-majority-valid-evidence-probe-015",
+  "kind": "llama_chat",
+  "started_at": 1790037699.2858653,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "For any explicit source statement using the word majority, report which actual required-event beat numbers materially perform or continue the emphasized action. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nThe majority of the film is Amy killing zombies as they try and attack her.\n\nREQUIRED EVENTS:\n1. Amy cooks breakfast for her kids.\n2. A zombie breaks the kitchen door window; Amy rushes her kids to the basement, locks them in, retrieves her pistol and katana, and equips them.\n3. Amy shoots attacking zombies.\n4. Amy decapitates attacking zombies.\n5. Amy kills more zombies in the hall.\n6. Amy kills more attacking zombies in the kitchen.\n7. Amy dismembers another wave of attacking zombies.\n8. Amy kills the last zombie, leaving the house soaked in blood, then unlocks the basement and lets her kids out.\n\nReturn exactly {\"majority_checks\":[{\"source_requirement\":\"...\",\"matching_beats\":[...]}]}.\nInclude a beat if the required event materially performs or continues Amy killing zombies, even when that same event also contains aftermath or resolution."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 180,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-zhi0tb1esn8zyanikxsaa8",
+    "object": "chat.completion",
+    "created": 1790037699,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"majority_checks\": [\n    {\n      \"source_requirement\": \"Amy kills zombies as they try and attack her.\",\n      \"matching_beats\": [3, 4, 5, 6, 7]\n    }\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 236,
+      "completion_tokens": 61,
+      "total_tokens": 297,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790037703.4904892,
+  "status": "ok"
+}
