@@ -7625,17 +7625,17 @@ def ask_llm(
     received_response = False
     messages = normalize_lm_studio_messages(messages)
     history_purpose = str((history_metadata or {}).get("purpose", ""))
+    use_beat_validation_settings = (
+        history_purpose == "beat_validation"
+        or (history_metadata or {}).get("use_beat_validation_settings")
+    )
     formatter_settings = (
         _active_beat_validation_settings()
-        if (
-            history_purpose == "beat_validation"
-            or (history_metadata or {}).get("use_beat_validation_settings")
-        )
+        if use_beat_validation_settings
         else _active_formatter_llm_settings()
     )
-    if formatter_settings:
-        # The selected formatter owns all text-LLM sampling/template settings.
-        # This also covers callers that still pass legacy per-call values.
+    if formatter_settings and use_beat_validation_settings:
+        # Beat validation is frozen to the benchmarked production profile.
         temperature = formatter_settings.get("temperature", temperature)
         top_p = formatter_settings.get("top_p")
         top_k = formatter_settings.get("top_k")
@@ -7646,6 +7646,29 @@ def ask_llm(
         thinking = formatter_settings.get("thinking")
         chat_template = formatter_settings.get("chat_template")
         jinja = formatter_settings.get("jinja")
+    elif formatter_settings:
+        # Explicit per-call sampling settings are authoritative. Formatter
+        # defaults only fill values the caller did not supply.
+        if temperature is None:
+            temperature = formatter_settings.get("temperature", 0.35)
+        if top_p is None:
+            top_p = formatter_settings.get("top_p")
+        if top_k is None:
+            top_k = formatter_settings.get("top_k")
+        if min_p is None:
+            min_p = formatter_settings.get("min_p")
+        if presence_penalty is None:
+            presence_penalty = formatter_settings.get("presence_penalty")
+        if frequency_penalty is None:
+            frequency_penalty = formatter_settings.get("frequency_penalty")
+        if repeat_penalty is None:
+            repeat_penalty = formatter_settings.get("repeat_penalty")
+        if thinking is None:
+            thinking = formatter_settings.get("thinking")
+        if chat_template is None:
+            chat_template = formatter_settings.get("chat_template")
+        if jinja is None:
+            jinja = formatter_settings.get("jinja")
     elif temperature is None:
         temperature = 0.35
     beat_history_purposes = {
