@@ -10819,12 +10819,24 @@ requested range; there may be no gaps or duplicate beat assignments. Derive
 source-required events from SOURCE STORY or explicit beat instructions and
 preserve their order.
 
-A required_event is a BEAT JOB, not necessarily one atomic action. Preserve
-every explicit visible source action/state. When the source contains more
-explicit timeline actions than the requested beat count can represent one by
-one, bundle only adjacent, causally continuous source actions into the same
-beat job. Never drop an explicit source action merely to satisfy the beat
-count. Do not bundle distant story stages or reverse source order.
+A required_event is a BEAT JOB sized for one video clip, not necessarily one
+atomic action and not automatically one whole source sentence. Preserve every
+explicit visible source action/state.
+- When the beat budget permits, split a long adjacent source action chain across
+  consecutive beat jobs at a natural physical/narrative handoff instead of
+  cramming the whole sentence into one beat. A useful handoff leaves a concrete
+  action/state for the next clip to continue (for example reaching/opening a
+  destination before the next beat finishes entry, secures it, and prepares for
+  the next conflict stage).
+- Do not split merely to create empty filler; each resulting job must visibly
+  advance the same source-authorized sequence.
+- Only when the source contains more explicit timeline actions than the
+  requested beat count can represent one by one, bundle adjacent, causally
+  continuous source actions into the same beat job. Never drop an explicit
+  source action merely to satisfy the beat count.
+- Do not treat punctuation or sentence boundaries as mandatory beat boundaries.
+  Choose boundaries for executable clip-sized story progression.
+- Do not bundle distant story stages or reverse source order.
 
 When the source is sparse, fill the remaining beats with plausible
 connective/action jobs that stay within the established characters, setting,
@@ -11130,8 +11142,11 @@ event's actual ID in depends_on, including across phase boundaries. Preserve all
 correct event content where possible. Preserve every explicit visible source
 action/state in source order. If there are more explicit source timeline actions
 than available beats, bundle only adjacent, causally continuous source actions
-inside one beat job rather than dropping source content. Add plausible connective
-jobs only for genuinely sparse sections without changing the plot, and include
+inside one beat job rather than dropping source content. When the beat budget
+permits, do the opposite for an overpacked source chain: split it across
+consecutive clip-sized jobs at a natural physical/narrative handoff rather than
+treating one source sentence as indivisible. Add plausible connective jobs only
+for genuinely sparse sections without changing the plot, and include
 state_effects on events that establish persistent modeled facts. Return only the
 normal macro-arc JSON object.
 """.strip(),
