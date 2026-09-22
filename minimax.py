@@ -8572,6 +8572,29 @@ def _validate_state_effects(effects):
     return normalized
 
 
+def _validate_required_event_state_effect_grounding(event_text, effects):
+    """Enforce lexical ownership for free-form condition values.
+
+    Python does not decide whether a condition is narratively true.  It only
+    requires the model's free-form condition vocabulary to be present in the
+    required event that owns the effect, so unrelated inferred facts cannot be
+    smuggled into authoritative canonical state.
+    """
+    event_terms = set(_event_words(event_text))
+    for effect in effects or ():
+        if effect.get("op") != "set_condition":
+            continue
+        value_terms = set(_event_words(effect.get("value", "")))
+        if value_terms and not value_terms.issubset(event_terms):
+            missing = ", ".join(sorted(value_terms - event_terms))
+            raise ValueError(
+                "Required-event set_condition value "
+                f"{effect.get('value')!r} is not lexically grounded in its "
+                f"owning event; missing event word(s): {missing}."
+            )
+    return effects
+
+
 def _flatten_state_effects(effects, prefix=()):
     """Normalize nested or dotted effect metadata into canonical dotted paths."""
     flattened = {}
@@ -11014,6 +11037,14 @@ completion.
   Cooking or serving food does not establish hunger; running does not establish
   tiredness; danger does not establish fear; fighting does not establish anger.
   Plausible is not enough. Omit an optional inferred condition entirely.
+- set_condition is a persistent post-beat condition, not a current activity.
+  Do not encode cooking, eating, running, fighting, looking, speaking, waiting,
+  or another in-progress action as set_condition. Temporary action stays in the
+  required event text only.
+- DATA-INTEGRITY CONTRACT FOR set_condition: every meaningful word in its free-form
+  value must also occur in the SAME required event text that owns the effect.
+  Reuse the event's wording; do not paraphrase or infer a new condition value.
+  Python checks only this lexical ownership rule and does not interpret prose.
 
 STATE_EFFECTS JSON CONTRACT
 Examples:
@@ -11205,6 +11236,12 @@ State effects:
   Cooking or serving food does not establish hunger; running does not establish
   tiredness; danger does not establish fear; fighting does not establish anger.
   Plausible is not enough.
+- set_condition is a persistent post-beat condition, not an in-progress action.
+  Never use it to record cooking, eating, running, fighting, looking, speaking,
+  waiting, or another temporary activity.
+- For set_condition, every meaningful word in the free-form value must also occur
+  in the SAME required event text that owns the effect. This is a lexical
+  data-integrity requirement, not permission to infer a condition from context.
 - Attach each persistent effect to the required event that actually establishes
   that fact. If a later event retrieves or equips named equipment, an earlier
   ordinary setup event must not carry that held/equipped effect; reject the arc
@@ -11360,9 +11397,15 @@ complications, and unresolved threats may be repaired in when they stay inside
 the established conflict and required outcome. When several conflict beats are
 available, prefer at least one complication/threat that remains unresolved across
 an adjacent beat boundary instead of resolving every invented setback immediately.
-Include state_effects on events
-that establish persistent modeled facts. Return only the normal macro-arc JSON
-object.
+Include state_effects only on events that establish persistent modeled facts.
+A state_effect becomes authoritative canonical history after that beat, so omit
+temporary actions and plausible/inferred conditions. set_condition is a persistent
+post-beat condition, not a current activity: do not encode cooking, eating,
+running, fighting, looking, speaking, waiting, or another in-progress action as
+set_condition. For every set_condition, every meaningful word in its free-form
+value must also occur in the SAME required event text that owns the effect; reuse
+that event's wording rather than paraphrasing or inferring a new condition. Return
+only the normal macro-arc JSON object.
 """.strip(),
         },
     ]
@@ -11608,6 +11651,10 @@ def parse_beat_arc_plan(
             state_effects = event.get("state_effects")
             if state_effects is not None:
                 state_effects = _validate_state_effects(state_effects)
+                state_effects = _validate_required_event_state_effect_grounding(
+                    event_text,
+                    state_effects,
+                )
             normalized_event = {"id": event_id, "event": event_text}
             if beat_number is not None:
                 normalized_event["beat_number"] = beat_number
@@ -12094,7 +12141,14 @@ def _typed_state_effect_json_schema():
             "properties": {
                 "op": {"const": "set_condition"},
                 "entity": {"type": "string", "minLength": 1},
-                "value": {"type": "string", "minLength": 1},
+                "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": (
+                        "Persistent post-beat condition using meaningful words "
+                        "from the owning required event; never a temporary activity."
+                    ),
+                },
             },
             "required": ["op", "entity", "value"],
         },
