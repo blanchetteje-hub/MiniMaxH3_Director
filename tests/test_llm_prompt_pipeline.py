@@ -548,6 +548,46 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn('- "forbidden phrase"', user_content)
         self.assertIn('- "Art"', user_content)
 
+    def test_beat_generation_requires_observable_finite_endpoints(self):
+        phase = {
+            "phase_number": 1,
+            "beat_start": 1,
+            "beat_end": 1,
+            "required_end_state": "Breakfast is finished.",
+            "required_events": [
+                {
+                    "id": "E1",
+                    "event": "Amy is cooking breakfast for Will and Amber.",
+                    "beat_number": 1,
+                }
+            ],
+        }
+        messages = minimax.build_beat_generation_messages(
+            "Amy is cooking breakfast for Will and Amber.",
+            1,
+            macro_arc={"phases": [phase]},
+            current_phase=phase,
+        )
+        user_content = messages[1]["content"]
+        self.assertIn(
+            "Make every finite assigned activity an EXECUTABLE CLIP JOB",
+            user_content,
+        )
+        self.assertIn(
+            "concrete observable endpoint rather than merely restating that the "
+            "activity is underway",
+            user_content,
+        )
+        self.assertIn(
+            "named beneficiaries visibly receiving or participating in the completed "
+            "result",
+            user_content,
+        )
+        self.assertIn(
+            "stopping, setting down, closing, or turning it off",
+            user_content,
+        )
+
     def test_phrase_exclusions_are_added_to_beat_generation_prompt(self):
         phase = {
             "phase_number": 1,
