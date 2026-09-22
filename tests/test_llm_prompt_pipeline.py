@@ -932,6 +932,27 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
         self.assertIn("deliberate blackout", messages[1]["content"])
 
+    def test_h3_continuation_opener_is_not_duplicated(self):
+        prompt = minimax.build_h3_prompt(
+            {
+                "detailed_description": (
+                    "[Shot 1] Live-action, cinematic, continues from <Video 1>. "
+                    "Mark crosses the room."
+                ),
+                "overall_soundscape": "Footsteps.",
+                "non_diegetic_music": "continues from <Video 1>. Quiet underscore.",
+            },
+            "<Subject 1> is Mark, referenced in <Picture 1>.",
+            segment_number=2,
+            conditioning_mode="continuation",
+        )
+
+        description = prompt.split("detailed_description: ", 1)[1].split(
+            "\n\noverall_soundscape:", 1
+        )[0]
+        self.assertEqual(description.count("continues from <Video 1>."), 1)
+        self.assertIn("Mark crosses the room.", description)
+
     def test_h3_prompt_initial_and_continuation_have_distinct_contracts(self):
         result = {
             "detailed_description": "[Shot 4] Mark waits silently.",
