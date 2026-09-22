@@ -1,0 +1,6 @@
+diff --git a/minimax.py b/minimax.py
+--- a/minimax.py
++++ b/minimax.py
+@@
+-    has_majority = bool(re.search(r"\\bmajority\\b", story or "", re.IGNORECASE))
++    has_majority = bool(re.search(r"\bmajority\b", story or "", re.IGNORECASE))
