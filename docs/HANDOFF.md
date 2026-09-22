@@ -247,23 +247,52 @@ This is intentionally not a remote-shell bridge. Supported job kinds are constra
 
 ## Current acceptance finding
 
-The original missing-breakfast ARC failure has been fixed and is no longer the current boundary.
+The original missing-breakfast ARC failure is fixed. The latest completed locked acceptance is `run-acceptance-amy-current-058`, generated from repository revision `27830e63bb41b6d0830727c18b403546ae1c8e08`.
 
-Current branch head when this handoff was refreshed: `27830e63bb41b6d0830727c18b403546ae1c8e08` (`Record latest ARC and BEAT semantic fixes`). Always re-read branch head rather than assuming this SHA is still current.
+### Acceptance 058: earliest remaining failure
 
-Latest Amy acceptance evidence (`run-acceptance-amy-current-040`) exposed three upstream semantic issues that have now received focused production fixes without adding new semantic pipelines:
+The accepted ARC allocated only Beats 6-8 (3/8) to the source-emphasized zombie conflict even though the source explicitly says:
 
-- **ARC emphasis / majority span allocation:** when the source says most of the film is a repeated sequence such as Amy killing zombies, ARC validation must identify whole phases that are safe to expand. Python may deterministically count/expand the validated phase span, but Mistral owns the semantic judgment of which phases actually represent the emphasized sequence. Standalone preparation inside a phase disqualifies that whole phase from majority evidence. Latest refinement: `a245f44cd460a96ebc4f8dea6c263090ebd1680a`; regression contract: `c2bb8c75cc7d06312a86b4eb0ef9e4332d87cc34`.
-- **ARC unsupported persistent conditions:** state effects are authoritative persistent facts, not inferred motivations/emotions/context. Cooking does not establish Hungry; running does not establish Tired; danger does not establish Afraid; fighting does not establish Angry. Production fix: `d9ef740fa136ad51c13e565550610a9e448cb1d3`; regression contract: `42e565af98288fc8f0154d60b30ab00103b56744`.
-- **BEAT prerequisite mistaken for completion:** a prerequisite or partial-progress action cannot satisfy a later required result (entering != locking, reaching != opening, retrieving != equipping, drawing != firing). Production fix: `d5313f05683b421f8224aad4ea59679aa21f80e7`; regression contract: `b0479488ee815605ac90a3f154ced378d0a557db`.
+> The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.
 
-Fresh bridge verification queued at that head:
+That is the earliest meaningful divergence. Do not tune Director or later continuity against this run until the ARC allocates a strict majority to the emphasized sequence.
 
-- `arc-optional-state-effect-strong-probe-053`
-- `arc-majority-mixed-phase-probe-054`
-- `beat-lock-omission-current-probe-055`
-- `beat-lock-omission-strong-probe-056`
-- `current-regressions-057`
-- `run-acceptance-amy-current-058`
+The deterministic Python majority counter itself is correct: it expands semantically selected whole phase ranges and requires more than half of all beats. The failure was semantic evidence from the overloaded general ARC validator, which could incorrectly mark mixed/preparation phases as belonging to the emphasized sequence.
 
-Next action: inspect the newest `gpt-runtime` results first. If regressions pass, use `run-acceptance-amy-current-058` to identify the earliest remaining behavioral divergence and fix that boundary only.
+A focused probe against the exact 058 ARC (`arc-majority-actual-058-probe-059`) returned only Phase 3 as matching. Python therefore correctly sees 3/8 emphasized beats and rejects that allocation.
+
+### Current ARC-majority correction
+
+Keep this responsibility inside ARC VALIDATE; do not create a separate planning/enrichment pipeline.
+
+Production change `3131df2006ac283f08dd89a5fdd40a1193462bd5` adds a focused majority-evidence request after the broad ARC validator has otherwise accepted the arc:
+
+- Mistral sees the source plus exact Python-owned phase ranges and required events.
+- It returns only which complete phases semantically belong to each explicit majority sequence.
+- A phase is countable only when its entire span belongs to the already-active emphasized process; standalone setup, escape, retrieval, equipping, travel, or other pre-process preparation disqualifies a mixed phase.
+- The final emphasized beat may also contain immediate terminal aftermath/resolution.
+- Python alone expands the returned phase numbers to exact beat ranges and enforces the strict-majority threshold.
+- If the focused evidence is under-allocated, normal ARC REPAIR runs. This remains CREATE -> VALIDATE -> REPAIR, not a new semantic subsystem.
+
+Regression contract `01df1cce6cc42b60e682d1a304afb21a9d8f34f9` adds a 058-shaped whole-phase test and confirms that Phase 3 alone produces the blocking 3/8 result.
+
+### Other known semantic probes
+
+Two direct Mistral weaknesses remain observed but are not currently the earliest acceptance boundary:
+
+- `arc-optional-state-effect-strong-probe-053`: even with explicit instructions, Mistral accepted an unsupported inferred Hungry state from cooking. Existing production prompts prohibit this, but do not add a second semantic subsystem merely for the probe unless end-to-end evidence makes it the current failure.
+- `beat-lock-omission-current-probe-055` and `beat-lock-omission-strong-probe-056`: Mistral accepted rushing the children into the basement as completing a job that also required locking the door. Existing beat-validator wording explicitly says entering != locking, but this model weakness remains. Again, work it when acceptance evidence makes it the earliest failure.
+
+The prior deterministic regression set was 101/101 green at `current-regressions-057`.
+
+### Verification now in progress
+
+- `current-regressions-060`: regression suite against current head `01df1cce6cc42b60e682d1a304afb21a9d8f34f9`.
+- After it passes, queue a fresh locked Amy acceptance on the same/current head.
+
+Expected ARC behavior for this 8-beat source is at least 5/8 beats materially inside the broad zombie-conflict sequence. Do not hard-code the Amy benchmark's choreography or literal entities; the generic majority constraint should force setup/preparation into at most three beats while preserving every explicit source action.
+
+Once majority allocation holds end-to-end, re-evaluate from Segment 1. In acceptance 058, Beat 1 was also too thin: `Amy cooks breakfast` became only stirring eggs instead of a clip that visibly completes the ordinary breakfast action. That is downstream of the current ARC allocation failure and should be addressed only after the ARC boundary is verified.
+
+Always re-read the current branch head and newest `gpt-runtime` results before acting.
+
