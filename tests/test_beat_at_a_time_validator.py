@@ -15,7 +15,7 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             next_beat_job="A zombie breaks the window.",
             candidate_beat="Amy cooks breakfast.",
         )
-        prompt = messages[1]["content"]
+        prompt = " ".join(messages[1]["content"].split())
         self.assertIn("Named relational participants are material", prompt)
         self.assertIn(
             "Reject a solo rewrite that drops named beneficiaries or participants",
