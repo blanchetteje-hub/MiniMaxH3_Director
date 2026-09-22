@@ -13359,98 +13359,35 @@ def build_beat_generation_messages(
 Write exactly {batch_size} beats for Phase {phase_number}, global Beats
 {batch_start}-{batch_end}.
 
-Each beat is an EXECUTION TARGET for one H3 video clip, not prose and not a
-miniature screenplay. Use 1 concise sentence. Give the Director only the
-concrete visible action that must happen in this clip and the visible physical
-result that must be true when the clip ends.
+Each beat is one concise EXECUTION TARGET for one H3 video clip.
 
-AUTHORIZED-EVENT TEST — APPLY THIS TO EVERY BEAT
-Before writing a beat, ask: "What SOURCE STORY or CURRENT PHASE requirement
-actually authorizes this event?" If there is no answer, do not write the event.
-
-Specificity is not invention:
-- Specificity may describe HOW an already-authorized action happens.
-- Specificity may NOT create an additional WHAT: no extra operation,
-  transformation, target, removal, replacement, setup change, character action,
-  or technology merely to make the beat more vivid, graphic, or detailed.
-- If the source authorizes a broad category or says "all" members of a category,
-  selecting concrete members of that category is allowed because it is necessary
-  to expand the source into visible beats. Do not add targets outside that
-  authorized category.
-- Preserve source-established setup details unless the source explicitly requires
-  them to change. Do not spend beats dismantling setup merely to create action.
-
-Beat-writing rules:
-- Follow SOURCE STORY first and CURRENT PHASE second.
-- Every beat in this phase has exactly one corresponding required event/job in
-  REQUIRED EVENTS FOR THIS PHASE. Perform that beat's assigned job visibly in
-  that beat; do not skip it, merge it into another beat, or imply it happened
-  between beats. Preserve the causal depends_on chain from the macro arc,
-  including the dependency handed off from the prior phase.
-- Source-required events must remain faithful to the source. For sparse source
-  sections, the assigned jobs may be plausible connective actions within the
-  established characters, setting, conflict, and outcome. Keep those jobs
-  concrete and varied without inventing a different plot.
-- Continue naturally from PREVIOUS PHASE FINAL BEAT and recent accepted beats.
-- Progress chronologically; do not repeat or restage an earlier beat.
-- Treat each beat's visible end state as the next beat's opening state: preserve
-  explicit left/right, ahead/behind, in-front/behind spatial relationships and movement
-  direction. A pursuer that was behind its target must not suddenly be ahead in
-  the next beat unless that beat explicitly shows passing or overtaking.
-- Keep explicit physical states mutually consistent across adjacent beats. If a
-  lower body or lower half is absent, removed, or gone, do not say the legs are
-  still visible; torso absent with visible legs is allowed.
-- Center each beat on its ASSIGNED JOB. If the assigned required event/job
-  intentionally packs multiple adjacent, causally continuous source actions into
-  this beat, perform EVERY materially required action/result in that job in the
-  same beat and preserve their order. Never drop a later clause merely to make
-  the beat simpler. Only optional connective choreography should be limited to
-  one primary operation; do not split an assigned packed job across other beats.
+HIGH-PRIORITY RULES
+- Match each beat to its same-numbered REQUIRED EVENT. Complete every materially
+  required action and result in that event, in order. If one required event has
+  several clauses, complete all of them in the same beat.
 - Make every finite assigned activity an EXECUTABLE CLIP JOB with a concrete
   observable endpoint rather than merely restating that the activity is underway.
-  Unless the assigned job explicitly says the action remains ongoing, interrupted,
-  or unresolved, carry mundane local staging through the activity's natural visible
-  result without adding a new story-level event.
-- When a finite activity is explicitly done FOR named people, the beat should
-  normally end with those named beneficiaries visibly receiving or participating
-  in the completed result when physically reasonable. Merely preparing or holding
-  the result is not a complete execution target.
-- Keep Beat-layer completion focused on the visible result of the assigned story
-  job. Do NOT add durable tool, appliance, object-placement, ownership, barrier,
-  injury, or environment-state changes merely to prove completion unless the
-  assigned required event or its typed state effects authorize them. Mundane local
-  staging such as setting down a utensil or turning off an appliance belongs to
-  Director Request 1 when it is a natural non-story completion detail.
-- When the source requires a repeated remove/replace, destroy/rebuild, or other
-  paired process for each item, keep the pair local: establish the removal/change
-  and its corresponding replacement/result before moving to an unrelated item,
-  unless SOURCE STORY explicitly requires bulk removal followed by later rebuild.
-- Do not begin the next operation after this beat's visible result is reached.
-- Preserve lasting results of earlier removals, destruction, replacements, or
-  other irreversible changes unless the story explicitly restores them.
-- If SOURCE STORY does not specify a tool or mechanism, use the minimum generic
-  mechanism needed to make the authorized action visually executable. Do not
-  invent elaborate tool systems, implants, powers, internal mechanisms, or new
-  transformations.
-- Do not invent dialogue or reactions unless SOURCE STORY or explicit beat
-  instructions require them.
-- Do not include camera directions unless SOURCE STORY explicitly requires a
-  particular camera event. The Director owns normal camera staging.
-- Do not include atmosphere, sound effects, measurements, lens choices, or
-  decorative details unless they are necessary to understand the required
-  physical action.
-- Use each beat's assigned job to expand the arc into a clear visible action;
-  never skip an assigned job or manufacture an unsupported major plot event.
-- Only create one sentence per beat.
+  Carry an ordinary finite task through its natural visible result unless the
+  required event explicitly says it remains ongoing or interrupted.
+- When a finite activity is done for named people, show the named beneficiaries
+  visibly receiving or participating in the completed result when physically
+  reasonable.
+- Do not begin the next required event or NEXT PHASE early.
+- Use SOURCE STORY and the assigned REQUIRED EVENT as authority. Do not invent a
+  new plot event, character, location change, transformation, tool system, injury,
+  or outcome merely to add detail.
+- Continue from the previous accepted beat without repeating it. Preserve explicit
+  lasting physical states and spatial relationships unless this beat changes them.
+- Do NOT add durable tool, appliance, object-placement, ownership, barrier, injury,
+  or environment-state changes merely to prove completion unless the required
+  event or its typed state effects authorize them. Mundane local staging such as
+  setting down a utensil or turning off an appliance belongs to Director Request 1.
+- Do not add camera directions, sound, atmosphere, dialogue, or reactions unless
+  the SOURCE STORY or explicit beat instructions require them.
 - Reach CURRENT PHASE.required_end_state by the final beat of this phase.
-- The first generated beat must continue from PREVIOUS PHASE FINAL BEAT —
-  CONTINUITY ONLY. Do not repeat that beat.
-- NEXT PHASE is boundary context only; do not perform its progression early.
-- Return exactly {batch_size} ordered beats with the requested global numbers.
-- Each beat string must begin with its exact global beat number and a period,
-  for example `1. beat text`; the `beat_number` field must match that prefix.
-- Beat strings contain no other labels, Markdown, comments, or --lora data.
-- Return only JSON shaped exactly as {response_shape}.
+- Return exactly {batch_size} ordered beats for global Beats {batch_start}-{batch_end}.
+  Each beat must be one sentence beginning with its exact number and a period; the
+  beat_number field must match. Return only JSON shaped exactly as {response_shape}.
 {supplemental_text}
 
 MAIN CHARACTER(S)
