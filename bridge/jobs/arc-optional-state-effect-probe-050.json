@@ -1,0 +1,18 @@
+{
+  "job_id": "arc-optional-state-effect-probe-050",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "seed": 42,
+  "max_tokens": 220,
+  "timeout_seconds": 120,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate one macro arc. Return JSON only: {\"valid\":boolean,\"issues\":[string]}."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE:\nAmy is at home on a normal day, wearing a black tank top and denim jeans, cooking breakfast for her kids Will and Amber. Suddenly a zombie breaks the kitchen window.\n\nARC EVENT:\n{\"id\":\"E1\",\"event\":\"Amy cooks breakfast for Will and Amber.\",\"beat_number\":1,\"state_effects\":[{\"op\":\"set_condition\",\"entity\":\"Will\",\"value\":\"Hungry\"},{\"op\":\"set_condition\",\"entity\":\"Amber\",\"value\":\"Hungry\"}]}\n\nRULES:\n- state_effects are authoritative persistent modeled facts, not flavor.\n- Every emitted state_effect must be directly established by the source-required event itself or be logically necessary for that source event.\n- Do not infer persistent emotions, hunger, fatigue, reactions, personality, or other optional conditions merely because they are plausible.\n- If a state_effect adds an unsupported optional persistent fact, reject the arc and identify it.\n\nDoes E1's state_effects pass? Return JSON only."
+    }
+  ]
+}
