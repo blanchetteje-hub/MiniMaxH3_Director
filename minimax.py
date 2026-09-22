@@ -11098,19 +11098,17 @@ Required events:
   relative-duration or emphasis statements in the source are binding on beat
   allocation.
 - For every explicit source statement using the word "majority", populate one
-  majority_checks entry. Its matching_beats must contain ONLY global beat
-  numbers that materially belong to the broad emphasized narrative sequence.
-  A beat may match because it directly performs the emphasized action OR because
-  it is an enemy attack, reversal, setback, weapon transition after the ongoing
-  conflict/process has begun, continuation, terminal result, or immediate
-  resolution sharing the end of that ongoing sequence. Standalone preparation
-  before the emphasized conflict/process begins does NOT count. Do NOT infer
-  matches merely from a phase label; judge the actual required_event in story
-  context.
+  majority_checks entry. Its matching_phases must contain ONLY macro phase
+  numbers whose MAIN progression materially IS the broad emphasized narrative
+  sequence. Do not include ordinary setup, escape, or preparation phases merely
+  because they enable that sequence. A phase may include the terminal result
+  and immediate resolution at its end and still match when its main progression
+  is the emphasized process. Judge the phase's actual broad progression and
+  required events, not its narrative_purpose label alone.
 - majority_checks is semantic evidence for deterministic counting. Do NOT decide
   whether the numeric majority threshold passes inside valid/issues; Python will
-  compare the returned sequence-membership beat numbers with the total global
-  beat count.
+  expand each returned matching phase to its Python-owned beat_start..beat_end
+  span and compare that exact beat count with the total global beat count.
 - Preserve explicit "most", "half", "briefly", and similar relative emphasis
   according to their ordinary meaning in the normal semantic validation.
 - Source-required events must be directly supported by the source or explicit
@@ -11199,11 +11197,11 @@ or
 {{"valid": false, "issues": ["one concise blocking issue"], "majority_checks": []}}.
 For every explicit SOURCE STORY sentence using the word "majority", include one
 majority_checks object with exactly:
-{{"source_requirement": "concise source requirement", "matching_beats": [1, 2]}}.
-matching_beats means membership in the broad emphasized narrative sequence as
-defined above; it does not mean every listed beat literally repeats the same
-verb. If the source has no explicit "majority" statement, return an empty
-majority_checks array. Keep issues empty when valid is true.
+{{"source_requirement": "concise source requirement", "matching_phases": [2]}}.
+matching_phases means macro phases whose MAIN progression is the broad emphasized
+narrative sequence as defined above. Do not include setup/preparation phases just
+because they lead into it. If the source has no explicit "majority" statement,
+return an empty majority_checks array. Keep issues empty when valid is true.
 """.strip(),
         },
     ]
@@ -11927,7 +11925,7 @@ def build_macro_arc_validation_response_format():
                                     "type": "string",
                                     "minLength": 1,
                                 },
-                                "matching_beats": {
+                                "matching_phases": {
                                     "type": "array",
                                     "items": {
                                         "type": "integer",
@@ -11938,7 +11936,7 @@ def build_macro_arc_validation_response_format():
                             },
                             "required": [
                                 "source_requirement",
-                                "matching_beats",
+                                "matching_phases",
                             ],
                             "additionalProperties": False,
                         },
