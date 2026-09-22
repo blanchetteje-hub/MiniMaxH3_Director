@@ -943,6 +943,38 @@ class LmStudioIntegrationTests(unittest.TestCase):
         for name, value in minimax.BEAT_LLM_SAMPLING_PARAMETERS.items():
             self.assertEqual(request_json[name], value)
 
+    @mock.patch("minimax.generate_random_llm_seed", return_value=42)
+    @mock.patch("minimax.requests.post")
+    def test_beat_generation_history_honors_explicit_sampling_parameters(
+        self,
+        post,
+        _random_seed,
+    ):
+        payload = response(
+            "[Shot 1] Live-action, cinematic, Mark and Jill stand together.",
+            [],
+        )
+        post.return_value = FakeResponse(json.dumps(payload))
+
+        minimax.ask_llm(
+            [],
+            response_format=None,
+            history_metadata={"purpose": "beat_generation"},
+            **minimax.BEAT_LLM_SAMPLING_PARAMETERS,
+        )
+
+        request_json = post.call_args.kwargs["json"]
+        for name, value in minimax.BEAT_LLM_SAMPLING_PARAMETERS.items():
+            self.assertEqual(request_json[name], value)
+        self.assertEqual(
+            request_json["top_k"],
+            minimax._active_formatter_llm_settings()["top_k"],
+        )
+        self.assertEqual(
+            request_json["min_p"],
+            minimax._active_formatter_llm_settings()["min_p"],
+        )
+
     @mock.patch(
         "minimax.generate_random_llm_seed",
         side_effect=[101, 202],
