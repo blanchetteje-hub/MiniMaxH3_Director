@@ -1,0 +1,18 @@
+{
+  "job_id": "arc-finite-action-aspect-probe-092",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 500,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You validate whether a macro story arc faithfully preserves the source story. Return only JSON: {\"valid\": true|false, \"issue\": \"...\"}. Reject omissions, chronology changes, or semantic weakening of explicit source actions. A finite/completable source action must not be weakened into an ongoing snapshot that no longer requires its natural completion."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE STORY:\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids. Suddenly, a zombie breaks the kitchen door window and Amy sees the danger.\n\nCANDIDATE ARC EVENTS:\nBeat 1: Amy is cooking breakfast for Will and Amber in the kitchen.\nBeat 2: A zombie breaks the kitchen door window, and Amy sees the danger.\n\nDoes Beat 1 faithfully preserve the source action as a finite beat job, or has it weakened it into an ongoing snapshot?"
+    }
+  ]
+}
