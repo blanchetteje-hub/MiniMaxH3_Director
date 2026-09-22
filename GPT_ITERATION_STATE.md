@@ -504,3 +504,30 @@ Queued targeted probe:
 - `arc-optional-state-effect-probe-050`
 
 Do not add Python keyword heuristics for hunger/emotion unless probe/acceptance evidence shows the ARC semantic validator cannot enforce the existing generic rule. Semantic interpretation should remain with ARC validation when possible.
+
+
+## 2026-09-21 late-session: majority evidence moved from beats to macro phases
+
+Targeted probes proved the old beat-level majority evidence was too fuzzy for Mistral:
+- earlier beat-level classification could overcount preparation even when explicitly told that preparation does not count;
+- `arc-majority-phase-probe-041` correctly classified only Phase 3 as the emphasized sequence when Phase 3 spanned Beats 5-8;
+- `arc-majority-phase-valid-probe-047` also correctly classified only Phase 3 when Phase 3 spanned Beats 4-8.
+
+This gives a cleaner semantic/deterministic split:
+1. ARC validator semantically identifies which **macro phases** materially ARE the source-emphasized process.
+2. Python owns the phase ranges already, expands those phase numbers to exact `beat_start..beat_end` spans, and deterministically checks whether the total is a strict majority.
+
+Production changes:
+- `e8736fdc9fcd9c8fec5248080f2a8dfcf5cfd3e1` — validator schema/prompt now returns `matching_phases`, not model-counted `matching_beats`.
+- `23fc449228d3be8aca739af7038f239e7b6a57e6` — Python expands matching phases to exact beat spans and performs the numeric majority check.
+- `8263fe8a5337815e922d71de7248b9b35adae980` — regression proves Phase 3 = Beats 5-8 fails at 4/8 while Phase 3 = Beats 4-8 passes at 5/8.
+- `current-regressions-051`: 100/100 passing.
+
+This remains inside ARC CREATE -> VALIDATE -> REPAIR. No separate emphasis pipeline was added.
+
+Fresh end-to-end acceptance queued:
+- `run-acceptance-amy-phase-majority-052`
+
+### Optional state-effect evidence
+
+`arc-optional-state-effect-probe-050` showed Mistral still accepted unsupported persistent `set_condition` values such as Will/Amber = Hungry even when told state effects must be directly source/event-authorized. Do not add a Python keyword blacklist. A stronger generic semantic probe is queued as `arc-optional-state-effect-strong-probe-053`; prefer fixing ARC create/validate wording if that reliably rejects inferred internal conditions.
