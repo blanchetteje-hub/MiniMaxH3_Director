@@ -1,0 +1,53 @@
+{
+  "job_id": "beat-lock-omission-strong-probe-056",
+  "kind": "llama_chat",
+  "started_at": 1790048188.7887855,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases, but reject any missing required action or result. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nA zombie smashes through the kitchen door window with its arm and reaches inside, causing Amy to grab Will and Amber and rush them toward the basement door.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nE3 - Amy locks the basement door after securing Will and Amber inside.\n\nNEXT JOB\nE4 - Amy retrieves her hidden arsenal consisting of a pistol and a katana.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nAmy rushes Will and Amber into the basement.\n\nCHECKS\nA. CURRENT JOB: The candidate must visibly accomplish EVERY materially required action/result in CURRENT JOB. A prerequisite, approach, or partial progress is NOT semantic completion of a later required result. If CURRENT JOB requires A then B, doing only A is invalid. Examples: entering a room does not imply locking its door; reaching a door does not imply opening it; drawing a weapon does not imply firing it; grabbing an object does not imply equipping it. Accept paraphrases only when the required result itself is actually accomplished. Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result. Reject a solo rewrite that drops named beneficiaries or participants. Do not reject harmless visible detail.\n\nB. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as authoritative history. Reject only clear contradictions or physical impossibilities.\n\nC. NEXT JOB: Do not materially complete the distinct NEXT JOB early.\n\nD. TYPED STATE EFFECTS: Every listed typed effect must be supported by what visibly happens in the candidate.\n\nOUTPUT CONTRACT\nIf valid:\n{\"valid\": true, \"issue\": \"\"}\nIf invalid:\n{\"valid\": false, \"issue\": \"short concrete explanation\"}\nReturn exactly one JSON object and no markdown."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 120,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-k8esi6hoti0srrzwbcvbu",
+    "object": "chat.completion",
+    "created": 1790048188,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 464,
+      "completion_tokens": 11,
+      "total_tokens": 475,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790048190.3658228,
+  "status": "ok"
+}
