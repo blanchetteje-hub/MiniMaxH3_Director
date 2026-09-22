@@ -1,0 +1,20 @@
+{
+  "job_id": "arc-sequence-tests-030",
+  "kind": "run_tests",
+  "started_at": 1790043178.6566083,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_story_arc_structural_guarantees"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \n",
+    "stderr": ".........\n----------------------------------------------------------------------\nRan 9 tests in 0.001s\n\nOK\n",
+    "started_at": 1790043179.9550805,
+    "finished_at": 1790043180.6865873
+  },
+  "finished_at": 1790043180.6865873,
+  "status": "ok"
+}
