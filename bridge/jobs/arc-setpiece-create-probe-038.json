@@ -1,0 +1,18 @@
+{
+  "job_id": "arc-setpiece-create-probe-038",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "seed": 42,
+  "max_tokens": 1000,
+  "timeout_seconds": 120,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Plan exactly 8 clip-sized story jobs from the source.\n\nPreserve every explicit source action in order. The source says the majority of the film is Amy killing zombies, so allocate at least 5 beats to the broad zombie-conflict sequence while keeping distinct setup readable.\n\nWhen a long conflict is authorized but individual encounters are sparse, PLAN A COHERENT ESCALATION rather than generic repetition. Use varied clip-sized jobs with cross-beat handoffs. Allowed local setpiece developments inside the authorized zombie conflict include: attack/counterattack, a weapon running empty/dropped/stuck/recovered or switching to an already established weapon, a zombie surviving into the next beat, temporary contamination/mess, setback then recovery, delayed terminal result. Do not invent a new plot, location, supernatural rule, major character, or alternate ending.\n\nA source sentence is not a mandatory beat boundary. Split or combine adjacent actions to make executable clip-sized jobs. Prefer a concrete unresolved handoff into the next clip where useful.\n\nReturn only JSON {\"beats\":[{\"beat_number\":1,\"event\":\"...\"}]}."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nTOTAL BEATS: 8"
+    }
+  ]
+}
