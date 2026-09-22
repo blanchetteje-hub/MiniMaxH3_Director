@@ -9563,7 +9563,7 @@ def _missing_named_director_subjects(
         name = str(name or "").strip()
         if not name:
             continue
-        pattern = rf"(?<![\\w]){re.escape(name)}(?![\\w])"
+        pattern = rf"(?<![\w]){re.escape(name)}(?![\w])"
         if re.search(pattern, beat_text, re.IGNORECASE) and not re.search(
             pattern,
             scene_text,
