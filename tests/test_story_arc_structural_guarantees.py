@@ -188,8 +188,12 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             normalized,
         )
         self.assertIn(
-            "matching_phases must contain ONLY macro phase numbers whose MAIN "
-            "progression materially IS the broad emphasized narrative sequence",
+            "matching_phases must contain ONLY macro phase numbers whose ENTIRE "
+            "beat_start..beat_end span may safely be counted",
+            normalized,
+        )
+        self.assertIn(
+            "that mixed phase is NOT safe to count in full",
             normalized,
         )
         self.assertIn(
