@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-clothing-op-validation-probe-103",
+  "kind": "llama_chat",
+  "started_at": 1790105769.35157,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one macro-arc event. Return JSON only: {\"valid\":boolean,\"issues\":[string]}."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nAmy is at home wearing a tight black tank top and denim jeans, cooking breakfast.\n\nARC EVENT:\n{\"id\":\"E1\",\"event\":\"Amy is cooking breakfast while wearing a tight black tank top and denim jeans.\",\"beat_number\":1,\"state_effects\":[{\"op\":\"set_condition\",\"entity\":\"Amy\",\"value\":\"wearing a tight black tank top and denim jeans\"}]}\n\nRULE:\nClothing state must use set_clothing. set_condition must never be used to encode clothing or what someone is wearing.\n\nEvaluate the event. Return JSON only."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 220,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-5v4h63dnz9vz3srfin33ts",
+    "object": "chat.completion",
+    "created": 1790105769,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"valid\": false,\n  \"issues\": [\"Clothing state should use 'set_clothing' instead of 'set_condition'.\"]\n}",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 144,
+      "completion_tokens": 32,
+      "total_tokens": 176,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790105771.811567,
+  "status": "ok"
+}
