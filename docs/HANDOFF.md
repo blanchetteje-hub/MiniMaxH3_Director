@@ -247,52 +247,60 @@ This is intentionally not a remote-shell bridge. Supported job kinds are constra
 
 ## Current acceptance finding
 
-The original missing-breakfast ARC failure is fixed. The latest completed locked acceptance is `run-acceptance-amy-current-058`, generated from repository revision `27830e63bb41b6d0830727c18b403546ae1c8e08`.
+The original missing-breakfast ARC failure is fixed. Acceptance `run-acceptance-amy-current-061` exposed that the first focused majority implementation was still too coarse.
 
-### Acceptance 058: earliest remaining failure
+### Acceptance 061: whole-phase evidence was insufficient
 
-The accepted ARC allocated only Beats 6-8 (3/8) to the source-emphasized zombie conflict even though the source explicitly says:
+The accepted 061 ARC was:
 
-> The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.
+- Beats 1-2: breakfast / zombie breach
+- Beats 3-4: kids to basement / retrieve weapons
+- Beat 5: equip weapons
+- Beats 6-8: zombie conflict, with Beat 8 also containing immediate resolution
 
-That is the earliest meaningful divergence. Do not tune Director or later continuity against this run until the ARC allocates a strict majority to the emphasized sequence.
+The source explicitly says the **majority** of the film is Amy killing zombies, but only Beats 6-8 materially belonged to that sequence: **3/8**.
 
-The deterministic Python majority counter itself is correct: it expands semantically selected whole phase ranges and requires more than half of all beats. The failure was semantic evidence from the overloaded general ARC validator, which could incorrectly mark mixed/preparation phases as belonging to the emphasized sequence.
+The first focused majority validator classified whole phases. Because Beat 5 (pre-conflict equipping) shared Phase 3 with combat, Mistral incorrectly returned the entire Phase 3 as qualifying. Python then counted 4/8 based on the bad semantic evidence. Whole-phase semantic classification is therefore retired for majority counting.
 
-A focused probe against the exact 058 ARC (`arc-majority-actual-058-probe-059`) returned only Phase 3 as matching. Python therefore correctly sees 3/8 emphasized beats and rejects that allocation.
+### Current majority design: exact beat evidence inside ARC VALIDATE
 
-### Current ARC-majority correction
+Production commit `52bc9dfe191bd2bada77336b27ae3e3716266213` changes the focused semantic judgment from whole-phase evidence to exact beat evidence:
 
-Keep this responsibility inside ARC VALIDATE; do not create a separate planning/enrichment pipeline.
+- Mistral sees the source plus every ARC required_event keyed by its Python-owned beat number.
+- It classifies each beat independently as belonging or not belonging to the already-active emphasized sequence.
+- Standalone setup, escape, retrieval, equipping, travel, or preparation **before** the emphasized process begins does not count.
+- A terminal emphasized action still counts when the same beat also contains immediate aftermath/resolution.
+- Attacks, counterattacks, reversals, setbacks, weapon transitions after the process begins, continued action, and terminal results may count when they materially continue the emphasized sequence.
+- Python only validates the returned beat numbers and counts them. More than half of total beats is required.
+- If under-allocated, normal ARC REPAIR runs. This remains inside the ARC CREATE -> VALIDATE -> REPAIR loop; there is no new planning/enrichment subsystem.
 
-Production change `3131df2006ac283f08dd89a5fdd40a1193462bd5` adds a focused majority-evidence request after the broad ARC validator has otherwise accepted the arc:
+Direct probes against the exact 061 ARC:
 
-- Mistral sees the source plus exact Python-owned phase ranges and required events.
-- It returns only which complete phases semantically belong to each explicit majority sequence.
-- A phase is countable only when its entire span belongs to the already-active emphasized process; standalone setup, escape, retrieval, equipping, travel, or other pre-process preparation disqualifies a mixed phase.
-- The final emphasized beat may also contain immediate terminal aftermath/resolution.
-- Python alone expands the returned phase numbers to exact beat ranges and enforces the strict-majority threshold.
-- If the focused evidence is under-allocated, normal ARC REPAIR runs. This remains CREATE -> VALIDATE -> REPAIR, not a new semantic subsystem.
+- `arc-majority-061-beat-evidence-probe-062`: correctly rejected preparation but was too conservative and returned [6, 7], omitting the terminal mixed Beat 8.
+- `arc-majority-061-beat-evidence-terminal-probe-063`: after explicitly defining terminal-action handling, returned **[6, 7, 8]**, which is the desired semantic classification for the bad ARC.
 
-Regression contract `01df1cce6cc42b60e682d1a304afb21a9d8f34f9` adds a 058-shaped whole-phase test and confirms that Phase 3 alone produces the blocking 3/8 result.
+Regression contract `df73bab734c7c2ed065c0d037e2d334403f54198` covers both under-allocation (3/8 rejects) and strict-majority allocation (5/8 accepts).
+
+`current-regressions-064`: **PASS, 103/103 tests green**.
+
+### Verification now in progress
+
+- `run-acceptance-amy-current-065`: queued/running against the per-beat majority implementation.
+- First check: the accepted ARC must contain at least 5/8 beats that the focused per-beat validator classifies as materially inside the emphasized zombie-conflict sequence.
+- If that holds, re-evaluate from Segment 1 and identify the next earliest behavioral divergence.
 
 ### Other known semantic probes
 
 Two direct Mistral weaknesses remain observed but are not currently the earliest acceptance boundary:
 
-- `arc-optional-state-effect-strong-probe-053`: even with explicit instructions, Mistral accepted an unsupported inferred Hungry state from cooking. Existing production prompts prohibit this, but do not add a second semantic subsystem merely for the probe unless end-to-end evidence makes it the current failure.
-- `beat-lock-omission-current-probe-055` and `beat-lock-omission-strong-probe-056`: Mistral accepted rushing the children into the basement as completing a job that also required locking the door. Existing beat-validator wording explicitly says entering != locking, but this model weakness remains. Again, work it when acceptance evidence makes it the earliest failure.
+- `arc-optional-state-effect-strong-probe-053`: even with explicit instructions, Mistral accepted an unsupported inferred Hungry state from cooking.
+- `beat-lock-omission-current-probe-055` and `beat-lock-omission-strong-probe-056`: Mistral accepted rushing the children into the basement as completing a job that also required locking the door.
 
-The prior deterministic regression set was 101/101 green at `current-regressions-057`.
+Do not add separate semantic subsystems merely to address these probes. Work them when end-to-end acceptance evidence makes one the earliest failure.
 
-### Verification now in progress
+### Downstream note from 061
 
-- `current-regressions-060`: **PASS**, 102/102 tests green against the focused-majority implementation.
-- `run-acceptance-amy-current-061`: queued/running against the current production code. This is the next source of truth; do not make additional production changes until its ARC result is inspected.
+Segment 1 improved substantially compared with 058: Request 1 visibly turned off the stove, served breakfast to both children, and completed the ordinary domestic scene. So the earlier thin-breakfast concern is no longer the obvious first downstream failure.
 
-Expected ARC behavior for this 8-beat source is at least 5/8 beats materially inside the broad zombie-conflict sequence. Do not hard-code the Amy benchmark's choreography or literal entities; the generic majority constraint should force setup/preparation into at most three beats while preserving every explicit source action.
-
-Once majority allocation holds end-to-end, re-evaluate from Segment 1. In acceptance 058, Beat 1 was also too thin: `Amy cooks breakfast` became only stirring eggs instead of a clip that visibly completes the ordinary breakfast action. That is downstream of the current ARC allocation failure and should be addressed only after the ARC boundary is verified.
-
-Always re-read the current branch head and newest `gpt-runtime` results before acting.
+Always re-read the current `gpt-test-branch` head, this handoff, and newest `gpt-runtime` results before acting.
 
