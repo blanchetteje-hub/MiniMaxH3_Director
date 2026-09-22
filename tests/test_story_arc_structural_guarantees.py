@@ -235,7 +235,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             normalized,
         )
 
-    def test_focused_majority_evidence_uses_whole_phase_spans(self):
+    def test_focused_majority_evidence_classifies_exact_beats(self):
         story = (
             "Amy cooks breakfast, gets her kids safe, and equips weapons. "
             "The majority of the film is Amy killing zombies as they attack her. "
@@ -307,38 +307,58 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             "\n".join(message["content"] for message in messages).split()
         )
         self.assertIn(
-            "matching_phases may contain ONLY phase numbers whose ENTIRE "
-            "beat_start..beat_end span materially belongs",
+            "matching_beats may contain only beat numbers whose required event "
+            "materially belongs",
             normalized,
         )
         self.assertIn(
-            "Standalone setup, escape, retrieval, equipping, travel, or other "
-            "preparation BEFORE the emphasized process begins does NOT belong",
+            "Standalone setup, escape, retrieval, equipping, travel, or preparation "
+            "BEFORE the emphasized process begins does NOT belong",
             normalized,
         )
-        self.assertIn("Phase 2, Beats 3-5", normalized)
-        self.assertIn("Beat 5: Amy equips her weapons.", normalized)
+        self.assertIn("5. Amy equips her weapons.", normalized)
+        self.assertIn(
+            "A beat containing a terminal emphasized action DOES belong",
+            normalized,
+        )
 
-        parsed = minimax.parse_macro_arc_validation_result(
+        parsed = minimax.parse_macro_arc_majority_evidence_result(
             {
-                "valid": True,
-                "issues": [],
                 "majority_checks": [
                     {
                         "source_requirement": (
                             "The majority of the film is Amy killing zombies "
                             "as they attack her."
                         ),
-                        "matching_phases": [3],
+                        "matching_beats": [6, 7, 8],
                     }
                 ],
             },
             total_segments=8,
-            require_majority_checks=True,
-            macro_arc=arc,
         )
         self.assertFalse(parsed["valid"])
         self.assertIn("3/8 beats; more than half is required", parsed["issues"][0])
+        self.assertEqual(
+            parsed["majority_checks"][0]["matching_beats"],
+            [6, 7, 8],
+        )
+
+    def test_focused_majority_evidence_accepts_strict_majority(self):
+        parsed = minimax.parse_macro_arc_majority_evidence_result(
+            {
+                "majority_checks": [
+                    {
+                        "source_requirement": (
+                            "The majority of the film is Amy killing zombies."
+                        ),
+                        "matching_beats": [4, 5, 6, 7, 8],
+                    }
+                ],
+            },
+            total_segments=8,
+        )
+        self.assertTrue(parsed["valid"])
+        self.assertEqual(parsed["issues"], [])
 
     def test_majority_story_gets_exact_sequence_budget(self):
         story = "The majority of the film is Amy killing zombies."
