@@ -14067,7 +14067,7 @@ def generate_beats_from_story(
             )
             try:
                 has_majority = bool(
-                    re.search(r"\\bmajority\\b", str(story or ""), re.IGNORECASE)
+                    re.search(r"\bmajority\b", str(story or ""), re.IGNORECASE)
                 )
                 validation = parse_macro_arc_validation_result(
                     raw_validation,
