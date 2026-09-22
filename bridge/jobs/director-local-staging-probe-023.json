@@ -1,0 +1,18 @@
+{
+  "job_id": "director-local-staging-probe-023",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 120,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a cinematic scene planner expanding one CURRENT BEAT into an 8-second scene.\n\nCURRENT BEAT is the only story event you may advance. NEXT BEAT is a hard forbidden boundary.\n\nYou MAY invent ordinary local choreography, mundane props, incidental reactions, and short natural dialogue when they are only a concrete realization of CURRENT BEAT and do not create a new plot development. For a broad everyday activity, make the activity visually legible and give it a natural local completion when possible. Include people who are inherent participants in the stated activity. Do not foreshadow or begin NEXT BEAT.\n\nReturn only JSON {\"raw_scene\":\"...\",\"beat_complete\":true}."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT BEAT:\nAmy is cooking breakfast for her young kids in the kitchen. Amy wears a tight black tank top and denim jeans.\n\nNEXT BEAT:\nA zombie breaks the kitchen door window and Amy sees the danger.\n\nSUBJECTS:\nAmy; Will, a 10-year-old boy; Amber, a 14-year-old girl.\n\nWrite the timed scene from 00:00.000 through about 00:07.000. Keep it ordinary and safe."
+    }
+  ]
+}
