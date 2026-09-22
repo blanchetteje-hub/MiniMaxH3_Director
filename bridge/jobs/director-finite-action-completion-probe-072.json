@@ -1,0 +1,18 @@
+{
+  "job_id": "director-finite-action-completion-probe-072",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "max_tokens": 900,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You expand CURRENT BEAT into an 8-second timed RAW SCENE. Return JSON only: {\"raw_scene\":\"...\",\"beat_complete\":true}.\n\nCOMPLETION RULE:\n- beat_complete=true means the finite CURRENT BEAT has visibly reached its natural result, not merely that the subject is shown performing the activity.\n- If the activity is done FOR named people, each named beneficiary must visibly receive or participate in the completed result when physically possible.\n- If completion naturally ends use of an active tool/appliance, visibly settle/stop it before the beat ends when that does not add a new story event.\n- Do not leave the CURRENT BEAT in progress at the handoff merely to fill time.\n- Do not perform or foreshadow NEXT BEAT.\n- Use timed micro-beats starting at 00:00.000 and one trailing \"End continuity state:\" sentence."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT BEAT:\nAmy, wearing a tight black tank top and denim jeans, stands at the kitchen stove cooking breakfast for Will and Amber.\n\nNEXT BEAT:\nA zombie smashes through the kitchen door window and enters, Amy grabs Will and Amber by their hands, leads them to the basement, locks the door, retrieves a pistol and a katana from the basement wall, and holds both weapons.\n\nSUBJECTS:\nAmy (S1), Will (S2), Amber (S3).\n\nExpand CURRENT BEAT only."
+    }
+  ]
+}
