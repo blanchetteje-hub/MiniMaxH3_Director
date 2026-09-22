@@ -594,6 +594,12 @@ def process_once(source_root: Path, worktree: Path, branch: str, endpoint: str,
             }
         write_result(result_dir, payload)
         commit_result(worktree, branch, result_dir, job_id)
+        print(
+            "===========\n"
+            "Pass back to GPT\n"
+            "===========",
+            flush=True,
+        )
         completed.add(job_id)
         handled += 1
     return handled
