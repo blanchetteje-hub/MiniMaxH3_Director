@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-emphasis-count-probe-011",
+  "kind": "llama_chat",
+  "started_at": 1790037513.7210014,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one story arc. Return only JSON {\"valid\":boolean,\"issues\":[string]}. Do all counting silently."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nA realistic action film about Amy protecting her kids from a zombie apocalypse.\nAmy cooks breakfast. A zombie breaks the kitchen door window. She rushes her kids to the basement and locks the door. She retrieves a pistol and katana and equips them.\nThe majority of the film is Amy killing zombies as they try to attack her.\nAmy kills the last zombies, the house now soaked in blood, then lets her kids out of the basement.\n\nRULE:\nFor every explicit relative-duration/emphasis statement, inspect the actual required_event at each beat. Count a beat toward emphasized action X only when that beat's required_event materially performs or continues X. Do NOT count a beat because its phase is named Main Conflict, because the phase broad_progression mentions X, or because setup/resolution supports X. For \"the majority ... is X\", let N=total beats and K=beats whose required_event materially performs/continues X. The arc is valid on this rule only when K * 2 > N. Example: with 8 beats, 4/8 is NOT a majority; at least 5/8 must materially be X.\n\nARC:\n{\n  \"phases\": [\n    {\n      \"phase_number\": 1,\n      \"beat_start\": 1,\n      \"beat_end\": 2,\n      \"narrative_purpose\": \"Introduction and Initial Conflict\",\n      \"broad_progression\": \"Amy discovers the zombie threat and secures her kids in the basement.\",\n      \"required_end_state\": \"Amy has secured her kids in the basement.\",\n      \"required_events\": [\n        {\n          \"id\": \"E1\",\n          \"event\": \"Amy cooks breakfast for her kids.\",\n          \"beat_number\": 1\n        },\n        {\n          \"id\": \"E2\",\n          \"event\": \"A zombie breaks the kitchen door window, Amy rushes her kids to the basement and locks the door.\",\n          \"beat_number\": 2,\n          \"depends_on\": [\n            \"E1\"\n          ]\n        }\n      ]\n    },\n    {\n      \"phase_number\": 2,\n      \"beat_start\": 3,\n      \"beat_end\": 8,\n      \"narrative_purpose\": \"Main Conflict\",\n      \"broad_progression\": \"Amy kills zombies as they attack her.\",\n      \"required_end_state\": \"Amy has killed all the zombies and lets her kids out of the basement.\",\n      \"required_events\": [\n        {\n          \"id\": \"E3\",\n          \"event\": \"Amy retrieves her hidden arsenal consisting of a pistol and a katana, and equips the weapons.\",\n          \"beat_number\": 3,\n          \"depends_on\": [\n            \"E2\"\n          ]\n        },\n        {\n          \"id\": \"E4\",\n          \"event\": \"Amy kills several zombies as they try to attack her.\",\n          \"beat_number\": 4,\n          \"depends_on\": [\n            \"E3\"\n          ]\n        },\n        {\n          \"id\": \"E5\",\n          \"event\": \"Amy continues killing zombies, dismembering and decapitating them.\",\n          \"beat_number\": 5,\n          \"depends_on\": [\n            \"E4\"\n          ]\n        },\n        {\n          \"id\": \"E6\",\n          \"event\": \"Amy kills more zombies in different encounters.\",\n          \"beat_number\": 6,\n          \"depends_on\": [\n            \"E5\"\n          ]\n        },\n        {\n          \"id\": \"E7\",\n          \"event\": \"Amy kills the last of the zombies, her house now soaked in blood.\",\n          \"beat_number\": 7,\n          \"depends_on\": [\n            \"E6\"\n          ]\n        },\n        {\n          \"id\": \"E8\",\n          \"event\": \"Amy lets her kids out of the basement.\",\n          \"beat_number\": 8,\n          \"depends_on\": [\n            \"E7\"\n          ]\n        }\n      ]\n    }\n  ]\n}\n\nReturn only one JSON object."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 220,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-nrvm9o4szsn5dhrja3oci",
+    "object": "chat.completion",
+    "created": 1790037513,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"valid\": true,\n  \"issues\": []\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 871,
+      "completion_tokens": 18,
+      "total_tokens": 889,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790037516.2466898,
+  "status": "ok"
+}
