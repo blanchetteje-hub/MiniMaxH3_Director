@@ -1,0 +1,20 @@
+{
+  "job_id": "run-tests-arc-emphasis-010",
+  "kind": "run_tests",
+  "started_at": 1790035742.8284652,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_story_arc_structural_guarantees"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \n",
+    "stderr": ".....\n----------------------------------------------------------------------\nRan 5 tests in 0.001s\n\nOK\n",
+    "started_at": 1790035743.9693353,
+    "finished_at": 1790035744.701403
+  },
+  "finished_at": 1790035744.701403,
+  "status": "ok"
+}
