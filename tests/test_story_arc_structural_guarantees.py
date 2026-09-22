@@ -114,6 +114,61 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             normalized,
         )
 
+    def test_majority_evidence_is_counted_deterministically(self):
+        invalid = {
+            "valid": True,
+            "issues": [],
+            "majority_checks": [{
+                "source_requirement": "The majority of the film is Amy killing zombies.",
+                "matching_beats": [4, 5, 6, 7],
+            }],
+        }
+        parsed = minimax.parse_macro_arc_validation_result(
+            invalid,
+            total_segments=8,
+            require_majority_checks=True,
+        )
+        self.assertFalse(parsed["valid"])
+        self.assertIn("4/8 required-event beats", parsed["issues"][0])
+
+        valid = copy.deepcopy(invalid)
+        valid["majority_checks"][0]["matching_beats"] = [3, 4, 5, 6, 7]
+        parsed = minimax.parse_macro_arc_validation_result(
+            valid,
+            total_segments=8,
+            require_majority_checks=True,
+        )
+        self.assertTrue(parsed["valid"])
+        self.assertEqual(parsed["issues"], [])
+
+    def test_majority_source_requires_validator_evidence(self):
+        with self.assertRaisesRegex(ValueError, "returned no majority_checks evidence"):
+            minimax.parse_macro_arc_validation_result(
+                {"valid": True, "issues": [], "majority_checks": []},
+                total_segments=8,
+                require_majority_checks=True,
+            )
+
+    def test_arc_validator_requests_majority_evidence_from_required_events(self):
+        story = (
+            "The majority of the film is Amy killing zombies. "
+            "Amy kills the last zombie and lets her kids out."
+        )
+        arc = make_arc([(1, 3, self.events)])
+        messages = minimax.build_macro_arc_validation_messages(story, arc)
+        normalized = " ".join(
+            "\n".join(message["content"] for message in messages).split()
+        )
+        self.assertIn(
+            "majority_checks is semantic evidence for deterministic counting",
+            normalized,
+        )
+        self.assertIn(
+            "matching_beats must contain ONLY global beat numbers whose actual "
+            "required_event materially performs or continues the emphasized action",
+            normalized,
+        )
+
     def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
         invalid = copy.deepcopy(self.events)
         invalid[2]["depends_on"] = ["E1"]
