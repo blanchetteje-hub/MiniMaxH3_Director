@@ -816,18 +816,21 @@ LOCAL STAGING
 
 MICRO-BEATS
 
-- Every beat is broken down into micro-beats
-- Timestamps are relative to this segment. The first micro-beat MUST start at 00:00.000 seconds. Previous-segment timing ends before 00:00.000.
-- Start each micro-beat on a new line with "At 00:ss.mmm seconds, (where s is seconds and m is milliseconds) " and spread them across the full {segment_seconds} seconds.
-- Every micro-beat will have an action, camera movement, or event, or a combination of two of those.
-- Be short and succint.
-- Create between {segment_min_beats} to {segment_seconds} micro-beats.
-- no pass tense explanations: do not write \"her jeans torn from branches\", write \"her jeans tore on a branch as she ran.\"
+- Every beat is broken down into timed micro-beats.
+- Timestamps are relative to this segment. The first timed micro-beat MUST start at 00:00.000. Previous-segment timing ends before 00:00.000.
+- Use the canonical timestamp syntax exactly: "At 00:ss.mmm," with NO word "seconds" after the timestamp.
+- Put each timestamp on a new line and spread actions across the available {segment_seconds}-second segment.
+- Use one discrete action/event per timestamp. A camera movement may accompany that action when needed to show it, but do not pack several separate story actions into one timestamp.
+- Use as many timestamps as CURRENT BEAT needs to be fully and clearly staged. There is NO arbitrary maximum timestamp count; a dense beat may require more timestamps than the number of seconds in the segment.
+- Be short and succinct.
+- no past tense explanations: do not write \"her jeans torn from branches\", write \"her jeans tore on a branch as she ran.\"
 - do not create a change in clothing or any other type of state change unless there was a preceding reason for the change.
 - Conserve story state. The micro-beat may not introduce a new story event or change the required hand-off into the next micro-beat or segment.
 - Be explicit on where important elements are, EX: "The companion stands on the operator's left". Write spatial awareness for anything of importance.
 - Be specific for everything important, EX: instead of "object on a table", write "the named object is on the table in front of the operator".
-- Always make sure the last micro-beat is at least 1 second before the alotted {segment_seconds} seconds.
+- Keep the final timestamp before the exact {segment_seconds}-second endpoint, but it may occur late in the segment when needed (for example 00:07.750 in an 8-second clip).
+- For append/continuation segments, avoid making the final timed action spoken dialogue when a visual handoff can follow it.
+- When an effect such as decapitation or another difficult body disconnection needs multiple visible stages, use separate timestamps rather than collapsing the entire effect into one overloaded line.
 
 {story_segment_ending_rules}
 
@@ -849,9 +852,9 @@ CURRENT BEAT:
 A woman crosses the garage and opens a storage cabinet.
 
 Correct:
-At 00:00.000 seconds, the woman walks across the garage toward the storage cabinet as the camera tracks beside her.
+At 00:00.000, the woman walks across the garage toward the storage cabinet as the camera tracks beside her.
 
-At 00:02.500 seconds, she reaches the cabinet and pulls its door open.
+At 00:02.500, she reaches the cabinet and pulls its door open.
 
 End continuity state: The woman stands in front of the open storage cabinet.
 
