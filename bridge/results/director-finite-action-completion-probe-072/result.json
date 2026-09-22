@@ -1,0 +1,54 @@
+{
+  "job_id": "director-finite-action-completion-probe-072",
+  "kind": "llama_chat",
+  "started_at": 1790086218.3817897,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You expand CURRENT BEAT into an 8-second timed RAW SCENE. Return JSON only: {\"raw_scene\":\"...\",\"beat_complete\":true}.\n\nCOMPLETION RULE:\n- beat_complete=true means the finite CURRENT BEAT has visibly reached its natural result, not merely that the subject is shown performing the activity.\n- If the activity is done FOR named people, each named beneficiary must visibly receive or participate in the completed result when physically possible.\n- If completion naturally ends use of an active tool/appliance, visibly settle/stop it before the beat ends when that does not add a new story event.\n- Do not leave the CURRENT BEAT in progress at the handoff merely to fill time.\n- Do not perform or foreshadow NEXT BEAT.\n- Use timed micro-beats starting at 00:00.000 and one trailing \"End continuity state:\" sentence."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT:\nAmy, wearing a tight black tank top and denim jeans, stands at the kitchen stove cooking breakfast for Will and Amber.\n\nNEXT BEAT:\nA zombie smashes through the kitchen door window and enters, Amy grabs Will and Amber by their hands, leads them to the basement, locks the door, retrieves a pistol and a katana from the basement wall, and holds both weapons.\n\nSUBJECTS:\nAmy (S1), Will (S2), Amber (S3).\n\nExpand CURRENT BEAT only."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1hn63nf4gi287iazwin87l",
+    "object": "chat.completion",
+    "created": 1790086218,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"raw_scene\": [\n    {\n      \"time\": \"00:00.000\",\n      \"description\": \"Amy stands at the kitchen stove, flipping pancakes in a pan.\"\n    },\n    {\n      \"time\": \"00:01.500\",\n      \"description\": \"She places two cooked pancakes on a plate and pours more batter into the pan.\"\n    },\n    {\n      \"time\": \"00:03.000\",\n      \"description\": \"Amy turns to the counter, grabs a spatula full of scrambled eggs, and transfers them onto another plate.\"\n    },\n    {\n      \"time\": \"00:04.500\",\n      \"description\": \"She picks up a slice of toast from the toaster and places it on the same plate as the pancakes.\"\n    },\n    {\n      \"time\": \"00:06.000\",\n      \"description\": \"Amy turns off the stove, ensuring all burners are off.\"\n    },\n    {\n      \"time\": \"00:07.500\",\n      \"description\": \"She carries both plates to the kitchen table where Will and Amber are seated.\"\n    }\n  ],\n  \"beat_complete\": true,\n  \"end_continuity_state\": \"Amy has finished cooking breakfast for Will and Amber, placing the completed meals on the table in front of them.\"\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 304,
+      "completion_tokens": 304,
+      "total_tokens": 608,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790086236.543102,
+  "status": "ok"
+}
