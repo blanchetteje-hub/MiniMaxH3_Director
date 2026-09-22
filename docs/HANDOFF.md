@@ -503,3 +503,73 @@ stove/tool shutdown), and probe 104 shows that concise high-priority Beat rules
 may solve the overabstract Beat target. Keep any next prompt change short and
 24B-friendly rather than adding more bullets.
 
+## Acceptance 107 follow-up: ARC clothing fixed; Beat 1 completion is now earliest
+
+`run-acceptance-amy-arc-clothing-107` completed successfully against revision
+`1065b54cd55c61713f4375e94f1befa97e12bd3a`.
+
+The ARC clothing-operation correction worked:
+
+- E1 now uses two typed `set_clothing` effects for Amy's black tank top and
+  denim jeans.
+- The previous clothing-as-`set_condition` defect is gone.
+- ARC Beat 1 remains the ordinary breakfast baseline and Beat 2 remains the
+  inciting zombie/evacuation event.
+
+The earliest remaining acceptance failure moved to Beat generation:
+
+- Required E1 says Amy is cooking breakfast for Will and Amber.
+- Generated Beat 1 was still only: “Amy cooks breakfast for Will and Amber while
+  wearing a tight black tank top and denim jeans.”
+- Director Request 1 therefore left breakfast visibly underway: Amy was still at
+  the stove flipping a pancake at the end of Segment 1.
+- The locked gold requires a completed domestic beat: the children receive food
+  and cooking is finished before the zombie event begins.
+
+This confirms the finding from `beat-phase1-simple-prompt-probe-104`: the
+production Beat prompt had the correct endpoint rule buried inside too many
+instructions for the 24B model.
+
+### Beat prompt simplification
+
+Production commit `32012b4970c9092966dcaf56e150026852618c6d` replaces the
+large Beat-writing instruction block with a compact HIGH-PRIORITY RULES section.
+
+The simplified contract keeps only the important behavior:
+
+- one same-numbered required event per beat;
+- complete all material clauses of that event;
+- finite activities need a concrete observable endpoint;
+- named beneficiaries visibly receive/participate in the result when reasonable;
+- do not start the next event/phase early;
+- source/required event remain authority; do not invent a new plot;
+- preserve prior lasting state/continuity;
+- mundane local staging remains Director Request 1 responsibility;
+- no camera/sound/dialogue embellishment unless required;
+- exact numbering and JSON output.
+
+No semantic architecture changed. ARC and BEATS remain CREATE -> VALIDATE ->
+REPAIR loops.
+
+`run-tests-beat-prompt-simplify-108`: **PASS, 74/74 tests green** across:
+- `tests.test_llm_prompt_pipeline`
+- `tests.test_forward_beat_validation`
+- `tests.test_beat_at_a_time_validator`
+- `tests.test_beat_retry_hierarchy`
+- `tests.test_story_arc_structural_guarantees`
+
+### Verification in progress
+
+`run-acceptance-amy-beat-prompt-simple-109` is queued/running against
+`32012b4970c9092966dcaf56e150026852618c6d`.
+
+A production-style Phase-1 probe,
+`beat-phase1-production-simple-probe-110`, is also queued behind the full
+acceptance. The bridge worker is serial, so 110 may not publish until 109
+finishes.
+
+Inspect Acceptance 109 first. If Beat 1 becomes a completed breakfast endpoint,
+the next boundary is likely Director Request 1's mundane completion staging
+(e.g. stove/tool shutdown) or Segment 2 allocation/ordering; diagnose the actual
+first divergence rather than preemptively changing either.
+
