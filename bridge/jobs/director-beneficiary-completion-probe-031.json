@@ -1,0 +1,18 @@
+{
+  "job_id": "director-beneficiary-completion-probe-031",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 120,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Expand CURRENT BEAT into an 8-second timed scene.\n\nCURRENT BEAT is the complete and exclusive story event allowed. NEXT BEAT is a hard forbidden boundary: do not show, begin, foreshadow, cause, or react to it.\n\nYou may add only minimal mundane micro-actions and props that directly realize CURRENT BEAT.\nIf CURRENT BEAT describes an activity done FOR named people, all named beneficiaries must be visibly present and must visibly receive or participate in the result of that activity before the beat ends when physically possible.\nDo not invent unrelated hobbies, devices, errands, entrances/exits, side conversations, new goals, or new plot facts.\nShort dialogue is allowed only when directly about CURRENT BEAT.\nPrefer a natural local completion of CURRENT BEAT before the segment ends.\n\nReturn only JSON {\"raw_scene\":\"...\",\"beat_complete\":true}."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT BEAT:\nAmy is cooking breakfast for her young kids Will and Amber in the kitchen. Amy wears a tight black tank top and denim jeans.\n\nNEXT BEAT:\nA zombie breaks the kitchen door window and Amy sees the danger.\n\nWrite timed actions from 00:00.000 through 00:07.000. The scene remains completely ordinary and safe."
+    }
+  ]
+}
