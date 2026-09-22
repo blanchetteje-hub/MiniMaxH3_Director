@@ -1,0 +1,54 @@
+{
+  "job_id": "director-completion-validator-probe-079",
+  "kind": "llama_chat",
+  "started_at": 1790089293.438942,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a strict completion checker for one video beat. Judge only whether RAW SCENE fully and visibly completes CURRENT BEAT without advancing into NEXT BEAT.\n\nRules:\n- A finite activity is not complete merely because it is underway.\n- If CURRENT BEAT is done for named beneficiaries, each beneficiary must visibly receive or participate in the completed result when physically possible.\n- If the natural endpoint settles a tool/appliance used only for that activity, leaving it actively in use means the activity is still underway unless CURRENT BEAT explicitly says otherwise.\n- Do not require invented story events beyond the natural local completion.\n- Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"one concise reason\"}."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT:\nAmy cooks breakfast for her kids in the kitchen.\n\nNEXT BEAT:\nA zombie breaks the kitchen door window, and Amy rushes her kids to the basement, locks the door, retrieves her hidden arsenal, and equips the pistol and katana.\n\nRAW SCENE:\nAt 00:00.000, Amy stands at the kitchen stove wearing a tight black tank top and denim jeans, cooking breakfast as the camera tracks beside her.\n\nAt 00:02.500, Will and Amber sit at the kitchen table watching her cook.\n\nAt 00:04.750, Amy flips a pancake in the pan as she cooks breakfast.\n\nAt 00:06.750, Amy turns to the kids with a plate of pancakes.\n\nEnd continuity state: Amy stands at the kitchen stove wearing a tight black tank top and denim jeans, holding a plate of pancakes."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 220,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-0fupku12unipuilpvaak05c",
+    "object": "chat.completion",
+    "created": 1790089293,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 358,
+      "completion_tokens": 9,
+      "total_tokens": 367,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790089294.8990908,
+  "status": "ok"
+}
