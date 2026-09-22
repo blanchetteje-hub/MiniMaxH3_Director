@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-majority-evidence-probe-014",
+  "kind": "llama_chat",
+  "started_at": 1790037638.7210479,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one story arc. Return JSON only. For any explicit source statement using the word majority, report which actual required-event beat numbers materially perform or continue the emphasized action."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE STORY:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nARC REQUIRED EVENTS:\n1. Amy cooks breakfast for her kids.\n2. A zombie breaks the kitchen door window, Amy rushes her kids to the basement and locks the door.\n3. Amy retrieves her hidden arsenal consisting of a pistol and a katana, and equips the weapons.\n4. Amy kills several zombies as they try to attack her.\n5. Amy continues killing zombies, dismembering and decapitating them.\n6. Amy kills more zombies in different encounters.\n7. Amy kills the last of the zombies, her house now soaked in blood.\n8. Amy lets her kids out of the basement.\n\nReturn exactly this shape:\n{\"valid\":true,\"issues\":[],\"majority_checks\":[{\"source_requirement\":\"...\",\"matching_beats\":[1]}]}\nThe valid/issues fields are your normal semantic judgment. For majority_checks, include one object for EACH explicit source sentence using \"majority\"; copy/paraphrase that requirement concisely and list ONLY beats whose required event materially performs/continues the emphasized action. Setup/preparation/resolution do not count unless that action occurs in the same event. Do not use phase metadata."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 220,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-os9cqs24ai91jhw4xhow6p",
+    "object": "chat.completion",
+    "created": 1790037638,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"valid\": true,\n  \"issues\": [],\n  \"majority_checks\": [\n    {\n      \"source_requirement\": \"The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\",\n      \"matching_beats\": [4, 5, 6]\n    }\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 451,
+      "completion_tokens": 84,
+      "total_tokens": 535,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790037644.538125,
+  "status": "ok"
+}
