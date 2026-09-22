@@ -418,6 +418,18 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             repair_prompt,
         )
         self.assertIn(
+            "PROTECTED CONTRAST BOUNDARY",
+            repair_prompt,
+        )
+        self.assertIn(
+            "NEVER merge that inciting threat/change into the baseline beat",
+            repair_prompt,
+        )
+        self.assertIn(
+            "The baseline must remain its own beat so the source contrast is visible",
+            repair_prompt,
+        )
+        self.assertIn(
             "the inciting action MAY share its beat with its immediate "
             "reaction/escape/containment sequence",
             repair_prompt,
