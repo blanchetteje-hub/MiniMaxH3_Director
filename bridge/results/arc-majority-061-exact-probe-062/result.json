@@ -1,0 +1,54 @@
+{
+  "job_id": "arc-majority-061-exact-probe-062",
+  "kind": "llama_chat",
+  "started_at": 1790050467.79437,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You perform one focused semantic judgment inside ARC VALIDATE: identify which complete macro phases may be counted toward each explicit source majority sequence. Do not judge any other arc property. Return one JSON object only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE STORY\n--- STORY START ---\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n--- STORY END ---\n\nARC PHASES AND REQUIRED EVENTS\nPhase 1, Beats 1-2:\n- Beat 1: Amy cooks breakfast for her kids in the kitchen.\n- Beat 2: A zombie breaks the kitchen door window.\n\nPhase 2, Beats 3-4:\n- Beat 3: Amy rushes her kids to the basement and locks the door.\n- Beat 4: Amy retrieves her hidden arsenal (pistol and katana).\n\nPhase 3, Beats 5-8:\n- Beat 5: Amy equips her pistol and katana.\n- Beat 6: Amy kills several zombies with her weapons.\n- Beat 7: Amy continues to fight and kill more zombies.\n- Beat 8: Amy kills the last zombie and lets her kids out of the basement.\n\nCOUNTING RULE\nFor every explicit SOURCE STORY statement containing the word \"majority\", return\none majority_checks entry. matching_phases may contain ONLY phase numbers whose\nENTIRE beat_start..beat_end span materially belongs to that already-active broad\nemphasized narrative sequence.\n\nJudge the actual required events, not phase labels or phase summaries.\n\nA beat may belong to the emphasized sequence without literally repeating the\nemphasized verb when it is part of the already-active process: attacks,\ncounterattacks, reversals, setbacks, weapon transitions after the conflict/process\nhas begun, continued action, or the terminal result. The final sequence beat may\nalso include its immediate aftermath/resolution.\n\nStandalone setup, escape, retrieval, equipping, travel, or other preparation\nBEFORE the emphasized process begins does NOT belong. If even one such\npre-sequence beat shares a phase with later emphasized action, that whole mixed\nphase is unsafe to count and must not be returned.\n\nDo NOT decide whether the numeric majority threshold passes. Python owns the\nphase ranges and will expand matching_phases to exact beat counts.\n\nThis request is evidence-only. Always return valid=true and issues=[]; Python\nwill convert insufficient evidence into the blocking validation issue.\n\nReturn exactly:\n{\"valid\": true, \"issues\": [], \"majority_checks\": [\n  {\"source_requirement\": \"the source majority statement\", \"matching_phases\": [1]}\n]}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 220,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-puzmesf3w8ejy92vxqme2",
+    "object": "chat.completion",
+    "created": 1790050467,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"valid\": true,\n  \"issues\": [],\n  \"majority_checks\": [\n    {\n      \"source_requirement\": \"The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\",\n      \"matching_phases\": [3]\n    }\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 697,
+      "completion_tokens": 79,
+      "total_tokens": 776,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790050473.738049,
+  "status": "ok"
+}
