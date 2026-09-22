@@ -13332,10 +13332,12 @@ Beat-writing rules:
   normally end with those named beneficiaries visibly receiving or participating
   in the completed result when physically reasonable. Merely preparing or holding
   the result is not a complete execution target.
-- When the natural endpoint of that finite activity ends use of a tool or appliance
-  used only for the activity, include the ordinary settled endpoint (for example,
-  stopping, setting down, closing, or turning it off) when physically reasonable
-  and when it does not conflict with the assigned job or the next required event.
+- Keep Beat-layer completion focused on the visible result of the assigned story
+  job. Do NOT add durable tool, appliance, object-placement, ownership, barrier,
+  injury, or environment-state changes merely to prove completion unless the
+  assigned required event or its typed state effects authorize them. Mundane local
+  staging such as setting down a utensil or turning off an appliance belongs to
+  Director Request 1 when it is a natural non-story completion detail.
 - When the source requires a repeated remove/replace, destroy/rebuild, or other
   paired process for each item, keep the pair local: establish the removal/change
   and its corresponding replacement/result before moving to an unrelated item,
