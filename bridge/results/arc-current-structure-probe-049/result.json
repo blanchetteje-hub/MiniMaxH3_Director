@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-current-structure-probe-049",
+  "kind": "llama_chat",
+  "started_at": 1790047108.3709366,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Plan exactly 8 clip-sized story jobs.\n\nRules:\n- Preserve every explicit source action in order.\n- Preserve explicit contrast boundaries: if the source establishes an ordinary safe baseline and then says a sudden disruption occurs, end the baseline clip before the disruption begins when the beat budget permits.\n- A source sentence is not a clip boundary. Split long action chains at natural physical handoffs when useful.\n- The source says the majority is the zombie-conflict sequence. With 8 beats, at least 5 beats must belong to that ongoing conflict sequence, leaving at most 3 outside it.\n- Standalone preparation before the conflict begins does not count.\n- Do not require five literal kills. Once conflict begins, attacks on Amy, reversals, weapon problems/transitions, contamination/setbacks, continued fighting, terminal result, and immediate resolution sharing the final conflict beat may count.\n- If terminal conflict action is immediately followed by resolution, put the terminal result and immediate resolution in the SAME final sequence beat when a resolution-only beat would make the conflict sequence too short.\n- For a sparse repeated conflict, plan a coherent escalation rather than generic interchangeable fights. With several conflict beats, use at least one meaningful unresolved adjacent cross-beat handoff: a threat, weapon problem, contamination, or complication remains unresolved at the end of one beat and continues/resolves in the next.\n- Do not invent a new plot, location, mythology, major character, or alternate ending.\n\nReturn JSON only: {\"beats\":[{\"beat_number\":1,\"event\":\"...\"}]}."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nTOTAL BEATS: 8"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1200,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-5lsx4myichij4v16dogprc",
+    "object": "chat.completion",
+    "created": 1790047108,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"beats\": [\n    {\n      \"beat_number\": 1,\n      \"event\": \"Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\"\n    },\n    {\n      \"beat_number\": 2,\n      \"event\": \"A zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\"\n    },\n    {\n      \"beat_number\": 3,\n      \"event\": \"Amy retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\"\n    },\n    {\n      \"beat_number\": 4,\n      \"event\": \"Amy kills several zombies as they try to attack her, using both her pistol and katana.\"\n    },\n    {\n      \"beat_number\": 5,\n      \"event\": \"Amy continues fighting, dismembering and decapitating more zombies that come at her.\"\n    },\n    {\n      \"beat_number\": 6,\n      \"event\": \"The zombies keep coming, but Amy manages to kill several more, using her katana to slice through them.\"\n    },\n    {\n      \"beat_number\": 7,\n      \"event\": \"Amy kills the last of the zombies, her house now soaked in blood.\"\n    },\n    {\n      \"beat_number\": 8,\n      \"event\": \"Amy lets her kids out of the basement.\"\n    }\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 492,
+      "completion_tokens": 317,
+      "total_tokens": 809,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790047127.6844742,
+  "status": "ok"
+}
