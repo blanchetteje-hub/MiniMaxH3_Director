@@ -196,6 +196,11 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             "do NOT each need to literally repeat the emphasized verb",
             create_prompt,
         )
+        self.assertIn(
+            "Standalone preparation before the emphasized conflict/process begins "
+            "does NOT count toward the majority sequence",
+            create_prompt,
+        )
 
         arc = make_arc([(1, 3, self.events)])
         repair_messages = minimax.build_macro_arc_repair_messages(
