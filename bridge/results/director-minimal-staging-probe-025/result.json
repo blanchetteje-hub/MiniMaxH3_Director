@@ -1,0 +1,53 @@
+{
+  "job_id": "director-minimal-staging-probe-025",
+  "kind": "llama_chat",
+  "started_at": 1790043011.06101,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You expand one CURRENT BEAT into an 8-second cinematic scene.\n\nCURRENT BEAT is the only story event allowed. NEXT BEAT is a hard forbidden boundary.\n\nUse MINIMUM LOCAL STAGING:\n- You may choose mundane props and micro-actions needed to make a broad CURRENT BEAT visibly clear and naturally complete.\n- If CURRENT BEAT names beneficiaries/participants (for example \"cooks breakfast for her kids\"), show those people already present when practical.\n- Participants who are not performing the main action should remain simple/passive unless a tiny interaction is necessary to show the CURRENT BEAT.\n- Do not invent entrances, exits, errands, hobbies, side conversations, unrelated actions, new goals, or new plot facts.\n- Short dialogue is allowed only when it directly expresses the CURRENT BEAT.\n- Prefer completing the ordinary action before the next beat when that creates a clean handoff.\n- Never foreshadow or begin NEXT BEAT.\n\nReturn only JSON {\"raw_scene\":\"...\",\"beat_complete\":true}."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT:\nAmy is cooking breakfast for her young kids in the kitchen. Amy wears a tight black tank top and denim jeans.\n\nNEXT BEAT:\nA zombie breaks the kitchen door window and Amy sees the danger.\n\nSUBJECTS:\nAmy; Will, a 10-year-old boy; Amber, a 14-year-old girl.\n\nWrite timed actions from 00:00.000 through about 00:07.000. Keep the scene ordinary and safe."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 450,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-oruu4up91wm0b9bzx7uujls",
+    "object": "chat.completion",
+    "created": 1790043011,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"raw_scene\": [\n    {\n      \"time\": \"00:00.000\",\n      \"action\": \"Amy stands at the stove, flipping pancakes on a frying pan.\"\n    },\n    {\n      \"time\": \"00:01.500\",\n      \"action\": \"Will sits at the kitchen table, coloring in a picture book.\"\n    },\n    {\n      \"time\": \"00:03.000\",\n      \"action\": \"Amber leans against the counter, scrolling through her phone.\"\n    },\n    {\n      \"time\": \"00:04.500\",\n      \"action\": \"Amy turns off the stove and places a pancake on a plate.\"\n    },\n    {\n      \"time\": \"00:06.000\",\n      \"action\": \"Will looks up from his coloring book, smiling at Amy.\"\n    },\n    {\n      \"time\": \"00:07.500\",\n      \"action\": \"Amy smiles back and places the plate of pancakes on the table in front of Will.\"\n    }\n  ],\n  \"beat_complete\": true\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 333,
+      "completion_tokens": 252,
+      "total_tokens": 585,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790043026.4310207,
+  "status": "ok"
+}
