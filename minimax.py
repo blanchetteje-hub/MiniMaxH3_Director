@@ -10890,19 +10890,18 @@ Required events:
 - There must be exactly one concrete required event/job for every global beat.
 - SOURCE EMPHASIS IS MANDATORY. Explicit relative-duration or emphasis statements
   in the source are binding on beat allocation.
-- For each such statement, inspect the actual required_event assigned to EVERY
-  global beat and count only beats whose required_event materially performs or
-  continues the emphasized action X. Do NOT count a beat merely because its
-  phase name, narrative_purpose, broad_progression, or required_end_state
-  mentions X. Setup, preparation, and resolution do not count unless X
-  materially occurs in that beat's required_event.
-- For "the majority ... is X", let N be the total global beat count and K be the
-  number of required_event jobs that materially perform or continue X. Accept
-  that emphasis only when K * 2 > N. For 8 beats, 4/8 is NOT a majority and at
-  least 5/8 beats must materially perform/continue X.
+- For every explicit source statement using the word "majority", populate one
+  majority_checks entry. Its matching_beats must contain ONLY global beat
+  numbers whose actual required_event materially performs or continues the
+  emphasized action. Do NOT infer matches from phase names, narrative_purpose,
+  broad_progression, or required_end_state. Setup, preparation, and resolution
+  do not count unless the emphasized action materially occurs in that same
+  required_event.
+- majority_checks is semantic evidence for deterministic counting. Do NOT decide
+  whether the numeric majority threshold passes inside valid/issues; Python will
+  compare the returned matching beat numbers with the total global beat count.
 - Preserve explicit "most", "half", "briefly", and similar relative emphasis
-  according to their ordinary meaning. Reject the arc when its beat allocation
-  violates an explicit source emphasis statement.
+  according to their ordinary meaning in the normal semantic validation.
 - SOURCE COVERAGE IS MANDATORY. Walk through the SOURCE STORY in chronological
   order before judging the arc. Every explicit visible action or visible state
   that establishes a distinct point in the source timeline must be represented
@@ -10990,10 +10989,15 @@ PROPOSED MACRO STORY ARC
 
 Output exactly one JSON object and nothing else. Do not output analysis,
 reasoning, a checklist, markdown, or any text before or after the object.
-Use this exact shape: {{"valid": true, "issues": []}} for a valid arc, or
-{{"valid": false, "issues": ["one concise blocking issue"]}} for an invalid
-arc. Keep the issues array empty when valid is true, and stop immediately after
-the closing brace.
+Use this exact shape:
+{{"valid": true, "issues": [], "majority_checks": []}}
+or
+{{"valid": false, "issues": ["one concise blocking issue"], "majority_checks": []}}.
+For every explicit SOURCE STORY sentence using the word "majority", include one
+majority_checks object with exactly:
+{{"source_requirement": "concise source requirement", "matching_beats": [1, 2]}}.
+If the source has no explicit "majority" statement, return an empty
+majority_checks array. Keep issues empty when valid is true.
 """.strip(),
         },
     ]
@@ -11382,8 +11386,14 @@ def build_phase_generation_batches(macro_arc, max_batch_size=None):
     return batches
 
 
-def parse_macro_arc_validation_result(raw_result, formatter=None, llm_request=None):
-    """Parse the minimal unified macro-arc validation response."""
+def parse_macro_arc_validation_result(
+    raw_result,
+    formatter=None,
+    llm_request=None,
+    total_segments=None,
+    require_majority_checks=False,
+):
+    """Parse one semantic ARC validation result and enforce deterministic counts."""
     formatter = formatter or ACTIVE_FORMATTER
     candidate = raw_result
     if isinstance(candidate, str):
@@ -11410,8 +11420,71 @@ def parse_macro_arc_validation_result(raw_result, formatter=None, llm_request=No
         raise ValueError(
             "Macro-arc validation 'valid' must be true exactly when issues is empty."
         )
-    return {"valid": valid, "issues": issues}
 
+    raw_checks = candidate.get("majority_checks", [])
+    if not isinstance(raw_checks, list):
+        raise ValueError(
+            "The macro-arc validation 'majority_checks' field must be an array."
+        )
+    checks = []
+    for check in raw_checks:
+        if not isinstance(check, dict) or set(check) != {
+            "source_requirement",
+            "matching_beats",
+        }:
+            raise ValueError(
+                "Each majority check must contain only source_requirement and "
+                "matching_beats."
+            )
+        requirement = check.get("source_requirement")
+        beats = check.get("matching_beats")
+        if not isinstance(requirement, str) or not requirement.strip():
+            raise ValueError("Majority source_requirement must be non-empty.")
+        if not isinstance(beats, list) or any(
+            isinstance(beat, bool) or not isinstance(beat, int) or beat <= 0
+            for beat in beats
+        ):
+            raise ValueError("Majority matching_beats must contain positive integers.")
+        if len(set(beats)) != len(beats):
+            raise ValueError("Majority matching_beats must not contain duplicates.")
+        if total_segments is not None and any(beat > int(total_segments) for beat in beats):
+            raise ValueError("Majority matching_beats contains an out-of-range beat.")
+        checks.append({
+            "source_requirement": " ".join(requirement.split()),
+            "matching_beats": sorted(beats),
+        })
+
+    if require_majority_checks and not checks:
+        raise ValueError(
+            "The source contains an explicit majority statement but the validator "
+            "returned no majority_checks evidence."
+        )
+
+    if require_majority_checks:
+        if (
+            isinstance(total_segments, bool)
+            or not isinstance(total_segments, int)
+            or total_segments <= 0
+        ):
+            raise ValueError(
+                "A positive total_segments value is required for majority checks."
+            )
+        for check in checks:
+            matched = len(check["matching_beats"])
+            if matched * 2 <= total_segments:
+                issues.append(
+                    "Explicit source majority is under-allocated: "
+                    f'{check["source_requirement"]} is materially represented in '
+                    f"{matched}/{total_segments} required-event beats; more than "
+                    "half is required."
+                )
+                break
+
+    return {
+        "valid": not issues,
+        "issues": issues,
+        "majority_checks": checks,
+    }
 
 def _typed_state_effect_json_schema():
     """Return the strict JSON schema exposed to the arc-planning model."""
@@ -11607,8 +11680,33 @@ def build_macro_arc_validation_response_format():
                         "type": "array",
                         "items": {"type": "string", "minLength": 1},
                     },
+                    "majority_checks": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "source_requirement": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                },
+                                "matching_beats": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                    },
+                                    "uniqueItems": True,
+                                },
+                            },
+                            "required": [
+                                "source_requirement",
+                                "matching_beats",
+                            ],
+                            "additionalProperties": False,
+                        },
+                    },
                 },
-                "required": ["valid", "issues"],
+                "required": ["valid", "issues", "majority_checks"],
                 "additionalProperties": False,
             },
         },
@@ -13469,6 +13567,10 @@ def generate_beats_from_story(
                 validation = parse_macro_arc_validation_result(
                     raw_validation,
                     llm_request=llm_request,
+                    total_segments=total_segments,
+                    require_majority_checks=bool(
+                        re.search(r"\\bmajority\\b", str(story or ""), re.IGNORECASE)
+                    ),
                 )
                 return (validation, True)
             except ValueError as error:
