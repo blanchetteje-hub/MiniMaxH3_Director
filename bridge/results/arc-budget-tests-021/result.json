@@ -1,0 +1,20 @@
+{
+  "job_id": "arc-budget-tests-021",
+  "kind": "run_tests",
+  "started_at": 1790040161.9857051,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_story_arc_structural_guarantees"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \n",
+    "stderr": ".........\n----------------------------------------------------------------------\nRan 9 tests in 0.002s\n\nOK\n",
+    "started_at": 1790040163.0099206,
+    "finished_at": 1790040163.8520868
+  },
+  "finished_at": 1790040163.8520868,
+  "status": "ok"
+}
