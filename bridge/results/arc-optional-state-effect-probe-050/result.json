@@ -1,0 +1,53 @@
+{
+  "job_id": "arc-optional-state-effect-probe-050",
+  "kind": "llama_chat",
+  "started_at": 1790047137.6660893,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one macro arc. Return JSON only: {\"valid\":boolean,\"issues\":[string]}."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nAmy is at home on a normal day, wearing a black tank top and denim jeans, cooking breakfast for her kids Will and Amber. Suddenly a zombie breaks the kitchen window.\n\nARC EVENT:\n{\"id\":\"E1\",\"event\":\"Amy cooks breakfast for Will and Amber.\",\"beat_number\":1,\"state_effects\":[{\"op\":\"set_condition\",\"entity\":\"Will\",\"value\":\"Hungry\"},{\"op\":\"set_condition\",\"entity\":\"Amber\",\"value\":\"Hungry\"}]}\n\nRULES:\n- state_effects are authoritative persistent modeled facts, not flavor.\n- Every emitted state_effect must be directly established by the source-required event itself or be logically necessary for that source event.\n- Do not infer persistent emotions, hunger, fatigue, reactions, personality, or other optional conditions merely because they are plausible.\n- If a state_effect adds an unsupported optional persistent fact, reject the arc and identify it.\n\nDoes E1's state_effects pass? Return JSON only."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 220,
+    "seed": 42
+  },
+  "response": {
+    "id": "chatcmpl-oy7yolleybf2fcmhetoyrx",
+    "object": "chat.completion",
+    "created": 1790047137,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issues\":[]}",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 224,
+      "completion_tokens": 10,
+      "total_tokens": 234,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790047138.8472524,
+  "status": "ok"
+}
