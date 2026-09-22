@@ -408,6 +408,24 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             "leaving at most 3 beats outside that sequence",
             repair_prompt,
         )
+        self.assertIn(
+            "phase ranges, beat assignments, and event grouping are implicated "
+            "and MAY change as needed",
+            repair_prompt,
+        )
+        self.assertIn(
+            "The emphasized sequence must begin by Beat 4 at the latest",
+            repair_prompt,
+        )
+        self.assertIn(
+            "the inciting action MAY share its beat with its immediate "
+            "reaction/escape/containment sequence",
+            repair_prompt,
+        )
+        self.assertIn(
+            "Retrieval and equipping of the same named equipment MAY share one beat",
+            repair_prompt,
+        )
 
     def test_arc_planner_prefers_clip_scale_handoffs_when_budget_allows(self):
         messages = minimax.build_beat_arc_plan_messages(
