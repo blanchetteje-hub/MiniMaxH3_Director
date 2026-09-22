@@ -469,3 +469,18 @@ Production/test fixes:
 - `6c29c79a70a9ddf0650107a8af238b8df01f2cc5` — regression coverage.
 
 No production behavior was changed merely to satisfy the obsolete continuity tests.
+
+
+## 2026-09-21 late-session: Director cannot claim completion while dropping named Subjects
+
+Acceptance `run-acceptance-amy-director-staging-034` exposed a Request 1 completion defect independent of its stale ARC: the final CURRENT BEAT explicitly required Amy to let **Will and Amber** out, but RAW SCENE stopped after Amy opened the basement door and still returned `beat_complete: true`.
+
+The Director previously trusted its own `beat_complete` flag plus timestamp/end-state structure. It had no deterministic check that registered Subjects explicitly named in CURRENT BEAT actually appeared in RAW SCENE.
+
+Focused fix:
+- `e52be531e07c6215ced7dbe6683fc87c1cda7299` — add deterministic `_missing_named_director_subjects(...)` helper.
+- `45ddc48e75021227d91e003d8b9a832c4ce257f8` — Request 1 completion now rejects/retries when RAW SCENE omits a registered Subject explicitly named in CURRENT BEAT.
+- `604b9e13d95beeb1b4d445df41a42761dffad49f` — thread the exact current beat text into normal and repair Director bundles.
+- `efa5192492cc7cfb95213a22f76726ecdfaf3175` — integration regression: a `beat_complete:true` scene that opens the door but omits Will/Amber must retry; the corrected scene includes them exiting.
+
+This remains a narrow deterministic identity/coverage guard. Python is not interpreting whether the action itself is semantically complete; Director Request 1 still owns that.
