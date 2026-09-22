@@ -235,6 +235,86 @@ class ContinuityCallContractTests(unittest.TestCase):
         )
 
 
+class LLMSamplingRoutingTests(unittest.TestCase):
+    @patch("minimax.generate_random_llm_seed", return_value=42)
+    @patch("minimax.requests.post")
+    def test_beat_generation_explicit_sampling_beats_formatter_defaults(
+        self,
+        post,
+        _random_seed,
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.raise_for_status = Mock()
+        response.json.return_value = {
+            "choices": [
+                {
+                    "message": {"content": "{\"ok\": true}"},
+                    "finish_reason": "stop",
+                }
+            ]
+        }
+        post.return_value = response
+
+        result = minimax.ask_llm(
+            [{"role": "user", "content": "test"}],
+            response_format=None,
+            history_metadata={"purpose": "beat_generation"},
+            **minimax.BEAT_LLM_SAMPLING_PARAMETERS,
+        )
+
+        self.assertEqual(result, {"ok": True})
+        request_json = post.call_args.kwargs["json"]
+        for name, value in minimax.BEAT_LLM_SAMPLING_PARAMETERS.items():
+            self.assertEqual(request_json[name], value)
+        self.assertEqual(
+            request_json["top_k"],
+            minimax._active_formatter_llm_settings()["top_k"],
+        )
+        self.assertEqual(
+            request_json["min_p"],
+            minimax._active_formatter_llm_settings()["min_p"],
+        )
+
+    @patch("minimax.generate_random_llm_seed", return_value=999)
+    @patch("minimax.requests.post")
+    def test_beat_validation_remains_pinned_to_benchmark_sampling(
+        self,
+        post,
+        _random_seed,
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.raise_for_status = Mock()
+        response.json.return_value = {
+            "choices": [
+                {
+                    "message": {"content": "{\"valid\": true, \"issue\": \"\"}"},
+                    "finish_reason": "stop",
+                }
+            ]
+        }
+        post.return_value = response
+
+        minimax.ask_llm(
+            [{"role": "user", "content": "validate"}],
+            response_format=None,
+            history_metadata={"purpose": "beat_validation"},
+            temperature=0.99,
+            repeat_penalty=0.5,
+        )
+
+        request_json = post.call_args.kwargs["json"]
+        self.assertEqual(
+            request_json["temperature"],
+            minimax.MISTRAL_24B_SETTINGS["temperature"],
+        )
+        self.assertEqual(
+            request_json["repeat_penalty"],
+            minimax.MISTRAL_24B_SETTINGS["repeat_penalty"],
+        )
+
+
 class DirectorPromptCallContractTests(unittest.TestCase):
     def test_director_allows_only_controlled_local_staging(self):
         rules = minimax.build_director_rules(
