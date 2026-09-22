@@ -1,0 +1,54 @@
+{
+  "job_id": "arc-majority-061-beat-evidence-terminal-probe-063",
+  "kind": "llama_chat",
+  "started_at": 1790050534.878213,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify which exact beat numbers materially belong to the source-emphasized majority sequence. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE EMPHASIS:\n\"The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\"\n\nARC BEATS:\n1. Amy cooks breakfast for her kids in the kitchen.\n2. A zombie breaks the kitchen door window.\n3. Amy rushes her kids to the basement and locks the door.\n4. Amy retrieves her hidden arsenal (pistol and katana).\n5. Amy equips her pistol and katana.\n6. Amy kills several zombies with her weapons.\n7. Amy continues to fight and kill more zombies.\n8. Amy kills the last zombie and lets her kids out of the basement.\n\nCLASSIFICATION RULE:\nJudge EACH beat independently. Return a beat when that beat itself materially belongs to the ALREADY-ACTIVE emphasized sequence.\n- Standalone setup, escape, retrieval, equipping, travel, or preparation BEFORE the emphasized process begins does NOT belong.\n- A beat containing a terminal emphasized action DOES belong even when it also contains immediate aftermath/resolution. Example: \"kills the last zombie and then reunites with the kids\" belongs because the emphasized process is still being completed in that beat.\n- Do not require every word/action in a qualifying beat to be part of the emphasized sequence; the beat must materially perform or continue the emphasized process.\n- Do not count a beat merely because it enables the process later.\nIgnore phase labels.\n\nReturn exactly {\"matching_beats\":[...]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8rji9hghj1i8sjbg7iza2",
+    "object": "chat.completion",
+    "created": 1790050534,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"matching_beats\": [\n    6,\n    7,\n    8\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 340,
+      "completion_tokens": 29,
+      "total_tokens": 369,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790050537.2751553,
+  "status": "ok"
+}
