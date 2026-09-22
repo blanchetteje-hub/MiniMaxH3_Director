@@ -801,6 +801,8 @@ LOCAL STAGING
 - Once you assign such a functional label, use that exact label consistently throughout RAW SCENE so Request 2 can expose it as a newly introduced Subject.
 - Prefer a clean local completion of an ordinary activity before NEXT BEAT when that gives the next segment a clear handoff.
 - Short invented dialogue is allowed only when it directly expresses or supports CURRENT BEAT. It must not introduce new facts or anticipate NEXT BEAT.
+- For dialogue spoken by an already registered Subject, use that Subject's exact speaker ID from SUBJECT DEFINITIONS and canonical H3 dialogue form, for example: `Amy (S1) says <d>[English]The eggs are ready.</d>`. Do NOT put spoken words in bare single/double quotation marks when a registered speaker ID is available.
+- If a newly assigned functional label speaks before it has a registered speaker ID, keep the stable label and wrap only the spoken words in `<d>[English]...</d>`; never invent an `(S#)` that is not established by SUBJECT DEFINITIONS.
 - Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
 - If CURRENT BEAT has multiple explicit story-level actions, execute all of them; local staging must never replace or crowd out an assigned action.
 - Be short and succint. Only write what would be necessary for visual and audio input, no taste or smell.
@@ -20086,7 +20088,7 @@ def _h3_contains_spoken_dialogue(detailed_description):
     if _DIALOGUE_BLOCK_PATTERN.search(text):
         return True
 
-    quote_pattern = r"(?:\"[^\"\r\n]+\"|“[^”\r\n]+”|‘[^’\r\n]+’)"
+    quote_pattern = r"(?:\"[^\"\r\n]+\"|'[^'\r\n]+'|“[^”\r\n]+”|‘[^’\r\n]+’)"
     speech_pattern = (
         r"(?i)\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
         r"tells?|exclaims?|narrates?|calls?(?:\s+out)?|cries?|murmurs?|"
