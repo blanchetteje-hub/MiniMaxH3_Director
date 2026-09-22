@@ -1,0 +1,20 @@
+{
+  "job_id": "run-tests-arc-majority-016",
+  "kind": "run_tests",
+  "started_at": 1790037782.3861496,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_story_arc_structural_guarantees"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \n",
+    "stderr": "........\n----------------------------------------------------------------------\nRan 8 tests in 0.001s\n\nOK\n",
+    "started_at": 1790037783.313371,
+    "finished_at": 1790037784.4661283
+  },
+  "finished_at": 1790037784.4661283,
+  "status": "ok"
+}
