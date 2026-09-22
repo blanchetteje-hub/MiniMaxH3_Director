@@ -10704,8 +10704,17 @@ PHASE BOUNDARY RULES
 - One phase is appropriate only when the story genuinely has one narrative
   purpose from beginning through ending. For a long multi-stage story, a
   one-phase arc should be unusual.
-- Phase sizes do not need to be similar. Give most beats to the stage containing
-  most of the required visible events.
+- Phase sizes do not need to be similar.
+- Explicit relative-duration or emphasis statements in the source are binding on
+  beat allocation. If the source says the majority of the film/story is a
+  process or conflict, more than half of the total beats must materially perform
+  or continue that process/conflict. Setup, preparation, and resolution beats do
+  not count unless that emphasized process materially occurs in the same beat.
+  Preserve explicit "most", "half", "briefly", and similar relative emphasis
+  according to their ordinary meaning. Bundle adjacent setup actions when needed
+  to preserve both source coverage and the stated emphasis.
+- Otherwise, give most beats to the stage containing most of the required visible
+  events.
 
 broad_progression is an abstract description of what happens DURING that phase.
 
@@ -10875,6 +10884,14 @@ Reject when:
 
 Required events:
 - There must be exactly one concrete required event/job for every global beat.
+- SOURCE EMPHASIS IS MANDATORY. Explicit relative-duration or emphasis statements
+  in the source are binding on beat allocation. If the source says the majority
+  of the film/story is X, more than half of all global beats must materially
+  perform or continue X. Beats that are only setup, preparation, or resolution
+  do not count toward X; a transition beat counts only when X materially occurs
+  in that beat. Preserve explicit "most", "half", "briefly", and similar
+  relative emphasis according to their ordinary meaning. Reject the arc when its
+  beat allocation violates an explicit source emphasis statement.
 - SOURCE COVERAGE IS MANDATORY. Walk through the SOURCE STORY in chronological
   order before judging the arc. Every explicit visible action or visible state
   that establishes a distinct point in the source timeline must be represented
