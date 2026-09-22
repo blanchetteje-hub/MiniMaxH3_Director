@@ -137,7 +137,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             require_majority_checks=True,
         )
         self.assertFalse(parsed["valid"])
-        self.assertIn("4/8 required-event beats", parsed["issues"][0])
+        self.assertIn("4/8 beats belong to the emphasized sequence", parsed["issues"][0])
 
         valid = copy.deepcopy(invalid)
         valid["majority_checks"][0]["matching_beats"] = [3, 4, 5, 6, 7]
@@ -172,23 +172,28 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             normalized,
         )
         self.assertIn(
-            "matching_beats must contain ONLY global beat numbers whose actual "
-            "required_event materially performs or continues the emphasized action",
+            "matching_beats must contain ONLY global beat numbers that materially "
+            "belong to the broad emphasized narrative sequence",
             normalized,
         )
 
-    def test_majority_story_gets_exact_create_and_repair_beat_budget(self):
+    def test_majority_story_gets_exact_sequence_budget(self):
         story = "The majority of the film is Amy killing zombies."
         create_messages = minimax.build_beat_arc_plan_messages(story, 8)
         create_prompt = " ".join(
             "\n".join(message["content"] for message in create_messages).split()
         )
         self.assertIn(
-            "strict majority requires at least 5 required_event beat jobs",
+            "strict majority requires at least 5 beats allocated to the broad "
+            "source-emphasized narrative sequence",
             create_prompt,
         )
         self.assertIn(
-            "leaves at most 3 beats that do not materially perform/continue it",
+            "At most 3 beats may sit outside the emphasized sequence",
+            create_prompt,
+        )
+        self.assertIn(
+            "do NOT each need to literally repeat the emphasized verb",
             create_prompt,
         )
 
@@ -203,10 +208,14 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             "\n".join(message["content"] for message in repair_messages).split()
         )
         self.assertIn(
-            "majority requires at least 5 required_event beat jobs",
+            "majority requires at least 5 beats allocated to the broad emphasized "
+            "narrative sequence",
             repair_prompt,
         )
-        self.assertIn("leaving at most 3 non-emphasis beats", repair_prompt)
+        self.assertIn(
+            "leaving at most 3 beats outside that sequence",
+            repair_prompt,
+        )
 
     def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
         invalid = copy.deepcopy(self.events)
