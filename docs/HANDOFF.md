@@ -659,3 +659,8 @@ its Phase-1 end state claimed weapon retrieval too early, and its Beat-2/Beat-3
 boundary does not match the locked gold's safe-room handoff. Do not patch that
 until 113 establishes that Segment 1 has moved.
 
+`arc-end-state-simple-probe-114` is also queued behind 113. It isolates the
+Acceptance-109 Phase-1 end-state defect with only three simple validation rules.
+Use its result to decide whether ARC validation should receive the same 24B prompt
+simplification treatment after Segment 1 is cleared.
+
