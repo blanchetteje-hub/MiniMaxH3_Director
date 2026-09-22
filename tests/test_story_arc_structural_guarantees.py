@@ -430,7 +430,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             repair_prompt,
         )
         self.assertIn(
-            "the inciting action MAY share its beat with its immediate "
+            "The inciting action MAY share its beat with its immediate "
             "reaction/escape/containment sequence",
             repair_prompt,
         )
