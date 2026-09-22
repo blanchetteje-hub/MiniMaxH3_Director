@@ -10783,7 +10783,11 @@ def build_beat_arc_plan_messages(
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
     phrase_exclusions_text = format_phrase_exclusions_section(phrase_exclusions)
     majority_budget_text = ""
-    if re.search(r"\bmajority\b", str(story or ""), re.IGNORECASE):
+    has_majority_issue = any(
+        re.search(r"\bmajority\b", str(issue or ""), re.IGNORECASE)
+        for issue in (issues or [])
+    )
+    if has_majority_issue:
         minimum_sequence_beats = int(total_segments) // 2 + 1
         maximum_outside_beats = int(total_segments) - minimum_sequence_beats
         majority_budget_text = (
