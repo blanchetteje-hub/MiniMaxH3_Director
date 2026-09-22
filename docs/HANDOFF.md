@@ -247,60 +247,55 @@ This is intentionally not a remote-shell bridge. Supported job kinds are constra
 
 ## Current acceptance finding
 
-The original missing-breakfast ARC failure is fixed. Acceptance `run-acceptance-amy-current-061` exposed that the first focused majority implementation was still too coarse.
+The current earliest boundary is still ARC emphasis allocation, but a wiring defect that invalidated the last acceptance has now been fixed.
 
-### Acceptance 061: whole-phase evidence was insufficient
+### Acceptance 065: focused majority validator was bypassed
 
-The accepted 061 ARC was:
+Acceptance `run-acceptance-amy-current-065` still accepted an ARC with only 3 materially emphasized zombie-conflict beats. Inspection showed the per-beat majority validator did **not run at all**.
 
-- Beats 1-2: breakfast / zombie breach
-- Beats 3-4: kids to basement / retrieve weapons
-- Beat 5: equip weapons
-- Beats 6-8: zombie conflict, with Beat 8 also containing immediate resolution
+Root cause: the gate inside `generate_beats_from_story()` used:
 
-The source explicitly says the **majority** of the film is Amy killing zombies, but only Beats 6-8 materially belonged to that sequence: **3/8**.
+`re.search(r"\\bmajority\\b", str(story or ""), re.IGNORECASE)`
 
-The first focused majority validator classified whole phases. Because Beat 5 (pre-conflict equipping) shared Phase 3 with combat, Mistral incorrectly returned the entire Phase 3 as qualifying. Python then counted 4/8 based on the bad semantic evidence. Whole-phase semantic classification is therefore retired for majority counting.
+That regex searches for literal backslashes around `majority`, so `has_majority` was false for the real source sentence. The focused evidence request was therefore skipped even though the source contains the word `majority`.
 
-### Current majority design: exact beat evidence inside ARC VALIDATE
+Production fix `a427d0b3440cef0de13df5f5045b3000fbdc2be0` changes that exact gate to:
 
-Production commit `52bc9dfe191bd2bada77336b27ae3e3716266213` changes the focused semantic judgment from whole-phase evidence to exact beat evidence:
+`re.search(r"\bmajority\b", str(story or ""), re.IGNORECASE)`
+
+The two other majority regex uses were already correct.
+
+`current-regressions-066`: **PASS, 103/103 tests green** after the wiring fix.
+
+### Majority design still in force
+
+Production commit `52bc9dfe191bd2bada77336b27ae3e3716266213` uses exact per-beat semantic evidence inside ARC VALIDATE:
 
 - Mistral sees the source plus every ARC required_event keyed by its Python-owned beat number.
 - It classifies each beat independently as belonging or not belonging to the already-active emphasized sequence.
-- Standalone setup, escape, retrieval, equipping, travel, or preparation **before** the emphasized process begins does not count.
-- A terminal emphasized action still counts when the same beat also contains immediate aftermath/resolution.
+- Standalone setup, escape, retrieval, equipping, travel, or preparation before the emphasized process begins does not count.
+- A terminal emphasized action counts even when the same beat also contains immediate aftermath/resolution.
 - Attacks, counterattacks, reversals, setbacks, weapon transitions after the process begins, continued action, and terminal results may count when they materially continue the emphasized sequence.
-- Python only validates the returned beat numbers and counts them. More than half of total beats is required.
-- If under-allocated, normal ARC REPAIR runs. This remains inside the ARC CREATE -> VALIDATE -> REPAIR loop; there is no new planning/enrichment subsystem.
+- Python validates the returned beat numbers and deterministically enforces the strict-majority threshold.
+- Under-allocation returns through the normal ARC REPAIR path. This remains ARC CREATE -> VALIDATE -> REPAIR, not a separate planning/enrichment pipeline.
 
-Direct probes against the exact 061 ARC:
-
-- `arc-majority-061-beat-evidence-probe-062`: correctly rejected preparation but was too conservative and returned [6, 7], omitting the terminal mixed Beat 8.
-- `arc-majority-061-beat-evidence-terminal-probe-063`: after explicitly defining terminal-action handling, returned **[6, 7, 8]**, which is the desired semantic classification for the bad ARC.
-
-Regression contract `df73bab734c7c2ed065c0d037e2d334403f54198` covers both under-allocation (3/8 rejects) and strict-majority allocation (5/8 accepts).
-
-`current-regressions-064`: **PASS, 103/103 tests green**.
+Direct terminal-aware probe `arc-majority-061-beat-evidence-terminal-probe-063` returned **[6, 7, 8]** for the bad 061-shaped ARC, correctly identifying only 3/8 materially emphasized beats.
 
 ### Verification now in progress
 
-- `run-acceptance-amy-current-065`: queued/running against the per-beat majority implementation.
-- First check: the accepted ARC must contain at least 5/8 beats that the focused per-beat validator classifies as materially inside the emphasized zombie-conflict sequence.
-- If that holds, re-evaluate from Segment 1 and identify the next earliest behavioral divergence.
+- `run-acceptance-amy-current-067`: queued/running after the regex wiring fix.
+- First check: confirm the runtime log contains the focused `macro_arc_majority_validate` path and that an under-allocated initial ARC is rejected/repaired rather than accepted.
+- Second check: the final accepted ARC must have at least 5/8 beats classified as materially belonging to the source-emphasized zombie-conflict sequence.
+- If that holds, evaluate the generated prompts from Segment 1 onward and fix the next earliest behavioral divergence only.
 
-### Other known semantic probes
+### Other observed but non-current semantic weaknesses
 
-Two direct Mistral weaknesses remain observed but are not currently the earliest acceptance boundary:
+- `arc-optional-state-effect-strong-probe-053`: Mistral accepted unsupported Hungry state inferred from cooking.
+- `beat-lock-omission-current-probe-055` / `056`: Mistral accepted rushing children into the basement as completing a job that also required locking the door.
 
-- `arc-optional-state-effect-strong-probe-053`: even with explicit instructions, Mistral accepted an unsupported inferred Hungry state from cooking.
-- `beat-lock-omission-current-probe-055` and `beat-lock-omission-strong-probe-056`: Mistral accepted rushing the children into the basement as completing a job that also required locking the door.
+Do not create separate semantic subsystems just for these probes. Work them only when end-to-end acceptance makes one the earliest real failure.
 
-Do not add separate semantic subsystems merely to address these probes. Work them when end-to-end acceptance evidence makes one the earliest failure.
-
-### Downstream note from 061
-
-Segment 1 improved substantially compared with 058: Request 1 visibly turned off the stove, served breakfast to both children, and completed the ordinary domestic scene. So the earlier thin-breakfast concern is no longer the obvious first downstream failure.
+The obsolete helper artifact `patches/fix_majority_gate_regex.patch` may remain in history; its change is now applied directly to production `minimax.py`.
 
 Always re-read the current `gpt-test-branch` head, this handoff, and newest `gpt-runtime` results before acting.
 
