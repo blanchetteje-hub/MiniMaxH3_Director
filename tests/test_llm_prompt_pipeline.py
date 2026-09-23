@@ -276,6 +276,47 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             minimax._active_formatter_llm_settings()["min_p"],
         )
 
+    @patch("minimax.generate_random_llm_seed", return_value=42)
+    @patch("minimax.requests.post")
+    def test_ask_llm_clamps_completion_to_local_context(self, post, _random_seed):
+        response = Mock()
+        response.status_code = 200
+        response.raise_for_status = Mock()
+        response.json.return_value = {
+            "choices": [
+                {
+                    "message": {"content": "{\"ok\": true}"},
+                    "finish_reason": "stop",
+                }
+            ]
+        }
+        post.return_value = response
+
+        messages = [{"role": "user", "content": "short request"}]
+        minimax.ask_llm(messages, response_format=None, max_tokens=8000)
+
+        request_json = post.call_args.kwargs["json"]
+        expected_available = (
+            minimax.LLM_CONTEXT_TOKEN_BUDGET
+            - minimax.LLM_CONTEXT_SAFETY_TOKENS
+            - minimax.estimate_message_tokens(messages)
+        )
+        self.assertEqual(request_json["max_tokens"], expected_available)
+        self.assertLess(request_json["max_tokens"], 8000)
+
+    @patch("minimax.requests.post")
+    def test_ask_llm_rejects_input_that_leaves_no_completion_room(self, post):
+        oversized = "x" * (
+            minimax.LLM_CONTEXT_TOKEN_BUDGET
+            * int(minimax.CHARS_PER_TOKEN_ESTIMATE + 1)
+        )
+        with self.assertRaisesRegex(RuntimeError, "Simplify the stage prompt"):
+            minimax.ask_llm(
+                [{"role": "user", "content": oversized}],
+                response_format=None,
+            )
+        post.assert_not_called()
+
     @patch("minimax.generate_random_llm_seed", return_value=999)
     @patch("minimax.requests.post")
     def test_beat_validation_remains_pinned_to_benchmark_sampling(
