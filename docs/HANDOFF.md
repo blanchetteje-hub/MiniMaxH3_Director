@@ -1196,6 +1196,14 @@ Production correction applied:
 
 This preserves ARC CREATE -> VALIDATE -> REPAIR and adds no semantic layer.
 
-Next evidence boundary: run focused regressions, then a fresh planning-only locked
-Amy acceptance. Do not implement the safe-room/front-handoff repair unless that
-run proves it is the earliest remaining failure.
+Verification:
+- `run-tests-arc-source-fidelity-152`: **PASS, 82/82 tests green**.
+
+Current evidence boundary:
+- `run-acceptance-amy-flat-arc-planning-153` is queued behind the passing
+  regressions.
+- Inspect ARC VALIDATE first. If the broad source-fidelity check passes, follow
+  the production path forward and fix only the next earliest demonstrated
+  failure.
+- Do not implement the safe-room/front-handoff repair unless acceptance 153
+  proves it is the earliest remaining failure.
