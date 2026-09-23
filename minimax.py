@@ -7714,6 +7714,7 @@ def ask_llm(
         "macro_arc_create",
         "macro_arc_validate",
         "macro_arc_repair",
+        "macro_arc_majority_tail_repair",
         "beat_generation",
         "beat_instruction_review",
         "beat_validation",
@@ -14167,6 +14168,68 @@ def generate_beats_from_story(
                     "Macro arc validation: INVALID — " + " ".join(map(str, issues)),
                     flush=True,
                 )
+
+                # When focused majority evidence proves that only the final
+                # resolution beat falls outside an otherwise correctly sized
+                # contiguous majority span, repair only the final two ARC jobs.
+                # This remains the existing ARC REPAIR step; it simply avoids
+                # asking the 24B model to rewrite an already-valid prefix.
+                tail_spec = _macro_arc_majority_tail_repair_spec(
+                    validation,
+                    total_segments,
+                )
+                if tail_spec is not None:
+                    try:
+                        expected_tail = [
+                            _macro_arc_event_for_beat(
+                                current_arc,
+                                beat_number,
+                            )
+                            for beat_number in tail_spec["tail_beats"]
+                        ]
+                        tail_raw = llm_request(
+                            build_macro_arc_majority_tail_repair_messages(
+                                current_arc,
+                                tail_spec,
+                                total_segments,
+                                subject_information=subject_information,
+                            ),
+                            response_format=(
+                                build_macro_arc_majority_tail_repair_response_format(
+                                    total_segments
+                                )
+                            ),
+                            history_metadata={
+                                **(history_metadata or {}),
+                                "purpose": "macro_arc_majority_tail_repair",
+                                "attempt": validation_round,
+                                "total_segments": total_segments,
+                            },
+                            max_tokens=1000,
+                            **ARC_LLM_SAMPLING_PARAMETERS,
+                        )
+                        replacements = parse_macro_arc_majority_tail_repair_result(
+                            tail_raw,
+                            expected_tail,
+                            llm_request=llm_request,
+                        )
+                        current_arc = apply_macro_arc_event_replacements(
+                            current_arc,
+                            replacements,
+                            total_segments,
+                        )
+                        print(
+                            "Applied focused ARC majority tail repair.",
+                            flush=True,
+                        )
+                        continue
+                    except Exception as error:
+                        print(
+                            "Focused ARC majority tail repair failed; falling back "
+                            f"to complete ARC repair: {error}",
+                            flush=True,
+                        )
+
                 repaired = None
                 repair_error = None
                 for repair_round in range(1, BEAT_RETRY_ATTEMPTS + 1):
