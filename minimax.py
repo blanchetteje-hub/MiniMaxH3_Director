@@ -10792,14 +10792,18 @@ def _run_forward_beat_validation(
 
 # Format the subject names used in the macro-arc prompts.
 def _format_beat_arc_subject_names(subject_information):
+    """Return compact Subject-ID-to-name aliases for ARC/Beat semantic prompts."""
     subject_names = []
     for subject_line in str(subject_information or "").splitlines():
-        subject_name, separator, _ = subject_line.strip().lstrip("- ").partition(
-            " is "
-        )
-        if separator and subject_name:
-            subject_names.append(subject_name)
-    return ", ".join(subject_names)
+        cleaned = subject_line.strip().lstrip("- ")
+        subject_id, separator, details = cleaned.partition(" is ")
+        if not separator or not subject_id:
+            continue
+        name = re.split(r"[,.;(]", details, maxsplit=1)[0].strip()
+        compact = f"{subject_id} = {name}" if name else subject_id
+        if compact not in subject_names:
+            subject_names.append(compact)
+    return "; ".join(subject_names)
 
 
 def _seed_known_beat_characters(state, macro_arc=None, subject_information=""):
@@ -10972,17 +10976,20 @@ def build_macro_arc_validation_messages(
 ):
     """Build the small 24B ARC semantic validation prompt."""
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
-    compact_arc = {
-        "phases": [
-            {
-                key: value
-                for key, value in phase.items()
-                if key != "required_end_state"
-            }
-            for phase in (macro_arc or {}).get("phases", [])
-            if isinstance(phase, dict)
-        ]
-    }
+    validation_events = []
+    for phase in (macro_arc or {}).get("phases", []):
+        if not isinstance(phase, dict):
+            continue
+        for event in phase.get("required_events", []):
+            if isinstance(event, dict):
+                validation_events.append(copy.deepcopy(event))
+    validation_events.sort(
+        key=lambda event: (
+            event.get("beat_number") is None,
+            event.get("beat_number") if event.get("beat_number") is not None else 0,
+        )
+    )
+    compact_arc = {"events": validation_events}
     return [
         {
             "role": "system",
@@ -11009,16 +11016,27 @@ PROPOSED ARC
 Rules:
 - SOURCE COVERAGE FIRST: every explicit visible source action/state must appear
   in required_events in the same order. Calm/mundane setup still counts.
+- DEFINED SUBJECTS establish identity aliases. Relational wording such as
+  "Amy's kids" may refer to named defined Subjects without repeating their
+  names in every event.
 - Preserve an explicit ordinary baseline as its own beat before a sudden
   inciting threat/change when the beat budget permits.
 - Reject unsupported major plot events, characters, locations, outcomes, or
   contradictions.
 - Adjacent source actions may share one required_event when needed; do not join
   distant story stages or drop a source action.
+- When the source explicitly describes an extended or repeated process, such
+  as a sequence occupying the majority of the story, multiple beats may
+  continue that same source-authorized process. Do not reject those
+  continuations merely because the source states the repeated process once.
+  Reject only a new major plot, character, location, mechanism, or outcome not
+  authorized by the source.
 - A defined human Subject must have concrete clothing when first shown.
 - state_effects must describe only persistent facts directly established by the
   owning event. Reject inferred/temporary conditions and wrong typed operations.
   Clothing must use set_clothing, never set_condition.
+- Judge only required_events and state_effects in PROPOSED ARC. Python-owned
+  phase bookkeeping is intentionally not part of semantic validation.
 - Do NOT judge majority/relative-duration allocation in this broad validation
   call. A separate focused check inside ARC VALIDATE owns that one semantic
   judgment and Python owns the numeric count. Return majority_checks as [] here.
