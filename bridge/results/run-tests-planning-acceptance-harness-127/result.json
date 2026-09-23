@@ -1,0 +1,21 @@
+{
+  "job_id": "run-tests-planning-acceptance-harness-127",
+  "kind": "run_tests",
+  "started_at": 1790129486.049718,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_acceptance_runner",
+      "tests.test_story_arc_structural_guarantees"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \n",
+    "stderr": ".......................\n----------------------------------------------------------------------\nRan 23 tests in 0.013s\n\nOK\n",
+    "started_at": 1790129486.77999,
+    "finished_at": 1790129487.3767083
+  },
+  "finished_at": 1790129487.3767083,
+  "status": "ok"
+}
