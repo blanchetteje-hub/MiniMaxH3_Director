@@ -171,6 +171,42 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("multiple beats may continue", normalized)
         self.assertIn("phase bookkeeping is intentionally not part", normalized)
 
+    def test_arc_validator_is_narrow_source_fidelity_check(self):
+        story = (
+            "Amy cooks breakfast for her kids. She retrieves a pistol and katana "
+            "and equips the weapons."
+        )
+        arc = make_arc([(1, 3, self.events)])
+        messages = minimax.build_macro_arc_validation_messages(story, arc)
+        system_prompt = " ".join(messages[0]["content"].split())
+        user_prompt = " ".join(messages[1]["content"].split())
+
+        self.assertIn(
+            "covers the explicit source actions/states without source-order contradiction",
+            system_prompt,
+        )
+        self.assertIn(
+            "Do not critique pacing, bundling, detail level, style, or beat allocation",
+            system_prompt,
+        )
+        self.assertIn(
+            "Do not require clothing, appearance, names, or other descriptive facts "
+            "that the source does not provide",
+            user_prompt,
+        )
+        self.assertIn(
+            "Adjacent sequential source actions may share one required_event",
+            user_prompt,
+        )
+        self.assertIn(
+            "not an error when their source order is preserved inside the event",
+            user_prompt,
+        )
+        self.assertNotIn(
+            "A defined human Subject must have concrete clothing when first shown",
+            user_prompt,
+        )
+
     def test_arc_prompts_keep_clothing_out_of_set_condition(self):
         story = "Amy wears a black tank top and cooks breakfast."
         arc = make_arc([(1, 3, self.events)])
