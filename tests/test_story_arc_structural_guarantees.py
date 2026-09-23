@@ -66,8 +66,12 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             minimax.parse_beat_arc_plan(arc, 3)
 
     def test_flat_arc_parser_makes_phase_bookkeeping_python_owned(self):
+        flat_events = [
+            {**copy.deepcopy(event), "state_effects": []}
+            for event in self.events
+        ]
         parsed = minimax.parse_flat_arc_plan(
-            {"events": copy.deepcopy(self.events)},
+            {"events": flat_events},
             3,
         )
         self.assertEqual(len(parsed["phases"]), 3)
@@ -87,13 +91,35 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         )
 
     def test_flat_arc_parser_rejects_duplicate_or_missing_beat_jobs(self):
-        duplicate = copy.deepcopy(self.events)
+        duplicate = [
+            {**copy.deepcopy(event), "state_effects": []}
+            for event in self.events
+        ]
         duplicate[2]["beat_number"] = 2
         with self.assertRaisesRegex(
             ValueError,
             "duplicate required-event assignments",
         ):
             minimax.parse_flat_arc_plan({"events": duplicate}, 3)
+
+    def test_fresh_flat_arc_requires_explicit_state_effect_arrays(self):
+        missing = [
+            {**copy.deepcopy(event), "state_effects": []}
+            for event in self.events
+        ]
+        missing[1].pop("state_effects")
+        with self.assertRaisesRegex(
+            ValueError,
+            "must include state_effects",
+        ):
+            minimax.parse_flat_arc_plan({"events": missing}, 3)
+
+        schema = minimax.build_flat_arc_response_format(3)
+        required = (
+            schema["json_schema"]["schema"]["properties"]["events"]
+            ["items"]["required"]
+        )
+        self.assertIn("state_effects", required)
 
     def test_arc_create_and_repair_keep_phase_arithmetic_out_of_the_llm(self):
         story = "Amy cooks breakfast. Then Amy opens the door."
@@ -290,6 +316,11 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             self.assertIn("set_condition", prompt)
             self.assertRegex(prompt, r"temporary|inferred")
             self.assertIn("set_clothing", prompt)
+        self.assertIn("CHECK PERSISTENT STATE COVERAGE", validate_prompt)
+        self.assertIn("persistent change or result", validate_prompt)
+        self.assertIn("held/equipped objects", validate_prompt)
+        self.assertIn("terminal threats", validate_prompt)
+        self.assertIn("Temporary actions", validate_prompt)
 
     def test_majority_evidence_is_counted_deterministically(self):
         invalid_arc = {
