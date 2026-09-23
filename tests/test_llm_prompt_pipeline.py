@@ -751,6 +751,14 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "participating in the completed result when reasonable",
             normalized,
         )
+        response_format = minimax.build_beats_response_format(1, beat_start=1)
+        beat_text_description = (
+            response_format["json_schema"]["schema"]["properties"]["beats"]
+            ["items"]["properties"]["beat_text"]["description"]
+        )
+        self.assertIn("activity itself", beat_text_description)
+        self.assertIn("visible completion endpoint", beat_text_description)
+        self.assertIn("same sentence", beat_text_description)
         self.assertNotIn("CURRENT PHASE", normalized)
         self.assertNotIn("NEXT PHASE", normalized)
 
