@@ -1,0 +1,201 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_zombie_house",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_zombie_house.json",
+  "benchmark_sha256": "1ca25dc3598d1541117e0cb0ea9b147d73fc8abd3f3580e6da12674757bc9491",
+  "repository_revision": "8f75f42a99f51dfd09eb774229645fe8f95a56cf",
+  "created_at_utc": "2026-09-23T23:10:06Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "--generate-beats",
+    "8",
+    "--model",
+    "qwen"
+  ],
+  "exit_code": 0,
+  "capture_status": {
+    "complete": true,
+    "mode": "planning_only",
+    "expected_segments": 0,
+    "captured_segments": [],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 1,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.",
+        "required_events": [
+          {
+            "id": "evt_1",
+            "event": "Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.",
+            "beat_number": 1
+          }
+        ]
+      },
+      {
+        "phase_number": 2,
+        "beat_start": 2,
+        "beat_end": 2,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "A zombie breaks the kitchen door window; Amy sees the danger, rushes her kids to the basement, gets them inside, and locks the door.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "A zombie breaks the kitchen door window; Amy sees the danger, rushes her kids to the basement, gets them inside, and locks the door.",
+        "required_events": [
+          {
+            "id": "evt_2",
+            "event": "A zombie breaks the kitchen door window; Amy sees the danger, rushes her kids to the basement, gets them inside, and locks the door.",
+            "beat_number": 2,
+            "depends_on": [
+              "evt_1"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 3,
+        "beat_start": 3,
+        "beat_end": 3,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy retrieves her hidden arsenal consisting of a pistol and a katana and equips the weapons.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy retrieves her hidden arsenal consisting of a pistol and a katana and equips the weapons.",
+        "required_events": [
+          {
+            "id": "evt_3",
+            "event": "Amy retrieves her hidden arsenal consisting of a pistol and a katana and equips the weapons.",
+            "beat_number": 3,
+            "depends_on": [
+              "evt_2"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 4,
+        "beat_start": 4,
+        "beat_end": 4,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy kills zombies as they try to attack her.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy kills zombies as they try to attack her.",
+        "required_events": [
+          {
+            "id": "evt_4",
+            "event": "Amy kills zombies as they try to attack her.",
+            "beat_number": 4,
+            "depends_on": [
+              "evt_3"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 5,
+        "beat_start": 5,
+        "beat_end": 5,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy kills more zombies as they try to attack her.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy kills more zombies as they try to attack her.",
+        "required_events": [
+          {
+            "id": "evt_5",
+            "event": "Amy kills more zombies as they try to attack her.",
+            "beat_number": 5,
+            "depends_on": [
+              "evt_4"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 6,
+        "beat_start": 6,
+        "beat_end": 6,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy kills more zombies as they try to attack her.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy kills more zombies as they try to attack her.",
+        "required_events": [
+          {
+            "id": "evt_6",
+            "event": "Amy kills more zombies as they try to attack her.",
+            "beat_number": 6,
+            "depends_on": [
+              "evt_5"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 7,
+        "beat_start": 7,
+        "beat_end": 7,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy kills more zombies as they try to attack her.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy kills more zombies as they try to attack her.",
+        "required_events": [
+          {
+            "id": "evt_7",
+            "event": "Amy kills more zombies as they try to attack her.",
+            "beat_number": 7,
+            "depends_on": [
+              "evt_6"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 8,
+        "beat_start": 8,
+        "beat_end": 8,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.",
+        "required_events": [
+          {
+            "id": "evt_8",
+            "event": "Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.",
+            "beat_number": 8,
+            "depends_on": [
+              "evt_7"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "generated_beats_text": "# Phase 1\n1. Amy is at home on a normal day in a tight black tank top and denim jeans, preparing breakfast for her young kids.\n# Phase 2\n2. A zombie smashes through the kitchen door's window; Amy grabs her kids Will and Amber, rushes them down to the basement, shoves them inside, and slams the door shut.\n# Phase 3\n3. Amy pulls out the hidden pistol and katana from their storage spot and slings both weapons across her body.\n# Phase 4\n4. Zombies lunge at Amy and she shoots several with the pistol before drawing back to slash more down with the katana.\n# Phase 5\n5. More zombies surge toward Amy and she shoots several down before slashing others apart with the katana.\n# Phase 6\n6. Zombies lunge at Amy from multiple directions and she fires her pistol to drop them before cutting down the remaining ones with the katana.\n# Phase 7\n7. Zombies charge at Amy and she shoots several of them with her pistol before slashing others with the katana.\n# Phase 8\n8. Amy slashes down the remaining zombies with her katana, leaving the house drenched in blood, then unlocks the basement door and leads Will and Amber out.\n",
+  "segments": [],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "beats.txt": "generated\\beats.txt",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}

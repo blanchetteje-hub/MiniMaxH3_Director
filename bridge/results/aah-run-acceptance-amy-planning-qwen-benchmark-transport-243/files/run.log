@@ -1,0 +1,68 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LM Studio to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-3dcen4s5\repo\beats.txt with 8 creative story beats.
+
+=== Macro arc generation attempt 1/10 ===
+Requesting macro arc (attempt 1, response attempt 1/10).
+{'events': [{'id': 'evt_1', 'event': 'Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.', 'beat_number': 1, 'depends_on': []}, {'id': 'evt_2', 'event': 'A zombie breaks the kitchen door window; Amy sees the danger, rushes her kids to the basement, gets them inside, and locks the door.', 'beat_number': 2, 'depends_on': ['evt_1']}, {'id': 'evt_3', 'event': 'Amy retrieves her hidden arsenal consisting of a pistol and a katana and equips the weapons.', 'beat_number': 3, 'depends_on': ['evt_2']}, {'id': 'evt_4', 'event': 'Amy kills zombies as they try to attack her.', 'beat_number': 4, 'depends_on': ['evt_3']}, {'id': 'evt_5', 'event': 'Amy kills more zombies as they try to attack her.', 'beat_number': 5, 'depends_on': ['evt_4']}, {'id': 'evt_6', 'event': 'Amy kills more zombies as they try to attack her.', 'beat_number': 6, 'depends_on': ['evt_5']}, {'id': 'evt_7', 'event': 'Amy kills more zombies as they try to attack her.', 'beat_number': 7, 'depends_on': ['evt_6']}, {'id': 'evt_8', 'event': 'Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.', 'beat_number': 8, 'depends_on': ['evt_7']}]}
+Validating macro arc (attempt 1, response attempt 1/10).
+Macro arc validation: VALID
+Saved validated story arc to C:\Users\J\AppData\Local\Temp\minimax-acceptance-3dcen4s5\repo\story_arc.json.
+Generating macro phase 1 (1 beats, global beats 1-1 of 8).
+Requesting beats for phase 1 (attempt 1/10).
+Accepted macro phase 1; collected 1/8 beats.
+Generating macro phase 2 (1 beats, global beats 2-2 of 8).
+Requesting beats for phase 2 (attempt 1/10).
+Accepted macro phase 2; collected 2/8 beats.
+Generating macro phase 3 (1 beats, global beats 3-3 of 8).
+Requesting beats for phase 3 (attempt 1/10).
+Accepted macro phase 3; collected 3/8 beats.
+Generating macro phase 4 (1 beats, global beats 4-4 of 8).
+Requesting beats for phase 4 (attempt 1/10).
+Accepted macro phase 4; collected 4/8 beats.
+Generating macro phase 5 (1 beats, global beats 5-5 of 8).
+Requesting beats for phase 5 (attempt 1/10).
+Accepted macro phase 5; collected 5/8 beats.
+Generating macro phase 6 (1 beats, global beats 6-6 of 8).
+Requesting beats for phase 6 (attempt 1/10).
+Accepted macro phase 6; collected 6/8 beats.
+Generating macro phase 7 (1 beats, global beats 7-7 of 8).
+Requesting beats for phase 7 (attempt 1/10).
+Accepted macro phase 7; collected 7/8 beats.
+Generating macro phase 8 (1 beats, global beats 8-8 of 8).
+Requesting beats for phase 8 (attempt 1/10).
+Accepted macro phase 8; collected 8/8 beats.
+Beat 1 jobs: current=evt_1 - Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.; next=evt_2 - A zombie breaks the kitchen door window; Amy sees the danger, rushes her kids to the basement, gets them inside, and locks the door.; completed before=none; pending before=evt_1, evt_2, evt_3, evt_4, evt_5, evt_6, evt_7, evt_8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Beat 1 accepted and finalized; committed required events: evt_1; completed after=evt_1
+Beat 2 jobs: current=evt_2 - A zombie breaks the kitchen door window; Amy sees the danger, rushes her kids to the basement, gets them inside, and locks the door.; next=evt_3 - Amy retrieves her hidden arsenal consisting of a pistol and a katana and equips the weapons.; completed before=evt_1; pending before=evt_2, evt_3, evt_4, evt_5, evt_6, evt_7, evt_8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Beat 2 accepted and finalized; committed required events: evt_2; completed after=evt_1, evt_2
+Beat 3 jobs: current=evt_3 - Amy retrieves her hidden arsenal consisting of a pistol and a katana and equips the weapons.; next=evt_4 - Amy kills zombies as they try to attack her.; completed before=evt_1, evt_2; pending before=evt_3, evt_4, evt_5, evt_6, evt_7, evt_8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: VALID; issue: none
+Beat 3 accepted and finalized; committed required events: evt_3; completed after=evt_1, evt_2, evt_3
+Beat 4 jobs: current=evt_4 - Amy kills zombies as they try to attack her.; next=evt_5 - Amy kills more zombies as they try to attack her.; completed before=evt_1, evt_2, evt_3; pending before=evt_4, evt_5, evt_6, evt_7, evt_8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: VALID; issue: none
+Beat 4 accepted and finalized; committed required events: evt_4; completed after=evt_1, evt_2, evt_3, evt_4
+Beat 5 jobs: current=evt_5 - Amy kills more zombies as they try to attack her.; next=evt_6 - Amy kills more zombies as they try to attack her.; completed before=evt_1, evt_2, evt_3, evt_4; pending before=evt_5, evt_6, evt_7, evt_8
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+Beat 5 validation attempt 1/10: VALID; issue: none
+Beat 5 accepted and finalized; committed required events: evt_5; completed after=evt_1, evt_2, evt_3, evt_4, evt_5
+Beat 6 jobs: current=evt_6 - Amy kills more zombies as they try to attack her.; next=evt_7 - Amy kills more zombies as they try to attack her.; completed before=evt_1, evt_2, evt_3, evt_4, evt_5; pending before=evt_6, evt_7, evt_8
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+Beat 6 validation attempt 1/10: VALID; issue: none
+Beat 6 accepted and finalized; committed required events: evt_6; completed after=evt_1, evt_2, evt_3, evt_4, evt_5, evt_6
+Beat 7 jobs: current=evt_7 - Amy kills more zombies as they try to attack her.; next=evt_8 - Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.; completed before=evt_1, evt_2, evt_3, evt_4, evt_5, evt_6; pending before=evt_7, evt_8
+Validating Beat 7 (attempt 1/10) with the single beat validator.
+Beat 7 validation attempt 1/10: VALID; issue: none
+Beat 7 accepted and finalized; committed required events: evt_7; completed after=evt_1, evt_2, evt_3, evt_4, evt_5, evt_6, evt_7
+Beat 8 jobs: current=evt_8 - Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.; next=none; completed before=evt_1, evt_2, evt_3, evt_4, evt_5, evt_6, evt_7; pending before=evt_8
+Validating Beat 8 (attempt 1/10) with the single beat validator.
+Beat 8 validation attempt 1/10: VALID; issue: none
+Beat 8 accepted and finalized; committed required events: evt_8; completed after=evt_1, evt_2, evt_3, evt_4, evt_5, evt_6, evt_7, evt_8
+Story arc and beats generated successfully.
