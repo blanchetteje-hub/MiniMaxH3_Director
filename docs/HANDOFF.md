@@ -1321,3 +1321,32 @@ Verification:
 Inspect Segment 1 first when 172 publishes. Only after Segment 1 clears should
 Segment 2's Request-1 completion failure become the active target.
 
+
+
+## Acceptance 172: Beat CREATE sampling and capture parser
+
+Full acceptance 172 generated all eight H3 prompts. Segment 1 improved after the
+finite-transition prompt change: Amy visibly cooks and serves both children.
+However the production Beat-1 job itself still remained activity-only under the
+old Beat CREATE sampling, so Director had to infer completion and did not fully
+settle the activity.
+
+Sampling probes on the production-shaped Beat-1 prompt:
+- 173 changed only repeat_penalty 1.05 -> 1.15 and produced activity + completion.
+- 174 kept RP 1.15 but raised top_p 0.90 -> 0.95 and regressed to activity-only.
+
+Production change:
+- `d471209a86609abb94aa9059b7e828cdeda3d738` — Beat CREATE
+  repeat_penalty is now 1.15; all other Beat sampling values remain unchanged.
+- `648662688254957a9ddfd90029f8dab0c4e55384` — sampling regression.
+
+Acceptance 172 also exposed a harness-only capture bug: Segment 2's H3 end marker
+was immediately followed by `Added States:` on the same line, so the parser
+incorrectly marked Segment 2 missing even though the prompt was generated.
+- `ff547b98e8eed3ad001d15ec6f330e577eae8c3e` and
+  `682ab9befd154e6abb4b1ff99294c59d58f9a4ca` make the parser tolerate
+  concatenated trailing text while still terminating on the segment number.
+- `269fefbcd20ab51000ea55987b1ea22486ff3dc3` adds the regression.
+
+Next: rerun focused tests, then full locked acceptance. Inspect Segment 1 first;
+if it clears, Segment 2's semantic handoff remains the next likely boundary.
