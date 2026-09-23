@@ -664,6 +664,33 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertNotIn("CURRENT PHASE", normalized)
         self.assertNotIn("NEXT PHASE", normalized)
 
+    def test_minimal_beat_generation_keeps_defined_subjects(self):
+        phase = {
+            "phase_number": 1,
+            "beat_start": 1,
+            "beat_end": 1,
+            "required_events": [
+                {
+                    "id": "E1",
+                    "event": "Amy serves breakfast to Will.",
+                    "beat_number": 1,
+                }
+            ],
+        }
+        subjects = "<Subject 1> is Amy.\n<Subject 2> is Will."
+        messages = minimax.build_beat_generation_messages(
+            "Amy serves breakfast to Will.",
+            1,
+            subject_information=subjects,
+            macro_arc={"phases": [phase]},
+            current_phase=phase,
+        )
+        user_content = messages[1]["content"]
+        self.assertIn("DEFINED SUBJECTS:", user_content)
+        self.assertIn("<Subject 1> is Amy.", user_content)
+        self.assertIn("<Subject 2> is Will.", user_content)
+        minimax.verify_subjects_in_beat_messages(messages, subjects)
+
     def test_phrase_exclusions_are_added_to_beat_generation_prompt(self):
         phase = {
             "phase_number": 1,
