@@ -1,0 +1,21 @@
+{
+  "job_id": "beat1-transition-production-sampling-probe-170",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Turn one required story event into one simple executable video beat. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE STORY:\nAmy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for Will and Amber.\nSuddenly, a zombie breaks the kitchen door window.\n\nCURRENT REQUIRED EVENT:\n1. Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for Will and Amber.\n\nNEXT REQUIRED EVENT:\n2. A zombie breaks the kitchen door window.\n\nWrite exactly one beat.\n\nHIGH-PRIORITY RULE:\nFor a finite activity, write the beat as a visible transition: SHOW THE ACTIVITY, then SHOW IT FINISHING. Do not write only the activity-in-progress and do not write only the after-state. Keep both in the same concise sentence.\n\nAlso:\n- Will and Amber should visibly receive or participate in the finished breakfast.\n- Do not start the zombie event.\n- One sentence beginning \"1. \".\n\nReturn exactly {\"beats\":[{\"beat_number\":1,\"beat_text\":\"1. ...\"}]}."
+    }
+  ],
+  "temperature": 0.65,
+  "top_p": 0.9,
+  "presence_penalty": 0.15,
+  "frequency_penalty": 0.15,
+  "repeat_penalty": 1.05,
+  "seed": 42,
+  "max_tokens": 500
+}
