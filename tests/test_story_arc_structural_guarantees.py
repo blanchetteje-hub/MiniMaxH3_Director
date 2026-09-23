@@ -133,6 +133,10 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         events_schema = schema["json_schema"]["schema"]["properties"]["events"]
         self.assertEqual(events_schema["minItems"], 3)
         self.assertEqual(events_schema["maxItems"], 3)
+        event_schema = events_schema["items"]["properties"]["event"]
+        self.assertIn("executable clip job", event_schema["description"])
+        self.assertIn("natural visible endpoint", event_schema["description"])
+        self.assertIn("extended/repeated process", event_schema["description"])
 
     def test_arc_create_expands_explicit_majority_process_to_numeric_budget(self):
         story = (
