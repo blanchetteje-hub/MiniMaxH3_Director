@@ -1,0 +1,18 @@
+{
+  "job_id": "beat-validator-contrastive-invalid-probe-192",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You validate one candidate story beat. Judge meaning, not exact wording.\nAccept reasonable paraphrases and clear semantic implications. Reject only clear errors.\n\nCompletion example:\n- CURRENT JOB: \"Jordan is packing a bag.\"\n- INVALID candidate: \"Jordan is packing a bag.\" This merely repeats an ongoing finite activity.\n- VALID candidate: \"Jordan packs the bag and zips it shut.\" This shows the assigned activity reaching an endpoint.\n\nApply the same distinction to analogous finite activities. Return one JSON object with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS FINAL BEAT\nNone; this is the first beat.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nevent_1 - <Picture 1> Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\n\nNEXT JOB\nevent_2 - A zombie breaks the kitchen door window and Amy sees the danger.\n\nSTATE EFFECTS IF VALID\n[{\"op\":\"set_clothing\",\"entity\":\"Amy\",\"slot\":\"upper\",\"item\":\"tight black tank top\",\"damage\":\"none\"},{\"op\":\"set_clothing\",\"entity\":\"Amy\",\"slot\":\"lower\",\"item\":\"denim jeans\",\"damage\":\"none\"}]\n\nCANDIDATE BEAT\n1. <Picture 1> Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids Will and Amber.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept\nparaphrases and clear implications, but require every materially required action\nor result. A candidate that merely repeats an ongoing finite activity from\nCURRENT JOB without a visible endpoint is partial progress, not completion.\nDo not reject harmless visible detail.\n\nB. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as authoritative history.\n\nC. NEXT JOB: Do not materially complete the distinct NEXT JOB early.\n\nD. TYPED STATE EFFECTS: Every listed typed effect must be supported by what visibly happens in the candidate.\n\nOUTPUT CONTRACT\nIf valid:\n{\"valid\": true, \"issue\": \"\"}\nIf invalid:\n{\"valid\": false, \"issue\": \"short concrete explanation\"}\nReturn exactly one JSON object and no markdown."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 500
+}
