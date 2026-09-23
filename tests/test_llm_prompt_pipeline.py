@@ -728,9 +728,10 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         )
         user_content = messages[1]["content"]
         self.assertIn("DEFINED SUBJECTS:", user_content)
-        self.assertIn("<Subject 1> is Amy.", user_content)
-        self.assertIn("<Subject 2> is Will.", user_content)
-        minimax.verify_subjects_in_beat_messages(messages, subjects)
+        compact_subjects = minimax._format_beat_arc_subject_names(subjects)
+        self.assertIn(compact_subjects, user_content)
+        self.assertNotIn("is Amy", user_content)
+        minimax.verify_subjects_in_beat_messages(messages, compact_subjects)
 
     def test_phrase_exclusions_are_added_to_beat_generation_prompt(self):
         phase = {
