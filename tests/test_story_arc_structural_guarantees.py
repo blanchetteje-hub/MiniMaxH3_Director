@@ -117,7 +117,17 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         )
         self.assertIn("Do not create phases or phase ranges", create_prompt)
         self.assertIn("Python owns that deterministic bookkeeping", create_prompt)
+        self.assertIn(
+            "finite source activity is assigned wholly to one beat",
+            create_prompt,
+        )
+        self.assertIn("natural visible endpoint", create_prompt)
         self.assertIn("Do not create phases or phase ranges", repair_prompt)
+        self.assertIn(
+            "finite source activity assigned wholly to one beat",
+            repair_prompt,
+        )
+        self.assertIn("natural visible endpoint", repair_prompt)
         self.assertIn('"events":[', repair_prompt)
         schema = minimax.build_flat_arc_response_format(3)
         events_schema = schema["json_schema"]["schema"]["properties"]["events"]
