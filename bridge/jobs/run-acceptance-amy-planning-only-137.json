@@ -1,0 +1,8 @@
+{
+  "job_id": "run-acceptance-amy-planning-only-137",
+  "kind": "run_acceptance",
+  "image1": "amy.jpg",
+  "model": "mistral",
+  "planning_only": true,
+  "timeout_seconds": 3600
+}
