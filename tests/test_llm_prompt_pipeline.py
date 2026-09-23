@@ -727,8 +727,12 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         normalized = " ".join(user_content.split())
         self.assertIn("Complete each required event visibly in its beat", normalized)
         self.assertIn(
-            "For a finite everyday activity, show its natural visible result instead "
-            "of leaving it merely underway",
+            "For a finite activity, show a visible transition: include the assigned "
+            "activity itself, then show it finishing",
+            normalized,
+        )
+        self.assertIn(
+            "Do not output only the activity underway or only its after-state",
             normalized,
         )
         self.assertIn(
