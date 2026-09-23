@@ -1,0 +1,7 @@
+{
+  "job_id": "aab-run-acceptance-amy-full-qwen-229",
+  "kind": "run_acceptance",
+  "image1": "amy.jpg",
+  "model": "qwen",
+  "timeout_seconds": 3600
+}
