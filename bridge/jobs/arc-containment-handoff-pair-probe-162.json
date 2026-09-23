@@ -1,0 +1,20 @@
+{
+  "job_id": "arc-containment-handoff-pair-probe-162",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Repair only two adjacent story jobs. Preserve source order and neighboring jobs. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE EXCERPT\nA threat appears. A parent rushes the children to a protected destination, gets them inside, and then locks the boundary. The parent retrieves and equips weapons.\n\nFIXED PRIOR JOB\nOrdinary safe baseline is complete.\n\nEDITABLE JOBS\n2. A threat breaks in and the parent sees the danger.\n3. The parent rushes the children to the protected destination, gets them inside, locks the boundary, retrieves weapons, and equips them.\n\nFIXED NEXT JOB\n4. The parent begins fighting the threat.\n\nPROBLEM\nJob 2 is trigger-only while Job 3 overloads one clip with movement, containment, securing the boundary, retrieval, and equipping.\n\nGENERAL HANDOFF RULE\nWhen a sequential source chain contains:\n(1) moving people to a destination,\n(2) getting them inside/contained across a physical boundary,\n(3) closing/locking/securing that boundary,\nfollowed by later preparation,\nand the chain must span two adjacent clips:\n- the EARLIER clip ends with the people reaching the boundary and the boundary OPEN/READY for crossing;\n- the people have NOT crossed into containment yet;\n- the LATER clip begins with crossing/containment, then closes/locks/secures the boundary, then performs remaining preparation.\nMaking the boundary-opening action explicit is allowed because it is a physically necessary prerequisite directly implied by \"gets them inside.\"\nDo not move containment, securing, retrieval, or equipping into the earlier clip.\n\nReturn exactly:\n{\"events\":[\n{\"beat_number\":2,\"event\":\"...\"},\n{\"beat_number\":3,\"event\":\"...\"}\n]}"
+    }
+  ],
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 700
+}
