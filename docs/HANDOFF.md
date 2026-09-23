@@ -1738,3 +1738,18 @@ Production fix:
 - `aaa-run-tests-qwen-validator-profile-231`: **PASS, 87/87 tests green**.
 
 `aab-run-acceptance-amy-planning-qwen-validator-232` is the active verification. Inspect Beats 4-7 specifically for premature terminal/exhaustive wording and whether the corrected Qwen validator rejects/regenerates those candidates. Do not add a new validator rule before this run resolves the benchmark-profile mismatch.
+
+
+## Qwen planning 232: validator profile fixed, repeated-process Beat CREATE churn exposed
+
+`aab-run-acceptance-amy-planning-qwen-validator-232` confirmed that production now uses the Qwen validator profile, but exposed two separate observed issues:
+
+1. **Beat CREATE duplicate churn:** When ARC intentionally assigned the same repeated zombie-killing process to Beats 4-7, Qwen often copied the required-event sentence verbatim. The deterministic duplicate-beat guard rejected Phase 6 ten times and restarted the entire beat process. This happened across multiple full-process retries before a later ARC happened to vary the repeated event wording enough for Beat CREATE to proceed. The correction string was technically being passed, but it did not clearly distinguish “same story-level process” from “same clip wording.”
+2. **Validator semantic exhaustion miss remains:** The final successful plan avoided literal “last/final zombie” wording in intermediate beats, but Beat 6 still said Amy “finishes them off” while Beat 7 contained more zombies. Qwen’s single-beat validator accepted this. This is a narrower semantic NEXT JOB miss and should be addressed separately from Beat CREATE duplication.
+
+Focused Beat CREATE fix:
+- `1c0d56a7a87900c50a25a4436604a38db41aef96` tells Beat CREATE that an ARC-authorized repeated/ongoing process must become a distinct concrete clip instance, must not copy the prior beat/required-event sentence verbatim, and must not use terminal/exhaustive wording unless the assigned event is the terminal instance. Duplicate retry feedback now includes the prior beat and tells the model to regenerate a distinct clip instance without changing the story-level job.
+- `707044f0cf878e44b6c1ee78a9967c3143feadbe` locks the repeated-process prompt contract.
+- `aaa-run-tests-qwen-repeated-process-233`: **PASS, 87/87 tests green**.
+
+`aab-run-acceptance-amy-planning-qwen-repeated-process-234` is the active verification. Inspect whether Beats 4-7 are generated without the prior ten-attempt duplicate churn. After that, independently address the observed validator miss for wording such as “finishes them off” when NEXT JOB continues the same repeated process.
