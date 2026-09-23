@@ -11015,11 +11015,9 @@ Rules:
 - state_effects must describe only persistent facts directly established by the
   owning event. Reject inferred/temporary conditions and wrong typed operations.
   Clothing must use set_clothing, never set_condition.
-- For each source statement using the word "majority", include one
-  majority_checks item. matching_phases contains only phase numbers whose entire
-  beat span belongs to that already-active emphasized sequence; preparation
-  before it does not count. The final emphasized action may share immediate
-  resolution. Do not decide the numeric threshold; Python counts the beats.
+- Do NOT judge majority/relative-duration allocation in this broad validation
+  call. A separate focused check inside ARC VALIDATE owns that one semantic
+  judgment and Python owns the numeric count. Return majority_checks as [] here.
 - Python already checks JSON shape, phase/beat coverage, IDs, dependency-chain
   structure, and typed operation syntax.
 
@@ -11027,10 +11025,6 @@ Return exactly:
 {{"valid":true,"issues":[],"majority_checks":[]}}
 or
 {{"valid":false,"issues":["first blocking issue"],"majority_checks":[]}}
-
-For a majority source, each majority_checks item is:
-{{"source_requirement":"concise source requirement","matching_phases":[1]}}
-Populate majority_checks even when another semantic issue makes valid=false.
 """.strip(),
         },
     ]
