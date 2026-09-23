@@ -1,0 +1,20 @@
+{
+  "job_id": "arc-trigger-overload-validation-probe-163",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform one narrow ARC VALIDATE judgment about an extreme adjacent clip-job imbalance. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE STORY\nAmy cooks breakfast. A zombie breaks the kitchen door window. Amy rushes her kids to the basement, gets them inside, locks the door, retrieves and equips weapons. The majority of the film is Amy fighting zombies.\n\nEVENTS\n1. Amy cooks breakfast.\n2. A zombie breaks the kitchen door window and Amy sees the danger.\n3. Amy rushes her kids to the basement, gets them inside, locks the door, retrieves and equips weapons.\n4. Amy begins fighting zombies.\n\nRULES\n- Judge only one thing: whether an adjacent setup pair has the specific extreme imbalance \"left beat is only an inciting trigger/reaction with no meaningful physical progress\" while \"right beat carries a long chain of distinct sequential physical results.\"\n- If the left beat already includes meaningful movement/travel/escape progress toward the next destination, ACCEPT. Do not optimize or rebalance further; Beat CREATE and Director own exact visible clip endpoints.\n- Do not judge source coverage, majority allocation, style, duration, or whether an implied door/opening action is written in ARC prose.\n- Report the first failing adjacent pair only.\nReturn exactly {\"valid\":true,\"issue\":\"\",\"beat_pair\":[]} or {\"valid\":false,\"issue\":\"short explanation\",\"beat_pair\":[left,right]}."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 500
+}
