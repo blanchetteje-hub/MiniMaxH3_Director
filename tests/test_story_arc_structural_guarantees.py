@@ -190,7 +190,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 require_majority_checks=True,
             )
 
-    def test_arc_validator_requests_majority_evidence_from_required_events(self):
+    def test_broad_arc_validator_delegates_majority_to_focused_check(self):
         story = (
             "The majority of the film is Amy killing zombies. "
             "Amy kills the last zombie and lets her kids out."
@@ -202,10 +202,10 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 for message in minimax.build_macro_arc_validation_messages(story, arc)
             ).split()
         )
-        self.assertIn("majority_checks", normalized)
-        self.assertIn("matching_phases", normalized)
-        self.assertIn("preparation before it does not count", normalized)
-        self.assertIn("Python counts the beats", normalized)
+        self.assertIn("Do NOT judge majority/relative-duration allocation", normalized)
+        self.assertIn("separate focused check inside ARC VALIDATE", normalized)
+        self.assertIn("Return majority_checks as [] here", normalized)
+        self.assertNotIn("matching_phases contains only", normalized)
 
     def test_focused_majority_evidence_classifies_exact_beats(self):
         story = (
