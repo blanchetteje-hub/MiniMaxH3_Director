@@ -7430,6 +7430,14 @@ def raise_for_lm_studio_status(response):
         ) from error
 
 
+def _lm_studio_rejected_response_format(response):
+    """Return whether one HTTP 400 specifically rejects structured output."""
+    if getattr(response, "status_code", None) != 400:
+        return False
+    body = str(getattr(response, "text", "") or "").casefold()
+    return "response_format" in body or "json_schema" in body or "json schema" in body
+
+
 # Merge adjacent same-role turns before Mistral's strict Jinja template.
 def normalize_lm_studio_messages(messages):
     """Merge adjacent same-role turns before Mistral's strict Jinja template."""
@@ -7875,8 +7883,8 @@ def ask_llm(
                 # formatter can recover JSON or labeled plain text, so retry
                 # this request once without only that optional constraint.
                 if (
-                    getattr(response, "status_code", None) == 400
-                    and "response_format" in request_payload
+                    "response_format" in request_payload
+                    and _lm_studio_rejected_response_format(response)
                 ):
                     print(
                         "LM Studio rejected structured response_format; "
