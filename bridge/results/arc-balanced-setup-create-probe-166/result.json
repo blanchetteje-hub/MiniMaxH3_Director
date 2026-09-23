@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-balanced-setup-create-probe-166",
+  "kind": "llama_chat",
+  "started_at": 1790171331.1390905,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Plan one source story into exactly one chronological required clip job per global beat. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE STORY\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves a hidden pistol and katana and equips them.\nThe majority of the film is Amy killing zombies as they try and attack her.\nAmy kills the last zombies, the house is soaked in blood, and she lets her kids out.\n\nTOTAL BEATS\n8\n\nMAJORITY BUDGET\nAt least 5 of 8 beats must belong to the zombie-killing sequence, so at most Beats 1-3 may be outside it. Beat 1 must remain the ordinary breakfast baseline. The conflict therefore begins at Beat 4 and continues through Beat 8, with terminal conflict plus immediate resolution combined in Beat 8.\n\nRULES\n- Cover source actions in order.\n- One executable clip job per beat.\n- Fit all pre-conflict setup into Beats 1-3.\n- Keep Beat 1 as the ordinary baseline.\n- IMPORTANT SETUP BALANCE: when Beats 2-3 must carry a trigger followed by a multi-action setup chain, do not leave Beat 2 as only the trigger/reaction while packing the whole remaining chain into Beat 3. Move meaningful source-ordered movement/progress into Beat 2 so both setup beats are usable clip jobs. Do not move the later containment/security result or weapon preparation earlier merely to balance.\n- Beats 4-8 materially belong to the active zombie-killing sequence.\n- Beat 8 combines the terminal kill and immediate child-release resolution.\n- Do not add a new major plot, character, location, or outcome.\n\nReturn exactly {\"events\":[8 objects with id,event,beat_number,depends_on]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2iifn8wtq98hw7juucwhw",
+    "object": "chat.completion",
+    "created": 1790171331,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n    \"events\": [\n        {\n            \"id\": 1,\n            \"event\": \"Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\",\n            \"beat_number\": 1,\n            \"depends_on\": null\n        },\n        {\n            \"id\": 2,\n            \"event\": \"A zombie breaks the kitchen door window and Amy sees the danger.\",\n            \"beat_number\": 2,\n            \"depends_on\": 1\n        },\n        {\n            \"id\": 3,\n            \"event\": \"Amy rushes her kids to the basement, gets them inside, and then locks the door.\",\n            \"beat_number\": 3,\n            \"depends_on\": 2\n        },\n        {\n            \"id\": 4,\n            \"event\": \"Amy retrieves a hidden pistol and katana and equips them.\",\n            \"beat_number\": 4,\n            \"depends_on\": 3\n        },\n        {\n            \"id\": 5,\n            \"event\": \"Amy kills zombies as they try to attack her.\",\n            \"beat_number\": 5,\n            \"depends_on\": 4\n        },\n        {\n            \"id\": 6,\n            \"event\": \"Amy continues killing more zombies.\",\n            \"beat_number\": 6,\n            \"depends_on\": 5\n        },\n        {\n            \"id\": 7,\n            \"event\": \"Amy kills even more zombies as they keep attacking her.\",\n            \"beat_number\": 7,\n            \"depends_on\": 6\n        },\n        {\n            \"id\": 8,\n            \"event\": \"Amy kills the last zombies, the house is soaked in blood, and she lets her kids out.\",\n            \"beat_number\": 8,\n            \"depends_on\": 7\n        }\n    ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 448,
+      "completion_tokens": 400,
+      "total_tokens": 848,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790171355.4345617,
+  "status": "ok"
+}
