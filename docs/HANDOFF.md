@@ -1163,3 +1163,39 @@ Next evidence boundary: a fresh planning-only locked Amy acceptance. Do not add
 the previously probed safe-room/front-handoff repair unless that acceptance
 proves it is the earliest remaining failure.
 
+
+
+## Planning-only acceptance 147: broad ARC validator still over-judges source fidelity
+
+`run-acceptance-amy-flat-arc-planning-147` reached broad ARC VALIDATE with a
+structurally clean flat eight-event plan, but validation rejected facts that
+were already present or were never required by the source. The earliest false
+rejection demanded clothing for Will/Amber even though the source never
+specifies it. Later retries falsely claimed the kids' identities or breakfast
+action were absent despite relational wording and the explicit Beat-1 event.
+
+Targeted probes isolated the contract:
+
+- `arc-validation-source-clothing-probe-148`: removing the unsupported
+  clothing requirement exposed another false "missing equip" rejection.
+- `arc-validation-minimal-coverage-probe-149`: a smaller coverage/order task
+  still criticized legal bundling of adjacent sequential source actions.
+- `arc-validation-minimal-bundling-probe-150`: limiting broad validation to
+  missing explicit source actions/states, source-order contradiction, or an
+  unsupported major plot addition validated the same candidate cleanly.
+
+Production correction applied:
+
+- broad ARC VALIDATE is explicitly a narrow source-fidelity check;
+- it must not invent clothing/appearance/name requirements absent from source;
+- order-preserving adjacent source actions may legally share one required_event;
+- pacing, detail level, style, bundling policy, and majority allocation are not
+  broad-validator judgments;
+- the existing focused majority check remains the owner of majority allocation;
+- a regression locks this narrow contract.
+
+This preserves ARC CREATE -> VALIDATE -> REPAIR and adds no semantic layer.
+
+Next evidence boundary: run focused regressions, then a fresh planning-only locked
+Amy acceptance. Do not implement the safe-room/front-handoff repair unless that
+run proves it is the earliest remaining failure.
