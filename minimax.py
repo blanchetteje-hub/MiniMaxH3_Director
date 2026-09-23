@@ -262,11 +262,16 @@ SUBJECT_LIST_FIELDS = (
 # Token budgets, generation limits, sampling controls, and continuity safety rails.
 # ------------------------------------------------------------
 
-LLM_INPUT_TOKEN_BUDGET = 14000
+# Current local 24B runtime is configured around a ~6k context window.
+# Keep input below this so there is real room for the model's completion.
+LLM_CONTEXT_TOKEN_BUDGET = 6044
+LLM_CONTEXT_SAFETY_TOKENS = 128
+LLM_MIN_COMPLETION_TOKENS = 256
+LLM_INPUT_TOKEN_BUDGET = 4500
 
 CHARS_PER_TOKEN_ESTIMATE = 3.5
 
-STORY_CONTEXT_MAX_CHARS = 12000
+STORY_CONTEXT_MAX_CHARS = 7000
 
 DEFAULT_BEAT_LOOKAHEAD = 1
 
@@ -7624,6 +7629,23 @@ def ask_llm(
     last_content = None
     received_response = False
     messages = normalize_lm_studio_messages(messages)
+    estimated_input_tokens = estimate_message_tokens(messages)
+    available_completion_tokens = (
+        LLM_CONTEXT_TOKEN_BUDGET
+        - LLM_CONTEXT_SAFETY_TOKENS
+        - estimated_input_tokens
+    )
+    if available_completion_tokens < LLM_MIN_COMPLETION_TOKENS:
+        raise RuntimeError(
+            "LLM request exceeds the configured local context budget: "
+            f"{estimated_input_tokens} estimated input tokens leave only "
+            f"{max(0, available_completion_tokens)} completion tokens inside "
+            f"{LLM_CONTEXT_TOKEN_BUDGET}. Simplify the stage prompt."
+        )
+    effective_max_tokens = min(
+        int(max_tokens),
+        int(available_completion_tokens),
+    )
     history_purpose = str((history_metadata or {}).get("purpose", ""))
     use_beat_validation_settings = (
         history_purpose == "beat_validation"
@@ -7695,7 +7717,7 @@ def ask_llm(
             request_payload = {
                 "messages": messages,
                 "temperature": temperature,
-                "max_tokens": int(max_tokens),
+                "max_tokens": effective_max_tokens,
                 "seed": llm_seed,
             }
             optional_sampling_parameters = {
@@ -7824,7 +7846,7 @@ def ask_llm(
             if finish_reason in {"length", "max_tokens"}:
                 raise ValueError(
                     "LM Studio truncated the response at the configured "
-                    f"max_tokens={int(max_tokens)} before completion."
+                    f"max_tokens={effective_max_tokens} before completion."
                 )
             try:
                 result = parse_llm_json_content(
