@@ -998,20 +998,54 @@ Do not implement a new front-handoff repair path yet. First obtain the current
 production ARC+BEATS output and confirm that this is the earliest remaining
 failure after Beat 1 completion and majority-tail repair.
 
-### Bridge state blocks planning-only verification
+## Planning-only acceptance 133: phase arithmetic was the earliest failure
 
-The earlier `run-acceptance-amy-planning-only-130` job was consumed while the
-local bridge process was still running pre-`planning_only` code and produced no
-usable planning-only result. The running bridge does not hot-reload itself.
+After the bridge restart, `run-acceptance-amy-planning-only-133` finally ran
+the intended ARC+BEATS-only command. It failed before semantic ARC validation:
+ARC CREATE repeatedly emitted impossible or overlapping LLM-authored phase
+ranges (for example 8-10 in an 8-beat story, or a new phase starting at Beat 7
+after Beat 7 was already consumed). The deterministic structural validator was
+correct to reject them.
 
-The next required local action is therefore:
+This is bookkeeping failure, not story semantics. Do not weaken the structural
+validator and do not add more phase-arithmetic instructions to the 24B prompt.
 
-1. Pull the latest `gpt-test-branch`.
-2. Stop/restart `tools/chatgpt_llama_bridge.py` from that checkout.
+`arc-create-flat-events-probe-134` removed phase authoring and asked Mistral
+only for eight chronological required clip jobs. It returned a structurally
+clean E1-E8 chain immediately. Its semantic majority allocation was still wrong
+(weapons remained outside the three-beat setup budget and the last beat was
+resolution-only), which is useful separation: flat ARC output fixes the
+bookkeeping failure but does not hide the remaining semantic ARC work.
 
-After the bridge restart, requeue a fresh planning-only locked Amy acceptance
-instead of another full 8-segment acceptance. Do not work around the stale
-bridge by changing production story logic or by increasing timeouts.
+Production direction is therefore:
+
+- ARC CREATE still owns semantic required-event allocation.
+- ARC VALIDATE still owns semantic judgment, including the focused majority
+  evidence check.
+- ARC REPAIR still owns semantic correction.
+- Python now owns phase_number/beat_start/beat_end bookkeeping only, wrapping
+  each accepted flat required event in a deterministic one-beat phase for the
+  existing downstream machinery.
+- This is not a new semantic pipeline and does not change the two-loop KISS
+  architecture.
+
+Production commits:
+
+- `4ea1f9200a3c8520b3be3dc941fa500b916a01ad` — ARC CREATE and whole-ARC
+  REPAIR now use a flat events schema/parser and deterministic Python phase
+  wrappers.
+- `a2969c20a271c2dd4c660481bc0334d9c3571f98` — regressions for flat ARC
+  parsing and Python-owned phase bookkeeping.
+- `1b18c6165bf7b3749f8bccb4581b13f868ed3db8` — preserve the explicit
+  required_end_state ownership contract in the simplified ARC prompt.
+- `run-tests-flat-arc-bookkeeping-136`: **PASS, 78/78 tests green**.
+
+The bridge is current and healthy; no restart is required.
+
+Next verification: run a fresh planning-only locked Amy acceptance against the
+flat ARC production path. The first result to inspect is whether ARC CREATE now
+reaches semantic validation reliably. If it does, fix the earliest semantic
+defect reported by that run rather than adding more global prompt rules.
 
 The old adjacent-beat/global fidelity audit helpers still exist in `minimax.py`,
 but they are not the active path that would solve the current ARC allocation
