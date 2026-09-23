@@ -9784,7 +9784,10 @@ CANDIDATE BEAT
 CHECKS
 A. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept
 paraphrases and clear implications, but require every materially required action
-or result when the job has multiple parts. A prerequisite, approach, or partial
+or result when the job has multiple parts. PREVIOUS FINAL BEAT is history only:
+it may constrain what is possible, but it cannot satisfy, replace, or excuse any
+action or result explicitly assigned to CURRENT JOB. Every such requirement must
+be visibly accomplished by CANDIDATE BEAT. A prerequisite, approach, or partial
 progress is NOT completion of a later required result: if CURRENT JOB requires
 A then B, doing only A is invalid. Entering a room does not imply locking its
 door; reaching a door does not imply opening it; retrieving a weapon does not
