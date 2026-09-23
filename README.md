@@ -488,9 +488,11 @@ fallback for the same attempt keeps that attempt's seed. The seed is also stored
 in `prompt_history.txt` metadata so a request can be reproduced.
 
 1. Install and open [LM Studio](https://lmstudio.ai/).
-2. Download and load an instruction-following model.
-3. Give the model a context window of at least about 21,000 tokens. The script
-   reserves up to 14,000 estimated input tokens and up to 4,000 output tokens.
+2. Download and load the current tested local model (Mistral Small 3.2 24B, or
+   another compatible instruction-following model).
+3. The current local Mistral 24B setup uses a context window of about **6,044
+   tokens**. Prompt stages must therefore stay deliberately small; do not rely on
+   the older 13B-era guidance that assumed a ~21,000-token context window.
 4. In LM Studio's **Developer** area, start the local API server.
 5. Confirm that the model supports the OpenAI-compatible chat-completions
    endpoint and structured JSON-schema output.
@@ -1092,8 +1094,9 @@ resolution.
 - Confirm the Developer API server is running.
 - Test `/v1/models` at the same host configured in `LM_STUDIO_URL`.
 - Use a model that supports structured JSON-schema output.
-- Increase the loaded model's context window if the script reports that the
-  fixed context exceeds its token budget.
+- The current tested Mistral 24B setup uses about a 6,044-token context window.
+  If a request exceeds that budget, reduce/simplify the stage prompt rather than
+  assuming the older ~21,000-token 13B configuration.
 
 ### “ComfyUI reported a video output, but the file does not exist”
 
