@@ -459,6 +459,47 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             minimax.MISTRAL_24B_SETTINGS["repeat_penalty"],
         )
         self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+        self.assertNotIn("thinking", request_json)
+        self.assertNotIn("chat_template", request_json)
+        self.assertNotIn("jinja", request_json)
+        self.assertNotIn("chat_template_kwargs", request_json)
+
+
+    @patch("minimax.requests.post")
+    def test_qwen_beat_validation_transport_matches_benchmark(self, post):
+        response = Mock()
+        response.status_code = 200
+        response.raise_for_status = Mock()
+        response.json.return_value = {
+            "choices": [
+                {
+                    "message": {"content": "{\"valid\": true, \"issue\": \"\"}"},
+                    "finish_reason": "stop",
+                }
+            ]
+        }
+        post.return_value = response
+        original = minimax.ACTIVE_FORMATTER
+        try:
+            minimax.configure_formatter("qwen")
+            result = minimax.ask_llm(
+                [{"role": "user", "content": "validate"}],
+                response_format=None,
+                history_metadata={"purpose": "beat_validation"},
+            )
+            self.assertEqual(result, {"valid": True, "issue": ""})
+            request_json = post.call_args.kwargs["json"]
+            self.assertEqual(
+                request_json["chat_template_kwargs"],
+                {"enable_thinking": False},
+            )
+            self.assertNotIn("thinking", request_json)
+            self.assertNotIn("chat_template", request_json)
+            self.assertNotIn("jinja", request_json)
+        finally:
+            minimax.configure_formatter(
+                "qwen" if isinstance(original, minimax.QwenFormatter) else "mistral"
+            )
 
 
     def test_beat_validation_profile_follows_active_model(self):
