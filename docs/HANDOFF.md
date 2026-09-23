@@ -1089,3 +1089,34 @@ failure because production ARC REPAIR uses a strict eight-event response
 schema. The next evidence boundary is a fresh planning-only Amy acceptance after
 the subject-guard fix.
 
+
+
+## Planning-only acceptance 140: timeout output buffering hid the failing stage
+
+`run-acceptance-amy-flat-arc-planning-140` timed out after 1800 seconds but
+published an empty `run.log` and empty captured stdout/stderr. This does **not**
+establish an ARC or BEATS semantic failure.
+
+The acceptance runner launches `minimax.py` with stdout piped through Python.
+Without an unbuffered child environment, MiniMax output can remain in the
+child's userspace buffer. The runner also wrote each received line to
+`run.log` without explicitly flushing the file. When the bridge timeout kills
+the process tree, both buffers can disappear, leaving no evidence.
+
+This was fixed only in the diagnostic harness:
+
+- `ac100e0074aa38d3fe923b7924a983d8d7212714` — acceptance child processes
+  receive `PYTHONUNBUFFERED=1`; each mirrored log line is printed/flushed and
+  flushed to `run.log` immediately.
+- `e1ef8c9c37375c2fb875bce849d68dff1ec8fac6` — regression for the
+  unbuffered child environment.
+- `run-tests-acceptance-live-output-141`: **PASS, 80/80 tests green**.
+
+No production ARC/BEATS semantics changed in this fix.
+
+`run-acceptance-amy-flat-arc-planning-142` is the next evidence boundary. It
+runs the same planning-only locked Amy path after the subject-guard fix, but
+with timeout-safe live logging. If it times out, inspect its preserved
+`run.log` and fix the earliest observed production failure rather than
+increasing the timeout or guessing from elapsed time.
+
