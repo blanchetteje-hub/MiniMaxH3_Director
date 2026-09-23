@@ -682,7 +682,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 for message in minimax.build_beat_arc_plan_messages(story, 8)
             ).split()
         )
-        self.assertIn("coherent source-authorized escalation", create_prompt)
+        self.assertIn("distinct coherent source-authorized moments", create_prompt)
         self.assertIn("never add a new major plot", create_prompt)
 
         validate_prompt = " ".join(
