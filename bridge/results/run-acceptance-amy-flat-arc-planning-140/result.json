@@ -1,0 +1,30 @@
+{
+  "job_id": "run-acceptance-amy-flat-arc-planning-140",
+  "kind": "run_acceptance",
+  "started_at": 1790139374.7362242,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "mistral",
+      "--planning-only"
+    ],
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "",
+    "timed_out": true,
+    "timeout_seconds": 1800,
+    "started_at": 1790139375.4257607,
+    "finished_at": 1790141175.550866,
+    "artifacts": {
+      "run.log": "files\\run.log",
+      "source_result_dir": "tests\\acceptance\\results\\amy_zombie_house-20260923-005615"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1790141175.560325,
+  "status": "ok"
+}
