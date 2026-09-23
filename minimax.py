@@ -301,6 +301,7 @@ BENCHMARK_SEED = 42
 
 MISTRAL_24B_SETTINGS = {
     "temperature": 0,
+    "seed": BENCHMARK_SEED,
     "repeat_penalty": 1.15,
     "top_p": None,
     "top_k": None,
@@ -315,6 +316,7 @@ MISTRAL_24B_SETTINGS = {
 
 QWEN38_27B_SETTINGS = {
     "temperature": 0,
+    "seed": BENCHMARK_SEED,
     "repeat_penalty": 1.15,
     "top_p": None,
     "top_k": None,
@@ -325,6 +327,17 @@ QWEN38_27B_SETTINGS = {
     "context": 6144,
     "user_prompt_only": True,
     "stream": False,
+}
+
+ARC_LLM_SAMPLING_PARAMETERS = {
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0.0,
+    "presence_penalty": 0.0,
+    "frequency_penalty": 0.0,
+    "repeat_penalty": 1.15,
+    "seed": BENCHMARK_SEED,
 }
 
 BEAT_LLM_SAMPLING_PARAMETERS = {
@@ -7618,6 +7631,7 @@ def ask_llm(
     presence_penalty=None,
     frequency_penalty=None,
     repeat_penalty=None,
+    seed=None,
     thinking=None,
     chat_template=None,
     jinja=None,
@@ -7665,6 +7679,7 @@ def ask_llm(
         presence_penalty = formatter_settings.get("presence_penalty")
         frequency_penalty = formatter_settings.get("frequency_penalty")
         repeat_penalty = formatter_settings.get("repeat_penalty")
+        seed = formatter_settings.get("seed", seed)
         thinking = formatter_settings.get("thinking")
         chat_template = formatter_settings.get("chat_template")
         jinja = formatter_settings.get("jinja")
@@ -7685,6 +7700,8 @@ def ask_llm(
             frequency_penalty = formatter_settings.get("frequency_penalty")
         if repeat_penalty is None:
             repeat_penalty = formatter_settings.get("repeat_penalty")
+        if seed is None:
+            seed = formatter_settings.get("seed")
         if thinking is None:
             thinking = formatter_settings.get("thinking")
         if chat_template is None:
@@ -7713,7 +7730,11 @@ def ask_llm(
     while attempt < max_attempts:
         attempt += 1
         try:
-            llm_seed = formatter_settings.get("seed") or generate_random_llm_seed()
+            llm_seed = (
+                seed
+                if seed is not None
+                else formatter_settings.get("seed") or generate_random_llm_seed()
+            )
             request_payload = {
                 "messages": messages,
                 "temperature": temperature,
@@ -13677,7 +13698,7 @@ def generate_beats_from_story(
                     "attempt": attempt,
                     "total_segments": total_segments,
                 },
-                **BEAT_LLM_SAMPLING_PARAMETERS,
+                **ARC_LLM_SAMPLING_PARAMETERS,
             )
             try:
                 print(raw_arc, flush=True)
@@ -13748,7 +13769,7 @@ def generate_beats_from_story(
                     "response_attempt": response_attempt,
                     "total_segments": total_segments,
                 },
-                **BEAT_LLM_SAMPLING_PARAMETERS,
+                **ARC_LLM_SAMPLING_PARAMETERS,
             )
             try:
                 has_majority = bool(
@@ -13782,7 +13803,7 @@ def generate_beats_from_story(
                             "response_attempt": response_attempt,
                             "total_segments": total_segments,
                         },
-                        **BEAT_LLM_SAMPLING_PARAMETERS,
+                        **ARC_LLM_SAMPLING_PARAMETERS,
                     )
                     majority_validation = parse_macro_arc_majority_evidence_result(
                         raw_majority,
@@ -13879,7 +13900,7 @@ def generate_beats_from_story(
                                 "attempt": repair_round,
                                 "total_segments": total_segments,
                             },
-                            **BEAT_LLM_SAMPLING_PARAMETERS,
+                            **ARC_LLM_SAMPLING_PARAMETERS,
                         )
                         repaired = parse_beat_arc_plan(
                             repair_raw,
