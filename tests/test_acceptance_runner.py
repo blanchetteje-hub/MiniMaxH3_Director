@@ -55,6 +55,15 @@ detailed_description: world
         )
         self.assertEqual(prompts[2], "detailed_description: world")
 
+    def test_parse_h3_prompts_allows_trailing_text_after_end_marker(self):
+        log = """
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 2
+detailed_description: world
+# ================================================================ END H3 PROMPT - SEGMENT 2Added States:
+"""
+        prompts = run_acceptance.parse_h3_prompts(log)
+        self.assertEqual(prompts[2], "detailed_description: world")
+
     def test_acceptance_child_env_forces_unbuffered_output(self):
         env = run_acceptance.acceptance_child_env()
         self.assertEqual(env["PYTHONUNBUFFERED"], "1")
