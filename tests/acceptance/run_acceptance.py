@@ -229,8 +229,21 @@ def build_command(
     model: str,
     megapixels: float,
     extra_args: list[str],
+    planning_only: bool = False,
 ) -> tuple[list[str], int | None]:
     beats = benchmark["beats"]
+    if planning_only:
+        command = [
+            python_executable,
+            "minimax.py",
+            "--generate-beats",
+            str(len(beats)),
+            "--model",
+            model,
+        ]
+        command.extend(extra_args)
+        return command, None
+
     segment_length = float(beats[0]["length_seconds"])
     total_length = segment_length * len(beats)
     refresh_interval = infer_refresh_interval(beats)
@@ -267,8 +280,9 @@ def build_report(
     log_text: str,
     workspace: Path,
     output_dir: Path,
+    planning_only: bool = False,
 ) -> dict:
-    generated_prompts = parse_h3_prompts(log_text)
+    generated_prompts = {} if planning_only else parse_h3_prompts(log_text)
     generation_state = read_json(workspace / "generation_state.json") or {}
     segment_records = {
         int(record.get("segment_number")): record
@@ -277,25 +291,26 @@ def build_report(
     }
 
     segments = []
-    for gold in benchmark["beats"]:
-        number = int(gold["beat"])
-        record = segment_records.get(number, {})
-        expected_mode = gold["mode"]
-        segments.append(
-            {
-                "segment_number": number,
-                "gold_mode": expected_mode,
-                "pipeline_mode": MODE_TO_PIPELINE[expected_mode],
-                "gold_target": gold,
-                "generated_h3_prompt": generated_prompts.get(number),
-                "generated_request2_result": record.get("llm_result"),
-                "generated_continuity_state": record.get("continuity_state"),
-                "generated_subject_identity_snapshot": record.get(
-                    "subject_identity_snapshot"
-                ),
-                "completed_beat_ids": record.get("completed_beat_ids"),
-            }
-        )
+    if not planning_only:
+        for gold in benchmark["beats"]:
+            number = int(gold["beat"])
+            record = segment_records.get(number, {})
+            expected_mode = gold["mode"]
+            segments.append(
+                {
+                    "segment_number": number,
+                    "gold_mode": expected_mode,
+                    "pipeline_mode": MODE_TO_PIPELINE[expected_mode],
+                    "gold_target": gold,
+                    "generated_h3_prompt": generated_prompts.get(number),
+                    "generated_request2_result": record.get("llm_result"),
+                    "generated_continuity_state": record.get("continuity_state"),
+                    "generated_subject_identity_snapshot": record.get(
+                        "subject_identity_snapshot"
+                    ),
+                    "completed_beat_ids": record.get("completed_beat_ids"),
+                }
+            )
 
     artifact_paths = {}
     for filename in (
@@ -310,13 +325,23 @@ def build_report(
         if copied:
             artifact_paths[filename] = copied
 
-    expected_segments = len(benchmark["beats"])
-    captured_segments = sorted(generated_prompts)
-    missing_segments = [
-        number
-        for number in range(1, expected_segments + 1)
-        if number not in generated_prompts
-    ]
+    if planning_only:
+        expected_segments = 0
+        captured_segments = []
+        missing_segments = []
+        planning_complete = bool(
+            read_json(workspace / "story_arc.json")
+            and (read_text(workspace / "beats.txt") or "").strip()
+        )
+    else:
+        expected_segments = len(benchmark["beats"])
+        captured_segments = sorted(generated_prompts)
+        missing_segments = [
+            number
+            for number in range(1, expected_segments + 1)
+            if number not in generated_prompts
+        ]
+        planning_complete = False
 
     return {
         "acceptance_report_version": 1,
@@ -329,7 +354,8 @@ def build_report(
         "command": command,
         "exit_code": exit_code,
         "capture_status": {
-            "complete": not missing_segments,
+            "complete": planning_complete if planning_only else not missing_segments,
+            "mode": "planning_only" if planning_only else "full_prompt_generation",
             "expected_segments": expected_segments,
             "captured_segments": captured_segments,
             "missing_segments": missing_segments,
@@ -394,6 +420,14 @@ def parse_args(argv=None):
         help="copy the isolated worktree into the result directory",
     )
     parser.add_argument(
+        "--planning-only",
+        action="store_true",
+        help=(
+            "run only ARC + BEATS generation in the locked workspace using "
+            "minimax.py --generate-beats, then capture story_arc.json and beats.txt"
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="prepare and print the command without contacting the local LLM",
@@ -434,6 +468,7 @@ def main(argv=None) -> int:
             args.model,
             args.megapixels,
             list(args.extra_minimax_arg),
+            planning_only=args.planning_only,
         )
 
         plan = {
@@ -483,6 +518,7 @@ def main(argv=None) -> int:
             log_text,
             workspace,
             output_dir,
+            planning_only=args.planning_only,
         )
         report_path = output_dir / "acceptance_run.json"
         report_path.write_text(
@@ -502,11 +538,17 @@ def main(argv=None) -> int:
     print("Upload acceptance_run.json for GPT-5.6 Sol review.")
     capture_complete = bool(report["capture_status"]["complete"])
     if not capture_complete:
-        missing = report["capture_status"]["missing_segments"]
-        print(
-            "Acceptance capture is structurally incomplete; missing H3 prompt "
-            f"segment(s): {missing}. Include run.log for diagnosis."
-        )
+        if args.planning_only:
+            print(
+                "Planning-only capture is incomplete; story_arc.json and/or "
+                "beats.txt was not produced. Include run.log for diagnosis."
+            )
+        else:
+            missing = report["capture_status"]["missing_segments"]
+            print(
+                "Acceptance capture is structurally incomplete; missing H3 prompt "
+                f"segment(s): {missing}. Include run.log for diagnosis."
+            )
     if exit_code != 0:
         print(f"MiniMax exited with code {exit_code}; include run.log for diagnosis.")
     if exit_code != 0:
