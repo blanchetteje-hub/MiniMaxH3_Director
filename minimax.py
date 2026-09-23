@@ -13257,6 +13257,7 @@ def build_beat_generation_messages(
     batch_size = batch_end - batch_start + 1
     previous_beats = list(previous_beats or [])
     current_phase = current_phase or {}
+    subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
 
     required_events = current_phase.get("required_events", [])
     event_lines = []
@@ -13327,6 +13328,9 @@ def build_beat_generation_messages(
             "content": f"""
 SOURCE STORY:
 {story}
+
+DEFINED SUBJECTS:
+{subject_text}
 
 REQUIRED EVENTS FOR THIS PHASE:
 {required_events_text}
