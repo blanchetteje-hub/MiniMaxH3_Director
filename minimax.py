@@ -13505,8 +13505,9 @@ Write exactly {batch_size} video beats, one per required event.
 
 Rules:
 - Complete each required event visibly in its beat.
-- For a finite everyday activity, show its natural visible result instead of
-  leaving it merely underway.
+- For a finite activity, show a visible transition: include the assigned
+  activity itself, then show it finishing. Do not output only the activity
+  underway or only its after-state.
 - When an activity is for named people, show those people receiving or
   participating in the completed result when reasonable.
 - Do not start the next required event early.
