@@ -1,0 +1,12 @@
+{
+  "job_id": "run-tests-context-and-subject-budget-116",
+  "kind": "run_tests",
+  "tests": [
+    "tests.test_llm_prompt_pipeline",
+    "tests.test_forward_beat_validation",
+    "tests.test_beat_at_a_time_validator",
+    "tests.test_beat_retry_hierarchy",
+    "tests.test_story_arc_structural_guarantees"
+  ],
+  "timeout_seconds": 1200
+}
