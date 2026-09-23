@@ -10942,6 +10942,11 @@ Rules:
 - Every global beat has exactly one required_event. A required_event is one
   executable clip job; split long source chains at natural handoffs when the
   beat budget allows, and bundle only adjacent actions when necessary.
+- When a finite source activity is assigned wholly to one beat, write that
+  required_event as the activity reaching a natural visible endpoint by the
+  end of the beat. Do not merely copy progressive/in-progress wording. The
+  endpoint may state the ordinary result directly implied by completing that
+  activity, but must not add a new plot event or outcome.
 - Preserve an explicit calm/ordinary baseline as its own beat before a sudden
   inciting threat or change.
 - Honor explicit majority/most/half/briefly emphasis. Do not manufacture extra
@@ -11145,6 +11150,11 @@ MAJORITY REPAIR BUDGET
 Rules:
 - Preserve every explicit source action/state in source order.
 - Keep exactly one required_event per global beat.
+- A finite source activity assigned wholly to one beat must be a complete clip
+  job that reaches a natural visible endpoint; do not reduce it to merely
+  progressive/in-progress wording. The endpoint may state the ordinary result
+  directly implied by completing that activity, but must not add a new plot
+  event or outcome.
 - Split or regroup only adjacent source actions when needed to fix allocation.
 - Preserve an explicit calm baseline before a sudden inciting threat/change.
 - Every event after the first depends_on the immediately preceding event ID.
