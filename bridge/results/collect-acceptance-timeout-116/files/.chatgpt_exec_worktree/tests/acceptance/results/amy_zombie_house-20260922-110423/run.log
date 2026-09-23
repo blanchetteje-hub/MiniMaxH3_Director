@@ -1,0 +1,99 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-npkhlo2t\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-npkhlo2t\repo\beats.txt); regenerating the beat plan.
+Asking LM Studio to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-npkhlo2t\repo\beats.txt with 8 creative story beats.
+
+=== Macro arc generation attempt 1/10 ===
+Requesting macro arc (attempt 1, response attempt 1/10).
+{'phases': [{'phase_number': 1, 'beat_start': 1, 'beat_end': 2, 'narrative_purpose': 'Introduction', 'broad_progression': 'Amy is at home cooking breakfast for her kids when a zombie breaks the kitchen door window.', 'required_end_state': 'Amy sees the zombie danger and rushes her kids to the basement.', 'required_events': [{'id': 'E1', 'event': 'Amy cooks breakfast for Will and Amber.', 'beat_number': 1, 'depends_on': []}, {'id': 'E2', 'event': 'A zombie breaks the kitchen door window.', 'beat_number': 2, 'depends_on': ['E1']}], 'characters_introduced': ['Amy', 'Will', 'Amber'], 'location': 'kitchen'}, {'phase_number': 2, 'beat_start': 3, 'beat_end': 4, 'narrative_purpose': 'Transition', 'broad_progression': 'Amy rushes her kids to the basement and locks them inside.', 'required_end_state': 'Amy retrieves her hidden arsenal of a pistol and a katana.', 'required_events': [{'id': 'E3', 'event': 'Amy rushes Will and Amber to the basement.', 'beat_number': 3, 'depends_on': ['E2']}, {'id': 'E4', 'event': 'Amy locks the basement door.', 'beat_number': 4, 'depends_on': ['E3']}], 'characters_introduced': [], 'location': 'basement'}, {'phase_number': 3, 'beat_start': 5, 'beat_end': 8, 'narrative_purpose': 'Main Conflict', 'broad_progression': 'Amy kills zombies as they try to attack her.', 'required_end_state': 'Amy kills the last zombie and lets her kids out of the basement.', 'required_events': [{'id': 'E5', 'event': 'Amy retrieves her hidden arsenal consisting of a pistol and a katana.', 'beat_number': 5, 'depends_on': ['E4']}, {'id': 'E6', 'event': 'Amy equips the pistol and katana.', 'beat_number': 6, 'depends_on': ['E5']}, {'id': 'E7', 'event': 'Amy kills several zombies with her weapons.', 'beat_number': 7, 'depends_on': ['E6']}, {'id': 'E8', 'event': 'Amy kills the last zombie and lets Will and Amber out of the basement.', 'beat_number': 8, 'depends_on': ['E7']}], 'characters_introduced': [], 'location': 'kitchen'}]}
+Validating macro arc (attempt 1, response attempt 1/10).
+Macro arc validation: INVALID — Missing required event: Amy equips her weapons
+Repairing macro arc.
+Validating macro arc (attempt 2, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 1/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 3, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 4, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 5, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 6, response attempt 1/10).
+Macro arc validation: INVALID — The arc does not represent Amy's clothing in beat 1
+Repairing macro arc.
+Validating macro arc (attempt 7, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 8, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 9, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 10, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Macro arc validation/repair budget exhausted; restarting the arc from creation.
+Requesting macro arc (attempt 2, response attempt 1/10).
+{'phases': [{'phase_number': 1, 'beat_start': 1, 'beat_end': 2, 'narrative_purpose': 'Introduction', 'broad_progression': 'Amy is at home cooking breakfast for her kids before the zombie apocalypse begins.', 'required_end_state': 'Amy is in the kitchen with her kids, and a zombie has broken the window.', 'required_events': [{'id': 'E1', 'event': 'Amy cooks breakfast for Will and Amber in the kitchen.', 'beat_number': 1, 'depends_on': []}, {'id': 'E2', 'event': 'A zombie breaks the kitchen door window, alerting Amy to the danger.', 'beat_number': 2, 'depends_on': ['E1']}], 'characters_introduced': ['Amy', 'Will', 'Amber'], 'location': 'kitchen'}, {'phase_number': 2, 'beat_start': 3, 'beat_end': 4, 'narrative_purpose': 'Setup', 'broad_progression': 'Amy rushes her kids to the basement and locks them inside for safety.', 'required_end_state': 'Will and Amber are safely locked in the basement, and Amy is outside with her weapons ready.', 'required_events': [{'id': 'E3', 'event': 'Amy rushes Will and Amber to the basement.', 'beat_number': 3, 'depends_on': ['E2']}, {'id': 'E4', 'event': 'Amy locks the basement door, securing Will and Amber inside.', 'beat_number': 4, 'depends_on': ['E3']}], 'characters_introduced': [], 'location': 'basement'}, {'phase_number': 3, 'beat_start': 5, 'beat_end': 8, 'narrative_purpose': 'Conflict', 'broad_progression': 'Amy fights and kills the zombies attacking her house.', 'required_end_state': "All zombies are dead, and Amy's house is covered in blood.", 'required_events': [{'id': 'E5', 'event': 'Amy retrieves her hidden arsenal consisting of a pistol and a katana.', 'beat_number': 5, 'depends_on': ['E4']}, {'id': 'E6', 'event': 'Amy equips the pistol and katana, preparing to fight the zombies.', 'beat_number': 6, 'depends_on': ['E5']}, {'id': 'E7', 'event': 'Amy kills several zombies with her weapons.', 'beat_number': 7, 'depends_on': ['E6']}, {'id': 'E8', 'event': 'Amy kills the last zombie, ending the attack.', 'beat_number': 8, 'depends_on': ['E7']}], 'characters_introduced': [], 'location': 'house'}]}
+Validating macro arc (attempt 1, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 1/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 2, response attempt 1/10).
+Macro arc validation: INVALID — Missing source event: Amy sees the danger.
+Repairing macro arc.
+Validating macro arc (attempt 3, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 3/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 4, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 3/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 5, response attempt 1/10).
+Macro arc validation: INVALID — Missing required event: Amy sees the danger and rushes her kids to the basement.
+Repairing macro arc.
+Validating macro arc (attempt 6, response attempt 1/10).
+Macro arc validation: INVALID — Missing required event: Amy equips the weapons.
+Repairing macro arc.
+Validating macro arc (attempt 7, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 1/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 8, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 1/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 9, response attempt 1/10).
+Macro arc validation: INVALID — Missing required event: Amy equips the weapons.
+Repairing macro arc.
+Validating macro arc (attempt 10, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 1/8 beats; more than half is required.
+Repairing macro arc.
+Macro arc validation/repair budget exhausted; restarting the arc from creation.
+Requesting macro arc (attempt 3, response attempt 1/10).
+{'phases': [{'phase_number': 1, 'beat_start': 1, 'beat_end': 2, 'narrative_purpose': 'Setup', 'broad_progression': 'Amy is at home cooking breakfast for her kids when a zombie breaks in.', 'required_end_state': "Amy's kitchen door window is broken, and Amy has rushed her kids to the basement and locked them inside.", 'required_events': [{'id': 'E1', 'event': 'Amy is cooking breakfast for her kids Will and Amber in the kitchen.', 'beat_number': 1, 'state_effects': [{'op': 'set_location', 'entity': 'Amy', 'value': 'kitchen'}, {'op': 'set_location', 'entity': 'Will', 'value': 'kitchen'}, {'op': 'set_location', 'entity': 'Amber', 'value': 'kitchen'}, {'op': 'set_clothing', 'entity': 'Amy', 'slot': 'upper', 'item': 'black tank top', 'damage': 'none'}, {'op': 'set_clothing', 'entity': 'Amy', 'slot': 'lower', 'item': 'denim jeans', 'damage': 'none'}]}, {'id': 'E2', 'event': 'A zombie breaks the kitchen door window, and Amy rushes her kids to the basement.', 'beat_number': 2, 'state_effects': [{'op': 'set_barrier_state', 'entity': 'kitchen door window', 'value': 'broken'}, {'op': 'set_location', 'entity': 'Amy', 'value': 'basement'}, {'op': 'set_location', 'entity': 'Will', 'value': 'basement'}, {'op': 'set_location', 'entity': 'Amber', 'value': 'basement'}], 'depends_on': ['E1']}], 'characters_introduced': ['Amy', 'Will', 'Amber'], 'location': 'Home'}, {'phase_number': 2, 'beat_start': 3, 'beat_end': 4, 'narrative_purpose': 'Preparation', 'broad_progression': 'Amy retrieves her hidden arsenal and equips the weapons.', 'required_end_state': 'Amy has retrieved her pistol and katana and equipped them.', 'required_events': [{'id': 'E3', 'event': 'Amy locks the basement door.', 'beat_number': 3, 'state_effects': [{'op': 'set_barrier_state', 'entity': 'basement door', 'value': 'locked'}], 'depends_on': ['E2']}, {'id': 'E4', 'event': 'Amy retrieves her hidden arsenal consisting of a pistol and a katana.', 'beat_number': 4, 'state_effects': [{'op': 'set_item_state', 'entity': 'pistol', 'owner': 'Amy', 'value': 'equipped'}, {'op': 'set_item_state', 'entity': 'katana', 'owner': 'Amy', 'value': 'equipped'}], 'depends_on': ['E3']}], 'characters_introduced': [], 'location': 'Home'}, {'phase_number': 3, 'beat_start': 5, 'beat_end': 8, 'narrative_purpose': 'Conflict', 'broad_progression': 'Amy kills zombies as they try to attack her.', 'required_end_state': 'Amy has killed the last of the zombies, and her house is soaked in blood.', 'required_events': [{'id': 'E5', 'event': 'Zombies attack Amy in the kitchen.', 'beat_number': 5, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombies', 'value': 'active'}], 'depends_on': ['E4']}, {'id': 'E6', 'event': 'Amy kills several zombies with her pistol and katana.', 'beat_number': 6, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombies', 'value': 'active'}], 'depends_on': ['E5']}, {'id': 'E7', 'event': 'More zombies attack Amy, and she continues to fight them off.', 'beat_number': 7, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombies', 'value': 'active'}], 'depends_on': ['E6']}, {'id': 'E8', 'event': 'Amy kills the last zombie, and her house is soaked in blood.', 'beat_number': 8, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombies', 'value': 'dead'}, {'op': 'set_condition', 'entity': 'house', 'value': 'blood-soaked'}], 'depends_on': ['E7']}], 'characters_introduced': [], 'location': 'Home'}]}
+Validating macro arc (attempt 1, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 2, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 3, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 4, response attempt 1/10).
+Macro arc validation: INVALID — Missing required event: Amy locks the basement door
+Repairing macro arc.
+Validating macro arc (attempt 5, response attempt 1/10).
+Macro arc validation: INVALID — Missing required event: Amy locking the basement door.
+Repairing macro arc.
+Validating macro arc (attempt 6, response attempt 1/10).
+Macro arc validation: INVALID — Missing source action: Amy locks the basement door.
+Repairing macro arc.
+Validating macro arc (attempt 7, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 8, response attempt 1/10).
+Macro arc validation: INVALID — Missing source action/state: A zombie breaks the kitchen door window
+Repairing macro arc.
+Validating macro arc (attempt 9, response attempt 1/10).

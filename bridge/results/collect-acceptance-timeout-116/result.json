@@ -1,0 +1,309 @@
+{
+  "job_id": "collect-acceptance-timeout-116",
+  "kind": "collect_files",
+  "started_at": 1790122732.6526384,
+  "collected_files": [
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-182346\\run.log",
+      "status": "copied",
+      "size": 61400
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-183457\\run.log",
+      "status": "copied",
+      "size": 60951
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-184942\\run.log",
+      "status": "copied",
+      "size": 59146
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-191833\\run.log",
+      "status": "copied",
+      "size": 58288
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-200912\\run.log",
+      "status": "copied",
+      "size": 61420
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-204312\\run.log",
+      "status": "copied",
+      "size": 59086
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-205754\\run.log",
+      "status": "copied",
+      "size": 65332
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-212331\\run.log",
+      "status": "copied",
+      "size": 58527
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-221337\\run.log",
+      "status": "copied",
+      "size": 60713
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-222532\\run.log",
+      "status": "copied",
+      "size": 62926
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-224339\\run.log",
+      "status": "copied",
+      "size": 69160
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-232220\\run.log",
+      "status": "copied",
+      "size": 63401
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-233633\\run.log",
+      "status": "copied",
+      "size": 78474
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-000156\\run.log",
+      "status": "copied",
+      "size": 62517
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-001645\\run.log",
+      "status": "copied",
+      "size": 64754
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-080650\\run.log",
+      "status": "copied",
+      "size": 7938
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-091305\\run.log",
+      "status": "copied",
+      "size": 82694
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-101338\\run.log",
+      "status": "copied",
+      "size": 69114
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-103235\\run.log",
+      "status": "copied",
+      "size": 68667
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-110423\\run.log",
+      "status": "copied",
+      "size": 16262
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-121012\\run.log",
+      "status": "copied",
+      "size": 79376
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-130942\\run.log",
+      "status": "copied",
+      "size": 63096
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-134256\\run.log",
+      "status": "copied",
+      "size": 0
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-134403\\run.log",
+      "status": "copied",
+      "size": 76620
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-143911\\run.log",
+      "status": "copied",
+      "size": 67336
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-151233\\run.log",
+      "status": "copied",
+      "size": 68671
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-153752\\run.log",
+      "status": "copied",
+      "size": 71288
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-155628\\run.log",
+      "status": "copied",
+      "size": 77010
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-170934\\run.log",
+      "status": "copied",
+      "size": 23135
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-181659\\run.log",
+      "status": "copied",
+      "size": 49187
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-182346\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-183457\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-184942\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-191833\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-200912\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-204312\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-205754\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-212331\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-221337\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-222532\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-224339\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-232220\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260921-233633\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-000156\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-001645\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-080650\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-091305\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-101338\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-103235\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-110423\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-121012\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-130942\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-134256\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-134403\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-143911\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-151233\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-153752\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-155628\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-170934\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    },
+    {
+      "path": ".chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-181659\\run_plan.json",
+      "status": "copied",
+      "size": 650
+    }
+  ],
+  "finished_at": 1790122732.730756,
+  "status": "ok"
+}

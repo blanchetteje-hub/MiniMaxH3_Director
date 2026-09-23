@@ -1,0 +1,47 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-jywzd7e3\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-jywzd7e3\repo\beats.txt); regenerating the beat plan.
+Asking LM Studio to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-jywzd7e3\repo\beats.txt with 8 creative story beats.
+
+=== Macro arc generation attempt 1/10 ===
+Requesting macro arc (attempt 1, response attempt 1/10).
+{'phases': [{'phase_number': 1, 'beat_start': 1, 'beat_end': 3, 'narrative_purpose': 'Introduction and Initial Conflict', 'broad_progression': "Amy's normal morning is disrupted by the zombie apocalypse, and she takes her kids to safety.", 'required_end_state': 'Amy has locked her kids in the basement and retrieved her weapons.', 'required_events': [{'id': 'E1', 'event': 'Amy is cooking breakfast for Will and Amber.', 'beat_number': 1}, {'id': 'E2', 'event': 'A zombie breaks the kitchen door window, and Amy sees the danger.', 'beat_number': 2}, {'id': 'E3', 'event': 'Amy rushes her kids to the basement, gets them inside, and locks the door.', 'beat_number': 3, 'state_effects': [{'op': 'set_location', 'entity': 'Will', 'value': 'basement'}, {'op': 'set_location', 'entity': 'Amber', 'value': 'basement'}]}], 'characters_introduced': ['Amy', 'Will', 'Amber'], 'location': "Amy's home"}, {'phase_number': 2, 'beat_start': 4, 'beat_end': 8, 'narrative_purpose': 'Conflict and Resolution', 'broad_progression': 'Amy fights and kills the zombies to protect her kids.', 'required_end_state': 'Amy has killed all the zombies and lets her kids out of the basement.', 'required_events': [{'id': 'E4', 'event': 'Amy retrieves her hidden arsenal consisting of a pistol and a katana.', 'beat_number': 4, 'state_effects': [{'op': 'set_item_state', 'entity': 'pistol', 'owner': 'Amy', 'value': 'equipped'}, {'op': 'set_item_state', 'entity': 'katana', 'owner': 'Amy', 'value': 'equipped'}]}, {'id': 'E5', 'event': 'Amy kills several zombies using her weapons.', 'beat_number': 5}, {'id': 'E6', 'event': 'Amy continues to fight and kill more zombies.', 'beat_number': 6, 'depends_on': ['E5']}, {'id': 'E7', 'event': 'Amy kills the last zombie, her house now soaked in blood.', 'beat_number': 7, 'depends_on': ['E6']}, {'id': 'E8', 'event': 'Amy lets her kids out of the basement.', 'beat_number': 8, 'depends_on': ['E7']}], 'characters_introduced': [], 'location': "Amy's home"}]}
+LM Studio returned an invalid macro arc; requesting a corrected arc: Macro required event E2 at beat 2 must depend on the immediately preceding required event E1.
+Requesting macro arc (attempt 1, response attempt 2/10).
+{'phases': [{'phase_number': 1, 'beat_start': 1, 'beat_end': 2, 'narrative_purpose': 'Setup', 'broad_progression': 'Amy is at home cooking breakfast for her kids when a zombie breaks in.', 'required_end_state': 'Amy sees the zombie and rushes her kids to the basement, locking them inside.', 'required_events': [{'id': 'E1', 'event': 'Amy cooks breakfast for Will and Amber.', 'beat_number': 1, 'depends_on': []}, {'id': 'E2', 'event': 'A zombie breaks the kitchen door window, Amy sees it, rushes Will and Amber to the basement, and locks them inside.', 'beat_number': 2, 'depends_on': ['E1']}], 'characters_introduced': ['Amy', 'Will', 'Amber'], 'location': 'Home'}, {'phase_number': 2, 'beat_start': 3, 'beat_end': 4, 'narrative_purpose': 'Preparation', 'broad_progression': 'Amy retrieves her hidden arsenal and equips her weapons.', 'required_end_state': 'Amy has equipped her pistol and katana, ready to fight the zombies.', 'required_events': [{'id': 'E3', 'event': 'Amy retrieves her hidden arsenal consisting of a pistol and a katana.', 'beat_number': 3, 'depends_on': ['E2']}, {'id': 'E4', 'event': 'Amy equips the pistol and katana.', 'beat_number': 4, 'depends_on': ['E3']}], 'characters_introduced': [], 'location': 'Home'}, {'phase_number': 3, 'beat_start': 5, 'beat_end': 8, 'narrative_purpose': 'Conflict', 'broad_progression': 'Amy kills zombies as they attack her.', 'required_end_state': 'Amy has killed the last zombie, her house is soaked in blood, and she lets her kids out of the basement.', 'required_events': [{'id': 'E5', 'event': 'Zombies attack Amy; she kills several zombies with her pistol and katana.', 'beat_number': 5, 'depends_on': ['E4']}, {'id': 'E6', 'event': 'More zombies attack; Amy continues to fight and kill them.', 'beat_number': 6, 'depends_on': ['E5']}, {'id': 'E7', 'event': 'Zombies keep attacking; Amy dismembers and decapitates several more.', 'beat_number': 7, 'depends_on': ['E6']}, {'id': 'E8', 'event': 'Amy kills the last zombie, her house is soaked in blood, and she lets Will and Amber out of the basement.', 'beat_number': 8, 'depends_on': ['E7']}], 'characters_introduced': [], 'location': 'Home'}]}
+Validating macro arc (attempt 1, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 2, response attempt 1/10).
+Macro arc validation: INVALID — A zombie breaks the kitchen door window, Amy sees it, rushes Will and Amber to the basement, and locks them inside.
+Repairing macro arc.
+Macro arc repair failed; retrying repair (1/10): Macro arc phase 4 has invalid inclusive range 9-9 for 8 beats.
+Repairing macro arc.
+Validating macro arc (attempt 3, response attempt 1/10).
+Macro arc validation: INVALID — Missing source event: Amy equips her weapons
+Repairing macro arc.
+Validating macro arc (attempt 4, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 3/8 beats; more than half is required.
+Repairing macro arc.
+Macro arc repair failed; retrying repair (1/10): Macro arc phase 4 has invalid inclusive range 9-9 for 8 beats.
+Repairing macro arc.
+Validating macro arc (attempt 5, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 3/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 6, response attempt 1/10).
+Macro arc validation: INVALID — Missing required event: Amy locks the basement door.
+Repairing macro arc.
+Validating macro arc (attempt 7, response attempt 1/10).
+Macro arc validation: INVALID — Missing source action: Amy locks the door after rushing her kids to the basement.
+Repairing macro arc.
+Validating macro arc (attempt 8, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 3/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 9, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 10, response attempt 1/10).
+Macro arc validation: INVALID — Amy's clothing is missing in phase 1
+Repairing macro arc.
+Macro arc validation/repair budget exhausted; restarting the arc from creation.
+Requesting macro arc (attempt 2, response attempt 1/10).

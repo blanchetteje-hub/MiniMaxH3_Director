@@ -1,0 +1,22 @@
+{
+  "story_id": "amy_zombie_house",
+  "workspace": "C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-hfx0v537\\repo",
+  "output_dir": "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260922-170934",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "8",
+    "64",
+    "0.5",
+    "--test-prompt-generation",
+    "--vision-continuity",
+    "0",
+    "--model",
+    "mistral",
+    "--image1",
+    "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+    "--refresh",
+    "7"
+  ],
+  "refresh_interval": 7
+}
