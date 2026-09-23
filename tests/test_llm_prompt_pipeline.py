@@ -452,6 +452,27 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertNotIn("Create between", rules)
         self.assertNotIn("At 00:ss.mmm seconds", rules)
 
+    def test_director_response_schema_carries_completion_contract(self):
+        properties = minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT[
+            "json_schema"
+        ]["schema"]["properties"]
+        self.assertIn(
+            "natural visible endpoint",
+            properties["raw_scene"]["description"],
+        )
+        self.assertIn(
+            "named beneficiary",
+            properties["raw_scene"]["description"],
+        )
+        self.assertIn(
+            "tools/appliances used only for the finished activity",
+            properties["beat_complete"]["description"],
+        )
+        self.assertIn(
+            "finite activity still underway is incomplete",
+            properties["beat_complete"]["description"],
+        )
+
     def test_formatter_music_rule_matches_locked_gold_modes(self):
         initial = minimax.build_h3_formatter_messages(
             "At 00:00.000, Amy cooks breakfast.",
