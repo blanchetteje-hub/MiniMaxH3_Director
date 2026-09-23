@@ -456,3 +456,47 @@ The bridge uses the dedicated gpt-runtime branch. ChatGPT commits JSON jobs unde
 ### First Amy gold acceptance baseline
 
 The first complete 8-segment acceptance capture completed successfully at the harness level. The earliest semantic divergence is the ARC stage: the generated story arc omitted the ordinary breakfast setup from required events and assigned the zombie-window break-in to Beat 1. The generated Beat 1 therefore depicts the threat immediately, while gold Beat 1 is the calm breakfast scene. Downstream Director/H3 mismatches should not be repaired before this upstream arc/beat planning loss is corrected.
+
+
+## LLM sampling is an evidence-driven tuning lever
+
+Prompt/architecture changes are not the only permitted way to fix local-model
+behavior. Future MiniMax H3 iterations may tune LLM sampling parameters when a
+targeted bridge probe shows that the setting change improves the **observed**
+failure without creating a regression.
+
+Use the same discipline as prompt changes:
+
+- change one small sampling dimension at a time when practical;
+- compare against the exact current production prompt/settings;
+- record the exact settings and probe/job IDs in `docs/HANDOFF.md`;
+- promote a sampling change to production only when the evidence distinguishes
+  it from a prompt/content change;
+- do not randomly sweep settings or tune hypothetical failures.
+
+Current production baselines:
+
+- ARC CREATE/VALIDATE/REPAIR sampling:
+  `temperature=0`, `top_p=0.95`, `top_k=0`, `min_p=0.0`,
+  `presence_penalty=0`, `frequency_penalty=0`,
+  `repeat_penalty=1.15`, seed 42.
+- Beat CREATE sampling:
+  `temperature=0.65`, `top_p=0.90`, `presence_penalty=0.15`,
+  `frequency_penalty=0.15`, `repeat_penalty=1.05`.
+- Frozen single-beat VALIDATE remains Mistral 24B at
+  `temperature=0`, `repeat_penalty=1.15`, seed 42 unless new benchmark
+  evidence directly implicates the validator itself.
+
+Important historical evidence: increasing the deterministic validator/ARC
+repeat penalty to 1.15 was a major quality improvement. Treat repeat penalty,
+temperature, top-p/min-p, and presence/frequency penalties as legitimate tools,
+not sacred defaults.
+
+September 23 Beat-1 endpoint experiment:
+- probe 169 succeeded with `temperature=.65`, `top_p=.95`,
+  `min_p=.05`, `repeat_penalty=1.1`;
+- probe 170 repeated the same successful prompt using the **current production
+  Beat CREATE settings** and also succeeded.
+Therefore the current Beat-1 correction is a prompt-contract fix; no Beat
+sampling change is justified by those probes.
+
