@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-validation-minimal-bundling-probe-150",
+  "kind": "llama_chat",
+  "started_at": 1790151319.5493124,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only for a missing explicit source action/state, a source-order contradiction, or an unsupported major plot addition. Do not critique pacing, bundling, detail level, style, or beat allocation. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE\nAmy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her kids Will and Amber. A zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, locks the door, retrieves a pistol and katana, and equips the weapons. The majority of the film is Amy killing zombies as they attack her. Amy kills the last zombie, her house now soaked in blood, and lets her kids out.\n\nEVENTS\n1. Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\n2. A zombie breaks the kitchen door window and Amy sees the danger.\n3. Amy rushes her kids to the basement, gets them inside, locks the door, and retrieves her pistol and katana.\n4. Amy equips the weapons.\n5. Amy kills zombies as they attack her.\n6. Amy kills more zombies as they attack her.\n7. Amy kills even more zombies as they attack her.\n8. Amy kills the last zombie, the house is soaked in blood, and she lets her kids out.\n\nRules:\n- 'her kids' is sufficient for Will and Amber; names need not repeat.\n- Adjacent sequential source actions MAY share one event and this is NOT an error if their order is preserved inside the event.\n- A source-authorized repeated process MAY span multiple events.\n- Do not require clothing or other details absent from the source.\n- Do not judge majority count.\nReturn exactly {\"valid\":true,\"issues\":[]} or {\"valid\":false,\"issues\":[\"first blocking issue\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ophnxswhdvq9nv23v0t5i",
+    "object": "chat.completion",
+    "created": 1790151319,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issues\": []}",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 403,
+      "completion_tokens": 11,
+      "total_tokens": 414,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790151321.064936,
+  "status": "ok"
+}
