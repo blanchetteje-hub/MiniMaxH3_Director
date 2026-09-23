@@ -496,20 +496,50 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
                         "visibly settle it before the handoff when reasonable."
                     ),
                 },
+                "finite_activity_complete": {
+                    "type": "boolean",
+                    "description": (
+                        "True only when every finite activity in CURRENT BEAT is "
+                        "visibly finished or CURRENT BEAT explicitly says it "
+                        "remains unfinished/interrupted. True when no finite "
+                        "activity applies."
+                    ),
+                },
+                "named_beneficiaries_complete": {
+                    "type": "boolean",
+                    "description": (
+                        "True only when every named person the CURRENT BEAT says "
+                        "the activity is for visibly receives or participates in "
+                        "the completed result when physically possible. True "
+                        "when no named beneficiary requirement applies."
+                    ),
+                },
+                "activity_tools_settled": {
+                    "type": "boolean",
+                    "description": (
+                        "True only when tools/appliances used only for a completed "
+                        "finite activity are visibly stopped, set down, closed, "
+                        "or otherwise settled when physically reasonable. True "
+                        "when no such tool/appliance applies."
+                    ),
+                },
                 "beat_complete": {
                     "type": "boolean",
                     "description": (
-                        "True only if RAW SCENE visibly completes every explicit "
-                        "CURRENT BEAT action, object, and outcome. A finite "
-                        "activity still underway is incomplete. If the activity "
-                        "is for named people, required beneficiaries must receive "
-                        "or participate in the completed result when physically "
-                        "possible, and tools/appliances used only for the finished "
-                        "activity must be visibly settled when reasonable."
+                        "True only when finite_activity_complete, "
+                        "named_beneficiaries_complete, and activity_tools_settled "
+                        "are all true and RAW SCENE visibly executes every "
+                        "explicit CURRENT BEAT action, object, and outcome."
                     ),
                 },
             },
-            "required": ["raw_scene", "beat_complete"],
+            "required": [
+                "raw_scene",
+                "finite_activity_complete",
+                "named_beneficiaries_complete",
+                "activity_tools_settled",
+                "beat_complete",
+            ],
             "additionalProperties": False,
         },
     },
@@ -15315,14 +15345,45 @@ def _parse_director_raw_scene_result(raw_result):
             else ""
         )
         beat_complete = candidate.get("beat_complete") is True
+        completion_checks_present = all(
+            key in candidate
+            for key in (
+                "finite_activity_complete",
+                "named_beneficiaries_complete",
+                "activity_tools_settled",
+            )
+        )
+        if completion_checks_present:
+            finite_activity_complete = (
+                candidate.get("finite_activity_complete") is True
+            )
+            named_beneficiaries_complete = (
+                candidate.get("named_beneficiaries_complete") is True
+            )
+            activity_tools_settled = (
+                candidate.get("activity_tools_settled") is True
+            )
+        else:
+            # Preserve legacy/mock callers that predate the expanded Request-1
+            # response contract. Production structured output requires all
+            # three explicit completion checks.
+            finite_activity_complete = beat_complete
+            named_beneficiaries_complete = beat_complete
+            activity_tools_settled = beat_complete
     else:
         # Legacy/free-form responses contain no trustworthy completion claim.
         # Preserve their text for diagnostics, but force Request 1 retry logic.
         raw_scene = _normalize_raw_scene_result(candidate)
         beat_complete = False
+        finite_activity_complete = False
+        named_beneficiaries_complete = False
+        activity_tools_settled = False
 
     return {
         "raw_scene": raw_scene,
+        "finite_activity_complete": finite_activity_complete,
+        "named_beneficiaries_complete": named_beneficiaries_complete,
+        "activity_tools_settled": activity_tools_settled,
         "beat_complete": beat_complete,
     }
 
@@ -24127,21 +24188,59 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 "RAW SCENE dropped named Subject(s) explicitly required by "
                 "CURRENT BEAT: " + ", ".join(missing_director_subjects) + "."
             )
+        completion_checks_pass = all(
+            request1_result[key]
+            for key in (
+                "finite_activity_complete",
+                "named_beneficiaries_complete",
+                "activity_tools_settled",
+                "beat_complete",
+            )
+        )
         if (
-            request1_result["beat_complete"]
+            completion_checks_pass
             and raw_scene.strip()
             and raw_scene != "N/A"
             and not structure_errors
         ):
             break
 
+        completion_failures = [
+            label
+            for key, label in (
+                (
+                    "finite_activity_complete",
+                    "finite activity did not visibly reach its endpoint",
+                ),
+                (
+                    "named_beneficiaries_complete",
+                    "named beneficiary requirement was not fully satisfied",
+                ),
+                (
+                    "activity_tools_settled",
+                    "activity-only tool/appliance was not visibly settled",
+                ),
+                (
+                    "beat_complete",
+                    "CURRENT BEAT was not fully completed",
+                ),
+            )
+            if not request1_result[key]
+        ]
         request1_feedback = (
             "RAW SCENE STRUCTURE ERROR: "
             + " ".join(structure_errors)
             + " Regenerate the same segment with timed micro-beats and one "
             "non-empty trailing End continuity state."
             if structure_errors
-            else default_request1_feedback
+            else (
+                "REQUEST 1 COMPLETION ERROR: "
+                + "; ".join(completion_failures)
+                + ". Regenerate the same segment and fix those exact "
+                "completion failures without advancing into NEXT BEAT."
+                if completion_failures
+                else default_request1_feedback
+            )
         )
 
         if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
