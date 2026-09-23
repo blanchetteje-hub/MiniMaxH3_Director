@@ -10840,6 +10840,7 @@ def _seed_known_beat_characters(state, macro_arc=None, subject_information=""):
 
 
 # Build the macro-arc planning prompt.
+
 def build_beat_arc_plan_messages(
     story,
     total_segments,
@@ -10848,446 +10849,40 @@ def build_beat_arc_plan_messages(
     phrase_exclusions=(),
     beat_instructions="",
 ):
+    """Build the small 24B ARC creation prompt."""
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
-    phrase_exclusions_text = format_phrase_exclusions_section(phrase_exclusions)
-    majority_budget_text = ""
+    phrase_exclusions_text = format_phrase_exclusions_section(phrase_exclusions).strip()
+    majority_budget_text = "N/A"
     if re.search(r"\bmajority\b", str(story or ""), re.IGNORECASE):
         minimum_sequence_beats = int(total_segments) // 2 + 1
         maximum_outside_beats = int(total_segments) - minimum_sequence_beats
         majority_budget_text = (
-            "\nEXPLICIT MAJORITY SEQUENCE BUDGET\n"
-            f"This story has {int(total_segments)} total beats. A strict majority "
-            f"requires at least {minimum_sequence_beats} beats allocated to the "
-            "broad source-emphasized narrative sequence. These beats do NOT each "
-            "need to literally repeat the emphasized verb. Enemy attacks, "
-            "reversals, setbacks, weapon transitions AFTER the conflict/process "
-            "has begun, continued action, the terminal result, and immediate "
-            "resolution sharing the final sequence beat may all belong to it. "
-            "Standalone preparation before the emphasized conflict/process begins "
-            "does NOT count toward the majority sequence. "
-            f"At most {maximum_outside_beats} beats may sit outside the emphasized "
-            "sequence. Preserve distinct earlier source stages instead of "
-            "compressing them merely to manufacture literal repetitions. When the "
-            "source presents the emphasized material as one continuous block, "
-            "prefer one contiguous beat span for that sequence. If the source's "
-            "terminal emphasized action is immediately followed by resolution, "
-            "put that terminal result and immediate resolution in the SAME final "
-            "sequence beat whenever a resolution-only beat would otherwise make "
-            "the emphasized sequence too short."
+            f"A strict majority of {int(total_segments)} beats means at least "
+            f"{minimum_sequence_beats} beats in the emphasized sequence and at most "
+            f"{maximum_outside_beats} beats before/outside it. Preparation before "
+            "that sequence does not count. The final emphasized action may share "
+            "its beat with immediate resolution."
         )
-    correction_text = ""
-    if correction:
-        correction_text = f"""
 
-CORRECTION REQUIRED
-{correction}
-Return the complete corrected arc.
-"""
+    correction_text = (
+        f"\nCORRECTION REQUIRED\n{str(correction).strip()}\n"
+        if str(correction or "").strip()
+        else ""
+    )
+
     return [
         {
             "role": "system",
             "content": (
-                """You are a story-arc planner. Divide a supplied story into meaningful
-narrative phases that will later be expanded into individual video beats.
-
-PHASE BOUNDARY RULES
-- Separate a setup/introduction stage from a long main process/conflict when the
-  source clearly contains both.
-- Separate completion/aftermath/resolution from the main process when the source
-  clearly gives the ending a different purpose.
-- A long repeated process may occupy one large phase.
-- Do NOT collapse setup + long process + completion into one phase merely because
-  they occur in the same place with the same characters.
-- One phase is appropriate only when the story genuinely has one narrative
-  purpose from beginning through ending. For a long multi-stage story, a
-  one-phase arc should be unusual.
-- Phase sizes do not need to be similar.
-- SOURCE COVERAGE HAS PRIORITY OVER BEAT ALLOCATION. Before allocating emphasis,
-  silently walk the source from beginning to end and ensure every explicit
-  visible source action/state is assigned to some required_event in the same
-  order. Never satisfy an emphasis requirement by deleting an ordinary setup,
-  transition, preparation, climax, aftermath, or resolution action that the
-  source explicitly states.
-- PRESERVE EXPLICIT CONTRAST BOUNDARIES. When the source deliberately establishes
-  an ordinary/baseline activity and then marks a sudden disruptive or inciting
-  change, normally end the baseline beat before the disruption begins. Do not
-  combine the calm baseline and its inciting threat/change into one required_event
-  merely to reserve more beats for the later conflict. When allocation is tight,
-  prefer sharing the final emphasized action with its immediate resolution over
-  destroying an explicit baseline-to-disruption contrast.
-- Explicit relative-duration or emphasis statements in the source are binding on
-  beat allocation. If the source says the majority of the film/story is a
-  process or conflict, more than half of the TOTAL global beats must belong to
-  that broad narrative sequence. Do NOT require every beat in the sequence to
-  literally repeat the emphasized verb. Enemy attacks, reversals, setbacks,
-  weapon transitions after the conflict/process has begun, continued action,
-  the terminal result, and immediate resolution sharing the final beat may all
-  count when they are genuinely part of the same ongoing sequence.
-  Standalone preparation before the emphasized conflict/process begins does NOT
-  count toward the sequence. With 8 total beats, the emphasized sequence must
-  occupy at least 5 beats, leaving at most 3 beats outside it. Fit adjacent
-  setup/preparation into that non-sequence budget when physically reasonable;
-  preserve distinct meaningful stages rather than manufacturing literal
-  repetitions.
-- Preserve explicit "most", "half", "briefly", and similar relative emphasis
-  according to their ordinary meaning.
-- Otherwise, give most beats to the stage containing most of the required visible
-  events.
-
-broad_progression is an abstract description of what happens DURING that phase.
-
-required_end_state is the concrete handoff state that must be true at the END
-of that phase before the next phase starts. Do not put next-phase progression in
-the current phase merely to make the arc feel complete.
-
-Every hard fact in required_end_state must be represented by one or more atomic
-required_events for that phase. required_end_state may summarize those events,
-but must not introduce an additional mandatory fact that is absent from
-required_events. Phase freezing is enforced from required-event IDs.
-
-required_end_state may contain only states explicitly required by the SOURCE
-STORY or beat instructions, or states logically necessary for a required source
-event. Do not promote optional injuries, wardrobe, emotions, props, damage,
-exhaustion, or other plausible embellishments into hard requirements.
-
-Preserve required events, order, premise, and ending. Connective detail is
-allowed, but do not introduce unsupported major characters, transformations,
-procedures, mythology, timelines, loops, resurrection, or other plot mechanics.
-
-required_events describe WHAT must happen, not optional choreography. For example,
-"The protagonist handles several required obstacles" is appropriate when authorized
-by the source; an optional pause, flourish, or side action is not unless the source
-explicitly requires it. Minimal mechanics needed to make an authorized event
-physically executable are allowed: unlocking/opening a locked barrier is authorized
-when the source requires a person or object to pass through it. Accept
-source-authorized concrete details such as persistent scene conditions, explicitly
-named items being equipped, and source-stated visible state changes.
-
-For each phase return only the JSON properties:
-- phase_number
-- beat_start
-- beat_end
-- narrative_purpose
-- broad_progression
-- characters_introduced
-- location
-- required_end_state
-- required_events
-
-Each required event may also include optional state_effects, but only when the
-event itself directly establishes a persistent fact. state_effects is an array of
-typed operations. Use only: set_location, set_item_state, set_barrier_state,
-set_threat_state, set_object_state, set_containment, set_condition, and
-set_clothing. Do not invent operation names or state fields. Do not add effects
-for temporary actions, emotion, reaction, or optional embellishment.
-
-There must be exactly one concrete required event/job for every global beat.
-The complete arc must therefore contain one event at every beat in the
-requested range; there may be no gaps or duplicate beat assignments. Derive
-source-required events from SOURCE STORY or explicit beat instructions and
-preserve their order.
-
-A required_event is a BEAT JOB sized for one video clip, not necessarily one
-atomic action and not automatically one whole source sentence. Preserve every
-explicit visible source action/state.
-- When the beat budget permits, split a long adjacent source action chain across
-  consecutive beat jobs at a natural physical/narrative handoff instead of
-  cramming the whole sentence into one beat. A useful handoff leaves a concrete
-  action/state for the next clip to continue (for example reaching/opening a
-  destination before the next beat finishes entry, secures it, and prepares for
-  the next conflict stage).
-- Do not split merely to create empty filler; each resulting job must visibly
-  advance the same source-authorized sequence.
-- Only when the source contains more explicit timeline actions than the
-  requested beat count can represent one by one, bundle adjacent, causally
-  continuous source actions into the same beat job. Never drop an explicit
-  source action merely to satisfy the beat count.
-- Do not treat punctuation or sentence boundaries as mandatory beat boundaries.
-  Choose boundaries for executable clip-sized story progression.
-- Do not bundle distant story stages or reverse source order.
-
-When the source is sparse, fill the remaining beats with plausible
-connective/action jobs that stay within the established characters, setting,
-conflict, and outcome. These connective jobs are mandatory jobs for their
-beats, but must not introduce a different plot or unsupported MAJOR event.
-
-When the source explicitly authorizes a long repeated process/conflict but does
-not specify each individual encounter, treat the unused beat budget as room to
-PLAN A COHERENT ESCALATION inside that authorized process rather than writing
-several generic repetitions. Use varied concrete clip-sized jobs that hand
-state forward across beats. Appropriate local setpiece structure may include:
-- an attack/counterattack rather than another effortless success;
-- a weapon running empty, being dropped, getting stuck, being recovered, or a
-  source-authorized switch to another already established weapon;
-- an enemy surviving one beat so the same confrontation continues next beat;
-- a temporary obstacle, contamination, mess, or other visible complication;
-- a setback followed by recovery/counterattack;
-- a terminal enemy/result delayed until the next beat so the sequence has a
-  real unresolved handoff.
-When a sparse repeated conflict has several beats available, do not make every
-invented complication self-contained. Prefer at least one meaningful adjacent
-cross-beat handoff: the same threat, obstacle, weapon problem, contamination, or
-other temporary complication remains unresolved at the end of one beat and is
-continued/resolved in the next. This creates one coherent setpiece instead of a
-series of interchangeable mini-fights.
-These are execution-level developments inside an already authorized conflict,
-not new mythology or a different plot. Do NOT invent a new major character,
-location change, supernatural rule, mission, injury that changes the required
-outcome, or alternate ending. Prefer a small number of stable functional
-individual labels (for example Zombie1, Zombie2) when an individual threat must
-persist across beats instead of repeatedly using anonymous interchangeable
-entities.
-
-If one of these planned jobs establishes a persistent modeled fact (held/dropped
-weapon, active/dead threat, persistent condition, location, barrier, clothing
-damage, etc.), put the matching typed state_effect on the exact required_event
-that establishes it.
-
-Give every event a unique ID within the complete arc, preferably E1, E2, E3,
-and so on in actual beat order. Assign each event to its exact global beat
-number using beat_number. Required events must form one causal chain: the first
-event may omit depends_on or use an empty array; every later event must include
-the immediately preceding required event's actual ID in depends_on, including
-across phase boundaries. Add additional dependencies only when genuinely
-needed; never infer dependencies from event IDs alone or from list position.
-Add state_effects only for a direct, logically necessary persistent consequence
-of that event. Python will apply those effects deterministically after
-completion.
-- A state_effect is an authoritative persistent story fact, never inferred
-  motivation, emotion, reaction, or plausible context. In particular,
-  set_condition requires the event/source to actually establish that condition.
-  Cooking or serving food does not establish hunger; running does not establish
-  tiredness; danger does not establish fear; fighting does not establish anger.
-  Plausible is not enough. Omit an optional inferred condition entirely.
-- set_condition is a persistent post-beat condition, not a current activity.
-  Do not encode cooking, eating, running, fighting, looking, speaking, waiting,
-  or another in-progress action as set_condition. Temporary action stays in the
-  required event text only.
-- For set_condition, reuse meaningful words from the SAME required event text;
-  Python rejects ungrounded free-form values.
-- Clothing must use set_clothing. Never use set_condition for clothing or what
-  someone is wearing.
-
-STATE_EFFECTS JSON CONTRACT
-Examples:
-[{"op":"set_location","entity":"Amy","value":"kitchen"}]
-[{"op":"set_item_state","entity":"pistol","owner":"Amy","value":"equipped"}]
-[{"op":"set_clothing","entity":"Amy","slot":"upper","item":"black tank top","damage":"none"}]
-
-Python validates and translates these operations into canonical state. Do not emit
-nested canonical-state dictionaries or arbitrary inventory/clothing fields."""
+                "Plan one source story into simple chronological video phases and "
+                "exactly one required clip job per global beat. Return JSON only."
             ),
         },
         {
             "role": "user",
             "content": f"""
-Story:
-{story}
-
-MAIN CHARACTER(S):
-{subject_text}
-
-EXPLICIT BEAT INSTRUCTIONS
-{str(beat_instructions or '').strip() or 'N/A'}
-
-TOTAL BEATS:
-{total_segments}
-{majority_budget_text}
-
-The phases must cover Beats 1-{total_segments} exactly once,
-with no gaps or overlaps.
-
-{f"ADDITIONAL RULES: {phrase_exclusions_text}" if str(phrase_exclusions_text).strip() or '' else ''}
-
-{correction_text}
-
-Return only a JSON object with a 'phases' array using exactly the fields above.
-""".strip(),
-        },
-    ]
-
-
-# Build the single semantic macro-arc validation prompt.
-def build_macro_arc_validation_messages(
-    story,
-    macro_arc,
-    subject_information="",
-    beat_instructions="",
-):
-    subject_text = str(subject_information or "").strip() or "N/A"
-    phase_ends = [
-        phase.get("beat_end")
-        for phase in (macro_arc or {}).get("phases", [])
-        if isinstance(phase, dict) and isinstance(phase.get("beat_end"), int)
-    ]
-    declared_total = max(phase_ends) if phase_ends else "the requested total"
-    return [
-        {
-            "role": "system",
-            "content": (
-                "You validate one complete story arc. Use simple semantic checks. "
-                "Return one small JSON object only."
-            ),
-        },
-        {
-            "role": "user",
-            "content": f"""
-Check the proposed arc against the source story and instructions.
-
-Reject the arc only when there is a real blocking error.
-
-Reject when:
-- The premise, main conflict, or required ending changes.
-- A required major source event is missing or out of order.
-- The arc adds an unsupported major character, change, procedure, myth, time
-  event, plot device, required event, or required end-state fact.
-- The arc contradicts an explicit source fact.
-- Clearly separate source stages are collapsed into one phase and a meaningful
-  stage boundary is lost.
-- A defined human Subject has no concrete clothing when first shown. Clothing
-  may be added when that Subject is introduced later.
-  - Any global beat from 1 through {declared_total} has no required event,
-  has more than one required event, or is assigned outside its phase range.
-- Any required event after the first omits the immediately preceding required
-  event from depends_on, including across phase boundaries. Additional
-  dependencies are allowed when they are genuinely needed.
-- Dependencies are otherwise incoherent or in the wrong order.
-- A phase end state contains a fact that is not true by that phase boundary.
-- A persistent state effect is missing, owned by the wrong entity, unrelated,
-  malformed, or has the wrong value.
-
-Required events:
-- There must be exactly one concrete required event/job for every global beat.
-- SOURCE COVERAGE IS THE FIRST SEMANTIC CHECK. Walk through the SOURCE STORY in
-  chronological order before judging clothing, state effects, emphasis, or any
-  other semantic concern. Every explicit visible action or visible state that
-  establishes a distinct point in the source timeline must be represented by at
-  least one required_event in the arc, in the same order.
-- PRESERVE EXPLICIT CONTRAST BOUNDARIES. If the source establishes an ordinary
-  baseline activity and then explicitly introduces a sudden disruptive/inciting
-  change, reject an arc that unnecessarily combines both into the same beat job
-  when the requested beat budget can preserve the transition. A later conflict
-  emphasis does not justify leaking its inciting threat into the baseline beat.
-  Prefer combining the final emphasized action with immediate resolution when
-  that is the available way to preserve both source contrast and allocation.
-- Do not dismiss an explicit source action merely because it is calm,
-  introductory, mundane, or outside the main conflict. A stated ordinary
-  activity before an inciting threat/change is still part of the visible
-  timeline and requires coverage. Descriptive attributes alone do not require
-  their own event, but a description attached to an explicit action does not
-  substitute for performing that action.
-- If any explicit source timeline action/state is missing, valid MUST be false
-  and issues MUST report the FIRST missing source action/state. A valid emphasis
-  allocation never excuses missing source coverage. Still populate any required
-  majority_checks evidence for the response schema, but do not let it replace
-  the missing-source issue.
-- One required_event may cover multiple adjacent, causally continuous source
-  actions when necessary to fit the requested beat count. Judge coverage by
-  whether all source actions are present in order, not by requiring one event
-  per source sentence or action. Do not accept bundling that skips, reorders,
-  or joins distant story stages.
-- SOURCE EMPHASIS IS MANDATORY after source coverage is confirmed. Explicit
-  relative-duration or emphasis statements in the source are binding on beat
-  allocation.
-- For every explicit source statement using the word "majority", populate one
-  majority_checks entry. Its matching_phases must contain ONLY macro phase
-  numbers whose ENTIRE beat_start..beat_end span may safely be counted as the
-  broad emphasized narrative sequence. Every required_event in a matching phase
-  must materially belong to that already-active sequence, except the final beat
-  may also include its immediate terminal aftermath/resolution. Standalone
-  setup, escape, retrieval, equipping, or other preparation BEFORE the process
-  begins does NOT belong; if such an event shares a phase with later emphasized
-  action, that mixed phase is NOT safe to count in full and must not be listed.
-  Judge the phase's actual required_events and progression, not its
-  narrative_purpose label alone.
-- majority_checks is semantic evidence for deterministic counting. Do NOT decide
-  whether the numeric majority threshold passes inside valid/issues; Python will
-  expand each returned matching phase to its Python-owned beat_start..beat_end
-  span and compare that exact beat count with the total global beat count.
-- Preserve explicit "most", "half", "briefly", and similar relative emphasis
-  according to their ordinary meaning in the normal semantic validation.
-- Source-required events must be directly supported by the source or explicit
-  instructions. Sparse-source connective jobs may be plausible visible actions
-  that remain within the established story and do not add a different plot,
-  but only AFTER all explicit source timeline actions/states are represented.
-- When the source explicitly authorizes a long repeated process/conflict but
-  leaves its individual encounters unspecified, do NOT reject local setpiece
-  developments merely because the source did not dictate their exact
-  choreography. Attacks/counterattacks, weapon exhaustion/drop/switch, an enemy
-  persisting into the next beat, temporary obstacles/contamination, setbacks,
-  recovery, and delayed terminal results are allowed when they stay inside that
-  authorized process, preserve its setting/premise/outcome, and do not become a
-  new major plot event. Persistent modeled results still require correctly
-  attached state_effects.
-- Must keep the source order.
-- Check the actual event meaning and location against the source order. Do not
-  trust event IDs, list order, or a phase summary. If a later source event is
-  assigned an earlier beat than a preceding source event, reject the arc.
-- Must be concrete enough to show in a beat.
-- May use a clear paraphrase, a named item being equipped, a source-stated
-  condition, or the minimum physical action needed by a source event.
-- Do not add unsupported major plot events merely to fill a beat.
-- Do not require optional timing, route, gesture, choreography, or item use.
-
-Required end states:
-- Treat each end state as a snapshot at its phase boundary, not as a checklist
-  that must repeat every contributing event.
-- Check all required events in the current phase and earlier phases together.
-- Several events may establish one summary fact. A source-authorized access or
-  transition state may be inferred when all of its source-defined prerequisites
-  are complete, even if no event repeats the summary words.
-- A statement that all items are complete requires all items, not just some.
-
-State effects:
-- `state_effects` is an array of typed operations, not a nested state patch.
-- Accept only set_location, set_item_state, set_barrier_state, set_threat_state,
-  set_object_state, set_containment, set_condition, and set_clothing.
-- CHECK PERSISTENT STATE COVERAGE: if a required event explicitly establishes a
-  persistent canonical fact represented by one of these typed operations, that
-  same event must include the matching state_effect. Reject the arc when the
-  event says the persistent change or result occurs but its typed effect is
-  missing. Apply this generically to persistent modeled facts such as location,
-  containment, release, held/equipped objects, barriers, persistent objects,
-  terminal entities, clothing, and persistent environment conditions.
-- Do not require state effects for temporary actions, feelings, reactions, or
-  detail.
-- Reject unsupported optional state effects as well as missing required ones.
-  A state_effect is an authoritative persistent story fact, never inferred
-  motivation, emotion, reaction, or plausible context. set_condition is valid
-  only when the event/source actually establishes that persistent condition.
-  Cooking or serving food does not establish hunger; running does not establish
-  tiredness; danger does not establish fear; fighting does not establish anger.
-  Plausible is not enough.
-- set_condition is a persistent post-beat condition, not an in-progress action.
-  Never use it to record cooking, eating, running, fighting, looking, speaking,
-  waiting, or another temporary activity.
-- For set_condition, every meaningful word in the free-form value must also occur
-  in the SAME required event text that owns the effect.
-- Clothing must use set_clothing. set_condition must never encode clothing or
-  what someone is wearing.
-- Attach each persistent effect to the required event that actually establishes
-  that fact. If a later event retrieves or equips named equipment, an earlier
-  ordinary setup event must not carry that held/equipped effect; reject the arc
-  even if the later event also carries the effect.
-- Do not copy an old effect onto an unrelated event just to satisfy coverage.
-- Treat stored, held, and equipped as distinct item results; retrieving an item
-  does not establish equipped. Treat dead/removed/cleared and clothing slot or
-  damage values according to the typed operation contract.
-
-Do not reject because:
-- Phase sizes are unequal.
-- One process uses most of the beats.
-- A one-phase arc is used for one continuous source purpose.
-- Wording differs slightly but the meaning is source-authorized.
-
-Python checks JSON shape, numeric ranges, duplicate IDs, phase coverage, exact
-one-event-per-beat coverage, and the mandatory sequential dependency edge.
-Judge the semantic meaning, not exact wording.
-
 SOURCE STORY
---- STORY START ---
 {story}
---- STORY END ---
 
 DEFINED SUBJECTS
 {subject_text}
@@ -11295,23 +10890,118 @@ DEFINED SUBJECTS
 EXPLICIT BEAT INSTRUCTIONS
 {str(beat_instructions or '').strip() or 'N/A'}
 
-PROPOSED MACRO STORY ARC
-{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
+TOTAL BEATS
+{int(total_segments)}
 
-Output exactly one JSON object and nothing else. Do not output analysis,
-reasoning, a checklist, markdown, or any text before or after the object.
-Use this exact shape:
-{{"valid": true, "issues": [], "majority_checks": []}}
+MAJORITY BUDGET
+{majority_budget_text}
+
+Rules:
+- Cover every explicit visible source action/state in source order.
+- Every global beat has exactly one required_event. A required_event is one
+  executable clip job; split long source chains at natural handoffs when the
+  beat budget allows, and bundle only adjacent actions when necessary.
+- Preserve an explicit calm/ordinary baseline as its own beat before a sudden
+  inciting threat or change.
+- Honor explicit majority/most/half/briefly emphasis. Do not manufacture extra
+  literal repetitions merely to satisfy emphasis.
+- Sparse repeated conflict/process material may use coherent source-authorized
+  escalation, but never add a new major plot, character, location, or outcome.
+- required_events form one chain: every event after the first depends_on the
+  immediately preceding event ID.
+- state_effects contain only persistent facts directly established by that same
+  event. Use only set_location, set_item_state, set_barrier_state,
+  set_threat_state, set_object_state, set_containment, set_condition, and
+  set_clothing.
+- set_condition is for a persistent post-beat condition, never a temporary
+  activity or inferred feeling/state. Its meaningful value words must come from
+  the same event text.
+- Clothing must use set_clothing; never set_condition.
+- Return phase_number, beat_start, beat_end, narrative_purpose,
+  broad_progression, characters_introduced, location, and required_events.
+  Do not return required_end_state; Python derives the phase handoff from the
+  phase's final required_event.
+{correction_text}
+{phrase_exclusions_text}
+
+Return one JSON object with a phases array covering Beats 1-{int(total_segments)}
+exactly once.
+""".strip(),
+        },
+    ]
+
+
+def build_macro_arc_validation_messages(
+    story,
+    macro_arc,
+    subject_information="",
+    beat_instructions="",
+):
+    """Build the small 24B ARC semantic validation prompt."""
+    subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
+    compact_arc = {
+        "phases": [
+            {
+                key: value
+                for key, value in phase.items()
+                if key != "required_end_state"
+            }
+            for phase in (macro_arc or {}).get("phases", [])
+            if isinstance(phase, dict)
+        ]
+    }
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Validate one story arc against its source. Report only the first "
+                "real blocking semantic issue. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+SOURCE STORY
+{story}
+
+DEFINED SUBJECTS
+{subject_text}
+
+EXPLICIT BEAT INSTRUCTIONS
+{str(beat_instructions or '').strip() or 'N/A'}
+
+PROPOSED ARC
+{json.dumps(compact_arc, ensure_ascii=False, separators=(',', ':'))}
+
+Rules:
+- SOURCE COVERAGE FIRST: every explicit visible source action/state must appear
+  in required_events in the same order. Calm/mundane setup still counts.
+- Preserve an explicit ordinary baseline as its own beat before a sudden
+  inciting threat/change when the beat budget permits.
+- Reject unsupported major plot events, characters, locations, outcomes, or
+  contradictions.
+- Adjacent source actions may share one required_event when needed; do not join
+  distant story stages or drop a source action.
+- A defined human Subject must have concrete clothing when first shown.
+- state_effects must describe only persistent facts directly established by the
+  owning event. Reject inferred/temporary conditions and wrong typed operations.
+  Clothing must use set_clothing, never set_condition.
+- For each source statement using the word "majority", include one
+  majority_checks item. matching_phases contains only phase numbers whose entire
+  beat span belongs to that already-active emphasized sequence; preparation
+  before it does not count. The final emphasized action may share immediate
+  resolution. Do not decide the numeric threshold; Python counts the beats.
+- Python already checks JSON shape, phase/beat coverage, IDs, dependency-chain
+  structure, and typed operation syntax.
+
+Return exactly:
+{{"valid":true,"issues":[],"majority_checks":[]}}
 or
-{{"valid": false, "issues": ["one concise blocking issue"], "majority_checks": []}}.
-For every explicit SOURCE STORY sentence using the word "majority", include one
-majority_checks object with exactly:
-{{"source_requirement": "concise source requirement", "matching_phases": [2]}}.
-matching_phases means macro phases whose ENTIRE beat span is safe to count as
-the broad emphasized narrative sequence under the rule above. A mixed phase that
-contains standalone pre-sequence setup/preparation must not be listed. If the
-source has no explicit "majority" statement, return an empty majority_checks
-array. Keep issues empty when valid is true.
+{{"valid":false,"issues":["first blocking issue"],"majority_checks":[]}}
+
+For a majority source, each majority_checks item is:
+{{"source_requirement":"concise source requirement","matching_phases":[1]}}
+Populate majority_checks even when another semantic issue makes valid=false.
 """.strip(),
         },
     ]
@@ -11325,57 +11015,39 @@ def build_macro_arc_repair_messages(
     subject_information="",
     beat_instructions="",
 ):
-    """Build the one complete-arc repair request used after validation fails."""
-    majority_budget_text = ""
+    """Build the small 24B ARC repair prompt."""
+    minimum_sequence_beats = int(total_segments) // 2 + 1
+    maximum_outside_beats = int(total_segments) - minimum_sequence_beats
     has_majority_issue = any(
         re.search(r"\bmajority\b", str(issue or ""), re.IGNORECASE)
         for issue in (issues or [])
     )
-    if has_majority_issue:
-        minimum_sequence_beats = int(total_segments) // 2 + 1
-        maximum_outside_beats = int(total_segments) - minimum_sequence_beats
-        majority_budget_text = (
-            f"For this {int(total_segments)}-beat arc, the source's explicit "
-            f"majority requires at least {minimum_sequence_beats} beats allocated "
-            "to the broad emphasized narrative sequence, leaving at most "
-            f"{maximum_outside_beats} beats outside that sequence. This validator "
-            "issue is specifically about allocation, so phase ranges, beat "
-            "assignments, and event grouping are implicated and MAY change as "
-            "needed; preserve source meaning and order, not the rejected layout. "
-            f"The emphasized sequence must begin by Beat {maximum_outside_beats + 1} "
-            "at the latest. Sequence beats do not each need to literally repeat "
-            "the emphasized verb: enemy attacks, reversals, setbacks, weapon "
-            "transitions after the conflict has begun, continued action, the "
-            "terminal result, and immediate resolution sharing the final sequence "
-            "beat may count. Standalone preparation before that conflict begins "
-            "does NOT count. Fit every pre-sequence source action into the available "
-            "outside-beat budget by bundling adjacent, causally continuous actions "
-            "when necessary. PROTECTED CONTRAST BOUNDARY: when the source explicitly "
-            "establishes an ordinary, calm, safe, or normal baseline and then marks a "
-            "sudden/inciting threat or change, NEVER merge that inciting threat/change "
-            "into the baseline beat. The baseline must remain its own beat so the "
-            "source contrast is visible, and it consumes one outside-sequence beat. "
-            "Compress later setup/preparation instead. The inciting action MAY share "
-            "its beat with its immediate reaction/escape/containment sequence. "
-            "Retrieval and equipping "
-            "of the same named equipment MAY share one beat. Preserve every explicit "
-            "source action. If the terminal emphasized action is immediately followed "
-            "by resolution, share them in the final sequence beat rather than "
-            "spending a separate resolution-only beat when that would under-allocate "
-            "the majority."
-        )
+    majority_text = (
+        f"At least {minimum_sequence_beats}/{int(total_segments)} beats must belong "
+        f"to the emphasized sequence; at most {maximum_outside_beats} beats may "
+        "sit before/outside it. Preparation before the sequence does not count. "
+        "Keep any explicit calm baseline separate from its sudden inciting change. "
+        "The final emphasized action may share immediate resolution."
+        if has_majority_issue
+        else "N/A"
+    )
+    compact_arc = {
+        "phases": [
+            {
+                key: value
+                for key, value in phase.items()
+                if key != "required_end_state"
+            }
+            for phase in (macro_arc or {}).get("phases", [])
+            if isinstance(phase, dict)
+        ]
+    }
     return [
         {
             "role": "system",
             "content": (
-                "You repair a rejected macro story arc. Correct the listed "
-                "validator issues while preserving source meaning, chronology, and "
-                "unaffected content. Any structure directly implicated by an issue "
-                "may change as needed, including phase ranges, event grouping, beat "
-                "assignments, dependencies, and narrative fields; do not preserve "
-                "an invalid allocation merely because it was previously assigned. "
-                "Return one complete macro arc using the normal phases schema; never "
-                "return a patch, coverage metadata, claim IDs, or commentary."
+                "Repair the rejected story arc. Fix the listed issue without "
+                "changing unrelated source meaning. Return the complete arc JSON only."
             ),
         },
         {
@@ -11385,54 +11057,39 @@ SOURCE STORY
 {story}
 
 DEFINED SUBJECTS
-{str(subject_information or '').strip() or 'N/A'}
+{_format_beat_arc_subject_names(subject_information) or 'N/A'}
 
 EXPLICIT BEAT INSTRUCTIONS
 {str(beat_instructions or '').strip() or 'N/A'}
 
-REQUESTED BEAT COUNT
-{total_segments}
+TOTAL BEATS
+{int(total_segments)}
 
-EXPLICIT MAJORITY BEAT BUDGET
-{majority_budget_text or 'N/A'}
+CURRENT ARC
+{json.dumps(compact_arc, ensure_ascii=False, separators=(',', ':'))}
 
-CURRENT MACRO ARC
-{json.dumps(macro_arc, ensure_ascii=False, indent=2)}
+VALIDATOR ISSUE
+{json.dumps([str(issue).strip() for issue in (issues or []) if str(issue).strip()], ensure_ascii=False)}
 
-VALIDATOR ISSUES
-{json.dumps([str(issue).strip() for issue in (issues or []) if str(issue).strip()], ensure_ascii=False, indent=2)}
+MAJORITY REPAIR BUDGET
+{majority_text}
 
-Return the complete corrected macro arc with phases covering Beats 1-{total_segments}
-exactly once. Treat these as hard structural requirements: exactly one concrete
-required event/job per global beat, no missing or duplicate beat assignments, and
-every event after the first must include the immediately preceding required
-event's actual ID in depends_on, including across phase boundaries. Preserve all
-correct event content where possible. Preserve every explicit visible source
-action/state in source order. If there are more explicit source timeline actions
-than available beats, bundle only adjacent, causally continuous source actions
-inside one beat job rather than dropping source content. When the beat budget
-permits, do the opposite for an overpacked source chain: split it across
-consecutive clip-sized jobs at a natural physical/narrative handoff rather than
-treating one source sentence as indivisible. For genuinely sparse long processes/conflicts, use varied concrete
-source-authorized setpiece jobs with coherent cross-beat handoffs rather than
-generic repetition; local attacks, setbacks, weapon transitions, temporary
-complications, and unresolved threats may be repaired in when they stay inside
-the established conflict and required outcome. When several conflict beats are
-available, prefer at least one complication/threat that remains unresolved across
-an adjacent beat boundary instead of resolving every invented setback immediately.
-Include state_effects only on events that establish persistent modeled facts.
-A state_effect becomes authoritative canonical history after that beat, so omit
-temporary actions and plausible/inferred conditions. set_condition is a persistent
-post-beat condition, not a current activity: do not encode cooking, eating,
-running, fighting, looking, speaking, waiting, or another in-progress action as
-set_condition. For every set_condition, reuse meaningful words from the SAME
-required event text. Clothing must use set_clothing; never encode clothing or
-what someone is wearing with set_condition. Return only the normal macro-arc JSON
-object.
+Rules:
+- Preserve every explicit source action/state in source order.
+- Keep exactly one required_event per global beat.
+- Split or regroup only adjacent source actions when needed to fix allocation.
+- Preserve an explicit calm baseline before a sudden inciting threat/change.
+- Every event after the first depends_on the immediately preceding event ID.
+- state_effects are only persistent facts directly established by their event.
+  set_condition is not for temporary activity or inferred state.
+- Clothing must use set_clothing; never set_condition.
+- Do not return required_end_state; Python derives it from each phase's final
+  required_event.
+
+Return the complete corrected phases array covering Beats 1-{int(total_segments)}.
 """.strip(),
         },
     ]
-
 
 def _validate_macro_arc_structure(normalized_phases, total_segments):
     """Enforce the Python-owned one-job-per-beat causal arc contract.
