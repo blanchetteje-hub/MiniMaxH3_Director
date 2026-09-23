@@ -1207,3 +1207,58 @@ Current evidence boundary:
   failure.
 - Do not implement the safe-room/front-handoff repair unless acceptance 153
   proves it is the earliest remaining failure.
+
+
+## Planning-only acceptance 153 clears ARC + BEATS; do not overfit the safe-room handoff
+
+`run-acceptance-amy-flat-arc-planning-153` completed successfully end-to-end in
+planning-only mode:
+
+- broad ARC source-fidelity validation eventually passed;
+- focused majority validation/repair produced a true 5/8 conflict allocation;
+- ARC was saved successfully;
+- all eight Beat CREATE jobs were generated;
+- the frozen single-beat validator accepted Beats 1-8 on their first attempts;
+- planning exited 0 with a complete `story_arc.json` and `beats.txt`.
+
+The final planning allocation still differs from the locked gold around the first
+escape handoff:
+
+- Beat 2 is only the window breach/reaction;
+- Beat 3 contains evacuation + containment/locking + weapon retrieval/equipping;
+- gold carries meaningful evacuation progress through Beat 2 and leaves
+  containment/locking/arming for Beat 3.
+
+Targeted probes 154-166 tested whether this should become another production ARC
+validator/repair rule. The answer is currently **no**:
+
+- 154 correctly detects the original trigger-only / overloaded-next-beat shape.
+- 155 whole-ARC repair moves evacuation progress into Beat 2, but 156 still
+  falsely rejects that improved allocation.
+- a second whole-ARC repair (160) overshoots by moving the children fully inside
+  during Beat 2, which violates the locked boundary.
+- focused/localization probes 157-159 cannot infer the intended threshold
+  reliably without being told the benchmark-specific door-opening answer.
+- 163/164 show a supposedly narrow handoff validator still returns the same
+  rejection after meaningful movement has already been shifted into Beat 2.
+- 165 demonstrates a generic threshold instruction can attach the opening action
+  to the wrong entrance.
+- 166 demonstrates another CREATE prompt rule is ignored and can regress the
+  majority allocation by spending Beat 4 on weapon preparation.
+
+Do not add a separate handoff semantic pipeline, deterministic English heuristic,
+or more global ARC prompt wording from these probes. The local 24B evidence is
+not reliable enough to support it.
+
+The exact physical act of opening an entrance is also finer-grained than the
+source story explicitly states. Beat CREATE / Director may legally supply such a
+necessary physical prerequisite when expanding an assigned movement job. The
+planning-only harness therefore should not be treated as final proof that the H3
+gold boundary fails.
+
+Next evidence boundary: run the **full locked Amy acceptance** against the
+current code. Compare Segment 1 first, then Segment 2. If Segment 2 actually
+omits the evacuation-to-threshold behavior in final H3 output, trace that concrete
+failure back to the earliest responsible stage. Do not preemptively add another
+ARC sub-validator.
+
