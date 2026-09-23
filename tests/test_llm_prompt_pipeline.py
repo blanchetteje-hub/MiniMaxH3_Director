@@ -268,6 +268,10 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         for name, value in minimax.BEAT_LLM_SAMPLING_PARAMETERS.items():
             self.assertEqual(request_json[name], value)
         self.assertEqual(
+            minimax.BEAT_LLM_SAMPLING_PARAMETERS["repeat_penalty"],
+            1.15,
+        )
+        self.assertEqual(
             request_json["top_k"],
             minimax._active_formatter_llm_settings()["top_k"],
         )
