@@ -375,6 +375,139 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         )
         self.assertIn("MAJORITY REPAIR BUDGET N/A", non_majority)
 
+    def test_majority_tail_repair_localizes_only_resolution_tail(self):
+        validation = {
+            "valid": False,
+            "issues": ["majority under-allocated"],
+            "majority_checks": [{
+                "source_requirement": "The majority is Amy fighting zombies.",
+                "matching_beats": [4, 5, 6, 7],
+            }],
+        }
+        spec = minimax._macro_arc_majority_tail_repair_spec(validation, 8)
+        self.assertEqual(spec["tail_beats"], [7, 8])
+        self.assertEqual(spec["matching_beats"], [4, 5, 6, 7])
+
+        validation["majority_checks"][0]["matching_beats"] = [5, 6, 7]
+        self.assertIsNone(
+            minimax._macro_arc_majority_tail_repair_spec(validation, 8)
+        )
+
+    def test_majority_tail_repair_moves_existing_effect_without_losing_it(self):
+        events = []
+        for beat in range(1, 9):
+            event = {
+                "id": f"E{beat}",
+                "event": f"Amy completes event {beat}.",
+                "beat_number": beat,
+            }
+            if beat > 1:
+                event["depends_on"] = [f"E{beat - 1}"]
+            events.append(event)
+        events[6]["event"] = "Amy kills the last zombie."
+        events[6]["state_effects"] = [{
+            "op": "set_threat_state",
+            "entity": "zombie_horde",
+            "value": "dead",
+        }]
+        events[7]["event"] = "Amy lets the kids out of the basement."
+        arc = make_arc([(1, 8, events)])
+        parsed_arc = minimax.parse_beat_arc_plan(arc, 8)
+        expected_tail = [
+            minimax._macro_arc_event_for_beat(parsed_arc, 7),
+            minimax._macro_arc_event_for_beat(parsed_arc, 8),
+        ]
+        raw_repair = {
+            "events": [
+                {
+                    "id": "E7",
+                    "event": "Amy continues fighting the remaining zombies.",
+                    "beat_number": 7,
+                    "depends_on": ["E6"],
+                },
+                {
+                    "id": "E8",
+                    "event": (
+                        "Amy kills the last zombie and immediately lets the kids "
+                        "out of the basement."
+                    ),
+                    "beat_number": 8,
+                    "depends_on": ["E7"],
+                    "state_effects": [{
+                        "op": "set_threat_state",
+                        "entity": "zombie_horde",
+                        "value": "dead",
+                    }],
+                },
+            ]
+        }
+        replacements = minimax.parse_macro_arc_majority_tail_repair_result(
+            raw_repair,
+            expected_tail,
+        )
+        repaired = minimax.apply_macro_arc_event_replacements(
+            parsed_arc,
+            replacements,
+            8,
+        )
+        beat7 = minimax._macro_arc_event_for_beat(repaired, 7)
+        beat8 = minimax._macro_arc_event_for_beat(repaired, 8)
+        self.assertNotIn("last zombie", beat7["event"])
+        self.assertIn("last zombie", beat8["event"])
+        self.assertEqual(
+            beat8["state_effects"],
+            [{
+                "op": "set_threat_state",
+                "entity": "zombie_horde",
+                "value": "dead",
+            }],
+        )
+        self.assertEqual(
+            repaired["phases"][0]["required_end_state"],
+            beat8["event"],
+        )
+
+    def test_majority_tail_repair_rejects_dropped_persistent_effect(self):
+        events = [
+            {
+                "id": "E7",
+                "event": "Amy kills the last zombie.",
+                "beat_number": 7,
+                "depends_on": ["E6"],
+                "state_effects": [{
+                    "op": "set_threat_state",
+                    "entity": "zombie_horde",
+                    "value": "dead",
+                }],
+            },
+            {
+                "id": "E8",
+                "event": "Amy lets the kids out.",
+                "beat_number": 8,
+                "depends_on": ["E7"],
+            },
+        ]
+        with self.assertRaisesRegex(ValueError, "conserve"):
+            minimax.parse_macro_arc_majority_tail_repair_result(
+                {
+                    "events": [
+                        {
+                            "id": "E7",
+                            "event": "Amy keeps fighting zombies.",
+                            "beat_number": 7,
+                            "depends_on": ["E6"],
+                        },
+                        {
+                            "id": "E8",
+                            "event": "Amy kills the last zombie and lets the kids out.",
+                            "beat_number": 8,
+                            "depends_on": ["E7"],
+                        },
+                    ]
+                },
+                events,
+            )
+
     def test_arc_planner_prefers_clip_scale_handoffs_when_budget_allows(self):
         normalized = " ".join(
             "\n".join(
