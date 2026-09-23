@@ -971,3 +971,50 @@ moves kids-through + door close/lock + weapon retrieval/equipping into Beat 3.
 Do not patch that boundary until current planning output proves it is the
 earliest remaining failure.
 
+## Focused ARC verification after localized-repair changes
+
+Current focused verification remains consistent with the architectural lessons:
+small editable ranges work much better than global rewrites.
+
+- `run-tests-arc-local-repair-129`: **PASS, 75/75 tests green** across the
+  focused ARC/local-repair, prompt, state-effect, and acceptance-runner modules.
+- `arc-front-handoff-temp0-probe-131`: with only the first three jobs editable,
+  deterministic Mistral produced the locked-gold handoff cleanly:
+  - Beat 1 ordinary breakfast baseline;
+  - Beat 2 zombie breach + Amy rushes Will/Amber to the protective door and
+    **opens it**, without putting the kids through, locking it, or retrieving
+    weapons;
+  - Beat 3 kids go through + Amy closes/locks the door + retrieves/equips pistol
+    and katana.
+- `arc-tail-state-effects-probe-132`: with only Beats 7-8 editable, Mistral
+  correctly moved the terminal threat, blood-soaked-house, and child-release
+  typed state effects to Beat 8 while leaving Beat 7 as nonterminal fighting.
+
+These probes are evidence that both known Amy boundary corrections are solvable
+by the 24B model when the repair scope is localized. They are **not** justification
+for adding literal basement/zombie special cases.
+
+Do not implement a new front-handoff repair path yet. First obtain the current
+production ARC+BEATS output and confirm that this is the earliest remaining
+failure after Beat 1 completion and majority-tail repair.
+
+### Bridge state blocks planning-only verification
+
+The earlier `run-acceptance-amy-planning-only-130` job was consumed while the
+local bridge process was still running pre-`planning_only` code and produced no
+usable planning-only result. The running bridge does not hot-reload itself.
+
+The next required local action is therefore:
+
+1. Pull the latest `gpt-test-branch`.
+2. Stop/restart `tools/chatgpt_llama_bridge.py` from that checkout.
+
+After the bridge restart, requeue a fresh planning-only locked Amy acceptance
+instead of another full 8-segment acceptance. Do not work around the stale
+bridge by changing production story logic or by increasing timeouts.
+
+The old adjacent-beat/global fidelity audit helpers still exist in `minimax.py`,
+but they are not the active path that would solve the current ARC allocation
+boundary. Do not revive them merely to catch the Amy safe-room split; that would
+reintroduce semantic layers contrary to the current KISS conclusions.
+
