@@ -361,6 +361,66 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             )
         post.assert_not_called()
 
+    @patch("minimax.requests.post")
+    def test_unrelated_http_400_does_not_drop_response_format(self, post):
+        response = Mock()
+        response.status_code = 400
+        response.text = '{"error":{"message":"No models loaded."}}'
+        response.raise_for_status.side_effect = minimax.requests.HTTPError("400")
+        post.return_value = response
+
+        result = minimax.ask_llm(
+            [{"role": "user", "content": "test"}],
+            response_format={"type": "json_object"},
+            max_retries=1,
+            retry_delay=0,
+        )
+
+        self.assertEqual(result, "")
+        self.assertEqual(post.call_count, 1)
+        self.assertIn("response_format", post.call_args.kwargs["json"])
+
+    @patch("minimax.requests.post")
+    def test_schema_specific_http_400_retries_without_response_format(self, post):
+        rejected = Mock()
+        rejected.status_code = 400
+        rejected.text = (
+            '{"error":{"message":"response_format json_schema is unsupported"}}'
+        )
+        rejected.raise_for_status.side_effect = minimax.requests.HTTPError("400")
+
+        accepted = Mock()
+        accepted.status_code = 200
+        accepted.text = ""
+        accepted.raise_for_status = Mock()
+        accepted.json.return_value = {
+            "choices": [
+                {
+                    "message": {"content": '{"ok": true}'},
+                    "finish_reason": "stop",
+                }
+            ]
+        }
+        post.side_effect = [rejected, accepted]
+
+        result = minimax.ask_llm(
+            [{"role": "user", "content": "test"}],
+            response_format={"type": "json_object"},
+            max_retries=1,
+            retry_delay=0,
+        )
+
+        self.assertEqual(result, {"ok": True})
+        self.assertEqual(post.call_count, 2)
+        self.assertIn(
+            "response_format",
+            post.call_args_list[0].kwargs["json"],
+        )
+        self.assertNotIn(
+            "response_format",
+            post.call_args_list[1].kwargs["json"],
+        )
+
     @patch("minimax.generate_random_llm_seed", return_value=999)
     @patch("minimax.requests.post")
     def test_beat_validation_remains_pinned_to_benchmark_sampling(
