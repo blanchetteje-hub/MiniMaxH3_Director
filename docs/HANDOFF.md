@@ -1803,3 +1803,22 @@ Restoration, still inside the existing ARC CREATE -> VALIDATE -> REPAIR loop:
 - `aai-run-tests-arc-state-effects-required-244`: **PASS, 105/105 tests green**.
 
 `aaj-run-acceptance-amy-planning-qwen-state-effects-245` is the active verification. Inspect the accepted ARC first: Beat 2 must carry locked barrier state, Beat 3 must carry equipped weapon state, and terminal/persistent final outcomes should be represented without invented temporary conditions. Then inspect finalized Beats 1-8 for the earliest semantic mismatch.
+
+
+## Qwen planning 234: repeated-process churn fixed; CURRENT JOB ownership defect isolated
+
+`aab-run-acceptance-amy-planning-qwen-repeated-process-234` confirmed the repeated-process Beat CREATE fix. ARC CREATE, all eight Beat CREATE calls, and all eight Beat validations completed on first attempts. Beats 4-7 were distinct concrete fight clips and no longer copied the repeated ARC event text or prematurely used explicit last/final language.
+
+The earliest remaining planning defect moved to Beat 8. CURRENT JOB required: kill the last zombies, establish the blood-soaked house, and let the kids out. The accepted Beat 8 only showed Amy in the already blood-soaked house opening the basement for Will and Amber; it omitted the assigned last-zombie kill. Qwen's validator accepted it.
+
+Targeted probes 236/237 showed the reason explicitly in Qwen's reasoning: it treated PREVIOUS FINAL BEAT as if the previous fight could satisfy the CURRENT JOB's required last-zombie kill. This is a validator ownership error, not missing world knowledge. The “finishes them off” wording seen in an earlier Beat 6 was separately probed and Qwen reasonably interpreted it as finishing the current batch rather than the whole multi-beat process, so no phrase-specific validator rule was added.
+
+Focused validator fix:
+- `f31d86a75e85b3f1af4f007388c6caad663676c0` — CURRENT JOB check now states that PREVIOUS FINAL BEAT is history only: it constrains possibility but cannot satisfy, replace, or excuse any action/result explicitly assigned to CURRENT JOB; those requirements must appear in CANDIDATE BEAT.
+- `8b577eb06b1583062f043186a1968158a2c9c72d` — keeps the live validator benchmark prompt aligned with production.
+- `7ccd1c1476b5896a5165919b9d611180070b99c1` — regression coverage for current-job ownership.
+- `aae-run-tests-current-job-ownership-240`: **PASS, 103/103 tests green**.
+
+Direct bridge probe 241 exhausted a 512-token reasoning budget because bridge `llama_chat` does not carry production Qwen thinking-disable transport; do not treat that probe as production evidence. Production `ask_llm` already sends `chat_template_kwargs={"enable_thinking": false}` for Qwen Beat validation, matching the benchmark transport.
+
+`aag-run-acceptance-amy-planning-qwen-current-job-242` is the active production verification. Inspect Beat 8 first: if CREATE again omits the last-zombie kill, the validator should now reject/regenerate it rather than allowing previous history to satisfy CURRENT JOB.
