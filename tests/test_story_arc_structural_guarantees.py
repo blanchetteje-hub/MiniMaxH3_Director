@@ -388,84 +388,93 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             "Amy fights zombies in her house. The majority of the film is Amy "
             "killing zombies as they attack her. Amy kills the last zombie."
         )
-        messages = minimax.build_beat_arc_plan_messages(story, 8)
-        normalized = " ".join(
-            "\n".join(message["content"] for message in messages).split()
+        create_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_beat_arc_plan_messages(story, 8)
+            ).split()
         )
-        self.assertIn(
-            "PLAN A COHERENT ESCALATION inside that authorized process",
-            normalized,
-        )
-        self.assertIn("weapon running empty", normalized)
-        self.assertIn("enemy surviving one beat", normalized)
-        self.assertIn("temporary obstacle, contamination", normalized)
-        self.assertIn(
-            "do not make every invented complication self-contained",
-            normalized,
-        )
-        self.assertIn(
-            "remains unresolved at the end of one beat and is continued/resolved "
-            "in the next",
-            normalized,
-        )
+        self.assertIn("coherent source-authorized escalation", create_prompt)
+        self.assertIn("never add a new major plot", create_prompt)
 
-        validator = minimax.build_macro_arc_validation_messages(
-            story,
-            make_arc([(1, 3, self.events)]),
+        validate_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_macro_arc_validation_messages(
+                    story, make_arc([(1, 3, self.events)])
+                )
+            ).split()
         )
-        validation_prompt = " ".join(
-            "\n".join(message["content"] for message in validator).split()
-        )
-        self.assertIn(
-            "do NOT reject local setpiece developments merely because the source "
-            "did not dictate their exact choreography",
-            validation_prompt,
-        )
+        self.assertIn("unsupported major plot events", validate_prompt)
 
     def test_arc_prompts_preserve_baseline_to_inciting_contrast(self):
         story = (
             "Amy is at home on a normal day cooking breakfast for her kids. "
             "Suddenly, a zombie breaks the kitchen door window."
         )
-        arc = make_arc([
-            (
-                1,
-                2,
-                [
-                    {
-                        "id": "E1",
-                        "event": "Amy cooks breakfast and a zombie breaks the kitchen door window.",
-                        "beat_number": 1,
-                    },
-                    {
-                        "id": "E2",
-                        "event": "Amy reacts to the zombie.",
-                        "beat_number": 2,
-                        "depends_on": ["E1"],
-                    },
-                ],
-            ),
-        ])
-
-        plan_messages = minimax.build_beat_arc_plan_messages(story, 2)
-        validation_messages = minimax.build_macro_arc_validation_messages(story, arc)
+        arc = make_arc([(1, 2, [
+            {
+                "id": "E1",
+                "event": "Amy cooks breakfast and a zombie breaks the kitchen door window.",
+                "beat_number": 1,
+            },
+            {
+                "id": "E2",
+                "event": "Amy reacts to the zombie.",
+                "beat_number": 2,
+                "depends_on": ["E1"],
+            },
+        ])])
         plan_prompt = " ".join(
-            "\n".join(message["content"] for message in plan_messages).split()
+            "\n".join(
+                message["content"]
+                for message in minimax.build_beat_arc_plan_messages(story, 2)
+            ).split()
         )
         validation_prompt = " ".join(
-            "\n".join(message["content"] for message in validation_messages).split()
+            "\n".join(
+                message["content"]
+                for message in minimax.build_macro_arc_validation_messages(story, arc)
+            ).split()
         )
+        self.assertIn("calm/ordinary baseline", plan_prompt)
+        self.assertIn("sudden inciting threat or change", plan_prompt)
+        self.assertIn("ordinary baseline", validation_prompt)
+        self.assertIn("sudden inciting threat/change", validation_prompt)
 
-        self.assertIn("PRESERVE EXPLICIT CONTRAST BOUNDARIES", plan_prompt)
-        self.assertIn(
-            "ordinary/baseline activity and then marks a sudden disruptive or inciting change",
-            plan_prompt,
+    def test_arc_prompts_fit_current_local_input_budget(self):
+        story = (
+            "Amy cooks breakfast. A zombie attacks. Amy protects her kids. "
+            "The majority of the film is Amy fighting zombies. Amy wins."
         )
-        self.assertIn("PRESERVE EXPLICIT CONTRAST BOUNDARIES", validation_prompt)
-        self.assertIn(
-            "ordinary baseline activity and then explicitly introduces a sudden disruptive/inciting change",
-            validation_prompt,
+        arc = make_arc([(1, 3, self.events)])
+        for messages in (
+            minimax.build_beat_arc_plan_messages(story, 8),
+            minimax.build_macro_arc_validation_messages(story, arc),
+            minimax.build_macro_arc_repair_messages(
+                story, arc, ["Majority is under-allocated."], 8
+            ),
+        ):
+            self.assertLess(
+                minimax.estimate_message_tokens(messages),
+                minimax.LLM_INPUT_TOKEN_BUDGET,
+            )
+
+    def test_legacy_required_end_state_is_not_authoritative(self):
+        arc = make_arc([(1, 3, self.events)])
+        arc["phases"][0]["required_end_state"] = "Unsupported later event happens."
+        parsed = minimax.parse_beat_arc_plan(arc, 3)
+        self.assertEqual(
+            parsed["phases"][0]["required_end_state"],
+            self.events[-1]["event"],
         )
+        create_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_beat_arc_plan_messages("Amy acts.", 1)
+            ).split()
+        )
+        self.assertIn("Do not return required_end_state", create_prompt)
 
     def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
         invalid = copy.deepcopy(self.events)
