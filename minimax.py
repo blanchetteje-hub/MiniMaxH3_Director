@@ -11145,12 +11145,14 @@ Rules:
   continuations merely because the source states the repeated process once.
   Reject only a new major plot, character, location, mechanism, or outcome not
   authorized by the source.
-- Every proposed event must include state_effects. If an event explicitly
-  establishes a persistent fact represented by a supported typed operation,
-  reject the arc when that fact is missing from state_effects. Examples: an
-  explicitly locked door needs set_barrier_state=locked; an explicitly equipped
-  weapon needs set_item_state=equipped. [] is valid only when the event establishes
-  no supported persistent fact.
+- CHECK PERSISTENT STATE COVERAGE: every proposed event must include
+  state_effects. If that same event explicitly establishes a persistent change or
+  result represented by one of the supported typed operations, reject the arc
+  when the matching state_effect is missing. Apply this to location, containment
+  or release, held/equipped objects, barriers, persistent objects, terminal
+  threats, clothing, and persistent environment conditions. Temporary actions,
+  feelings, reactions, cooking, running, or fighting do not require state effects.
+  [] is valid only when the event establishes no supported persistent fact.
 - state_effects must describe only persistent facts directly established by the
   owning event. Reject inferred/temporary conditions and wrong typed operations.
   Clothing must use set_clothing, never set_condition.
