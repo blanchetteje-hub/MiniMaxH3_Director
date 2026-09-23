@@ -10952,6 +10952,8 @@ Rules:
 - beat_number must cover Beats 1-{int(total_segments)} exactly once. Do not
   create phase numbers, phase ranges, phase summaries, or phase metadata;
   Python owns that deterministic bookkeeping.
+- Do not return required_end_state; Python derives phase handoffs from the
+  authoritative required_event jobs.
 {correction_text}
 {phrase_exclusions_text}
 
