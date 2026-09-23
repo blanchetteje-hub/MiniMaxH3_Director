@@ -1588,3 +1588,19 @@ Production change:
 This is a prompt-only correction inside existing ARC CREATE. KISS remains ARC CREATE -> VALIDATE -> REPAIR and BEATS CREATE -> VALIDATE -> REPAIR; no new stage or Python semantic heuristic was added.
 
 Next: run focused regressions, then a planning-only Amy acceptance. Inspect the first freshly-created ARC before repair: the zombie-fighting process should occupy at least 5/8 beats while preserving the calm baseline, inciting break-in, kids-to-basement/arsenal setup, and final release through adjacent bundling where required. If creation clears that boundary, continue to the earliest later failure rather than tuning hypothetical cases.
+
+
+## Majority-create verification queued after Planning 197
+
+The ARC CREATE majority-allocation correction from `4b45ef526299d66e0e86c854361158307788f946` is now protected by prompt-contract regression coverage:
+
+- `fe81b3d115f0dc3c22191508a1209095c632088a` — locks the numeric-majority, anti-compression, and source-authorized-moment wording in ARC CREATE.
+- Initial bridge regression `yyy-01-run-tests-arc-majority-create-contract-198` found only one obsolete test phrase (`coherent source-authorized escalation`) from the previous wording; production behavior was not implicated.
+- `feba7e16b92ef5784fcdc4e44c78a52a525426cd` updates that old assertion to the current `distinct coherent source-authorized moments` contract.
+
+Queued verification order:
+1. `yyy-02-arc-create-majority-current-probe-199` — current full ARC CREATE prompt at production ARC sampling, checking whether first creation allocates the explicit majority process across at least 5/8 beats while retaining the finite breakfast endpoint and source order.
+2. `yyy-03-run-tests-arc-majority-create-contract-201` — rerun focused regressions after the stale assertion fix.
+3. `zzz-run-acceptance-amy-planning-majority-create-200` — fresh locked planning-only Amy acceptance against the current branch.
+
+Do not make another production semantic change until those results publish. Inspect the first newly created ARC before repair; if creation now satisfies the majority allocation, continue to the next earliest observed failure. If it still compresses the majority process, revise only ARC CREATE/its sampling based on that exact evidence rather than expanding downstream repair architecture.
