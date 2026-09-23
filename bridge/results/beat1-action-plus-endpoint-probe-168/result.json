@@ -1,0 +1,56 @@
+{
+  "job_id": "beat1-action-plus-endpoint-probe-168",
+  "kind": "llama_chat",
+  "started_at": 1790172037.314257,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Turn one required story event into one simple executable video beat. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE STORY:\nA realistic action film about Amy protecting her kids.\nAmy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for Will and Amber.\nSuddenly, a zombie breaks the kitchen door window.\n\nDEFINED SUBJECTS:\n<Subject 1> = Amy; <Subject 2> = Will; <Subject 3> = Amber\n\nREQUIRED EVENT FOR THIS BEAT:\n1. Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\n\nNEXT REQUIRED EVENT:\n2. A zombie breaks the kitchen door window and Amy sees the danger.\n\nRules:\n- Complete the required event visibly in this beat.\n- The beat must SHOW THE ASSIGNED ACTION itself, not replace it with a static after-state.\n- For a finite everyday activity, include both the activity and a concrete visible completion result by the end.\n- When an activity is for named people, show those people receiving or participating in the completed result when reasonable.\n- Do not start the next required event early.\n- One concise sentence.\n- Begin with \"1. \".\n\nReturn exactly {\"beats\":[{\"beat_number\":1,\"beat_text\":\"1. ...\"}]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.65,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-ukvrzwpepnjeyrx6i5l1zc",
+    "object": "chat.completion",
+    "created": 1790172037,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"beats\": [\n    {\n      \"beat_number\": 1,\n      \"beat_text\": \"1. Amy, wearing a tight black tank top and denim jeans, flips pancakes on the stove while Will and Amber sit at the kitchen table with plates ready.\"\n    }\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 282,
+      "completion_tokens": 68,
+      "total_tokens": 350,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790172042.1831183,
+  "status": "ok"
+}
