@@ -345,7 +345,7 @@ BEAT_LLM_SAMPLING_PARAMETERS = {
     "top_p": 0.90,
     "presence_penalty": 0.15,
     "frequency_penalty": 0.15,
-    "repeat_penalty": 1.05,
+    "repeat_penalty": 1.15,
 }
 
 CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
