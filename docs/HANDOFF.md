@@ -1052,3 +1052,40 @@ but they are not the active path that would solve the current ARC allocation
 boundary. Do not revive them merely to catch the Amy safe-room split; that would
 reintroduce semantic layers contrary to the current KISS conclusions.
 
+
+
+## Planning-only acceptance 137: ARC validation subject-guard mismatch
+
+`run-acceptance-amy-flat-arc-planning-137` proved the flat ARC CREATE path
+itself is now structurally usable: the first model response returned a clean
+eight-event E1-E8 chain with deterministic Python phase wrappers.
+
+The run then failed before semantic ARC validation. The validation prompt
+correctly included the compact subject identifiers produced by
+`_format_beat_arc_subject_names()`, but the deterministic
+`verify_subjects_in_beat_messages()` call compared that prompt against the
+full raw `subjects.txt` lines. Because the raw descriptive lines are
+intentionally not present in the compact ARC validator prompt, every validation
+attempt was falsely rejected with:
+
+`Parsed subjects.txt information was not included in the beat generation prompt`
+
+That deterministic mismatch caused repeated ARC REPAIR/VALIDATE cycling until
+the planning acceptance timed out. It was not a semantic ARC failure.
+
+Production commits:
+
+- `6ade7c7ed20cf2f7e117eb6e78ee7cca970ec0ef` — ARC validation now verifies
+  the same compact subject representation that its prompt actually contains.
+- `4c5a145b49da09262606d9981238dad526269c22` — regression for compact ARC
+  validation subject guarding.
+- `run-tests-arc-subject-guard-139`: **PASS, 79/79 tests green**.
+
+A separate unconstrained probe,
+`arc-flat-majority-repair-probe-138`, showed that a whole-list majority repair
+can still lose the required eight-event count when no JSON schema is enforcing
+it; it returned only six events. Do not treat that as the current production
+failure because production ARC REPAIR uses a strict eight-event response
+schema. The next evidence boundary is a fresh planning-only Amy acceptance after
+the subject-guard fix.
+
