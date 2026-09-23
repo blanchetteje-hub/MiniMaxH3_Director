@@ -1,0 +1,59 @@
+{
+  "job_id": "arc-create-finite-clip-job-probe-194",
+  "kind": "llama_chat",
+  "started_at": 1790185170.3123393,
+  "request": {
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Plan one source story into exactly one chronological required clip job per global beat. Do not create phases or phase ranges. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE STORY\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nDEFINED SUBJECTS\n<Subject 1> = Amy; <Subject 2> = Will; <Subject 3> = Amber\n\nEXPLICIT BEAT INSTRUCTIONS\nN/A\n\nTOTAL BEATS\n8\n\nMAJORITY BUDGET\nA strict majority of 8 beats means at least 5 beats in the emphasized sequence and at most 3 beats before/outside it. The emphasized sequence must therefore begin no later than Beat 4. Fit all earlier setup/preparation into the first 3 beats by bundling adjacent source actions when needed. Preparation before the sequence does not count. If the source ends that sequence with a terminal action immediately followed by resolution, combine the terminal action and resolution in the final global beat whenever a separate resolution-only beat would reduce the emphasized sequence below the required majority.\n\nRules:\n- Cover every explicit visible source action/state in source order.\n- Every global beat has exactly one required_event. A required_event is one executable clip job; split long source chains at natural handoffs when the beat budget allows, and bundle only adjacent actions when necessary.\n- FINITE-ACTIVITY CLIP JOBS: when a finite source activity is assigned wholly to one beat, write the required_event as that activity reaching a natural visible endpoint by the end of the beat. Do not merely copy progressive/in-progress wording such as \"is packing\" or \"is cooking.\" The endpoint may make explicit the ordinary result directly implied by completing that activity, but must not add a new plot event or outcome.\n- Preserve an explicit calm/ordinary baseline as its own beat before a sudden inciting threat or change.\n- Honor explicit majority/most/half/briefly emphasis. Do not manufacture extra literal repetitions merely to satisfy emphasis.\n- Sparse repeated conflict/process material may use coherent source-authorized escalation, but never add a new major plot, character, location, or outcome.\n- required_events form one chain: every event after the first depends_on the immediately preceding event ID.\n- state_effects contain only persistent facts directly established by that same event.\n- Return only an events array. Each event contains id, event, beat_number, depends_on, and optional state_effects.\n- beat_number must cover Beats 1-8 exactly once.\n- Do not return required_end_state.\n\nReturn one JSON object with an events array containing exactly 8 required clip jobs."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 2600,
+    "seed": 42,
+    "repeat_penalty": 1.15,
+    "presence_penalty": 0,
+    "frequency_penalty": 0
+  },
+  "response": {
+    "id": "chatcmpl-yctfkasvbvlpnvm1issnyk",
+    "object": "chat.completion",
+    "created": 1790185170,
+    "model": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"events\": [\n    {\n      \"id\": 1,\n      \"event\": \"<Subject 1> finishes cooking breakfast for <Subject 2> and <Subject 3>.\",\n      \"beat_number\": 1,\n      \"state_effects\": [\"<Subject 1> has cooked breakfast.\"]\n    },\n    {\n      \"id\": 2,\n      \"event\": \"<Subject 1> rushes <Subject 2> and <Subject 3> to the basement.\",\n      \"beat_number\": 2,\n      \"depends_on\": 1\n    },\n    {\n      \"id\": 3,\n      \"event\": \"<Subject 1> locks the basement door with <Subject 2> and <Subject 3> inside.\",\n      \"beat_number\": 3,\n      \"depends_on\": 2,\n      \"state_effects\": [\"<Subject 2> and <Subject 3> are safe in the basement.\"]\n    },\n    {\n      \"id\": 4,\n      \"event\": \"<Subject 1> retrieves her hidden arsenal consisting of a pistol and a katana.\",\n      \"beat_number\": 4,\n      \"depends_on\": 3\n    },\n    {\n      \"id\": 5,\n      \"event\": \"<Subject 1> equips the pistol and katana.\",\n      \"beat_number\": 5,\n      \"depends_on\": 4,\n      \"state_effects\": [\"<Subject 1> is armed with a pistol and a katana.\"]\n    },\n    {\n      \"id\": 6,\n      \"event\": \"<Subject 1> kills zombies as they try to attack her.\",\n      \"beat_number\": 6,\n      \"depends_on\": 5\n    },\n    {\n      \"id\": 7,\n      \"event\": \"<Subject 1> kills the last of the zombies, soaking her house in blood.\",\n      \"beat_number\": 7,\n      \"depends_on\": 6,\n      \"state_effects\": [\"The zombie threat is eliminated.\"]\n    },\n    {\n      \"id\": 8,\n      \"event\": \"<Subject 1> lets <Subject 2> and <Subject 3> out of the basement.\",\n      \"beat_number\": 8,\n      \"depends_on\": 7\n    }\n  ]\n}\n```",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 696,
+      "completion_tokens": 494,
+      "total_tokens": 1190,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "mistral-small-3.2-24b-instruct-2506-absolute-heresy.i1"
+  },
+  "finished_at": 1790185200.4574435,
+  "status": "ok"
+}
