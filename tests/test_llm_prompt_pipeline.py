@@ -276,6 +276,39 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             minimax._active_formatter_llm_settings()["min_p"],
         )
 
+    @patch("minimax.generate_random_llm_seed", return_value=777)
+    @patch("minimax.requests.post")
+    def test_arc_explicit_sampling_uses_deterministic_profile(
+        self,
+        post,
+        _random_seed,
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.raise_for_status = Mock()
+        response.json.return_value = {
+            "choices": [
+                {
+                    "message": {"content": "{\"ok\": true}"},
+                    "finish_reason": "stop",
+                }
+            ]
+        }
+        post.return_value = response
+
+        result = minimax.ask_llm(
+            [{"role": "user", "content": "plan"}],
+            response_format=None,
+            history_metadata={"purpose": "macro_arc_create"},
+            **minimax.ARC_LLM_SAMPLING_PARAMETERS,
+        )
+
+        self.assertEqual(result, {"ok": True})
+        request_json = post.call_args.kwargs["json"]
+        for name, value in minimax.ARC_LLM_SAMPLING_PARAMETERS.items():
+            self.assertEqual(request_json[name], value)
+        _random_seed.assert_not_called()
+
     @patch("minimax.generate_random_llm_seed", return_value=42)
     @patch("minimax.requests.post")
     def test_ask_llm_clamps_completion_to_local_context(self, post, _random_seed):
@@ -354,6 +387,7 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             request_json["repeat_penalty"],
             minimax.MISTRAL_24B_SETTINGS["repeat_penalty"],
         )
+        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
 
 
 class DirectorPromptCallContractTests(unittest.TestCase):
