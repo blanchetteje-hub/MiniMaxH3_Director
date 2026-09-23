@@ -48,6 +48,8 @@ CREATE -> VALIDATE -> REPAIR -> VALIDATE until valid
 
 Do not add separate semantic state-preparation, enrichment, coverage, claims, proof, review, or effect-validation pipelines.
 
+Iteration rule: Fix only the earliest demonstrated acceptance failure. Prefer deleting/simplifying prompts and narrowing repair scope over adding new rules or semantic layers. Do not make speculative downstream fixes.
+
 State is Python-owned canonical data.
 
 `state_effects` live inside story-arc `required_events`.
