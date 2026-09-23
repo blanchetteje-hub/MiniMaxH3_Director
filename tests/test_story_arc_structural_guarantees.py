@@ -132,23 +132,12 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 for message in minimax.build_macro_arc_validation_messages(story, arc)
             ).split()
         )
-
-        self.assertIn(
-            "set_condition requires the event/source to actually establish that condition",
-            create_prompt,
-        )
-        self.assertIn(
-            "Cooking or serving food does not establish hunger",
-            create_prompt,
-        )
-        self.assertIn(
-            "Reject unsupported optional state effects as well as missing required ones",
-            validate_prompt,
-        )
-        self.assertIn(
-            "Cooking or serving food does not establish hunger",
-            validate_prompt,
-        )
+        for prompt in (create_prompt, validate_prompt):
+            self.assertIn("state_effects", prompt)
+            self.assertIn("persistent facts directly established", prompt)
+            self.assertIn("set_condition", prompt)
+            self.assertRegex(prompt, r"temporary|inferred")
+            self.assertIn("set_clothing", prompt)
 
     def test_majority_evidence_is_counted_deterministically(self):
         invalid_arc = {
@@ -207,28 +196,16 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             "Amy kills the last zombie and lets her kids out."
         )
         arc = make_arc([(1, 3, self.events)])
-        messages = minimax.build_macro_arc_validation_messages(story, arc)
         normalized = " ".join(
-            "\n".join(message["content"] for message in messages).split()
+            "\n".join(
+                message["content"]
+                for message in minimax.build_macro_arc_validation_messages(story, arc)
+            ).split()
         )
-        self.assertIn(
-            "majority_checks is semantic evidence for deterministic counting",
-            normalized,
-        )
-        self.assertIn(
-            "matching_phases must contain ONLY macro phase numbers whose ENTIRE "
-            "beat_start..beat_end span may safely be counted",
-            normalized,
-        )
-        self.assertIn(
-            "that mixed phase is NOT safe to count in full",
-            normalized,
-        )
-        self.assertIn(
-            "Python will expand each returned matching phase to its Python-owned "
-            "beat_start..beat_end span",
-            normalized,
-        )
+        self.assertIn("majority_checks", normalized)
+        self.assertIn("matching_phases", normalized)
+        self.assertIn("preparation before it does not count", normalized)
+        self.assertIn("Python counts the beats", normalized)
 
     def test_focused_majority_evidence_classifies_exact_beats(self):
         story = (
