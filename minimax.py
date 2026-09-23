@@ -916,16 +916,23 @@ MICRO-BEATS
 OUTPUT CONTRACT
 
 - Return only one valid JSON object with exactly these properties:
-  {{"raw_scene": "...", "beat_complete": true}}
+  {{"raw_scene": "...", "finite_activity_complete": true,
+  "named_beneficiaries_complete": true, "activity_tools_settled": true,
+  "beat_complete": true}}
 - `raw_scene` must contain the complete timed scene and the one-sentence END
   CONTINUITY STATE.
-- Set `beat_complete` to true only when RAW SCENE visibly executes every
-  explicit required action, object, and outcome in CURRENT BEAT. For a finite
-  activity, showing the activity underway is insufficient: its natural visible
-  result or stable endpoint must be reached unless CURRENT BEAT explicitly says
-  it remains unfinished or interrupted. If the activity is FOR named people,
-  each named beneficiary must visibly receive or participate in the completed
-  result when physically possible. If any requirement is missing, set it to false.
+- Set `finite_activity_complete` true only when every finite activity in
+  CURRENT BEAT visibly reaches its natural result/stable endpoint, unless the
+  beat explicitly says it remains unfinished or interrupted.
+- Set `named_beneficiaries_complete` true only when each named person the
+  activity is FOR visibly receives or participates in the completed result
+  when physically possible.
+- Set `activity_tools_settled` true only when any tool/appliance used only for
+  that completed finite activity is visibly stopped, set down, closed, or
+  otherwise settled when physically reasonable.
+- Set `beat_complete` true only when all three completion checks above are true
+  and RAW SCENE visibly executes every explicit CURRENT BEAT action, object,
+  and outcome.
 - Compress timing when necessary to fit the segment. Never omit an explicit
   CURRENT BEAT requirement and never advance into NEXT BEAT.
 
