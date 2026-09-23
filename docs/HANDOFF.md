@@ -1724,3 +1724,17 @@ Evidence so far:
 - Qwen planning-only acceptance 227 produced a valid ARC on the **first ARC CREATE attempt**, including the required majority zombie sequence, which is materially better than the repeated Mistral ARC repair churn seen in prior Amy runs.
 - Qwen still preserved the activity-only breakfast wording in ARC/Beat 1, so the finite-breakfast endpoint remains an active semantic boundary rather than a solved issue.
 - The prior Mistral 24B Beat validator benchmark remains an important reference point (400/400), but the current engineering direction is to see how far the Qwen model can be made to carry the whole system before accepting hybrid routing complexity.
+
+
+## Qwen full run 229: model-profile mismatch found in Beat validation
+
+Full Qwen acceptance `aab-run-acceptance-amy-full-qwen-229` reached Segment 4 before Request 1 exhausted its retry budget. Segment 1 still ended with breakfast ongoing despite two Request-1 retries, so the finite-activity handoff remains unresolved. More importantly, the generated Beat sequence exposed an earlier Qwen integration defect: Beat 4 said Amy kills attacking zombies **until the last zombie falls dead**, while Beats 5-7 still contained additional zombies. Equivalent premature terminal wording appeared in later repeated fight beats. The single-beat validator incorrectly accepted those candidates.
+
+The cause was not a new validator-rule gap. Production already contained both benchmark profiles, but `_active_beat_validation_settings()` always returned `MISTRAL_24B_SETTINGS`. The locally benchmarked Qwen profile differs materially in prompt packaging: `QWEN38_27B_SETTINGS` uses `user_prompt_only=True`. The Qwen validator benchmark that previously scored 399/400 was therefore not the prompt shape being used in production.
+
+Production fix:
+- `6166779a959e6c5ba0d7de527c06f0585a2984bb` — select `QWEN38_27B_SETTINGS` when the active formatter/model is Qwen; keep the Mistral profile for Mistral.
+- `bceba74afdfb79a008acb718f9bc444454f4b59a` and `5c4a9a1936f71d0495c9699db194d7ab8a58eca3` — regression coverage verifies Qwen uses the benchmarked user-only validator prompt shape and restores formatter state cleanly.
+- `aaa-run-tests-qwen-validator-profile-231`: **PASS, 87/87 tests green**.
+
+`aab-run-acceptance-amy-planning-qwen-validator-232` is the active verification. Inspect Beats 4-7 specifically for premature terminal/exhaustive wording and whether the corrected Qwen validator rejects/regenerates those candidates. Do not add a new validator rule before this run resolves the benchmark-profile mismatch.
