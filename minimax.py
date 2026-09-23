@@ -8045,7 +8045,11 @@ def build_beats_response_format(total_segments, beat_start=1):
                                     "description": (
                                         "Begin with the exact beat number and a period, "
                                         "for example '1. beat text', followed by one "
-                                        "concise, complete sentence."
+                                        "concise, complete sentence. For a finite "
+                                        "assigned activity, include the activity itself "
+                                        "and its visible completion endpoint in that "
+                                        "same sentence; do not reduce it to only an "
+                                        "in-progress action or only an after-state."
                                     ),
                                 },
                             },
