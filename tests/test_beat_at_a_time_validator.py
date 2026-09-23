@@ -49,6 +49,15 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             prompt,
         )
         self.assertIn(
+            "PREVIOUS FINAL BEAT is history only",
+            prompt,
+        )
+        self.assertIn(
+            "cannot satisfy, replace, or excuse any action or result explicitly "
+            "assigned to CURRENT JOB",
+            prompt,
+        )
+        self.assertIn(
             "Entering a room does not imply locking its door",
             prompt,
         )
