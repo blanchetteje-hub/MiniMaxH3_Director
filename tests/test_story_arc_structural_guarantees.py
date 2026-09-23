@@ -134,6 +134,22 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertEqual(events_schema["minItems"], 3)
         self.assertEqual(events_schema["maxItems"], 3)
 
+    def test_arc_create_expands_explicit_majority_process_to_numeric_budget(self):
+        story = (
+            "Amy cooks breakfast. The majority of the film is Amy fighting zombies. "
+            "Amy defeats the last zombie and lets her kids out."
+        )
+        create_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_beat_arc_plan_messages(story, 8)
+            ).split()
+        )
+        self.assertIn("allocate that process to the required numeric majority of beats", create_prompt)
+        self.assertIn("do not compress the whole process into one or two summary events", create_prompt)
+        self.assertIn("distinct coherent source-authorized moments", create_prompt)
+        self.assertIn("never add a new major plot, character, location, or outcome", create_prompt)
+
     def test_arc_validator_requires_explicit_source_timeline_coverage(self):
         story = (
             "Amy is at home on a normal day, cooking breakfast for her kids. "
