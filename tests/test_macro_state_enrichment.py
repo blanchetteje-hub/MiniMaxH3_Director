@@ -28,16 +28,16 @@ class MacroArcPipelineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             minimax.parse_beat_arc_plan(arc, 1)
 
-    def test_arc_validator_prompt_owns_end_state_and_effect_semantics(self):
+    def test_arc_validator_prompt_owns_event_and_effect_semantics(self):
         prompt = "\\n".join(
             message["content"]
             for message in minimax.build_macro_arc_validation_messages(
                 "The operator opens the primary barrier.", neutral_arc()
             )
         ).casefold()
-        self.assertIn("required_end_state", prompt)
-        self.assertIn("state effects", prompt)
-        self.assertIn("persistent modeled facts", prompt)
+        self.assertNotIn("required_end_state", prompt)
+        self.assertIn("state_effects", prompt)
+        self.assertIn("persistent facts directly established", prompt)
         self.assertNotIn("state preparation", prompt)
         self.assertNotIn("coverage inventory", prompt)
 
