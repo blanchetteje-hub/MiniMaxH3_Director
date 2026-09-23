@@ -283,14 +283,9 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             minimax.BEAT_LLM_SAMPLING_PARAMETERS["seed"],
             42,
         )
-        self.assertEqual(
-            request_json["top_k"],
-            minimax._active_formatter_llm_settings()["top_k"],
-        )
-        self.assertEqual(
-            request_json["min_p"],
-            minimax._active_formatter_llm_settings()["min_p"],
-        )
+        self.assertEqual(request_json["top_k"], 20)
+        self.assertEqual(request_json["min_p"], 0.05)
+        _random_seed.assert_not_called()
 
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
