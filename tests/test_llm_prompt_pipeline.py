@@ -436,7 +436,9 @@ class LLMSamplingRoutingTests(unittest.TestCase):
                 messages[1]["content"],
             )
         finally:
-            minimax.ACTIVE_FORMATTER = original
+            minimax.configure_formatter(
+                "qwen" if isinstance(original, minimax.QwenFormatter) else "mistral"
+            )
 
 class DirectorPromptCallContractTests(unittest.TestCase):
     def test_director_allows_only_controlled_local_staging(self):
