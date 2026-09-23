@@ -275,9 +275,11 @@ def run_local_process(command, cwd: Path, timeout: int) -> dict:
         env=os.environ.copy(),
     )
     _ACTIVE_LOCAL_PROCESS = process
+    timed_out = False
     try:
         stdout, stderr = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
+        timed_out = True
         if os.name == "nt":
             subprocess.run(
                 ["taskkill", "/PID", str(process.pid), "/T", "/F"],
@@ -289,7 +291,6 @@ def run_local_process(command, cwd: Path, timeout: int) -> dict:
         else:
             process.kill()
         stdout, stderr = process.communicate()
-        raise
     finally:
         _ACTIVE_LOCAL_PROCESS = None
 
@@ -298,6 +299,8 @@ def run_local_process(command, cwd: Path, timeout: int) -> dict:
         "returncode": process.returncode,
         "stdout": stdout,
         "stderr": stderr,
+        "timed_out": timed_out,
+        "timeout_seconds": int(timeout) if timed_out else None,
         "started_at": started,
         "finished_at": time.time(),
     }
@@ -310,13 +313,17 @@ def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
     candidates = sorted(
         (
             path for path in results_root.glob("amy_zombie_house-*")
-            if path.is_dir() and (path / "acceptance_run.json").is_file()
+            if path.is_dir()
+            and (
+                (path / "acceptance_run.json").is_file()
+                or (path / "run.log").is_file()
+            )
         ),
         key=lambda path: path.stat().st_mtime,
         reverse=True,
     )
     if not candidates:
-        raise RuntimeError("Acceptance runner produced no acceptance_run.json.")
+        raise RuntimeError("Acceptance runner produced no result directory or run.log.")
     latest = candidates[0]
     artifacts_dir = result_dir / "files"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
