@@ -401,6 +401,43 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
 
 
+    def test_beat_validation_profile_follows_active_model(self):
+        original = minimax.ACTIVE_FORMATTER
+        try:
+            minimax.configure_formatter("mistral")
+            mistral_settings = minimax._active_beat_validation_settings()
+            self.assertFalse(mistral_settings["user_prompt_only"])
+            self.assertEqual(
+                mistral_settings["repeat_penalty"],
+                minimax.MISTRAL_24B_SETTINGS["repeat_penalty"],
+            )
+
+            minimax.configure_formatter("qwen")
+            qwen_settings = minimax._active_beat_validation_settings()
+            self.assertTrue(qwen_settings["user_prompt_only"])
+            self.assertEqual(
+                qwen_settings["repeat_penalty"],
+                minimax.QWEN38_27B_SETTINGS["repeat_penalty"],
+            )
+
+            messages = minimax.build_beat_validation_messages(
+                previous_final_beat="Amy equips her weapons.",
+                current_state=minimax.new_beat_canonical_state(),
+                beat_job="Amy kills attacking zombies.",
+                next_beat_job="Amy kills more attacking zombies.",
+                candidate_beat=(
+                    "Amy kills attacking zombies until the last zombie falls dead."
+                ),
+                settings=qwen_settings,
+            )
+            self.assertEqual(messages[0]["content"], "")
+            self.assertIn(
+                "You validate one candidate story beat.",
+                messages[1]["content"],
+            )
+        finally:
+            minimax.ACTIVE_FORMATTER = original
+
 class DirectorPromptCallContractTests(unittest.TestCase):
     def test_director_allows_only_controlled_local_staging(self):
         rules = minimax.build_director_rules(
