@@ -1,0 +1,201 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_zombie_house",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_zombie_house.json",
+  "benchmark_sha256": "1ca25dc3598d1541117e0cb0ea9b147d73fc8abd3f3580e6da12674757bc9491",
+  "repository_revision": "707044f0cf878e44b6c1ee78a9967c3143feadbe",
+  "created_at_utc": "2026-09-23T22:44:57Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "--generate-beats",
+    "8",
+    "--model",
+    "qwen"
+  ],
+  "exit_code": 0,
+  "capture_status": {
+    "complete": true,
+    "mode": "planning_only",
+    "expected_segments": 0,
+    "captured_segments": [],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 1,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy is at home on a normal day, cooking breakfast for her young kids.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy is at home on a normal day, cooking breakfast for her young kids.",
+        "required_events": [
+          {
+            "id": "@1",
+            "event": "Amy is at home on a normal day, cooking breakfast for her young kids.",
+            "beat_number": 1
+          }
+        ]
+      },
+      {
+        "phase_number": 2,
+        "beat_start": 2,
+        "beat_end": 2,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "A zombie breaks the kitchen door window; Amy sees the danger and rushes her kids to the basement, gets them inside, then locks the door.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "A zombie breaks the kitchen door window; Amy sees the danger and rushes her kids to the basement, gets them inside, then locks the door.",
+        "required_events": [
+          {
+            "id": "@2",
+            "event": "A zombie breaks the kitchen door window; Amy sees the danger and rushes her kids to the basement, gets them inside, then locks the door.",
+            "beat_number": 2,
+            "depends_on": [
+              "@1"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 3,
+        "beat_start": 3,
+        "beat_end": 3,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy retrieves her hidden arsenal of a pistol and a katana; she equips both weapons.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy retrieves her hidden arsenal of a pistol and a katana; she equips both weapons.",
+        "required_events": [
+          {
+            "id": "@3",
+            "event": "Amy retrieves her hidden arsenal of a pistol and a katana; she equips both weapons.",
+            "beat_number": 3,
+            "depends_on": [
+              "@2"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 4,
+        "beat_start": 4,
+        "beat_end": 4,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy kills zombies as they try to attack her.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy kills zombies as they try to attack her.",
+        "required_events": [
+          {
+            "id": "@4",
+            "event": "Amy kills zombies as they try to attack her.",
+            "beat_number": 4,
+            "depends_on": [
+              "@3"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 5,
+        "beat_start": 5,
+        "beat_end": 5,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy kills more zombies as they try to attack her.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy kills more zombies as they try to attack her.",
+        "required_events": [
+          {
+            "id": "@5",
+            "event": "Amy kills more zombies as they try to attack her.",
+            "beat_number": 5,
+            "depends_on": [
+              "@4"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 6,
+        "beat_start": 6,
+        "beat_end": 6,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy kills further zombies as they try to attack her.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy kills further zombies as they try to attack her.",
+        "required_events": [
+          {
+            "id": "@6",
+            "event": "Amy kills further zombies as they try to attack her.",
+            "beat_number": 6,
+            "depends_on": [
+              "@5"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 7,
+        "beat_start": 7,
+        "beat_end": 7,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy continues killing zombies as they try to attack her.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy continues killing zombies as they try to attack her.",
+        "required_events": [
+          {
+            "id": "@7",
+            "event": "Amy continues killing zombies as they try to attack her.",
+            "beat_number": 7,
+            "depends_on": [
+              "@6"
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 8,
+        "beat_start": 8,
+        "beat_end": 8,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.",
+        "required_events": [
+          {
+            "id": "@8",
+            "event": "Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.",
+            "beat_number": 8,
+            "depends_on": [
+              "@7"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "generated_beats_text": "# Phase 1\n1. Amy is in her kitchen on an ordinary day, preparing a hot plate of food at the stove to serve as breakfast for her young children Will and Amber.\n# Phase 2\n2. A zombie crashes through the kitchen door window; Amy sees the danger and rushes her kids Will and Amber into the basement, then locks the door.\n# Phase 3\n3. Amy retrieves her hidden arsenal of a pistol and a katana; she equips both weapons.\n# Phase 4\n4. Amy fires her pistol at charging zombies, then slashes others with her katana as they lunge toward her.\n# Phase 5\n5. Amy shoots and slashes additional lunging zombies in quick succession as they close on her from multiple directions.\n# Phase 6\n6. Amy fires her pistol and swings her katana at more advancing zombies, cutting them down as they lunge at her.\n# Phase 7\n7. Amy fires her pistol into a horde of surging zombies and slashes with her katana, sending the fallen bodies crashing to the ground around her.\n# Phase 8\n8. Amy stands in a blood-soaked house and opens the basement door for Will and Amber to emerge.\n",
+  "segments": [],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "beats.txt": "generated\\beats.txt",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
