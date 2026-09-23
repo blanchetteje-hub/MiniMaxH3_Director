@@ -7829,18 +7829,31 @@ def ask_llm(
                     if value is not None
                 }
             )
-            optional_prompt_settings = {
-                "thinking": thinking,
-                "chat_template": chat_template,
-                "jinja": jinja,
-            }
-            request_payload.update(
-                {
-                    name: value
-                    for name, value in optional_prompt_settings.items()
-                    if value is not None
+            if use_beat_validation_settings:
+                # Match tests/LLM/llama_client.py exactly for benchmarked
+                # validator transport. Qwen disables reasoning through the
+                # standard llama.cpp chat-template kwargs; chat_template/jinja
+                # are server-launch concerns and are not sent per request.
+                if (
+                    isinstance(ACTIVE_FORMATTER, QwenFormatter)
+                    and thinking in (False, "off")
+                ):
+                    request_payload["chat_template_kwargs"] = {
+                        "enable_thinking": False
+                    }
+            else:
+                optional_prompt_settings = {
+                    "thinking": thinking,
+                    "chat_template": chat_template,
+                    "jinja": jinja,
                 }
-            )
+                request_payload.update(
+                    {
+                        name: value
+                        for name, value in optional_prompt_settings.items()
+                        if value is not None
+                    }
+                )
             sampling_metadata = {
                 name: request_payload[name]
                 for name in (
