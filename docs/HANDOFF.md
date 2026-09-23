@@ -1659,3 +1659,21 @@ Current verification queue:
 2. `zzz-run-acceptance-amy-planning-arc-finite-schema-207` — fresh production planning check using the corrected flat-ARC structured schema.
 
 Inspect ARC E1 first in 207. If E1 includes both breakfast activity and its ordinary visible completion and Beat 1 preserves it, immediately return to the full locked acceptance. If E1 remains progressive-only, the structured-schema hypothesis is disproven and the next fix should remain inside ARC CREATE/REPAIR rather than broadening ARC VALIDATE.
+
+
+## Director completion reset after Planning 207
+
+Planning acceptance `zzz-run-acceptance-amy-planning-arc-finite-schema-207` passed the focused regressions but disproved the flat-ARC response-schema hint as a solution for E1: ARC/Beat 1 still said Amy was cooking breakfast without encoding a visible endpoint. Additional probes 208-212 showed that neither a shorter ARC CREATE prompt, a contrastive finite-activity example, broad ARC REPAIR enforcement, nor a focused finite-activity ARC validator reliably identified/fixed that defect without false positives. Do not add another ARC validation subsystem for this issue.
+
+Re-reading the prior full acceptance evidence showed the more useful boundary: Director Request 1 in full run 172 already inferred the missing serving actions from the activity-only Beat 1, but returned `beat_complete=true` while leaving its own completion contract partially unsatisfied (the end state still reported cooking / active kitchen work). Request 1 already owns local completion, beneficiaries, and settling activity-only tools/appliances.
+
+Sampling/prompt probes 213-221 showed that Request 1 can often realize the correct endpoint, but no tested temperature/presence/repeat/min-p tweak or duplicated local checklist was reliably better across the exact current Beat-1 wording. Do not make a sampling change from those probes.
+
+Concrete implementation mismatch found:
+- `DIRECTOR_RAW_SCENE_RESPONSE_FORMAT` described `raw_scene` only as a string and `beat_complete` only as a bare boolean, even though the Request-1 prompt gives `beat_complete` strict semantic completion meaning.
+- `7b27c164fbed132fee55dc5dbb17896b21384414` aligns the strict response-schema descriptions with the existing Request-1 completion contract; this does not add a validator or stage.
+- `7b51850688127cdbcb1d641d266911694c6d7ea6` locks that response-schema contract in tests.
+- Bridge regression `yyy-06-run-tests-director-completion-schema-222` passed 85/85 tests.
+- Full locked acceptance `zzz-run-acceptance-amy-full-director-completion-schema-223` is the only remaining queued/live verification. Do not stack further changes while it runs.
+
+For 223, inspect Segment 1 first. The required behavioral evidence is: both Will and Amber receive/participate in the completed breakfast; cooking is no longer ongoing at the handoff; and any active cooking tool/appliance used only for that activity is visibly settled when reasonable. If Segment 1 clears, continue to the earliest later acceptance failure. If it does not, this schema-description fix is disproven and should not be expanded into new ARC machinery.
