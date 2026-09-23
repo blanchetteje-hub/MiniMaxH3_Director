@@ -1576,3 +1576,15 @@ any new rule elsewhere.
 KISS remains unchanged: ARC CREATE -> VALIDATE -> REPAIR and BEATS CREATE ->
 VALIDATE -> REPAIR. This correction moves responsibility upstream to the stage
 that owns the required clip job; it does not add a semantic pipeline.
+
+
+## Planning 197: ARC CREATE still compresses explicit majority sequence
+
+`zzz-run-acceptance-amy-planning-finite-arc-197` timed out inside ARC planning after repeated validation/repair cycles. The earliest defect is now creation, before Beat generation: ARC CREATE repeatedly authored only 2/8 zombie-fighting beats even though its own majority budget required at least 5/8. ARC VALIDATE correctly rejected that allocation. Repair sometimes reached 4/8 but did not converge reliably, so downstream repair should not be asked to recover the same deterministic allocation mistake on every fresh ARC.
+
+Production change:
+- `4b45ef526299d66e0e86c854361158307788f946` — ARC CREATE now states the missing semantic consequence of its existing numeric majority budget: when the source says a process occupies the majority, allocate that process across the required numeric majority of beat jobs rather than compressing repeated activity into one or two summary events. Sparse source-authorized conflict may be expressed as distinct moments of the same process; no new major plot/character/location/outcome is allowed.
+
+This is a prompt-only correction inside existing ARC CREATE. KISS remains ARC CREATE -> VALIDATE -> REPAIR and BEATS CREATE -> VALIDATE -> REPAIR; no new stage or Python semantic heuristic was added.
+
+Next: run focused regressions, then a planning-only Amy acceptance. Inspect the first freshly-created ARC before repair: the zombie-fighting process should occupy at least 5/8 beats while preserving the calm baseline, inciting break-in, kids-to-basement/arsenal setup, and final release through adjacent bundling where required. If creation clears that boundary, continue to the earliest later failure rather than tuning hypothetical cases.
