@@ -1677,3 +1677,19 @@ Concrete implementation mismatch found:
 - Full locked acceptance `zzz-run-acceptance-amy-full-director-completion-schema-223` is the only remaining queued/live verification. Do not stack further changes while it runs.
 
 For 223, inspect Segment 1 first. The required behavioral evidence is: both Will and Amber receive/participate in the completed breakfast; cooking is no longer ongoing at the handoff; and any active cooking tool/appliance used only for that activity is visibly settled when reasonable. If Segment 1 clears, continue to the earliest later acceptance failure. If it does not, this schema-description fix is disproven and should not be expanded into new ARC machinery.
+
+
+## Acceptance 223: Request 1 trusts one false completion boolean
+
+Full locked acceptance `zzz-run-acceptance-amy-full-director-completion-schema-223` completed successfully, but Segment 1 still failed the gold completion boundary. Request 1 returned `beat_complete=true` while only Amber received the cooked eggs; Will did not receive breakfast, and the cooking tool/appliance state was not visibly settled before the handoff. Therefore the prior schema-description-only change did not solve the behavior.
+
+The earliest responsible runtime boundary is now explicit: `request_segment_llm()` retries Request 1 only when the model's single `beat_complete` boolean is false (plus deterministic structure/name checks). It has no independent completion evidence inside the same response.
+
+Focused KISS change:
+- `6f433c1da41f711870a29b38b9efd1776f27b98c` expands the existing Request-1 structured response with three required boolean completion claims: `finite_activity_complete`, `named_beneficiaries_complete`, and `activity_tools_settled`. The existing Request-1 retry loop now requires all three plus `beat_complete` to be true. A false claim feeds a precise completion reason back into the same retry; no extra LLM call, semantic Python heuristic, ARC validator, Beat validator, or new pipeline stage was added.
+- Legacy/mock callers that predate the expanded response schema remain compatible in the parser, while production strict structured output requires all new fields.
+- `d1afe6c23a2beca3c239b10c32c142b7d0a0d830` locks the expanded response contract and proves a false beneficiary/tool completion claim causes Request 1 to retry and accept only the corrected second response.
+
+Verification:
+- `yyy-07-run-tests-director-explicit-completion-224`: **PASS, 86/86 tests green**.
+- `zzz-run-acceptance-amy-full-director-explicit-completion-225` is the only live verification. Inspect Segment 1 first. Do not stack another prompt/sampling/ARC change while 225 runs.
