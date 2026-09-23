@@ -767,6 +767,42 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertNotIn("is Amy", user_content)
         minimax.verify_subjects_in_beat_messages(messages, compact_subjects)
 
+    def test_arc_validation_subject_guard_matches_compact_prompt(self):
+        subjects = (
+            "<Subject 1> is Amy, a woman shown in <Picture 1>.\n"
+            "<Subject 2> is Will, a 10-year-old boy.\n"
+            "<Subject 3> is Amber, a 14-year-old girl."
+        )
+        arc = {
+            "phases": [
+                {
+                    "phase_number": 1,
+                    "beat_start": 1,
+                    "beat_end": 1,
+                    "narrative_purpose": "Baseline.",
+                    "broad_progression": "Amy cooks breakfast.",
+                    "characters_introduced": [],
+                    "location": "Kitchen",
+                    "required_events": [
+                        {
+                            "id": "E1",
+                            "event": "Amy cooks breakfast.",
+                            "beat_number": 1,
+                        }
+                    ],
+                }
+            ]
+        }
+        messages = minimax.build_macro_arc_validation_messages(
+            "Amy cooks breakfast.",
+            arc,
+            subject_information=subjects,
+        )
+        compact_subjects = minimax._format_beat_arc_subject_names(subjects)
+        self.assertIn(compact_subjects, messages[1]["content"])
+        self.assertNotIn(subjects, messages[1]["content"])
+        minimax.verify_subjects_in_beat_messages(messages, compact_subjects)
+
     def test_phrase_exclusions_are_added_to_beat_generation_prompt(self):
         phase = {
             "phase_number": 1,
