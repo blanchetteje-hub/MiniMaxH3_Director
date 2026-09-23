@@ -10856,12 +10856,19 @@ def build_beat_arc_plan_messages(
     if re.search(r"\bmajority\b", str(story or ""), re.IGNORECASE):
         minimum_sequence_beats = int(total_segments) // 2 + 1
         maximum_outside_beats = int(total_segments) - minimum_sequence_beats
+        latest_sequence_start = maximum_outside_beats + 1
         majority_budget_text = (
             f"A strict majority of {int(total_segments)} beats means at least "
             f"{minimum_sequence_beats} beats in the emphasized sequence and at most "
-            f"{maximum_outside_beats} beats before/outside it. Preparation before "
-            "that sequence does not count. The final emphasized action may share "
-            "its beat with immediate resolution."
+            f"{maximum_outside_beats} beats before/outside it. The emphasized "
+            f"sequence must therefore begin no later than Beat "
+            f"{latest_sequence_start}. Fit all earlier setup/preparation into the "
+            f"first {maximum_outside_beats} beats by bundling adjacent source "
+            "actions when needed. Preparation before the sequence does not count. "
+            "If the source ends that sequence with a terminal action immediately "
+            "followed by resolution, combine the terminal action and resolution in "
+            "the final global beat whenever a separate resolution-only beat would "
+            "reduce the emphasized sequence below the required majority."
         )
 
     correction_text = (
@@ -11022,12 +11029,18 @@ def build_macro_arc_repair_messages(
         re.search(r"\bmajority\b", str(issue or ""), re.IGNORECASE)
         for issue in (issues or [])
     )
+    latest_sequence_start = maximum_outside_beats + 1
     majority_text = (
         f"At least {minimum_sequence_beats}/{int(total_segments)} beats must belong "
         f"to the emphasized sequence; at most {maximum_outside_beats} beats may "
-        "sit before/outside it. Preparation before the sequence does not count. "
-        "Keep any explicit calm baseline separate from its sudden inciting change. "
-        "The final emphasized action may share immediate resolution."
+        f"sit before/outside it, so that sequence must begin no later than Beat "
+        f"{latest_sequence_start}. Fit earlier setup/preparation inside those "
+        f"{maximum_outside_beats} beats by bundling adjacent source actions when "
+        "needed. Preparation before the sequence does not count. Keep any explicit "
+        "calm baseline separate from its sudden inciting change. If the sequence's "
+        "terminal action is immediately followed by resolution, combine both in "
+        "the final global beat whenever a resolution-only beat would otherwise "
+        "break the required majority."
         if has_majority_issue
         else "N/A"
     )
