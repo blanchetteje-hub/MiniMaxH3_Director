@@ -1313,7 +1313,11 @@ change and the exact successful/failed probes here or in PROJECT_NOTES. The
 frozen single-beat validator remains unchanged unless evidence directly
 implicates it.
 
-Next verification: run focused regressions for the Beat prompt change, then run
-the locked acceptance again. Inspect Segment 1 first. Only after Segment 1
-clears should Segment 2's Request-1 completion failure become the active target.
+Verification:
+- `run-tests-beat-transition-contract-171`: **PASS, 82/82 tests green**.
+- `run-acceptance-amy-full-172` is the active full locked acceptance against
+  the Beat transition-contract change.
+
+Inspect Segment 1 first when 172 publishes. Only after Segment 1 clears should
+Segment 2's Request-1 completion failure become the active target.
 
