@@ -1604,3 +1604,10 @@ Queued verification order:
 3. `zzz-run-acceptance-amy-planning-majority-create-200` — fresh locked planning-only Amy acceptance against the current branch.
 
 Do not make another production semantic change until those results publish. Inspect the first newly created ARC before repair; if creation now satisfies the majority allocation, continue to the next earliest observed failure. If it still compresses the majority process, revise only ARC CREATE/its sampling based on that exact evidence rather than expanding downstream repair architecture.
+
+
+### Probe 199 result
+
+`yyy-02-arc-create-majority-current-probe-199` completed with the current full ARC CREATE wording and production ARC sampling. Even with the explicit numeric-majority rule, unconstrained Mistral still compressed the zombie-fighting process to only a few beats and lost structural discipline (duplicate/missing beat assignments and malformed state-effect shapes). This is consistent with the earlier global-planning probes: prompt wording alone may still be insufficient for reliable global allocation.
+
+Do not treat 199 alone as the production verdict because `llama_chat` does not apply production's strict structured response schema. The decisive current evidence remains `zzz-run-acceptance-amy-planning-majority-create-200`, which is queued behind the corrected regression rerun `yyy-03-run-tests-arc-majority-create-contract-201`.
