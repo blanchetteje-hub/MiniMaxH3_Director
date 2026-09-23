@@ -1,0 +1,20 @@
+{
+  "job_id": "beat2-handoff-create-probe-161",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Write exactly one numbered story beat for the current job. Complete the current job as a visible clip endpoint without completing the next job. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY\nAmy is cooking breakfast when a zombie breaks the kitchen door window. Amy rushes Will and Amber to the basement, gets them inside, locks the door, retrieves a pistol and katana, equips them, then fights zombies.\n\nPREVIOUS FINALIZED BEAT\n1. Amy finishes serving breakfast to Will and Amber.\n\nCURRENT BEAT JOB\nA zombie breaks the kitchen door window and Amy sees the danger. Amy rushes Will and Amber to the basement.\n\nNEXT BEAT JOB\nWill and Amber get inside the safe room; Amy closes and locks the protective door, retrieves a pistol and katana, and equips them.\n\nRULES\n- Finish the CURRENT JOB at a concrete visible physical endpoint.\n- Do not complete the distinct NEXT JOB early.\n- Natural prerequisite motion that belongs to finishing the current job is allowed.\n- The next beat must still have all of its stated work left to do.\n\nReturn exactly {\"beats\":[\"2. ...\"]}."
+    }
+  ],
+  "temperature": 0.65,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "seed": 42,
+  "repeat_penalty": 1.1,
+  "max_tokens": 500
+}
