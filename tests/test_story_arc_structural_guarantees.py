@@ -342,8 +342,13 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         )
         self.assertIn("strict majority of 8 beats means at least 5 beats", create_prompt)
         self.assertIn("at most 3 beats before/outside it", create_prompt)
-        self.assertIn("Preparation before that sequence does not count", create_prompt)
-        self.assertIn("final emphasized action may share", create_prompt)
+        self.assertIn("Preparation before the sequence does not count", create_prompt)
+        self.assertIn("must therefore begin no later than Beat 4", create_prompt)
+        self.assertIn("first 3 beats by bundling adjacent source actions", create_prompt)
+        self.assertIn(
+            "combine the terminal action and resolution in the final global beat",
+            create_prompt,
+        )
 
         arc = make_arc([(1, 3, self.events)])
         repair_prompt = " ".join(
@@ -356,7 +361,9 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         )
         self.assertIn("At least 5/8 beats", repair_prompt)
         self.assertIn("at most 3 beats", repair_prompt)
+        self.assertIn("must begin no later than Beat 4", repair_prompt)
         self.assertIn("calm baseline", repair_prompt)
+        self.assertIn("combine both in the final global beat", repair_prompt)
 
         non_majority = " ".join(
             "\n".join(
