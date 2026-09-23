@@ -829,6 +829,14 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "participating in the completed result when reasonable",
             normalized,
         )
+        self.assertIn(
+            "same repeated/ongoing process to adjacent beats",
+            normalized,
+        )
+        self.assertIn(
+            "Do not say last, final, every, all, finished",
+            normalized,
+        )
         response_format = minimax.build_beats_response_format(1, beat_start=1)
         beat_text_description = (
             response_format["json_schema"]["schema"]["properties"]["beats"]
