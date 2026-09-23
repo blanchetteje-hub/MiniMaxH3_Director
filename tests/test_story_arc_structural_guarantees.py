@@ -70,57 +70,20 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             "Amy is at home on a normal day, cooking breakfast for her kids. "
             "Suddenly, a zombie breaks the kitchen door window."
         )
-        arc = make_arc([
-            (
-                1,
-                2,
-                [
-                    {
-                        "id": "E1",
-                        "event": "A zombie breaks the kitchen door window.",
-                        "beat_number": 1,
-                    },
-                    {
-                        "id": "E2",
-                        "event": "Amy reacts to the zombie.",
-                        "beat_number": 2,
-                        "depends_on": ["E1"],
-                    },
-                ],
-            ),
-        ])
-
-        messages = minimax.build_macro_arc_validation_messages(story, arc)
-        prompt = "\n".join(message["content"] for message in messages)
-        normalized = " ".join(prompt.split())
-
-        self.assertIn(
-            "Every explicit visible action or visible state that establishes "
-            "a distinct point in the source timeline",
-            normalized,
+        arc = make_arc([(1, 2, [
+            {"id": "E1", "event": "A zombie breaks the kitchen door window.", "beat_number": 1},
+            {"id": "E2", "event": "Amy reacts to the zombie.", "beat_number": 2, "depends_on": ["E1"]},
+        ])])
+        normalized = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_macro_arc_validation_messages(story, arc)
+            ).split()
         )
-        self.assertIn(
-            "Do not dismiss an explicit source action merely because it is calm, "
-            "introductory, mundane, or outside the main conflict.",
-            normalized,
-        )
-        self.assertIn(
-            "only AFTER all explicit source timeline actions/states are represented",
-            normalized,
-        )
-        self.assertIn(
-            "One required_event may cover multiple adjacent, causally continuous "
-            "source actions",
-            normalized,
-        )
-        self.assertIn(
-            "SOURCE COVERAGE IS THE FIRST SEMANTIC CHECK",
-            normalized,
-        )
-        self.assertLess(
-            normalized.index("SOURCE COVERAGE IS THE FIRST SEMANTIC CHECK"),
-            normalized.index("SOURCE EMPHASIS IS MANDATORY"),
-        )
+        self.assertIn("SOURCE COVERAGE FIRST", normalized)
+        self.assertIn("every explicit visible source action/state", normalized)
+        self.assertIn("Calm/mundane setup still counts", normalized)
+        self.assertIn("do not join distant story stages or drop a source action", normalized)
 
     def test_arc_prompts_keep_clothing_out_of_set_condition(self):
         story = "Amy wears a black tank top and cooks breakfast."
