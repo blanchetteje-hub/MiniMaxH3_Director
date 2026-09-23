@@ -1,0 +1,24 @@
+{
+  "job_id": "arc-front-handoff-temp0-probe-131",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "presence_penalty": 0,
+  "frequency_penalty": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 650,
+  "timeout_seconds": 180,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Allocate only the first three video story jobs. Preserve source order and the requested clip handoffs. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE OPENING\nAmy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for Will and Amber.\nSuddenly a zombie breaks the kitchen door window and Amy sees the danger. She rushes Will and Amber to the basement, gets them inside, and then locks the door.\nShe retrieves a hidden pistol and katana and equips them.\n\nTHREE-BEAT BUDGET\nBeat 1 is the ordinary breakfast baseline.\nBeat 2 starts with the zombie breaking the window and ends when Amy reaches the basement/safe-room entrance and OPENS the protective door for Will and Amber. The children have not gone through yet; the door is not closed or locked yet; no weapons yet.\nBeat 3 continues from that open door: Will and Amber go through, Amy closes/locks the door, then Amy retrieves and equips the pistol and katana.\n\nRules:\n- Cover every source action in order.\n- Do not move the door close/lock or weapon retrieval into Beat 2.\n- Do not leave door opening until Beat 3.\n- One concise event per beat.\n\nReturn exactly:\n{\"events\":[\n{\"beat_number\":1,\"event\":\"...\"},\n{\"beat_number\":2,\"event\":\"...\"},\n{\"beat_number\":3,\"event\":\"...\"}\n]}"
+    }
+  ]
+}
