@@ -11201,8 +11201,9 @@ def parse_beat_arc_plan(
     required_fields = {
         "phase_number", "beat_start", "beat_end", "narrative_purpose",
         "broad_progression", "characters_introduced", "location",
-        "required_end_state", "required_events",
+        "required_events",
     }
+    allowed_phase_fields = required_fields | {"required_end_state"}
     allowed_event_fields = {"id", "event", "beat_number", "depends_on", "state_effects"}
     normalized_phases = []
     required_event_ids = set()
@@ -11215,7 +11216,7 @@ def parse_beat_arc_plan(
             raise ValueError(
                 f"Macro arc phase {phase_number} is missing: {', '.join(sorted(missing))}."
             )
-        extras = set(phase) - required_fields
+        extras = set(phase) - allowed_phase_fields
         if extras:
             raise ValueError(
                 f"Macro arc phase {phase_number} has unsupported fields: "
@@ -11245,7 +11246,7 @@ def parse_beat_arc_plan(
             )
         purpose = str(phase["narrative_purpose"] or "").strip()
         progression = " ".join(str(phase["broad_progression"] or "").split())
-        end_state = str(phase["required_end_state"] or "").strip()
+        # Legacy required_end_state is accepted on load but is not story authority.
         location = " ".join(str(phase["location"] or "").split())
         characters = phase["characters_introduced"]
         if not isinstance(characters, list) or any(
@@ -11261,10 +11262,10 @@ def parse_beat_arc_plan(
             raise ValueError(
                 f"Macro arc phase {phase_number} characters_introduced contains duplicates."
             )
-        if not purpose or not progression or not end_state or not location:
+        if not purpose or not progression or not location:
             raise ValueError(
                 f"Macro arc phase {phase_number} must include purpose, broad "
-                "progression, location, and end state."
+                "progression, and location."
             )
         events = phase["required_events"]
         if not isinstance(events, list):
@@ -11351,7 +11352,11 @@ def parse_beat_arc_plan(
             "broad_progression": progression,
             "characters_introduced": characters,
             "location": location,
-            "required_end_state": end_state,
+            # Keep an internal compatibility handoff, deterministically derived
+            # from the final authoritative required event rather than model prose.
+            "required_end_state": (
+                normalized_events[-1]["event"] if normalized_events else progression
+            ),
             "required_events": normalized_events,
         })
         expected_start = end + 1
@@ -11888,10 +11893,6 @@ def build_beat_arc_response_format(total_segments):
                                     "type": "string",
                                     "minLength": 1,
                                 },
-                                "required_end_state": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                },
                                 "required_events": {
                                     "type": "array",
                                     "items": {
@@ -11936,7 +11937,6 @@ def build_beat_arc_response_format(total_segments):
                                 "broad_progression",
                                 "characters_introduced",
                                 "location",
-                                "required_end_state",
                                 "required_events",
                             ],
                             "additionalProperties": False,
