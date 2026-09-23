@@ -11313,19 +11313,7 @@ def build_macro_arc_majority_tail_repair_response_format(total_segments):
                             "type": "object",
                             "properties": {
                                 "id": {"type": "string", "minLength": 1},
-                                "event": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "description": (
-                                        "One executable clip job for this beat. If a finite "
-                                        "source activity is wholly assigned to this beat, "
-                                        "include the activity reaching its natural visible "
-                                        "endpoint; do not return only in-progress wording. "
-                                        "For a source-authorized extended/repeated process, "
-                                        "describe this beat's concrete portion without "
-                                        "prematurely ending the whole process."
-                                    ),
-                                },
+                                "event": {"type": "string", "minLength": 1},
                                 "beat_number": {
                                     "type": "integer",
                                     "minimum": total_segments - 1,
@@ -12354,7 +12342,19 @@ def build_flat_arc_response_format(total_segments):
                             "type": "object",
                             "properties": {
                                 "id": {"type": "string", "minLength": 1},
-                                "event": {"type": "string", "minLength": 1},
+                                "event": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": (
+                                        "One executable clip job for this beat. If a finite "
+                                        "source activity is wholly assigned to this beat, "
+                                        "include the activity reaching its natural visible "
+                                        "endpoint; do not return only in-progress wording. "
+                                        "For a source-authorized extended/repeated process, "
+                                        "describe this beat's concrete portion without "
+                                        "prematurely ending the whole process."
+                                    ),
+                                },
                                 "beat_number": {
                                     "type": "integer",
                                     "minimum": 1,
