@@ -481,8 +481,9 @@ Current production baselines:
   `presence_penalty=0`, `frequency_penalty=0`,
   `repeat_penalty=1.15`, seed 42.
 - Beat CREATE sampling:
-  `temperature=0.65`, `top_p=0.90`, `presence_penalty=0.15`,
-  `frequency_penalty=0.15`, `repeat_penalty=1.15`.
+  `temperature=0.65`, `top_p=0.90`, `top_k=20`, `min_p=0.05`,
+  `presence_penalty=0.15`, `frequency_penalty=0.15`,
+  `repeat_penalty=1.15`, seed 42.
 - Frozen single-beat VALIDATE remains Mistral 24B at
   `temperature=0`, `repeat_penalty=1.15`, seed 42 unless new benchmark
   evidence directly implicates the validator itself.
@@ -509,3 +510,15 @@ September 23 production promotion:
 - probe 174 additionally raised top_p to 0.95 and regressed back to
   activity-only.
 Production Beat CREATE repeat_penalty is therefore now 1.15; top_p remains 0.90.
+
+September 23 exact-profile follow-up:
+- planning acceptance 177 showed RP 1.15 alone did not generalize because Beat
+  CREATE still inherited formatter sampling and used a random seed;
+- probes 178/179 reproduced activity-only output with the actual inherited
+  min_p=0.0, regardless of RP 1.15 vs 1.05;
+- probe 180 showed top_k 20 -> 0 did not fix the collapse;
+- probe 181 used min_p=0.05 + RP 1.15 and restored activity + explicit completion;
+- probe 182 used min_p=0.05 + RP 1.05 and remained activity-only.
+Production Beat CREATE now owns its complete sampling profile explicitly:
+top_k=20, min_p=0.05, repeat_penalty=1.15, seed=42. This avoids hidden formatter
+defaults and random-seed drift in future experiments.
