@@ -482,7 +482,7 @@ Current production baselines:
   `repeat_penalty=1.15`, seed 42.
 - Beat CREATE sampling:
   `temperature=0.65`, `top_p=0.90`, `presence_penalty=0.15`,
-  `frequency_penalty=0.15`, `repeat_penalty=1.05`.
+  `frequency_penalty=0.15`, `repeat_penalty=1.15`.
 - Frozen single-beat VALIDATE remains Mistral 24B at
   `temperature=0`, `repeat_penalty=1.15`, seed 42 unless new benchmark
   evidence directly implicates the validator itself.
@@ -500,3 +500,12 @@ September 23 Beat-1 endpoint experiment:
 Therefore the current Beat-1 correction is a prompt-contract fix; no Beat
 sampling change is justified by those probes.
 
+
+
+September 23 production promotion:
+- full acceptance 172 reproduced Beat-1 action-only collapse under RP 1.05;
+- probe 173 changed only Beat CREATE repeat_penalty to 1.15 and restored
+  activity + completion on the production-shaped prompt;
+- probe 174 additionally raised top_p to 0.95 and regressed back to
+  activity-only.
+Production Beat CREATE repeat_penalty is therefore now 1.15; top_p remains 0.90.
