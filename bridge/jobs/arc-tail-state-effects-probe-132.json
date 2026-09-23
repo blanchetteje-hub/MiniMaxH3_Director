@@ -1,0 +1,24 @@
+{
+  "job_id": "arc-tail-state-effects-probe-132",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "presence_penalty": 0,
+  "frequency_penalty": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 750,
+  "timeout_seconds": 180,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Repair only the final two required events. Preserve all existing persistent state effects across the two events. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE ENDING\nAmy keeps killing zombies. Amy kills the last zombie, the house now soaked in blood. She lets Will and Amber out of the basement.\n\nCURRENT EVENTS\n{\"id\":\"E7\",\"event\":\"Amy kills the last zombie, the house now soaked in blood.\",\"beat_number\":7,\"depends_on\":[\"E6\"],\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie_horde\",\"value\":\"dead\"},{\"op\":\"set_condition\",\"entity\":\"house\",\"value\":\"blood_soaked\"}]}\n{\"id\":\"E8\",\"event\":\"Amy lets Will and Amber out of the basement.\",\"beat_number\":8,\"depends_on\":[\"E7\"],\"state_effects\":[{\"op\":\"set_containment\",\"entity\":\"Will\",\"container\":\"basement\",\"value\":\"released\"},{\"op\":\"set_containment\",\"entity\":\"Amber\",\"container\":\"basement\",\"value\":\"released\"}]}\n\nREPAIR\n- Beat 7 remains nonterminal zombie fighting. Do not kill the last zombie or establish blood_soaked yet.\n- Beat 8 kills the last zombie, establishes the blood-soaked house, and lets Will and Amber out.\n- Preserve exactly the same four state_effect objects across Beats 7-8, moving each to the event that now establishes it.\n- Preserve IDs, beat numbers, and dependencies.\n\nReturn exactly:\n{\"events\":[\n{\"id\":\"E7\",\"event\":\"...\",\"beat_number\":7,\"depends_on\":[\"E6\"],\"state_effects\":[]},\n{\"id\":\"E8\",\"event\":\"...\",\"beat_number\":8,\"depends_on\":[\"E7\"],\"state_effects\":[]}\n]}"
+    }
+  ]
+}
