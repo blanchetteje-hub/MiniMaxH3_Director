@@ -484,8 +484,30 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
         "schema": {
             "type": "object",
             "properties": {
-                "raw_scene": {"type": "string"},
-                "beat_complete": {"type": "boolean"},
+                "raw_scene": {
+                    "type": "string",
+                    "description": (
+                        "Complete timed RAW SCENE for CURRENT BEAT, including "
+                        "the natural visible endpoint of any finite activity. "
+                        "When the activity is for named people, show each named "
+                        "beneficiary receiving or participating in the completed "
+                        "result when physically possible. When completion ends "
+                        "use of a tool or appliance used only for that activity, "
+                        "visibly settle it before the handoff when reasonable."
+                    ),
+                },
+                "beat_complete": {
+                    "type": "boolean",
+                    "description": (
+                        "True only if RAW SCENE visibly completes every explicit "
+                        "CURRENT BEAT action, object, and outcome. A finite "
+                        "activity still underway is incomplete. If the activity "
+                        "is for named people, required beneficiaries must receive "
+                        "or participate in the completed result when physically "
+                        "possible, and tools/appliances used only for the finished "
+                        "activity must be visibly settled when reasonable."
+                    ),
+                },
             },
             "required": ["raw_scene", "beat_complete"],
             "additionalProperties": False,
