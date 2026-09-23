@@ -1455,7 +1455,9 @@ def _active_formatter_llm_settings():
 
 
 def _active_beat_validation_settings():
-    """Return the production profile measured by the beat validator benchmark."""
+    """Return the benchmarked validator profile for the active local model."""
+    if isinstance(ACTIVE_FORMATTER, QwenFormatter):
+        return dict(QWEN38_27B_SETTINGS)
     return dict(MISTRAL_24B_SETTINGS)
 
 
