@@ -11044,6 +11044,12 @@ Rules:
   but never add a new major plot, character, location, or outcome.
 - required_events form one chain: every event after the first depends_on the
   immediately preceding event ID.
+- Every event must include state_effects. Use [] only when that event establishes
+  no persistent fact represented by a supported typed operation. Do not omit an
+  explicit persistent fact that the event establishes. For example, locking a
+  door requires set_barrier_state=locked; equipping a weapon requires
+  set_item_state=equipped; an explicitly blood-soaked house may use
+  set_condition=blood soaked.
 - state_effects contain only persistent facts directly established by that same
   event. Use only set_location, set_item_state, set_barrier_state,
   set_threat_state, set_object_state, set_containment, set_condition, and
@@ -11139,6 +11145,12 @@ Rules:
   continuations merely because the source states the repeated process once.
   Reject only a new major plot, character, location, mechanism, or outcome not
   authorized by the source.
+- Every proposed event must include state_effects. If an event explicitly
+  establishes a persistent fact represented by a supported typed operation,
+  reject the arc when that fact is missing from state_effects. Examples: an
+  explicitly locked door needs set_barrier_state=locked; an explicitly equipped
+  weapon needs set_item_state=equipped. [] is valid only when the event establishes
+  no supported persistent fact.
 - state_effects must describe only persistent facts directly established by the
   owning event. Reject inferred/temporary conditions and wrong typed operations.
   Clothing must use set_clothing, never set_condition.
@@ -11247,7 +11259,9 @@ Rules:
 - Split or regroup only adjacent source actions when needed to fix allocation.
 - Preserve an explicit calm baseline before a sudden inciting threat/change.
 - Every event after the first depends_on the immediately preceding event ID.
-- state_effects are only persistent facts directly established by their event.
+- Every event must include state_effects. Preserve/add every supported persistent
+  fact explicitly established by its event; use [] only when there is none.
+  state_effects are only persistent facts directly established by their event.
   set_condition is not for temporary activity or inferred state.
 - Clothing must use set_clothing; never set_condition.
 - Return only the corrected events array with Beats 1-{int(total_segments)}
@@ -12454,7 +12468,12 @@ def build_flat_arc_response_format(total_segments):
                                     "uniqueItems": True,
                                 },
                             },
-                            "required": ["id", "event", "beat_number"],
+                            "required": [
+                                "id",
+                                "event",
+                                "beat_number",
+                                "state_effects",
+                            ],
                             "additionalProperties": False,
                         },
                     },
@@ -12506,6 +12525,13 @@ def parse_flat_arc_plan(
     for event in events:
         if not isinstance(event, dict):
             raise ValueError("Every flat macro arc event must be an object.")
+        if "state_effects" not in event:
+            raise ValueError(
+                "Every fresh flat macro arc event must include state_effects; "
+                "use an empty array only when the event establishes no persistent "
+                "fact represented by a supported typed operation."
+            )
+        event["state_effects"] = _validate_state_effects(event["state_effects"])
         beat_number = event.get("beat_number")
         if (
             isinstance(beat_number, bool)
