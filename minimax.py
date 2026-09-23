@@ -13606,6 +13606,12 @@ Rules:
   participating in the completed result when reasonable.
 - Do not start the next required event early.
 - If PREVIOUS BEAT is present, continue from it without repeating it.
+- When ARC intentionally assigns the same repeated/ongoing process to adjacent
+  beats, write a distinct concrete instance for this beat rather than copying
+  the previous beat or the required-event sentence verbatim. Preserve the same
+  story-level job, but vary the visible execution. Do not say last, final,
+  every, all, finished, or otherwise exhaust the repeated process unless the
+  assigned required event explicitly makes this the terminal instance.
 - One concise sentence per beat.
 - Each beat string begins with its exact global beat number and a period, and
   beat_number matches that prefix.
@@ -14685,8 +14691,22 @@ def generate_beats_from_story(
                         None,
                     )
                     if duplicate:
+                        previous_match = next(
+                            (
+                                previous
+                                for previous in generated
+                                if " ".join(previous.split()).casefold()
+                                == " ".join(duplicate.split()).casefold()
+                            ),
+                            "",
+                        )
                         raise ValueError(
-                            "Generated batch repeats an earlier beat: "
+                            "Generated batch repeats an earlier beat verbatim. "
+                            "Repeated source activity must become a distinct "
+                            "concrete clip instance without changing the assigned "
+                            "story-level job or exhausting a process that continues "
+                            "later. Previous beat: "
+                            f"{previous_match!r}. Regenerate current beat: "
                             f"{duplicate!r}."
                         )
                 except ValueError as error:
