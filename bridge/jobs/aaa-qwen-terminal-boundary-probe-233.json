@@ -1,0 +1,20 @@
+{
+  "job_id": "aaa-qwen-terminal-boundary-probe-233",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Judge ONLY whether CANDIDATE BEAT is valid. Return JSON only: {\"valid\":true|false,\"issue\":\"...\"}.\n\nRules:\n1. CANDIDATE BEAT must execute CURRENT BEAT without contradicting story history or NEXT BEAT.\n2. Reject any wording that says or implies the current threat/group is exhausted, finished, final, all gone, or otherwise terminal when NEXT BEAT establishes that the same threat/group continues.\n3. Do not reject merely because CURRENT BEAT and NEXT BEAT are similar repeated action beats.\n\nPREVIOUS FINALIZED BEAT:\n5. More zombies lunge at Amy; she kills them through dismemberment and decapitation, and blood pools further across the floor.\n\nCURRENT BEAT JOB:\nZombies continue to attack; Amy kills them with dismembering and decapitation. Blood accumulates further on the floor.\n\nNEXT BEAT JOB:\nZombies keep coming at Amy; she kills them with dismembering and decapitation. Blood accumulates further on the floor.\n\nCANDIDATE BEAT:\n6. Zombies keep coming at Amy; she finishes them off by dismembering and beheading them, and more blood spreads across the floor."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 1,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "presence_penalty": 0,
+  "frequency_penalty": 0,
+  "seed": 42,
+  "max_tokens": 300,
+  "timeout_seconds": 300
+}
