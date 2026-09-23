@@ -1,0 +1,24 @@
+{
+  "job_id": "arc-finite-focused-invalid-211",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Check only finite one-beat activity completion in the proposed ARC. Ignore every other concern. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE STORY\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nARC EVENTS\n[{\"id\":\"event_1\",\"event\":\"Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\",\"beat_number\":1},{\"id\":\"event_2\",\"event\":\"A zombie breaks the kitchen door window and Amy sees the danger.\",\"beat_number\":2},{\"id\":\"event_3\",\"event\":\"Amy rushes her kids to the basement, gets them inside, locks the door, retrieves her hidden arsenal consisting of a pistol and a katana, and equips the weapons.\",\"beat_number\":3},{\"id\":\"event_4\",\"event\":\"Amy kills zombies as they try to attack her, dismembering and decapitating them.\",\"beat_number\":4},{\"id\":\"event_5\",\"event\":\"Amy continues killing zombies as they try to attack her, dismembering and decapitating them.\",\"beat_number\":5},{\"id\":\"event_6\",\"event\":\"Amy kills more zombies as they try to attack her, dismembering and decapitating them.\",\"beat_number\":6},{\"id\":\"event_7\",\"event\":\"Amy kills even more zombies as they try to attack her, dismembering and decapitating them.\",\"beat_number\":7},{\"id\":\"event_8\",\"event\":\"Amy kills the last of the zombies, her house now soaked in blood, and lets her kids out of the basement.\",\"beat_number\":8}]\n\nCheck exactly one thing:\nDoes any required_event assign a FINITE source activity wholly to one beat but leave that activity merely in progress instead of reaching its ordinary visible completion?\n\nRules:\n- An explicit extended/repeated process that spans multiple beats is NOT a finite one-beat activity. Ignore its middle continuation beats.\n- Do not critique pacing, bundling, detail, source coverage, majority allocation, style, or whether adjacent actions share a beat.\n- A multi-action event is allowed if its listed actions reach their stated outcomes.\n- Return only the first real finite-activity completion defect.\n- If none exists, return VALID.\n\nReturn JSON only:\n{\"valid\":true,\"issue\":\"\"}\nor\n{\"valid\":false,\"issue\":\"event ID and missing finite completion\"}"
+    }
+  ],
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "presence_penalty": 0,
+  "frequency_penalty": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 400,
+  "timeout_seconds": 300
+}
