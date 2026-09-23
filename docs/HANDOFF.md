@@ -825,3 +825,133 @@ turn the ordinary breakfast event into a completed serving endpoint. After
 Segment 1 clears, inspect the Beat-2/Beat-3 safe-room handoff against gold rather
 than repairing downstream Director prose.
 
+## ARC majority-allocation follow-up: global reasoning fails; localized REPAIR succeeds
+
+The current Mistral 24B runtime is constrained to about 6k context, but new
+probes show that the remaining majority-allocation defect is **not** primarily a
+context-overflow problem.
+
+Very small ARC prompts still reproduced it:
+
+- `arc-create-majority-boundary-probe-121`: explicit 5/8 budget and "start by
+  Beat 4" correctly compressed the pre-conflict setup, but the model still spent
+  Beat 8 on resolution alone and therefore produced only four conflict beats.
+- `arc-create-majority-final-beat-probe-123`: even with a ~459-token input and
+  an explicit rule that Beats 4-8 must belong to the active zombie-fighting
+  sequence, the model moved retrieval/equipping into Beats 4-5 and kept Beat 8
+  resolution-only.
+- `arc-majority-repair-minimal-probe-124`: a ~380-token global REPAIR prompt
+  literally instructed that Beats 4-8 must all be conflict and Beat 8 must
+  combine terminal kill + resolution; Mistral still returned a resolution-only
+  Beat 8.
+
+This means adding more global prompt wording is the wrong direction.
+
+### Deterministic ARC sampling
+
+Constraint allocation is planning/validation work rather than creative prose.
+At temperature 0, `arc-majority-create-temp0-probe-125` improved materially:
+
+- Beat 1 breakfast baseline;
+- Beat 2 breach + evacuation + lock;
+- Beat 3 retrieve + equip;
+- Beats 4-7 conflict;
+- Beat 8 resolution-only.
+
+The front allocation therefore fits the three outside-majority beats correctly,
+but the model still resisted merging terminal conflict + immediate resolution.
+A global temperature-0 REPAIR probe (`126`) showed the same tail failure.
+
+Production commit `91e7c24dad9e398526727b4298d39b1a8df0fb44` therefore
+separates stage sampling:
+
+- ARC CREATE / VALIDATE / focused majority validation / REPAIR use a
+  deterministic profile: temperature 0, repeat_penalty 1.15, seed 42;
+- Beat CREATE keeps its creative 0.65 profile;
+- `ask_llm()` now accepts an explicit seed;
+- the frozen Beat validator's documented seed 42 is now actually sent instead of
+  relying on a random fallback.
+
+### Focused ARC tail REPAIR
+
+`arc-majority-tail-repair-probe-128` tested the same failure with the valid
+prefix frozen and only Beats 7-8 editable. It succeeded immediately:
+
+- Beat 7 remains nonterminal zombie combat;
+- Beat 8 kills the last zombie, establishes the blood-soaked house, and
+  immediately lets the kids out.
+
+That is the strongest current evidence about 24B behavior: **global arc rewrites
+lose constraints; smallest-range repair can satisfy them.**
+
+This does **not** add another semantic pipeline. It changes how the existing ARC
+REPAIR step operates when ARC VALIDATE has already localized the exact
+resolution-tail majority defect.
+
+Production commits:
+
+- `8aeba152eee7a307bee8bba733f49a609782eb1a` — focused two-event
+  majority-tail repair helpers;
+- `57a5135b41169daa9d9fb09cd3b11ffa49c13e8a` — invoke that focused
+  repair inside the existing ARC VALIDATE -> REPAIR loop before falling back to
+  whole-arc repair;
+- `310a9f10c7d8c4a0907d550b1fc2199ca169f76e` — regressions for exact
+  localization, fixed IDs/dependencies, and conservation/movement of existing
+  typed state_effects;
+- `e5c7f3afa1335ce8104fc7851930134308ab8931` — deterministic ARC and
+  validator-sampling regressions.
+
+The focused repair activates only when focused majority evidence shows the exact
+case where an otherwise contiguous strict-majority span is one beat short because
+the final global beat is resolution-only. Other failures continue through normal
+ARC REPAIR.
+
+### Planning-only locked acceptance
+
+Full 8-segment acceptances 113 and 120 each timed out after an hour, obscuring
+whether the time was spent in ARC/BEATS or Director/continuity.
+
+A KISS diagnostic path now reuses the existing production
+`minimax.py --generate-beats 8` mode inside the same locked Amy acceptance
+workspace:
+
+- `213c70989d01879a395381b3d88ecdefbd83b919` — acceptance runner
+  `--planning-only`;
+- `cefb95454f67daced53dcd9937d8beb971eba56d` — bridge support;
+- `c95530e57e36f8deba0f75976055ea22eda98eda` — command regression;
+- `run-tests-planning-acceptance-harness-127`: **23/23 passing**.
+
+This captures only `story_arc.json` and `beats.txt`, avoiding eight
+Director/continuity segments while ARC+BEATS are still the failing boundary.
+
+### Retry-loop / timeout observability
+
+ARC still has nested retry budgets derived from `BEAT_RETRY_ATTEMPTS = 10`.
+At current 24B latency, persistent nonconvergence can therefore consume tens of
+minutes. Do not merely increase acceptance timeouts.
+
+Commit `812c0e1a69d91da9b86ebfb6df0e48e132201c38` makes future bridge
+timeouts preserve partial process output and the latest acceptance `run.log`
+when available, instead of losing all evidence.
+
+### Verification currently queued
+
+The bridge worker is serial. An older planning-only job,
+`run-planning-acceptance-amy-129`, was queued before the deterministic
+ARC/localized-repair changes and may occupy the worker until its 30-minute
+timeout. Treat its semantics as stale unless its reported repository revision
+proves otherwise.
+
+Behind it:
+
+- `run-tests-arc-local-repair-129` — focused regressions for current code;
+- `run-acceptance-amy-planning-only-130` — the meaningful locked Amy
+  ARC+BEATS verification against the latest branch at execution time.
+
+Inspect 130's repository revision before drawing conclusions. If ARC majority
+allocation and Beat 1 completion pass, the next likely gold boundary is the
+Beat-2/Beat-3 safe-room handoff: gold ends Beat 2 with the steel door open and
+moves kids-through + door close/lock + weapon retrieval/equipping into Beat 3.
+Do not patch that boundary until current planning output proves it is the
+earliest remaining failure.
+
