@@ -1391,3 +1391,20 @@ Production commits:
 
 Next: focused regressions, then planning-only Amy. If Beat 1 includes activity +
 completion there, queue the full locked acceptance immediately.
+
+
+### Verification after explicit Beat CREATE profile
+
+- `run-tests-explicit-beat-sampling-183` failed only because an old regression
+  still asserted that Beat `min_p` must equal the formatter default. That
+  expectation was obsolete once Beat CREATE began owning its complete profile.
+- `3cc990c5792228b7108ecb66d3298df2765da5a6` updates the regression to
+  assert Beat settings are independent of formatter defaults and that the
+  explicit seed avoids random-seed generation.
+- `run-tests-explicit-beat-sampling-184`: **PASS, 83/83 tests green**.
+- `run-acceptance-amy-planning-explicit-beat-185` is the active production-path
+  verification. Inspect generated Beat 1 first. If it includes both the cooking
+  action and a visible completion, immediately queue the full locked acceptance.
+  If it remains activity-only, do not revert to hidden formatter defaults; use
+  the explicit deterministic profile as the new baseline for one-dial tuning.
+
