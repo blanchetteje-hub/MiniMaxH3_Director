@@ -1356,3 +1356,38 @@ Verification:
 Inspect Beat 1 as soon as 177 publishes. If it now contains activity + completion,
 queue the full locked acceptance immediately. If it does not, do not stack more
 prompt wording; continue one-dial sampling probes from the documented baseline.
+
+
+## Planning 177 and exact Beat sampling isolation
+
+`run-acceptance-amy-planning-rp115-177` completed successfully, but Beat 1
+still ended as activity-only:
+`Amy ... cooks breakfast for Will and Amber.`
+So RP 1.15 alone did not generalize.
+
+The discrepancy was traced to hidden Beat CREATE sampling:
+- Beat CREATE had no explicit seed, so each production request used a random seed.
+- `top_k=20` and `min_p=0.0` were inherited from the Mistral formatter rather
+  than owned by the Beat stage.
+
+Exact-profile probes:
+- 178: seed 42, top_k=20, min_p=0, RP 1.15 -> activity-only.
+- 179: same but RP 1.05 -> activity-only.
+- 180: top_k 20 -> 0 with RP 1.15 -> still activity-only.
+- 181: min_p 0 -> 0.05 with RP 1.15 -> activity + explicit completion.
+- 182: min_p 0.05 with RP 1.05 -> activity-only.
+
+Production conclusion:
+- the useful combination is RP 1.15 + min_p 0.05;
+- Beat CREATE should own a complete explicit profile so formatter defaults do not
+  silently affect it;
+- Beat CREATE is now deterministic at seed 42.
+
+Production commits:
+- `b2835cccbd3f501d908ae486d7da47d540c2bb75` — explicit Beat CREATE profile:
+  temperature .65, top_p .90, top_k 20, min_p .05, presence .15,
+  frequency .15, RP 1.15, seed 42.
+- `a105f523aeff737c74644ef9b1fb0f4a146ed57a` — regression locks that profile.
+
+Next: focused regressions, then planning-only Amy. If Beat 1 includes activity +
+completion there, queue the full locked acceptance immediately.
