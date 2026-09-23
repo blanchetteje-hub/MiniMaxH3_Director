@@ -1611,3 +1611,51 @@ Do not make another production semantic change until those results publish. Insp
 `yyy-02-arc-create-majority-current-probe-199` completed with the current full ARC CREATE wording and production ARC sampling. Even with the explicit numeric-majority rule, unconstrained Mistral still compressed the zombie-fighting process to only a few beats and lost structural discipline (duplicate/missing beat assignments and malformed state-effect shapes). This is consistent with the earlier global-planning probes: prompt wording alone may still be insufficient for reliable global allocation.
 
 Do not treat 199 alone as the production verdict because `llama_chat` does not apply production's strict structured response schema. The decisive current evidence remains `zzz-run-acceptance-amy-planning-majority-create-200`, which is queued behind the corrected regression rerun `yyy-03-run-tests-arc-majority-create-contract-201`.
+
+
+## Planning 200: majority repair converges; accepted E1 is still not a complete clip job
+
+`zzz-run-acceptance-amy-planning-majority-create-200` completed successfully against revision `feba7e16b92ef5784fcdc4e44c78a52a525426cd`.
+
+What moved:
+- ARC CREATE still initially compressed the explicit majority process, but the existing ARC VALIDATE -> REPAIR loop eventually converged to a valid 5/8 zombie-conflict allocation.
+- All eight Beats were generated and the frozen Beat validator accepted them.
+- Therefore the majority-create problem is currently an efficiency/nonconvergence risk, not the earliest defect in the final accepted plan from this run.
+
+Earliest accepted-output defect:
+- Final ARC E1 remained: `Amy ... cooking breakfast for her young kids.`
+- That is still progressive/in-progress wording, despite ARC CREATE/REPAIR's finite-activity clip-job rule.
+- Beat 1 consequently remained activity-only as well.
+- This is earlier than the later Beat-3 omission/packing issues and remains the current semantic target.
+
+### Do not add finite-activity judgment to broad ARC VALIDATE
+
+Targeted validation probes showed that Mistral cannot apply that rule reliably in the broad validator:
+- `arc-validate-finite-clip-exact-202` failed to identify E1 and instead falsely rejected the already-complete evacuation/arming event.
+- `arc-validate-finite-clip-control-203` falsely rejected a valid middle beat of the explicitly extended zombie-fighting process as unfinished.
+
+So broad ARC VALIDATE remains the narrow source-fidelity check; no new finite-activity validator/sub-validator was added.
+
+### Structured ARC schema mismatch
+
+The production-only discrepancy is that `build_flat_arc_response_format()` described `event` as only a non-empty string, while the ARC prompt requires each finite one-beat activity to reach a natural visible endpoint. This mirrors the earlier Beat CREATE structured-schema mismatch.
+
+Production work:
+- `8186e200962d59e1309fbd985bcda4b89361e773` attempted to align the ARC event schema, but initially landed the description on the wrong event schema because the same one-line field shape exists in multiple response formats.
+- `18c982384da73c966882c042014121f528b9c9fa` added the regression that exposed that placement mistake.
+- `59e4f31abc2922036b0284676eda31b9f0ee771f` moved the description to the correct `build_flat_arc_response_format()` event field and removed it from the unrelated focused majority-tail schema.
+
+The correct flat-ARC event schema now says:
+- one executable clip job per beat;
+- if a finite source activity is wholly assigned to the beat, include its natural visible endpoint rather than only in-progress wording;
+- an explicitly extended/repeated process should describe that beat's concrete portion without prematurely ending the whole process.
+
+Bridge queue cleanup:
+- stale, superseded unprocessed `aaa-*` jobs and an obsolete old planning-153 job were removed from `gpt-runtime` because their filenames sorted ahead of current verification and blocked the worker.
+- stale acceptance 205 was also canceled after the first schema patch was proven misplaced.
+
+Current verification queue:
+1. `yyy-05-run-tests-arc-finite-schema-206` — corrected focused regression suite.
+2. `zzz-run-acceptance-amy-planning-arc-finite-schema-207` — fresh production planning check using the corrected flat-ARC structured schema.
+
+Inspect ARC E1 first in 207. If E1 includes both breakfast activity and its ordinary visible completion and Beat 1 preserves it, immediately return to the full locked acceptance. If E1 remains progressive-only, the structured-schema hypothesis is disproven and the next fix should remain inside ARC CREATE/REPAIR rather than broadening ARC VALIDATE.
