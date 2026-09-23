@@ -1,0 +1,20 @@
+{
+  "job_id": "arc-front-handoff-whole-repair-probe-155",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Repair the rejected story arc required-event list. Fix the listed issue without changing unrelated source meaning. Do not create phases or phase ranges. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE STORY\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nTOTAL BEATS\n8\n\nCURRENT ARC\n{\"events\":[\n{\"id\":\"event_1\",\"event\":\"Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\",\"beat_number\":1},\n{\"id\":\"event_2\",\"event\":\"A zombie breaks the kitchen door window and Amy sees the danger.\",\"beat_number\":2,\"depends_on\":[\"event_1\"]},\n{\"id\":\"event_3\",\"event\":\"Amy rushes her kids to the basement, gets them inside, locks the door, retrieves her hidden arsenal consisting of a pistol and a katana, and equips the weapons.\",\"beat_number\":3,\"depends_on\":[\"event_2\"]},\n{\"id\":\"event_4\",\"event\":\"Amy kills a group of zombies as they try and attack her.\",\"beat_number\":4,\"depends_on\":[\"event_3\"]},\n{\"id\":\"event_5\",\"event\":\"Amy kills another group of zombies as they try and attack her.\",\"beat_number\":5,\"depends_on\":[\"event_4\"]},\n{\"id\":\"event_6\",\"event\":\"Amy kills a third group of zombies as they try and attack her.\",\"beat_number\":6,\"depends_on\":[\"event_5\"]},\n{\"id\":\"event_7\",\"event\":\"Amy kills another group of zombies as they try and attack her, but more keep coming.\",\"beat_number\":7,\"depends_on\":[\"event_6\"]},\n{\"id\":\"event_8\",\"event\":\"Amy kills the last zombie attacking her house. She lets Will and Amber out of the basement, and they are safe after the zombie attack.\",\"beat_number\":8,\"depends_on\":[\"event_7\"]}\n]}\n\nVALIDATOR ISSUE\n[\"Beat 3 is imbalanced as it contains a long chain of distinct sequential actions while Beat 2 is only the trigger/reaction. Redistribute adjacent setup actions so Beats 2 and 3 are both executable clip-scale jobs. End Beat 2 at a natural physical handoff or prerequisite directly implied by the source, while Beat 3 completes the remaining evacuation/locking/arming chain. Preserve the five-beat majority sequence at Beats 4-8.\"]\n\nRules:\n- Preserve every explicit source action/state in source order.\n- Keep exactly one required_event per global beat.\n- Split or regroup only adjacent source actions when needed to fix the issue.\n- Preserve Beat 1 ordinary baseline and Beats 4-8 majority sequence unchanged in meaning.\n- Every event after the first depends_on the immediately preceding event ID.\n- Do not add a new major plot, character, location, mechanism, or outcome.\n- A directly implied physical prerequisite may be made explicit only when necessary to create the natural handoff.\n- Return only the corrected events array with Beats 1-8 covered exactly once.\n\nReturn one JSON object with an events array containing exactly 8 complete required_event objects."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 2200
+}
