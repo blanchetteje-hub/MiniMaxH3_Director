@@ -305,6 +305,22 @@ The benchmark is the finish line. Do not move the gold target simply because pro
 
 ## Local llama.cpp access
 
+### Bridge hot-reload caveat
+
+The running `tools/chatgpt_llama_bridge.py` process does **not** hot-reload its
+own Python code after ChatGPT commits bridge changes.
+
+- Production/test code under `gpt-test-branch` is refreshed by the bridge's
+  detached execution worktree before `run_tests` / `run_acceptance` jobs.
+- But a new bridge job kind, new bridge argument handling, timeout behavior, or
+  other change inside `tools/chatgpt_llama_bridge.py` itself is not active
+  until the user's local checkout is pulled and the bridge process is restarted.
+
+This mattered for the new `planning_only` acceptance flag: an already-running
+older bridge ignored the field and launched the old full acceptance command.
+Do not diagnose that as planning-mode slowness.
+
+
 Use tools/chatgpt_llama_bridge.py rather than exposing llama.cpp to the public Internet.
 
 Mailbox branch: gpt-runtime.
