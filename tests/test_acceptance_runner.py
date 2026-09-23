@@ -55,6 +55,32 @@ detailed_description: world
         )
         self.assertEqual(prompts[2], "detailed_description: world")
 
+    def test_planning_only_command_uses_generate_beats(self):
+        benchmark = run_acceptance.load_benchmark(
+            run_acceptance.DEFAULT_BENCHMARK
+        )
+        command, refresh_interval = run_acceptance.build_command(
+            "python",
+            benchmark,
+            Path("amy.jpg"),
+            "mistral",
+            0.5,
+            [],
+            planning_only=True,
+        )
+        self.assertEqual(
+            command,
+            [
+                "python",
+                "minimax.py",
+                "--generate-beats",
+                "8",
+                "--model",
+                "mistral",
+            ],
+        )
+        self.assertIsNone(refresh_interval)
+
     def test_workspace_uses_gold_story_and_subjects_without_stale_state(self):
         benchmark = run_acceptance.load_benchmark(
             run_acceptance.DEFAULT_BENCHMARK
