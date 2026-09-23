@@ -1120,3 +1120,46 @@ with timeout-safe live logging. If it times out, inspect its preserved
 `run.log` and fix the earliest observed production failure rather than
 increasing the timeout or guessing from elapsed time.
 
+
+
+## Acceptance 142 follow-up: broad ARC validator semantic input fixed
+
+The preserved log from `run-acceptance-amy-flat-arc-planning-142` identified the
+first real production failure after flat ARC CREATE and the subject-guard fix:
+broad ARC VALIDATE was rejecting structurally valid Amy event plans for semantic
+reasons caused by its own input representation.
+
+Three focused bridge probes isolated the causes:
+
+- `arc-flat-validation-events-only-probe-143`: removing Python phase-wrapper
+  metadata stopped phase-bookkeeping complaints, but the validator still
+  rejected relational wording because DEFINED SUBJECTS exposed only
+  `<Subject N>` IDs without names.
+- `arc-flat-validation-named-subjects-probe-144`: supplying aliases
+  (`<Subject 1> = Amy`, etc.) fixed the identity problem; the next false
+  rejection was treating repeated zombie-combat continuation beats as invented
+  events even though the source explicitly says that process occupies the
+  majority of the film.
+- `arc-flat-validation-sparse-sequence-probe-145`: with flat event input,
+  named Subject aliases, and one explicit rule that an extended/repeated source
+  process may span multiple beats, the same candidate validated cleanly.
+
+Production changes:
+
+- `4ada6f02db2c296066a253752ee5007e3604f51e` — broad ARC VALIDATE now sees
+  only authoritative flat required_events/state_effects, compact Subject aliases
+  retain names, and source-authorized extended/repeated processes are explicitly
+  valid across multiple beats.
+- `7a952041c207ee6b360e377987074f640d974a9a` — subject-alias regression.
+- `a3243fb4621690b83b2b6bbd2c42d3671c7be588` — flat semantic-input and
+  repeated-process validator regression.
+- `run-tests-arc-semantic-input-146`: **PASS, 81/81 tests green**.
+
+This does not add a semantic layer. ARC remains CREATE -> VALIDATE -> REPAIR;
+the change only removes Python bookkeeping from the semantic validator's input
+and restores information the validator actually needs.
+
+Next evidence boundary: a fresh planning-only locked Amy acceptance. Do not add
+the previously probed safe-room/front-handoff repair unless that acceptance
+proves it is the earliest remaining failure.
+
