@@ -1502,9 +1502,10 @@ ARC CREATE -> VALIDATE -> REPAIR remains the only ARC semantic loop, and
 BEATS CREATE -> VALIDATE -> REPAIR remains unchanged. No semantic Python
 heuristic and no additional validator layer were introduced.
 
-Current verification queue:
-- `run-tests-arc-finite-clip-contract-196`
-- `zzz-run-acceptance-amy-planning-finite-arc-197`
+Verification:
+- `run-tests-arc-finite-clip-contract-196`: **PASS, 83/83 tests green**.
+- `zzz-run-acceptance-amy-planning-finite-arc-197` is the active planning
+  acceptance against the upstream ARC finite-clip-job contract.
 
 Inspect ARC E1 and generated Beat 1 first in 197. If E1 is now a complete clip
 job and Beat 1 preserves its endpoint, immediately queue the full locked
