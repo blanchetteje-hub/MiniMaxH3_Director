@@ -1447,3 +1447,67 @@ Current verification:
   first. Do not tune another sampling dial until the schema-aligned production
   request is observed.
 
+
+
+## Acceptance 187 follow-up: finite clip completion belongs in ARC jobs, not the frozen Beat validator
+
+`run-tests-beat-schema-contract-186`: **PASS, 83/83 tests green**.
+
+`zzz-run-acceptance-amy-planning-schema-contract-187` still produced an
+activity-only Beat 1 even after the Beat CREATE prompt, structured schema, and
+explicit deterministic sampling profile all required a finite activity endpoint:
+
+`Amy ... cooking breakfast for her young kids Will and Amber.`
+
+The frozen Beat validator also accepted that candidate. Targeted probes showed
+that simply strengthening the Beat VALIDATE wording is not a reliable fix:
+
+- 188 reproduced the current validator result: activity-only Amy -> VALID.
+- 189 added a finite-activity completion rule in CHECKS -> still VALID.
+- 190 made the rule explicit that gerund/in-progress wording does not imply
+  completion -> still VALID.
+- 191 moved that rule into the system prompt -> still VALID.
+- 192 supplied a contrastive generic invalid/valid example -> activity-only Amy
+  still VALID.
+- 193 verified the completed control remains VALID.
+
+Do **not** modify the frozen 400/400 Beat validator for this boundary. The local
+24B repeatedly refuses to infer an endpoint that is absent from CURRENT JOB.
+
+The earliest semantic defect is therefore upstream: ARC says each required_event
+is an executable clip job, but E1 copied the source's progressive wording
+(`cooking breakfast`) instead of assigning a complete clip job.
+
+Targeted ARC probes:
+- 194 added one finite-activity clip-job rule to ARC CREATE and Mistral rewrote
+  E1 as `finishes cooking breakfast...`, proving the planner can express the
+  endpoint. This unconstrained diagnostic had unrelated shape/allocation errors,
+  so only the E1 semantic behavior is evidence.
+- 195 gave ARC REPAIR the same boundary and it cleanly changed only E1 to
+  `cooking breakfast ... and serving it to them` while preserving the other
+  seven events and existing clothing state effects.
+
+Production change:
+- `17354e780055bee07415a3691d68336c1f9604f8` — ARC CREATE and whole ARC
+  REPAIR now share the rule: a finite source activity assigned wholly to one
+  beat must be a complete clip job that reaches a natural visible endpoint;
+  merely progressive/in-progress wording is insufficient. The endpoint may state
+  only the ordinary result directly implied by completing the activity and may
+  not add a new plot event/outcome.
+- `6dbe8c4526524705f374da306708ee84d0680ca0` — regression locks the same
+  contract in ARC CREATE and REPAIR prompts.
+
+This preserves KISS:
+ARC CREATE -> VALIDATE -> REPAIR remains the only ARC semantic loop, and
+BEATS CREATE -> VALIDATE -> REPAIR remains unchanged. No semantic Python
+heuristic and no additional validator layer were introduced.
+
+Current verification queue:
+- `run-tests-arc-finite-clip-contract-196`
+- `zzz-run-acceptance-amy-planning-finite-arc-197`
+
+Inspect ARC E1 and generated Beat 1 first in 197. If E1 is now a complete clip
+job and Beat 1 preserves its endpoint, immediately queue the full locked
+acceptance. If ARC REPAIR later removes the endpoint, fix only that observed
+repair path.
+
