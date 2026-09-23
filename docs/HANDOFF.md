@@ -1782,3 +1782,24 @@ Independent transport hardening from run 229:
 - `aac-run-tests-response-format-fallback-235`: **PASS, 89/89 tests green**.
 
 `aah-run-acceptance-amy-planning-qwen-benchmark-transport-243` is the active verification and is the first production Qwen planning run with both explicit CURRENT JOB ownership and benchmark-matched validator transport. Inspect Beat 8 first; if it now rejects/regenerates the omitted last-zombie action, planning can move forward to a fresh full Director acceptance.
+
+
+## Qwen planning 243: CURRENT JOB ownership fixed; ARC state-effect regression exposed
+
+`aah-run-acceptance-amy-planning-qwen-benchmark-transport-243` completed successfully with the Qwen validator using benchmark-matched user-only/thinking-disabled transport. The prior Beat-8 omission was fixed: the finalized Beat 8 explicitly kills the remaining zombies, leaves the house blood-soaked, and gets Will/Amber out.
+
+The next earlier planning defects were:
+- Beat 1 still remained an activity-only breakfast target (`preparing breakfast`) rather than a visible finite endpoint.
+- Beat 2 changed the assigned `locks the door` action into merely `slams the door shut`, yet the validator accepted it.
+
+Inspection of the accepted ARC revealed the more fundamental architecture regression: **none of the required_events carried state_effects at all**. In particular, the event that explicitly locks the basement door had no `set_barrier_state=locked`, and the event that equips the pistol/katana had no equipment state effects. This contradicts the locked architecture in this handoff: persistent state is authored in ARC required_event.state_effects, semantically checked/repaired in the ARC loop, and committed by Python only after Beat validation.
+
+Historical regression coverage already existed in `tests/LLM/test_story_arc_state_effect_regression.py` for exactly this contract (missing barrier/location/equipment/threat/clothing effects), but those pytest/live tests are not part of the normal unittest bridge suite. The current simplified production ARC prompt had also lost the explicit persistent-state-coverage rule.
+
+Restoration, still inside the existing ARC CREATE -> VALIDATE -> REPAIR loop:
+- `48bae8275ca0e0c2717c10cabb921cfeee47d8ae` — fresh flat ARC events must explicitly include a `state_effects` array; CREATE says [] is only for events with no supported persistent fact; VALIDATE rejects missing supported persistent facts; REPAIR owns adding/preserving them. Legacy nested/saved arcs remain load-compatible through the older parser path.
+- `afe550c95a09f8e025998733f2d8365d1e208877` — restores the generic `CHECK PERSISTENT STATE COVERAGE` semantic rule across location, containment/release, held/equipped objects, barriers, persistent objects, terminal threats, clothing, and persistent environment conditions while explicitly excluding temporary actions/reactions.
+- `5df6f942bcf34e0bd34a33eb7f22eb32f80000c4` — structural/prompt regression coverage requires state_effects in fresh flat ARC output and locks the persistent-state-coverage wording.
+- `aai-run-tests-arc-state-effects-required-244`: **PASS, 105/105 tests green**.
+
+`aaj-run-acceptance-amy-planning-qwen-state-effects-245` is the active verification. Inspect the accepted ARC first: Beat 2 must carry locked barrier state, Beat 3 must carry equipped weapon state, and terminal/persistent final outcomes should be represented without invented temporary conditions. Then inspect finalized Beats 1-8 for the earliest semantic mismatch.
