@@ -1262,3 +1262,58 @@ omits the evacuation-to-threshold behavior in final H3 output, trace that concre
 failure back to the earliest responsible stage. Do not preemptively add another
 ARC sub-validator.
 
+
+
+## Full acceptance 167: earliest real failure is Beat 1 action collapse
+
+`run-acceptance-amy-full-167` completed planning successfully and entered the
+Director pipeline, but capture stopped after Segment 1 because Segment 2 Request 1
+could not confirm Beat-2 completion after three attempts.
+
+The **earliest** behavioral failure is already Segment 1, before that Segment-2
+failure:
+
+- ARC E1 correctly says Amy is cooking breakfast for her kids.
+- Beat CREATE rewrote that as a static after-state:
+  `Amy stands in the kitchen with a finished breakfast on the table...`
+- Director Request 1 therefore never had the cooking/serving transition left to
+  stage. It began from finished breakfast and only placed a final item on the
+  table.
+- The locked gold requires the activity plus completion: cook/serve both
+  children, settle utensils, and shut off the stove.
+
+This is a Beat CREATE contract defect, not Director formatting.
+
+Targeted probes:
+- 168 added “show the assigned action itself” but produced only activity
+  underway and lost the completion endpoint.
+- 169 reframed the rule as a **visible transition: show the activity, then show
+  it finishing** and produced
+  `Amy ... cooks breakfast and serves it to Will and Amber...`.
+- 170 repeated the same successful prompt using the exact current production
+  Beat CREATE sampling
+  (`temperature=.65, top_p=.90, presence=.15, frequency=.15,
+  repeat_penalty=1.05`) and also succeeded.
+
+Therefore no Beat sampling change is justified yet. Production Beat sampling is
+unchanged.
+
+Production changes:
+- `65680b1bc6479cef3f9cb7c67c3cb99d416c2207` — replace the old finite
+  activity rule with a transition contract: include the assigned activity, then
+  show it finishing; never output only activity-underway or only after-state.
+- `343c67966e6df723f213406fc12a6b7eaba17b5a` — prompt regression updated to
+  lock that contract.
+- `884ac671b3c89e4f0826cbd508d7bdc71e28a75d` — PROJECT_NOTES now explicitly
+  records LLM sampling as an evidence-driven tuning lever and current baselines.
+
+Future iterations may tune temperature/top-p/min-p/repeat/presence/frequency
+penalties when targeted probes show a real gain. Record every production sampling
+change and the exact successful/failed probes here or in PROJECT_NOTES. The
+frozen single-beat validator remains unchanged unless evidence directly
+implicates it.
+
+Next verification: run focused regressions for the Beat prompt change, then run
+the locked acceptance again. Inspect Segment 1 first. Only after Segment 1
+clears should Segment 2's Request-1 completion failure become the active target.
+
