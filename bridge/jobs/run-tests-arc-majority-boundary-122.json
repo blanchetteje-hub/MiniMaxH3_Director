@@ -1,0 +1,10 @@
+{
+  "job_id": "run-tests-arc-majority-boundary-122",
+  "kind": "run_tests",
+  "tests": [
+    "tests.test_story_arc_structural_guarantees",
+    "tests.test_llm_prompt_pipeline",
+    "tests.test_state_effect_canonicalization"
+  ],
+  "timeout_seconds": 1200
+}
