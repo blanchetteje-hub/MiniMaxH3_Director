@@ -1,0 +1,7 @@
+{
+  "job_id": "run-planning-acceptance-amy-129",
+  "status": "error",
+  "error_type": "TimeoutExpired",
+  "error": "Command '['C:\\\\Program Files (x86)\\\\Python311\\\\python.exe', 'tests/acceptance/run_acceptance.py', '--image1', 'C:\\\\Users\\\\J\\\\Source\\\\Repos\\\\MiniMaxH3_Director\\\\amy.jpg', '--model', 'mistral']' timed out after 1800 seconds",
+  "finished_at": 1790131463.8465142
+}
