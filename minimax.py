@@ -10994,8 +10994,11 @@ def build_macro_arc_validation_messages(
         {
             "role": "system",
             "content": (
-                "Validate one story arc against its source. Report only the first "
-                "real blocking semantic issue. Return JSON only."
+                "Check only whether the proposed chronological event list covers "
+                "the explicit source actions/states without source-order "
+                "contradiction or an unsupported major plot addition. Report only "
+                "the first real blocking issue. Do not critique pacing, bundling, "
+                "detail level, style, or beat allocation. Return JSON only."
             ),
         },
         {
@@ -11019,19 +11022,22 @@ Rules:
 - DEFINED SUBJECTS establish identity aliases. Relational wording such as
   "Amy's kids" may refer to named defined Subjects without repeating their
   names in every event.
+- Do not require clothing, appearance, names, or other descriptive facts that
+  the source does not provide. Validate source fidelity; do not invent missing
+  source details as requirements.
 - Preserve an explicit ordinary baseline as its own beat before a sudden
   inciting threat/change when the beat budget permits.
 - Reject unsupported major plot events, characters, locations, outcomes, or
   contradictions.
-- Adjacent source actions may share one required_event when needed; do not join
-  distant story stages or drop a source action.
+- Adjacent sequential source actions may share one required_event when needed.
+  This is not an error when their source order is preserved inside the event;
+  do not join distant story stages or drop a source action.
 - When the source explicitly describes an extended or repeated process, such
   as a sequence occupying the majority of the story, multiple beats may
   continue that same source-authorized process. Do not reject those
   continuations merely because the source states the repeated process once.
   Reject only a new major plot, character, location, mechanism, or outcome not
   authorized by the source.
-- A defined human Subject must have concrete clothing when first shown.
 - state_effects must describe only persistent facts directly established by the
   owning event. Reject inferred/temporary conditions and wrong typed operations.
   Clothing must use set_clothing, never set_condition.
