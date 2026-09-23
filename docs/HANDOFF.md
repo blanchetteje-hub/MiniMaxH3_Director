@@ -1707,3 +1707,20 @@ Interpretation: Qwen appears substantially better for global ARC allocation, but
 A concrete Request-1 contradiction was also found before the production Qwen comparison: the expanded structured schema required `raw_scene`, `finite_activity_complete`, `named_beneficiaries_complete`, `activity_tools_settled`, and `beat_complete`, while the prose OUTPUT CONTRACT still told the model to return exactly `raw_scene` and `beat_complete`. `dd7c1f1d8acd934a38230afeb21d5143fdf44d71` aligns the prose contract with the five-field schema; `35f79517919496d7fc11b42344b6e7b93affe38e` adds regression coverage. Regression job 228 then exposed only one stale assertion string, removed in `631ee3b514900d71b38a01d1c200458b6c6ea269`.
 
 `aab-run-acceptance-amy-full-qwen-229` is the active clean full-production comparison. Inspect Segment 1 first, then compare later ARC/Director behavior. Do not make a production model-routing change until 229 provides the structured Request-1 evidence.
+
+
+## Primary model direction: Qwen 27B
+
+As of 2026-09-23, the active local model has been switched from Mistral 24B to `qwen3.8-27b-obliterated` for ongoing MiniMax H3 iteration.
+
+Current optimization policy:
+- Treat **Qwen 27B as the primary model target** for the overall pipeline.
+- Optimize for a **single-model architecture first** across ARC -> BEATS -> Director -> formatting/continuity.
+- Do not prematurely split the pipeline across multiple models just because one isolated stage currently favors Mistral.
+- Mixed-model routing remains a fallback only if a clear, repeatable model-specific limitation survives reasonable prompt/schema/formatter integration work.
+- Keep in mind that `qwen_formatter.py` is much less battle-tested and less utilized than `mistral_formatter.py`; failures in Qwen full-pipeline runs must be separated into **model capability** vs **formatter/integration maturity** before drawing conclusions.
+
+Evidence so far:
+- Qwen planning-only acceptance 227 produced a valid ARC on the **first ARC CREATE attempt**, including the required majority zombie sequence, which is materially better than the repeated Mistral ARC repair churn seen in prior Amy runs.
+- Qwen still preserved the activity-only breakfast wording in ARC/Beat 1, so the finite-breakfast endpoint remains an active semantic boundary rather than a solved issue.
+- The prior Mistral 24B Beat validator benchmark remains an important reference point (400/400), but the current engineering direction is to see how far the Qwen model can be made to carry the whole system before accepting hybrid routing complexity.
