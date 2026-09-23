@@ -1753,3 +1753,32 @@ Focused Beat CREATE fix:
 - `aaa-run-tests-qwen-repeated-process-233`: **PASS, 87/87 tests green**.
 
 `aab-run-acceptance-amy-planning-qwen-repeated-process-234` is the active verification. Inspect whether Beats 4-7 are generated without the prior ten-attempt duplicate churn. After that, independently address the observed validator miss for wording such as “finishes them off” when NEXT JOB continues the same repeated process.
+
+
+## Qwen planning 234 and validator benchmark-parity fixes
+
+`aab-run-acceptance-amy-planning-qwen-repeated-process-234` confirmed the repeated-process Beat CREATE fix. The ARC, all eight Beat CREATE calls, and all eight validations completed on first attempts; the prior Phase-6 duplicate-beat churn disappeared. The final fight beats were distinct concrete instances without premature `last/final` wording. However, Beat 8 still omitted the explicit assigned action “Amy kills the last zombie” and jumped directly to the blood-soaked aftermath + opening the basement. The single-beat validator incorrectly accepted it.
+
+Direct Qwen probes 236/237 exposed the reason: Qwen explicitly reasoned that the last-zombie kill had already happened in PREVIOUS FINAL BEAT, even though CURRENT JOB assigned that action to the current beat. This is a validator ownership error, not a general inability to compare multi-part jobs.
+
+Focused validator ownership fix:
+- `f31d86a75e85b3f1af4f007388c6caad663676c0` — production validator now states that PREVIOUS FINAL BEAT is history only: it constrains possibility but cannot satisfy, replace, or excuse any action/result explicitly assigned to CURRENT JOB. Every such requirement must be visibly accomplished by CANDIDATE BEAT.
+- `8b577eb06b1583062f043186a1968158a2c9c72d` — the benchmark prompt is kept aligned with production for the same rule.
+- `7ccd1c1476b5896a5165919b9d611180070b99c1` — regression coverage.
+- `aae-run-tests-current-job-ownership-240`: **PASS, 103/103 tests green**.
+
+The same probe set showed that “finishes them off” in an intermediate fight beat is reasonably interpretable as finishing the current batch rather than the whole later sequence. Do not add a phrase-specific validator ban for that wording absent stronger evidence.
+
+A second benchmark mismatch was then found: Qwen’s 399/400 validator benchmark disables thinking using llama.cpp `chat_template_kwargs={"enable_thinking": false}`, while production validator requests were sending generic `thinking="off"` plus per-request `chat_template`/`jinja`. The benchmark harness does not send those generic fields.
+
+Benchmark-transport alignment:
+- `db91ab8fc0a27a38149290b65e229023c299c5c9` — production beat validation now matches the benchmark transport: Qwen receives `chat_template_kwargs.enable_thinking=false`; validator requests no longer send per-request `thinking`, `chat_template`, or `jinja` fields.
+- `8f75f42a99f51dfd09eb774229645fe8f95a56cf` — transport regression coverage.
+- `aag-run-tests-qwen-benchmark-transport-242`: **PASS, 104/104 tests green**.
+
+Independent transport hardening from run 229:
+- `6e5b04ceb005cf46299a09a68f51cea2dd859f7d` — only remove structured `response_format` on a schema-specific HTTP 400; unrelated 400s such as “No models loaded” retain schema enforcement on subsequent attempts.
+- `efff4875d541010b7752d3d816283dfd35b5a994` — fallback classification regression coverage.
+- `aac-run-tests-response-format-fallback-235`: **PASS, 89/89 tests green**.
+
+`aah-run-acceptance-amy-planning-qwen-benchmark-transport-243` is the active verification and is the first production Qwen planning run with both explicit CURRENT JOB ownership and benchmark-matched validator transport. Inspect Beat 8 first; if it now rejects/regenerates the omitted last-zombie action, planning can move forward to a fresh full Director acceptance.
