@@ -144,6 +144,33 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("Calm/mundane setup still counts", normalized)
         self.assertIn("do not join distant story stages or drop a source action", normalized)
 
+    def test_arc_validator_uses_flat_events_and_allows_source_authorized_process(self):
+        story = (
+            "Amy protects her kids. The majority of the film is Amy killing "
+            "zombies as they attack her."
+        )
+        arc = make_arc([(1, 3, self.events)])
+        messages = minimax.build_macro_arc_validation_messages(
+            story,
+            arc,
+            subject_information=(
+                "<Subject 1> is Amy, an adult woman.\n"
+                "<Subject 2> is Will, a child.\n"
+                "<Subject 3> is Amber, a child."
+            ),
+        )
+        normalized = " ".join(
+            "\n".join(message["content"] for message in messages).split()
+        )
+        self.assertIn('"events":[', normalized)
+        self.assertNotIn('"phases":[', normalized)
+        self.assertIn("<Subject 1> = Amy", normalized)
+        self.assertIn("<Subject 2> = Will", normalized)
+        self.assertIn("<Subject 3> = Amber", normalized)
+        self.assertIn("extended or repeated process", normalized)
+        self.assertIn("multiple beats may continue", normalized)
+        self.assertIn("phase bookkeeping is intentionally not part", normalized)
+
     def test_arc_prompts_keep_clothing_out_of_set_condition(self):
         story = "Amy wears a black tank top and cooks breakfast."
         arc = make_arc([(1, 3, self.events)])
