@@ -1,0 +1,20 @@
+{
+  "job_id": "arc-majority-create-temp0-probe-125",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1300,
+  "timeout_seconds": 300,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Plan exactly eight chronological story events under the stated allocation constraints. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE STORY\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nTOTAL BEATS\n8\n\nMAJORITY BUDGET\nA strict majority of 8 beats means at least 5 beats in the emphasized sequence and at most 3 beats before/outside it. The emphasized sequence must therefore begin no later than Beat 4. Fit all earlier setup/preparation into the first 3 beats by bundling adjacent source actions when needed. Preparation before the sequence does not count. If the source ends that sequence with a terminal action immediately followed by resolution, combine the terminal action and resolution in the final global beat whenever a separate resolution-only beat would reduce the emphasized sequence below the required majority.\n\nRules:\n- Cover every explicit source action/state in order.\n- Exactly one required_event per global beat.\n- Preserve the ordinary breakfast baseline as its own beat before the sudden threat.\n- Do not add a new major plot, character, location, or outcome.\n- Every event after the first depends_on the immediately previous event ID.\n- State effects are optional; omit them rather than inventing unsupported persistent facts.\n- Do not return required_end_state.\n- Beats 4 through 8 must materially belong to the already-active zombie-fighting sequence.\n\nReturn exactly 8 events in JSON using:\n{\"events\":[{\"id\":\"E1\",\"event\":\"...\",\"beat_number\":1,\"depends_on\":[]},...]}"
+    }
+  ]
+}
