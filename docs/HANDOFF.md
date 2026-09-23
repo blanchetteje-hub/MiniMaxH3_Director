@@ -1408,3 +1408,42 @@ completion there, queue the full locked acceptance immediately.
   If it remains activity-only, do not revert to hidden formatter defaults; use
   the explicit deterministic profile as the new baseline for one-dial tuning.
 
+
+
+## Planning 185: explicit Beat sampling still activity-only; schema contract is next boundary
+
+`run-acceptance-amy-planning-explicit-beat-185` completed successfully under
+the fully explicit deterministic Beat CREATE profile
+(`temperature=.65, top_p=.90, top_k=20, min_p=.05, presence=.15,
+frequency=.15, repeat_penalty=1.15, seed=42`).
+
+Beat 1 nevertheless remained activity-only:
+`Amy ... cooking breakfast for her young kids Will and Amber.`
+It still omitted a visible completion endpoint, even though the user prompt says
+finite activities must show both the action and its completion.
+
+This means the sampling profile is no longer the unexplained difference between
+successful direct probes and the production path. The remaining production-only
+difference is the strict JSON `response_format`. Its `beat_text` schema
+description previously asked only for a "concise, complete sentence" and did not
+carry the finite-action transition requirement.
+
+Focused production change:
+- `1ce50459b4a847cf73d911b464615a8064a8fd24` — align the structured
+  `beat_text` schema description with the existing Beat CREATE contract:
+  finite assigned activities must include the activity itself and its visible
+  completion endpoint in the same sentence; activity-only and after-state-only
+  outputs are explicitly disallowed.
+- `3876447b6789835f28cf53690aee1ad3dd27a3d7` — regression locks the schema
+  description to the same finite-action contract.
+
+No new validator or repair stage was added. BEATS remains CREATE -> VALIDATE ->
+REPAIR; this only removes contradictory instructions between Beat CREATE's user
+prompt and structured-output schema.
+
+Current verification:
+- `run-tests-beat-schema-contract-186` is queued/pending.
+- If 186 passes, queue a fresh planning-only Amy acceptance and inspect Beat 1
+  first. Do not tune another sampling dial until the schema-aligned production
+  request is observed.
+
