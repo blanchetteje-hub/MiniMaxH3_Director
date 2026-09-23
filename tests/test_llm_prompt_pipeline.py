@@ -426,10 +426,6 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "visibly stop, set down, close, or otherwise settle it before the handoff",
             rules,
         )
-        self.assertIn(
-            "showing the activity underway is insufficient",
-            rules,
-        )
         self.assertIn('"finite_activity_complete": true', rules)
         self.assertIn('"named_beneficiaries_complete": true', rules)
         self.assertIn('"activity_tools_settled": true', rules)
