@@ -1,0 +1,8 @@
+{
+  "job_id": "aaj-run-acceptance-amy-planning-qwen-state-effects-245",
+  "kind": "run_acceptance",
+  "image1": "amy.jpg",
+  "model": "qwen",
+  "planning_only": true,
+  "timeout_seconds": 2400
+}
