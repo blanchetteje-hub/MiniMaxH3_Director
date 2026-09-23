@@ -1,0 +1,6 @@
+{
+  "job_id": "run-acceptance-amy-flat-arc-planning-137",
+  "kind": "run_acceptance",
+  "planning_only": true,
+  "timeout_seconds": 1800
+}
