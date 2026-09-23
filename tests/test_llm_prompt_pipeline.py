@@ -272,6 +272,18 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             1.15,
         )
         self.assertEqual(
+            minimax.BEAT_LLM_SAMPLING_PARAMETERS["min_p"],
+            0.05,
+        )
+        self.assertEqual(
+            minimax.BEAT_LLM_SAMPLING_PARAMETERS["top_k"],
+            20,
+        )
+        self.assertEqual(
+            minimax.BEAT_LLM_SAMPLING_PARAMETERS["seed"],
+            42,
+        )
+        self.assertEqual(
             request_json["top_k"],
             minimax._active_formatter_llm_settings()["top_k"],
         )
