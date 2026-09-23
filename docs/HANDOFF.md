@@ -1512,3 +1512,67 @@ job and Beat 1 preserves its endpoint, immediately queue the full locked
 acceptance. If ARC REPAIR later removes the endpoint, fix only that observed
 repair path.
 
+
+
+## Planning 187 follow-up: finite completion belongs in the ARC clip job
+
+`run-tests-beat-schema-contract-186`: **PASS, 83/83 tests green**.
+
+`zzz-run-acceptance-amy-planning-schema-contract-187` completed successfully
+against revision `0592caac5a09ea3a922dc215062d567979be3665`, but Beat 1 still
+collapsed to activity-only wording:
+
+> Amy ... cooking breakfast for her young kids Will and Amber.
+
+The schema-aligned Beat CREATE contract therefore did not clear the production
+boundary. More importantly, the frozen Beat validator accepted that incomplete
+finite-action Beat as VALID.
+
+Targeted validator probes 188-193 made the same boundary explicit. The 24B Beat
+validator returned VALID for the activity-only breakfast candidate even when the
+prompt directly emphasized the missing visible endpoint and even in contrastive
+invalid/valid probes. Do not expand the frozen Beat validator around this case;
+its proven job remains judging a Beat against the assigned clip job, not repairing
+a clip job whose ARC wording is itself only an in-progress activity.
+
+The earlier authoritative defect is ARC E1 itself:
+
+> Amy ... cooking breakfast for her young kids.
+
+That is not a complete executable clip job. If a finite source activity is wholly
+assigned to one beat, ARC must describe the activity reaching its natural visible
+endpoint rather than handing BEATS an in-progress state and asking downstream
+stages to infer how it finishes.
+
+Focused local-model evidence supports that ownership:
+
+- `arc-create-finite-clip-job-probe-194` produced an E1 that **finishes cooking
+  breakfast** under a small flat-ARC contract.
+- `arc-repair-finite-clip-job-probe-195` repaired the exact current E1 to
+  **cooking breakfast and serving it to the kids**, without disturbing unrelated
+  events.
+
+Production commits:
+
+- `17354e780055bee07415a3691d68336c1f9604f8` — ARC CREATE and ARC REPAIR
+  now require a finite activity assigned wholly to one beat to reach a natural
+  visible endpoint in that required_event; the endpoint may expose the ordinary
+  result implied by completion but may not add a new plot event/outcome.
+- `6dbe8c4526524705f374da306708ee84d0680ca0` — regression coverage for the
+  finite clip-job ARC contract.
+
+Verification:
+
+- `run-tests-arc-finite-clip-contract-196`: **PASS, 83/83 tests green**.
+- `zzz-run-acceptance-amy-planning-finite-arc-197` is queued as the next locked
+  planning-only production-path check.
+
+Inspect 197's generated ARC E1 first. If ARC now authors a complete breakfast
+clip job, inspect Beat 1 next. Only after both carry activity + completion should
+a full locked acceptance be queued. If 197 still emits an in-progress ARC E1,
+probe the existing ARC VALIDATE/REPAIR loop on that exact candidate before adding
+any new rule elsewhere.
+
+KISS remains unchanged: ARC CREATE -> VALIDATE -> REPAIR and BEATS CREATE ->
+VALIDATE -> REPAIR. This correction moves responsibility upstream to the stage
+that owns the required clip job; it does not add a semantic pipeline.
