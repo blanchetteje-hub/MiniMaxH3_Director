@@ -14181,7 +14181,7 @@ def generate_beats_from_story(
             )
             verify_subjects_in_beat_messages(
                 messages,
-                subject_information,
+                _format_beat_arc_subject_names(subject_information),
             )
             if last_error:
                 messages[-1]["content"] += (
