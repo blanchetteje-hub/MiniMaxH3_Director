@@ -65,6 +65,65 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate required-event assignments"):
             minimax.parse_beat_arc_plan(arc, 3)
 
+    def test_flat_arc_parser_makes_phase_bookkeeping_python_owned(self):
+        parsed = minimax.parse_flat_arc_plan(
+            {"events": copy.deepcopy(self.events)},
+            3,
+        )
+        self.assertEqual(len(parsed["phases"]), 3)
+        self.assertEqual(
+            [
+                (phase["phase_number"], phase["beat_start"], phase["beat_end"])
+                for phase in parsed["phases"]
+            ],
+            [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
+        )
+        self.assertEqual(
+            [
+                phase["required_events"][0]["beat_number"]
+                for phase in parsed["phases"]
+            ],
+            [1, 2, 3],
+        )
+
+    def test_flat_arc_parser_rejects_duplicate_or_missing_beat_jobs(self):
+        duplicate = copy.deepcopy(self.events)
+        duplicate[2]["beat_number"] = 2
+        with self.assertRaisesRegex(
+            ValueError,
+            "duplicate required-event assignments",
+        ):
+            minimax.parse_flat_arc_plan({"events": duplicate}, 3)
+
+    def test_arc_create_and_repair_keep_phase_arithmetic_out_of_the_llm(self):
+        story = "Amy cooks breakfast. Then Amy opens the door."
+        arc = make_arc([(1, 3, self.events)])
+        create_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_beat_arc_plan_messages(story, 3)
+            ).split()
+        )
+        repair_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_macro_arc_repair_messages(
+                    story,
+                    arc,
+                    ["The second source action is missing."],
+                    3,
+                )
+            ).split()
+        )
+        self.assertIn("Do not create phases or phase ranges", create_prompt)
+        self.assertIn("Python owns that deterministic bookkeeping", create_prompt)
+        self.assertIn("Do not create phases or phase ranges", repair_prompt)
+        self.assertIn('"events":[', repair_prompt)
+        schema = minimax.build_flat_arc_response_format(3)
+        events_schema = schema["json_schema"]["schema"]["properties"]["events"]
+        self.assertEqual(events_schema["minItems"], 3)
+        self.assertEqual(events_schema["maxItems"], 3)
+
     def test_arc_validator_requires_explicit_source_timeline_coverage(self):
         story = (
             "Amy is at home on a normal day, cooking breakfast for her kids. "
