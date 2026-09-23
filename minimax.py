@@ -10949,10 +10949,14 @@ Rules:
   activity, but must not add a new plot event or outcome.
 - Preserve an explicit calm/ordinary baseline as its own beat before a sudden
   inciting threat or change.
-- Honor explicit majority/most/half/briefly emphasis. Do not manufacture extra
-  literal repetitions merely to satisfy emphasis.
-- Sparse repeated conflict/process material may use coherent source-authorized
-  escalation, but never add a new major plot, character, location, or outcome.
+- Honor explicit majority/most/half/briefly emphasis. When the source says a
+  process occupies the majority, allocate that process to the required numeric
+  majority of beats; do not compress the whole process into one or two summary
+  events merely because those events describe repeated activity. Do not
+  manufacture extra literal repetitions merely to satisfy emphasis.
+- Sparse repeated conflict/process material may use distinct coherent
+  source-authorized moments of that same process across the allocated beats,
+  but never add a new major plot, character, location, or outcome.
 - required_events form one chain: every event after the first depends_on the
   immediately preceding event ID.
 - state_effects contain only persistent facts directly established by that same
