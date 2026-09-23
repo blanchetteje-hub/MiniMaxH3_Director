@@ -453,24 +453,39 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertNotIn("At 00:ss.mmm seconds", rules)
 
     def test_director_response_schema_carries_completion_contract(self):
-        properties = minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT[
+        schema = minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT[
             "json_schema"
-        ]["schema"]["properties"]
+        ]["schema"]
+        properties = schema["properties"]
         self.assertIn(
             "natural visible endpoint",
             properties["raw_scene"]["description"],
         )
         self.assertIn(
-            "named beneficiary",
-            properties["raw_scene"]["description"],
+            "every finite activity",
+            properties["finite_activity_complete"]["description"],
         )
         self.assertIn(
-            "tools/appliances used only for the finished activity",
-            properties["beat_complete"]["description"],
+            "every named person",
+            properties["named_beneficiaries_complete"]["description"],
         )
         self.assertIn(
-            "finite activity still underway is incomplete",
+            "tools/appliances used only for a completed finite activity",
+            properties["activity_tools_settled"]["description"],
+        )
+        self.assertIn(
+            "finite_activity_complete",
             properties["beat_complete"]["description"],
+        )
+        self.assertEqual(
+            schema["required"],
+            [
+                "raw_scene",
+                "finite_activity_complete",
+                "named_beneficiaries_complete",
+                "activity_tools_settled",
+                "beat_complete",
+            ],
         )
 
     def test_formatter_music_rule_matches_locked_gold_modes(self):
@@ -1023,6 +1038,78 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "End continuity state: Mark stands across the room.",
             payload["raw_scene"],
         )
+
+    def test_request_segment_llm_retries_failed_completion_check(self):
+        request = Mock(side_effect=[
+            {
+                "raw_scene": (
+                    "At 00:00.000, Amy cooks breakfast.\n"
+                    "End continuity state: Amy remains at the stove."
+                ),
+                "finite_activity_complete": True,
+                "named_beneficiaries_complete": False,
+                "activity_tools_settled": False,
+                "beat_complete": True,
+            },
+            {
+                "raw_scene": (
+                    "At 00:00.000, Amy cooks breakfast.\n"
+                    "At 00:02.000, Amy serves Will and Amber.\n"
+                    "At 00:03.500, Amy turns off the stove and sets down the pan.\n"
+                    "End continuity state: Amy stands beside Will and Amber with "
+                    "breakfast served and the stove off."
+                ),
+                "finite_activity_complete": True,
+                "named_beneficiaries_complete": True,
+                "activity_tools_settled": True,
+                "beat_complete": True,
+            },
+            {
+                "subject_genders": {},
+                "detailed_description": (
+                    "[Shot 1] At 00:00.000, Amy cooks breakfast. "
+                    "At 00:02.000, Amy serves Will and Amber. "
+                    "At 00:03.500, Amy turns off the stove and sets down the pan."
+                ),
+                "overall_soundscape": "Kitchen sounds.",
+                "non_diegetic_music": "Quiet underscore.",
+            },
+        ])
+        bundle = {
+            "segment": 1,
+            "active_beat_id": 1,
+            "current_beat_text": "Amy cooks breakfast for Will and Amber.",
+            "current_duration": 4,
+            "conditioning_mode": "initial",
+            "opening_state": "",
+            "subject_definitions": (
+                "<Subject 1> is Amy.\n"
+                "<Subject 2> is Will.\n"
+                "<Subject 3> is Amber."
+            ),
+            "messages": [{"role": "user", "content": "Director input."}],
+            "opening_state_sha256": "hash-1",
+            "dialogue_exclusions": [],
+            "phrase_exclusions": [],
+        }
+
+        with patch("minimax.ask_llm", request):
+            payload = minimax.request_segment_llm(
+                bundle,
+                [],
+                "run-1",
+                {"source_sha256": "source-1"},
+            )
+
+        self.assertEqual(request.call_count, 3)
+        retry_user = request.call_args_list[1].args[0][-1]["content"]
+        self.assertIn("REQUEST 1 COMPLETION ERROR", retry_user)
+        self.assertIn("named beneficiary requirement", retry_user)
+        self.assertIn("tool/appliance", retry_user)
+        self.assertTrue(payload["request1_result"]["finite_activity_complete"])
+        self.assertTrue(payload["request1_result"]["named_beneficiaries_complete"])
+        self.assertTrue(payload["request1_result"]["activity_tools_settled"])
+        self.assertTrue(payload["request1_result"]["beat_complete"])
 
     def test_request_segment_llm_retries_when_named_subjects_are_dropped(self):
         subjects = (
