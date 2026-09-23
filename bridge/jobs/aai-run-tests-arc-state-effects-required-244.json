@@ -1,0 +1,12 @@
+{
+  "job_id": "aai-run-tests-arc-state-effects-required-244",
+  "kind": "run_tests",
+  "tests": [
+    "tests.test_acceptance_runner",
+    "tests.test_llm_prompt_pipeline",
+    "tests.test_beat_at_a_time_validator",
+    "tests.test_story_arc_structural_guarantees",
+    "tests.test_state_effect_canonicalization"
+  ],
+  "timeout_seconds": 1200
+}
