@@ -1348,5 +1348,11 @@ incorrectly marked Segment 2 missing even though the prompt was generated.
   concatenated trailing text while still terminating on the segment number.
 - `269fefbcd20ab51000ea55987b1ea22486ff3dc3` adds the regression.
 
-Next: rerun focused tests, then full locked acceptance. Inspect Segment 1 first;
-if it clears, Segment 2's semantic handoff remains the next likely boundary.
+Verification:
+- `run-tests-capture-and-beat-rp115-176`: **PASS, 83/83 tests green**.
+- `run-acceptance-amy-planning-rp115-177` is the active cheaper production
+  check for the RP 1.15 Beat CREATE change.
+
+Inspect Beat 1 as soon as 177 publishes. If it now contains activity + completion,
+queue the full locked acceptance immediately. If it does not, do not stack more
+prompt wording; continue one-dial sampling probes from the documented baseline.
