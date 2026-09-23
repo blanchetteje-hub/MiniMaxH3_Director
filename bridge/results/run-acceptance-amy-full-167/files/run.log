@@ -1,0 +1,294 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-pq8o2dmh\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-pq8o2dmh\repo\beats.txt); regenerating the beat plan.
+Asking LM Studio to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-pq8o2dmh\repo\beats.txt with 8 creative story beats.
+
+=== Macro arc generation attempt 1/10 ===
+Requesting macro arc (attempt 1, response attempt 1/10).
+{'events': [{'id': 'event_1', 'event': '<Picture 1> Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.', 'beat_number': 1, 'state_effects': [{'op': 'set_clothing', 'entity': 'Amy', 'slot': 'upper', 'item': 'tight black tank top', 'damage': 'none'}, {'op': 'set_clothing', 'entity': 'Amy', 'slot': 'lower', 'item': 'denim jeans', 'damage': 'none'}]}, {'id': 'event_2', 'event': 'A zombie breaks the kitchen door window and Amy sees the danger.', 'beat_number': 2, 'depends_on': ['event_1']}, {'id': 'event_3', 'event': 'Amy rushes her kids to the basement, gets them inside, and then locks the door. She retrieves her hidden arsenal consisting of a pistol and a katana.', 'beat_number': 3, 'depends_on': ['event_2']}, {'id': 'event_4', 'event': 'Amy equips the weapons.', 'beat_number': 4, 'depends_on': ['event_3']}, {'id': 'event_5', 'event': 'Amy kills a group of zombies as they try and attack her.', 'beat_number': 5, 'depends_on': ['event_4']}, {'id': 'event_6', 'event': 'Amy kills another group of zombies as they try and attack her.', 'beat_number': 6, 'depends_on': ['event_5']}, {'id': 'event_7', 'event': 'Amy kills the last zombie, her house now soaked in blood.', 'beat_number': 7, 'depends_on': ['event_6']}, {'id': 'event_8', 'event': 'Amy lets her kids out of the basement.', 'beat_number': 8, 'depends_on': ['event_7']}]}
+Validating macro arc (attempt 1, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 3/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 2, response attempt 1/10).
+Macro arc validation: INVALID — The event 'Amy checks on her kids to ensure they are safe.' is not explicitly mentioned in the source story.
+Repairing macro arc.
+Validating macro arc (attempt 3, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 4/8 beats; more than half is required.
+Applied focused ARC majority tail repair.
+Validating macro arc (attempt 4, response attempt 1/10).
+Macro arc validation: VALID
+Saved validated story arc to C:\Users\J\AppData\Local\Temp\minimax-acceptance-pq8o2dmh\repo\story_arc.json.
+Generating macro phase 1 (1 beats, global beats 1-1 of 8).
+Requesting beats for phase 1 (attempt 1/10).
+Accepted macro phase 1; collected 1/8 beats.
+Generating macro phase 2 (1 beats, global beats 2-2 of 8).
+Requesting beats for phase 2 (attempt 1/10).
+Accepted macro phase 2; collected 2/8 beats.
+Generating macro phase 3 (1 beats, global beats 3-3 of 8).
+Requesting beats for phase 3 (attempt 1/10).
+Accepted macro phase 3; collected 3/8 beats.
+Generating macro phase 4 (1 beats, global beats 4-4 of 8).
+Requesting beats for phase 4 (attempt 1/10).
+Accepted macro phase 4; collected 4/8 beats.
+Generating macro phase 5 (1 beats, global beats 5-5 of 8).
+Requesting beats for phase 5 (attempt 1/10).
+Accepted macro phase 5; collected 5/8 beats.
+Generating macro phase 6 (1 beats, global beats 6-6 of 8).
+Requesting beats for phase 6 (attempt 1/10).
+Accepted macro phase 6; collected 6/8 beats.
+Generating macro phase 7 (1 beats, global beats 7-7 of 8).
+Requesting beats for phase 7 (attempt 1/10).
+Accepted macro phase 7; collected 7/8 beats.
+Generating macro phase 8 (1 beats, global beats 8-8 of 8).
+Requesting beats for phase 8 (attempt 1/10).
+Accepted macro phase 8; collected 8/8 beats.
+Beat 1 jobs: current=event_1 - <Picture 1> Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.; next=event_2 - A zombie breaks the kitchen door window and Amy sees the danger.; completed before=none; pending before=event_1, event_2, event_3, event_4, event_5, event_6, event_7, event_8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Required event event_1 applied persistent state: set_clothing = {"op": "set_clothing", "entity": "Amy", "slot": "upper", "item": "tight black tank top", "damage": "none"}
+Required event event_1 applied persistent state: set_clothing = {"op": "set_clothing", "entity": "Amy", "slot": "lower", "item": "denim jeans", "damage": "none"}
+Beat 1 accepted and finalized; committed required events: event_1; completed after=event_1
+Beat 2 jobs: current=event_2 - A zombie breaks the kitchen door window and Amy sees the danger.; next=event_3 - Amy rushes her kids to the basement, gets them inside, locks the door, retrieves her hidden arsenal consisting of a pistol and a katana, and equips the weapons.; completed before=event_1; pending before=event_2, event_3, event_4, event_5, event_6, event_7, event_8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Beat 2 accepted and finalized; committed required events: event_2; completed after=event_1, event_2
+Beat 3 jobs: current=event_3 - Amy rushes her kids to the basement, gets them inside, locks the door, retrieves her hidden arsenal consisting of a pistol and a katana, and equips the weapons.; next=event_4 - Amy kills a group of zombies as they try and attack her.; completed before=event_1, event_2; pending before=event_3, event_4, event_5, event_6, event_7, event_8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: VALID; issue: none
+Beat 3 accepted and finalized; committed required events: event_3; completed after=event_1, event_2, event_3
+Beat 4 jobs: current=event_4 - Amy kills a group of zombies as they try and attack her.; next=event_5 - Amy kills another group of zombies as they try and attack her.; completed before=event_1, event_2, event_3; pending before=event_4, event_5, event_6, event_7, event_8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: VALID; issue: none
+Beat 4 accepted and finalized; committed required events: event_4; completed after=event_1, event_2, event_3, event_4
+Beat 5 jobs: current=event_5 - Amy kills another group of zombies as they try and attack her.; next=event_6 - Amy kills a third group of zombies as they try and attack her.; completed before=event_1, event_2, event_3, event_4; pending before=event_5, event_6, event_7, event_8
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+Beat 5 validation attempt 1/10: VALID; issue: none
+Beat 5 accepted and finalized; committed required events: event_5; completed after=event_1, event_2, event_3, event_4, event_5
+Beat 6 jobs: current=event_6 - Amy kills a third group of zombies as they try and attack her.; next=event_7 - Amy kills all but the last zombie, her house now soaked in blood.; completed before=event_1, event_2, event_3, event_4, event_5; pending before=event_6, event_7, event_8
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+Beat 6 validation attempt 1/10: VALID; issue: none
+Beat 6 accepted and finalized; committed required events: event_6; completed after=event_1, event_2, event_3, event_4, event_5, event_6
+Beat 7 jobs: current=event_7 - Amy kills all but the last zombie, her house now soaked in blood.; next=event_8 - Amy kills the final zombie and lets Will and Amber out of the basement.; completed before=event_1, event_2, event_3, event_4, event_5, event_6; pending before=event_7, event_8
+Validating Beat 7 (attempt 1/10) with the single beat validator.
+Beat 7 validation attempt 1/10: VALID; issue: none
+Beat 7 accepted and finalized; committed required events: event_7; completed after=event_1, event_2, event_3, event_4, event_5, event_6, event_7
+Beat 8 jobs: current=event_8 - Amy kills the final zombie and lets Will and Amber out of the basement.; next=none; completed before=event_1, event_2, event_3, event_4, event_5, event_6, event_7; pending before=event_8
+Validating Beat 8 (attempt 1/10) with the single beat validator.
+Beat 8 validation attempt 1/10: VALID; issue: none
+Beat 8 accepted and finalized; committed required events: event_8; completed after=event_1, event_2, event_3, event_4, event_5, event_6, event_7, event_8
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   64 seconds
+Total segments:       8
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            mistral
+Global LoRAs:         0
+Auto refresh:         every 7 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          8
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+WARNING: Image 0.png for reference slot 2 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 3 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 4 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 5 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 6 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/8 (8 seconds)
+================================================================
+Estimated LLM input context: 3710/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:00.000, Amy (S1) stands in the kitchen with a finished breakfast on the table, wearing a tight black tank top and denim jeans. The camera pans to show Will (S2) and Amber (S3) sitting at the table ready to eat.
+
+At 00:02.500, Amy (S1) places the last item of breakfast on the table as she walks around it.
+
+At 00:05.000, Amy (S1) stops in front of Will (S2) and Amber (S3).
+
+At 00:07.000, Amy (S1) smiles at them and says <d>[English]Breakfast is ready.</d>.
+
+End continuity state: Amy (S1) stands in the kitchen with a finished breakfast on the table, wearing a tight black tank top and denim jeans, while Will (S2) and Amber (S3) sit at the table ready to eat.
+================================================================
+Director Request 2 timestamp validation failed (attempt 1/10); re-prompting the LLM: RAW SCENE timestamps and detailed_description timestamps do not correspond: RAW SCENE=[(0, 0), (2, 500), (5, 0), (7, 0)], detailed_description=none.
+[H3] Canonical wardrobe reconciliation for 'Amy': 'a tight black tank top and denim jeans' -> 'black tank top and denim jeans'.
+Combined continuity requested for segment 1 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 1: <Picture 1> Amy stands in the kitchen with a finished breakfast on the table, wearing a tight black tank top and denim jeans, while Will and Amber sit at the table ready to eat.
+Next required after this prompt:
+  Beat 2: A zombie smashes through the kitchen door window and Amy's eyes widen in alarm as she sees the danger.
+================================================================
+
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 1
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.
+<Subject 2> is Will, a 10-year-old boy.
+<Subject 3> is Amber, a 14-year-old girl.
+
+detailed_description: [Shot 1]
+
+At 00:00.000, Amy stands in the kitchen with a finished breakfast on the table, wearing black tank top and denim jeans. The camera pans to show Will and Amber sitting at the table ready to eat.
+
+At 00:02.500, Amy places the last item of breakfast on the table as she walks around it.
+
+At 00:05.000, Amy stops in front of Will and Amber.
+
+At 00:07.000, Amy smiles at them and says (S1) <d>[English]Breakfast is ready.</d>.
+
+overall_soundscape: Amy placing the last item on the table, background kitchen sounds
+
+non_diegetic_music: Soft morning ambiance
+Added States: 
+# ================================================================ END H3 PROMPT - SEGMENT 1
+
+ComfyUI render skipped for segment 1; continuing with prompt-derived continuity only.
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "kitchen",
+    "persistent_state": "N/A"
+  },
+  "camera": "N/A",
+  "ongoing_action": "N/A",
+  "ongoing_audio": "N/A",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "in front of Will and Amber",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "tight black tank top",
+        "lower": "denim jeans",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "in front of Will and Amber"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "sitting at the table",
+      "pose_action": "sitting",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "at the table"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "sitting at the table",
+      "pose_action": "sitting",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "at the table"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 1; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy stands in front of Will and Amber, wearing a black tank top and denim jeans. Will and Amber sit at the table in the kitchen.
+================================================================
+Segment 1 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 1 completed Beat 1.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 1.
+Completed prompt generation for segment 1; no ComfyUI request was sent.
+Starting phase 2 at segment 2; retaining dynamically created Subjects from earlier phases.
+
+================================================================
+SEGMENT 2/8 (8 seconds)
+================================================================
+Estimated LLM input context: 3675/4500 tokens (recent exact segments: 0)
+Segment 2 Director continuity source: prompt
+Director Request 1 did not confirm a complete CURRENT BEAT (attempt 1/3); retrying the same segment.
+Director Request 1 did not confirm a complete CURRENT BEAT (attempt 2/3); retrying the same segment.
+
+WARNING: beat generation failed: Director Request 1 did not confirm completion of Beat 2 after 3 attempts.
