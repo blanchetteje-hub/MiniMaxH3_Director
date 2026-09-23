@@ -1,0 +1,82 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LM Studio to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-kpq9t8sw\repo\beats.txt with 8 creative story beats.
+
+=== Macro arc generation attempt 1/10 ===
+Requesting macro arc (attempt 1, response attempt 1/10).
+{'events': [{'id': '@', 'event': '@', 'beat_number': 1, 'state_effects': []}, {'id': '@', 'event': '@', 'beat_number': 2, 'state_effects': [{'op': 'set_barrier_state', 'entity': '@', 'value': 'locked'}, {'op': 'set_location', 'entity': '@', 'value': '@'}]}, {'id': '@', 'event': '@', 'beat_number': 3, 'state_effects': [{'op': 'set_item_state', 'entity': '@', 'owner': '@', 'value': 'equipped'}]}, {'id': '@', 'event': '@', 'beat_number': 4, 'state_effects': [{'op': 'set_threat_state', 'entity': '@', 'value': 'dead'}]}, {'id': '@', 'event': '@', 'beat_number': 5, 'state_effects': [{'op': 'set_threat_state', 'entity': '@', 'value': 'dead'}]}, {'id': '@', 'event': '@', 'beat_number': 6, 'state_effects': [{'op': 'set_threat_state', 'entity': '@', 'value': 'dead'}]}, {'id': '@', 'event': '@', 'beat_number': 7, 'state_effects': [{'op': 'set_threat_state', 'entity': '@', 'value': 'dead'}]}, {'id': '@', 'event': '@', 'beat_number': 8, 'state_effects': [{'op': 'set_condition', 'entity': '@', 'value': '@'}, {'op': 'set_location', 'entity': '@', 'value': '@'}]}]}
+LM Studio returned an invalid macro arc; requesting a corrected arc: Duplicate macro required event ID: @.
+Requesting macro arc (attempt 1, response attempt 2/10).
+{'events': [{'id': 'e1', 'event': 'Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.', 'beat_number': 1, 'state_effects': []}, {'id': 'e2', 'event': 'A zombie breaks the kitchen door window; Amy rushes Will and Amber to the basement, gets them inside, and locks the door.', 'beat_number': 2, 'state_effects': [{'op': 'set_barrier_state', 'entity': 'basement door', 'value': 'locked'}, {'op': 'set_threat_state', 'entity': 'zombie', 'value': 'active'}]}, {'id': 'e3', 'event': 'Amy retrieves her hidden arsenal of a pistol and a katana and equips both weapons.', 'beat_number': 3, 'state_effects': [{'op': 'set_item_state', 'entity': 'pistol', 'owner': 'Amy', 'value': 'equipped'}, {'op': 'set_item_state', 'entity': 'katana', 'owner': 'Amy', 'value': 'equipped'}]}, {'id': 'e4', 'event': 'Zombies attack Amy; she kills them with her weapons, dismembering and decapitating them.', 'beat_number': 4, 'state_effects': [{'op': 'set_object_state', 'entity': 'zombies', 'value': 'destroyed'}]}, {'id': 'e5', 'event': 'Zombies continue to attack Amy; she kills them with her weapons, dismembering and decapitating them.', 'beat_number': 5, 'state_effects': [{'op': 'set_object_state', 'entity': 'zombies', 'value': 'destroyed'}]}, {'id': 'e6', 'event': 'Zombies continue to attack Amy; she kills them with her weapons, dismembering and decapitating them.', 'beat_number': 6, 'state_effects': [{'op': 'set_object_state', 'entity': 'zombies', 'value': 'destroyed'}]}, {'id': 'e7', 'event': 'Zombies continue to attack Amy; she kills them with her weapons, dismembering and decapitating them.', 'beat_number': 7, 'state_effects': [{'op': 'set_object_state', 'entity': 'zombies', 'value': 'destroyed'}]}, {'id': 'e8', 'event': 'Amy kills the last of the zombies; her house is now soaked in blood. She lets Will and Amber out of the basement.', 'beat_number': 8, 'state_effects': [{'op': 'set_condition', 'entity': 'house', 'value': 'blood soaked'}, {'op': 'set_containment', 'entity': 'Will and Amber', 'container': 'basement', 'value': 'free'}]}]}
+LM Studio returned an invalid macro arc; requesting a corrected arc: Macro required event e2 at beat 2 must depend on the immediately preceding required event e1.
+Requesting macro arc (attempt 1, response attempt 3/10).
+{'events': [{'id': 'e1', 'event': 'Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.', 'beat_number': 1, 'state_effects': []}, {'id': 'e2', 'event': 'A zombie breaks the kitchen door window; Amy sees the danger and rushes her kids to the basement, gets them inside, then locks the door.', 'beat_number': 2, 'state_effects': [{'op': 'set_barrier_state', 'entity': 'basement door', 'value': 'locked'}]}, {'id': 'e3', 'event': 'She retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.', 'beat_number': 3, 'state_effects': [{'op': 'set_item_state', 'entity': 'pistol', 'owner': 'Amy', 'value': 'equipped'}, {'op': 'set_item_state', 'entity': 'katana', 'owner': 'Amy', 'value': 'equipped'}]}, {'id': 'e4', 'event': 'Amy kills zombies as they try to attack her.', 'beat_number': 4, 'state_effects': []}, {'id': 'e5', 'event': 'Amy kills more zombies as they try to attack her.', 'beat_number': 5, 'state_effects': []}, {'id': 'e6', 'event': 'Amy kills further zombies as they try to attack her.', 'beat_number': 6, 'state_effects': []}, {'id': 'e7', 'event': 'Amy continues killing the remaining zombies that try to attack her.', 'beat_number': 7, 'state_effects': []}, {'id': 'e8', 'event': 'Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.', 'beat_number': 8, 'state_effects': [{'op': 'set_condition', 'entity': 'house', 'value': 'blood soaked'}]}]}
+LM Studio returned an invalid macro arc; requesting a corrected arc: Macro required event e2 at beat 2 must depend on the immediately preceding required event e1.
+Requesting macro arc (attempt 1, response attempt 4/10).
+{'events': [{'id': 'e1', 'event': 'Amy is at home on a normal day, cooking breakfast for her young kids.', 'beat_number': 1, 'state_effects': []}, {'id': 'e2', 'event': 'A zombie breaks the kitchen door window; Amy sees the danger and rushes her kids to the basement, getting them inside and locking the door.', 'beat_number': 2, 'state_effects': [{'op': 'set_barrier_state', 'entity': 'basement door', 'value': 'locked'}], 'depends_on': ['e1']}, {'id': 'e3', 'event': 'Amy retrieves her hidden arsenal consisting of a pistol and a katana, and equips the weapons.', 'beat_number': 3, 'state_effects': [{'op': 'set_item_state', 'entity': 'pistol', 'owner': 'Amy', 'value': 'equipped'}, {'op': 'set_item_state', 'entity': 'katana', 'owner': 'Amy', 'value': 'equipped'}], 'depends_on': ['e2']}, {'id': 'e4', 'event': 'Zombies attack Amy and she kills them, dismembering and decapitating them.', 'beat_number': 4, 'state_effects': [], 'depends_on': ['e3']}, {'id': 'e5', 'event': 'Zombies attack Amy and she kills them, dismembering and decapitating them.', 'beat_number': 5, 'state_effects': [], 'depends_on': ['e4']}, {'id': 'e6', 'event': 'Zombies attack Amy and she kills them, dismembering and decapitating them.', 'beat_number': 6, 'state_effects': [], 'depends_on': ['e5']}, {'id': 'e7', 'event': 'Zombies attack Amy and she kills them, dismembering and decapitating them.', 'beat_number': 7, 'state_effects': [], 'depends_on': ['e6']}, {'id': 'e8', 'event': 'Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.', 'beat_number': 8, 'state_effects': [{'op': 'set_condition', 'entity': 'house', 'value': 'blood soaked'}, {'op': 'set_containment', 'entity': 'Will and Amber', 'container': 'basement', 'value': 'free'}], 'depends_on': ['e7']}]}
+Validating macro arc (attempt 1, response attempt 1/10).
+Macro arc validation: VALID
+Saved validated story arc to C:\Users\J\AppData\Local\Temp\minimax-acceptance-kpq9t8sw\repo\story_arc.json.
+Generating macro phase 1 (1 beats, global beats 1-1 of 8).
+Requesting beats for phase 1 (attempt 1/10).
+Accepted macro phase 1; collected 1/8 beats.
+Generating macro phase 2 (1 beats, global beats 2-2 of 8).
+Requesting beats for phase 2 (attempt 1/10).
+Accepted macro phase 2; collected 2/8 beats.
+Generating macro phase 3 (1 beats, global beats 3-3 of 8).
+Requesting beats for phase 3 (attempt 1/10).
+Accepted macro phase 3; collected 3/8 beats.
+Generating macro phase 4 (1 beats, global beats 4-4 of 8).
+Requesting beats for phase 4 (attempt 1/10).
+Accepted macro phase 4; collected 4/8 beats.
+Generating macro phase 5 (1 beats, global beats 5-5 of 8).
+Requesting beats for phase 5 (attempt 1/10).
+Accepted macro phase 5; collected 5/8 beats.
+Generating macro phase 6 (1 beats, global beats 6-6 of 8).
+Requesting beats for phase 6 (attempt 1/10).
+Accepted macro phase 6; collected 6/8 beats.
+Generating macro phase 7 (1 beats, global beats 7-7 of 8).
+Requesting beats for phase 7 (attempt 1/10).
+Accepted macro phase 7; collected 7/8 beats.
+Generating macro phase 8 (1 beats, global beats 8-8 of 8).
+Requesting beats for phase 8 (attempt 1/10).
+Accepted macro phase 8; collected 8/8 beats.
+Beat 1 jobs: current=e1 - Amy is at home on a normal day, cooking breakfast for her young kids.; next=e2 - A zombie breaks the kitchen door window; Amy sees the danger and rushes her kids to the basement, getting them inside and locking the door.; completed before=none; pending before=e1, e2, e3, e4, e5, e6, e7, e8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Beat 1 accepted and finalized; committed required events: e1; completed after=e1
+Beat 2 jobs: current=e2 - A zombie breaks the kitchen door window; Amy sees the danger and rushes her kids to the basement, getting them inside and locking the door.; next=e3 - Amy retrieves her hidden arsenal consisting of a pistol and a katana, and equips the weapons.; completed before=e1; pending before=e2, e3, e4, e5, e6, e7, e8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Required event e2 applied persistent state: set_barrier_state = {"op": "set_barrier_state", "entity": "basement door", "value": "locked"}
+Beat 2 accepted and finalized; committed required events: e2; completed after=e1, e2
+Beat 3 jobs: current=e3 - Amy retrieves her hidden arsenal consisting of a pistol and a katana, and equips the weapons.; next=e4 - Zombies attack Amy and she kills them, dismembering and decapitating them.; completed before=e1, e2; pending before=e3, e4, e5, e6, e7, e8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: VALID; issue: none
+Required event e3 applied persistent state: set_item_state = {"op": "set_item_state", "entity": "pistol", "owner": "Amy", "value": "equipped"}
+Required event e3 applied persistent state: set_item_state = {"op": "set_item_state", "entity": "katana", "owner": "Amy", "value": "equipped"}
+Beat 3 accepted and finalized; committed required events: e3; completed after=e1, e2, e3
+Beat 4 jobs: current=e4 - Zombies attack Amy and she kills them, dismembering and decapitating them.; next=e5 - Zombies attack Amy and she kills them, dismembering and decapitating them.; completed before=e1, e2, e3; pending before=e4, e5, e6, e7, e8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: VALID; issue: none
+Beat 4 accepted and finalized; committed required events: e4; completed after=e1, e2, e3, e4
+Beat 5 jobs: current=e5 - Zombies attack Amy and she kills them, dismembering and decapitating them.; next=e6 - Zombies attack Amy and she kills them, dismembering and decapitating them.; completed before=e1, e2, e3, e4; pending before=e5, e6, e7, e8
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+Beat 5 validation attempt 1/10: VALID; issue: none
+Beat 5 accepted and finalized; committed required events: e5; completed after=e1, e2, e3, e4, e5
+Beat 6 jobs: current=e6 - Zombies attack Amy and she kills them, dismembering and decapitating them.; next=e7 - Zombies attack Amy and she kills them, dismembering and decapitating them.; completed before=e1, e2, e3, e4, e5; pending before=e6, e7, e8
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+Beat 6 validation attempt 1/10: VALID; issue: none
+Beat 6 accepted and finalized; committed required events: e6; completed after=e1, e2, e3, e4, e5, e6
+Beat 7 jobs: current=e7 - Zombies attack Amy and she kills them, dismembering and decapitating them.; next=e8 - Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.; completed before=e1, e2, e3, e4, e5, e6; pending before=e7, e8
+Validating Beat 7 (attempt 1/10) with the single beat validator.
+Beat 7 validation attempt 1/10: VALID; issue: none
+Beat 7 accepted and finalized; committed required events: e7; completed after=e1, e2, e3, e4, e5, e6, e7
+Beat 8 jobs: current=e8 - Amy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.; next=none; completed before=e1, e2, e3, e4, e5, e6, e7; pending before=e8
+Validating Beat 8 (attempt 1/10) with the single beat validator.
+Beat 8 validation attempt 1/10: VALID; issue: none
+Required event e8 applied persistent state: set_condition = {"op": "set_condition", "entity": "house", "value": "blood soaked"}
+Required event e8 applied persistent state: set_containment = {"op": "set_containment", "entity": "Will and Amber", "container": "basement", "value": "free"}
+Beat 8 accepted and finalized; committed required events: e8; completed after=e1, e2, e3, e4, e5, e6, e7, e8
+Story arc and beats generated successfully.
