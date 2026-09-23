@@ -1693,3 +1693,17 @@ Focused KISS change:
 Verification:
 - `yyy-07-run-tests-director-explicit-completion-224`: **PASS, 86/86 tests green**.
 - `zzz-run-acceptance-amy-full-director-explicit-completion-225` is the only live verification. Inspect Segment 1 first. Do not stack another prompt/sampling/ARC change while 225 runs.
+
+
+## Qwen 27B differential: planning improves sharply; finite-breakfast blind spot remains
+
+After switching the local runtime to `qwen3.8-27b-obliterated`, targeted comparison jobs were run before changing production model routing.
+
+- `aaa-qwen-director-seg1-completion-226`: direct Request-1-shaped probe. Qwen still treated the breakfast beat as an in-progress establishing activity and ended with Amy still cooking. Because `llama_chat` does not apply production strict `response_format`, this is supporting evidence only, not the production verdict.
+- `aab-qwen-amy-planning-227`: production planning-only acceptance with `--model qwen`. Qwen's first ARC CREATE attempt immediately satisfied the explicit zombie-majority allocation and passed ARC validation on attempt 1. This is materially better than the repeated Mistral repair churn seen in prior Amy runs. However ARC/Beat 1 still preserved the activity-only breakfast wording.
+
+Interpretation: Qwen appears substantially better for global ARC allocation, but it does not automatically solve the finite-breakfast endpoint. Do not replace the frozen 400/400 Mistral Beat validator solely from this result. Stage-specific model routing is now a plausible direction if full Qwen Director evidence supports it.
+
+A concrete Request-1 contradiction was also found before the production Qwen comparison: the expanded structured schema required `raw_scene`, `finite_activity_complete`, `named_beneficiaries_complete`, `activity_tools_settled`, and `beat_complete`, while the prose OUTPUT CONTRACT still told the model to return exactly `raw_scene` and `beat_complete`. `dd7c1f1d8acd934a38230afeb21d5143fdf44d71` aligns the prose contract with the five-field schema; `35f79517919496d7fc11b42344b6e7b93affe38e` adds regression coverage. Regression job 228 then exposed only one stale assertion string, removed in `631ee3b514900d71b38a01d1c200458b6c6ea269`.
+
+`aab-run-acceptance-amy-full-qwen-229` is the active clean full-production comparison. Inspect Segment 1 first, then compare later ARC/Director behavior. Do not make a production model-routing change until 229 provides the structured Request-1 evidence.
