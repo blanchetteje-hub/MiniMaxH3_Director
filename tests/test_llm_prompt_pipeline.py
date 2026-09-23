@@ -799,6 +799,10 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             subject_information=subjects,
         )
         compact_subjects = minimax._format_beat_arc_subject_names(subjects)
+        self.assertEqual(
+            compact_subjects,
+            "<Subject 1> = Amy; <Subject 2> = Will; <Subject 3> = Amber",
+        )
         self.assertIn(compact_subjects, messages[1]["content"])
         self.assertNotIn(subjects, messages[1]["content"])
         minimax.verify_subjects_in_beat_messages(messages, compact_subjects)
