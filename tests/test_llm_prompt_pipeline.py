@@ -430,6 +430,13 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "showing the activity underway is insufficient",
             rules,
         )
+        self.assertIn('"finite_activity_complete": true', rules)
+        self.assertIn('"named_beneficiaries_complete": true', rules)
+        self.assertIn('"activity_tools_settled": true', rules)
+        self.assertIn(
+            "Set `beat_complete` true only when all three completion checks above are true",
+            rules,
+        )
         self.assertIn(
             "Local staging may not invent consequential persistent changes",
             rules,
