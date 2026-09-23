@@ -10903,8 +10903,9 @@ def build_beat_arc_plan_messages(
         {
             "role": "system",
             "content": (
-                "Plan one source story into simple chronological video phases and "
-                "exactly one required clip job per global beat. Return JSON only."
+                "Plan one source story into exactly one chronological required "
+                "clip job per global beat. Do not create phases or phase ranges. "
+                "Return JSON only."
             ),
         },
         {
@@ -10946,15 +10947,16 @@ Rules:
   activity or inferred feeling/state. Its meaningful value words must come from
   the same event text.
 - Clothing must use set_clothing; never set_condition.
-- Return phase_number, beat_start, beat_end, narrative_purpose,
-  broad_progression, characters_introduced, location, and required_events.
-  Do not return required_end_state; Python derives the phase handoff from the
-  phase's final required_event.
+- Return only an events array. Each event contains id, event, beat_number,
+  depends_on, and optional state_effects.
+- beat_number must cover Beats 1-{int(total_segments)} exactly once. Do not
+  create phase numbers, phase ranges, phase summaries, or phase metadata;
+  Python owns that deterministic bookkeeping.
 {correction_text}
 {phrase_exclusions_text}
 
-Return one JSON object with a phases array covering Beats 1-{int(total_segments)}
-exactly once.
+Return one JSON object with an events array containing exactly
+{int(total_segments)} required clip jobs.
 """.strip(),
         },
     ]
@@ -11060,23 +11062,27 @@ def build_macro_arc_repair_messages(
         if has_majority_issue
         else "N/A"
     )
-    compact_arc = {
-        "phases": [
-            {
-                key: value
-                for key, value in phase.items()
-                if key != "required_end_state"
-            }
-            for phase in (macro_arc or {}).get("phases", [])
-            if isinstance(phase, dict)
-        ]
-    }
+    compact_events = []
+    for phase in (macro_arc or {}).get("phases", []):
+        if not isinstance(phase, dict):
+            continue
+        for event in phase.get("required_events", []):
+            if isinstance(event, dict):
+                compact_events.append(copy.deepcopy(event))
+    compact_events.sort(
+        key=lambda event: (
+            event.get("beat_number") is None,
+            event.get("beat_number") if event.get("beat_number") is not None else 0,
+        )
+    )
+    compact_arc = {"events": compact_events}
     return [
         {
             "role": "system",
             "content": (
-                "Repair the rejected story arc. Fix the listed issue without "
-                "changing unrelated source meaning. Return the complete arc JSON only."
+                "Repair the rejected story arc required-event list. Fix the listed "
+                "issue without changing unrelated source meaning. Do not create "
+                "phases or phase ranges. Return JSON only."
             ),
         },
         {
@@ -11112,10 +11118,12 @@ Rules:
 - state_effects are only persistent facts directly established by their event.
   set_condition is not for temporary activity or inferred state.
 - Clothing must use set_clothing; never set_condition.
-- Do not return required_end_state; Python derives it from each phase's final
-  required_event.
+- Return only the corrected events array with Beats 1-{int(total_segments)}
+  covered exactly once. Do not create phases or phase ranges; Python owns that
+  deterministic bookkeeping.
 
-Return the complete corrected phases array covering Beats 1-{int(total_segments)}.
+Return one JSON object with an events array containing exactly
+{int(total_segments)} complete required_event objects.
 """.strip(),
         },
     ]
@@ -12265,6 +12273,142 @@ def build_beat_arc_response_format(total_segments):
             },
         },
     }
+
+
+def build_flat_arc_response_format(total_segments):
+    """Return the ARC CREATE/REPAIR schema without model-owned phase arithmetic."""
+    if total_segments <= 0:
+        raise ValueError("Beat arc planning requires at least one segment.")
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_flat_arc_events",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "events": {
+                        "type": "array",
+                        "minItems": int(total_segments),
+                        "maxItems": int(total_segments),
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string", "minLength": 1},
+                                "event": {"type": "string", "minLength": 1},
+                                "beat_number": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": int(total_segments),
+                                },
+                                "state_effects": {
+                                    **_typed_state_effect_json_schema(),
+                                },
+                                "depends_on": {
+                                    "type": "array",
+                                    "items": {"type": "string", "minLength": 1},
+                                    "uniqueItems": True,
+                                },
+                            },
+                            "required": ["id", "event", "beat_number"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["events"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_flat_arc_plan(
+    raw_result,
+    total_segments,
+    formatter=None,
+    llm_request=None,
+):
+    """Normalize flat ARC clip jobs into deterministic one-beat phase wrappers.
+
+    ARC CREATE/REPAIR owns semantic job allocation. Python owns only the
+    bookkeeping needed by the existing phase-oriented downstream machinery.
+    """
+    if total_segments <= 0:
+        raise ValueError("Beat arc planning requires at least one segment.")
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate, llm_request=llm_request)
+            if isinstance(candidate, UnrepairedJSON):
+                return candidate
+        except json.JSONDecodeError as error:
+            raise ValueError("The LLM arc response must be valid JSON.") from error
+    if not isinstance(candidate, dict) or set(candidate) != {"events"}:
+        raise ValueError(
+            "The LLM arc response must contain only a JSON 'events' array."
+        )
+    events = candidate.get("events")
+    if not isinstance(events, list):
+        raise ValueError("The LLM arc response must contain a JSON 'events' array.")
+    if len(events) != int(total_segments):
+        raise ValueError(
+            "The flat macro arc must contain exactly one required event for every "
+            f"beat (expected {int(total_segments)}, found {len(events)})."
+        )
+
+    by_beat = {}
+    for event in events:
+        if not isinstance(event, dict):
+            raise ValueError("Every flat macro arc event must be an object.")
+        beat_number = event.get("beat_number")
+        if (
+            isinstance(beat_number, bool)
+            or not isinstance(beat_number, int)
+            or not 1 <= beat_number <= int(total_segments)
+        ):
+            raise ValueError(
+                "Every flat macro arc event must have a valid beat_number."
+            )
+        if beat_number in by_beat:
+            raise ValueError(
+                f"Macro beat {beat_number} has duplicate required-event assignments."
+            )
+        by_beat[beat_number] = copy.deepcopy(event)
+
+    missing = [
+        beat_number
+        for beat_number in range(1, int(total_segments) + 1)
+        if beat_number not in by_beat
+    ]
+    if missing:
+        raise ValueError(
+            "Macro arc has no required event for beat(s): "
+            + ", ".join(map(str, missing))
+            + "."
+        )
+
+    phases = []
+    for beat_number in range(1, int(total_segments) + 1):
+        event = by_beat[beat_number]
+        event_text = " ".join(str(event.get("event") or "").split()).strip()
+        phases.append({
+            "phase_number": beat_number,
+            "beat_start": beat_number,
+            "beat_end": beat_number,
+            "narrative_purpose": "Execute the assigned source event.",
+            "broad_progression": event_text or "Advance the source story.",
+            "characters_introduced": [],
+            "location": "As established by the source story.",
+            "required_events": [event],
+        })
+    return parse_beat_arc_plan(
+        {"phases": phases},
+        int(total_segments),
+        formatter=formatter,
+        llm_request=llm_request,
+    )
 
 
 # Build macro arc validation response format.
@@ -13974,7 +14118,7 @@ def generate_beats_from_story(
             )
             raw_arc = llm_request(
                 messages,
-                response_format=build_beat_arc_response_format(total_segments),
+                response_format=build_flat_arc_response_format(total_segments),
                 history_metadata={
                     **(history_metadata or {}),
                     "purpose": "macro_arc_create",
@@ -13985,7 +14129,7 @@ def generate_beats_from_story(
             )
             try:
                 print(raw_arc, flush=True)
-                macro_arc = parse_beat_arc_plan(
+                macro_arc = parse_flat_arc_plan(
                     raw_arc,
                     total_segments,
                     llm_request=llm_request,
@@ -14238,7 +14382,7 @@ def generate_beats_from_story(
                                 subject_information=subject_information,
                                 beat_instructions=beat_instructions,
                             ),
-                            response_format=build_beat_arc_response_format(total_segments),
+                            response_format=build_flat_arc_response_format(total_segments),
                             history_metadata={
                                 **(history_metadata or {}),
                                 "purpose": "macro_arc_repair",
@@ -14247,7 +14391,7 @@ def generate_beats_from_story(
                             },
                             **ARC_LLM_SAMPLING_PARAMETERS,
                         )
-                        repaired = parse_beat_arc_plan(
+                        repaired = parse_flat_arc_plan(
                             repair_raw,
                             total_segments,
                             llm_request=llm_request,
