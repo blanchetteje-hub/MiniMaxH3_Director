@@ -373,15 +373,19 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+", model):
         raise ValueError(f"Unsupported model selector: {model!r}")
 
+    command = [
+        python,
+        "tests/acceptance/run_acceptance.py",
+        "--image1",
+        image1,
+        "--model",
+        model,
+    ]
+    if bool(job.get("planning_only")):
+        command.append("--planning-only")
+
     process = run_local_process(
-        [
-            python,
-            "tests/acceptance/run_acceptance.py",
-            "--image1",
-            image1,
-            "--model",
-            model,
-        ],
+        command,
         exec_root,
         timeout=int(job.get("timeout_seconds") or 3600),
     )
