@@ -1,0 +1,23 @@
+{
+  "job_id": "arc-repair-finite-clip-job-probe-195",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Repair the rejected story arc required-event list. Fix the listed issue without changing unrelated source meaning. Do not create phases or phase ranges. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE STORY\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nDEFINED SUBJECTS\n<Subject 1> = Amy; <Subject 2> = Will; <Subject 3> = Amber\n\nTOTAL BEATS\n8\n\nCURRENT ARC\n{\"events\":[{\"id\":\"event_1\",\"event\":\"<Picture 1> Amy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\",\"beat_number\":1,\"state_effects\":[{\"op\":\"set_clothing\",\"entity\":\"Amy\",\"slot\":\"upper\",\"item\":\"tight black tank top\",\"damage\":\"none\"},{\"op\":\"set_clothing\",\"entity\":\"Amy\",\"slot\":\"lower\",\"item\":\"denim jeans\",\"damage\":\"none\"}]},{\"id\":\"event_2\",\"event\":\"A zombie breaks the kitchen door window and Amy sees the danger.\",\"beat_number\":2,\"depends_on\":[\"event_1\"]},{\"id\":\"event_3\",\"event\":\"Amy rushes her kids to the basement, gets them inside, locks the door, retrieves her hidden pistol and katana, and equips both weapons.\",\"beat_number\":3,\"depends_on\":[\"event_2\"]},{\"id\":\"event_4\",\"event\":\"Amy kills a group of zombies as they try and attack her.\",\"beat_number\":4,\"depends_on\":[\"event_3\"]},{\"id\":\"event_5\",\"event\":\"Amy kills another group of zombies as they try and attack her.\",\"beat_number\":5,\"depends_on\":[\"event_4\"]},{\"id\":\"event_6\",\"event\":\"Amy kills a third group of zombies as they try and attack her.\",\"beat_number\":6,\"depends_on\":[\"event_5\"]},{\"id\":\"event_7\",\"event\":\"Amy kills another group of zombies as they try and attack her, but more keep coming.\",\"beat_number\":7,\"depends_on\":[\"event_6\"]},{\"id\":\"event_8\",\"event\":\"Amy kills the last zombie, her house now soaked in blood, and lets Will and Amber out of the basement.\",\"beat_number\":8,\"depends_on\":[\"event_7\"]}]}\n\nVALIDATOR ISSUE\n[\"Beat 1 is not a complete executable clip job: it merely repeats the source's in-progress finite activity 'cooking breakfast' without showing that assigned activity reaching a natural visible endpoint.\"]\n\nRules:\n- Preserve every explicit source action/state in source order.\n- Keep exactly one required_event per global beat.\n- Fix Beat 1 without changing unrelated events.\n- FINITE-ACTIVITY CLIP JOBS: when a finite source activity is assigned wholly to one beat, its required_event must show that activity reaching a natural visible endpoint by the end of the beat. Do not merely restate progressive/in-progress wording. The endpoint may make explicit the ordinary result directly implied by completing that activity, but must not add a new plot event or outcome.\n- Every event after the first depends_on the immediately preceding event ID.\n- Preserve existing state_effects exactly unless moving an effect is required by changed event meaning; do not add or drop persistent facts.\n- Return exactly 8 events.\n\nReturn one JSON object with an events array containing exactly 8 complete required_event objects."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "presence_penalty": 0,
+  "frequency_penalty": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 3000
+}
