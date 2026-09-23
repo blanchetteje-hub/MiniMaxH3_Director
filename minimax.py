@@ -11125,6 +11125,294 @@ Return the complete corrected phases array covering Beats 1-{int(total_segments)
         },
     ]
 
+
+def _macro_arc_event_for_beat(macro_arc, beat_number):
+    """Return the single authoritative ARC event assigned to one global beat."""
+    matches = []
+    for phase in (macro_arc or {}).get("phases", []):
+        if not isinstance(phase, dict):
+            continue
+        for event in phase.get("required_events", []):
+            if (
+                isinstance(event, dict)
+                and event.get("beat_number") == int(beat_number)
+            ):
+                matches.append(event)
+    if len(matches) != 1:
+        raise ValueError(
+            f"Expected exactly one required event for Beat {int(beat_number)}, "
+            f"found {len(matches)}."
+        )
+    return matches[0]
+
+
+def _macro_arc_majority_tail_repair_spec(validation, total_segments):
+    """Return the narrow final-two-beat majority repair when it exactly applies.
+
+    This is deterministic localization only. The focused ARC majority validator
+    still owns the semantic classification of which beats belong to the source's
+    emphasized sequence.
+    """
+    if (
+        isinstance(total_segments, bool)
+        or not isinstance(total_segments, int)
+        or total_segments < 2
+        or not isinstance(validation, dict)
+        or validation.get("valid")
+    ):
+        return None
+    required = total_segments // 2 + 1
+    expected_matching = list(range(total_segments - required + 1, total_segments))
+    for check in validation.get("majority_checks", []):
+        if not isinstance(check, dict):
+            continue
+        matching = check.get("matching_beats")
+        requirement = check.get("source_requirement")
+        if (
+            isinstance(matching, list)
+            and matching == expected_matching
+            and isinstance(requirement, str)
+            and requirement.strip()
+        ):
+            return {
+                "source_requirement": " ".join(requirement.split()),
+                "matching_beats": list(matching),
+                "tail_beats": [total_segments - 1, total_segments],
+            }
+    return None
+
+
+def build_macro_arc_majority_tail_repair_messages(
+    macro_arc,
+    repair_spec,
+    total_segments,
+    subject_information="",
+):
+    """Build the smallest ARC repair for a resolution-only final beat."""
+    penultimate = _macro_arc_event_for_beat(macro_arc, total_segments - 1)
+    final = _macro_arc_event_for_beat(macro_arc, total_segments)
+    prior = (
+        _macro_arc_event_for_beat(macro_arc, total_segments - 2)
+        if total_segments > 2
+        else None
+    )
+    subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Repair only the final two required events of an existing story "
+                "arc. Preserve the fixed prefix and return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+MAJORITY SOURCE REQUIREMENT
+{repair_spec["source_requirement"]}
+
+DEFINED SUBJECTS
+{subject_text}
+
+FIXED PRIOR EVENT
+{json.dumps(prior, ensure_ascii=False, separators=(',', ':')) if prior else 'N/A'}
+
+CURRENT FINAL TWO EVENTS
+{json.dumps([penultimate, final], ensure_ascii=False, separators=(',', ':'))}
+
+PROBLEM
+The emphasized sequence is one beat short of a strict majority because the
+final global beat is resolution-only.
+
+Rewrite ONLY Beats {total_segments - 1}-{total_segments}:
+- Beat {total_segments - 1} must remain inside the already-active emphasized
+  sequence but must NOT complete its terminal result yet.
+- Beat {total_segments} must complete the terminal emphasized action AND include
+  the immediate resolution already assigned to the current final event.
+- Preserve source order, event IDs, beat numbers, and depends_on exactly.
+- Preserve the same persistent state_effects across these two events. Move an
+  existing effect to the event that now establishes it, but do not add or drop
+  any persistent fact.
+- Do not add a new major plot, character, location, mechanism, or outcome.
+- Keep each event concise.
+
+Return exactly one object with an "events" array containing those two complete
+required_event objects.
+""".strip(),
+        },
+    ]
+
+
+def build_macro_arc_majority_tail_repair_response_format(total_segments):
+    """Return the strict two-event schema for focused majority tail repair."""
+    if total_segments < 2:
+        raise ValueError("Majority tail repair requires at least two beats.")
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_macro_arc_majority_tail_repair",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "events": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {"type": "string", "minLength": 1},
+                                "event": {"type": "string", "minLength": 1},
+                                "beat_number": {
+                                    "type": "integer",
+                                    "minimum": total_segments - 1,
+                                    "maximum": total_segments,
+                                },
+                                "state_effects": _typed_state_effect_json_schema(),
+                                "depends_on": {
+                                    "type": "array",
+                                    "items": {"type": "string", "minLength": 1},
+                                    "uniqueItems": True,
+                                },
+                            },
+                            "required": [
+                                "id",
+                                "event",
+                                "beat_number",
+                                "depends_on",
+                            ],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["events"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_macro_arc_majority_tail_repair_result(
+    raw_result,
+    expected_events,
+    formatter=None,
+    llm_request=None,
+):
+    """Parse a focused two-event ARC repair and conserve authoritative effects."""
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate, llm_request=llm_request)
+            if isinstance(candidate, UnrepairedJSON):
+                return candidate
+        except json.JSONDecodeError as error:
+            raise ValueError("ARC tail repair must be valid JSON.") from error
+    if not isinstance(candidate, dict) or set(candidate) != {"events"}:
+        raise ValueError("ARC tail repair must contain only an events array.")
+    raw_events = candidate.get("events")
+    if not isinstance(raw_events, list) or len(raw_events) != 2:
+        raise ValueError("ARC tail repair must return exactly two events.")
+
+    expected = sorted(
+        [copy.deepcopy(event) for event in expected_events],
+        key=lambda event: event.get("beat_number", 0),
+    )
+    normalized = []
+    allowed = {"id", "event", "beat_number", "depends_on", "state_effects"}
+    for index, (raw_event, old_event) in enumerate(
+        zip(raw_events, expected),
+        start=1,
+    ):
+        if not isinstance(raw_event, dict) or set(raw_event) - allowed:
+            raise ValueError(
+                f"ARC tail repair event {index} has unsupported fields."
+            )
+        if raw_event.get("id") != old_event.get("id"):
+            raise ValueError("ARC tail repair must preserve event IDs exactly.")
+        if raw_event.get("beat_number") != old_event.get("beat_number"):
+            raise ValueError("ARC tail repair must preserve beat numbers exactly.")
+        event_text = " ".join(str(raw_event.get("event") or "").split()).strip()
+        if not event_text:
+            raise ValueError("ARC tail repair event text must be non-empty.")
+        dependencies = raw_event.get("depends_on")
+        if not isinstance(dependencies, list) or any(
+            not isinstance(item, str) or not item.strip()
+            for item in dependencies
+        ):
+            raise ValueError(
+                "ARC tail repair depends_on must be an array of non-empty strings."
+            )
+        dependencies = [" ".join(item.split()).strip() for item in dependencies]
+        expected_dependencies = list(old_event.get("depends_on", []))
+        if dependencies != expected_dependencies:
+            raise ValueError(
+                "ARC tail repair must preserve dependencies exactly."
+            )
+        state_effects = raw_event.get("state_effects")
+        if state_effects is not None:
+            state_effects = _validate_state_effects(state_effects)
+            state_effects = _validate_required_event_state_effect_grounding(
+                event_text,
+                state_effects,
+            )
+        repaired_event = {
+            "id": old_event["id"],
+            "event": event_text,
+            "beat_number": old_event["beat_number"],
+        }
+        if dependencies:
+            repaired_event["depends_on"] = dependencies
+        if state_effects is not None:
+            repaired_event["state_effects"] = state_effects
+        normalized.append(repaired_event)
+
+    def effect_fingerprints(events):
+        fingerprints = []
+        for event in events:
+            for effect in event.get("state_effects", []) or []:
+                fingerprints.append(
+                    json.dumps(effect, ensure_ascii=False, sort_keys=True)
+                )
+        return sorted(fingerprints)
+
+    if effect_fingerprints(expected) != effect_fingerprints(normalized):
+        raise ValueError(
+            "ARC tail repair must conserve the existing persistent state_effects."
+        )
+    return normalized
+
+
+def apply_macro_arc_event_replacements(
+    macro_arc,
+    replacements,
+    total_segments,
+):
+    """Replace authoritative ARC events by beat and revalidate the complete arc."""
+    candidate = copy.deepcopy(macro_arc)
+    replacement_map = {
+        int(event["beat_number"]): copy.deepcopy(event)
+        for event in replacements
+    }
+    replaced = set()
+    for phase in candidate.get("phases", []):
+        events = phase.get("required_events", []) if isinstance(phase, dict) else []
+        for index, event in enumerate(events):
+            beat_number = event.get("beat_number") if isinstance(event, dict) else None
+            if beat_number in replacement_map:
+                events[index] = copy.deepcopy(replacement_map[beat_number])
+                replaced.add(beat_number)
+    if replaced != set(replacement_map):
+        missing = sorted(set(replacement_map) - replaced)
+        raise ValueError(
+            "Could not apply ARC replacement event(s) for Beat(s): "
+            + ", ".join(map(str, missing))
+        )
+    return parse_beat_arc_plan(candidate, total_segments)
+
+
 def _validate_macro_arc_structure(normalized_phases, total_segments):
     """Enforce the Python-owned one-job-per-beat causal arc contract.
 
