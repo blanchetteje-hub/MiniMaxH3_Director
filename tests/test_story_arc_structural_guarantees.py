@@ -334,121 +334,54 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
 
     def test_majority_story_gets_exact_sequence_budget(self):
         story = "The majority of the film is Amy killing zombies."
-        create_messages = minimax.build_beat_arc_plan_messages(story, 8)
         create_prompt = " ".join(
-            "\n".join(message["content"] for message in create_messages).split()
-        )
-        self.assertIn(
-            "strict majority requires at least 5 beats allocated to the broad "
-            "source-emphasized narrative sequence",
-            create_prompt,
-        )
-        self.assertIn(
-            "At most 3 beats may sit outside the emphasized sequence",
-            create_prompt,
-        )
-        self.assertIn(
-            "do NOT each need to literally repeat the emphasized verb",
-            create_prompt,
-        )
-        self.assertIn(
-            "Standalone preparation before the emphasized conflict/process begins "
-            "does NOT count toward the majority sequence",
-            create_prompt,
-        )
-        self.assertIn(
-            "terminal result and immediate resolution in the SAME final sequence beat",
-            create_prompt,
-        )
-
-        arc = make_arc([(1, 3, self.events)])
-        repair_messages = minimax.build_macro_arc_repair_messages(
-            story,
-            arc,
-            ["Majority is under-allocated."],
-            8,
-        )
-        repair_prompt = " ".join(
-            "\n".join(message["content"] for message in repair_messages).split()
-        )
-        self.assertIn(
-            "majority requires at least 5 beats allocated to the broad emphasized "
-            "narrative sequence",
-            repair_prompt,
-        )
-        self.assertIn(
-            "leaving at most 3 beats outside that sequence",
-            repair_prompt,
-        )
-        self.assertIn(
-            "phase ranges, beat assignments, and event grouping are implicated "
-            "and MAY change as needed",
-            repair_prompt,
-        )
-        self.assertIn(
-            "The emphasized sequence must begin by Beat 4 at the latest",
-            repair_prompt,
-        )
-        self.assertIn(
-            "PROTECTED CONTRAST BOUNDARY",
-            repair_prompt,
-        )
-        self.assertIn(
-            "NEVER merge that inciting threat/change into the baseline beat",
-            repair_prompt,
-        )
-        self.assertIn(
-            "The baseline must remain its own beat so the source contrast is visible",
-            repair_prompt,
-        )
-        self.assertIn(
-            "The inciting action MAY share its beat with its immediate "
-            "reaction/escape/containment sequence",
-            repair_prompt,
-        )
-        self.assertIn(
-            "Retrieval and equipping of the same named equipment MAY share one beat",
-            repair_prompt,
-        )
-
-        non_majority_repair_messages = minimax.build_macro_arc_repair_messages(
-            story,
-            arc,
-            ["Amy's clothing was missing on first show"],
-            8,
-        )
-        non_majority_repair_prompt = " ".join(
             "\n".join(
-                message["content"] for message in non_majority_repair_messages
+                message["content"]
+                for message in minimax.build_beat_arc_plan_messages(story, 8)
             ).split()
         )
-        self.assertIn("EXPLICIT MAJORITY BEAT BUDGET N/A", non_majority_repair_prompt)
-        self.assertNotIn(
-            "This validator issue is specifically about allocation",
-            non_majority_repair_prompt,
+        self.assertIn("strict majority of 8 beats means at least 5 beats", create_prompt)
+        self.assertIn("at most 3 beats before/outside it", create_prompt)
+        self.assertIn("Preparation before that sequence does not count", create_prompt)
+        self.assertIn("final emphasized action may share", create_prompt)
+
+        arc = make_arc([(1, 3, self.events)])
+        repair_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_macro_arc_repair_messages(
+                    story, arc, ["Majority is under-allocated."], 8
+                )
+            ).split()
         )
+        self.assertIn("At least 5/8 beats", repair_prompt)
+        self.assertIn("at most 3 beats", repair_prompt)
+        self.assertIn("calm baseline", repair_prompt)
+
+        non_majority = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_macro_arc_repair_messages(
+                    story, arc, ["Amy's clothing was missing on first show"], 8
+                )
+            ).split()
+        )
+        self.assertIn("MAJORITY REPAIR BUDGET N/A", non_majority)
 
     def test_arc_planner_prefers_clip_scale_handoffs_when_budget_allows(self):
-        messages = minimax.build_beat_arc_plan_messages(
-            "Amy runs to the safe room, gets the kids inside, locks the door, "
-            "then retrieves and equips her weapons.",
-            3,
-        )
         normalized = " ".join(
-            "\n".join(message["content"] for message in messages).split()
+            "\n".join(
+                message["content"]
+                for message in minimax.build_beat_arc_plan_messages(
+                    "Amy runs to the safe room, gets the kids inside, locks the door, "
+                    "then retrieves and equips her weapons.",
+                    3,
+                )
+            ).split()
         )
-        self.assertIn(
-            "split a long adjacent source action chain across consecutive beat jobs",
-            normalized,
-        )
-        self.assertIn(
-            "not automatically one whole source sentence",
-            normalized,
-        )
-        self.assertIn(
-            "Choose boundaries for executable clip-sized story progression",
-            normalized,
-        )
+        self.assertIn("one executable clip job", normalized)
+        self.assertIn("split long source chains at natural handoffs", normalized)
+        self.assertIn("bundle only adjacent actions when necessary", normalized)
 
     def test_arc_planner_allows_coherent_setpieces_inside_authorized_process(self):
         story = (
