@@ -738,3 +738,90 @@ Acceptance-109 Phase-1 end-state defect with only three simple validation rules.
 Use its result to decide whether ARC validation should receive the same 24B prompt
 simplification treatment after Segment 1 is cleared.
 
+## Acceptance 113 timeout follow-up: 6k context and ARC simplification
+
+run-acceptance-amy-minimal-beat-create-113 did not produce a semantic
+acceptance result. The bridge killed the command after the 3600-second timeout.
+
+Two concrete issues were found instead of simply increasing the timeout.
+
+### Minimal Beat prompt dropped the Subject block
+
+The first minimal Beat CREATE rewrite removed the compact parsed Subject list.
+Production has a deterministic guard that refuses to send Beat-generation
+requests when those parsed Subject IDs are absent.
+
+This was fixed in commit 781959d2723fb08c4bb5ee3d893cdeecdbe4c62f by restoring only
+the compact Subject IDs to the minimal Beat prompt. The regression test was
+corrected to preserve the compact form rather than re-expanding full Subject
+descriptions.
+
+### The code still carried 13B-era context assumptions
+
+The current local 24B runtime operates around a ~6k context window, while the
+repository still advertised/used older assumptions such as a 14,000-token input
+budget and an 8,000-token default completion request.
+
+README commit 21fbd94ec522d9ddcb37374b1854eb125ae4bafa removes the old
+~21k 13B guidance.
+
+Production commit 7cacf52d63cf56f2c1a6add67ae3b8b26fb8a349 adds a generic
+context-window guard:
+
+- local context budget: 6044 tokens;
+- normal input budget: 4500 estimated tokens;
+- 128-token safety margin;
+- at least 256 completion tokens must remain;
+- ask_llm() clamps requested completion length to the remaining context instead
+  of sending impossible 8k completions;
+- an input that leaves no usable completion room fails fast with an instruction
+  to simplify that stage prompt.
+
+This is deterministic transport protection, not semantic architecture.
+
+### Probe 114: free-text ARC end state is not reliably validated
+
+arc-end-state-simple-probe-114 gave Mistral only three simple rules and an ARC
+phase whose end state claimed Amy had retrieved weapons even though no event in
+that phase retrieved them. Mistral still returned VALID.
+
+Therefore this defect is not just prompt overload. A free-text
+required_end_state is redundant authority that the 24B validator cannot
+reliably police.
+
+Following the architectural lessons, no new end-state checker was added.
+
+Instead:
+
+- new ARC output no longer asks the model to author required_end_state;
+- old saved arcs containing it remain parse-compatible;
+- Python ignores the legacy prose as story authority and derives the internal
+  phase handoff deterministically from the phase's final required_event;
+- required_events + typed state_effects are now the single ARC story authority.
+
+Production commits:
+- cfb76cc3de185f4956d88a7870057e6a61cdb096 — simplify ARC
+  create/validate/repair prompts for the 24B model;
+- 3b6d45430bb092b36ad075491a7c2b1ff6cc3b22 — remove model-authored
+  required_end_state from the strict schema and derive the compatibility handoff
+  from the final event.
+
+The ARC prompts were deliberately reduced instead of adding more rules. Tests
+that previously asserted verbose prompt wording were updated to assert the
+minimal semantic contracts, prompt-size budget, and the new single-authority
+handoff behavior.
+
+run-tests-arc-simplify-118: PASS, 91/91 tests green.
+
+### Current verification
+
+arc-create-amy-minimal-probe-119 is queued/running with the locked Amy story
+and the new compact ARC CREATE prompt.
+
+Inspect 119 before another full acceptance. If the compact ARC produces a
+reasonable 8-beat allocation, queue the next locked acceptance against the
+current branch. The first semantic target remains Segment 1: Beat CREATE should
+turn the ordinary breakfast event into a completed serving endpoint. After
+Segment 1 clears, inspect the Beat-2/Beat-3 safe-room handoff against gold rather
+than repairing downstream Director prose.
+
