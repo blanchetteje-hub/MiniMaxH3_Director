@@ -343,9 +343,12 @@ ARC_LLM_SAMPLING_PARAMETERS = {
 BEAT_LLM_SAMPLING_PARAMETERS = {
     "temperature": 0.65,
     "top_p": 0.90,
+    "top_k": 20,
+    "min_p": 0.05,
     "presence_penalty": 0.15,
     "frequency_penalty": 0.15,
     "repeat_penalty": 1.15,
+    "seed": BENCHMARK_SEED,
 }
 
 CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
