@@ -222,6 +222,13 @@ def copy_artifact(workspace: Path, output_dir: Path, filename: str) -> str | Non
     return str(destination.relative_to(output_dir))
 
 
+def acceptance_child_env() -> dict[str, str]:
+    """Force live MiniMax output through the acceptance runner's pipe."""
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+    return env
+
+
 def build_command(
     python_executable: str,
     benchmark: dict,
@@ -501,11 +508,13 @@ def main(argv=None) -> int:
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
+                env=acceptance_child_env(),
             )
             assert process.stdout is not None
             for line in process.stdout:
-                print(line, end="")
+                print(line, end="", flush=True)
                 log_handle.write(line)
+                log_handle.flush()
             exit_code = process.wait()
 
         log_text = log_path.read_text(encoding="utf-8")
