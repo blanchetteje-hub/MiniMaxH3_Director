@@ -2122,3 +2122,32 @@ After the 300-302 terminal-label controls, maintenance job `acc-run-tests-arc-te
 - `ace-run-acceptance-amy-full-gptoss-305` is the current full acceptance job. At queue inspection it is the only bridge job without a corresponding result, so no stale earlier job is blocking it.
 
 Do not change production semantics while 305 is unresolved. When its result publishes, inspect the earliest accepted semantic mismatch against the gold target and apply the PROJECT_NOTES primary decision hierarchy before deciding whether to patch the current layer, simplify it, or reconsider the layer itself.
+
+## GPT formatter split + acceptance 305: earliest failure is dropped Beat 1 beneficiary
+
+The user requested a dedicated GPT formatter before continuing GPT-OSS work.
+
+Formatter split:
+- `94bb1674ec0df89a414ef70114626e0ae5f7876c` — adds `gpt_formatter.py` as a behavioral copy of the active Mistral formatter baseline.
+- `7282cb963ed41aa5e5f43d2e3a2e2b2eac7b6bd7` — registers `GPTFormatter`, makes `gpt` the runtime default, and keeps Mistral/Qwen selectable.
+- `95e5c031fd2a9c5bbe0eb294bac228f6c4a3163f` — makes acceptance use `gpt` by default.
+- `b3260461e8ef2774b1c12b98b5b2a7716a0d5d5e`, `4c6b3a1f5378f7397c5b1bc6eccd035bc7cc3414` — GPT formatter smoke/baseline-equivalence coverage.
+- No GPT-specific formatting semantics were added yet because acceptance 305 does not implicate Request 2.
+
+Acceptance `ace-run-acceptance-amy-full-gptoss-305` completed all 8 segments. Its earliest gold-relevant semantic loss is ARC Beat 1: the source says Amy is cooking breakfast **for her young kids**, but the accepted ARC says only that Amy cooks breakfast while wearing the specified clothes. The recipient/beneficiary relationship is missing. That omission then lets Beat CREATE produce a cooking-only endpoint rather than requiring Will/Amber to receive or participate in the completed breakfast.
+
+Focused fix:
+- `60bd14226ce3d4898a37213b891cca550fb6bc83` — ARC VALIDATE now explicitly preserves material relational participants/beneficiaries; "does X for Y" is not complete source coverage as "does X".
+- `32f8afbff968af40be7487cd5f1cc05c6fa26155` — regression coverage.
+- `acg-gptoss-arc-beneficiary-bad-307`: correctly INVALID.
+- `ach-gptoss-arc-beneficiary-valid-308`: correctly VALID.
+- `aci-run-tests-gpt-formatter-beneficiary-309`: PASS, 31/31.
+
+Do not fix the later Beat 2/3 ARC allocation difference yet. Per the primary decision hierarchy, re-test the earlier Beat 1 failure first.
+
+Active verification:
+- `acj-run-acceptance-amy-planning-gpt-310` — planning-only, model selector `gpt`.
+- Inspect ARC Beat 1 first: it must preserve that breakfast is for Will/Amber (or equivalent "her kids").
+- Then inspect generated Beat 1: it should visibly reach a completed breakfast endpoint with the named beneficiaries participating/receiving the result.
+- If Beat 1 is clean, then inspect the later ARC Beat 2/3 allocation and decide whether it is the next actual gold mismatch.
+
