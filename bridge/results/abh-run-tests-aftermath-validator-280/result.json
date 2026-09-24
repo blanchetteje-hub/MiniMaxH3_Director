@@ -1,0 +1,23 @@
+{
+  "job_id": "abh-run-tests-aftermath-validator-280",
+  "kind": "run_tests",
+  "started_at": 1790261757.5509896,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_forward_beat_validation",
+      "tests.test_story_arc_structural_guarantees"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \nBeat 1 jobs: current=E1 - Operator opens the primary barrier.; next=none; completed before=none; pending before=E1\nValidating Beat 1 (attempt 1/10) with the single beat validator.\nBeat 1 validation attempt 1/10: INVALID; issue: The candidate does not perform the current action.\nValidating Beat 1 (attempt 2/10) with the single beat validator.\nBeat 1 validation attempt 2/10: VALID; issue: none\nRequired event E1 applied persistent state: set_barrier_state = {\"op\": \"set_barrier_state\", \"entity\": \"primary\", \"value\": \"open\"}\nBeat 1 accepted and finalized; committed required events: E1; completed after=E1\nBeat 1 jobs: current=E1 - Operator opens the primary barrier.; next=none; completed before=none; pending before=E1\nValidating Beat 1 (attempt 1/10) with the single beat validator.\nBeat 1 validation attempt 1/10: VALID; issue: none\nRequired event E1 applied persistent state: set_barrier_state = {\"op\": \"set_barrier_state\", \"entity\": \"primary\", \"value\": \"open\"}\nBeat 1 accepted and finalized; committed required events: E1; completed after=E1\n",
+    "stderr": "....................................\n----------------------------------------------------------------------\nRan 36 tests in 0.043s\n\nOK\n",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790261758.3960507,
+    "finished_at": 1790261759.1483066
+  },
+  "finished_at": 1790261759.1483066,
+  "status": "ok"
+}
