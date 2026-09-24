@@ -1,0 +1,22 @@
+{
+  "job_id": "abt-gptoss-director-containment-establish-292",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a minimalist movie editor expanding CURRENT BEAT into timed micro-beats for one 8-second segment. Return only timed micro-beats plus one END CONTINUITY STATE sentence.\n\nAUTHORITY:\n- CURRENT BEAT is the complete story-level work for this segment.\n- OPENING CONTINUITY is authoritative.\n- Do not perform NEXT BEAT.\n- CONTAINMENT HANDOFF: If CURRENT BEAT places a subject inside a room/container and then locks, seals, or closes the barrier around that subject, preserve that subject as remaining inside/behind that barrier in all later micro-beats and in END CONTINUITY unless CURRENT BEAT explicitly releases or moves them again. Do not re-co-locate a contained subject beside another character merely because they were together earlier.\n- If OPENING CONTINUITY already places a subject behind a locked/sealed barrier, that subject must not appear beside an outside character, receive unrelated props, or participate in later staging unless CURRENT BEAT explicitly opens/releases the barrier and moves that subject.\n- Do not invent consequential persistent changes not authorized by CURRENT BEAT.\n- END CONTINUITY must be nearly identical to the final micro-beat and limited to one sentence."
+    },
+    {
+      "role": "user",
+      "content": "OPENING CONTINUITY\nAmy, Will, and Amber are together in the kitchen.\n\nCURRENT BEAT\nAmy takes Will and Amber down into the basement, places them inside, locks the basement door behind them, then retrieves a pistol and katana from hidden storage in the kitchen.\n\nNEXT BEAT\nAmy kills the first zombie in the kitchen.\n\nGenerate the 8-second RAW SCENE and END CONTINUITY STATE."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1536,
+  "timeout_seconds": 300
+}
