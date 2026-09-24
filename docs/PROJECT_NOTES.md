@@ -164,6 +164,40 @@ Persistent subject identity remains Python-owned.
 
 Do not let an LLM create durable named identities merely because they appear in continuity prose.
 
+## Empirical chapter-opening baseline from the locked gold refresh
+
+The locked Amy benchmark contains exactly one explicit refresh segment: **Beat 7**.
+
+Use that gold refresh as the current empirical model for what a later chapter needs to know when it starts.
+
+The Beat 7 opening setup re-establishes only the facts needed to resume the scene correctly:
+
+- current location: Amy is in the kitchen;
+- active subjects: Amy and Zombie4;
+- current spatial relationship: Amy is in front of Zombie4;
+- current pose/action readiness: Amy is holding the katana above her head;
+- persistent visual identity/clothing: black tank top and denim jeans;
+- persistent visible condition: Amy's front is covered in green vomit;
+- relevant environment aftermath: two earlier zombie corpses remain on the kitchen floor even though they are not currently in view.
+
+What it notably does **not** need:
+
+- the previous chapter outline;
+- a recap of the prior fight;
+- why Amy is covered in vomit;
+- every earlier zombie;
+- prior dialogue;
+- the discarded pistol;
+- unrelated character state that does not affect the opening shot.
+
+This is the baseline rule for later chapters:
+
+> Give the new chapter the smallest set of already-established facts needed to render and continue its first beat correctly.
+
+Treat those categories as empirical guidance, not as a rigid schema. Add another opening-context fact only when a real failure shows the chapter needed it.
+
+Do not hard-code Amy, Zombie4, Beat 7, kitchens, vomit, or any other benchmark-specific vocabulary into production logic.
+
 ## H3 mode is controlled only by chapter boundaries
 
 Refresh cadence is no longer user-controlled.
