@@ -1,0 +1,23 @@
+{
+  "job_id": "abf-run-tests-low-reasoning-arc-repair-278",
+  "kind": "run_tests",
+  "started_at": 1790261303.128999,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_story_arc_structural_guarantees",
+      "tests.test_acceptance_runner"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \n",
+    "stderr": ".....................................\n----------------------------------------------------------------------\nRan 37 tests in 0.034s\n\nOK\n",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790261303.9794507,
+    "finished_at": 1790261304.7303948
+  },
+  "finished_at": 1790261304.7303948,
+  "status": "ok"
+}
