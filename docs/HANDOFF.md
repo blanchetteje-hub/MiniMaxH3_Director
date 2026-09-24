@@ -2069,3 +2069,16 @@ The broad regression job `abs-run-tests-director-containment-291` returned nonze
 
 Given the clean live establish/follow-up controls, proceed to another full acceptance instead of blocking on unrelated legacy Director test debt. Continue inspecting the earliest semantic mismatch rather than process return code alone.
 
+## Full acceptance 295: ARC REPAIR reasoning loop persists; replace prose with explicit allocation procedure
+
+`abw-run-acceptance-amy-full-gptoss-295` never reached Beats or Director. ARC CREATE/VALIDATE progressed through several real issues, but once the remaining issue was the 5/8 majority allocation, ARC REPAIR repeatedly exhausted `max_tokens=3771` before returning JSON and the acceptance timed out.
+
+The developer log confirms the same failure class seen in earlier GPT-OSS probes: the model explicitly reaches the correct conclusion that the counted sequence must occupy Beats 4-8, then repeatedly re-counts and re-arranges setup versus kill beats instead of committing to that allocation. This is reasoning-loop verbosity around allocation, not a new semantic ambiguity.
+
+Focused change:
+- `9945dad9aa2818a2f5cd5e79a9ba4f85d58bb862` — replaces the prose-heavy majority repair guidance with a compact deterministic allocation procedure: Beats before the first counted beat are the full outside budget; the first counted beat must include both any remaining adjacent setup and the first emphasized action; every remaining beat through the final beat must materially perform the emphasized process; terminal action + immediate resolution belong in the final beat; repeated-source instances may be created as needed without reusing entities.
+- `8d60154b2e345f9be2d593fafd76c6f340a98f38` — regression coverage for the explicit allocation procedure.
+- `2af36ae8445ab822de3e668b76bec8ba9f53ea1c` — fixes the final line-wrap-sensitive temporal validator assertion exposed by job 294.
+
+Next: batch structural tests plus multiple GPT-OSS majority-repair probes using the 295 rejected-ARC shape. If the probes return complete JSON without re-entering the counting loop, run another full acceptance with developer-log capture.
+
