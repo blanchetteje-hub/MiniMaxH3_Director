@@ -1,7 +1,0 @@
-{
-  "job_id": "zzzz-run-acceptance-amy-full-qwen-state-effects-246",
-  "kind": "run_acceptance",
-  "image1": "amy.jpg",
-  "model": "qwen",
-  "timeout_seconds": 3600
-}
