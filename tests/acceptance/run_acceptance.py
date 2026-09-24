@@ -226,6 +226,10 @@ def acceptance_child_env() -> dict[str, str]:
     """Force live MiniMax output through the acceptance runner's pipe."""
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
+    # Windows pipes otherwise inherit a legacy charmap encoding and can crash
+    # on ordinary model punctuation such as a non-breaking hyphen.
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
     return env
 
 
