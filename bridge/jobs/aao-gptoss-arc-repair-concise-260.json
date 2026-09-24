@@ -1,0 +1,15 @@
+{
+  "job_id": "aao-gptoss-arc-repair-concise-260",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Repair this 8-event story arc. Return ONLY one JSON object with key events. Preserve all 8 beat numbers and persistent state effects unless the event meaning changes. The only validation failure is: the story says the majority of the film is Amy killing zombies, so more than 4 of 8 events must materially show Amy killing/fighting attacking zombies. Keep breakfast, breach, children secured in basement, weapons equipped, final blood-soaked outcome, and children released. Use distinct zombie/wave entity names after a threat has been marked dead. Do not explain.\n\nCURRENT ARC:\n{\"events\":[{\"id\":\"beat1\",\"event\":\"Amy cooks breakfast at home wearing a tight black tank top and denim jeans.\",\"beat_number\":1,\"state_effects\":[{\"op\":\"set_clothing\",\"entity\":\"Amy\",\"slot\":\"upper\",\"item\":\"tight black tank top\",\"damage\":\"none\"},{\"op\":\"set_clothing\",\"entity\":\"Amy\",\"slot\":\"lower\",\"item\":\"denim jeans\",\"damage\":\"none\"}]},{\"id\":\"beat2\",\"event\":\"A zombie breaks the kitchen door window; Amy sees danger.\",\"beat_number\":2,\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie1\",\"value\":\"active\"}]},{\"id\":\"beat3\",\"event\":\"Amy rushes Will and Amber to the basement, gets them inside, and locks the basement door.\",\"beat_number\":3,\"state_effects\":[{\"op\":\"set_location\",\"entity\":\"Will\",\"value\":\"basement\"},{\"op\":\"set_location\",\"entity\":\"Amber\",\"value\":\"basement\"},{\"op\":\"set_barrier_state\",\"entity\":\"basement_door\",\"value\":\"locked\"}]},{\"id\":\"beat4\",\"event\":\"Amy retrieves her hidden pistol and katana and equips them as zombies attack.\",\"beat_number\":4,\"state_effects\":[{\"op\":\"set_item_state\",\"entity\":\"pistol\",\"owner\":\"Amy\",\"value\":\"equipped\"},{\"op\":\"set_item_state\",\"entity\":\"katana\",\"owner\":\"Amy\",\"value\":\"equipped\"}]},{\"id\":\"beat5\",\"event\":\"Amy kills the first attacking zombie.\",\"beat_number\":5,\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie1\",\"value\":\"dead\"}]},{\"id\":\"beat6\",\"event\":\"Amy kills a second attacking zombie.\",\"beat_number\":6,\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie2\",\"value\":\"dead\"}]},{\"id\":\"beat7\",\"event\":\"Amy kills another attacking zombie.\",\"beat_number\":7,\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie3\",\"value\":\"dead\"}]},{\"id\":\"beat8\",\"event\":\"Amy kills the last zombie, leaving the house blood soaked, then lets Will and Amber out of the basement.\",\"beat_number\":8,\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie4\",\"value\":\"dead\"},{\"op\":\"set_condition\",\"entity\":\"house\",\"value\":\"blood soaked\"},{\"op\":\"set_location\",\"entity\":\"Will\",\"value\":\"home\"},{\"op\":\"set_location\",\"entity\":\"Amber\",\"value\":\"home\"}]}]}"
+    }
+  ],
+  "temperature": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 2048,
+  "timeout_seconds": 300
+}
