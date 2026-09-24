@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-validator-generalization-335",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 2200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate broad chapter refresh units against STORY. Reject unnecessary chapter breaks that split one continuous setup/process without a major narrative handoff. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nA researcher begins a normal shift. An alarm interrupts. The researcher secures samples and performs a long repeated diagnostic process that occupies most of the story. One final diagnostic resolves the incident; the researcher shuts down the lab and reunites with a colleague.\n\nEvaluate independently.\n\nA candidate:\n1. Normal shift + alarm.\n2. Secure samples.\n3. Repeated diagnostic process.\n4. Final diagnostic + shutdown + reunion.\n\nB candidate:\n1. Normal shift + alarm + secure samples + repeated diagnostic process.\n2. Final diagnostic + shutdown + reunion.\n\nA chapter is a LARGE H3 refresh unit. Use the fewest natural broad chapters.\n\nReturn exactly:\n{\"A\":{\"valid\":true,\"issue\":null},\"B\":{\"valid\":true,\"issue\":null}}"
+    }
+  ]
+}
