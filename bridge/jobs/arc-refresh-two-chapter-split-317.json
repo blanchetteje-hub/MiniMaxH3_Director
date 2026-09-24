@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-two-chapter-split-317",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the requested scope exactly. Source story facts are authoritative. Return only valid JSON."
+    },
+    {
+      "role": "user",
+      "content": "Create a rough chapter plan for this story.\n\nTOTAL VIDEO BEATS: 8.\n\nA chapter is a LARGE refresh unit, not a single event. Use the fewest natural chapter boundaries. Keep continuous setup/escalation together. If a repeated main process is followed by an explicit terminal/final-resolution sequence, that terminal sequence is a natural candidate for a new chapter.\n\nAssign each chapter a beat_count. Counts must sum to 8. Do not invent plot.\n\nReturn only:\n{\"chapters\":[{\"chapter\":1,\"beat_count\":1,\"outline\":\"...\"}]}\n\nSTORY:\nAmy protects Will and Amber during a zombie outbreak. She begins at home on a normal morning cooking breakfast for them. A zombie breaks the kitchen door window; Amy recognizes the danger, rushes Will and Amber to the basement, gets them inside, and locks the door. Amy retrieves her hidden pistol and katana and equips them. The main body of the story is Amy fighting attacking zombies. Amy then defeats the final zombie, the house is left blood-soaked, and she lets Will and Amber out of the basement."
+    }
+  ]
+}
