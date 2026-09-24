@@ -1,0 +1,23 @@
+{
+  "job_id": "aaz-run-tests-gptoss-majority-repair-272",
+  "kind": "run_tests",
+  "started_at": 1790260452.920935,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_story_arc_structural_guarantees",
+      "tests.test_chatgpt_llama_bridge"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \n",
+    "stderr": "...............................\n----------------------------------------------------------------------\nRan 31 tests in 0.010s\n\nOK\n",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790260453.5157156,
+    "finished_at": 1790260454.1090283
+  },
+  "finished_at": 1790260454.1090283,
+  "status": "ok"
+}
