@@ -11010,9 +11010,12 @@ def build_beat_arc_plan_messages(
             f"(2) Beat {latest_sequence_start} starts the emphasized process itself "
             "and every beat from there through the final beat must materially "
             "perform that process. "
-            f"(3) Beat {int(total_segments)} owns the explicit terminal instance "
-            "plus any immediate resolution so the final beat still counts. "
-            "Preparation before the sequence does not count."
+            f"(3) Beat {int(total_segments)} must visibly perform the explicit "
+            "terminal action itself and may also contain its immediate resolution. "
+            f"No earlier beat may call its instance last, final, terminal, or otherwise "
+            f"exhaust the process reserved for Beat {int(total_segments)}. Do not make "
+            "the final beat aftermath-only by presupposing the terminal action already "
+            "happened. Preparation before the sequence does not count."
         )
 
     correction_text = (
