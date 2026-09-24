@@ -129,7 +129,12 @@ paraphrases and clear implications, but require every materially required action
 or result when the job has multiple parts. PREVIOUS FINAL BEAT is history only:
 it may constrain what is possible, but it cannot satisfy, replace, or excuse any
 action or result explicitly assigned to CURRENT JOB. Every such requirement must
-be visibly accomplished by CANDIDATE BEAT. Do not reject harmless visible detail.
+be visibly accomplished by CANDIDATE BEAT. When CURRENT JOB explicitly assigns
+an action to this beat, CANDIDATE BEAT must show that action being performed or
+completed in this beat. Do not infer the required action only from an aftermath,
+condition, or state that could already have been produced by PREVIOUS FINAL BEAT.
+An aftermath can satisfy an explicitly required result, but it cannot by itself
+satisfy a separately required action. Do not reject harmless visible detail.
 
 B. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as
 authoritative history. Reject only clear contradictions or physical impossibilities,
