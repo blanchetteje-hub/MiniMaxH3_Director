@@ -1,0 +1,8 @@
+{
+  "job_id": "abj-run-tests-temporal-action-ownership-283",
+  "kind": "run_tests",
+  "tests": [
+    "tests.test_forward_beat_validation"
+  ],
+  "timeout_seconds": 1200
+}
