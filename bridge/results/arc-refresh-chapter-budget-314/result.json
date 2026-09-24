@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-chapter-budget-314",
+  "kind": "llama_chat",
+  "started_at": 1790287156.5995896,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "The supplied story/chapter information is the only narrative authority. Follow the requested scope. Return only valid JSON."
+      },
+      {
+        "role": "user",
+        "content": "Create a rough chapter plan for this story.\n\nThere are exactly 8 video beats total.\n\nA chapter is a LARGE continuous story section. Every new chapter causes an H3 refresh, so do not make a new chapter for each sentence or action. Use the fewest natural chapters that organize the story well. A chapter may contain several consecutive story events.\n\nAssign each chapter a beat_count. All beat_count values must sum to 8.\n\nThe story is the only authority. Do not add an ending or event that is not in the story.\n\nReturn only:\n{\"chapters\":[{\"chapter\":1,\"beat_count\":1,\"outline\":\"...\"}]}\n\nSTORY:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-t35o1lqw1dljxz1rn1m9wh",
+    "object": "chat.completion",
+    "created": 1790287156,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"chapters\":[{\"chapter\":1,\"beat_count\":2,\"outline\":\"Amy prepares breakfast for Will and Amber when a zombie bursts through the kitchen door, alerting her to the impending threat.\"},{\"chapter\":2,\"beat_count\":2,\"outline\":\"She quickly leads her children into the basement, secures the entrance, then pulls out a concealed pistol and katana from storage before donning them.\"},{\"chapter\":3,\"beat_count\":4,\"outline\":\"Amy battles waves of undead, methodically dispatching each with brutal precision. After eliminating the final threat and leaving her home drenched in gore, she opens the basement door to reunite with Will and Amber.\"}]}",
+          "reasoning": "We need to create a rough chapter plan for this story with exactly 8 video beats total. Each beat is presumably an event or segment? The story has events: Amy at home cooking breakfast; zombie breaks kitchen door window and she sees danger; rushes kids to basement, locks door; retrieves hidden arsenal (pistol & katana), equips weapons; majority of film kills zombies; kills last zombie, house soaked in blood; lets kids out.\n\nWe need to assign beat_count per chapter. Sum 8 beats across chapters. Use fewest natural chapters that organize story well. Each new chapter causes an H3 refresh, so we want maybe 2-4 chapters? But each chapter has a beat_count number of beats. The sum must be 8. We can decide e.g., Chapter1: 2 beats (cooking breakfast + zombie breaks door). Chapter2: 2 beats (rush kids to basement & lock door). Chapter3: 2 beats (retrieve arsenal, equip weapons). Chapter4: 2 beats (kill zombies majority? maybe split into two beats: kill many zombies; kill last one). Then final beat: let kids out. That would be 5 chapters with beat_counts [2,2,2,2,1] sum=9. Too many.\n\nWe need exactly 8 beats total across all chapters. We can have e.g., Chapter1: 3 beats (cooking breakfast + zombie breaks door + rush to basement). Chapter2: 2 beats (lock door & retrieve arsenal). Chapter3: 2 beats (equip weapons & kill zombies majority). Chapter4: 1 beat (kill last zombie, house soaked in blood and let kids out?). But that might combine two events. We need to keep story events.\n\nLet's list events:\n\nEvent A: Amy cooking breakfast.\nEvent B: Zombie breaks kitchen door window; Amy sees danger.\nEvent C: She rushes her kids to basement.\nEvent D: Locks the door.\nE: Retrieves hidden arsenal (pistol & katana).\nF: Equips weapons.\nG: Majority of film kills zombies (multiple actions, but maybe one beat).\nH: Kills last zombie, house soaked in blood.\nI: Lets kids out.\n\nThat's 9 events. We need to combine some into beats. Beats can be multiple consecutive story events. So we could group e.g., A+B as first beat? But the instruction says \"beat_count\" per chapter; each beat is a video beat total of 8 across all chapters. Each beat likely corresponds to a segment in the film, not necessarily one event.\n\nWe need to assign beats to chapters: each chapter has a beat_count number of beats. The sum must be 8. We can decide e.g., Chapter1: 2 beats (A+B). Chapter2: 2 beats (C+D). Chapter3: 2 beats (E+F). Chapter4: 2 beats (G&H). Chapter5: 0? Actually we need to include I as a beat too. So maybe adjust.\n\nLet's think of grouping:\n\nBeat1: Amy cooking breakfast.\nBeat2: Zombie breaks door, she sees danger.\nBeat3: Rush kids to basement and lock door.\nBeat4: Retrieve arsenal & equip weapons (maybe combine).\nBeat5-7: Killing zombies majority (multiple beats). Could be 3 beats for the action sequence? But we need total 8. So far 4 beats used.\n\nWe have Beat8: Kills last zombie, house soaked in blood and lets kids out. That could be one beat or two beats. We already at 5 beats if combine kill last + let kids out into one beat. Then we still need to account for majority of film kills zombies; maybe that's a single beat? But that would make total 6 beats.\n\nWe need exactly 8 beats across all chapters. So we can split the action sequence into multiple beats: e.g., Beat5: first wave of zombie attacks, Amy kills some. Beat6: second wave, more dismembering. Beat7: final kill of last zombie. Beat8: house soaked in blood and kids out.\n\nThus total 8 beats. Now assign chapters:\n\nChapter1: Beats 1-2 (cooking breakfast + zombie breaks door). beat_count=2.\nChapter2: Beat3 (rush to basement & lock door). beat_count=1? But we need natural grouping; maybe combine with next? Let's see.\n\nWe can have Chapter2: Beat3 only. beat_count=1.\nChapter3: Beat4 (retrieve arsenal & equip weapons). beat_count=1.\nChapter4: Beats5-7 (zombie kills sequence). beat_count=3.\nChapter5: Beat8 (last zombie kill, house soaked in blood, kids out). beat_count=1.\n\nSum = 2+1+1+3+1 = 8. Good.\n\nBut we might want fewer chapters? We have 5 chapters; that's fine. The instruction says \"Use the fewest natural chapters that organize the story well.\" Could we reduce to 4 chapters? Let's try:\n\nChapter1: Beats1-2 (cooking + zombie break). beat_count=2.\nChapter2: Beat3 (rush kids & lock door) and maybe combine with Beat4? But Beat4 is retrieve arsenal. We could combine them into one chapter: beats3-4 = 2 beats. So Chapter2 beat_count=2.\n\nNow we have used 4 beats so far.\n\nRemaining Beats5-8 are action kills + last zombie + kids out. That's 4 beats. Could be a single chapter with beat_count=4. That would give total chapters=3? Actually we had Chapter1, Chapter2, Chapter3. Wait: We need to assign beats:\n\nChapter1: Beat1 & Beat2 (cooking breakfast and zombie break). beat_count=2.\nChapter2: Beat3 & Beat4 (rush kids + lock door; retrieve arsenal & equip weapons). beat_count=2.\nChapter3: Beats5-8 (zombie kills sequence, last kill, house soaked in blood, kids out). beat_count=4.\n\nSum = 2+2+4 = 8. That's only 3 chapters. That seems natural and minimal. Good.\n\nNow we need to output JSON with \"chapters\":[{...}]. Each chapter has fields: \"chapter\": number, \"beat_count\": integer, \"outline\":\"...\" . Outline should describe the beats in that chapter? Provide a rough outline of events for each chapter. Use story events.\n\nLet's craft outlines:\n\nChapter1 (beats 1-2): Amy cooking breakfast; zombie breaks kitchen door window and she sees danger.\nOutline: \"Amy prepares breakfast for Will and Amber when a zombie bursts through the kitchen door, alerting her to the impending threat.\"\n\nChapter2 (beats3-4): She rushes kids to basement & locks door; retrieves hidden arsenal (pistol & katana) and equips weapons.\nOutline: \"She quickly leads her children into the basement, secures the entrance, then pulls out a concealed pistol and katana from storage before donning them.\"\n\nChapter3 (beats5-8): Majority of film kills zombies dismembering/decapitating; she kills last zombie, house soaked in blood; lets kids out.\nOutline: \"Amy battles waves of undead, methodically dispatching each with brutal precision. After eliminating the final threat and leaving her home drenched in gore, she opens the basement door to reunite with Will and Amber.\"\n\nWe need beat_count values accordingly.\n\nReturn JSON:\n\n{\"chapters\":[{...},{...},{...}]}\n\nLet's produce that.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 387,
+      "completion_tokens": 1716,
+      "total_tokens": 2103,
+      "completion_tokens_details": {
+        "reasoning_tokens": 1568
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790287183.657259,
+  "status": "ok"
+}
