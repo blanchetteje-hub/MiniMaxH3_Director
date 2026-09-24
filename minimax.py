@@ -11047,8 +11047,8 @@ Rules:
 - Sparse repeated conflict/process material may use distinct coherent
   source-authorized moments of that same process across the allocated beats,
   but never add a new major plot, character, location, or outcome.
-- required_events form one chain: every event after the first depends_on the
-  immediately preceding event ID.
+- Python owns the deterministic dependency chain between consecutive beats.
+  Do not spend model output on dependency bookkeeping.
 - Every event must include state_effects. Use [] only when that event establishes
   no persistent fact represented by a supported typed operation. Do not omit an
   explicit persistent fact that the event establishes. For example, locking a
@@ -11064,7 +11064,7 @@ Rules:
   the same event text.
 - Clothing must use set_clothing; never set_condition.
 - Return only an events array. Each event contains id, event, beat_number,
-  depends_on, and optional state_effects.
+  and state_effects. Python assigns the deterministic dependency chain.
 - beat_number must cover Beats 1-{int(total_segments)} exactly once. Do not
   create phase numbers, phase ranges, phase summaries, or phase metadata;
   Python owns that deterministic bookkeeping.
@@ -11265,7 +11265,8 @@ Rules:
   event or outcome.
 - Split or regroup only adjacent source actions when needed to fix allocation.
 - Preserve an explicit calm baseline before a sudden inciting threat/change.
-- Every event after the first depends_on the immediately preceding event ID.
+- Do not add depends_on bookkeeping; Python assigns the deterministic
+  dependency chain from global beat order.
 - Every event must include state_effects. Preserve/add every supported persistent
   fact explicitly established by its event; use [] only when there is none.
   state_effects are only persistent facts directly established by their event.
@@ -11426,11 +11427,6 @@ def build_macro_arc_majority_tail_repair_response_format(total_segments):
                                     "maximum": total_segments,
                                 },
                                 "state_effects": _typed_state_effect_json_schema(),
-                                "depends_on": {
-                                    "type": "array",
-                                    "items": {"type": "string", "minLength": 1},
-                                    "uniqueItems": True,
-                                },
                             },
                             "required": [
                                 "id",
@@ -12565,6 +12561,24 @@ def parse_flat_arc_plan(
             + ", ".join(map(str, missing))
             + "."
         )
+
+    # Dependency order is deterministic structural bookkeeping, not an LLM
+    # semantic choice. Ignore any legacy/model-supplied dependency field and
+    # rebuild the exact immediate-predecessor chain from global beat order.
+    for beat_number in range(1, int(total_segments) + 1):
+        event = by_beat[beat_number]
+        event.pop("depends_on", None)
+        if beat_number == 1:
+            event["depends_on"] = []
+        else:
+            previous_id = " ".join(
+                str(by_beat[beat_number - 1].get("id") or "").split()
+            ).strip()
+            if not previous_id:
+                raise ValueError(
+                    f"Macro required event at beat {beat_number - 1} has no ID."
+                )
+            event["depends_on"] = [previous_id]
 
     phases = []
     for beat_number in range(1, int(total_segments) + 1):
