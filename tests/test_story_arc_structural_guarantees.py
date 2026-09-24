@@ -573,10 +573,11 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             ).split()
         )
         self.assertIn("strict majority of 8 beats means at least 5 beats", create_prompt)
-        self.assertIn("at most 3 beats before/outside it", create_prompt)
+        self.assertIn("exactly 3 beats are available before/outside it", create_prompt)
         self.assertIn("Preparation before the sequence does not count", create_prompt)
-        self.assertIn("must therefore begin no later than Beat 4", create_prompt)
-        self.assertIn("first 3 beats by bundling adjacent source actions", create_prompt)
+        self.assertIn("Beat 4 starts the emphasized process itself", create_prompt)
+        self.assertIn("Beats 1-3 must contain ALL source actions", create_prompt)
+        self.assertIn("do not defer pre-sequence setup into Beat 4", create_prompt)
         self.assertIn(
             "combine the terminal action and resolution in the final global beat",
             create_prompt,
@@ -611,7 +612,8 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         )
         self.assertIn("material relational participants and beneficiaries", validation_prompt)
         self.assertIn('"does X for Y" is not fully covered by "does X"', validation_prompt)
-        self.assertIn("do not leave a setup-only beat there", repair_prompt)
+        self.assertIn("Finish ALL pre-sequence setup inside Beats 1-3", repair_prompt)
+        self.assertIn("Do not carry retrieval, equipping, escape, travel", repair_prompt)
         self.assertIn("Every beat from Beat", repair_prompt)
         self.assertIn("Names already present in the rejected ARC are not a source-level cap", repair_prompt)
         self.assertIn("Do not call any earlier instance", repair_prompt)
@@ -619,7 +621,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("may own the source's explicit terminal instance", repair_prompt)
         self.assertIn("materially performs the emphasized process itself", repair_prompt)
         self.assertIn("danger, approach, preparation, retrieval, equipping", repair_prompt)
-        self.assertIn("put that setup at the START of Beat 4", repair_prompt)
+        self.assertIn("Beat 4 begins with the emphasized process itself", repair_prompt)
         self.assertIn("distinct ordinary instances", repair_prompt)
         self.assertIn("explicit terminal action", repair_prompt)
         self.assertIn("so the final beat still counts", repair_prompt)
