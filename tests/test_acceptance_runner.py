@@ -70,6 +70,30 @@ detailed_description: world
         self.assertEqual(env["PYTHONUTF8"], "1")
         self.assertEqual(env["PYTHONIOENCODING"], "utf-8")
 
+    def test_console_echo_replaces_unencodable_host_characters(self):
+        class FakeConsole:
+            encoding = "cp1252"
+
+            def __init__(self):
+                self.value = ""
+
+            def write(self, value):
+                value.encode(self.encoding)
+                self.value += value
+
+            def flush(self):
+                pass
+
+        console = FakeConsole()
+        original = run_acceptance.sys.stdout
+        try:
+            run_acceptance.sys.stdout = console
+            run_acceptance._console_write_utf8_safe("before ‑ after\n")
+        finally:
+            run_acceptance.sys.stdout = original
+
+        self.assertEqual(console.value, "before ? after\n")
+
     def test_planning_only_command_uses_generate_beats(self):
         benchmark = run_acceptance.load_benchmark(
             run_acceptance.DEFAULT_BENCHMARK
