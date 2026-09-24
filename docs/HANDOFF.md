@@ -198,3 +198,29 @@ The next direct probes should focus on:
 2. INVALID/VALID enum output versus boolean output;
 3. concrete chapter-detail preservation when Beat CREATE cannot see `story.txt`;
 4. one more chapter-boundary + 6/2 allocation control on a different neutral story shape, to make sure the logic is generic rather than Amy-specific.
+
+
+### Probe batch 326-335
+
+Queued together on 2026-09-24 to minimize user bridge handoffs:
+
+- 326: story-authority validator using VALID/INVALID enum
+- 327: story-authority validator using explicit boolean decision procedure
+- 328: story-authority validator using issue-first output
+- 329: story-facing beat repair + chapter-outline revision
+- 330: non-Amy chapter-boundary generalization
+- 331: non-Amy fixed-chapter beat allocation
+- 332: concrete-detail preservation when Beat CREATE cannot see STORY
+- 333: chapter-ownership / terminal-event leakage control
+- 334: non-Amy opening-context extraction/sufficiency
+- 335: non-Amy over-split chapter-boundary validator
+
+Early results:
+- 326: PASS — unsupported post-story action => INVALID; clean control => VALID.
+- 327: PASS — boolean contract also rejects the unsupported action.
+- 328: PASS — issue-first contract returns the unsupported action and INVALID.
+- 329: beat repair removed the unsupported new journey, but the revised outline introduced "returns home", which STORY did not state. Outline revision therefore needs the same strict Rule-0 source discipline as beat repair.
+- 333: PASS — current-chapter validator rejects final-resolution/release leakage into the earlier chapter and repairs it back to an unresolved ending.
+- 330/331/332/334/335 were still pending at the last status sweep.
+
+Interpretation so far: the validator does not need a new semantic subsystem. A shorter explicit decision contract fixes the 322 contradiction. Continue favoring the smallest contract that works.
