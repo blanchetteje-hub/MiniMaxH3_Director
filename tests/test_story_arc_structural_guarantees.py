@@ -598,7 +598,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("plural/repeated process", repair_prompt)
         self.assertIn("Never reuse or kill the same instance twice", repair_prompt)
         self.assertIn("Use this allocation procedure exactly", repair_prompt)
-        self.assertIn("MUST materially perform the emphasized", repair_prompt)
+        self.assertIn("Beat 4 begins with the emphasized process itself", repair_prompt)
         validation_prompt = " ".join(
             "\n".join(
                 message["content"]
