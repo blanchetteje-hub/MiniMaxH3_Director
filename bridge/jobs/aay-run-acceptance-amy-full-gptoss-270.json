@@ -1,0 +1,6 @@
+{
+  "job_id": "aay-run-acceptance-amy-full-gptoss-270",
+  "kind": "run_acceptance",
+  "model": "mistral",
+  "timeout_seconds": 3600
+}
