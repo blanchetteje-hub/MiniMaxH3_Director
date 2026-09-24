@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-chapter-scope-matrix-323",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 4200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Beat CREATE knows only the current chapter and opening context. Validation checks current-chapter ownership. Treat each labeled task independently. Return one valid JSON object only."
+    },
+    {
+      "role": "user",
+      "content": "A) CREATE SIX BEATS\n\nOPENING:\nParent and two children are in an ordinary intact kitchen on a normal morning.\n\nCURRENT CHAPTER:\nThe parent completes breakfast for both children. A sudden outside threat breaches the kitchen. The parent gets both children into a secured room and closes the barrier. The parent equips the source-defined gear and spends the rest of this chapter handling repeated incoming threats. The larger situation is still unresolved when this chapter ends.\n\nBEAT BUDGET: exactly 6.\n\nRules:\n- ordinary beginning before danger;\n- children remain secured after being placed there;\n- the final/terminal resolution does NOT happen in this chapter;\n- children are NOT released in this chapter;\n- each beat has a concrete visible endpoint.\n\nB) VALIDATE PREMATURE ENDING\nCandidate beat 6 says: \"Parent resolves the final threat and releases the children.\"\nJudge whether it violates current-chapter ownership.\n\nC) VALIDATE GOOD ENDING\nCandidate beat 6 says: \"Parent finishes one encounter but remains in the active situation, ready for the next immediate threat.\"\nJudge whether this is compatible with the chapter boundary.\n\nD) REPAIR PREMATURE ENDING\nRepair only Beat 6 so it stays inside the current chapter.\n\nReturn exactly:\n{\n \"A\":{\"beats\":[]},\n \"B\":{\"valid\":true,\"issue\":null},\n \"C\":{\"valid\":true,\"issue\":null},\n \"D\":{\"beat\":{\"beat\":6,\"event\":\"...\"}}\n}"
+    }
+  ]
+}
