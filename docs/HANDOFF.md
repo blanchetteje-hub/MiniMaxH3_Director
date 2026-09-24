@@ -1969,3 +1969,24 @@ Focused refinement:
 
 Next: run the structural regression suite and repeat the 275 repair shape with the new explicit instance-count permission. If it returns complete JSON materially assigning the process across 5/8 beats without reusing killed entities, proceed to a fresh full acceptance with developer-log capture.
 
+## GPT-OSS majority repair probe 277: semantics solved; reasoning verbosity is now the blocker
+
+`abe-gptoss-majority-repair-instance-count-277` reached the correct semantic allocation:
+- Beats 1-3 remain outside the emphasized process.
+- Beats 4-8 each materially contain Amy killing/fighting a zombie.
+- Beat 4 bundles weapon setup into the start of the first counted combat beat.
+- Additional ordinary zombie instances are created rather than reusing killed entities.
+- Beat 8 preserves the explicit final zombie and immediate child-release resolution.
+
+However, the request still exhausted `max_tokens=2048`: 1,998 tokens were reasoning, and the final JSON was truncated. The remaining failure is therefore reasoning verbosity rather than task understanding.
+
+LM Studio's GPT-OSS support exposes configurable reasoning effort. Apply the next experiment only to ARC REPAIR so CREATE/VALIDATE behavior remains unchanged.
+
+Focused change:
+- `75072ca30ba10a2aa5cb6b00cb78d39d0102987a` — `ask_llm` can send `reasoning_effort`; full ARC REPAIR and focused ARC majority-tail REPAIR request `reasoning_effort="low"`. ARC CREATE/VALIDATE and BEATS are unchanged.
+- `424e1d94890ed0909b7d06f06a949abcaac38496` — refreshes the stale majority-guidance wording assertion exposed by test job 276.
+
+Job 276's sole failure was the stale assertion text; it did not expose a production behavior failure.
+
+Next: run the structural suite, then a fresh planning acceptance with developer-log capture. Verify in `developer_log.jsonl` that ARC REPAIR is actually formatted as low reasoning and compare repair reasoning-token usage against the prior ~2K/~4K loops before considering any token-budget increase.
+
