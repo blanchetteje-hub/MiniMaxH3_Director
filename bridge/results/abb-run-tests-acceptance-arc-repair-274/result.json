@@ -1,0 +1,23 @@
+{
+  "job_id": "abb-run-tests-acceptance-arc-repair-274",
+  "kind": "run_tests",
+  "started_at": 1790260786.157322,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_acceptance_runner",
+      "tests.test_story_arc_structural_guarantees"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \n",
+    "stderr": ".....................................\n----------------------------------------------------------------------\nRan 37 tests in 0.016s\n\nOK\n",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790260787.0214858,
+    "finished_at": 1790260787.7592533
+  },
+  "finished_at": 1790260787.7592533,
+  "status": "ok"
+}
