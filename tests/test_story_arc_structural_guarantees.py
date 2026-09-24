@@ -308,6 +308,8 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         for prompt in (create_prompt, validate_prompt, repair_prompt):
             self.assertIn("Clothing must use set_clothing", prompt)
             self.assertIn("set_condition", prompt)
+            self.assertIn("set_clothing.entity is the wearer", prompt)
+            self.assertIn("Never put the garment itself in set_clothing.entity", prompt)
 
     def test_arc_prompts_reject_inferred_internal_state_effects(self):
         story = "Amy cooks breakfast for Will and Amber."
