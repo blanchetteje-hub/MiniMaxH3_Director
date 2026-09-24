@@ -2,15 +2,64 @@
 
 This file is the persistent source of truth for current architecture, testing goals, formatting rules, and deferred action items. Update it whenever a project-level decision changes.
 
-## Primary goal
+## Primary goal and development doctrine
 
-The goal is NOT to preserve the current architecture for its own sake.
+The goal is **story.txt -> gold-standard MiniMax H3 prompts**.
 
-The goal is:
+The current architecture is only a means to that end. ARC, BEATS, Director stages,
+continuity layers, validators, canonical state, and Python plumbing are not sacred.
+Keep a layer only while evidence shows that it helps produce better gold prompts.
+If a layer repeatedly creates more complexity or failure modes than value, simplify
+it, merge it, replace it, or remove it entirely.
 
-> Given one story, reliably produce the proper MiniMax H3 prompts needed to render that story well. Proper MiniMax H3 prompts are defined by the gold prompts.
+### Primary decision hierarchy
 
-Anything may change if evidence shows it is necessary, including:
+1. **Optimize for the gold prompts, not for preserving the pipeline.**
+   The question is always whether the current design gets from the source story to
+   the desired H3 prompts reliably.
+
+2. **Assume the local 20B-class model is comparatively dumb.**
+   Keep its prompts short, concrete, explicit, and low-ambiguity. Prefer a small
+   numbered procedure or one clear rule over several paragraphs of abstract
+   explanation. If the model spends thousands of reasoning tokens circling a
+   simple constraint, first suspect prompt/architecture complexity rather than
+   assuming it needs more instructions or more completion tokens.
+
+3. **Prefer removing complexity over teaching the model more complexity.**
+   Shorten prompts, reduce responsibilities, remove unnecessary abstractions, or
+   move genuinely deterministic work into Python before adding another semantic
+   rule or pipeline stage.
+
+4. **Fix the earliest demonstrated failure in the current pipeline, unless that
+   failure is evidence that the pipeline itself is the problem.**
+   Do not blindly patch ARC forever merely because ARC comes first. Repeated
+   failures, increasingly elaborate repairs, or a layer that does not materially
+   improve the final H3 prompts are evidence to reconsider that layer.
+
+5. **Architecture changes are allowed when evidence supports them.**
+   KISS means avoid speculative redesign, not preserve the current design at all
+   costs. If story-arc generation proves unnecessary or harmful, remove it. The
+   same applies to BEATS, Director stages, continuity machinery, validators, or
+   any other intermediate representation.
+
+6. **Fix observed failures, not hypothetical ones.**
+   Every semantic change should trace back to a real acceptance failure,
+   developer-log failure, reproducible probe, or gold-prompt mismatch.
+
+7. **Use the developer log to distinguish failure classes.**
+   Determine whether a problem is semantic misunderstanding, reasoning-loop
+   verbosity, token truncation, sampling behavior, formatter/transport behavior,
+   or architecture before deciding on a fix.
+
+8. **Python owns deterministic structure; the LLM owns semantics only where useful.**
+   Counts, ordering, schemas, dependency chains, and data-integrity checks belong
+   in Python. Do not turn Python into a pile of arbitrary English-semantic
+   heuristics merely to compensate for model behavior.
+
+### What may change
+
+Anything may change if evidence shows it improves the path from story.txt to the
+gold prompts, including:
 
 - story format;
 - story arc generation;
@@ -18,12 +67,12 @@ Anything may change if evidence shows it is necessary, including:
 - beat generation;
 - Director structure;
 - continuity handling;
+- validators;
 - prompt formatting;
+- canonical-state representation;
 - Python plumbing.
 
 KISS remains the default, but not at the expense of a real architectural correction.
-
-When altering prompts, remember you are writing prompts for a 24b LLM. These are MUCH dumber than you, so keep directions simple.
 
 ## Working development loop
 
