@@ -504,6 +504,13 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             prompt,
         )
 
+    def test_director_prompt_preserves_locked_containment_handoff(self):
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(segment_seconds=8)
+        self.assertIn("CONTAINMENT HANDOFF", prompt)
+        self.assertIn("remaining inside/behind that barrier", prompt)
+        self.assertIn("Do not re-co-locate a contained subject", prompt)
+        self.assertIn("must not appear beside an outside character", prompt)
+
     def test_validation_prompt_checks_scope_creep_into_exact_next_beat(self):
         messages = minimax.build_director_continuity_validation_messages(
             opening_state={},
