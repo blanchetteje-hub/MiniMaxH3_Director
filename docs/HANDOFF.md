@@ -2026,3 +2026,20 @@ Focused refinement:
 
 Because GPT-OSS-20B is fast enough, batch several bad/valid grammar probes per iteration rather than serializing one example at a time. The next batch should cover multiple verbs/domains to ensure the rule is generic rather than zombie-specific.
 
+## GPT-OSS temporal action ownership batch 283-288: live probes clean
+
+Live probe matrix after `cf21a5e01e745b3e20cf09158c9c81ffbcfc3dec`:
+- bad zombie completed-state grammar: correctly INVALID
+- explicit zombie kill control: correctly VALID
+- bad door completed-state grammar: correctly INVALID
+- explicit door-opening control: correctly VALID
+- bad generator completed-state grammar: correctly INVALID
+- explicit shutdown control: correctly VALID
+
+This demonstrates the TEMPORAL ACTION OWNERSHIP rule generalizes across different action domains and is not zombie-specific.
+
+The focused unit-test job returned nonzero only because one assertion searched for a sentence that is line-wrapped in the prompt; production behavior and live probes were correct.
+- `7f53c47b7286954b3053a10aa4658db115e89f65` — relaxes that wording assertion without weakening the production rule.
+
+Next: rerun the focused validator unit test and launch a fresh full GPT-OSS acceptance with developer-log capture. Inspect the earliest semantic failure across ARC, Beats, Director Request 1, Request 2, continuity state, and final H3 prompt rather than stopping at process return code.
+
