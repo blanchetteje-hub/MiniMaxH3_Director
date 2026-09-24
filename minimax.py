@@ -9800,7 +9800,12 @@ paraphrases and clear implications, but require every materially required action
 or result when the job has multiple parts. PREVIOUS FINAL BEAT is history only:
 it may constrain what is possible, but it cannot satisfy, replace, or excuse any
 action or result explicitly assigned to CURRENT JOB. Every such requirement must
-be visibly accomplished by CANDIDATE BEAT. A prerequisite, approach, or partial
+be visibly accomplished by CANDIDATE BEAT. When CURRENT JOB explicitly assigns
+an action to this beat, CANDIDATE BEAT must show that action being performed or
+completed in this beat. Do not infer the required action only from an aftermath,
+condition, or state that could already have been produced by PREVIOUS FINAL BEAT.
+An aftermath can satisfy an explicitly required result, but it cannot by itself
+satisfy a separately required action. A prerequisite, approach, or partial
 progress is NOT completion of a later required result: if CURRENT JOB requires
 A then B, doing only A is invalid. Entering a room does not imply locking its
 door; reaching a door does not imply opening it; retrieving a weapon does not
