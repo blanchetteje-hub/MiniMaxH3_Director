@@ -1,0 +1,23 @@
+{
+  "job_id": "aci-run-tests-gpt-formatter-beneficiary-309",
+  "kind": "run_tests",
+  "started_at": 1790282645.0602427,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_gpt_formatter",
+      "tests.test_story_arc_structural_guarantees"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \nDEBUG CAMERA BEAT: None\nDEBUG CAMERA REQUIRED: None\nDEBUG CAMERA BEAT: None\nDEBUG CAMERA REQUIRED: None\nDEBUG CAMERA BEAT: None\nDEBUG CAMERA REQUIRED: None\nDEBUG CAMERA BEAT: None\nDEBUG CAMERA REQUIRED: None\n",
+    "stderr": "...............................\n----------------------------------------------------------------------\nRan 31 tests in 0.021s\n\nOK\n",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790282645.8541396,
+    "finished_at": 1790282646.4432466
+  },
+  "finished_at": 1790282646.4442475,
+  "status": "ok"
+}
