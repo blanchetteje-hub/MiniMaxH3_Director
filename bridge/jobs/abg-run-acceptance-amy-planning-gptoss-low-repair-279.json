@@ -1,0 +1,7 @@
+{
+  "job_id": "abg-run-acceptance-amy-planning-gptoss-low-repair-279",
+  "kind": "run_acceptance",
+  "model": "mistral",
+  "planning_only": true,
+  "timeout_seconds": 3600
+}
