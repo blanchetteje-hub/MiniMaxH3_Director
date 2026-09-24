@@ -1938,3 +1938,20 @@ Focused fix:
 
 Next: run focused structural + bridge tests, then a targeted GPT-OSS majority-repair probe using the 270 shape. Only after that succeeds should a fresh acceptance be launched, and that acceptance should include `developer_log.jsonl` so reasoning/token behavior can be inspected directly.
 
+## GPT-OSS follow-up 272/273: bridge log works; acceptance runner crash + repair ownership refinement
+
+Results:
+- `aaz-run-tests-gptoss-majority-repair-272`: **PASS, 31/31 tests green**.
+- `aba-gptoss-majority-repair-repeated-process-273`: the new repeated-process permission materially improved GPT-OSS reasoning, but the 2048-token probe still ended with `finish_reason=length` after 1908 reasoning tokens. More importantly, its proposed solution tried to count beats where zombies merely attack Amy as if those beats satisfied the emphasized process "Amy killing/fighting zombies." That is the next prompt ambiguity.
+- `aba-run-acceptance-amy-full-gptoss-273`: developer-log capture succeeded and produced `files/developer_log.jsonl`. The run itself failed before ARC validation because the Windows acceptance runner decoded child stdout as UTF-8 correctly but then echoed U+2011 through a CP1252 console and raised `UnicodeEncodeError`.
+
+The developer log also confirms the production GPT-OSS chat template currently reports `Reasoning: medium`. ARC CREATE reasoned incorrectly that Beats 4-8 formed the required 5-beat emphasized sequence even though Beats 4-5 were only arsenal retrieval/equipping. Leave CREATE under the normal CREATE→VALIDATE→REPAIR architecture for now; the validator is expected to reject that allocation.
+
+Focused fixes:
+- `80127ba6fb73bc77132d6cc6b98b5808a040520b` — acceptance runner now sanitizes console echo to the host encoding with replacement while preserving the full UTF-8 `run.log`.
+- `d07956ed5b04f1b2268c0d0fb27bd7080b2877a0` — regression coverage for CP1252-safe console echo.
+- `727526f078088e8be7d78a17e1a0baedca35cadb` — ARC REPAIR majority guidance now says a counted beat must materially perform the emphasized process itself; merely showing an attacker/danger/preparation/prerequisite does not count. Adjacent setup may be bundled into a counted process beat when source order permits.
+- `30f3dfcbd34a0ac8e54cc4cac36adc8ef4a15f3b` — regression coverage for the stricter majority action-ownership rule.
+
+Next: run focused acceptance/ARC tests and re-probe the exact 270/273 majority-repair shape at 2048 tokens. If the probe returns complete valid JSON without the attack-only counting error, launch a fresh full acceptance with developer-log capture.
+
