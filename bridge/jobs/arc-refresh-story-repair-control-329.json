@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-story-repair-control-329",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 2200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "STORY is the only authority. Rough chapter text may be wrong. Repair candidate beats to STORY and revise the chapter outline accordingly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nA character completes the final task and reunites with the waiting family. The story ends at the reunion.\n\nROUGH CHAPTER:\nThe character completes the final task, reunites with the family, and then begins a new journey.\n\nCANDIDATE BEATS:\n1. Character completes the final task.\n2. Character reunites with the family and begins a new journey.\n\nRepair to exactly two beats and revise the chapter outline. Remove anything unsupported by STORY.\n\nReturn exactly:\n{\"beats\":[{\"beat\":1,\"event\":\"...\"},{\"beat\":2,\"event\":\"...\"}],\"chapter_outline\":\"...\"}"
+    }
+  ]
+}
