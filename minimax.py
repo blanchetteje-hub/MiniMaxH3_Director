@@ -11627,6 +11627,47 @@ def _validate_macro_arc_structure(normalized_phases, total_segments):
         )
 
     ordered_events = [assignments[beat_number] for beat_number in range(1, int(total_segments) + 1)]
+
+    # Typed effect entity names are canonical identities. Reject impossible or
+    # redundant terminal threat transitions for the same exact entity before
+    # any prose-level semantic validation.
+    terminal_threats = {}
+    for event in ordered_events:
+        for effect in event.get("state_effects", []) or []:
+            if effect.get("op") != "set_threat_state":
+                continue
+            entity = str(effect.get("entity") or "").strip()
+            value = str(effect.get("value") or "").strip()
+            key = entity.casefold()
+            previous = terminal_threats.get(key)
+            if previous is not None:
+                previous_value = previous["value"]
+                impossible_reactivation = (
+                    previous_value in {"dead", "removed", "cleared"}
+                    and value == "active"
+                )
+                repeated_terminal = (
+                    value == previous_value
+                    and value in {"dead", "removed", "cleared"}
+                )
+                after_absence = (
+                    previous_value in {"removed", "cleared"}
+                    and value in {"dead", "removed", "cleared", "incapacitated"}
+                )
+                if impossible_reactivation or repeated_terminal or after_absence:
+                    raise ValueError(
+                        f"Macro required event {event['id']} at beat "
+                        f"{event['beat_number']} gives threat entity {entity!r} "
+                        f"state {value!r} after terminal state "
+                        f"{previous_value!r} at beat {previous['beat_number']}. "
+                        "Use a distinct threat entity for a distinct later threat."
+                    )
+            if value in {"dead", "removed", "cleared"}:
+                terminal_threats[key] = {
+                    "value": value,
+                    "beat_number": event["beat_number"],
+                }
+
     for index, event in enumerate(ordered_events):
         dependencies = {
             dependency.casefold()
