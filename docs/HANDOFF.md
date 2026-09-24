@@ -1859,3 +1859,24 @@ A generic prompt refinement fixed the ownership miss without zombie-specific wor
 - `aad-run-tests-gptoss-current-action-249`: **PASS, 105/105 tests green**.
 
 `aae-run-acceptance-amy-planning-gptoss-250` is the active GPT-OSS Amy ARC→BEATS planning baseline using the existing Mistral/shared formatter path. Inspect the accepted ARC/state_effects first, then the earliest semantic beat mismatch. Do not add a GPT-specific formatter unless this run exposes a concrete response-shape incompatibility.
+
+
+## GPT-OSS planning 250: deterministic ARC dependency churn and Windows pipe crash fixed
+
+`aae-run-acceptance-amy-planning-gptoss-250` timed out after 3600s, but exposed two concrete infrastructure failures before model-quality tuning:
+- Full ARC REPAIR repeatedly returned semantically plausible event lists while omitting `depends_on`, causing structural rejection loops such as “event B2 must depend on B1.” With exactly one ARC event per global beat, this chain is deterministic and should never have been model-owned.
+- On Windows, Beat 7 validation later crashed/restarted the planning process because stdout inherited a legacy charmap encoding and could not encode a model-produced non-breaking hyphen (U+2011).
+
+KISS fix: ARC dependency bookkeeping is now Python-owned.
+- `fc6355633c588212a2bf3231449e9816db24492a` began moving fresh flat ARC dependency assignment into `parse_flat_arc_plan`.
+- `2465a21c9c6d865bcc916f1705a9362c413efebb` finished removing `depends_on` from fresh flat ARC model output and from focused tail-repair model output; Python reconstructs/preserves the immediate-predecessor chain.
+- `c50f474c45e4c81f7d2b621f43dc965ae641a5ab` keeps legacy/direct tail-repair callers compatible by accepting but ignoring supplied dependency metadata.
+- `3e9606cc69ccf576b1e4c2a9c905d72dbdc671b5`, `8a28ab55d65f3747e0d4aa7e6ebf7bafc25e0973` lock the structural contract in tests.
+
+Windows acceptance UTF-8 hardening:
+- `43a99dcab913fd651eb03f085f8266acfbdd1e33` sets `PYTHONUTF8=1` and `PYTHONIOENCODING=utf-8` for MiniMax acceptance children.
+- `7bb8841eb80276276d29a66c920d04c477e02a52` adds regression coverage.
+
+After two test-only correction iterations, `aah-run-tests-python-deps-utf8-253`: **PASS, 105/105 tests green**.
+
+`aai-run-acceptance-amy-planning-gptoss-254` is the active fresh GPT-OSS planning verification. Run 250 also exposed a real semantic concern: an eventually accepted ARC carried `set_clothing` with the clothing item as `entity` rather than the wearer, and reused terminal zombie state too broadly across continuing waves. Jobs 255/256 are queued as a bad/valid ARC-validator pair to isolate clothing-state ownership after run 254 finishes. Do not tune token caps until the earliest remaining semantic failure is established.
