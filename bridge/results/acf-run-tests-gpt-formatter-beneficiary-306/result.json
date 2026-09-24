@@ -1,0 +1,24 @@
+{
+  "job_id": "acf-run-tests-gpt-formatter-beneficiary-306",
+  "kind": "run_tests",
+  "started_at": 1790282607.5025003,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_gpt_formatter",
+      "tests.test_story_arc_structural_guarantees"
+    ],
+    "returncode": 1,
+    "stdout": "Added States: \nDEBUG CAMERA BEAT: None\nDEBUG CAMERA REQUIRED: None\nDEBUG CAMERA BEAT: None\nDEBUG CAMERA REQUIRED: None\n",
+    "stderr": ".F.............................\n======================================================================\nFAIL: test_gpt_formatter_preserves_copied_baseline_behavior (tests.test_gpt_formatter.GPTFormatterTests.test_gpt_formatter_preserves_copied_baseline_behavior)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\test_gpt_formatter.py\", line 31, in test_gpt_formatter_preserves_copied_baseline_behavior\n    self.assertEqual(formatter.validate_prompt(formatted, context), [])\nAssertionError: Lists differ: ['HARD_TIMESTAMP_FORMAT: After the opening[152 chars]n>.'] != []\n\nFirst list contains 1 additional elements.\nFirst extra element 0:\n'HARD_TIMESTAMP_FORMAT: After the opening composition, EVERY SINGLE ACTION, CAMERA MOVEMENT, OR VISIBLE CHANGE MUST BE TIMESTAMPED on its own line using the format: At 00:01.000 seconds, <action>.'\n\n+ []\n- ['HARD_TIMESTAMP_FORMAT: After the opening composition, EVERY SINGLE ACTION, '\n-  'CAMERA MOVEMENT, OR VISIBLE CHANGE MUST BE TIMESTAMPED on its own line using '\n-  'the format: At 00:01.000 seconds, <action>.']\n\n----------------------------------------------------------------------\nRan 31 tests in 0.023s\n\nFAILED (failures=1)\n",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790282608.4099712,
+    "finished_at": 1790282609.4218848
+  },
+  "local_process_failed": true,
+  "finished_at": 1790282609.4218848,
+  "status": "ok"
+}
