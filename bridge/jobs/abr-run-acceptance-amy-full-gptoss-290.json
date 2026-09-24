@@ -1,0 +1,6 @@
+{
+  "job_id": "abr-run-acceptance-amy-full-gptoss-290",
+  "kind": "run_acceptance",
+  "model": "mistral",
+  "timeout_seconds": 3600
+}
