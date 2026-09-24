@@ -128,16 +128,73 @@ Completed on `gpt-arc-refresh`:
 
 - architecture-reset branch created;
 - `docs/PROJECT_NOTES.md` rewritten around the chapter-first approach;
-- inherited old-branch acceptance/debug chronology intentionally removed from this handoff.
+- inherited old-branch acceptance/debug chronology removed from this handoff;
+- no production planner/runtime code has been replaced yet.
 
-No production planner/runtime implementation has been changed yet for the chapter-first design.
+### Chapter-first probe findings
 
-The immediate task is to use direct bridge probes to discover the smallest effective contracts for:
+The first probe batch established several useful contracts.
 
-1. story -> chapter split;
-2. source-faithful chapter validation;
-3. chapter-only beat creation;
-4. story-facing beat validation/repair;
-5. minimum opening context needed by a later enclosed chapter.
+**Chapter boundary selection**
+- Probe 317 still over-split when chapter selection and beat allocation were combined.
+- Probe 318 separated **chapter boundaries** from beat allocation.
+- Boundary-only creation produced exactly two broad chapters:
+  1. ordinary opening -> breach -> children secured -> equipment -> main repeated conflict;
+  2. explicit final/terminal resolution -> children released/reunited.
+- This matches the Amy gold mode pattern: Beats 1-6 in Chapter 1, Beats 7-8 in Chapter 2.
+- Conclusion: choose chapter boundaries before asking for beat counts.
 
-Do not add production architecture until the probes provide evidence.
+**Beat allocation**
+- Probe 318's first allocator wording produced the wrong 3/5 split despite correct boundaries.
+- Probe 319 isolated allocation and explicitly preserved the source's "majority of the story" emphasis.
+- All allocation variants returned **6/2**, and 6/2 validated cleanly.
+- Conclusion: fixed chapters -> narrow allocation call; do not make the boundary call also solve integer beat allocation.
+
+**One-beat chapter completion**
+- Probe 315 showed that an explicit one-beat budget constrains Beat CREATE, but its weak prompt stopped at an intermediate breakfast result.
+- Probe 320's concise whole-chapter-completion rule produced a correct one-beat endpoint: breakfast completed and served to both children.
+- Its bad control was rejected, good control accepted, and repair produced the same completed endpoint.
+- Conclusion: Beat CREATE gets an explicit beat budget and each beat set must complete the chapter responsibilities assigned to that budget.
+
+**Opening context**
+- Gold Beat 7 remains the baseline for the immediate refresh opening.
+- Probe 321 extracted the minimum context needed for the **whole later chapter**, including one fact not present in the gold Beat-7 opening description: the children are behind the closed steel safe-room door down the hallway.
+- Without that fact, context sufficiency correctly failed; adding it passed.
+- Probe 324 confirmed the distinction:
+  - gold-like context alone is sufficient for the first refresh beat;
+  - the enclosed two-beat chapter needs the child-location/containment fact to plan Beat 2 without inventing spatial state.
+- Conclusion: opening context should cover the whole enclosed chapter, not merely the first rendered frame, while still remaining minimal.
+
+**Chapter scope**
+- Probe 323 correctly rejected a Beat 6 that prematurely performed the terminal resolution/released the children and accepted an unresolved chapter-ending control.
+- Its CREATE subtest invented unspecified equipment because the abstract test chapter said only "source-defined gear."
+- Conclusion: Beat CREATE truly has no story access, so the current chapter must carry concrete source details that matter inside that chapter; vague placeholders are insufficient.
+
+**Story authority validator**
+- Probe 322 exposed the next real failure. Its reasoning explicitly noticed that "the family leaves the building" was absent from STORY, but its final validation JSON incorrectly said `valid: true`.
+- The repair/revised-outline portions correctly removed the invented ending.
+- Conclusion: the story-facing validator output contract needs one more focused probe before implementation. Test a shorter INVALID/VALID enum contract or an explicit "unsupported action => INVALID" final-decision rule.
+
+### Current likely decomposition
+
+Evidence currently supports this starting architecture:
+
+1. STORY -> CHAPTER BOUNDARIES CREATE
+2. STORY + boundaries -> CHAPTER BOUNDARIES VALIDATE/REPAIR if needed
+3. STORY + fixed chapters + total segment budget -> BEAT-COUNT ALLOCATION
+4. CURRENT CHAPTER + minimal opening context + exact beat budget -> BEATS CREATE
+5. STORY + CURRENT CHAPTER + candidate beats -> BEATS VALIDATE
+6. STORY + CURRENT CHAPTER + candidate beats + issue -> BEATS REPAIR
+7. accepted prior state + CURRENT CHAPTER -> minimal chapter opening context for the next chapter
+8. accepted beats -> downstream H3 scene/prompt generation
+
+This is still provisional. Do not implement until the story-authority validator contract is verified.
+
+### Next bridge target
+
+The next direct probes should focus on:
+
+1. story-authority validation where the candidate adds an event present only in a rough chapter draft;
+2. INVALID/VALID enum output versus boolean output;
+3. concrete chapter-detail preservation when Beat CREATE cannot see `story.txt`;
+4. one more chapter-boundary + 6/2 allocation control on a different neutral story shape, to make sure the logic is generic rather than Amy-specific.
