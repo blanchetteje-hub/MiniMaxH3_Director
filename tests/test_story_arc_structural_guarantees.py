@@ -601,7 +601,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("MUST materially perform the emphasized", repair_prompt)
         self.assertIn("do not leave a setup-only beat there", repair_prompt)
         self.assertIn("Every beat from Beat", repair_prompt)
-        self.assertIn("names already present in the rejected ARC are not a source-level cap", repair_prompt)
+        self.assertIn("Names already present in the rejected ARC are not a source-level cap", repair_prompt)
         self.assertIn("Do not call any earlier instance", repair_prompt)
         self.assertIn("only Beat", repair_prompt)
         self.assertIn("may own the source's explicit terminal instance", repair_prompt)
