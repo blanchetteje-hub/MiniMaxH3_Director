@@ -2043,3 +2043,18 @@ The focused unit-test job returned nonzero only because one assertion searched f
 
 Next: rerun the focused validator unit test and launch a fresh full GPT-OSS acceptance with developer-log capture. Inspect the earliest semantic failure across ARC, Beats, Director Request 1, Request 2, continuity state, and final H3 prompt rather than stopping at process return code.
 
+## Full acceptance 290: earliest failure is Director containment corruption at Segment 3
+
+`abr-run-acceptance-amy-full-gptoss-290` completed all eight segments and the Beat 8 temporal-action defect did not recur. The first accepted semantic failure occurs earlier in Director Request 1:
+
+Segment 3 correctly stages Will and Amber being taken into the basement and the basement barrier being locked. However, its END CONTINUITY STATE then says Amy, Will, and Amber are all standing together in the basement. That collapses the newly established containment boundary. Segment 4 consequently begins with Will and Amber standing beside Amy holding pancakes, despite canonical state requiring them to remain in the locked basement until Beat 8. The same false co-location propagates through Segments 5-7.
+
+This is a Director persistent-state handoff failure, not an ARC/BEATS architecture problem and not justification for a new continuity subsystem.
+
+Focused fix:
+- `9c0523da90aa95cf37eb95528e550260335566bb` — adds a generic CONTAINMENT HANDOFF rule to Director Request 1: subjects placed behind a newly locked/sealed barrier remain there through later micro-beats and END CONTINUITY unless CURRENT BEAT explicitly releases/moves them; subjects already behind a locked barrier in OPENING CONTINUITY cannot reappear beside outside characters or receive unrelated staging.
+- `8bd9f324b8e93c993712756bd02397c46cede636` — regression coverage for the Director containment rule.
+- `8d10b4ae4fd1f028ba1812dfdfba5a9ea1ef1d9c` — fixes the remaining line-wrap-sensitive temporal validator assertion from job 289; the live 283-288 matrix had already proven production behavior.
+
+Next: batch focused unit tests with two direct GPT-OSS Director probes: (1) the containment-establishing beat must end with the children still behind the locked barrier while Amy can continue outside; (2) a following combat beat must not reintroduce the contained children. If both are clean, launch another full acceptance and inspect the earliest remaining Director/output mismatch.
+
