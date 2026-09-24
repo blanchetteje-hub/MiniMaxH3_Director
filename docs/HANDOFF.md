@@ -2096,3 +2096,18 @@ Job 296's only reported failure was a stale wording assertion expecting the old 
 
 Next: run the focused structural regression and one terminal-label bad/good control pair, then launch a fresh full acceptance. No further token-budget experiments are needed unless full acceptance shows a new truncation mode.
 
+
+
+## GPT-OSS terminal-label verification 300-302
+
+Results after the compact ARC majority-allocation procedure:
+- `abz-run-tests-arc-terminal-label-300`: production behavior was not implicated; the only reported failure was stale regression wording still expecting the old phrase `must begin no later than Beat 4`.
+- `aca-gptoss-terminal-label-bad-301`: PASS — correctly rejected an ARC where Beat 7 called its zombie `final` while Beat 8 still owned the source's last-zombie kill + child release.
+- `acb-gptoss-terminal-label-good-302`: PASS — accepted the corrected control where Beat 7 kills an ordinary zombie and only Beat 8 owns the last-zombie label/action.
+
+Interpretation: the terminal-label ownership refinement works in direct GPT-OSS controls. There is no new observed production semantic failure yet. The next meaningful check is a fresh full acceptance; do not add more ARC rules unless that run exposes a concrete failure.
+
+Maintenance-only commit:
+- `b242765e14ca89d549f2c02974d223df0a2ad8e7` — refreshes the stale majority-repair regression assertions to the current compact procedure wording. No production semantic code changed.
+
+Next: rerun the focused ARC structural regression, then launch a fresh full GPT-OSS acceptance with developer-log capture and inspect the earliest semantic mismatch across ARC -> BEATS -> Director Request 1 -> Request 2 -> continuity -> final H3 prompt. Follow the PROJECT_NOTES primary decision hierarchy: optimize for gold prompts, keep the 20B model's instructions short/concrete, prefer simplification, and reconsider pipeline layers if repeated failures show the layer itself is the problem.
