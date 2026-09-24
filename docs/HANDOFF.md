@@ -1840,3 +1840,22 @@ Immediate re-baseline order:
 2. ARC/Beat planning acceptance on Amy.
 3. Director Segment-1 completion behavior.
 4. Only then decide whether GPT-OSS needs model-specific formatter or sampling changes.
+
+
+## GPT-OSS baseline: validator action-ownership rule strengthened
+
+Fresh GPT-OSS-20B probes on the Linux machine established the first model-specific baseline issue:
+- `aaa-gptoss-validator-current-job-243` exhausted a 512-token reasoning budget before emitting JSON.
+- Re-run `aaa-gptoss-validator-current-job-246` with 1024 tokens completed but **incorrectly accepted** a candidate that showed the blood-soaked aftermath and released the children without showing the CURRENT JOB's separately assigned "kill the last zombie" action.
+- `aac-gptoss-validator-next-job-245` correctly rejected an intermediate beat that killed every remaining zombie and therefore exhausted the NEXT JOB.
+- The valid CURRENT JOB control also passed.
+
+A generic prompt refinement fixed the ownership miss without zombie-specific wording: when CURRENT JOB explicitly assigns an action to this beat, the candidate must show that action being performed/completed in this beat; aftermath/state evidence that could already come from previous history cannot substitute for the separately required action.
+- Probe `aab-gptoss-validator-current-job-tight-247`: correctly INVALID.
+- Control `aac-gptoss-validator-current-job-tight-valid-248`: correctly VALID.
+- `552897ea72f8ab436a3b66e4115a530d24400ba3` — production validator rule.
+- `5d2f59fe1a26310a63c91eb58d38da23e790cef5` — benchmark prompt alignment.
+- `4693626c364128f5a0f639af9dacb36b959518c7` — regression coverage.
+- `aad-run-tests-gptoss-current-action-249`: **PASS, 105/105 tests green**.
+
+`aae-run-acceptance-amy-planning-gptoss-250` is the active GPT-OSS Amy ARC→BEATS planning baseline using the existing Mistral/shared formatter path. Inspect the accepted ARC/state_effects first, then the earliest semantic beat mismatch. Do not add a GPT-specific formatter unless this run exposes a concrete response-shape incompatibility.
