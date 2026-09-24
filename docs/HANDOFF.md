@@ -1990,3 +1990,24 @@ Job 276's sole failure was the stale assertion text; it did not expose a product
 
 Next: run the structural suite, then a fresh planning acceptance with developer-log capture. Verify in `developer_log.jsonl` that ARC REPAIR is actually formatted as low reasoning and compare repair reasoning-token usage against the prior ~2K/~4K loops before considering any token-budget increase.
 
+## Planning acceptance 279: ARC converged; low-reasoning transport ineffective; Beat 8 aftermath validator miss
+
+`abf-run-tests-low-reasoning-arc-repair-278`: **PASS, 37/37**.
+
+`abg-run-acceptance-amy-planning-gptoss-low-repair-279`: **completed successfully** through ARC and all eight finalized beats. ARC REPAIR converged after two repairs to a valid 5/8 combat allocation:
+- Beat 3 bundles basement containment + weapon retrieval/equipping.
+- Beats 4-7 kill distinct zombies 1-4.
+- Beat 8 is assigned the last zombie (zombie5), blood-soaked house, and release of Will/Amber into the kitchen.
+
+The developer log shows the attempted `reasoning_effort="low"` parameter did **not** change GPT-OSS chat formatting: ARC REPAIR still shows `Reasoning: medium`. LM Studio documents GPT-OSS reasoning effort on its OpenAI-compatible `/v1/responses` endpoint as `reasoning: {"effort":"low"}`; this pipeline currently uses `/v1/chat/completions`. Do not retain the ineffective request parameter or infer that low reasoning was tested successfully.
+
+The earliest remaining semantic defect is Beat 8 validation. The finalized candidate was:
+`With the last zombie slain and the house drenched in crimson, Amy opens the basement hatch, allowing Will and Amber to ascend into the kitchen.`
+CURRENT JOB explicitly assigns Amy to slay the last zombie in this beat. The candidate presents the kill only as an already-completed state ("with the last zombie slain"), yet GPT-OSS validator accepted it as satisfying the current action. This reproduces the prior current-job ownership class in a grammatical form despite the existing aftermath rule.
+
+Focused fix:
+- `e5b8229753b01c4f3309da18956872d9a986dd74` — removes ineffective `reasoning_effort` chat-completions plumbing and strengthens the existing single-beat validator generically: completed-state constructions such as "with X done/slain" or "after X was completed" describe X as already true and do not show an action assigned to the current beat occurring, unless the candidate also depicts the action that makes X true.
+- `7a53173774b9ec8f40eda1293192d691177add68` — regression coverage for the completed-state grammar rule.
+
+Next: run focused validator tests and a direct GPT-OSS bad/valid control pair for this exact grammar. If the bad case is rejected and explicit-action control accepted, run a fresh full acceptance (not planning-only) with developer-log capture and inspect the earliest Director/output mismatch.
+
