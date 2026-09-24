@@ -89,6 +89,13 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             ],
             [1, 2, 3],
         )
+        self.assertEqual(
+            [
+                phase["required_events"][0]["depends_on"]
+                for phase in parsed["phases"]
+            ],
+            [[], ["E1"], ["E2"]],
+        )
 
     def test_flat_arc_parser_rejects_duplicate_or_missing_beat_jobs(self):
         duplicate = [
@@ -120,6 +127,11 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             ["items"]["required"]
         )
         self.assertIn("state_effects", required)
+        event_properties = (
+            schema["json_schema"]["schema"]["properties"]["events"]
+            ["items"]["properties"]
+        )
+        self.assertNotIn("depends_on", event_properties)
 
     def test_arc_create_and_repair_keep_phase_arithmetic_out_of_the_llm(self):
         story = "Amy cooks breakfast. Then Amy opens the door."
@@ -154,6 +166,8 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             repair_prompt,
         )
         self.assertIn("natural visible endpoint", repair_prompt)
+        self.assertIn("Python owns the deterministic dependency chain", create_prompt)
+        self.assertIn("Python assigns the deterministic dependency chain", repair_prompt)
         self.assertIn('"events":[', repair_prompt)
         schema = minimax.build_flat_arc_response_format(3)
         events_schema = schema["json_schema"]["schema"]["properties"]["events"]
