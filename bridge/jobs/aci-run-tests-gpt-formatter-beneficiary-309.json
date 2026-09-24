@@ -1,0 +1,9 @@
+{
+  "job_id": "aci-run-tests-gpt-formatter-beneficiary-309",
+  "kind": "run_tests",
+  "tests": [
+    "tests.test_gpt_formatter",
+    "tests.test_story_arc_structural_guarantees"
+  ],
+  "timeout_seconds": 1200
+}
