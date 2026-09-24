@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-source-validator-enum-326",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "STORY is the only authority. Any material candidate action absent from STORY makes the candidate INVALID. Rough outlines cannot authorize extra events. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nA parent finishes the final task, opens the secured room, and reunites with two children. The story ends at the reunion.\n\nROUGH OUTLINE:\nThe parent finishes the final task, reunites with the children, then everyone begins another activity.\n\nEvaluate independently.\n\nA:\n1. Parent finishes the final task.\n2. Parent opens the secured room, reunites with the children, then everyone begins another activity.\n\nB:\n1. Parent finishes the final task.\n2. Parent opens the secured room and reunites with the children.\n\nReturn exactly:\n{\"A\":{\"validity\":\"VALID\",\"issue\":null},\"B\":{\"validity\":\"VALID\",\"issue\":null}}\n\nIf a candidate contains an action absent from STORY, output INVALID for that candidate."
+    }
+  ]
+}
