@@ -1,0 +1,57 @@
+{
+  "job_id": "abm-gptoss-temporal-bad-door-285",
+  "kind": "llama_chat",
+  "started_at": 1790261996.7299707,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate beat against CURRENT JOB. Return exactly one JSON object {\"valid\": boolean, \"issue\": string}.\n\nTEMPORAL ACTION OWNERSHIP: If CURRENT JOB assigns action X to THIS beat, require the candidate to narrate X as an event that happens now. Grammar that merely presupposes X is already complete is INVALID evidence for X. Examples include \"with X done\", \"with X slain\", \"after X was completed\", \"once X was finished\", or equivalent completed-state wording. Reject even when the completed state matches the desired result and later CURRENT JOB parts are shown correctly. Accept only if the candidate also narrates the causative action itself in this beat."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nThe operator reaches the sealed chamber.\n\nCURRENT STATE\nThe primary blast door is closed.\n\nCURRENT JOB\nThe operator opens the primary blast door and enters the chamber.\n\nCANDIDATE BEAT\nWith the primary blast door open, the operator walks into the chamber."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-uay2zzl5vblf4hk85aelqi",
+    "object": "chat.completion",
+    "created": 1790261996,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\":\"The beat presumes the blast door is already open (“With the primary blast door open”) instead of narrating the act of opening it in this beat; it also only mentions walking into the chamber and omits the opening action.\"}",
+          "reasoning": "We need to validate candidate beat against current job: \"The operator opens the primary blast door and enters the chamber.\" The beat says: \"With the primary blast door open, the operator walks into the chamber.\"\n\nTemporal action ownership rule: If CURRENT JOB assigns action X to THIS beat, require the candidate to narrate X as an event that happens now. Grammar that merely presupposes X is already complete is INVALID evidence for X.\n\nSo job has two actions: opens the primary blast door and enters the chamber. The beat must include both? It says \"The operator opens the primary blast door and enters the chamber.\" So we need to narrate opening as an event happening now, not just presupposed open state. Candidate beat uses \"With the primary blast door open\" which presupposes it's already open; no mention of opening action. Also only mentions walking into chamber (entering). It doesn't include opening action.\n\nThus invalid: missing opening action and presupposing it is done. So valid false, issue string explaining that opening not narrated as event now.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 271,
+      "completion_tokens": 280,
+      "total_tokens": 551,
+      "completion_tokens_details": {
+        "reasoning_tokens": 215
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790262001.8322449,
+  "status": "ok"
+}
