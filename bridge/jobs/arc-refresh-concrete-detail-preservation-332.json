@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-concrete-detail-preservation-332",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 2200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Beat CREATE knows only the current chapter and opening context. Preserve concrete named details exactly and do not add substitutes. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "OPENING:\nMara stands in an entryway with empty hands.\n\nCURRENT CHAPTER:\nMara opens the closet, takes the red backpack and the flashlight, puts on the red backpack, and carries the flashlight into the hallway. No other carried item belongs to this chapter.\n\nBEAT BUDGET: exactly 2.\n\nA) Create exactly two beats.\nB) Validate this candidate: \"Mara takes a red backpack, flashlight, helmet, and shield.\"\nC) Repair the candidate using only chapter facts.\n\nReturn exactly:\n{\"A\":{\"beats\":[{\"beat\":1,\"event\":\"...\"},{\"beat\":2,\"event\":\"...\"}]},\"B\":{\"valid\":true,\"issue\":null},\"C\":{\"beats\":[{\"beat\":1,\"event\":\"...\"},{\"beat\":2,\"event\":\"...\"}]}}"
+    }
+  ]
+}
