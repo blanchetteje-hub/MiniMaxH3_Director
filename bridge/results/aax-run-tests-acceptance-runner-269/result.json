@@ -1,0 +1,22 @@
+{
+  "job_id": "aax-run-tests-acceptance-runner-269",
+  "kind": "run_tests",
+  "started_at": 1790256564.4950035,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_acceptance_runner"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ".......\n----------------------------------------------------------------------\nRan 7 tests in 0.011s\n\nOK\n",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790256565.2711487,
+    "finished_at": 1790256565.4034543
+  },
+  "finished_at": 1790256565.4034543,
+  "status": "ok"
+}
