@@ -1,0 +1,20 @@
+{
+  "job_id": "aap-gptoss-arc-repair-production-shape-261",
+  "kind": "llama_chat",
+  "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Repair the rejected story arc required-event list. Fix only the listed issue without changing unrelated source meaning. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE REQUIREMENT\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nTOTAL BEATS\n8\n\nVALIDATOR ISSUE\nThe emphasized zombie-killing sequence is materially represented in only 4/8 beats; more than half is required.\n\nCURRENT ARC\n{\"events\":[{\"id\":\"beat1\",\"event\":\"Amy cooks breakfast at home wearing a tight black tank top and denim jeans.\",\"beat_number\":1,\"state_effects\":[{\"op\":\"set_clothing\",\"entity\":\"Amy\",\"slot\":\"upper\",\"item\":\"tight black tank top\",\"damage\":\"none\"},{\"op\":\"set_clothing\",\"entity\":\"Amy\",\"slot\":\"lower\",\"item\":\"denim jeans\",\"damage\":\"none\"}]},{\"id\":\"beat2\",\"event\":\"A zombie breaks the kitchen door window; Amy sees danger.\",\"beat_number\":2,\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie1\",\"value\":\"active\"}]},{\"id\":\"beat3\",\"event\":\"Amy rushes Will and Amber to the basement, gets them inside, locks the basement door, retrieves her pistol and katana, and equips them as zombies attack.\",\"beat_number\":3,\"state_effects\":[{\"op\":\"set_location\",\"entity\":\"Will\",\"value\":\"basement\"},{\"op\":\"set_location\",\"entity\":\"Amber\",\"value\":\"basement\"},{\"op\":\"set_barrier_state\",\"entity\":\"basement door\",\"value\":\"locked\"},{\"op\":\"set_item_state\",\"entity\":\"pistol\",\"owner\":\"Amy\",\"value\":\"equipped\"},{\"op\":\"set_item_state\",\"entity\":\"katana\",\"owner\":\"Amy\",\"value\":\"equipped\"}]},{\"id\":\"beat4\",\"event\":\"Amy kills the first attacking zombie.\",\"beat_number\":4,\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie1\",\"value\":\"dead\"}]},{\"id\":\"beat5\",\"event\":\"Amy kills another attacking zombie.\",\"beat_number\":5,\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie2\",\"value\":\"dead\"}]},{\"id\":\"beat6\",\"event\":\"Amy kills another attacking zombie.\",\"beat_number\":6,\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie3\",\"value\":\"dead\"}]},{\"id\":\"beat7\",\"event\":\"Amy kills another attacking zombie.\",\"beat_number\":7,\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie4\",\"value\":\"dead\"}]},{\"id\":\"beat8\",\"event\":\"Amy leaves the house blood soaked and lets Will and Amber out of the basement.\",\"beat_number\":8,\"state_effects\":[{\"op\":\"set_condition\",\"entity\":\"house\",\"value\":\"blood soaked\"},{\"op\":\"set_location\",\"entity\":\"Will\",\"value\":\"home\"},{\"op\":\"set_location\",\"entity\":\"Amber\",\"value\":\"home\"}]}]}\n\nREPAIR RULES\n- At least 5/8 beats must materially belong to the emphasized zombie-killing/fighting sequence.\n- Keep breakfast, breach, children secured, weapons equipped, final blood-soaked outcome, and children released.\n- Regroup only adjacent source actions.\n- Preserve persistent state effects unless event meaning moves the fact to an adjacent beat.\n- Use a distinct threat entity after a prior threat is dead.\n- Keep exactly eight events with the same IDs and beat numbers.\n- Return one JSON object with only an events array. Do not explain."
+    }
+  ],
+  "stream": false,
+  "temperature": 0,
+  "max_tokens": 2048,
+  "seed": 42,
+  "repeat_penalty": 1.15
+}
