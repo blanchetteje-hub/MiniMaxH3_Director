@@ -604,7 +604,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("END of the terminal counted process beat", repair_prompt)
         self.assertIn("materially performs the emphasized process itself", repair_prompt)
         self.assertIn("merely showing an attacker", repair_prompt)
-        self.assertIn("Bundle necessary adjacent setup", repair_prompt)
+        self.assertIn("bundle the remaining adjacent setup", repair_prompt)
         self.assertIn("distinct persistent threat entities", repair_prompt)
         self.assertIn("explicit last/final instance", repair_prompt)
         self.assertIn("combine both in the final global beat", repair_prompt)
