@@ -1,0 +1,57 @@
+{
+  "job_id": "abu-gptoss-director-containment-followup-293",
+  "kind": "llama_chat",
+  "started_at": 1790263564.8187644,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a minimalist movie editor expanding CURRENT BEAT into timed micro-beats for one 8-second segment. Return only timed micro-beats plus one END CONTINUITY STATE sentence.\n\nAUTHORITY:\n- CURRENT BEAT is the complete story-level work for this segment.\n- OPENING CONTINUITY is authoritative.\n- Do not perform NEXT BEAT.\n- CONTAINMENT HANDOFF: If CURRENT BEAT places a subject inside a room/container and then locks, seals, or closes the barrier around that subject, preserve that subject as remaining inside/behind that barrier in all later micro-beats and in END CONTINUITY unless CURRENT BEAT explicitly releases or moves them again. Do not re-co-locate a contained subject beside another character merely because they were together earlier.\n- If OPENING CONTINUITY already places a subject behind a locked/sealed barrier, that subject must not appear beside an outside character, receive unrelated props, or participate in later staging unless CURRENT BEAT explicitly opens/releases the barrier and moves that subject.\n- Do not invent consequential persistent changes not authorized by CURRENT BEAT.\n- END CONTINUITY must be nearly identical to the final micro-beat and limited to one sentence."
+      },
+      {
+        "role": "user",
+        "content": "OPENING CONTINUITY\nWill and Amber remain inside the locked basement. Amy is in the kitchen holding a pistol and katana.\n\nCURRENT BEAT\nAmy shoots the first zombie in the kitchen and watches it collapse dead.\n\nNEXT BEAT\nAmy equips her weapons and kills the second zombie.\n\nGenerate the 8-second RAW SCENE and END CONTINUITY STATE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-64zwx1q8dkxvjazt5hqmi",
+    "object": "chat.completion",
+    "created": 1790263564,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "[0.00‑1.20] Amy pulls the trigger on her pistol, aiming straight at the zombie in the kitchen.  \n[1.21‑2.40] The gunshot rings out; the bullet strikes the zombie’s head.  \n[2.41‑3.60] The zombie collapses to the floor, dead and motionless.  \n[3.61‑5.00] Amy watches the body fall, eyes wide with shock.  \n[5.01‑6.40] She checks her pistol for a spare round, pulling out an empty shell.  \n[6.41‑8.00] Holding her katana ready, she scans the kitchen, prepared for the next threat.\n\nEND CONTINUITY STATE: Amy remains in the kitchen holding her pistol and katana with the zombie dead on the floor; Will and Amber stay inside the locked basement.",
+          "reasoning": "We need to expand CURRENT BEAT into timed micro-beats for one 8-second segment. The beat: Amy shoots first zombie in kitchen, watches it collapse dead. We have opening continuity: Will & Amber inside locked basement; Amy in kitchen holding pistol and katana.\n\nSo we produce micro beats with timestamps (0-8 seconds). Each micro-beat describes action. Then END CONTINUITY STATE sentence summarizing final state.\n\nWe must preserve that Will/Amber remain inside locked basement, not appear elsewhere. Amy remains in kitchen after shooting zombie? She watches collapse; maybe she stays there. The zombie collapsed dead in kitchen. So at end: Amy still in kitchen holding pistol and katana (maybe with bullet shell). Zombie dead on floor. Will & Amber inside locked basement.\n\nWe need to produce micro-beats like:\n\n0.00-1.50 Amy pulls trigger, shoots zombie.\n1.51-2.80 Sound of gunshot echoes; zombie collapses.\n2.81-4.20 Amy watches the body fall.\n4.21-5.60 She checks pistol for ammo? maybe not needed.\n5.61-7.00 She picks up katana or keeps it ready.\n7.01-8.00 She looks around, ready.\n\nBut micro-beats should be timed and minimal. 8 seconds total. Let's create about 6 micro beats each ~1.3 sec.\n\nWe need to include the opening continuity: Will & Amber inside locked basement; Amy in kitchen holding pistol and katana. So at start of segment, we can mention that.\n\nMicro beat 0-1.2: Amy pulls trigger from pistol, shoots zombie.\n1.2-2.4: Gunshot sound, bullet hits zombie head.\n2.4-3.6: Zombie collapses to floor dead.\n3.6-5.0: Amy watches body fall, eyes wide.\n5.0-6.4: She checks pistol for ammo (maybe she pulls out a shell).\n6.4-8.0: She holds katana ready, looks around kitchen.\n\nWe need to ensure Will & Amber remain inside locked basement; no mention of them in micro beats. So final continuity: Amy remains in kitchen holding pistol and katana with zombie dead on floor; Will & Amber still inside locked basement.\n\nLet's produce micro-beats with timestamps like [0.00-1.20] etc.\n\nAlso we need to include \"END CONTINUITY STATE\" sentence at end, summarizing state.\n\nMake sure each micro beat is a short line: timestamp and action.\n\nOk let's craft final answer.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 389,
+      "completion_tokens": 723,
+      "total_tokens": 1112,
+      "completion_tokens_details": {
+        "reasoning_tokens": 533
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790263577.5581107,
+  "status": "ok"
+}
