@@ -1923,3 +1923,18 @@ The bridge now captures LM Studio's model-level developer stream for every `run_
 
 Because the bridge worker is a long-running process launched from the user's normal checkout, the user must pull the updated `gpt-test-branch` bridge script and restart the bridge once before new acceptance jobs can emit these artifacts.
 
+## GPT-OSS acceptance 270: ARC majority repair reasoning loop
+
+`aay-run-acceptance-amy-full-gptoss-270` timed out in ARC REPAIR. The accepted pre-repair ARC materially represented the explicit majority zombie-killing process in only 3/8 beats. Full ARC REPAIR then repeatedly exhausted the available `max_tokens=4155` before returning usable JSON.
+
+The developer-style sample supplied from the same failure shows the completion was dominated by reasoning: 4,155 completion tokens with 3,878 reasoning tokens. GPT-OSS repeatedly reasoned that only three individually enumerated zombies existed, even though the source describes a plural/repeated zombie-killing process and requires that process to occupy a majority of the film. It eventually reached the correct interpretation—ordinary additional attackers are implied by the source-level repeated process—but only after extensive looping.
+
+This is a prompt-contract ambiguity inside the existing ARC REPAIR loop, not justification for a new semantic subsystem or a larger token budget.
+
+Focused fix:
+- `7c0e68a6334b5d2ee2cfae9d9b47da2b327ee07f` — when fixing an explicit majority allocation, ARC REPAIR now states that a source-authorized plural/repeated process may use additional ordinary instances of that same process when the source does not individually enumerate enough instances. Distinct persistent threat entities are required for distinct instances, and any explicit last/final instance remains terminal.
+- `c984e95bd882a3d6619514683c3d160480197ff8` — regression coverage for the new majority-repair guidance.
+- `b03562e4bde12671b46c69a5e51669aefb61369e` — fixes the developer-log bridge test to be path-separator neutral on Windows; job 271's only failure was this test assertion, not production log capture logic.
+
+Next: run focused structural + bridge tests, then a targeted GPT-OSS majority-repair probe using the 270 shape. Only after that succeeds should a fresh acceptance be launched, and that acceptance should include `developer_log.jsonl` so reasoning/token behavior can be inspected directly.
+
