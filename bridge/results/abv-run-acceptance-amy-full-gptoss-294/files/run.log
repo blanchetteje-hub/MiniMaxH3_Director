@@ -1,0 +1,1520 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-06d58rna\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-06d58rna\repo\beats.txt); regenerating the beat plan.
+Asking LM Studio to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-06d58rna\repo\beats.txt with 8 creative story beats.
+
+=== Macro arc generation attempt 1/10 ===
+Requesting macro arc (attempt 1, response attempt 1/10).
+{'events': [{'id': 'beat1', 'event': 'Amy cooks breakfast at home wearing a tight black tank top and denim jeans.', 'beat_number': 1, 'state_effects': [{'op': 'set_clothing', 'entity': 'Amy', 'slot': 'upper', 'item': 'tight black tank top', 'damage': 'none'}, {'op': 'set_clothing', 'entity': 'Amy', 'slot': 'lower', 'item': 'denim jeans', 'damage': 'none'}]}, {'id': 'beat2', 'event': 'A zombie breaks the kitchen door window, Amy sees danger.', 'beat_number': 2, 'state_effects': [{'op': 'set_barrier_state', 'entity': 'kitchen door window', 'value': 'broken'}, {'op': 'set_threat_state', 'entity': 'zombie', 'value': 'active'}]}, {'id': 'beat3', 'event': 'Amy rushes Will and Amber to the basement, gets them inside, and locks the basement door.', 'beat_number': 3, 'state_effects': [{'op': 'set_containment', 'entity': 'Will', 'container': 'basement', 'value': 'contained'}, {'op': 'set_containment', 'entity': 'Amber', 'container': 'basement', 'value': 'contained'}, {'op': 'set_barrier_state', 'entity': 'basement door', 'value': 'locked'}]}, {'id': 'beat4', 'event': 'Amy retrieves her hidden arsenal consisting of a pistol and a katana.', 'beat_number': 4, 'state_effects': [{'op': 'set_item_state', 'entity': 'pistol', 'owner': 'Amy', 'value': 'held'}, {'op': 'set_item_state', 'entity': 'katana', 'owner': 'Amy', 'value': 'held'}]}, {'id': 'beat5', 'event': 'She equips the pistol and katana.', 'beat_number': 5, 'state_effects': [{'op': 'set_item_state', 'entity': 'pistol', 'owner': 'Amy', 'value': 'equipped'}, {'op': 'set_item_state', 'entity': 'katana', 'owner': 'Amy', 'value': 'equipped'}]}, {'id': 'beat6', 'event': 'Amy kills several zombies as they attack her.', 'beat_number': 6, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombie', 'value': 'dead'}]}, {'id': 'beat7', 'event': 'She kills the last zombie, and the house becomes soaked in blood.', 'beat_number': 7, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombie', 'value': 'dead'}, {'op': 'set_condition', 'entity': 'house', 'value': 'blood-soaked'}]}, {'id': 'beat8', 'event': 'Amy lets Will and Amber out of the basement.', 'beat_number': 8, 'state_effects': [{'op': 'set_containment', 'entity': 'Will', 'container': 'home', 'value': 'contained'}, {'op': 'set_containment', 'entity': 'Amber', 'container': 'home', 'value': 'contained'}]}]}
+LM Studio returned an invalid macro arc; requesting a corrected arc: Macro required event beat7 at beat 7 gives threat entity 'zombie' state 'dead' after terminal state 'dead' at beat 6. Use a distinct threat entity for a distinct later threat.
+Requesting macro arc (attempt 1, response attempt 2/10).
+{'events': [{'id': 'beat1', 'event': 'Amy cooks breakfast for Will and Amber in the kitchen wearing a tight black tank top and denim jeans.', 'beat_number': 1, 'state_effects': [{'op': 'set_location', 'entity': 'Amy', 'value': 'kitchen'}, {'op': 'set_clothing', 'entity': 'Amy', 'slot': 'upper', 'item': 'tight black tank top', 'damage': 'none'}, {'op': 'set_clothing', 'entity': 'Amy', 'slot': 'lower', 'item': 'denim jeans', 'damage': 'none'}]}, {'id': 'beat2', 'event': 'A zombie breaks the kitchen door window, creating a breach.', 'beat_number': 2, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombie1', 'value': 'active'}, {'op': 'set_object_state', 'entity': 'kitchen door window', 'value': 'damaged'}]}, {'id': 'beat3', 'event': 'Amy rushes Will and Amber to the basement, locks the kitchen door, retrieves her hidden pistol and katana, and equips them.', 'beat_number': 3, 'state_effects': [{'op': 'set_location', 'entity': 'Will', 'value': 'basement'}, {'op': 'set_location', 'entity': 'Amber', 'value': 'basement'}, {'op': 'set_barrier_state', 'entity': 'kitchen door', 'value': 'locked'}, {'op': 'set_item_state', 'entity': 'pistol', 'owner': 'Amy', 'value': 'equipped'}, {'op': 'set_item_state', 'entity': 'katana', 'owner': 'Amy', 'value': 'equipped'}]}, {'id': 'beat4', 'event': 'Amy kills the first zombie that attacks her.', 'beat_number': 4, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombie1', 'value': 'dead'}]}, {'id': 'beat5', 'event': 'Amy dismembers a second zombie as it tries to attack her.', 'beat_number': 5, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombie2', 'value': 'dead'}]}, {'id': 'beat6', 'event': 'Amy decapitates a third zombie during the assault.', 'beat_number': 6, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombie3', 'value': 'dead'}]}, {'id': 'beat7', 'event': 'A fourth zombie is killed by Amy amid the chaos.', 'beat_number': 7, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombie4', 'value': 'dead'}]}, {'id': 'beat8', 'event': 'Amy kills the last zombie, leaving her house soaked in blood, and lets Will and Amber out of the basement.', 'beat_number': 8, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombie5', 'value': 'dead'}, {'op': 'set_condition', 'entity': 'house', 'value': 'blood-soaked'}, {'op': 'set_location', 'entity': 'Will', 'value': 'kitchen'}, {'op': 'set_location', 'entity': 'Amber', 'value': 'kitchen'}]}]}
+Validating macro arc (attempt 1, response attempt 1/10).
+Macro arc validation: VALID
+Saved validated story arc to C:\Users\J\AppData\Local\Temp\minimax-acceptance-06d58rna\repo\story_arc.json.
+Generating macro phase 1 (1 beats, global beats 1-1 of 8).
+Requesting beats for phase 1 (attempt 1/10).
+Accepted macro phase 1; collected 1/8 beats.
+Generating macro phase 2 (1 beats, global beats 2-2 of 8).
+Requesting beats for phase 2 (attempt 1/10).
+Accepted macro phase 2; collected 2/8 beats.
+Generating macro phase 3 (1 beats, global beats 3-3 of 8).
+Requesting beats for phase 3 (attempt 1/10).
+Accepted macro phase 3; collected 3/8 beats.
+Generating macro phase 4 (1 beats, global beats 4-4 of 8).
+Requesting beats for phase 4 (attempt 1/10).
+Accepted macro phase 4; collected 4/8 beats.
+Generating macro phase 5 (1 beats, global beats 5-5 of 8).
+Requesting beats for phase 5 (attempt 1/10).
+Accepted macro phase 5; collected 5/8 beats.
+Generating macro phase 6 (1 beats, global beats 6-6 of 8).
+Requesting beats for phase 6 (attempt 1/10).
+Accepted macro phase 6; collected 6/8 beats.
+Generating macro phase 7 (1 beats, global beats 7-7 of 8).
+Requesting beats for phase 7 (attempt 1/10).
+Accepted macro phase 7; collected 7/8 beats.
+Generating macro phase 8 (1 beats, global beats 8-8 of 8).
+Requesting beats for phase 8 (attempt 1/10).
+Accepted macro phase 8; collected 8/8 beats.
+Beat 1 jobs: current=beat1 - Amy cooks breakfast for Will and Amber in the kitchen wearing a tight black tank top and denim jeans.; next=beat2 - A zombie breaks the kitchen door window, creating a breach.; completed before=none; pending before=beat1, beat2, beat3, beat4, beat5, beat6, beat7, beat8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Required event beat1 applied persistent state: set_location = {"op": "set_location", "entity": "Amy", "value": "kitchen"}
+Required event beat1 applied persistent state: set_clothing = {"op": "set_clothing", "entity": "Amy", "slot": "upper", "item": "tight black tank top", "damage": "none"}
+Required event beat1 applied persistent state: set_clothing = {"op": "set_clothing", "entity": "Amy", "slot": "lower", "item": "denim jeans", "damage": "none"}
+Beat 1 accepted and finalized; committed required events: beat1; completed after=beat1
+Beat 2 jobs: current=beat2 - A zombie breaks the kitchen door window, creating a breach.; next=beat3 - Amy rushes Will and Amber to the basement, locks the kitchen door, retrieves her hidden pistol and katana, and equips them.; completed before=beat1; pending before=beat2, beat3, beat4, beat5, beat6, beat7, beat8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Required event beat2 applied persistent state: set_threat_state = {"op": "set_threat_state", "entity": "zombie1", "value": "active"}
+Required event beat2 applied persistent state: set_object_state = {"op": "set_object_state", "entity": "kitchen door window", "value": "damaged"}
+Beat 2 accepted and finalized; committed required events: beat2; completed after=beat1, beat2
+Beat 3 jobs: current=beat3 - Amy rushes Will and Amber to the basement, locks the kitchen door, retrieves her hidden pistol and katana, and equips them.; next=beat4 - Amy kills the first zombie that attacks her.; completed before=beat1, beat2; pending before=beat3, beat4, beat5, beat6, beat7, beat8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: INVALID; issue: Kitchen door is only slammed shut, not explicitly locked
+Validating Beat 3 (attempt 2/10) with the single beat validator.
+Beat 3 validation attempt 2/10: VALID; issue: none
+Required event beat3 applied persistent state: set_location = {"op": "set_location", "entity": "Will", "value": "basement"}
+Required event beat3 applied persistent state: set_location = {"op": "set_location", "entity": "Amber", "value": "basement"}
+Required event beat3 applied persistent state: set_barrier_state = {"op": "set_barrier_state", "entity": "kitchen door", "value": "locked"}
+Required event beat3 applied persistent state: set_item_state = {"op": "set_item_state", "entity": "pistol", "owner": "Amy", "value": "equipped"}
+Required event beat3 applied persistent state: set_item_state = {"op": "set_item_state", "entity": "katana", "owner": "Amy", "value": "equipped"}
+Beat 3 accepted and finalized; committed required events: beat3; completed after=beat1, beat2, beat3
+Beat 4 jobs: current=beat4 - Amy kills the first zombie that attacks her.; next=beat5 - Amy dismembers a second zombie as it tries to attack her.; completed before=beat1, beat2, beat3; pending before=beat4, beat5, beat6, beat7, beat8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: INVALID; issue: Zombie can’t lunge at Amy while the kitchen door remains locked; the beat doesn’t show the door being opened or broken.
+Validating Beat 4 (attempt 2/10) with the single beat validator.
+Beat 4 validation attempt 2/10: VALID; issue: none
+Required event beat4 applied persistent state: set_threat_state = {"op": "set_threat_state", "entity": "zombie1", "value": "dead"}
+Beat 4 accepted and finalized; committed required events: beat4; completed after=beat1, beat2, beat3, beat4
+Beat 5 jobs: current=beat5 - Amy dismembers a second zombie as it tries to attack her.; next=beat6 - Amy decapitates a third zombie during the assault.; completed before=beat1, beat2, beat3, beat4; pending before=beat5, beat6, beat7, beat8
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+Beat 5 validation attempt 1/10: INVALID; issue: The beat shows dismembering but does not indicate that the second zombie was attempting to attack Amy as required by the current job.
+Validating Beat 5 (attempt 2/10) with the single beat validator.
+Beat 5 validation attempt 2/10: VALID; issue: none
+Required event beat5 applied persistent state: set_threat_state = {"op": "set_threat_state", "entity": "zombie2", "value": "dead"}
+Beat 5 accepted and finalized; committed required events: beat5; completed after=beat1, beat2, beat3, beat4, beat5
+Beat 6 jobs: current=beat6 - Amy decapitates a third zombie during the assault.; next=beat7 - A fourth zombie is killed by Amy amid the chaos.; completed before=beat1, beat2, beat3, beat4, beat5; pending before=beat6, beat7, beat8
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+Beat 6 validation attempt 1/10: VALID; issue: none
+Required event beat6 applied persistent state: set_threat_state = {"op": "set_threat_state", "entity": "zombie3", "value": "dead"}
+Beat 6 accepted and finalized; committed required events: beat6; completed after=beat1, beat2, beat3, beat4, beat5, beat6
+Beat 7 jobs: current=beat7 - A fourth zombie is killed by Amy amid the chaos.; next=beat8 - Amy kills the last zombie, leaving her house soaked in blood, and lets Will and Amber out of the basement.; completed before=beat1, beat2, beat3, beat4, beat5, beat6; pending before=beat7, beat8
+Validating Beat 7 (attempt 1/10) with the single beat validator.
+Beat 7 validation attempt 1/10: VALID; issue: none
+Required event beat7 applied persistent state: set_threat_state = {"op": "set_threat_state", "entity": "zombie4", "value": "dead"}
+Beat 7 accepted and finalized; committed required events: beat7; completed after=beat1, beat2, beat3, beat4, beat5, beat6, beat7
+Beat 8 jobs: current=beat8 - Amy kills the last zombie, leaving her house soaked in blood, and lets Will and Amber out of the basement.; next=none; completed before=beat1, beat2, beat3, beat4, beat5, beat6, beat7; pending before=beat8
+Validating Beat 8 (attempt 1/10) with the single beat validator.
+Beat 8 validation attempt 1/10: INVALID; issue: Will and Amber remain in the basement after opening the door—her beat does not show them moving into the house (kitchen), so the typed effect setting their location to kitchen isn’t supported.
+Validating Beat 8 (attempt 2/10) with the single beat validator.
+Beat 8 validation attempt 2/10: VALID; issue: none
+Required event beat8 applied persistent state: set_threat_state = {"op": "set_threat_state", "entity": "zombie5", "value": "dead"}
+Required event beat8 applied persistent state: set_condition = {"op": "set_condition", "entity": "house", "value": "blood-soaked"}
+Required event beat8 applied persistent state: set_location = {"op": "set_location", "entity": "Will", "value": "kitchen"}
+Required event beat8 applied persistent state: set_location = {"op": "set_location", "entity": "Amber", "value": "kitchen"}
+Beat 8 accepted and finalized; committed required events: beat8; completed after=beat1, beat2, beat3, beat4, beat5, beat6, beat7, beat8
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   64 seconds
+Total segments:       8
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            mistral
+Global LoRAs:         0
+Auto refresh:         every 7 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          8
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+WARNING: Image 0.png for reference slot 2 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 3 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 4 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 5 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 6 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/8 (8 seconds)
+================================================================
+Estimated LLM input context: 4078/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:00.000, Amy flips a pancake on the skillet in the kitchen, wearing her tight black tank top and denim jeans.
+
+At 00:01.200, she lifts the pancake and places it on a plate labeled "Will" on the counter.
+
+At 00:01.800, Amy sets the skillet down on the stove.
+
+At 00:03.000, she flips another pancake onto a plate labeled "Amber".
+
+At 00:04.500, Amy places both plates on the kitchen table in front of Will and Amber.
+
+At 00:06.000, Will grabs his plate and takes a bite, while Amber picks up hers.
+
+End continuity state: Amy stands in the kitchen wearing a tight black tank top and denim jeans, with two plates of pancakes for Will and Amber on the table.
+================================================================
+[H3] Canonical wardrobe reconciliation for 'Amy': 'her tight black tank top and denim jeans, with two plates of pancakes for Will and Amber on the table' -> 'black tank top and denim jeans'.
+[H3] Canonical wardrobe reconciliation for 'Amy': 'her tight black tank top and denim jeans' -> 'black tank top and denim jeans'.
+Combined continuity requested for segment 1 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 1: Amy cooks breakfast in the kitchen, plating pancakes for Will and Amber while wearing her tight black tank top and denim jeans.
+Next required after this prompt:
+  Beat 2: A zombie shatters the kitchen door window, creating a breach.
+================================================================
+
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 1
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.
+<Subject 2> is Will, a 10-year-old boy.
+<Subject 3> is Amber, a 14-year-old girl.
+
+detailed_description: [Shot 1] 00:00.000: Amy flips a pancake on the skillet in the kitchen, wearing black tank top and denim jeans. 00:01.200: She lifts the pancake and places it on a plate labeled "Will" on the counter. 00:01.800: Amy sets the skillet down on the stove. 00:03.000: She flips another pancake onto a plate labeled "Amber". 00:04.500: Amy places both plates on the kitchen table in front of Will and Amber. 00:06.000: Will grabs his plate and takes a bite, while Amber picks up hers. Amy stands in the kitchen wearing black tank top and denim jeans.
+
+overall_soundscape: Skillet sizzling, plate clink
+
+non_diegetic_music: soft piano
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 1
+
+ComfyUI render skipped for segment 1; continuing with prompt-derived continuity only.
+Added States: 
+CONTINUITY RAW RESPONSE - PARSE FAILURE:
+{'location': 'kitchen', 'persistent_state': 'plates of pancakes on table'}
+CONTINUITY PARSE ERROR: SCHEMA ERROR: location, persistent_state
+[Continuity] returned unusable JSON; retrying: SCHEMA ERROR: location, persistent_state
+CONTINUITY RAW RESPONSE - PARSE FAILURE:
+{'location': 'kitchen', 'persistent_state': 'two plates of pancakes on kitchen table'}
+CONTINUITY PARSE ERROR: SCHEMA ERROR: location, persistent_state
+[Continuity] returned unusable JSON; retrying: SCHEMA ERROR: location, persistent_state
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "kitchen",
+    "persistent_state": "plates of pancakes on table"
+  },
+  "camera": "N/A",
+  "ongoing_action": "N/A",
+  "ongoing_audio": "Skillet sizzling, plate clink",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "kitchen",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "tight black tank top",
+        "lower": "denim jeans",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "kitchen",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "kitchen",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 1; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+In the kitchen, plates of pancakes sit on the table. A skillet sizzles and a plate clinks. Amy stands wearing a black tank top and denim jeans. Will stands. Amber stands.
+================================================================
+Segment 1 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 1 completed Beat 1.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 1.
+Completed prompt generation for segment 1; no ComfyUI request was sent.
+Starting phase 2 at segment 2; retaining dynamically created Subjects from earlier phases.
+
+================================================================
+SEGMENT 2/8 (8 seconds)
+================================================================
+Estimated LLM input context: 4054/4500 tokens (recent exact segments: 0)
+Segment 2 Director continuity source: prompt
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 2
+================================================================
+At 00:00.000, Amy stands in the kitchen wearing a black tank top and denim jeans; Will stands beside her; Amber stands nearby. Plates of pancakes sit on the table; a skillet sizzles; a plate clinks.
+
+At 00:01.200, zombie1 bursts through the kitchen door window, its fist smashing against the glass.
+
+At 00:01.800, the glass shatters, pieces fly outward, creating a breach in the window.
+
+At 00:02.500, broken glass scatters on the floor; the window is now damaged.
+
+At 00:04.000, zombie1 stands in front of the shattered kitchen door window, breathing heavily.
+
+At 00:06.500, Amy, Will, and Amber remain standing beside the broken window as the skillet continues to sizzle.
+
+End continuity state: In the kitchen, Amy stands wearing a black tank top and denim jeans; Will stands; Amber stands; plates of pancakes sit on the table; a skillet sizzles; a plate clinks; the kitchen door window is shattered with glass fragments on the floor; zombie1 is standing in front of the broken window.
+================================================================
+Director Request 2 timestamp validation failed (attempt 1/10); re-prompting the LLM: RAW SCENE timestamps and detailed_description timestamps do not correspond: RAW SCENE=[(0, 0), (1, 200), (1, 800), (2, 500), (4, 0), (6, 500)], detailed_description=[(1, 200), (1, 800), (2, 500), (4, 0), (6, 500)].
+[H3] Canonical wardrobe reconciliation for 'Amy': 'a black tank top and denim jeans' -> 'black tank top and denim jeans'.
+Combined continuity requested for segment 2 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 2: A zombie shatters the kitchen door window, creating a breach.
+Added States: 
+Next required after this prompt:
+  Beat 3: Amy scoops Will and Amber into the basement, slams the kitchen door shut, secures a bolt on it, retrieves her concealed pistol and katana, then grips both weapons.
+================================================================
+
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 2
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+<Subject 2> is Will, a 10-year-old boy. continued from <Video 1>.
+<Subject 3> is Amber, a 14-year-old girl. continued from <Video 1>.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:00.000, Amy stands in the kitchen wearing black tank top and denim jeans; Will stands beside her; Amber stands nearby. Plates of pancakes sit on the table; a skillet sizzles; a plate clinks.
+
+At 00:01.200, zombie1 bursts through the kitchen door window, its fist smashing against the glass.
+
+At 00:01.800, the glass shatters, pieces fly outward, creating a breach in the window.
+
+At 00:02.500, broken glass scatters on the floor; the window is now damaged.
+
+At 00:04.000, zombie1 stands in front of the shattered kitchen door window, breathing heavily.
+
+At 00:06.500, Amy, Will, and Amber remain standing beside the broken window as the skillet continues to sizzle.
+
+overall_soundscape: Skillet sizzling, plate clinks, fist smashing glass, glass shattering
+
+non_diegetic_music: continues from <Video 1>. A low heartbeat rhythm underscores the tension.
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 2
+
+ComfyUI render skipped for segment 2; continuing with prompt-derived continuity only.
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "kitchen",
+    "persistent_state": "broken kitchen door window with shattered glass fragments on floor; plates of pancakes on table; skillet sizzling"
+  },
+  "camera": "N/A",
+  "ongoing_action": "zombie1 standing breathing heavily",
+  "ongoing_audio": "skillet sizzling",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "N/A",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "black tank top",
+        "lower": "denim jeans",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "near broken kitchen door window"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "N/A",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "beside Amy",
+        "near broken kitchen door window"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "N/A",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "beside Amy",
+        "near broken kitchen door window"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 2; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+The kitchen has a broken door window with shattered glass fragments on the floor. A plate of pancakes sits on the table. A skillet is sizzling, providing the ambient sound. Zombie1 stands breathing heavily. Amy, Will, and Amber stand near the broken window; Amy wears a black tank top and denim jeans, while Will and Amber stand beside her.
+================================================================
+Segment 2 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 2 completed Beat 2.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 2.
+Completed prompt generation for segment 2; no ComfyUI request was sent.
+Starting phase 3 at segment 3; retaining dynamically created Subjects from earlier phases.
+
+================================================================
+SEGMENT 3/8 (8 seconds)
+================================================================
+Estimated LLM input context: 4293/4500 tokens (recent exact segments: 0)
+Segment 3 Director continuity source: prompt
+LLM response/content was unusable (attempt 1/10); retrying: LM Studio truncated the response at the configured max_tokens=1623 before completion.
+LLM response/content was unusable (attempt 2/10); retrying: LM Studio truncated the response at the configured max_tokens=1623 before completion.
+LLM response/content was unusable (attempt 3/10); retrying: LM Studio truncated the response at the configured max_tokens=1623 before completion.
+LLM response/content was unusable (attempt 4/10); retrying: LM Studio truncated the response at the configured max_tokens=1623 before completion.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 3
+================================================================
+At 00:00.000, Amy scoops Will into her arms as they descend the stair steps toward the basement landing; camera tracks from side.
+
+At 00:01.250, Amber joins, and Amy lifts him too, both kids now in her arms.
+
+At 00:02.500, they reach the basement landing; Amy drops Will onto a small bench and carries Amber down the stairs.
+
+At 00:03.750, she reaches the kitchen door, slams it shut with a forceful push; sound of metal closing.
+
+At 00:04.250, she pulls a bolt from her pocket and secures it on the door latch, locking it.
+
+At 00:05.500, she steps behind the counter, retrieves her concealed pistol from a hidden compartment.
+
+At 00:06.750, she pulls out a katana from a hook above the stove.
+
+At 00:07.250, Amy grips both weapons firmly in her hands, ready for action.
+
+End continuity state: Amy, Will, and Amber are inside the basement; the kitchen door is locked with a bolt; Amy holds a pistol and a katana; the broken window remains on the floor with glass fragments; a plate of pancakes sits on the table, skillet sizzling, Zombie1 breathing heavily near the window.
+================================================================
+Combined continuity requested for segment 3 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 3: Amy scoops Will and Amber into the basement, slams the kitchen door shut, secures a bolt on it, retrieves her concealed pistol and katana, then grips both weapons.
+Next required after this prompt:
+  Beat 4: The first zombie rips through the bolt on the kitchen door and rushes in; Amy fires her pistol at its head, then decapitates it with a swift katana swing.
+================================================================
+
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 3
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+<Subject 2> is Will, a 10-year-old boy. continued from <Video 1>.
+<Subject 3> is Amber, a 14-year-old girl. continued from <Video 1>.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:00.000, camera tracks from side as Amy scoops Will into her arms and they descend the stair steps toward the basement landing.
+
+At 00:01.250, Amber joins; Amy lifts him too, both kids now in her arms.
+
+At 00:02.500, they reach the basement landing; Amy drops Will onto a small bench and carries Amber down the stairs.
+
+At 00:03.750, she reaches the kitchen door, slams it shut with a forceful push; sound of metal closing.
+
+At 00:04.250, she pulls a bolt from her pocket and secures it on the door latch, locking it.
+
+At 00:05.500, she steps behind the counter, retrieves her concealed pistol from a hidden compartment.
+
+At 00:06.750, she pulls out a katana from a hook above the stove.
+
+At 00:07.250, Amy grips both weapons firmly in her hands, ready for action. The broken kitchen door window remains on the floor with shattered glass fragments; a plate of pancakes sits on the table, skillet sizzling; Zombie1 breathing heavily near the window.
+
+overall_soundscape: metal closing, skillet sizzling, Zombie1 breathing heavily
+
+non_diegetic_music: continues from <Video 1>. A low pulsing synth line builds tension as Amy secures the bolt and grips her weapons.
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 3
+
+ComfyUI render skipped for segment 3; continuing with prompt-derived continuity only.
+Added States: 
+CONTINUITY RAW RESPONSE - PARSE FAILURE:
+{'location': 'basement', 'persistent_state': 'kitchen door locked with bolt; broken window on floor with glass fragments; plate of pancakes on table; skillet sizzling; Zombie1 breathing heavily near window'}
+CONTINUITY PARSE ERROR: SCHEMA ERROR: location, persistent_state
+[Continuity] returned unusable JSON; retrying: SCHEMA ERROR: location, persistent_state
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "basement",
+    "persistent_state": "kitchen door locked with bolt; broken window on floor with glass fragments; plate of pancakes on table; skillet sizzling; Zombie1 breathing heavily near window"
+  },
+  "camera": "N/A",
+  "ongoing_action": "holding pistol and katana",
+  "ongoing_audio": "metal closing, skillet sizzling, Zombie1 breathing heavily",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "inside basement",
+      "pose_action": "holding pistol and katana",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "Will",
+        "Amber"
+      ],
+      "persistent_effects": [],
+      "held_props": [
+        "pistol",
+        "katana"
+      ]
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "bench",
+      "pose_action": "sitting",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "Amy"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "basement",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "Amy"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 3; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+The scene is in a basement with the kitchen door locked by a bolt. A broken window sits on the floor, scattering glass fragments. A plate of pancakes rests on a table beside a skillet that is sizzling. Zombie1 breathes heavily near the window. Amy stands inside the basement holding a pistol and a katana, wearing a black tank top and denim jeans. Will sits on a bench. Amber stands. Metal closing, skillet sizzling, and Zombie1 breathing heavily are audible.
+================================================================
+Segment 3 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 3 completed Beat 3.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 3.
+Completed prompt generation for segment 3; no ComfyUI request was sent.
+Starting phase 4 at segment 4; retaining dynamically created Subjects from earlier phases.
+
+================================================================
+SEGMENT 4/8 (8 seconds)
+================================================================
+Estimated LLM input context: 4090/4500 tokens (recent exact segments: 0)
+Segment 4 Director continuity source: prompt
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 4
+================================================================
+At 00:00.000, the camera pans from the kitchen door into the basement, showing the bolt on the door and broken window fragments scattered on the floor.
+
+At 00:01.250, Zombie1’s head rips through the bolt; metal shards scatter as the bolt snaps.
+
+At 00:02.500, Zombie1 lunges into the basement, heavy footsteps echoing against the concrete floor.
+
+At 00:04.000, Amy pulls her pistol from her pocket and fires a single shot at Zombie1’s head; the bullet cracks the skull.
+
+At 00:05.500, Amy swings her katana in a swift arc, decapitating Zombie1; the head falls to the floor.
+
+At 00:07.000, Zombie1’s body collapses, blood spattering around its torso.
+
+End continuity state: The basement remains with the kitchen door locked by a bolt, broken window fragments on the floor, Amy holding a pistol and katana, having just decapitated zombie1 whose head lies on the floor.
+================================================================
+Combined continuity requested for segment 4 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 4: The first zombie rips through the bolt on the kitchen door and rushes in; Amy fires her pistol at its head, then decapitates it with a swift katana swing.
+Next required after this prompt:
+  Beat 5: A second zombie lunges at Amy, but she chops off its arm and leg with her katana.
+================================================================
+
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 4
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:00.000, the camera pans from the kitchen door into the basement, showing the bolt on the door and broken window fragments scattered on the floor.
+
+At 00:01.250, Zombie1’s head rips through the bolt; metal shards scatter as the bolt snaps.
+
+At 00:02.500, Zombie1 lunges into the basement, heavy footsteps echoing against the concrete floor.
+
+At 00:04.000, Amy pulls her pistol from her pocket and fires a single shot at Zombie1’s head; the bullet cracks the skull.
+
+At 00:05.500, Amy swings her katana in a swift arc, decapitating Zombie1; the head falls to the floor.
+
+At 00:07.000, Zombie1’s body collapses, blood spattering around its torso. The basement remains with the kitchen door locked by a bolt, broken window fragments on the floor, Amy holding a pistol and katana, having just decapitated zombie1 whose head lies on the floor.
+
+overall_soundscape: Metal shards scattering as bolt snaps; heavy footsteps echoing on concrete floor; sharp gunshot crack at Zombie1’s head; sword swing; body collapse with blood spatter.
+
+non_diegetic_music: continues from <Video 1>. A tense, rhythmic percussion undercurrent builds as Amy engages Zombie1.
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 4
+
+ComfyUI render skipped for segment 4; continuing with prompt-derived continuity only.
+Added States: 
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "basement",
+    "persistent_state": "kitchen door locked by bolt, broken window fragments on floor, zombie1 head lies on floor"
+  },
+  "camera": "N/A",
+  "ongoing_action": "holding pistol and katana",
+  "ongoing_audio": "N/A",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "N/A",
+      "pose_action": "holding pistol and katana",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "next to zombie1 head"
+      ],
+      "persistent_effects": [],
+      "held_props": [
+        "pistol",
+        "katana"
+      ]
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "bench",
+      "pose_action": "sitting",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "Amy"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "basement",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "Amy"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 4; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy stands in the basement next to a zombie1 head, holding a pistol and a katana. She wears a black tank top and denim jeans. The kitchen door is locked by a bolt, and broken window fragments lie on the floor.
+================================================================
+Segment 4 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 4 completed Beat 4.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 4.
+Completed prompt generation for segment 4; no ComfyUI request was sent.
+Starting phase 5 at segment 5; retaining dynamically created Subjects from earlier phases.
+
+================================================================
+SEGMENT 5/8 (8 seconds)
+================================================================
+Estimated LLM input context: 4014/4500 tokens (recent exact segments: 0)
+Segment 5 Director continuity source: prompt
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 5
+================================================================
+At 00:00.000 Amy stands in basement next to zombie1 head, holding a pistol in her right hand and a katana in her left.
+
+At 00:00.500 A second zombie emerges from the basement doorway, lurching toward Amy.
+
+At 00:01.200 Amy turns her torso, raising the katana to meet the approaching zombie’s arm.
+
+At 00:01.800 She slashes the zombie’s right arm with the katana, severing it cleanly; the arm falls to the floor.
+
+At 00:02.400 Amy swings the katana down, chopping off the zombie’s left leg; the leg drops onto the floor.
+
+At 00:02.800 Amy sets the katana down on the basement floor beside her.
+
+At 00:02.900 Amy lifts the katana and places it next to her pistol.
+
+End continuity state: Amy stands in basement next to a zombie1 head, holding a pistol and a katana; zombie2 has its arm and leg cut off on the floor; kitchen door is locked by a bolt, broken window fragments lie on the floor.
+================================================================
+Combined continuity requested for segment 5 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 5: A second zombie lunges at Amy, but she chops off its arm and leg with her katana.
+Next required after this prompt:
+  Beat 6: Amy lifts her katana and swings it upward, severing the third zombie’s head as it drops to the floor.
+================================================================
+
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 5
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>. At 00:00.000 Amy stands in basement next to zombie1 head, holding a pistol in her right hand and a katana in her left. At 00:00.500 A second zombie emerges from the basement doorway, lurching toward Amy. At 00:01.200 Amy turns her torso, raising the katana to meet the approaching zombie’s arm. At 00:01.800 She slashes the zombie’s right arm with the katana, severing it cleanly; the arm falls to the floor. At 00:02.400 Amy swings the katana down, chopping off the zombie’s left leg; the leg drops onto the floor. At 00:02.800 Amy sets the katana down on the basement floor beside her. At 00:02.900 Amy lifts the katana and places it next to her pistol. End continuity state: Amy stands in basement next to a zombie1 head, holding a pistol and a katana; zombie2 has its arm and leg cut off on the floor; kitchen door is locked by a bolt, broken window fragments lie on the floor.
+
+overall_soundscape: zombie footstep, metallic slash, arm thud, leg thud
+
+non_diegetic_music: continues from <Video 1>. A tense low-hum string pad rises as Amy swings the katana.
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 5
+
+ComfyUI render skipped for segment 5; continuing with prompt-derived continuity only.
+Added States: 
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "basement",
+    "persistent_state": "zombie1 head present; zombie2 arm and leg cut off on floor; kitchen door locked by bolt; broken window fragments on floor"
+  },
+  "camera": "N/A",
+  "ongoing_action": "standing",
+  "ongoing_audio": "N/A",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "basement, next to zombie1 head",
+      "pose_action": "standing, holding pistol and katana",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "next to zombie1 head"
+      ],
+      "persistent_effects": [],
+      "held_props": [
+        "pistol",
+        "katana"
+      ]
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "bench",
+      "pose_action": "sitting",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "Amy"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "basement",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "Amy"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 5; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy stands in the basement next to a zombie1 head, holding a pistol and a katana. The kitchen door is locked by a bolt. Broken window fragments lie on the floor. Zombie2’s arm and leg are cut off on the floor.
+================================================================
+Segment 5 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 5 completed Beat 5.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 5.
+Completed prompt generation for segment 5; no ComfyUI request was sent.
+Starting phase 6 at segment 6; retaining dynamically created Subjects from earlier phases.
+
+================================================================
+SEGMENT 6/8 (8 seconds)
+================================================================
+Estimated LLM input context: 4035/4500 tokens (recent exact segments: 0)
+Segment 6 Director continuity source: prompt
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 6
+================================================================
+At 00:00.000, Amy stands in the basement holding a pistol and a katana, with zombie1’s head on her left side.
+
+At 00:01.200, she lifts the katana from its sheath, raising it above her head.
+
+At 00:02.400, she swings the blade upward in a wide arc toward zombie3’s neck.
+
+At 00:03.000, the katana slices through zombie3’s skull, severing its head.
+
+At 00:04.200, zombie3’s head drops and lands on the basement floor beside Amy.
+
+At 00:05.500, Amy places the katana on a nearby wooden table beside her.
+
+End continuity state: Amy stands in the basement next to a zombie1 head, holding a pistol and a katana. The kitchen door is locked by a bolt. Broken window fragments lie on the floor. Zombie2’s arm and leg are cut off on the floor. Zombie3’s head lies on the floor.
+================================================================
+Combined continuity requested for segment 6 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 6: Amy lifts her katana and swings it upward, severing the third zombie’s head as it drops to the floor.
+Next required after this prompt:
+  Beat 7: Amy pulls her pistol from the kitchen counter and fires a single shot into the chest of the fourth zombie as it lunges toward Will, sending it crashing to the basement floor.
+================================================================
+
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 6
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:00.000, Amy stands in the basement holding a pistol and a katana, with zombie1’s head on her left side.
+
+At 00:01.200, she lifts the katana from its sheath, raising it above her head.
+
+At 00:02.400, she swings the blade upward in a wide arc toward zombie3’s neck.
+
+At 00:03.000, the katana slices through zombie3’s skull, severing its head.
+
+At 00:04.200, zombie3’s head drops and lands on the basement floor beside Amy.
+
+At 00:05.500, Amy places the katana on a nearby wooden table beside her.
+
+overall_soundscape: metal slash of katana, bone crack, thud of head landing
+
+non_diegetic_music: continues from <Video 1>. A low, rhythmic drumbeat underscores the tense atmosphere.
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 6
+
+ComfyUI render skipped for segment 6; continuing with prompt-derived continuity only.
+Added States: 
+CONTINUITY RAW RESPONSE - PARSE FAILURE:
+{'location': 'N/A', 'persistent_state': 'N/A'}
+CONTINUITY PARSE ERROR: SCHEMA ERROR: location, persistent_state
+[Continuity] returned unusable JSON; retrying: SCHEMA ERROR: location, persistent_state
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "basement",
+    "persistent_state": "zombie1 head present, kitchen door locked by bolt, broken window fragments on floor, zombie2 arm and leg cut off on floor, zombie3 head lies on floor"
+  },
+  "camera": "N/A",
+  "ongoing_action": "standing",
+  "ongoing_audio": "metal slash of katana, bone crack, thud of head landing",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "basement",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "next to zombie1 head"
+      ],
+      "persistent_effects": [],
+      "held_props": [
+        "pistol",
+        "katana"
+      ]
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "bench",
+      "pose_action": "sitting",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "Amy"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "basement",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "Amy"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 6; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy stands in the basement next to zombie1’s head, wearing a black tank top and denim jeans, holding a pistol and a katana. The kitchen door is locked by a bolt. Broken window fragments lie on the floor. Zombie2’s arm and leg are cut off and lie on the floor. Zombie3’s head lies on the floor. A metal slash of katana, a bone crack, and the thud of a head landing can be heard.
+================================================================
+Segment 6 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 6 completed Beat 6.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 6.
+Completed prompt generation for segment 6; no ComfyUI request was sent.
+Starting phase 7 at segment 7; retaining dynamically created Subjects from earlier phases.
+
+================================================================
+SEGMENT 7/8 (8 seconds)
+================================================================
+Estimated LLM input context: 4105/4500 tokens (recent exact segments: 0)
+Segment 7 Director continuity source: prompt
+LLM response/content was unusable (attempt 1/10); retrying: LM Studio truncated the response at the configured max_tokens=1811 before completion.
+LLM response/content was unusable (attempt 2/10); retrying: LM Studio truncated the response at the configured max_tokens=1811 before completion.
+LLM response/content was unusable (attempt 3/10); retrying: LM Studio truncated the response at the configured max_tokens=1811 before completion.
+LLM response/content was unusable (attempt 4/10); retrying: LM Studio truncated the response at the configured max_tokens=1811 before completion.
+LLM response/content was unusable (attempt 5/10); retrying: LM Studio truncated the response at the configured max_tokens=1811 before completion.
+LLM response/content was unusable (attempt 6/10); retrying: LM Studio truncated the response at the configured max_tokens=1811 before completion.
+LLM response/content was unusable (attempt 7/10); retrying: LM Studio truncated the response at the configured max_tokens=1811 before completion.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 7
+================================================================
+At 00:00.000, Amy pulls her pistol from the kitchen counter and lifts it to chest height.
+
+At 00:01.200, she grips the pistol firmly and aims at the fourth zombie lunging toward Will.
+
+At 00:02.000, Amy fires a single shot; the bullet strikes the zombie’s chest.
+
+At 00:02.200, the zombie’s chest cracks and its body begins to tumble.
+
+At 00:02.600, the zombie crashes onto the basement floor, splattering blood.
+
+At 00:03.000, Will watches from the kitchen doorway, relieved as the zombie falls.
+
+End continuity state: Amy stands in the basement next to zombie4’s chest, holding a pistol; zombie1’s head lies on the kitchen floor, zombie2’s arm and leg are cut off on the floor, zombie3’s head lies on the floor, broken window fragments lie on the floor, and the kitchen door is locked by a bolt.
+================================================================
+Combined continuity requested for segment 7 during prompt generation.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 7: Amy pulls her pistol from the kitchen counter and fires a single shot into the chest of the fourth zombie as it lunges toward Will, sending it crashing to the basement floor.
+Next required after this prompt:Added States: 
+
+  Beat 8: Amy decapitates the last zombie at the base of the stairs, splattering blood across the hallway, and swings open the basement hatch to let Will and Amber step up onto the kitchen floor.
+================================================================
+
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 7
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.
+<Subject 2> is Will, a 10-year-old boy.
+
+detailed_description: [Shot 1] The opening composition is established by the supplied first frame.
+
+At 00:00.000, Amy pulls her pistol from the kitchen counter and lifts it to chest height.
+
+At 00:01.200, she grips the pistol firmly and aims at the fourth zombie lunging toward Will.
+
+At 00:02.000, Amy fires a single shot; the bullet strikes the zombie’s chest.
+
+At 00:02.200, the zombie’s chest cracks and its body begins to tumble.
+
+At 00:02.600, the zombie crashes onto the basement floor, splattering blood.
+
+At 00:03.000, Will watches from the kitchen doorway, relieved as the zombie falls. End continuity state: Amy stands in the basement next to zombie4’s chest, holding a pistol; zombie1’s head lies on the kitchen floor, zombie2’s arm and leg are cut off on the floor, zombie3’s head lies on the floor, broken window fragments lie on the floor, and the kitchen door is locked by a bolt.
+
+overall_soundscape: gunshot, zombie thud, splatter
+
+non_diegetic_music: low tension string pad
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 7
+
+ComfyUI render skipped for segment 7; continuing with prompt-derived continuity only.
+CONTINUITY RAW RESPONSE - PARSE FAILURE:
+{'version': 5, 'environment': {'location': 'N/A', 'persistent_state': ['zombie1 head on kitchen floor', 'zombie2 arm and leg cut off on floor', 'zombie3 head on floor', 'broken window fragments on floor', 'kitchen door locked by bolt']}, 'camera': 'N/A', 'ongoing_action': 'N/A', 'ongoing_audio': 'N/A', 'subjects': {'Amy': {'position': 'basement', 'pose_action': 'standing', 'wardrobe': {'upper': 'N/A', 'lower': 'N/A', 'footwear': 'N/A', 'other': 'N/A'}, 'topology': 'N/A', 'body_state': 'N/A', 'physical_condition': 'N/A', 'attached_objects': [], 'injuries': [], 'substances': [], 'spatial_relationships': ["next to zombie4's chest"], 'persistent_effects': [], 'held_props': ['pistol']}, 'Will': {'position': 'kitchen doorway', 'pose_action': 'watching', 'wardrobe': {'upper': 'N/A', 'lower': 'N/A', 'footwear': 'N/A', 'other': 'N/A'}, 'topology': 'N/A', 'body_state': 'N/A', 'physical_condition': 'N/A', 'attached_objects': [], 'injuries': [], 'substances': [], 'spatial_relationships': ['in kitchen doorway'], 'persistent_effects': [], 'held_props': []}}}
+CONTINUITY PARSE ERROR: SCHEMA ERROR: environment.persistent_state (must be a string)
+[Continuity] returned unusable JSON; retrying: SCHEMA ERROR: environment.persistent_state (must be a string)
+WARNING: Ignoring continuity identity without explicit scene evidence for 'Will'.
+
+================================================================
+CONTINUITY PHASE 1: COMBINED CONTINUITY
+================================================================
+{
+  "version": 5,
+  "environment": {
+    "location": "N/A",
+    "persistent_state": "Broken window fragments on floor; kitchen door locked by bolt."
+  },
+  "camera": "N/A",
+  "ongoing_action": "standing",
+  "ongoing_audio": "gunshot, zombie thud, splatter",
+  "subjects": {
+    "Amy": {
+      "name": "Amy",
+      "id": "Subject 1",
+      "speaker_id": "(S1)",
+      "subject_id": 1,
+      "gender": "female",
+      "picture_ids": [
+        1
+      ],
+      "picture_id": 1,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "basement",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "next to zombie4's chest"
+      ],
+      "persistent_effects": [],
+      "held_props": [
+        "pistol"
+      ]
+    },
+    "Will": {
+      "name": "Will",
+      "id": "Subject 2",
+      "speaker_id": "(S2)",
+      "subject_id": 2,
+      "gender": "male",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "bench",
+      "pose_action": "sitting",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "Amy"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    },
+    "Amber": {
+      "name": "Amber",
+      "id": "Subject 3",
+      "speaker_id": "(S3)",
+      "subject_id": 3,
+      "gender": "female",
+      "picture_ids": [],
+      "picture_id": null,
+      "origin_segment": null,
+      "persistent_structural_change": false,
+      "position": "basement",
+      "pose_action": "standing",
+      "wardrobe": {
+        "upper": "N/A",
+        "lower": "N/A",
+        "footwear": "N/A",
+        "other": "N/A"
+      },
+      "topology": "N/A",
+      "body_state": "N/A",
+      "physical_condition": "N/A",
+      "attached_objects": [],
+      "injuries": [],
+      "substances": [],
+      "spatial_relationships": [
+        "Amy"
+      ],
+      "persistent_effects": [],
+      "held_props": []
+    }
+  }
+}
+================================================================
+Combined continuity completed for segment 7; vision continuity is disabled for this cadence, so Phase 2 uses the prompt-derived state immediately.
+
+================================================================
+CONTINUITY PHASE 2: H3 OPENING STATE
+================================================================
+Amy stands in the basement next to zombie4's chest, wearing a black tank top and denim jeans, holding a pistol. Broken window fragments lie on the floor, and the kitchen door is locked by a bolt. A gunshot, zombie thud, and splatter are audible.
+================================================================
+Segment 7 continuity source: prompt-derived state; opening state is ready before Director prefetch.
+Segment 7 completed Beat 7.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 7.
+Completed prompt generation for segment 7; no ComfyUI request was sent.
+Starting phase 8 at segment 8; retaining dynamically created Subjects from earlier phases.
+
+================================================================
+SEGMENT 8/8 (8 seconds)
+================================================================
+Estimated LLM input context: 4066/4500 tokens (recent exact segments: 0)
+Segment 8 Director continuity source: prompt
+LLM response/content was unusable (attempt 1/10); retrying: LM Studio truncated the response at the configured max_tokens=1850 before completion.
+LLM response/content was unusable (attempt 2/10); retrying: LM Studio truncated the response at the configured max_tokens=1850 before completion.
+LLM response/content was unusable (attempt 3/10); retrying: LM Studio truncated the response at the configured max_tokens=1850 before completion.
+LLM response/content was unusable (attempt 4/10); retrying: LM Studio truncated the response at the configured max_tokens=1850 before completion.
+LLM response/content was unusable (attempt 5/10); retrying: LM Studio truncated the response at the configured max_tokens=1850 before completion.
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 8
+================================================================
+At 00:00.000, Amy steps out of the basement into the hallway base of stairs, pistol in hand, kitchen door behind her.
+
+At 00:01.250, she pulls a katana from her belt and grips it ready for action.
+
+At 00:02.500, zombie5 stands at the base of the stairs; Amy swings the katana, decapitating the zombie and severing its head.
+
+At 00:03.750, blood splatters across the hallway floor and walls as the neck falls.
+
+At 00:04.500, she drops the katana onto the hallway floor beside the base of the stairs.
+
+At 00:05.250, Amy pulls the latch on the basement hatch and swings it open.
+
+At 00:06.500, Will and Amber step up from the hatch onto the kitchen floor, their shoes splashing in blood.
+
+At 00:07.750, Amy steps into the kitchen, standing beside Will and Amber as the hallway glistens with blood.
+
+End continuity state: Amy stands in the kitchen beside Will and Amber, holding a pistol, with the basement hatch open behind her, the house soaked in blood.
+================================================================
+Skipping continuity for final segment 8; no later segment needs its state.
+
+================================================================
+MINIMAX H3 BEAT PLAN
+================================================================
+Beat assigned to this prompt:
+  Beat 8: Amy decapitates the last zombie at the base of the stairs, splattering blood across the hallway, and swings open the basement hatch to let Will and Amber step up onto the kitchen floor.
+Next required after this prompt:
+  All required beats would be complete.
+================================================================
+
+# ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 8
+subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features. Amy's pose, clothing condition, position, and physical state at the beginning of the target video come from <Video 1>.
+<Subject 2> is Will, a 10-year-old boy. continued from <Video 1>.
+<Subject 3> is Amber, a 14-year-old girl.
+
+detailed_description: [Shot 1] Live-action, cinematic, continues from <Video 1>.
+
+At 00:00.000, Amy steps out of the basement into the hallway base of stairs, pistol in hand, kitchen door behind her.
+
+At 00:01.250, she pulls a katana from her belt and grips it ready for action.
+
+At 00:02.500, zombie5 stands at the base of the stairs; Amy swings the katana, decapitating the zombie and severing its head.
+
+At 00:03.750, blood splatters across the hallway floor and walls as the neck falls.
+
+At 00:04.500, she drops the katana onto the hallway floor beside the base of the stairs.
+
+At 00:05.250, Amy pulls the latch on the basement hatch and swings it open.
+
+At 00:06.500, Will and Amber step up from the hatch onto the kitchen floor, their shoes splashing in blood.
+
+At 00:07.750, Amy steps into the kitchen, standing beside Will and Amber as the hallway glistens with blood.
+
+overall_soundscape: zombie5's groan, katana swing, blood splatters, shoes splashing in blood
+
+non_diegetic_music: continues from <Video 1>. A tense, low string pulse carries through the hallway's blood‑soaked chaos.
+
+SPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.
+# ================================================================ END H3 PROMPT - SEGMENT 8
+
+ComfyUI render skipped for segment 8; continuing with prompt-derived continuity only.
+Segment 8 completed Beat 8.
+Prompt-derived continuity prediction saved before the ComfyUI response for segment 8.
+Completed prompt generation for segment 8; no ComfyUI request was sent.
+All 8 story beats were marked complete.
+Prompt-generation test completed: prompts were generated for all requested segments and no data was sent to ComfyUI.
