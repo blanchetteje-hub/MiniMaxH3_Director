@@ -1,0 +1,9 @@
+{
+  "job_id": "abb-run-tests-acceptance-arc-repair-274",
+  "kind": "run_tests",
+  "tests": [
+    "tests.test_acceptance_runner",
+    "tests.test_story_arc_structural_guarantees"
+  ],
+  "timeout_seconds": 1200
+}
