@@ -592,3 +592,24 @@ Do not choose the next probe/fix from `run.log` alone when a developer log is
 available. Continue to fix the earliest observed failure rather than hypothetical
 downstream problems.
 
+## GPT formatter split and acceptance 305 beneficiary loss
+
+GPT-OSS now has its own response-formatter module:
+
+- `gpt_formatter.py` is a behavioral copy of the previously active `mistral_formatter.py` baseline.
+- `minimax.py` now exposes `--model gpt` and selects `GPTFormatter` by default.
+- the acceptance runner now defaults to `--model gpt`.
+- no speculative GPT-specific formatting rule was added during the split; model-specific divergence should be added only when an observed GPT-OSS response-shape/formatting failure justifies it.
+
+Acceptance `ace-run-acceptance-amy-full-gptoss-305` completed under the old explicit `--model mistral` selector. The earliest gold-relevant loss occurs upstream of Request 2: ARC Beat 1 reduced "Amy ... cooking breakfast for her young kids" to "Amy cooks breakfast..." and dropped the beneficiary relationship. Beat creation therefore had no authoritative requirement that Will and Amber receive/participate in the completed breakfast.
+
+Focused correction:
+- `60bd14226ce3d4898a37213b891cca550fb6bc83` — ARC validation now treats material relational participants/beneficiaries as source meaning: "does X for Y" is not fully covered by "does X".
+- `32f8afbff968af40be7487cd5f1cc05c6fa26155` — structural prompt regression coverage.
+- direct GPT-OSS probes 307/308 cleanly reject the dropped-beneficiary case and accept the preserved control.
+- regression job 309 passes 31/31 tests.
+
+A later 305 ARC allocation mismatch (Beat 2/3 grouping versus the locked gold) is intentionally deferred until the earlier Beat 1 beneficiary/completion failure is re-tested.
+
+Next: planning acceptance `acj-run-acceptance-amy-planning-gpt-310` uses the new GPT formatter selector and should be inspected first for ARC Beat 1 beneficiary preservation and the generated Beat 1 completion endpoint.
+
