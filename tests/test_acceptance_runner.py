@@ -64,9 +64,11 @@ detailed_description: world
         prompts = run_acceptance.parse_h3_prompts(log)
         self.assertEqual(prompts[2], "detailed_description: world")
 
-    def test_acceptance_child_env_forces_unbuffered_output(self):
+    def test_acceptance_child_env_forces_unbuffered_utf8_output(self):
         env = run_acceptance.acceptance_child_env()
         self.assertEqual(env["PYTHONUNBUFFERED"], "1")
+        self.assertEqual(env["PYTHONUTF8"], "1")
+        self.assertEqual(env["PYTHONIOENCODING"], "utf-8")
 
     def test_planning_only_command_uses_generate_beats(self):
         benchmark = run_acceptance.load_benchmark(
