@@ -1,0 +1,22 @@
+{
+  "job_id": "acn-gptoss-validator-current-next-control-314",
+  "kind": "llama_chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS FINAL BEAT\nA zombie shatters the kitchen door window.\n\nCURRENT STATE\n{\"characters\":{\"Amy\":{\"location\":\"kitchen\"},\"Will\":{\"location\":\"kitchen\"},\"Amber\":{\"location\":\"kitchen\"}},\"threats\":{\"zombie1\":{\"state\":\"active\"}}}\n\nCURRENT JOB\nAmy rushes Will and Amber into the basement and locks the basement door.\n\nNEXT JOB\nAmy retrieves her pistol and katana from storage, equips them, and kills a zombie with her pistol.\n\nSTATE EFFECTS IF VALID\n[{\"id\":\"beat3\",\"state_effects\":[{\"op\":\"set_location\",\"entity\":\"Will\",\"value\":\"basement\"},{\"op\":\"set_location\",\"entity\":\"Amber\",\"value\":\"basement\"},{\"op\":\"set_barrier_state\",\"entity\":\"basement_door\",\"value\":\"locked\"}]}]\n\nCANDIDATE BEAT\n3. Amy grabs Will and Amber, rushes them into the basement, gets them inside, and locks the basement door.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish every materially required action/result in CURRENT JOB. PREVIOUS FINAL BEAT is history only. NEXT JOB is a forbidden boundary and must not be completed early.\nB. CONTINUITY: reject clear contradictions only.\nC. NEXT JOB: do not materially complete it early.\nD. STATE EFFECTS: listed effects must be supported.\n\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short concrete explanation\"}."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1024,
+  "timeout_seconds": 300
+}
