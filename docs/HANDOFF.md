@@ -1914,3 +1914,12 @@ Focused fix:
 
 Next verification: run focused Director tests, then a fresh full GPT-OSS Amy acceptance and inspect the earliest semantic mismatch rather than assuming success from process return code alone.
 
+## Full LM Studio developer-log capture through bridge
+
+The bridge now captures LM Studio's model-level developer stream for every `run_acceptance` job so future diagnosis can inspect the exact formatted input, generated output/reasoning, and prediction token stats instead of relying only on MiniMax stdout.
+
+- `9732b7c0a8b0e73552deda9c03cc3009d6eb312e` — wraps acceptance execution with `lms log stream --source model --filter input,output --json --stats`; publishes `files/developer_log.jsonl` plus `files/developer_log.stderr.log`. If the CLI cannot be started, the JSONL contains an explicit capture error.
+- `276f13bd93e18a32b1c4fca912d66d4f2734fd0a` — regression coverage for stream arguments, artifact publication, and missing-CLI diagnostics.
+
+Because the bridge worker is a long-running process launched from the user's normal checkout, the user must pull the updated `gpt-test-branch` bridge script and restart the bridge once before new acceptance jobs can emit these artifacts.
+
