@@ -578,10 +578,9 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("Beat 4 starts the emphasized process itself", create_prompt)
         self.assertIn("Beats 1-3 must contain ALL source actions", create_prompt)
         self.assertIn("do not defer pre-sequence setup into Beat 4", create_prompt)
-        self.assertIn(
-            "combine the terminal action and resolution in the final global beat",
-            create_prompt,
-        )
+        self.assertIn("must visibly perform the explicit terminal action itself", create_prompt)
+        self.assertIn("No earlier beat may call its instance last, final, terminal", create_prompt)
+        self.assertIn("Do not make the final beat aftermath-only", create_prompt)
 
         arc = make_arc([(1, 3, self.events)])
         repair_prompt = " ".join(
