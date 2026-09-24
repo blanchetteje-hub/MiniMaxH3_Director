@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-breakfast-contract-matrix-320",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 3000,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Treat each labeled task independently. The chapter is the complete creative scope for creation. STORY is authority for validation/repair. Return one valid JSON object only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nAmy begins at home on a normal morning cooking breakfast for Will and Amber before any later events occur.\n\nCURRENT CHAPTER:\nAmy cooks breakfast for Will and Amber. The chapter remains ordinary and breakfast is complete by the end.\n\nOPENING:\nAmy, Will, and Amber are in an intact ordinary kitchen.\n\nA) CREATE\nBeat budget: exactly 1. Create one beat that carries the entire chapter responsibility to a visible completed result and preserves that breakfast is for BOTH Will and Amber.\n\nB) VALIDATE BAD\nCandidate: [{\"beat\":1,\"event\":\"Amy places the finished food onto a plate.\"}]\nJudge whether the only beat completes the chapter responsibility.\n\nC) VALIDATE GOOD\nCandidate: [{\"beat\":1,\"event\":\"Amy finishes cooking, serves the completed breakfast to both Will and Amber, and ends the cooking activity.\"}]\n\nD) REPAIR BAD\nRepair B into exactly one beat.\n\nE) CREATE ALTERNATE\nCreate a second valid one-beat solution without adding any later-story setup.\n\nReturn exactly:\n{\n \"A\":{\"beats\":[]},\n \"B\":{\"valid\":true,\"issue\":null},\n \"C\":{\"valid\":true,\"issue\":null},\n \"D\":{\"beats\":[]},\n \"E\":{\"beats\":[]}\n}"
+    }
+  ]
+}
