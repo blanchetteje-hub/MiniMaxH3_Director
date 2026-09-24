@@ -522,3 +522,24 @@ September 23 exact-profile follow-up:
 Production Beat CREATE now owns its complete sampling profile explicitly:
 top_k=20, min_p=0.05, repeat_penalty=1.15, seed=42. This avoids hidden formatter
 defaults and random-seed drift in future experiments.
+
+## Acceptance developer-log review
+
+Every bridge `run_acceptance` result should be reviewed using both the normal
+acceptance artifacts and the LM Studio developer log before deciding the next
+test or production change.
+
+For each completed acceptance, inspect:
+
+- `result.json` and `files/run.log` for the first observable pipeline failure;
+- `files/developer_log.jsonl` for the exact model inputs, outputs/reasoning, finish
+  reasons, and token/prediction statistics around that failure;
+- `files/developer_log.stderr.log` if developer-log capture is incomplete or
+  appears to have failed.
+
+Use the developer log to distinguish prompt/content failures from model reasoning
+loops, token-budget truncation, transport/formatter behavior, or sampling issues.
+Do not choose the next probe/fix from `run.log` alone when a developer log is
+available. Continue to fix the earliest observed failure rather than hypothetical
+downstream problems.
+
