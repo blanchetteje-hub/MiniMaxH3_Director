@@ -58,6 +58,14 @@ Refresh cadence is no longer user-controlled.
 
 Arbitrary "refresh every N segments" scheduling is obsolete and should be removed when runtime work begins.
 
+## Gold refresh as the opening-context reference
+
+The locked Amy benchmark has one refresh at Beat 7. Use that prompt as the concrete reference for what a new chapter needs at its start.
+
+It re-establishes only the immediately useful established facts: location, active subjects, spatial relationship, current pose/held weapon, clothing/persistent visible condition, and relevant off-screen aftermath. It does not replay the prior chapter or explain how those facts came to be.
+
+This is the current design target for chapter opening context: minimal current-state facts sufficient to render the first beat correctly.
+
 ## Gold target
 
 Locked benchmark:
