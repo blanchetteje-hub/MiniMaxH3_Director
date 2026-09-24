@@ -2011,3 +2011,18 @@ Focused fix:
 
 Next: run focused validator tests and a direct GPT-OSS bad/valid control pair for this exact grammar. If the bad case is rejected and explicit-action control accepted, run a fresh full acceptance (not planning-only) with developer-log capture and inspect the earliest Director/output mismatch.
 
+## GPT-OSS aftermath probes 280-282: first temporal-ownership wording still too weak
+
+Results:
+- `abh-run-tests-aftermath-validator-280`: **PASS, 36/36 tests green**.
+- `abi-gptoss-validator-aftermath-bad-281`: **FAILED semantically** — GPT-OSS still returned VALID for "With the last zombie slain..." even though CURRENT JOB assigns the kill to this beat.
+- `abj-gptoss-validator-aftermath-valid-282`: **PASS** — explicit causative action ("Amy drives her katana through its skull, killing it") returned VALID.
+
+The distinction is now very narrow: GPT-OSS understands the valid control but still treats result-state grammar as evidence that the assigned action occurred. Strengthen the same existing beat validator rather than adding a new stage.
+
+Focused refinement:
+- `cf21a5e01e745b3e20cf09158c9c81ffbcfc3dec` — replaces the weaker aftermath wording with an explicit TEMPORAL ACTION OWNERSHIP rule: actions assigned to THIS beat must be narrated as events happening now; presupposed/completed-state grammar ("with X done", "after X was completed", etc.) is invalid evidence even when the resulting state is correct and later CURRENT JOB parts are completed.
+- `94af5b6a018db16a9656a9954df92b37d7166ad1` — regression coverage for the stronger wording.
+
+Because GPT-OSS-20B is fast enough, batch several bad/valid grammar probes per iteration rather than serializing one example at a time. The next batch should cover multiple verbs/domains to ensure the rule is generic rather than zombie-specific.
+
