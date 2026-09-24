@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-source-validator-issuefirst-328",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "STORY is the only authority. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nA researcher completes the final diagnostic and shuts down the lab. The story ends.\n\nCandidate:\nThe researcher completes the final diagnostic, shuts down the lab, and calls a press conference.\n\nProcedure:\n1. Compare candidate actions to STORY.\n2. If any material action is unsupported, put that action in issue.\n3. validity must be INVALID whenever issue is non-null.\n\nReturn exactly:\n{\"issue\":null,\"validity\":\"VALID\"}"
+    }
+  ]
+}
