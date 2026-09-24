@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-chapter-ownership-333",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 2200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge whether candidate beats stay inside CURRENT CHAPTER. Do not allow events reserved for a later chapter. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nA technician receives an alert, secures the room, equips the required tools, and handles repeated faults. The incident remains unresolved when this chapter ends.\n\nLATER CHAPTER RESPONSIBILITY:\nResolve the final fault and release the waiting team.\n\nEvaluate independently.\n\nA candidate ending:\nBeat 6: The technician fixes one fault but the system remains unstable and another fault is still active.\n\nB candidate ending:\nBeat 6: The technician resolves the final fault and releases the waiting team.\n\nC) Repair B so Beat 6 stays inside CURRENT CHAPTER.\n\nReturn exactly:\n{\"A\":{\"valid\":true,\"issue\":null},\"B\":{\"valid\":true,\"issue\":null},\"C\":{\"beat\":6,\"event\":\"...\"}}"
+    }
+  ]
+}
