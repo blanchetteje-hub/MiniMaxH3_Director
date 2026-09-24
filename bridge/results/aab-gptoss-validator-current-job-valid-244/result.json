@@ -1,0 +1,58 @@
+{
+  "job_id": "aab-gptoss-validator-current-job-valid-244",
+  "kind": "llama_chat",
+  "started_at": 1790211533.2843692,
+  "request": {
+    "model": "/mnt/h/RP_Models/GPT-OSS-20B-Uncensored-HauhauCS-MXFP4-Balanced.gguf",
+    "messages": [
+      {
+        "role": "user",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue.\n\nPREVIOUS FINAL BEAT\nAmy fires her pistol into a horde of surging zombies and slashes with her katana, sending fallen bodies crashing to the ground around her.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nAmy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.\n\nNEXT JOB\nNone; this is the final beat.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nAmy cuts down the final zombie, looks over the blood-soaked house, then opens the basement door and lets Will and Amber emerge.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept\nparaphrases and clear implications, but require every materially required action\nor result when the job has multiple parts. PREVIOUS FINAL BEAT is history only:\nit may constrain what is possible, but it cannot satisfy, replace, or excuse any\naction or result explicitly assigned to CURRENT JOB. Every such requirement must\nbe visibly accomplished by CANDIDATE BEAT.\n\nB. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as\nauthoritative history. Reject only clear contradictions or physical impossibilities.\n\nC. NEXT JOB: Do not materially complete the distinct NEXT JOB early. Preparation\nand incidental overlap that naturally belongs to the current action are allowed.\nReject only when the distinct work of the next beat has actually been completed,\nincluding semantic equivalents of terminal or exhaustive results.\n\nD. TYPED STATE EFFECTS: Every listed typed effect must be supported by what\nvisibly happens in the candidate.\n\nOUTPUT CONTRACT\nIf valid:\n{\"valid\": true, \"issue\": \"\"}\n\nIf invalid:\n{\"valid\": false, \"issue\": \"short concrete explanation\"}\n\nReturn exactly one JSON object and no markdown."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning_content": "We need to evaluate candidate beat: \"Amy cuts down the final zombie, looks over the blood-soaked house, then opens the basement door and lets Will and Amber emerge.\"\n\nCheck against CURRENT JOB: Amy kills last of zombies; her house soaked in blood. She lets kids out of basement.\n\nCandidate does kill final zombie (cuts down). House is blood-soaked? It says \"looks over the blood-soaked house\" implies it's blood-soaked, yes. Then opens basement door and lets Will and Amber emerge. That matches letting kids out. So all parts satisfied.\n\nCheck continuity: PREVIOUS FINAL BEAT: Amy fires pistol into horde of surging zombies and slashes with katana, sending fallen bodies crashing to ground around her. That's consistent; final zombie cut down is plausible after that. House soaked in blood from earlier actions? Yes. No contradictions.\n\nNext job none, so no need to avoid finishing next beat early. There is no next job.\n\nTyped state effects: [] empty list, nothing required.\n\nThus valid. Return JSON with true and issue \"\"."
+        }
+      }
+    ],
+    "created": 1790211534,
+    "model": "/mnt/h/RP_Models/GPT-OSS-20B-Uncensored-HauhauCS-MXFP4-Balanced.gguf",
+    "system_fingerprint": "b10849-e71b80510",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 236,
+      "prompt_tokens": 474,
+      "total_tokens": 710,
+      "prompt_tokens_details": {
+        "cached_tokens": 60
+      }
+    },
+    "id": "chatcmpl-2fXz3TESMjIrSwv8G73l3wFEa0AZqvzO",
+    "timings": {
+      "cache_n": 60,
+      "prompt_n": 414,
+      "prompt_ms": 68.361,
+      "prompt_per_token_ms": 0.16512318840579712,
+      "prompt_per_second": 6056.08460964585,
+      "predicted_n": 236,
+      "predicted_ms": 1316.816,
+      "predicted_per_token_ms": 5.603472340425532,
+      "predicted_per_second": 178.46077204408206
+    }
+  },
+  "finished_at": 1790211534.7187448,
+  "status": "ok"
+}
