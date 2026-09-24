@@ -30,6 +30,6 @@ The bridge also supports two fixed, allowlisted execution jobs.
 
 `run_tests` runs only Python unittest module names under `tests.*` against a detached worktree synchronized to the latest `origin/gpt-test-branch`.
 
-`run_acceptance` runs `tests/acceptance/run_acceptance.py` in prompt-generation mode against that same synchronized worktree. It uses the main checkout's project virtualenv when present and defaults to `amy.jpg` plus model selector `mistral`. The newest `acceptance_run.json` and `run.log` are copied into the mailbox result automatically.
+`run_acceptance` runs `tests/acceptance/run_acceptance.py` in prompt-generation mode against that same synchronized worktree. It uses the main checkout's project virtualenv when present and defaults to `amy.jpg` plus model selector `mistral`. The newest `acceptance_run.json` and `run.log` are copied into the mailbox result automatically. During each acceptance run, the bridge also streams LM Studio model input/output plus prediction stats via `lms log stream --source model --filter input,output --json --stats` and publishes the complete capture as `files/developer_log.jsonl` (with `files/developer_log.stderr.log` for capture diagnostics).
 
 The bridge does not accept arbitrary shell commands.
