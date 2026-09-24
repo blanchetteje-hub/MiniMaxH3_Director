@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-source-validator-312",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge a candidate chapter outline against the source story. The source story is the only story authority. Return only valid JSON."
+    },
+    {
+      "role": "user",
+      "content": "Validate this chapter outline against STORY.\n\nRules:\n1. Material story events must be preserved in order.\n2. Material invented events are invalid.\n3. A rough chapter outline does not need beat-level detail.\n4. Return exactly {\"valid\":true,\"issue\":null} or {\"valid\":false,\"issue\":\"one concise issue\"}.\n5. Report the earliest/material problem, not a list.\n\nSTORY:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\nThe AR-15 is not part of this story and must not be reintroduced.\n\nCANDIDATE:\n{\"chapters\":[\n  {\"chapter\":1,\"outline\":\"Amy begins the day at home, notices the zombie threat, and takes Will and Amber to the basement.\"},\n  {\"chapter\":2,\"outline\":\"Amy retrieves a pistol, katana, and AR-15, then fights the zombies throughout the house.\"},\n  {\"chapter\":3,\"outline\":\"Amy kills the last zombie and lets Will and Amber out of the basement.\"}\n]}"
+    }
+  ]
+}
