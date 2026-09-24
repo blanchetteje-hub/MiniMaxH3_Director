@@ -152,6 +152,35 @@ This is a starting hypothesis, not a locked architecture.
 
 Do not reintroduce old ARC/BEATS machinery simply because it already exists in code.
 
+## Beat budgets and the Amy acceptance chapter boundary
+
+Beat CREATE must not decide how many beats a chapter contains.
+
+Probe 313 demonstrated that when beat count was left open, the local model expanded one simple breakfast chapter into three video beats. Probe 315 showed that an explicit one-beat budget constrained it correctly, although the semantic endpoint still needs stronger completion guidance.
+
+Therefore:
+
+- the total video/segment budget is deterministic runtime input;
+- each chapter receives an explicit `beat_count`;
+- chapter beat counts must sum to the total segment budget;
+- Beat CREATE must return exactly that many beats;
+- the mechanism for allocating beat counts across chapters is still under test and is not yet locked.
+
+### Amy benchmark consequence
+
+The locked Amy gold has eight beats and exactly one refresh: Beat 7.
+
+Because this branch defines every later chapter's first beat as a refresh, the gold mode pattern implies exactly two chapters for the Amy acceptance target:
+
+- **Chapter 1: Beats 1-6**
+- **Chapter 2: Beats 7-8**
+
+This is an acceptance constraint derived from the locked gold, not a production special case. Production chaptering must reach an equivalent major-story boundary from `story.txt` without being told the gold beat answers.
+
+Probe 314 produced three chapters with beat counts 2/2/4. That is structurally valid as a rough story division but wrong for the Amy gold mode pattern because it would create two refreshes. The chapter splitter therefore needs a stronger generic concept of a chapter as a **large refresh unit**, not merely a cluster of nearby story events.
+
+A promising generic boundary is the transition from the main body/repeated process into an explicit terminal/final-resolution sequence. Test this before encoding it.
+
 ## Chapter opening context
 
 Chapter opening context is continuity, not plot authority.
