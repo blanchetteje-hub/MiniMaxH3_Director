@@ -1,615 +1,335 @@
 # MiniMax H3 Project Notes
 
-This file is the persistent source of truth for current architecture, testing goals, formatting rules, and deferred action items. Update it whenever a project-level decision changes.
+This file is the persistent source of truth for the current MiniMax H3 architecture and acceptance target. Historical iteration details belong in Git history, not here.
 
-## Primary goal and development doctrine
+## Primary goal
 
-The goal is **story.txt -> gold-standard MiniMax H3 prompts**.
+The goal is:
 
-The current architecture is only a means to that end. ARC, BEATS, Director stages,
-continuity layers, validators, canonical state, and Python plumbing are not sacred.
-Keep a layer only while evidence shows that it helps produce better gold prompts.
-If a layer repeatedly creates more complexity or failure modes than value, simplify
-it, merge it, replace it, or remove it entirely.
+> **story.txt -> gold-standard MiniMax H3 prompts**
 
-### Primary decision hierarchy
+The pipeline is disposable. Any intermediate representation, LLM call, validator, state object, or Python layer exists only if it improves that path.
 
-1. **Optimize for the gold prompts, not for preserving the pipeline.**
-   The question is always whether the current design gets from the source story to
-   the desired H3 prompts reliably.
+## Rule 0: story.txt is the one narrative source of truth
 
-2. **Assume the local 20B-class model is comparatively dumb.**
-   Keep its prompts short, concrete, explicit, and low-ambiguity. Prefer a small
-   numbered procedure or one clear rule over several paragraphs of abstract
-   explanation. If the model spends thousands of reasoning tokens circling a
-   simple constraint, first suspect prompt/architecture complexity rather than
-   assuming it needs more instructions or more completion tokens.
+`story.txt` is authoritative for the story.
 
-3. **Prefer removing complexity over teaching the model more complexity.**
-   Shorten prompts, reduce responsibilities, remove unnecessary abstractions, or
-   move genuinely deterministic work into Python before adding another semantic
-   rule or pipeline stage.
+- Creativity that fills in unspecified presentation or execution detail **inside the story** is allowed.
+- Adding, replacing, contradicting, skipping, or materially changing story events **outside the story** is prohibited.
+- Intermediate artifacts do not become competing sources of truth.
+- A chapter outline may be rewritten.
+- Beats may be rewritten.
+- Derived continuity/state may describe what has actually been established, but it may not authorize new plot.
+- Renderer constraints and reference images may constrain presentation/identity, but they do not create story events.
 
-4. **Fix the earliest demonstrated failure in the current pipeline, unless that
-   failure is evidence that the pipeline itself is the problem.**
-   Do not blindly patch ARC forever merely because ARC comes first. Repeated
-   failures, increasingly elaborate repairs, or a layer that does not materially
-   improve the final H3 prompts are evidence to reconsider that layer.
+When an intermediate artifact disagrees with `story.txt`, change the artifact, not the story.
 
-5. **Architecture changes are allowed when evidence supports them.**
-   KISS means avoid speculative redesign, not preserve the current design at all
-   costs. If story-arc generation proves unnecessary or harmful, remove it. The
-   same applies to BEATS, Director stages, continuity machinery, validators, or
-   any other intermediate representation.
+## Development doctrine
 
-6. **Fix observed failures, not hypothetical ones.**
-   Every semantic change should trace back to a real acceptance failure,
-   developer-log failure, reproducible probe, or gold-prompt mismatch.
+1. Optimize for the gold prompts, not for preserving the current pipeline.
+2. Assume the local 20B-class model benefits from short, concrete, low-ambiguity jobs.
+3. Prefer narrow LLM calls over one overloaded call.
+4. Prefer deleting complexity over teaching the model to manage unnecessary complexity.
+5. Use Python for deterministic structure/data integrity; use LLMs for semantic work only where useful.
+6. Fix demonstrated failures. Do not build speculative subsystems.
+7. Architecture changes are allowed whenever evidence supports them.
+8. The new chapter-first design starts from a clean sheet. The old ARC/BEATS call structure is **not** a constraint.
 
-7. **Use the developer log to distinguish failure classes.**
-   Determine whether a problem is semantic misunderstanding, reasoning-loop
-   verbosity, token truncation, sampling behavior, formatter/transport behavior,
-   or architecture before deciding on a fix.
+## Chapter-first planning architecture
 
-8. **Python owns deterministic structure; the LLM owns semantics only where useful.**
-   Counts, ordering, schemas, dependency chains, and data-integrity checks belong
-   in Python. Do not turn Python into a pile of arbitrary English-semantic
-   heuristics merely to compensate for model behavior.
+The system is conceptually writing a book from `story.txt`.
 
-### What may change
+The book is divided into **chapters**. Each chapter is divided into **beats**.
 
-Anything may change if evidence shows it improves the path from story.txt to the
-gold prompts, including:
+A beat is an event or unit of action that must happen in that chapter and will ultimately become one MiniMax H3 video segment/prompt.
 
-- story format;
-- story arc generation;
-- whether a story arc exists at all;
-- beat generation;
-- Director structure;
-- continuity handling;
-- validators;
-- prompt formatting;
-- canonical-state representation;
-- Python plumbing.
+### Terminology migration
 
-KISS remains the default, but not at the expense of a real architectural correction.
+In `story_arc.json`, the old term `phases` is retired.
 
-## Working development loop
+Use:
 
-1. User runs the program locally.
-2. User sends logs/artifacts.
-3. ChatGPT inspects the current GitHub branch and the observed failure.
-4. ChatGPT edits `gpt-test-branch` directly and commits the fix.
-5. User pulls and reruns.
-6. Repeat until acceptance goals are met.
+- `chapters`
+- chapter number / chapter ID
+- chapter outline
 
-Do not default to Codex prompts.
+Do not preserve `phase` terminology merely for compatibility when implementing this branch.
 
-## Locked semantic planning architecture
+### Step 1: create the chapter outline
 
-Unless empirical evidence shows this structure itself is the problem:
+Create a rough chapter split for the complete story.
 
-### ARC
-CREATE -> VALIDATE -> REPAIR -> VALIDATE until valid
+The chapter outline is deliberately coarse. Its main purpose is to designate **what happens in each chapter** and preserve the story's order and coverage.
 
-### BEATS
-CREATE -> VALIDATE -> REPAIR -> VALIDATE until valid
+A minimal conceptual shape is:
 
-Do not add separate semantic state-preparation, enrichment, coverage, claims, proof, review, or effect-validation pipelines.
+```json
+{
+  "chapters": [
+    {
+      "chapter": 1,
+      "outline": "Basic plot responsibility of this chapter."
+    }
+  ]
+}
+```
 
-Iteration rule: Fix only the earliest demonstrated acceptance failure. Prefer deleting/simplifying prompts and narrowing repair scope over adding new rules or semantic layers. Do not make speculative downstream fixes.
+Do not overstuff the chapter object before evidence shows more fields are necessary.
 
-State is Python-owned canonical data.
+The chapter outline is a working draft, not authority. `story.txt` remains authority.
 
-`state_effects` live inside story-arc `required_events`.
+### Step 2: create beats one chapter at a time
 
-Python applies required-event state effects only after a beat validates.
+Start with Chapter 1.
 
-The proven beat validator is effectively frozen unless new evidence implicates it:
+The Beat CREATE call for a chapter has **no knowledge of anything outside that chapter**.
 
-- Mistral 24B
-- temperature 0
-- repeat_penalty 1.15
-- seed 42
-- 400/400 benchmark
+It may receive only what is needed to execute that enclosed chapter, such as:
 
-## Director architecture
+- the current chapter outline;
+- the compact opening context for that chapter;
+- deterministic renderer/runtime constraints such as available segment count or segment duration.
 
-### Request 1
-Creative/directorial generation.
+It must **not** receive:
 
-Conceptually: imagination.
+- the previous chapter outline or prose;
+- the next chapter outline or prose;
+- future beats;
+- a narrative summary of the rest of the book;
+- hidden knowledge from adjacent chapters.
 
-It expands CURRENT BEAT into a timed RAW SCENE.
+The purpose is to stop the local model from solving the whole story while it is supposed to be solving one chapter.
 
-It owns beat completion.
+### Step 3: validate/repair the chapter beats against story.txt
 
-It must:
+The generated beats are judged against **`story.txt`**, not against the rough chapter outline.
 
-- execute CURRENT BEAT;
-- not enter NEXT BEAT;
-- emit timestamped micro-beats;
-- include one trailing `End continuity state:`.
+The story-facing validator/repairer may use `story.txt` because it is enforcing the source of truth.
 
-### Request 2
-Strict H3 formatter/translator.
+If the beats fit the story better than the rough chapter outline, **change the chapter outline**.
 
-Conceptually: stenographer.
+Repair until the chapter's beats:
 
-It must preserve:
+- perform the story events assigned to that part of the story;
+- do not invent material events outside the story;
+- do not steal events that belong to a later chapter;
+- form a usable sequence of H3 segments;
+- begin from the supplied chapter opening context.
 
-- Request 1 actions;
-- action order;
-- timestamps;
-- explicitly supplied camera movement;
-- dialogue.
+The rough outline exists to organize the work; it is not a contract that can overrule the story.
 
-It must not invent story events or become a creative rewrite stage.
+### Step 4: treat every next chapter as enclosed
 
-## Continuity philosophy
+When moving to Chapter N+1, the chapter planner does not receive Chapter N or Chapter N+2.
 
-Canonical continuity may know more internally than the H3 prompt needs.
+As far as its creative/beat-generation calls are concerned, Chapter N+1 is an enclosed unit.
 
-Principle:
+It receives:
 
-> Know more internally; expose only current final-frame facts.
+1. its own chapter outline; and
+2. a compact description of **how this chapter starts**.
 
-Persistent Subject identity belongs to Python.
+That opening context should contain only the minimum established facts necessary to continue correctly: location, subject state, held objects, injuries, important environment state, or other continuity that materially affects the first beat.
 
-Continuity LLMs must not create persistent identities.
+Do not dump the previous chapter into the prompt.
 
-Generic/transient actors must not collapse into durable Subjects.
+Opening-context sufficiency is empirical: start minimal, run the chapter, and add only the missing beginning facts demonstrated by failures.
 
-Implementation must remain generic and never special-case literal characters, creatures, weapons, rooms, doors, genres, or regression-fixture vocabulary.
+### LLM call decomposition
 
-## H3 gold-standard acceptance suite
+There is no requirement to preserve the old number or arrangement of LLM calls.
 
-### Locked benchmark artifact
+Break the work into as many narrow calls as makes sense for the local model. A likely starting decomposition is:
 
-The first complete 8-beat gold benchmark is now locked and version-controlled at:
+1. STORY -> CHAPTERS CREATE
+2. STORY + CHAPTERS -> CHAPTERS VALIDATE/REPAIR, only as much as needed for coverage/order
+3. CURRENT CHAPTER + OPENING CONTEXT -> BEATS CREATE
+4. STORY + CURRENT CHAPTER + CANDIDATE BEATS -> BEATS VALIDATE
+5. STORY + CURRENT CHAPTER + CANDIDATE BEATS + ISSUE -> BEATS REPAIR
+6. accepted beat -> H3 scene/prompt work, split into narrow calls when useful
+
+This is a starting hypothesis, not a locked architecture.
+
+Do not reintroduce old ARC/BEATS machinery simply because it already exists in code.
+
+## Chapter opening context
+
+Chapter opening context is continuity, not plot authority.
+
+It is derived from facts actually established by prior rendered/accepted work and should be as small as possible.
+
+A later chapter may know, for example, that a character begins in the kitchen holding a katana with a locked basement door behind her. It does not need the prose or reasoning that produced those facts.
+
+Persistent subject identity remains Python-owned.
+
+Do not let an LLM create durable named identities merely because they appear in continuity prose.
+
+## H3 mode is controlled only by chapter boundaries
+
+Refresh cadence is no longer user-controlled.
+
+The chapter split is the sole normal source of initial/append/refresh mode:
+
+- **First beat of Chapter 1:** normal initial generation using `Minimax_auto_API.json`.
+- **Later beats in the same chapter:** append; pass the previous video.
+- **First beat of every later chapter:** refresh.
+- **Later beats in that refreshed chapter:** append.
+
+A user-facing "refresh every N segments" concept is no longer part of the intended architecture.
+
+Any old runtime/CLI/acceptance logic that arbitrarily schedules refresh by segment number must be removed or converted to derive mode from chapter membership.
+
+Repair rendering remains a separate concern and is not a user-selectable refresh cadence.
+
+## Append video context
+
+For an append beat, pass only the final 22 frames of the previous video into the H3 reference-video path.
+
+Use the same exact H3-aligned frame-count calculation as the render workflow, then:
+
+- skip to the final 22 frames;
+- set `frame_load_cap = 22`.
+
+For an 8-second segment this is 192 frames total and `skip_first_frames = 170`.
+
+Do not revert to the old long-tail append context.
+
+## Refresh video context
+
+The tested quality-refresh baseline uses the Extend Backport path with context latents from the prior video:
+
+- final 22 decoded frames;
+- VAE-encoded context latents;
+- `context_frames = 7`;
+- prior audio as reference audio;
+- the tested first-frame selector path.
+
+A chapter refresh is therefore still visually continuous with the preceding rendered video while giving MiniMax H3 a fresh generation boundary.
+
+## Gold-standard acceptance target
+
+The primary locked benchmark remains:
 
 `tests/acceptance/gold/amy_zombie_house.json`
 
-That file is the authoritative benchmark artifact for the Amy story. Do not duplicate the full gold prompts in this notes file.
+The benchmark is authoritative for the desired H3 behavior of that test story. Generated prompts do not need string equality; they must preserve the same events, timing discipline, scene intent, exclusions, continuity, audio/music progression, and expected end states.
 
-The benchmark is consumed by `tests/acceptance/run_acceptance.py` and reviewed fuzzily by GPT-5.6 Sol. Generated prompts are not required to string-match the gold prompt; they must preserve the gold behavior, timing discipline, continuity, scene intent, exclusions, sound/music progression, and expected end state.
+The new architecture must still reach the gold prompts from the benchmark's `story.txt` content. Do not teach the planner the gold answers.
 
-The runner executes `minimax.py` in an isolated temporary copy of the repository, injects the locked story/subject inputs, forces a fresh story-arc/beat generation, runs all eight prompt-only segments against the user's local LM Studio model, and writes `acceptance_run.json` plus diagnostic artifacts under `tests/acceptance/results/`. It intentionally performs no local semantic grading.
+The current Amy benchmark contains eight output beats/segments. The chapter planner may group those beats into chapters; chapter boundaries determine which segments are refresh versus append.
 
+GPT-5.6 Sol is the fuzzy final evaluator of generated output against the gold target. The local 20B-class model is not the final semantic judge of artistic closeness.
 
-The project needs a concrete end goal, not endless "looks better" debugging.
+## Global H3 prompt rules
 
-The acceptance suite will use human-authored gold-standard H3 prompts.
-
-The local machine runs the real local LLMs. GitHub stores the benchmark definitions, runner, and project logic.
-
-ChatGPT / GPT-5.6 Sol performs the fuzzy comparison between generated output and the gold standard. A local 24B model is not expected to be the final judge of semantic/artistic closeness.
-
-### Story structure for gold tests
-
-Use 8 beats per benchmark story.
-
-Each beat should include:
-
-- Story ID
-- Beat number
-- Mode: initial / append / refresh
-- Length
-- Gold prompt
-- Must happen
-- Must not happen
-- Expected end state
-
-Gold prompts are behavioral targets, not string-equality targets.
-
-Generated output should be judged on whether it preserves the same scene intent, required events, continuity, and final state.
-
-### Current benchmark story
-
-Story ID: `amy_zombie_house`
-
-Story text:
-
-A realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.
-Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.
-Suddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.
-She retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.
-
-The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.
-Amy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.
-
-The AR-15 is not part of this story and must not be reintroduced.
-
-## Timestamp/action rule
-
-MiniMax H3 responds best when each timestamp describes one specific action.
+### Timestamp/action rule
 
 Canonical timestamp syntax:
 
 `At mm:ss.nnn,`
 
-Do not append the word `seconds` after the timestamp.
+Do not append the word `seconds`.
 
-Rules:
+Use one timestamp per discrete action. Do not bundle unrelated sequential actions merely to reduce timestamp count.
 
-- do not impose an arbitrary maximum number of timestamps;
-- use one timestamp per discrete action;
-- if multiple distinct actions occur in sequence, give each action its own timestamp;
-- do not bundle unrelated actions into one timestamp merely to reduce timestamp count;
-- dialogue is its own timed action when spoken;
-- camera movement may share a timestamp only when it is inseparable from the single action being described; otherwise give the camera change its own timestamp.
+Dialogue is its own timed action when spoken.
 
-This is a gold-standard and generation target. Beat 3 is expected to provide a concrete example of the preferred structure.
+Camera movement may share a timestamp only when inseparable from the action; otherwise give it its own timestamp.
 
-## Gold-prompt formatting rules
+### Names and dialogue IDs
 
-### Names vs pronouns
+Prefer names over ambiguous pronouns.
 
-Use names instead of pronouns whenever practical, especially instead of ambiguous `they`.
+Use `(S1)`, `(S2)`, etc. only when a subject is speaking.
 
-This is a clarity preference, not a blanket ban on pronouns. A pronoun is fine within a sentence when the subject has already been explicitly established and the referent is unambiguous. Prefer repeating the name when multiple subjects are present or a pronoun could attach to the wrong person.
+Do not use Subject IDs as ordinary action prose when the name is sufficient.
 
 ### Visual subject disambiguation
 
-H3 can visually confuse similar human subjects even when subject IDs and names are correct.
+When visually similar named subjects are present, restate the minimum useful appearance/clothing discriminator already established by the story/reference inputs.
 
-When a segment contains visually confusable named subjects, restate the minimum useful visual discriminator in the opening `detailed_description` setup. Prefer concrete appearance/clothing cues already established by the story or reference image rather than inventing new traits.
-
-Current Amy benchmark example:
-
-`Amy, still wearing her black tank top and denim jeans, ...`
-
-This is intentional identity reinforcement, not redundant prose. Do not strip it merely because the reference image or previous video already defines Amy.
-
-For H3 dialogue speaker IDs:
-
-- use `(S1)`, `(S2)`, etc. only when the subject is speaking;
-- do not use `(S1)` style IDs for ordinary non-dialogue actions;
-- do not use `<Subject 1>` style references inside ordinary action prose when the character name is sufficient.
-
-Example:
-
-Correct:
-`Amy takes Will's hand and leads Will toward the basement door.`
-
-Dialogue:
-`Amy (S1) says <d>Come on!</d>`
+Do not invent new traits just to disambiguate.
 
 ### Sound and music
 
-Gold prompts should intentionally test both ambient sound and music-state transitions.
+Append segments must explicitly inherit the prior video's music state before describing a change:
 
-Keep them simple.
+`continues from <Video 1>.`
 
-For every append segment, `non_diegetic_music` must explicitly begin from the prior segment's musical state using `continues from <Video 1>` before describing any change in cue, intensity, or style. The new segment may then transition the music as needed.
+Use simple concrete ambience, object sounds, dialogue, combat sounds, and music-state transitions.
 
-Example:
+### Additional production heuristics
 
-`non_diegetic_music: continues from <Video 1>. The tense suspense cue builds into a restrained action pulse.`
+- Avoid ending append segments on dialogue when practical because H3 may carry vocal momentum forward.
+- Re-state important visual details not actually proven by the incoming video tail.
+- Difficult dismemberment/decapitation may need separate timed stages: strike, detachment, detached-part movement, reaction, collapse.
+- For fades, judge story/continuity from the semantic scene state immediately before the literal black frame.
+- Persistent room continuity may eventually require durable room identity/state or a representative image, but implement it only when acceptance demonstrates the need.
 
-Examples of useful categories:
+## Continuity philosophy
 
-- domestic room tone;
-- object sounds;
-- glass breaking;
-- footsteps;
-- combat sounds;
-- fading or continuing sounds;
-- warm domestic underscore;
-- suspense transition;
-- action music;
-- post-combat quiet.
+> Know more internally; expose only the facts needed now.
 
-Music continuity matters. A later beat should transition appropriately from the prior beat's musical state rather than treating each segment as unrelated.
+Canonical continuity may know more than the H3 prompt needs.
 
-## Expected end-state fields
+Persistent named Subject identity belongs to Python.
 
-Expected end state should be concrete enough to judge continuity without overconstraining harmless visual variation.
+Generic/transient actors must not silently collapse into durable Subjects.
 
-Include, when relevant:
+Implementation must stay generic. Do not special-case fixture vocabulary such as zombies, weapons, rooms, or character names.
 
-- environment / current location;
-- persistent environmental changes;
-- important object states;
-- Amy position;
-- Amy final pose/action;
-- Amy physical condition;
-- Amy held props/weapons;
-- Will position/action/condition;
-- Amber position/action/condition;
-- threat state;
-- active/neutralized zombies when relevant;
-- important spatial relationships;
-- ongoing action;
-- ongoing audio;
-- musical state.
+## Sampling
 
-Do not require an exact frozen pose unless the pose is story-critical.
+Sampling is an evidence-driven tuning lever, not a sacred default.
 
-## Current gold beats
+When probing a demonstrated failure:
 
-### Beat 1
-Mode: initial
-Length: 8 seconds
+- change one small sampling dimension at a time when practical;
+- compare against the exact prompt contract being tested;
+- distinguish reasoning/token truncation from semantic misunderstanding;
+- do not randomly sweep settings.
 
-Purpose: calm domestic control case.
-
-Must establish:
-
-- Amy cooking and serving eggs;
-- Will and Amber sitting at the table;
-- complete normalcy;
-- both children receive plates;
-- Amy turns off the stove;
-- no zombies, danger, weapons, or ominous cues.
-
-End-state essentials:
-
-- intact ordinary kitchen;
-- stove off;
-- frying pan and spatula set down;
-- Amy hands free;
-- Will and Amber seated with one egg plate each;
-- no threat;
-- no significant ongoing action;
-- quiet kitchen ambience;
-- calm domestic musical state.
-
-### Beat 2
-Mode: append
-Length: 8 seconds
-
-Purpose: first threat and domestic-to-suspense transition.
-
-Must establish:
-
-- Zombie1 breaks the kitchen door window;
-- glass shatters and debris falls;
-- Amber screams;
-- Amy gathers Will and Amber;
-- Amy, Will, and Amber run down the corridor;
-- Amy opens the heavy steel door.
-
-Must not include:
-
-- combat;
-- Zombie1 fully entering the house;
-- Zombie1 reaching the corridor or steel door;
-- weapon retrieval.
-
-End-state essentials:
-
-- kitchen door window remains shattered;
-- steel door open;
-- Amy, Will, and Amber grouped at the steel door;
-- Zombie1 remains behind at the kitchen entry area and is not in the final frame;
-- escape remains in progress;
-- no combat audio;
-- suspense music has replaced the warm domestic baseline.
-
-## Append reference-video context
-
-The append workflow should pass only the final 22 frames of the previous video into the H3 reference-video node.
-
-Current implementation:
-
-- compute the previous segment's exact H3-aligned frame count using the same `17n+5` length rule as the workflow;
-- skip to the final 22 frames;
-- set `frame_load_cap = 22`.
-
-The shared calculation is used by both append and refresh. For an 8-second segment it yields 192 total frames and `skip_first_frames = 170`; for a 6-second segment it yields 158 total frames and `skip_first_frames = 136`.
-
-Reason: the H3 node internally only needs the relevant tail and should not receive the full prior clip.
-
-## Additional H3 production heuristics
-
-### Avoid ending append segments on dialogue when practical
-
-If the preceding video ends with dialogue, H3 may carry that vocal momentum into the next append and make it difficult to begin silently.
-
-Prefer ending a segment on a visual/action beat rather than spoken dialogue when the story allows it.
-
-### Stage difficult body-disconnection effects
-
-H3 may resist or incompletely render decapitation/dismemberment when all consequences are requested at once.
-
-For difficult body-disconnection actions, stage the event across separate timestamps when useful:
-
-- strike;
-- detachment;
-- separated part falling;
-- reaction / close-up;
-- remaining body collapse.
-
-The Beat 5 gold prompt is a concrete example.
-
-### Re-establish visual details not proven by append context
-
-If the incoming reference video/start context does not visibly show a persistent detail, H3 may invent a replacement.
-
-Re-state important details when the current context does not clearly prove them, especially:
-
-- full outfit;
-- lower-body clothing;
-- belt/holster details;
-- carried or attached weapons;
-- injuries;
-- blood/substance coverage;
-- other visually persistent body details.
-
-Example: if only Amy's upper body is visible in the prior context, explicitly restate `black tank top and denim jeans` rather than assuming the jeans remain preserved.
-
-### Refresh using context latents
-
-The tested quality-refresh approach uses the Extend Backport node with decoded `context_latents` from the prior video.
-
-Tested settings:
-
-- pass the final 22 decoded frames;
-- set `context_frames = 7`.
-
-This tested as effectively as a quality refresh and is the desired refresh baseline.
-
-**Repository integration status:** implemented on `gpt-test-branch`. The checked-in refresh graph uses `MiniMaxH3VideoExtendPatched`, VAE-encoded context latents from the final 22 frames of the prior video, `context_frames = 7`, the prior audio, and the user's tested first-frame selector path. The old hybrid keyframe graph is preserved separately as `Minimax_auto_repair_API.json` for `--repair`.
-
-### Fade-to-black end states
-
-For a segment ending in a fade to black, distinguish:
-
-- semantic scene end state immediately before the fade;
-- literal final rendered frame, which may be black.
-
-Acceptance review should judge story/continuity state from the pre-fade scene, not interpret the black final frame as loss of subjects/environment.
-
-## Deferred action item: environment / room continuity
-
-Problem:
-
-When a room or area is exited and later re-entered, H3 may regenerate the room with a different visual identity.
-
-Two candidate approaches:
-
-### Option A: persistent room description/state
-Store a durable room identity and re-inject it when the location is revisited.
-
-Separate:
-
-- persistent room identity: layout, furniture, doors/windows, colors, major objects;
-- mutable room state: broken glass, blood, bodies, overturned furniture, fire, damage, etc.
-
-This is the preferred KISS starting point.
-
-### Option B: room screenshot/reference image
-Capture a representative frame of the room and pass it back as a reference image when the room is re-entered.
-
-This should provide better visual fidelity but is more complicated.
-
-Do not implement yet. First complete the 8-beat gold-standard pass, then test whether descriptive room continuity is sufficient before adding screenshot/reference-image restoration.
-
-## Current branch
-
-Active development branch:
-
-`gpt-test-branch`
-
-Use the current GitHub branch head as authoritative. Do not rely on stale SHA values from handoff documents.
+Historical settings from the old architecture are evidence, not requirements for the new architecture.
 
 ## Local llama.cpp bridge
 
-A GitHub-backed mailbox bridge is implemented in tools/chatgpt_llama_bridge.py.
+The GitHub-backed mailbox bridge lives at:
 
-Reason: the ChatGPT runtime can write/read GitHub but does not expose a general arbitrary HTTP POST client. A Cloudflare tunnel alone therefore does not provide reliable direct access to /v1/chat/completions.
+`tools/chatgpt_llama_bridge.py`
 
-The bridge uses the dedicated gpt-runtime branch. ChatGPT commits JSON jobs under bridge/jobs; the user's local worker polls that branch, sends only allowlisted requests to the locally configured llama.cpp endpoint, and commits responses/requested artifacts under bridge/results. No inbound port or Cloudflare tunnel is required.
+Mailbox branch:
 
-### First Amy gold acceptance baseline
+`gpt-runtime`
 
-The first complete 8-segment acceptance capture completed successfully at the harness level. The earliest semantic divergence is the ARC stage: the generated story arc omitted the ordinary breakfast setup from required events and assigned the zombie-window break-in to Beat 1. The generated Beat 1 therefore depicts the threat immediately, while gold Beat 1 is the calm breakfast scene. Downstream Director/H3 mismatches should not be repaired before this upstream arc/beat planning loss is corrected.
+ChatGPT writes JSON jobs under `bridge/jobs/`. The local worker calls the configured local OpenAI-compatible llama.cpp/LM Studio endpoint and commits results under `bridge/results/`.
 
+Normal worker command:
 
-## LLM sampling is an evidence-driven tuning lever
+`python tools/chatgpt_llama_bridge.py`
 
-Prompt/architecture changes are not the only permitted way to fix local-model
-behavior. Future MiniMax H3 iterations may tune LLM sampling parameters when a
-targeted bridge probe shows that the setting change improves the **observed**
-failure without creating a regression.
+No inbound port or public tunnel is required.
 
-Use the same discipline as prompt changes:
+The running bridge does not hot-reload changes to its own Python code. If the bridge implementation changes, the user's local checkout must be updated and the bridge restarted.
 
-- change one small sampling dimension at a time when practical;
-- compare against the exact current production prompt/settings;
-- record the exact settings and probe/job IDs in `docs/HANDOFF.md`;
-- promote a sampling change to production only when the evidence distinguishes
-  it from a prompt/content change;
-- do not randomly sweep settings or tune hypothetical failures.
+The current bridge's allowlisted executable test/acceptance worktree still defaults to `gpt-test-branch`. Until that bridge plumbing is updated, use direct `llama_chat` jobs for `gpt-arc-refresh` architecture probes rather than accidentally executing old-branch acceptance code.
 
-Current production baselines:
+## Active development branch
 
-- ARC CREATE/VALIDATE/REPAIR sampling:
-  `temperature=0`, `top_p=0.95`, `top_k=0`, `min_p=0.0`,
-  `presence_penalty=0`, `frequency_penalty=0`,
-  `repeat_penalty=1.15`, seed 42.
-- Beat CREATE sampling:
-  `temperature=0.65`, `top_p=0.90`, `top_k=20`, `min_p=0.05`,
-  `presence_penalty=0.15`, `frequency_penalty=0.15`,
-  `repeat_penalty=1.15`, seed 42.
-- Frozen single-beat VALIDATE remains Mistral 24B at
-  `temperature=0`, `repeat_penalty=1.15`, seed 42 unless new benchmark
-  evidence directly implicates the validator itself.
+Active architecture-reset branch:
 
-Important historical evidence: increasing the deterministic validator/ARC
-repeat penalty to 1.15 was a major quality improvement. Treat repeat penalty,
-temperature, top-p/min-p, and presence/frequency penalties as legitimate tools,
-not sacred defaults.
+`gpt-arc-refresh`
 
-September 23 Beat-1 endpoint experiment:
-- probe 169 succeeded with `temperature=.65`, `top_p=.95`,
-  `min_p=.05`, `repeat_penalty=1.1`;
-- probe 170 repeated the same successful prompt using the **current production
-  Beat CREATE settings** and also succeeded.
-Therefore the current Beat-1 correction is a prompt-contract fix; no Beat
-sampling change is justified by those probes.
+It was branched from `gpt-test-branch` on 2026-09-24.
 
+This branch intentionally abandons the old locked ARC/BEATS planning architecture as a design constraint.
 
+Use the current branch head as authoritative; do not rely on stale SHA values in handoff/history documents.
 
-September 23 production promotion:
-- full acceptance 172 reproduced Beat-1 action-only collapse under RP 1.05;
-- probe 173 changed only Beat CREATE repeat_penalty to 1.15 and restored
-  activity + completion on the production-shaped prompt;
-- probe 174 additionally raised top_p to 0.95 and regressed back to
-  activity-only.
-Production Beat CREATE repeat_penalty is therefore now 1.15; top_p remains 0.90.
+## Current development loop
 
-September 23 exact-profile follow-up:
-- planning acceptance 177 showed RP 1.15 alone did not generalize because Beat
-  CREATE still inherited formatter sampling and used a random seed;
-- probes 178/179 reproduced activity-only output with the actual inherited
-  min_p=0.0, regardless of RP 1.15 vs 1.05;
-- probe 180 showed top_k 20 -> 0 did not fix the collapse;
-- probe 181 used min_p=0.05 + RP 1.15 and restored activity + explicit completion;
-- probe 182 used min_p=0.05 + RP 1.05 and remained activity-only.
-Production Beat CREATE now owns its complete sampling profile explicitly:
-top_k=20, min_p=0.05, repeat_penalty=1.15, seed=42. This avoids hidden formatter
-defaults and random-seed drift in future experiments.
-
-## Acceptance developer-log review
-
-Every bridge `run_acceptance` result should be reviewed using both the normal
-acceptance artifacts and the LM Studio developer log before deciding the next
-test or production change.
-
-For each completed acceptance, inspect:
-
-- `result.json` and `files/run.log` for the first observable pipeline failure;
-- `files/developer_log.jsonl` for the exact model inputs, outputs/reasoning, finish
-  reasons, and token/prediction statistics around that failure;
-- `files/developer_log.stderr.log` if developer-log capture is incomplete or
-  appears to have failed.
-
-Use the developer log to distinguish prompt/content failures from model reasoning
-loops, token-budget truncation, transport/formatter behavior, or sampling issues.
-Do not choose the next probe/fix from `run.log` alone when a developer log is
-available. Continue to fix the earliest observed failure rather than hypothetical
-downstream problems.
-
-## GPT formatter split and acceptance 305 beneficiary loss
-
-GPT-OSS now has its own response-formatter module:
-
-- `gpt_formatter.py` is a behavioral copy of the previously active `mistral_formatter.py` baseline.
-- `minimax.py` now exposes `--model gpt` and selects `GPTFormatter` by default.
-- the acceptance runner now defaults to `--model gpt`.
-- no speculative GPT-specific formatting rule was added during the split; model-specific divergence should be added only when an observed GPT-OSS response-shape/formatting failure justifies it.
-
-Acceptance `ace-run-acceptance-amy-full-gptoss-305` completed under the old explicit `--model mistral` selector. The earliest gold-relevant loss occurs upstream of Request 2: ARC Beat 1 reduced "Amy ... cooking breakfast for her young kids" to "Amy cooks breakfast..." and dropped the beneficiary relationship. Beat creation therefore had no authoritative requirement that Will and Amber receive/participate in the completed breakfast.
-
-Focused correction:
-- `60bd14226ce3d4898a37213b891cca550fb6bc83` — ARC validation now treats material relational participants/beneficiaries as source meaning: "does X for Y" is not fully covered by "does X".
-- `32f8afbff968af40be7487cd5f1cc05c6fa26155` — structural prompt regression coverage.
-- direct GPT-OSS probes 307/308 cleanly reject the dropped-beneficiary case and accept the preserved control.
-- regression job 309 passes 31/31 tests.
-
-A later 305 ARC allocation mismatch (Beat 2/3 grouping versus the locked gold) is intentionally deferred until the earlier Beat 1 beneficiary/completion failure is re-tested.
-
-Next: planning acceptance `acj-run-acceptance-amy-planning-gpt-310` uses the new GPT formatter selector and should be inspected first for ARC Beat 1 beneficiary preservation and the generated Beat 1 completion endpoint.
-
+1. Read `docs/PROJECT_NOTES.md` and the current branch head.
+2. Use small direct bridge probes to test the chapter-first contracts.
+3. Implement only the minimum architecture needed by the demonstrated behavior.
+4. Commit focused changes to `gpt-arc-refresh`.
+5. Run targeted tests/probes.
+6. Progress toward the locked gold benchmark.
