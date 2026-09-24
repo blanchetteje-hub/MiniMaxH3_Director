@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-context-contract-matrix-321",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 3000,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Select only established current-state facts needed by the current chapter. Do not recap history or invent facts. Return one valid JSON object only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nThe parent must finish the current unresolved action in the kitchen, then go down the hallway to a closed safe-room door and reunite with two children waiting behind it.\n\nESTABLISHED STATE:\n- Parent is currently in the kitchen facing the unresolved current obstacle.\n- Parent currently holds the needed hand-held tool in a ready position.\n- Parent's current clothing and visible soiling are established.\n- Two earlier resolved obstacles remain on the kitchen floor.\n- Two children are safe behind the closed steel safe-room door down the hallway.\n- A different tool was discarded earlier.\n- A window was broken earlier.\n- Breakfast ended earlier.\n- A storage panel was opened earlier.\n- Several lines of dialogue occurred earlier.\n\nA) EXTRACT the minimum opening context needed to execute the whole current chapter correctly.\n\nB) SUFFICIENCY BAD\nContext:\n[\"Parent is in the kitchen facing the unresolved current obstacle.\",\"Parent holds the needed tool ready.\",\"Current clothing/visible condition is established.\",\"Two earlier resolved obstacles remain on the floor.\"]\nJudge whether it is sufficient for the WHOLE chapter.\n\nC) SUFFICIENCY GOOD\nUse B plus:\n\"Two children are safe behind the closed steel safe-room door down the hallway.\"\n\nD) REPAIR B\nAdd only the minimum missing established fact(s).\n\nReturn exactly:\n{\n \"A\":{\"opening_context\":[]},\n \"B\":{\"sufficient\":true,\"missing\":null},\n \"C\":{\"sufficient\":true,\"missing\":null},\n \"D\":{\"opening_context\":[]}\n}"
+    }
+  ]
+}
