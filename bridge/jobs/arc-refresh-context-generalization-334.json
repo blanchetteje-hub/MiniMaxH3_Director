@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-context-generalization-334",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 2400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Select only established current-state facts needed by the whole enclosed chapter. Do not recap history. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nA researcher finishes the current diagnostic at the workstation, then walks to a sealed side room and reunites with the colleague waiting there.\n\nESTABLISHED STATE:\n- Researcher is at the workstation with the final diagnostic still active.\n- Researcher holds the current instrument.\n- Current clothing and visible condition are established.\n- Several earlier samples remain on the bench.\n- The colleague is waiting behind the sealed side-room door at the end of the corridor.\n- An alarm sounded earlier.\n- Breakfast occurred earlier.\n- A different instrument was put away earlier.\n\nA) Extract the minimum opening context for the whole chapter.\n\nB) Judge this reduced context:\n[\"Researcher is at the workstation with the final diagnostic still active.\",\"Researcher holds the current instrument.\",\"Current clothing and visible condition are established.\",\"Several earlier samples remain on the bench.\"]\n\nC) Repair B using only established facts.\n\nReturn exactly:\n{\"A\":{\"opening_context\":[]},\"B\":{\"sufficient\":true,\"missing\":null},\"C\":{\"opening_context\":[]}}"
+    }
+  ]
+}
