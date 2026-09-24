@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-chapters-create-311",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 2200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are planning a book from a source story. The source story is the only story authority. Do not invent, replace, omit, or contradict material story events. Return only valid JSON."
+    },
+    {
+      "role": "user",
+      "content": "Create a rough chapter outline for this complete story.\n\nA chapter is a coarse plot unit. Its purpose is only to say what happens in that chapter. Do not create beats yet. Choose natural chapter boundaries. Keep the outline simple.\n\nReturn exactly:\n{\"chapters\":[{\"chapter\":1,\"outline\":\"...\"}]}\n\nSTORY:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nThe AR-15 is not part of this story and must not be reintroduced."
+    }
+  ]
+}
