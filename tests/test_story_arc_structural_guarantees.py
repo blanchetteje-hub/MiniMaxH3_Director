@@ -65,6 +65,39 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate required-event assignments"):
             minimax.parse_beat_arc_plan(arc, 3)
 
+    def test_rejects_repeated_terminal_state_for_same_threat_entity(self):
+        events = [
+            {
+                "id": "E1",
+                "event": "A zombie attacks.",
+                "beat_number": 1,
+                "state_effects": [
+                    {"op": "set_threat_state", "entity": "zombie", "value": "active"},
+                ],
+            },
+            {
+                "id": "E2",
+                "event": "Amy removes the zombie.",
+                "beat_number": 2,
+                "depends_on": ["E1"],
+                "state_effects": [
+                    {"op": "set_threat_state", "entity": "zombie", "value": "removed"},
+                ],
+            },
+            {
+                "id": "E3",
+                "event": "Amy removes another zombie.",
+                "beat_number": 3,
+                "depends_on": ["E2"],
+                "state_effects": [
+                    {"op": "set_threat_state", "entity": "zombie", "value": "removed"},
+                ],
+            },
+        ]
+        arc = make_arc([(1, 3, events)])
+        with self.assertRaisesRegex(ValueError, "distinct threat entity"):
+            minimax.parse_beat_arc_plan(arc, 3)
+
     def test_flat_arc_parser_makes_phase_bookkeeping_python_owned(self):
         flat_events = [
             {**copy.deepcopy(event), "state_effects": []}
