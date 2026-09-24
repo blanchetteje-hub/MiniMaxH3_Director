@@ -2082,3 +2082,17 @@ Focused change:
 
 Next: batch structural tests plus multiple GPT-OSS majority-repair probes using the 295 rejected-ARC shape. If the probes return complete JSON without re-entering the counting loop, run another full acceptance with developer-log capture.
 
+## GPT-OSS ARC majority procedure probes 297-299: reasoning loop broken
+
+The explicit allocation procedure solved the prior GPT-OSS ARC REPAIR counting loop:
+- `aby-gptoss-majority-procedure-297` completed successfully at `max_tokens=1536`, using 508 reasoning tokens and returning complete JSON. Beats 4-8 all materially perform the zombie-killing process; Beat 4 bundles retrieval/setup with the first kill; Beat 8 owns the final kill + child release.
+- `298` and `299` also completed rather than truncating, confirming the loop itself is gone.
+
+A smaller semantic issue appeared in 298/299: Beat 7 called its zombie "final" and Beat 8 then killed another "last remaining" zombie. That is a terminal-label ownership contradiction, not an allocation failure.
+- `35cec30e2d9b4f559a366710d56550fb5a1e934d` — majority repair now reserves "last/final" terminal labeling exclusively for the final counted beat that owns the source's terminal action.
+- `4977f9402c1371e1e5fa05cdad1245a4af054905` — regression coverage.
+
+Job 296's only reported failure was a stale wording assertion expecting the old phrase "must begin no later than Beat 4"; production behavior and live probes demonstrate the new procedure is functioning.
+
+Next: run the focused structural regression and one terminal-label bad/good control pair, then launch a fresh full acceptance. No further token-budget experiments are needed unless full acceptance shows a new truncation mode.
+
