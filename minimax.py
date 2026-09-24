@@ -11161,6 +11161,9 @@ Rules:
 - DEFINED SUBJECTS establish identity aliases. Relational wording such as
   "Amy's kids" may refer to named defined Subjects without repeating their
   names in every event.
+- Preserve material relational participants and beneficiaries. If the source
+  says an action is done for, with, or to someone, the proposed event must
+  preserve that relationship; "does X for Y" is not fully covered by "does X".
 - Do not require clothing, appearance, names, or other descriptive facts that
   the source does not provide. Validate source fidelity; do not invent missing
   source details as requirements.
