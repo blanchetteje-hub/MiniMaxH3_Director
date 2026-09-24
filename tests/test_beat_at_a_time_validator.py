@@ -58,6 +58,14 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             prompt,
         )
         self.assertIn(
+            "Do not infer the required action only from an aftermath",
+            prompt,
+        )
+        self.assertIn(
+            "cannot by itself satisfy a separately required action",
+            prompt,
+        )
+        self.assertIn(
             "Entering a room does not imply locking its door",
             prompt,
         )
