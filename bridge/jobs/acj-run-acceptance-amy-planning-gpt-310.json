@@ -1,0 +1,7 @@
+{
+  "job_id": "acj-run-acceptance-amy-planning-gpt-310",
+  "kind": "run_acceptance",
+  "model": "gpt",
+  "planning_only": true,
+  "timeout_seconds": 3600
+}
