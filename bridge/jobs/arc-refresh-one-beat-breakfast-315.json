@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-one-beat-breakfast-315",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "The supplied story/chapter information is the only narrative authority. Follow the requested scope. Return only valid JSON."
+    },
+    {
+      "role": "user",
+      "content": "Create beats for this enclosed chapter.\n\nBEAT BUDGET: exactly 1 beat.\n\nYou know only this chapter and its opening context.\n\nOPENING CONTEXT:\nAmy, Will, and Amber are in an intact ordinary kitchen on a normal morning. Amy wears a tight black tank top and denim jeans.\n\nCURRENT CHAPTER:\nAmy cooks breakfast for Will and Amber. This chapter stays completely ordinary and finishes the breakfast action.\n\nA beat is one 8-second video unit. Describe a concrete visible endpoint. Stay inside this chapter. No danger, zombies, weapons, or future-story setup.\n\nReturn only:\n{\"beats\":[{\"beat\":1,\"event\":\"...\"}]}"
+    }
+  ]
+}
