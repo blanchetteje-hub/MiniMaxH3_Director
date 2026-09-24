@@ -1,0 +1,9 @@
+{
+  "job_id": "abx-run-tests-arc-majority-procedure-296",
+  "kind": "run_tests",
+  "tests": [
+    "tests.test_story_arc_structural_guarantees",
+    "tests.test_forward_beat_validation"
+  ],
+  "timeout_seconds": 1200
+}
