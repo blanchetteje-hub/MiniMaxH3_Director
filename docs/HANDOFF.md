@@ -1955,3 +1955,17 @@ Focused fixes:
 
 Next: run focused acceptance/ARC tests and re-probe the exact 270/273 majority-repair shape at 2048 tokens. If the probe returns complete valid JSON without the attack-only counting error, launch a fresh full acceptance with developer-log capture.
 
+## GPT-OSS majority repair probe 275: entity-count assumption still loops
+
+`abc-gptoss-majority-repair-action-ownership-275` did not produce final JSON. It exhausted the 2048-token completion budget with 2045 reasoning tokens. The action-ownership clarification worked: GPT-OSS correctly recognized that weapon retrieval, danger, or attack-only beats do not satisfy the emphasized "Amy killing/fighting zombies" process. The remaining loop was narrower: it continued treating the three zombie entities already present in the rejected ARC as if they were the source's complete zombie count, despite the source-authorized repeated/plural process.
+
+This is still an ARC REPAIR prompt-contract ambiguity, not a reason to increase token limits or add a new subsystem.
+
+Focused refinement:
+- `a141f77eba77fd2b7aed5c491449c1015725df84` — ARC REPAIR now explicitly says to create as many distinct ordinary instances of the already-authorized repeated process as the numeric beat budget requires; named instances in the rejected ARC are not a source-level cap. It also forbids splitting/killing the same instance twice just to fill beats and states the generic allocation pattern: when outside-sequence setup consumes the budget, bundle remaining setup into the start of the first counted process beat and immediate resolution into the end of the terminal counted process beat.
+- `2a0a1693333428ad55e1c8a5ee15e44adf6ebe04` — regression coverage.
+
+`abb-run-tests-acceptance-arc-repair-274` passed 37/37 tests, confirming the Windows console-echo fix and prior ARC guidance.
+
+Next: run the structural regression suite and repeat the 275 repair shape with the new explicit instance-count permission. If it returns complete JSON materially assigning the process across 5/8 beats without reusing killed entities, proceed to a fresh full acceptance with developer-log capture.
+
