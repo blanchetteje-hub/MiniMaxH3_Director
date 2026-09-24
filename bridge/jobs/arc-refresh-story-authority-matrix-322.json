@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-story-authority-matrix-322",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 3200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "STORY is always the one source of truth. A chapter outline is only a revisable draft. Treat each labeled task independently. Return one valid JSON object only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nA parent resolves the final problem, then opens the secured room and reunites with the two children. The story ends there.\n\nROUGH CHAPTER DRAFT:\nThe parent resolves the final problem, reunites with the children, and then the family leaves the building together.\n\nA) VALIDATE\nCandidate beats:\n1. Parent resolves the final problem.\n2. Parent reunites with the children and the family leaves the building.\nJudge against STORY, not the rough draft.\n\nB) REPAIR\nRepair those beats into exactly two beats. Remove anything supported only by the rough chapter draft.\n\nC) REVISE OUTLINE\nRewrite the rough chapter outline to match STORY and the repaired beats.\n\nD) CONTROL\nValidate:\n1. Parent resolves the final problem.\n2. Parent opens the secured room and reunites with the children.\n\nReturn exactly:\n{\n \"A\":{\"valid\":true,\"issue\":null},\n \"B\":{\"beats\":[]},\n \"C\":{\"chapter_outline\":\"...\"},\n \"D\":{\"valid\":true,\"issue\":null}\n}"
+    }
+  ]
+}
