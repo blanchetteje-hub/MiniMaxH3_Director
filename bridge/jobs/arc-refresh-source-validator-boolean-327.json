@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-source-validator-boolean-327",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "STORY is the only authority. Unsupported candidate actions are invalid. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nA character completes the final task and reunites with the waiting family. The story ends there.\n\nCandidate A adds a new journey after the reunion.\nCandidate B ends at the reunion.\n\nFor each candidate:\n1. Identify whether any material action is absent from STORY.\n2. Set valid=false if yes.\n3. Otherwise set valid=true.\n\nReturn exactly:\n{\"A\":{\"valid\":false,\"issue\":\"...\"},\"B\":{\"valid\":true,\"issue\":null}}"
+    }
+  ]
+}
