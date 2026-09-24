@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-gold-opening-context-316",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "The supplied story/chapter information is the only narrative authority. Follow the requested scope. Return only valid JSON."
+    },
+    {
+      "role": "user",
+      "content": "Create beats for this enclosed chapter.\n\nBEAT BUDGET: exactly 2 beats.\n\nYou know only this chapter and the opening context below. You do not know the previous chapter.\n\nOPENING CONTEXT:\nAmy is in the kitchen directly in front of the current zombie threat.\nAmy holds a katana above her head.\nAmy wears a black tank top and denim jeans.\nAmy's front is covered in green vomit.\nTwo earlier zombie corpses remain on the kitchen floor, currently out of view.\n\nCURRENT CHAPTER:\nAmy finishes fighting the last zombie. After the last zombie is defeated, Amy lets Will and Amber out of the basement and reunites with them.\n\nRules:\n1. Beat 1 must continue naturally from the opening context.\n2. Beat 2 must complete the chapter.\n3. Do not invent another zombie, another weapon, or another plot event.\n\nReturn only:\n{\"beats\":[{\"beat\":1,\"event\":\"...\"},{\"beat\":2,\"event\":\"...\"}]}"
+    }
+  ]
+}
