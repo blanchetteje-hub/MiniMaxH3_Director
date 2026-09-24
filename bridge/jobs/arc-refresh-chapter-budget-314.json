@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-chapter-budget-314",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "The supplied story/chapter information is the only narrative authority. Follow the requested scope. Return only valid JSON."
+    },
+    {
+      "role": "user",
+      "content": "Create a rough chapter plan for this story.\n\nThere are exactly 8 video beats total.\n\nA chapter is a LARGE continuous story section. Every new chapter causes an H3 refresh, so do not make a new chapter for each sentence or action. Use the fewest natural chapters that organize the story well. A chapter may contain several consecutive story events.\n\nAssign each chapter a beat_count. All beat_count values must sum to 8.\n\nThe story is the only authority. Do not add an ending or event that is not in the story.\n\nReturn only:\n{\"chapters\":[{\"chapter\":1,\"beat_count\":1,\"outline\":\"...\"}]}\n\nSTORY:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement."
+    }
+  ]
+}
