@@ -891,6 +891,7 @@ LOCAL STAGING
 - Keep the camera movement smooth - remember, this is only a {segment_seconds} second segment.
 - Keep spatial awareness accurate for each micro-beat.
 - DO NOT invent anything new when writing the END CONTINUITY STATE.  Make it nearly identical to the last micro-beat.
+- If CURRENT BEAT terminally removes, destroys, kills, or otherwise ends an entity/process, do not carry that ended entity/process into later micro-beats or the END CONTINUITY STATE as still active, moving, speaking, sounding, or otherwise continuing unless CURRENT BEAT explicitly restores/restarts it.
 - Keep the END CONTINUITY STATE limited to one sentence.
 
 MICRO-BEATS
