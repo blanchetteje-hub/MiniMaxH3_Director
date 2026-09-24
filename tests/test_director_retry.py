@@ -492,6 +492,18 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(parsed["subject_genders"], {"Amy": "female"})
 
+    def test_director_prompt_blocks_terminal_state_carryover(self):
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(segment_seconds=8)
+        self.assertIn(
+            "do not carry that ended entity/process into later micro-beats "
+            "or the END CONTINUITY STATE",
+            prompt,
+        )
+        self.assertIn(
+            "still active, moving, speaking, sounding, or otherwise continuing",
+            prompt,
+        )
+
     def test_validation_prompt_checks_scope_creep_into_exact_next_beat(self):
         messages = minimax.build_director_continuity_validation_messages(
             opening_state={},
