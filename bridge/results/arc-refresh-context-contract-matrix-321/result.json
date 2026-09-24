@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-context-contract-matrix-321",
+  "kind": "llama_chat",
+  "started_at": 1790287745.4549236,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Select only established current-state facts needed by the current chapter. Do not recap history or invent facts. Return one valid JSON object only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT CHAPTER:\nThe parent must finish the current unresolved action in the kitchen, then go down the hallway to a closed safe-room door and reunite with two children waiting behind it.\n\nESTABLISHED STATE:\n- Parent is currently in the kitchen facing the unresolved current obstacle.\n- Parent currently holds the needed hand-held tool in a ready position.\n- Parent's current clothing and visible soiling are established.\n- Two earlier resolved obstacles remain on the kitchen floor.\n- Two children are safe behind the closed steel safe-room door down the hallway.\n- A different tool was discarded earlier.\n- A window was broken earlier.\n- Breakfast ended earlier.\n- A storage panel was opened earlier.\n- Several lines of dialogue occurred earlier.\n\nA) EXTRACT the minimum opening context needed to execute the whole current chapter correctly.\n\nB) SUFFICIENCY BAD\nContext:\n[\"Parent is in the kitchen facing the unresolved current obstacle.\",\"Parent holds the needed tool ready.\",\"Current clothing/visible condition is established.\",\"Two earlier resolved obstacles remain on the floor.\"]\nJudge whether it is sufficient for the WHOLE chapter.\n\nC) SUFFICIENCY GOOD\nUse B plus:\n\"Two children are safe behind the closed steel safe-room door down the hallway.\"\n\nD) REPAIR B\nAdd only the minimum missing established fact(s).\n\nReturn exactly:\n{\n \"A\":{\"opening_context\":[]},\n \"B\":{\"sufficient\":true,\"missing\":null},\n \"C\":{\"sufficient\":true,\"missing\":null},\n \"D\":{\"opening_context\":[]}\n}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 3000,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nz4yxwf3imfo5d8h2aea4",
+    "object": "chat.completion",
+    "created": 1790287745,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"A\": {\n    \"opening_context\": [\n      \"Parent is in the kitchen facing the unresolved current obstacle.\",\n      \"Parent holds the needed hand‑held tool ready.\",\n      \"Current clothing and visible soiling are established.\",\n      \"Two earlier resolved obstacles remain on the kitchen floor.\",\n      \"Two children are safe behind the closed steel safe-room door down the hallway.\"\n    ]\n  },\n  \"B\": {\n    \"sufficient\": false,\n    \"missing\": [\n      \"Two children are safe behind the closed steel safe-room door down the hallway.\"\n    ]\n  },\n  \"C\": {\n    \"sufficient\": true,\n    \"missing\": null\n  },\n  \"D\": {\n    \"opening_context\": [\n      \"Parent is in the kitchen facing the unresolved current obstacle.\",\n      \"Parent holds the needed hand‑held tool ready.\",\n      \"Current clothing and visible soiling are established.\",\n      \"Two earlier resolved obstacles remain on the kitchen floor.\",\n      \"Two children are safe behind the closed steel safe-room door down the hallway.\"\n    ]\n  }\n}",
+          "reasoning": "We need to produce JSON with A, B, C, D. For A: extract minimum opening context needed to execute whole current chapter correctly. That means we list the facts that are necessary for the entire chapter: parent in kitchen facing unresolved obstacle; holds tool ready; clothing condition established; two earlier resolved obstacles remain on floor; children safe behind closed steel safe-room door down hallway. Also maybe mention that they need to go down hallway after finishing action, but that's part of chapter. So opening context should include all facts needed for the whole chapter: parent in kitchen facing unresolved obstacle, holds tool ready, clothing condition established, two earlier resolved obstacles remain on floor, children behind closed safe-room door.\n\nThus A.opening_context = list those facts.\n\nB: given context [\"Parent is in the kitchen facing the unresolved current obstacle.\",\"Parent holds the needed tool ready.\",\"Current clothing/visible condition is established.\",\"Two earlier resolved obstacles remain on the floor.\"] Judge whether it is sufficient for whole chapter. It lacks children behind safe-room door, so not sufficient. So B.sufficient false, missing list of fact(s) that are missing: \"Two children are safe behind the closed steel safe-room door down the hallway.\" Also maybe mention unresolved obstacle? But that's included. So missing only that one.\n\nC: Use B plus child fact; then judge sufficiency. That would be sufficient. So C.sufficient true, missing null.\n\nD: Repair B by adding minimum missing established facts. That's same as adding children behind safe-room door. So D.opening_context should include the original four plus the added fact? Actually \"Add only the minimum missing established fact(s).\" So we need to produce opening context that includes all needed for chapter. That is same as A's list: parent in kitchen facing unresolved obstacle, holds tool ready, clothing condition, two earlier resolved obstacles on floor, children behind safe-room door.\n\nThus D.opening_context = same as A? Yes.\n\nReturn JSON exactly with those fields. Ensure no extra keys or values. Use null for missing when none.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 405,
+      "completion_tokens": 646,
+      "total_tokens": 1051,
+      "completion_tokens_details": {
+        "reasoning_tokens": 416
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790287755.83287,
+  "status": "ok"
+}
