@@ -1,0 +1,57 @@
+{
+  "job_id": "abt-gptoss-director-containment-establish-292",
+  "kind": "llama_chat",
+  "started_at": 1790263541.6665883,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a minimalist movie editor expanding CURRENT BEAT into timed micro-beats for one 8-second segment. Return only timed micro-beats plus one END CONTINUITY STATE sentence.\n\nAUTHORITY:\n- CURRENT BEAT is the complete story-level work for this segment.\n- OPENING CONTINUITY is authoritative.\n- Do not perform NEXT BEAT.\n- CONTAINMENT HANDOFF: If CURRENT BEAT places a subject inside a room/container and then locks, seals, or closes the barrier around that subject, preserve that subject as remaining inside/behind that barrier in all later micro-beats and in END CONTINUITY unless CURRENT BEAT explicitly releases or moves them again. Do not re-co-locate a contained subject beside another character merely because they were together earlier.\n- If OPENING CONTINUITY already places a subject behind a locked/sealed barrier, that subject must not appear beside an outside character, receive unrelated props, or participate in later staging unless CURRENT BEAT explicitly opens/releases the barrier and moves that subject.\n- Do not invent consequential persistent changes not authorized by CURRENT BEAT.\n- END CONTINUITY must be nearly identical to the final micro-beat and limited to one sentence."
+      },
+      {
+        "role": "user",
+        "content": "OPENING CONTINUITY\nAmy, Will, and Amber are together in the kitchen.\n\nCURRENT BEAT\nAmy takes Will and Amber down into the basement, places them inside, locks the basement door behind them, then retrieves a pistol and katana from hidden storage in the kitchen.\n\nNEXT BEAT\nAmy kills the first zombie in the kitchen.\n\nGenerate the 8-second RAW SCENE and END CONTINUITY STATE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-12gvnuv9r2l8aekbl7qotha",
+    "object": "chat.completion",
+    "created": 1790263541,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "[0-1] Amy leads Will and Amber down the narrow staircase into the dim basement.  \n[1-2] She drops them onto the concrete floor, ensuring they are seated.  \n[2-3] Amy pulls the heavy door latch, locking it behind them with a click.  \n[3-4] She steps back up the stairs to the kitchen, breathing heavily.  \n[4-5] In the kitchen, she opens the hidden storage compartment and pulls out a pistol.  \n[5-6] Still in the kitchen, she retrieves a katana from the same compartment.  \n[6-8] Amy holds both weapons, eyes scanning for any movement.  \n\nEND CONTINUITY STATE: Will and Amber remain inside the basement behind the locked door; Amy is in the kitchen holding a pistol and katana.",
+          "reasoning": "We need to expand CURRENT BEAT into timed micro-beats for an 8-second segment. The beat: Amy takes Will and Amber down into basement, places them inside, locks door behind them, then retrieves pistol and katana from hidden storage in kitchen.\n\nSo we have characters: Amy, Will, Amber. They start together in kitchen (opening continuity). Then Amy leads them to basement. She moves them down stairs? The beat is 8 seconds total. We need micro-beats with timestamps like [0-1], etc. Each micro-beat describes action and maybe sound.\n\nWe must preserve containment: Will and Amber are inside basement locked behind door after Amy locks it. So they remain in basement for later beats unless released. Also, the pistol and katana retrieved from hidden storage in kitchen; that means Amy is still in kitchen retrieving them? Or she goes to kitchen then back? The beat says \"retrieves a pistol and katana from hidden storage in the kitchen.\" That implies after placing Will & Amber inside basement and locking door behind them, Amy returns to kitchen to retrieve weapons. So we need micro-beats: 1) Amy leads Will & Amber down stairs; 2) She places them into basement; 3) Locks door; 4) Goes back up to kitchen; 5) Retrieves pistol; 6) Retrieves katana.\n\nWe have 8 seconds, so maybe each micro-beat ~1.33 sec? But we can vary durations: e.g., [0-1] Amy leads Will & Amber down stairs; [1-2] She places them inside basement; [2-3] Locks door behind them; [3-4] Walks back up to kitchen; [4-5] Opens hidden storage, pulls out pistol; [5-6] Pulls out katana; [6-8] Amy holds both weapons ready.\n\nWe need micro-beats with timestamps. The format: maybe \"[0-1] ...\". Provide 8-second segment. End continuity state sentence: \"Will and Amber remain inside the basement behind the locked door, while Amy is in the kitchen holding a pistol and katana.\" That matches final micro-beat.\n\nLet's craft micro-beats:\n\n[0-1] Amy leads Will and Amber down the narrow staircase into the dim basement.\n[1-2] She drops them onto the concrete floor, ensuring they are seated.\n[2-3] Amy pulls the heavy door latch, locking it behind them with a click.\n[3-4] She steps back up the stairs to the kitchen, breathing heavily.\n[4-5] In the kitchen, she opens the hidden storage compartment and pulls out a pistol.\n[5-6] Still in the kitchen, she retrieves a katana from the same compartment.\n[6-8] Amy holds both weapons, eyes scanning for any movement.\n\nEnd continuity: Will and Amber remain inside the basement behind the locked door; Amy is in the kitchen holding a pistol and katana. That matches final micro-beat.\n\nCheck containment: Will & Amber inside basement locked behind door. Good. No other changes. End continuity sentence must be nearly identical to final micro-beat, limited to one sentence. So we can say \"Will and Amber remain inside the basement behind the locked door; Amy is in the kitchen holding a pistol and katana.\" That matches.\n\nLet's output only timed micro-beats plus END CONTINUITY STATE sentence.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 400,
+      "completion_tokens": 881,
+      "total_tokens": 1281,
+      "completion_tokens_details": {
+        "reasoning_tokens": 702
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790263557.0767195,
+  "status": "ok"
+}
