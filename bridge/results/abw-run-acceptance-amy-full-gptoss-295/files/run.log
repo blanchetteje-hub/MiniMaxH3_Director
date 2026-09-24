@@ -1,0 +1,81 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-jrbnzz5t\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-jrbnzz5t\repo\beats.txt); regenerating the beat plan.
+Asking LM Studio to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-jrbnzz5t\repo\beats.txt with 8 creative story beats.
+
+=== Macro arc generation attempt 1/10 ===
+Requesting macro arc (attempt 1, response attempt 1/10).
+{'events': [{'id': 'beat1', 'event': 'Amy cooks breakfast for Will and Amber in the kitchen wearing a tight black tank top and denim jeans.', 'beat_number': 1, 'state_effects': [{'op': 'set_clothing', 'entity': 'Amy', 'slot': 'upper', 'item': 'tight black tank top', 'damage': 'none'}]}, {'id': 'beat2', 'event': 'A zombie breaks through the kitchen door window, startling Amy who sees the danger.', 'beat_number': 2, 'state_effects': [{'op': 'set_barrier_state', 'entity': 'kitchen_door', 'value': 'broken'}, {'op': 'set_threat_state', 'entity': 'zombie', 'value': 'active'}]}, {'id': 'beat3', 'event': 'Amy rushes Will and Amber to the basement, gets them inside, and locks the basement door.', 'beat_number': 3, 'state_effects': [{'op': 'set_location', 'entity': 'Will', 'value': 'basement'}, {'op': 'set_location', 'entity': 'Amber', 'value': 'basement'}, {'op': 'set_barrier_state', 'entity': 'basement_door', 'value': 'locked'}]}, {'id': 'beat4', 'event': 'Amy retrieves her hidden arsenal consisting of a pistol and a katana from storage.', 'beat_number': 4, 'state_effects': [{'op': 'set_item_state', 'entity': 'pistol', 'owner': 'Amy', 'value': 'held'}, {'op': 'set_item_state', 'entity': 'katana', 'owner': 'Amy', 'value': 'held'}]}, {'id': 'beat5', 'event': 'Amy equips the pistol and katana, readying herself for combat.', 'beat_number': 5, 'state_effects': [{'op': 'set_item_state', 'entity': 'pistol', 'owner': 'Amy', 'value': 'equipped'}, {'op': 'set_item_state', 'entity': 'katana', 'owner': 'Amy', 'value': 'equipped'}]}, {'id': 'beat6', 'event': 'Amy fights off a wave of zombies attacking her in the basement.', 'beat_number': 6, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombies_wave_1', 'value': 'dead'}]}, {'id': 'beat7', 'event': 'She kills the last zombie; the house is now soaked in blood.', 'beat_number': 7, 'state_effects': [{'op': 'set_threat_state', 'entity': 'zombie_last', 'value': 'dead'}, {'op': 'set_condition', 'entity': 'house', 'value': 'blood_soaked'}]}, {'id': 'beat8', 'event': 'Amy lets Will and Amber out of the basement, bringing them back to safety.', 'beat_number': 8, 'state_effects': [{'op': 'set_location', 'entity': 'Will', 'value': 'kitchen'}, {'op': 'set_location', 'entity': 'Amber', 'value': 'kitchen'}]}]}
+Validating macro arc (attempt 1, response attempt 1/10).
+Macro arc validation: INVALID — Beat1 does not include a set_clothing state_effect for Amy’s denim jeans, which is a persistent clothing fact explicitly stated in the source
+Repairing macro arc.
+Validating macro arc (attempt 2, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 2/8 beats; more than half is required.
+Repairing macro arc.
+Validating macro arc (attempt 3, response attempt 1/10).
+Macro arc validation: INVALID — Beat4 sets threat_state zombies_wave_1 dead, but the source does not mention any zombie wave or a specific kill at that point.
+Repairing macro arc.
+Validating macro arc (attempt 4, response attempt 1/10).
+Macro arc validation: INVALID — Explicit source majority sequence is under-allocated: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her. is materially represented in 3/8 beats; more than half is required.
+Repairing macro arc.
+LLM response/content was unusable (attempt 1/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 2/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 3/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 4/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 5/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 6/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 7/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 8/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 9/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 10/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+WARNING: LM Studio returned no usable result after 10 attempts; continuing with best effort: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+Macro arc repair failed; retrying repair (1/10): The LLM arc response must be valid JSON.
+Repairing macro arc.
+LLM response/content was unusable (attempt 1/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 2/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 3/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 4/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 5/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 6/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 7/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 8/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 9/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 10/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+WARNING: LM Studio returned no usable result after 10 attempts; continuing with best effort: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+Macro arc repair failed; retrying repair (2/10): The LLM arc response must be valid JSON.
+Repairing macro arc.
+LLM response/content was unusable (attempt 1/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 2/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 3/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 4/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 5/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 6/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 7/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 8/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 9/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 10/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+WARNING: LM Studio returned no usable result after 10 attempts; continuing with best effort: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+Macro arc repair failed; retrying repair (3/10): The LLM arc response must be valid JSON.
+Repairing macro arc.
+LLM response/content was unusable (attempt 1/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 2/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 3/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 4/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 5/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 6/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 7/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 8/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 9/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 10/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+WARNING: LM Studio returned no usable result after 10 attempts; continuing with best effort: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+Macro arc repair failed; retrying repair (4/10): The LLM arc response must be valid JSON.
+Repairing macro arc.
+LLM response/content was unusable (attempt 1/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 2/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 3/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 4/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 5/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 6/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 7/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 8/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
+LLM response/content was unusable (attempt 9/10); retrying: LM Studio truncated the response at the configured max_tokens=3771 before completion.
