@@ -11472,7 +11472,7 @@ def parse_macro_arc_majority_tail_repair_result(
         key=lambda event: event.get("beat_number", 0),
     )
     normalized = []
-    allowed = {"id", "event", "beat_number", "state_effects"}
+    allowed = {"id", "event", "beat_number", "depends_on", "state_effects"}
     for index, (raw_event, old_event) in enumerate(
         zip(raw_events, expected),
         start=1,
