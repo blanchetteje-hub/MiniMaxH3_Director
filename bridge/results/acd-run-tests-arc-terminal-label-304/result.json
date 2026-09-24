@@ -1,0 +1,22 @@
+{
+  "job_id": "acd-run-tests-arc-terminal-label-304",
+  "kind": "run_tests",
+  "started_at": 1790280970.8731847,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_story_arc_structural_guarantees"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \n",
+    "stderr": ".............................\n----------------------------------------------------------------------\nRan 29 tests in 0.004s\n\nOK\n",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790280971.5704324,
+    "finished_at": 1790280972.128827
+  },
+  "finished_at": 1790280972.128827,
+  "status": "ok"
+}
