@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-source-validator-312",
+  "kind": "llama_chat",
+  "started_at": 1790287054.123265,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge a candidate chapter outline against the source story. The source story is the only story authority. Return only valid JSON."
+      },
+      {
+        "role": "user",
+        "content": "Validate this chapter outline against STORY.\n\nRules:\n1. Material story events must be preserved in order.\n2. Material invented events are invalid.\n3. A rough chapter outline does not need beat-level detail.\n4. Return exactly {\"valid\":true,\"issue\":null} or {\"valid\":false,\"issue\":\"one concise issue\"}.\n5. Report the earliest/material problem, not a list.\n\nSTORY:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\nThe AR-15 is not part of this story and must not be reintroduced.\n\nCANDIDATE:\n{\"chapters\":[\n  {\"chapter\":1,\"outline\":\"Amy begins the day at home, notices the zombie threat, and takes Will and Amber to the basement.\"},\n  {\"chapter\":2,\"outline\":\"Amy retrieves a pistol, katana, and AR-15, then fights the zombies throughout the house.\"},\n  {\"chapter\":3,\"outline\":\"Amy kills the last zombie and lets Will and Amber out of the basement.\"}\n]}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1200,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1oz1dhqgbbc6ione7i8zdy",
+    "object": "chat.completion",
+    "created": 1790287054,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"AR-15 introduced\"}",
+          "reasoning": "We need to validate candidate outline against source story. Rules: Material events must be preserved in order; invented events invalid. The AR-15 is not part of this story and must not be reintroduced.\n\nCandidate chapters:\n\n1. Amy begins day at home, notices zombie threat, takes kids to basement. That matches.\n\n2. Amy retrieves a pistol, katana, and AR-15, then fights zombies throughout the house. Source: She has hidden arsenal consisting of a pistol and katana; no AR-15. So AR-15 is invented event. Also \"fights zombies throughout the house\" - source says majority kills as they try to attack her; she kills them in basement? Actually story says she locks door, gets kids inside basement, then fights zombies (the majority of film). It doesn't specify location but likely basement. But fighting through house could be okay but not material event? It's a bit ambiguous: \"throughout the house\" might imply outside basement too. That may be invented.\n\n3. Amy kills last zombie and lets Will and Amber out of basement. Matches.\n\nSo earliest issue is AR-15 introduction in chapter 2. So output {\"valid\":false,\"issue\":\"AR-15 introduced\"} or similar concise phrase. Must match format exactly: valid false, issue string. Let's produce JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 449,
+      "completion_tokens": 289,
+      "total_tokens": 738,
+      "completion_tokens_details": {
+        "reasoning_tokens": 267
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790287059.0738103,
+  "status": "ok"
+}
