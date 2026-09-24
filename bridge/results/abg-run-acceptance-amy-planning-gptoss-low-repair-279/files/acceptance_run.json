@@ -1,0 +1,303 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_zombie_house",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_zombie_house.json",
+  "benchmark_sha256": "1ca25dc3598d1541117e0cb0ea9b147d73fc8abd3f3580e6da12674757bc9491",
+  "repository_revision": "87f9c748d4a2db1a66d387c686ff2547ac37c04d",
+  "created_at_utc": "2026-09-24T14:53:47Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "--generate-beats",
+    "8",
+    "--model",
+    "mistral"
+  ],
+  "exit_code": 0,
+  "capture_status": {
+    "complete": true,
+    "mode": "planning_only",
+    "expected_segments": 0,
+    "captured_segments": [],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 1,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy cooks breakfast for her kids while wearing a tight black tank top and denim jeans.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy cooks breakfast for her kids while wearing a tight black tank top and denim jeans.",
+        "required_events": [
+          {
+            "id": "beat-01",
+            "event": "Amy cooks breakfast for her kids while wearing a tight black tank top and denim jeans.",
+            "beat_number": 1,
+            "state_effects": [
+              {
+                "op": "set_clothing",
+                "entity": "Amy",
+                "slot": "upper",
+                "item": "tight black tank top",
+                "damage": "none"
+              },
+              {
+                "op": "set_clothing",
+                "entity": "Amy",
+                "slot": "lower",
+                "item": "denim jeans",
+                "damage": "none"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 2,
+        "beat_start": 2,
+        "beat_end": 2,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "A zombie breaks the kitchen door window, alerting Amy to danger.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "A zombie breaks the kitchen door window, alerting Amy to danger.",
+        "required_events": [
+          {
+            "id": "beat-02",
+            "event": "A zombie breaks the kitchen door window, alerting Amy to danger.",
+            "beat_number": 2,
+            "depends_on": [
+              "beat-01"
+            ],
+            "state_effects": [
+              {
+                "op": "set_threat_state",
+                "entity": "zombie1",
+                "value": "active"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 3,
+        "beat_start": 3,
+        "beat_end": 3,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy rushes Will and Amber into the basement, locks the basement door behind them, retrieves her hidden arsenal of a pistol and a katana from storage, and equips both weapons.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy rushes Will and Amber into the basement, locks the basement door behind them, retrieves her hidden arsenal of a pistol and a katana from storage, and equips both weapons.",
+        "required_events": [
+          {
+            "id": "beat-03",
+            "event": "Amy rushes Will and Amber into the basement, locks the basement door behind them, retrieves her hidden arsenal of a pistol and a katana from storage, and equips both weapons.",
+            "beat_number": 3,
+            "depends_on": [
+              "beat-02"
+            ],
+            "state_effects": [
+              {
+                "op": "set_location",
+                "entity": "Will",
+                "value": "basement"
+              },
+              {
+                "op": "set_location",
+                "entity": "Amber",
+                "value": "basement"
+              },
+              {
+                "op": "set_barrier_state",
+                "entity": "basement_door",
+                "value": "locked"
+              },
+              {
+                "op": "set_item_state",
+                "entity": "pistol",
+                "owner": "Amy",
+                "value": "equipped"
+              },
+              {
+                "op": "set_item_state",
+                "entity": "katana",
+                "owner": "Amy",
+                "value": "equipped"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 4,
+        "beat_start": 4,
+        "beat_end": 4,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy kills the first zombie, dismembering and decapitating it.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy kills the first zombie, dismembering and decapitating it.",
+        "required_events": [
+          {
+            "id": "beat-04",
+            "event": "Amy kills the first zombie, dismembering and decapitating it.",
+            "beat_number": 4,
+            "depends_on": [
+              "beat-03"
+            ],
+            "state_effects": [
+              {
+                "op": "set_threat_state",
+                "entity": "zombie1",
+                "value": "dead"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 5,
+        "beat_start": 5,
+        "beat_end": 5,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "She slays a second zombie in quick succession.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "She slays a second zombie in quick succession.",
+        "required_events": [
+          {
+            "id": "beat-05",
+            "event": "She slays a second zombie in quick succession.",
+            "beat_number": 5,
+            "depends_on": [
+              "beat-04"
+            ],
+            "state_effects": [
+              {
+                "op": "set_threat_state",
+                "entity": "zombie2",
+                "value": "dead"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 6,
+        "beat_start": 6,
+        "beat_end": 6,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy dispatches a third zombie, leaving its body shattered on the floor.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy dispatches a third zombie, leaving its body shattered on the floor.",
+        "required_events": [
+          {
+            "id": "beat-06",
+            "event": "Amy dispatches a third zombie, leaving its body shattered on the floor.",
+            "beat_number": 6,
+            "depends_on": [
+              "beat-05"
+            ],
+            "state_effects": [
+              {
+                "op": "set_threat_state",
+                "entity": "zombie3",
+                "value": "dead"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 7,
+        "beat_start": 7,
+        "beat_end": 7,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "She eliminates a fourth zombie with precise strikes.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "She eliminates a fourth zombie with precise strikes.",
+        "required_events": [
+          {
+            "id": "beat-07",
+            "event": "She eliminates a fourth zombie with precise strikes.",
+            "beat_number": 7,
+            "depends_on": [
+              "beat-06"
+            ],
+            "state_effects": [
+              {
+                "op": "set_threat_state",
+                "entity": "zombie4",
+                "value": "dead"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "phase_number": 8,
+        "beat_start": 8,
+        "beat_end": 8,
+        "narrative_purpose": "Execute the assigned source event.",
+        "broad_progression": "Amy slays the last zombie, leaving the house soaked in blood, and lets Will and Amber out of the basement into the kitchen.",
+        "characters_introduced": [],
+        "location": "As established by the source story.",
+        "required_end_state": "Amy slays the last zombie, leaving the house soaked in blood, and lets Will and Amber out of the basement into the kitchen.",
+        "required_events": [
+          {
+            "id": "beat-08",
+            "event": "Amy slays the last zombie, leaving the house soaked in blood, and lets Will and Amber out of the basement into the kitchen.",
+            "beat_number": 8,
+            "depends_on": [
+              "beat-07"
+            ],
+            "state_effects": [
+              {
+                "op": "set_threat_state",
+                "entity": "zombie5",
+                "value": "dead"
+              },
+              {
+                "op": "set_condition",
+                "entity": "house",
+                "value": "blood-soaked"
+              },
+              {
+                "op": "set_location",
+                "entity": "Will",
+                "value": "kitchen"
+              },
+              {
+                "op": "set_location",
+                "entity": "Amber",
+                "value": "kitchen"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "generated_beats_text": "# Phase 1\n1. Amy in a tight black tank top and denim jeans flips pancakes while her 10-year-old son Will watches, then plates the breakfast for him and his 14-year-old sister Amber.\n# Phase 2\n2. A zombie shatters the kitchen door window with a forceful slam, startling Amy and signaling imminent danger.\n# Phase 3\n3. Amy pulls Will and Amber down to the basement, shuts and locks the door behind them, retrieves a concealed pistol and katana from a storage closet, and grips both weapons in ready stances.\n# Phase 4\n4. Amy swings her katana, slicing the first zombie’s torso into two and decapitating it in a single clean strike.\n# Phase 5\n5. Amy swings her katana again, slicing through the second zombie’s neck cleanly in a single swift strike as it lunges toward her and then drops its decapitated body.\n# Phase 6\n6. Amy swings her katana at the third zombie, slicing it in half so that its torso shatters across the kitchen tiles.\n# Phase 7\n7. Amy lands a series of rapid slashes with her katana on the fourth zombie’s torso, severing its spine and sending it crashing to the floor.\n# Phase 8\n8. With the last zombie slain and the house drenched in crimson, Amy opens the basement hatch, allowing Will and Amber to ascend into the kitchen.\n",
+  "segments": [],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "beats.txt": "generated\\beats.txt",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
