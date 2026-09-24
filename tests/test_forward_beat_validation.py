@@ -55,7 +55,8 @@ class ForwardBeatValidationTests(unittest.TestCase):
         )
         prompt = messages[1]["content"]
         self.assertIn("TEMPORAL ACTION OWNERSHIP", prompt)
-        self.assertIn("require the candidate to narrate X as an event that happens now", prompt)
+        self.assertIn("TEMPORAL ACTION OWNERSHIP", prompt)
+        self.assertIn("narrate X as an event that happens now", prompt)
         self.assertIn("merely presupposes X is already complete", prompt)
         self.assertIn("Reject even when the completed state matches", prompt)
         self.assertIn("narrates the causative action itself", prompt)
