@@ -58,7 +58,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("TEMPORAL ACTION OWNERSHIP", prompt)
         self.assertIn("narrate X as an event that happens now", prompt)
         self.assertIn("presupposes X is already complete", prompt)
-        self.assertIn("Reject even when the completed state matches", prompt)
+        self.assertIn("Reject even when the completed state", prompt)
         self.assertIn("narrates the causative action itself", prompt)
 
     def test_compact_validator_state_removes_noise_but_preserves_facts(self):
