@@ -2111,3 +2111,14 @@ Maintenance-only commit:
 - `b242765e14ca89d549f2c02974d223df0a2ad8e7` — refreshes the stale majority-repair regression assertions to the current compact procedure wording. No production semantic code changed.
 
 Next: rerun the focused ARC structural regression, then launch a fresh full GPT-OSS acceptance with developer-log capture and inspect the earliest semantic mismatch across ARC -> BEATS -> Director Request 1 -> Request 2 -> continuity -> final H3 prompt. Follow the PROJECT_NOTES primary decision hierarchy: optimize for gold prompts, keep the 20B model's instructions short/concrete, prefer simplification, and reconsider pipeline layers if repeated failures show the layer itself is the problem.
+
+
+## Regression cleanup 303-304 and full acceptance 305
+
+After the 300-302 terminal-label controls, maintenance job `acc-run-tests-arc-terminal-label-303` exposed one additional stale case-sensitive assertion only: the production prompt says `Names already present...` while the test expected lowercase `names`. No production semantic behavior was implicated.
+
+- `7959b4bf83235fc1c260d2b36a90484334ddb4e0` — fixes that case-sensitive regression assertion.
+- `acd-run-tests-arc-terminal-label-304`: **PASS, 29/29 tests green**.
+- `ace-run-acceptance-amy-full-gptoss-305` is the current full acceptance job. At queue inspection it is the only bridge job without a corresponding result, so no stale earlier job is blocking it.
+
+Do not change production semantics while 305 is unresolved. When its result publishes, inspect the earliest accepted semantic mismatch against the gold target and apply the PROJECT_NOTES primary decision hierarchy before deciding whether to patch the current layer, simplify it, or reconsider the layer itself.
