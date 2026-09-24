@@ -446,6 +446,18 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
+def _console_write_utf8_safe(text):
+    """Echo child output without crashing on the host console encoding."""
+
+    stream = sys.stdout
+    encoding = getattr(stream, "encoding", None) or "utf-8"
+    safe_text = str(text).encode(encoding, errors="replace").decode(
+        encoding, errors="replace"
+    )
+    stream.write(safe_text)
+    stream.flush()
+
+
 def main(argv=None) -> int:
     args = parse_args(argv)
     benchmark_path = args.benchmark.resolve()
@@ -518,7 +530,7 @@ def main(argv=None) -> int:
             )
             assert process.stdout is not None
             for line in process.stdout:
-                print(line, end="", flush=True)
+                _console_write_utf8_safe(line)
                 log_handle.write(line)
                 log_handle.flush()
             exit_code = process.wait()
