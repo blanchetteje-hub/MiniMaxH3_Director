@@ -1,0 +1,9 @@
+{
+  "job_id": "abf-run-tests-low-reasoning-arc-repair-278",
+  "kind": "run_tests",
+  "tests": [
+    "tests.test_story_arc_structural_guarantees",
+    "tests.test_acceptance_runner"
+  ],
+  "timeout_seconds": 1200
+}
