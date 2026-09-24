@@ -1,0 +1,58 @@
+{
+  "job_id": "aac-gptoss-validator-next-job-245",
+  "kind": "llama_chat",
+  "started_at": 1790211536.1492324,
+  "request": {
+    "model": "/mnt/h/RP_Models/GPT-OSS-20B-Uncensored-HauhauCS-MXFP4-Balanced.gguf",
+    "messages": [
+      {
+        "role": "user",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue.\n\nPREVIOUS FINAL BEAT\nAmy equips her pistol and katana.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nAmy kills some of the zombies attacking her.\n\nNEXT JOB\nAmy kills more zombies as they continue attacking.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nAmy kills every remaining zombie in the house and lowers her weapons.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept\nparaphrases and clear implications, but require every materially required action\nor result when the job has multiple parts. PREVIOUS FINAL BEAT is history only:\nit may constrain what is possible, but it cannot satisfy, replace, or excuse any\naction or result explicitly assigned to CURRENT JOB. Every such requirement must\nbe visibly accomplished by CANDIDATE BEAT.\n\nB. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as\nauthoritative history. Reject only clear contradictions or physical impossibilities.\n\nC. NEXT JOB: Do not materially complete the distinct NEXT JOB early. Preparation\nand incidental overlap that naturally belongs to the current action are allowed.\nReject only when the distinct work of the next beat has actually been completed,\nincluding semantic equivalents of terminal or exhaustive results.\n\nD. TYPED STATE EFFECTS: Every listed typed effect must be supported by what\nvisibly happens in the candidate.\n\nOUTPUT CONTRACT\nIf valid:\n{\"valid\": true, \"issue\": \"\"}\n\nIf invalid:\n{\"valid\": false, \"issue\": \"short concrete explanation\"}\n\nReturn exactly one JSON object and no markdown."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\":\"Kills every remaining zombie, exhausting the next beat before it starts\"}",
+          "reasoning_content": "We need to evaluate candidate beat: \"Amy kills every remaining zombie in the house and lowers her weapons.\"\n\nCurrent job: Amy kills some of the zombies attacking her.\n\nCheck A: Must accomplish meaning of current job: kill some zombies. Candidate says kills every remaining zombie in the house. That includes killing all zombies, which is more than just some. But does it satisfy \"some\"? Yes, if she kills all, that includes some. So okay. Also must lower weapons? That's not part of current job; it's extra but fine.\n\nCheck B: Continuity / possibility: Previous final beat: Amy equips her pistol and katana. Current state empty. No contradictions. She can kill zombies in house. Lowering weapons after killing all is possible.\n\nCheck C: Next job: \"Amy kills more zombies as they continue attacking.\" Candidate beat says she killed every remaining zombie, so no zombies left to kill more. That completes next job early (exhaustively). So violates C. Must not finish next job. She should have some zombies left or at least not all killed.\n\nThus invalid. Issue: \"Kills all zombies, completing the next beat prematurely.\""
+        }
+      }
+    ],
+    "created": 1790211537,
+    "model": "/mnt/h/RP_Models/GPT-OSS-20B-Uncensored-HauhauCS-MXFP4-Balanced.gguf",
+    "system_fingerprint": "b10849-e71b80510",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 265,
+      "prompt_tokens": 423,
+      "total_tokens": 688,
+      "prompt_tokens_details": {
+        "cached_tokens": 60
+      }
+    },
+    "id": "chatcmpl-HxfLbc7N7P8aOGxkV0a9IenlFi1Qr6zh",
+    "timings": {
+      "cache_n": 60,
+      "prompt_n": 363,
+      "prompt_ms": 64.02,
+      "prompt_per_token_ms": 0.17636363636363636,
+      "prompt_per_second": 5670.103092783505,
+      "predicted_n": 265,
+      "predicted_ms": 1478.481,
+      "predicted_per_token_ms": 5.600306818181818,
+      "predicted_per_second": 178.56164536439763
+    }
+  },
+  "finished_at": 1790211537.7353973,
+  "status": "ok"
+}
