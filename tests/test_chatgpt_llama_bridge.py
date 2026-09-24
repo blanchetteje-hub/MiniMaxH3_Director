@@ -59,12 +59,12 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
 
             self.assertTrue(fake_process.terminated)
             self.assertEqual(
-                artifacts["developer_log.jsonl"],
-                "files/developer_log.jsonl",
+                Path(artifacts["developer_log.jsonl"]),
+                Path("files") / "developer_log.jsonl",
             )
             self.assertEqual(
-                artifacts["developer_log.stderr.log"],
-                "files/developer_log.stderr.log",
+                Path(artifacts["developer_log.stderr.log"]),
+                Path("files") / "developer_log.stderr.log",
             )
 
     @mock.patch.object(bridge.shutil, "which", return_value=None)
