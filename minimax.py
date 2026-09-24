@@ -20,13 +20,14 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 from PIL import Image, UnidentifiedImageError
 
-from mistral_formatter import (
-    MistralFormatter,
+from gpt_formatter import (
+    GPTFormatter,
     extract_inline_dialogue_subjects,
     normalize_summary_subject_references,
     remove_non_speaking_speaker_ids,
     validate_h3_dialogue_format,
 )
+from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
 
 # ============================================================
@@ -52,11 +53,12 @@ PREVIOUS_STATE_FIELDS = (
 )
 
 FORMATTER_CLASSES = {
+    "gpt": GPTFormatter,
     "mistral": MistralFormatter,
     "qwen": QwenFormatter,
 }
 
-ACTIVE_FORMATTER = MistralFormatter()
+ACTIVE_FORMATTER = GPTFormatter()
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -1464,7 +1466,7 @@ def _active_beat_validation_settings():
     return dict(MISTRAL_24B_SETTINGS)
 
 
-configure_formatter("mistral")
+configure_formatter("gpt")
 
 
 # Remove temporary frames created by visual continuity and auto-refresh.
@@ -1856,8 +1858,8 @@ def parse_args(arguments=None):
     parser.add_argument(
         "--model",
         choices=tuple(FORMATTER_CLASSES),
-        default="mistral",
-        help="select the response formatter (default: mistral)",
+        default="gpt",
+        help="select the response formatter (default: gpt)",
     )
     for image_number in range(1, 7):
         parser.add_argument(
@@ -24627,7 +24629,7 @@ def _run_main(
             "Generating the story arc and beats based on story.txt",
             flush=True,
         )
-    configure_formatter(getattr(args, "model", "mistral"))
+    configure_formatter(getattr(args, "model", "gpt"))
     global_loras = normalize_lora_list(getattr(args, "lora", ()))
     lora_directory = getattr(args, "lora_dir", LORA_DIRECTORY)
     repair_segment = getattr(args, "repair", None)
@@ -24927,7 +24929,7 @@ def _run_main(
         "Prompt generation test: "
         + ("enabled" if test_prompt_generation else "disabled")
     )
-    print(f"Formatter:            {getattr(args, 'model', 'mistral')}")
+    print(f"Formatter:            {getattr(args, 'model', 'gpt')}")
     print(f"Global LoRAs:         {len(global_loras)}")
     print(
         "Auto refresh:         "
