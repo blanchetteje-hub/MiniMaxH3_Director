@@ -1822,3 +1822,21 @@ Focused validator fix:
 Direct bridge probe 241 exhausted a 512-token reasoning budget because bridge `llama_chat` does not carry production Qwen thinking-disable transport; do not treat that probe as production evidence. Production `ask_llm` already sends `chat_template_kwargs={"enable_thinking": false}` for Qwen Beat validation, matching the benchmark transport.
 
 `aag-run-acceptance-amy-planning-qwen-current-job-242` is the active production verification. Inspect Beat 8 first: if CREATE again omits the last-zombie kill, the validator should now reject/regenerate it rather than allowing previous history to satisfy CURRENT JOB.
+
+
+## Primary model direction changed: GPT-OSS-20B uncensored on Linux
+
+As of 2026-09-23, the active baseline model for ongoing MiniMax H3 work has changed from Qwen3.8-27B to the user's locally loaded **uncensored GPT-OSS-20B** on the main Linux machine. The Qwen work remains useful diagnostic history, but new model-quality conclusions must be re-established against GPT-OSS rather than assumed to transfer.
+
+Current policy:
+- Optimize for **one physical model** first; GPT-OSS-20B is now that primary target.
+- Re-send the important validator/ARC/Director probes against GPT-OSS and treat those fresh results as the new baseline.
+- Do not inherit Qwen-specific formatter/settings assumptions without evidence. Existing Qwen-specific fixes that are model-agnostic architectural correctness fixes remain in place, but prompt/profile tuning must be re-validated.
+- Prefer the existing shared/Mistral-proven deterministic formatter infrastructure where possible; only add a GPT-OSS-specific formatter shim for concrete observed response-shape differences.
+- The previously queued Qwen planning run 242 is no longer authoritative for model selection if it completes after the physical model switch.
+
+Immediate re-baseline order:
+1. Exact Beat-validator failure probes (compound CURRENT JOB omission and NEXT JOB boundary).
+2. ARC/Beat planning acceptance on Amy.
+3. Director Segment-1 completion behavior.
+4. Only then decide whether GPT-OSS needs model-specific formatter or sampling changes.
