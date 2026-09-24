@@ -1,0 +1,6 @@
+{
+  "job_id": "ace-run-acceptance-amy-full-gptoss-305",
+  "kind": "run_acceptance",
+  "model": "mistral",
+  "timeout_seconds": 3600
+}
