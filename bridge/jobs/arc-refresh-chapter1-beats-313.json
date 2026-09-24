@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-chapter1-beats-313",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are creating beats for one enclosed book chapter. You know only this chapter and its opening context. Do not invent events outside the chapter. Return only valid JSON."
+    },
+    {
+      "role": "user",
+      "content": "Create the minimum beats needed for this enclosed chapter.\n\nA beat is one event/unit of action that must happen in the chapter and will later become one 8-second H3 segment.\n\nYou do not know any previous or future chapter.\n\nOPENING CONTEXT:\nAmy, Will, and Amber are at home in an ordinary intact kitchen on a normal morning. Amy is wearing a tight black tank top and denim jeans.\n\nCURRENT CHAPTER:\nAmy cooks breakfast for Will and Amber. The chapter should remain completely ordinary and finish the breakfast action.\n\nRules:\n1. Stay inside this chapter.\n2. Do not add danger, zombies, weapons, or future-story setup.\n3. Use as few beats as needed.\n4. Each beat must describe a concrete visible endpoint, not just an ongoing activity.\n\nReturn exactly:\n{\"beats\":[{\"beat\":1,\"event\":\"...\"}]}"
+    }
+  ]
+}
