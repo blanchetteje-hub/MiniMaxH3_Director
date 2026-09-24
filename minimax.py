@@ -7706,7 +7706,6 @@ def ask_llm(
     repeat_penalty=None,
     seed=None,
     thinking=None,
-    reasoning_effort=None,
     chat_template=None,
     jinja=None,
     max_tokens=8000,
@@ -7831,8 +7830,6 @@ def ask_llm(
                     if value is not None
                 }
             )
-            if reasoning_effort is not None:
-                request_payload["reasoning_effort"] = reasoning_effort
             if use_beat_validation_settings:
                 # Match tests/LLM/llama_client.py exactly for benchmarked
                 # validator transport. Qwen disables reasoning through the
@@ -9809,8 +9806,13 @@ an action to this beat, CANDIDATE BEAT must show that action being performed or
 completed in this beat. Do not infer the required action only from an aftermath,
 condition, or state that could already have been produced by PREVIOUS FINAL BEAT.
 An aftermath can satisfy an explicitly required result, but it cannot by itself
-satisfy a separately required action. A prerequisite, approach, or partial
-progress is NOT completion of a later required result: if CURRENT JOB requires
+satisfy a separately required action. A completed-state phrase such as "with X
+done", "with X slain", "after X was completed", or equivalent grammar describes
+X as already true; it does NOT show the assigned action X occurring in this beat.
+When CURRENT JOB assigns X to the current beat, reject that construction unless
+the candidate also explicitly depicts the action that makes X true. A prerequisite,
+approach, or partial progress is NOT completion of a later required result: if
+CURRENT JOB requires
 A then B, doing only A is invalid. Entering a room does not imply locking its
 door; reaching a door does not imply opening it; retrieving a weapon does not
 imply equipping it; drawing a weapon does not imply firing it. Named relational
@@ -14612,7 +14614,6 @@ def generate_beats_from_story(
                                 "total_segments": total_segments,
                             },
                             max_tokens=1000,
-                            reasoning_effort="low",
                             **ARC_LLM_SAMPLING_PARAMETERS,
                         )
                         replacements = parse_macro_arc_majority_tail_repair_result(
@@ -14658,7 +14659,6 @@ def generate_beats_from_story(
                                 "attempt": repair_round,
                                 "total_segments": total_segments,
                             },
-                            reasoning_effort="low",
                             **ARC_LLM_SAMPLING_PARAMETERS,
                         )
                         repaired = parse_flat_arc_plan(
