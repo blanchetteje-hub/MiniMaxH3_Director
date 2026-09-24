@@ -54,9 +54,11 @@ class ForwardBeatValidationTests(unittest.TestCase):
             "With the last zombie slain, Amy opens the basement.",
         )
         prompt = messages[1]["content"]
-        self.assertIn('A completed-state phrase such as "with X', prompt)
-        self.assertIn("does NOT show the assigned action X occurring", prompt)
-        self.assertIn("also explicitly depicts the action", prompt)
+        self.assertIn("TEMPORAL ACTION OWNERSHIP", prompt)
+        self.assertIn("require the candidate to narrate X as an event that happens now", prompt)
+        self.assertIn("merely presupposes X is already complete", prompt)
+        self.assertIn("Reject even when the completed state matches", prompt)
+        self.assertIn("narrates the causative action itself", prompt)
 
     def test_compact_validator_state_removes_noise_but_preserves_facts(self):
         state = {
