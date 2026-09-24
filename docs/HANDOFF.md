@@ -1901,3 +1901,16 @@ Current queue order after active acceptance `aai-run-acceptance-amy-planning-gpt
 4. `aam-run-tests-arc-state-integrity-258` — combined state-integrity regression suite.
 
 Do not launch another acceptance until 254 is inspected and 255-258 are consumed; the next acceptance should run the newest branch containing the dependency, UTF-8, state-ownership, and terminal-threat fixes together.
+
+## GPT-OSS full acceptance 266: terminal-state carryover in Director fixed
+
+`aau-run-acceptance-amy-full-gptoss-266` completed with return code 0 and generated all eight prompts. ARC/BEATS planning succeeded. The earliest concrete Director quality defect appeared in Segment 8: the timed RAW SCENE killed the last zombie at 00:03.000, but the trailing End continuity state said "a zombie groan echoes from the basement", and Request 2 propagated that impossible continuation into overall_soundscape.
+
+This is a Director handoff contradiction, not an ARC/BEATS architecture problem and not a reason to add another semantic pipeline.
+
+Focused fix:
+- `e335d324989c4dceb3ad37b96d76f79cf4da1491` — the existing Director Request 1 contract now states that when CURRENT BEAT terminally removes/destroys/kills/ends an entity or process, later micro-beats and End continuity state must not present it as still active, moving, speaking, sounding, or continuing unless CURRENT BEAT explicitly restores/restarts it.
+- `cd8d549dcbac9eefba4316fa224a684d49844202` — regression coverage locks that generic terminal-state carryover rule.
+
+Next verification: run focused Director tests, then a fresh full GPT-OSS Amy acceptance and inspect the earliest semantic mismatch rather than assuming success from process return code alone.
+
