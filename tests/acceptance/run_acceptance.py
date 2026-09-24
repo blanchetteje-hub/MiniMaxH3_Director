@@ -412,7 +412,7 @@ def parse_args(argv=None):
         default=None,
         help="result directory; defaults under tests/acceptance/results/",
     )
-    parser.add_argument("--model", default="mistral")
+    parser.add_argument("--model", default="gpt")
     parser.add_argument("--megapixels", type=float, default=0.5)
     parser.add_argument(
         "--python",
