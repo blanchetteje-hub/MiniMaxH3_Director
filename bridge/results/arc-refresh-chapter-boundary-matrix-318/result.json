@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-chapter-boundary-matrix-318",
+  "kind": "llama_chat",
+  "started_at": 1790287623.405016,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "The source story is the only narrative authority. Complete each labeled task independently. Return only one valid JSON object."
+      },
+      {
+        "role": "user",
+        "content": "We are testing chapter planning for a video story. A chapter is a LARGE H3 refresh unit, not a single event.\n\nSTORY:\nAmy protects Will and Amber during a zombie outbreak. She begins at home on a normal morning cooking breakfast for them. A zombie breaks the kitchen door window; Amy recognizes the danger, rushes Will and Amber to the basement, gets them inside, and locks the door. Amy retrieves her hidden pistol and katana and equips them. The main body of the story is Amy fighting attacking zombies. Amy then defeats the final zombie and lets Will and Amber out of the basement.\n\nDo these tasks independently:\n\nA) CHAPTER BOUNDARIES ONLY\nChoose the fewest natural broad chapters. Do NOT assign beat counts. Keep continuous setup/escalation and the main repeated action together when possible. A short new chapter is appropriate when the source enters its explicit final/terminal resolution sequence.\nReturn chapters with only chapter number and outline.\n\nB) ALLOCATE 8 BEATS\nUsing this fixed two-chapter plan:\nChapter 1 = ordinary beginning, breach, children secured, weapons equipped, main ongoing zombie-fighting body.\nChapter 2 = final zombie resolution, then children released/reunited.\nAssign exactly 8 total beats across the two chapters. The main body must receive the majority of screen time. Return only beat_count for each chapter.\n\nC) VALIDATE OVER-SPLIT PLAN\nJudge this candidate using the rule that chapters are broad refresh units:\n1: breakfast + breach\n2: children secured + weapons equipped\n3: generic main zombie fighting\n4: final zombie + reunion\nReturn valid/issue.\n\nD) REPAIR OVER-SPLIT PLAN\nRepair that same four-chapter candidate into the fewest natural broad chapters without changing story order.\n\nReturn exactly:\n{\n  \"A\":{\"chapters\":[...]},\n  \"B\":{\"chapters\":[...]},\n  \"C\":{\"valid\":true,\"issue\":null},\n  \"D\":{\"chapters\":[...]}\n}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 4200,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yfi1k1ygqjcftgwecgkoxl",
+    "object": "chat.completion",
+    "created": 1790287623,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"A\":{\n    \"chapters\":[\n      {\n        \"number\":1,\n        \"outline\":\"Ordinary morning routine, kitchen breach by a zombie, securing Will & Amber in the basement, equipping weapons, and beginning the ongoing zombie fight.\"\n      },\n      {\n        \"number\":2,\n        \"outline\":\"Final zombie defeat, releasing Will & Amber from the basement, and their reunion.\"\n      }\n    ]\n  },\n  \"B\":{\n    \"chapters\":[\n      {\"number\":1,\"beat_count\":3},\n      {\"number\":2,\"beat_count\":5}\n    ]\n  },\n  \"C\":{\"valid\":false,\"issue\":\"Too many narrow refresh units; the four chapters split the story into overly small segments.\"},\n  \"D\":{\n    \"chapters\":[\n      {\n        \"number\":1,\n        \"outline\":\"Breakfast, kitchen breach by a zombie, securing Will & Amber in the basement, and equipping weapons.\"\n      },\n      {\n        \"number\":2,\n        \"outline\":\"Ongoing zombie fighting, final zombie defeat, releasing Will & Amber from the basement, and their reunion.\"\n      }\n    ]\n  }\n}",
+          "reasoning": "We need to produce JSON with keys A, B, C, D.\n\nTask A: CHAPTER BOUNDARIES ONLY. Choose fewest natural broad chapters. The story: Amy protects Will and Amber during zombie outbreak. She starts at home cooking breakfast for them. Zombie breaks kitchen door window; she recognizes danger, rushes Will and Amber to basement, locks door. Retrieves hidden pistol and katana, equips them. Main body of story is Amy fighting attacking zombies. Then defeats final zombie and lets Will and Amber out.\n\nWe need fewest natural broad chapters: likely 2 chapters: Chapter 1: Ordinary morning + breach + children secured + weapons equipped + main ongoing zombie-fighting body (maybe all until the fight). Chapter 2: Final zombie resolution, then children released/reunited. So A should list chapter numbers and outline.\n\nSo \"chapters\":[{\"number\":1,\"outline\":\"Ordinary beginning, kitchen break-in, securing Will & Amber in basement, equipping weapons, ongoing zombie fighting.\"},{\"number\":2,\"outline\":\"Final zombie defeat, releasing Will & Amber, reunion.\"}]\n\nTask B: Allocate 8 beats across two chapters. Main body must receive majority of screen time. So maybe Chapter1 gets 6 beats, Chapter2 gets 2 beats? But main body includes the fight; but also breakfast and breach etc. We can assign 5 to chapter1, 3 to chapter2? Let's think: The main body is fighting zombies; that's likely more beats than others. If we give 4 beats to chapter1 (breakfast + breach + securing children + equipping weapons) and 4 beats to chapter2 (main fight + final zombie + reunion). But the instruction says \"The main body must receive the majority of screen time.\" So maybe Chapter1 gets 3 beats, Chapter2 gets 5 beats. That gives main body more beats.\n\nBut we need exactly 8 total beats across two chapters. Let's assign: Chapter1=3 beats (breakfast + breach + securing children & equipping weapons). Chapter2=5 beats (ongoing zombie fighting, final zombie defeat, releasing children, reunion?). Actually that's 4 beats? Wait count: ongoing fight could be multiple beats; but we can treat as one beat. Let's break down:\n\nChapter1:\nBeat1: Breakfast routine\nBeat2: Zombie breaks kitchen door window\nBeat3: Amy rushes Will & Amber to basement, locks door\n\nThat's 3.\n\nChapter2:\nBeat4: Amy retrieves pistol and katana, equips them (maybe part of fight)\nBeat5: Ongoing zombie fighting body (multiple attacks)\nBeat6: Final zombie defeat\nBeat7: Release children from basement\nBeat8: Reunion\n\nSo Chapter1=3 beats, Chapter2=5 beats. That satisfies main body majority.\n\nReturn only beat_count for each chapter: {\"chapters\":[{\"number\":1,\"beat_count\":3},{\"number\":2,\"beat_count\":5}]}\n\nTask C: Validate over-split plan with 4 chapters as given:\n\n1: breakfast + breach\n2: children secured + weapons equipped\n3: generic main zombie fighting\n4: final zombie + reunion\n\nWe need to judge if it's valid. The rule: chapters are broad refresh units. Over-splitting? Breakfast+breach is one unit, children secured+weapons equipped another, generic main zombie fighting third, final zombie+reunion fourth. Are these too many? Probably yes; the breakfast and breach could be combined with securing children & weapons into a single chapter (the first). The main zombie fighting might also combine with final zombie? But final zombie is part of fight. So 4 chapters may be over-split.\n\nThus C: valid false, issue \"Too many narrow refresh units\".\n\nTask D: Repair that same four-chapter candidate into fewest natural broad chapters without changing story order. We need to merge some. Likely combine breakfast+breach + children secured + weapons equipped into one chapter (Chapter1). Combine generic main zombie fighting + final zombie + reunion into Chapter2.\n\nSo D: chapters:[{\"number\":1,\"outline\":\"Breakfast, kitchen breach, securing Will & Amber in basement, equipping weapons.\"},{\"number\":2,\"outline\":\"Ongoing zombie fighting, final zombie defeat, releasing children and reunion.\"}]\n\nReturn JSON with A,B,C,D accordingly. Ensure keys exactly as specified.\n\nLet's craft output.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 503,
+      "completion_tokens": 1151,
+      "total_tokens": 1654,
+      "completion_tokens_details": {
+        "reasoning_tokens": 903
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790287641.4063647,
+  "status": "ok"
+}
