@@ -35,6 +35,19 @@ When an intermediate artifact disagrees with `story.txt`, change the artifact, n
 7. Architecture changes are allowed whenever evidence supports them.
 8. The new chapter-first design starts from a clean sheet. The old ARC/BEATS call structure is **not** a constraint.
 
+### 20B operating assumption
+
+Treat the local 20B-class model as capable but instruction-fragile.
+
+- Give each call one primary semantic responsibility whenever practical.
+- Keep prompts short, concrete, and procedural.
+- Prefer explicit inputs/outputs over prose explanations.
+- If the model spends many reasoning tokens circling a simple constraint, split the task or simplify the contract before increasing token limits.
+- Do not respond to a miss by stacking more rules into the same prompt.
+- Arithmetic/count allocation and semantic boundary selection should be separate calls when evidence shows the combined task causes confusion.
+- Validators should make one narrow decision and return a minimal machine-readable result.
+- Use the larger GPT-5.6 Sol evaluator for fuzzy gold comparison rather than expecting the local 20B model to judge final artistic equivalence.
+
 ## Chapter-first planning architecture
 
 The system is conceptually writing a book from `story.txt`.
