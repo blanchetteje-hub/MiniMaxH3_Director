@@ -1,6 +1,0 @@
-{
-  "job_id": "acc-run-acceptance-amy-full-gptoss-303",
-  "kind": "run_acceptance",
-  "model": "mistral",
-  "timeout_seconds": 3600
-}
