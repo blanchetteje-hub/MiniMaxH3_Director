@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-chapters-create-311",
+  "kind": "llama_chat",
+  "started_at": 1790287019.3106313,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are planning a book from a source story. The source story is the only story authority. Do not invent, replace, omit, or contradict material story events. Return only valid JSON."
+      },
+      {
+        "role": "user",
+        "content": "Create a rough chapter outline for this complete story.\n\nA chapter is a coarse plot unit. Its purpose is only to say what happens in that chapter. Do not create beats yet. Choose natural chapter boundaries. Keep the outline simple.\n\nReturn exactly:\n{\"chapters\":[{\"chapter\":1,\"outline\":\"...\"}]}\n\nSTORY:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nThe AR-15 is not part of this story and must not be reintroduced."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 2200,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-x1er0c64uepdvstuthcm2f",
+    "object": "chat.completion",
+    "created": 1790287019,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"chapters\":[{\"chapter\":1,\"outline\":\"Amy starts a normal day at home, cooking breakfast in her tight black tank top and denim jeans while watching over her kids Will and Amber.\"},{\"chapter\":2,\"outline\":\"A zombie breaks the kitchen door window; Amy sees the danger and immediately rushes to protect her children.\"},{\"chapter\":3,\"outline\":\"She pulls Will and Amber into the basement, locks the door behind them for safety.\"},{\"chapter\":4,\"outline\":\"Amy retrieves her hidden arsenal—a pistol and a katana—equips herself with these weapons.\"},{\"chapter\":5,\"outline\":\"The house turns into a battlefield as zombies attack; Amy kills each one, dismembering or decapitating them.\"},{\"chapter\":6,\"outline\":\"After killing the last zombie, the house is soaked in blood. Amy lets her kids out of the basement and they escape together.\"}]}",
+          "reasoning": "We need to create a rough chapter outline for the complete story. The story: realistic action film about Amy protecting kids from zombie apocalypse. Outline should have chapters with natural boundaries, simple description per chapter. Return JSON exactly as specified.\n\nNeed to decide number of chapters. Let's think: Chapter 1: Normal day at home cooking breakfast. Chapter 2: Zombie breaks kitchen door window; Amy sees danger and rushes kids to basement. Chapter 3: Locking the basement door, retrieving arsenal (pistol & katana). Chapter 4: The fight - majority of film is Amy killing zombies as they attack her. Could be multiple chapters? Maybe break into waves: first wave of zombies entering basement; second wave; third wave; final battle. But keep simple.\n\nLet's propose maybe 5 chapters:\n\n1. Breakfast routine.\n2. Zombie intrusion and evacuation to basement.\n3. Securing the house, equipping weapons.\n4. The zombie onslaught - Amy fights multiple zombies (maybe split into two sub-chapters: first wave, second wave).\n5. Final showdown; last zombie killed; kids out of basement.\n\nBut we need simple outline per chapter. Let's do 6 chapters:\n\n1. Normal day cooking breakfast for Will and Amber.\n2. Zombie breaks kitchen door window; Amy sees danger.\n3. Rush to basement with kids, lock the door.\n4. Retrieve hidden arsenal (pistol & katana), equip weapons.\n5. The house becomes battlefield: Amy kills zombies as they attack her.\n6. Last zombie defeated; house soaked in blood; she lets kids out.\n\nAlternatively combine 5 and 6 into one? But we can keep 6 for clarity.\n\nReturn JSON with chapters array of objects each having chapter number and outline string.\n\nLet's produce:\n\n{\"chapters\":[{\"chapter\":1,\"outline\":\"Amy starts a normal day at home, cooking breakfast in her tight black tank top and denim jeans while watching over her kids Will and Amber.\"},{\"chapter\":2,\"outline\":\"A zombie breaks the kitchen door window; Amy sees the danger and immediately rushes to protect her children.\"},{\"chapter\":3,\"outline\":\"She pulls Will and Amber into the basement, locks the door behind them for safety.\"},{\"chapter\":4,\"outline\":\"Amy retrieves her hidden arsenal—a pistol and a katana—equips herself with these weapons.\"},{\"chapter\":5,\"outline\":\"The house turns into a battlefield as zombies attack; Amy kills each one, dismembering or decapitating them.\"},{\"chapter\":6,\"outline\":\"After killing the last zombie, the house is soaked in blood. Amy lets her kids out of the basement and they escape together.\"}]}.\n\nCheck formatting: JSON array with objects. Each outline string uses quotes properly. Ensure no stray commas. Provide exactly that.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 353,
+      "completion_tokens": 760,
+      "total_tokens": 1113,
+      "completion_tokens_details": {
+        "reasoning_tokens": 567
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790287031.3334048,
+  "status": "ok"
+}
