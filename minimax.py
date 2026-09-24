@@ -892,6 +892,8 @@ LOCAL STAGING
 - Keep spatial awareness accurate for each micro-beat.
 - DO NOT invent anything new when writing the END CONTINUITY STATE.  Make it nearly identical to the last micro-beat.
 - If CURRENT BEAT terminally removes, destroys, kills, or otherwise ends an entity/process, do not carry that ended entity/process into later micro-beats or the END CONTINUITY STATE as still active, moving, speaking, sounding, or otherwise continuing unless CURRENT BEAT explicitly restores/restarts it.
+- CONTAINMENT HANDOFF: If CURRENT BEAT places a subject inside a room/container and then locks, seals, or closes the barrier around that subject, preserve that subject as remaining inside/behind that barrier in all later micro-beats and in the END CONTINUITY STATE unless CURRENT BEAT explicitly releases or moves them again. Do not re-co-locate a contained subject beside another character merely because they were together earlier in the beat.
+- If OPENING CONTINUITY STATE already places a subject behind a locked/sealed barrier, that subject must not appear beside an outside character, receive unrelated props, or participate in later staging unless CURRENT BEAT explicitly opens/releases the barrier and moves that subject.
 - Keep the END CONTINUITY STATE limited to one sentence.
 
 MICRO-BEATS
