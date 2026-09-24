@@ -367,6 +367,148 @@ def execute_local_tests(job: dict, source_root: Path) -> dict:
     )
 
 
+def _find_lms_cli() -> str | None:
+    """Return the LM Studio CLI path when it is installed."""
+
+    found = shutil.which("lms")
+    if found:
+        return found
+
+    executable_names = (
+        ("lms.exe", "lms.cmd", "lms")
+        if os.name == "nt"
+        else ("lms",)
+    )
+    for name in executable_names:
+        candidate = Path.home() / ".lmstudio" / "bin" / name
+        if candidate.is_file():
+            return str(candidate)
+    return None
+
+
+def start_lmstudio_developer_log(result_dir: Path) -> dict:
+    """Capture LM Studio model input/output + stats for one bridge run."""
+
+    artifacts_dir = result_dir / "files"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    log_path = artifacts_dir / "developer_log.jsonl"
+    stderr_path = artifacts_dir / "developer_log.stderr.log"
+
+    cli = _find_lms_cli()
+    if cli is None:
+        log_path.write_text(
+            json.dumps({
+                "bridge_log_capture_error": (
+                    "LM Studio CLI 'lms' was not found; developer log capture "
+                    "could not start."
+                )
+            }, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        return {
+            "process": None,
+            "log_path": log_path,
+            "stderr_path": stderr_path,
+            "stdout_handle": None,
+            "stderr_handle": None,
+        }
+
+    stdout_handle = log_path.open("wb")
+    stderr_handle = stderr_path.open("wb")
+    command = [
+        cli,
+        "log",
+        "stream",
+        "--source",
+        "model",
+        "--filter",
+        "input,output",
+        "--json",
+        "--stats",
+    ]
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=result_dir,
+            stdin=subprocess.DEVNULL,
+            stdout=stdout_handle,
+            stderr=stderr_handle,
+        )
+        # Give the log subscriber a brief chance to attach before MiniMax starts.
+        time.sleep(0.5)
+        if process.poll() is not None:
+            raise RuntimeError(
+                f"LM Studio log stream exited immediately with "
+                f"code {process.returncode}."
+            )
+    except Exception as error:
+        stdout_handle.close()
+        stderr_handle.close()
+        log_path.write_text(
+            json.dumps({
+                "bridge_log_capture_error": str(error),
+                "command": command,
+            }, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        return {
+            "process": None,
+            "log_path": log_path,
+            "stderr_path": stderr_path,
+            "stdout_handle": None,
+            "stderr_handle": None,
+        }
+
+    return {
+        "process": process,
+        "log_path": log_path,
+        "stderr_path": stderr_path,
+        "stdout_handle": stdout_handle,
+        "stderr_handle": stderr_handle,
+    }
+
+
+def stop_lmstudio_developer_log(capture: dict, result_dir: Path) -> dict:
+    """Stop one LM Studio log stream and return mailbox artifact paths."""
+
+    process = capture.get("process")
+    if process is not None and process.poll() is None:
+        try:
+            process.terminate()
+            process.wait(timeout=5)
+        except Exception:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                )
+            else:
+                process.kill()
+            try:
+                process.wait(timeout=5)
+            except Exception:
+                pass
+
+    for key in ("stdout_handle", "stderr_handle"):
+        handle = capture.get(key)
+        if handle is not None and not handle.closed:
+            handle.flush()
+            handle.close()
+
+    artifacts = {}
+    for name, key in (
+        ("developer_log.jsonl", "log_path"),
+        ("developer_log.stderr.log", "stderr_path"),
+    ):
+        path = capture.get(key)
+        if isinstance(path, Path) and path.is_file():
+            artifacts[name] = str(path.relative_to(result_dir))
+    return artifacts
+
+
 def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     """Run the fixed prompt-generation acceptance suite on latest gpt-test-branch."""
 
@@ -391,12 +533,22 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     if bool(job.get("planning_only")):
         command.append("--planning-only")
 
-    process = run_local_process(
-        command,
-        exec_root,
-        timeout=int(job.get("timeout_seconds") or 3600),
-    )
-    process["artifacts"] = copy_acceptance_artifacts(exec_root, result_dir)
+    developer_capture = start_lmstudio_developer_log(result_dir)
+    try:
+        process = run_local_process(
+            command,
+            exec_root,
+            timeout=int(job.get("timeout_seconds") or 3600),
+        )
+    finally:
+        developer_artifacts = stop_lmstudio_developer_log(
+            developer_capture,
+            result_dir,
+        )
+
+    artifacts = copy_acceptance_artifacts(exec_root, result_dir)
+    artifacts.update(developer_artifacts)
+    process["artifacts"] = artifacts
     return process
 
 
