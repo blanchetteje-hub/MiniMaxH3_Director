@@ -1,0 +1,57 @@
+{
+  "job_id": "abn-gptoss-temporal-good-door-286",
+  "kind": "llama_chat",
+  "started_at": 1790262004.9550729,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate beat against CURRENT JOB. Return exactly one JSON object {\"valid\": boolean, \"issue\": string}.\n\nTEMPORAL ACTION OWNERSHIP: If CURRENT JOB assigns action X to THIS beat, require the candidate to narrate X as an event that happens now. Grammar that merely presupposes X is already complete is INVALID evidence for X. Examples include \"with X done\", \"with X slain\", \"after X was completed\", \"once X was finished\", or equivalent completed-state wording. Reject even when the completed state matches the desired result and later CURRENT JOB parts are shown correctly. Accept only if the candidate also narrates the causative action itself in this beat."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nThe operator reaches the sealed chamber.\n\nCURRENT STATE\nThe primary blast door is closed.\n\nCURRENT JOB\nThe operator opens the primary blast door and enters the chamber.\n\nCANDIDATE BEAT\nThe operator pulls the release lever; the primary blast door slides open, and the operator walks into the chamber."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-rnabxll5fqchqgvfir3n0q",
+    "object": "chat.completion",
+    "created": 1790262004,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to validate candidate beat against current job: \"The operator opens the primary blast door and enters the chamber.\" The beat says: \"pulls the release lever; the primary blast door slides open, and the operator walks into the chamber.\"\n\nCheck temporal action ownership: If CURRENT JOB assigns action X to THIS beat, require the candidate to narrate X as an event that happens now. Grammar that merely presupposes X is already complete is INVALID evidence for X.\n\nHere job says \"opens\" - action of opening door. Candidate says \"pulls release lever; the primary blast door slides open\". That includes the action: pulls lever, causing slide open. So it's present tense? It says \"slides open\" which indicates current event. The operator opens the door by pulling lever and it slides open. That's fine.\n\nAlso enters chamber: candidate says walks into chamber. Good.\n\nThus beat is valid. No issue. Return JSON {\"valid\": true, \"issue\": \"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 279,
+      "completion_tokens": 217,
+      "total_tokens": 496,
+      "completion_tokens_details": {
+        "reasoning_tokens": 197
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790262008.927302,
+  "status": "ok"
+}
