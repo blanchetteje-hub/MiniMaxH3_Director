@@ -1,0 +1,57 @@
+{
+  "job_id": "acl-gptoss-arc-budget-create-312",
+  "kind": "llama_chat",
+  "started_at": 1790285439.7050805,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Plan the source into exactly 8 chronological clip jobs. Return JSON only as {\"events\":[{\"beat_number\":1,\"event\":\"...\"},...]}. Keep each event concise."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Amy is home cooking breakfast for her kids. A zombie breaks the kitchen door window; Amy sees danger, rushes the kids to the basement, gets them inside, and locks the door. Amy retrieves a pistol and katana and equips them. The majority of the film is Amy killing zombies as they attack her. Amy kills the last zombie, the house is soaked in blood, and lets the kids out.\n\nALLOCATION: A strict majority of 8 requires Beats 4-8 to be the emphasized killing sequence. (1) Beats 1-3 must contain ALL source actions before that sequence; bundle adjacent setup at natural handoffs as needed and do not defer setup into Beat 4. Preserve the calm baseline as Beat 1. (2) Beat 4 starts the killing process itself; Beats 4-8 each materially perform it. (3) Beat 8 owns the last kill plus immediate child-release resolution."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-uojgc6e5ywdfzgdcb03te",
+    "object": "chat.completion",
+    "created": 1790285439,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"events\":[{\"beat_number\":1,\"event\":\"Amy cooks breakfast for her kids, kitchen calm.\"},{\"beat_number\":2,\"event\":\"A zombie shatters the kitchen window; Amy spots it and hurries the children to the basement.\"},{\"beat_number\":3,\"event\":\"She locks the basement door, grabs a pistol and katana from the closet, and equips herself.\"},{\"beat_number\":4,\"event\":\"The first zombie bursts in; Amy shoots its head with the pistol.\"},{\"beat_number\":5,\"event\":\"A second zombie lunges; she slashes it with the katana, severing its neck.\"},{\"beat_number\":6,\"event\":\"Two more zombies swarm; Amy fires rapid shots to kill one and uses the katana to finish off another.\"},{\"beat_number\":7,\"event\":\"The last remaining zombie charges; she shoots then slices it in half with the sword.\"},{\"beat_number\":8,\"event\":\"With the house drenched in blood, Amy opens the basement door and lets her kids out.\"}]}",
+          "reasoning": "We need to produce JSON with events array of 8 beats, each beat number and event string concise.\n\nSource actions: Amy cooking breakfast for kids. Zombie breaks kitchen door window; Amy sees danger, rushes kids to basement, gets them inside, locks door. Amy retrieves pistol and katana and equips them. Majority kills zombies as they attack her. She kills last zombie, house soaked in blood, lets kids out.\n\nBeat 1: Calm baseline - breakfast cooking. Beat 2: Zombie breaks window; Amy sees danger, rushes kids to basement. Beat 3: Locks door, retrieves pistol & katana and equips them. Beats 4-8: killing sequence. Beat 4 starts kill process. Beat 5 continues kills. Beat 6 more kills. Beat 7 more kills. Beat 8 last kill + release.\n\nWe need exactly 8 beats. Each event concise but include all source actions before beat 4 in beats 1-3. So beat 2 must contain zombie break and Amy rushes kids to basement? Actually \"Amy sees danger, rushes the kids to the basement\" is part of beat 2. Beat 3: locks door, retrieves pistol & katana, equips them.\n\nBeat 4 starts killing process itself; beats 4-8 each materially perform it. So beat 4 could be first zombie attack and Amy kills one? Beat 5 second kill etc. We need to ensure majority of beats are killings (beats 4-8). Each beat must have a material kill action. Beat 8 includes last kill plus kids release.\n\nLet's craft:\n\nBeat1: Amy cooks breakfast for her kids, kitchen calm.\nBeat2: A zombie shatters the kitchen window; Amy spots it and hurries the children to the basement.\nBeat3: She locks the basement door, grabs a pistol and katana from the closet, and equips herself.\nBeat4: The first zombie bursts in; Amy shoots its head with the pistol.\nBeat5: A second zombie lunges; she slashes it with the katana, severing its neck.\nBeat6: Two more zombies swarm; Amy fires rapid shots, killing one, then uses the katana to finish off another.\nBeat7: The last remaining zombie charges; she shoots and then slices it in half with the sword.\nBeat8: With the house drenched in blood, Amy opens the basement door and lets her kids out.\n\nCheck beats 4-8 each kill. Beat5 kills one. Beat6 kills two? It says \"two more zombies swarm\" but we need material kill; she kills one by shooting, another by slashing. That's okay. Beat7 kills last zombie. Good.\n\nReturn JSON: {\"events\":[{\"beat_number\":1,\"event\":\"...\"} ...]}. Ensure exactly 8 events.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 298,
+      "completion_tokens": 800,
+      "total_tokens": 1098,
+      "completion_tokens_details": {
+        "reasoning_tokens": 577
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790285453.6810305,
+  "status": "ok"
+}
