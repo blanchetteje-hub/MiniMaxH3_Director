@@ -2058,3 +2058,14 @@ Focused fix:
 
 Next: batch focused unit tests with two direct GPT-OSS Director probes: (1) the containment-establishing beat must end with the children still behind the locked barrier while Amy can continue outside; (2) a following combat beat must not reintroduce the contained children. If both are clean, launch another full acceptance and inspect the earliest remaining Director/output mismatch.
 
+## Director containment probes 292-293: live behavior clean
+
+Direct GPT-OSS probes after the containment-handoff rule are clean:
+- `abt-gptoss-director-containment-establish-292`: Will and Amber remain inside the basement behind the locked door while Amy returns to the kitchen with the pistol/katana.
+- `abu-gptoss-director-containment-followup-293`: the following combat beat keeps Will and Amber inside the locked basement and does not reintroduce them into kitchen staging.
+
+The broad regression job `abs-run-tests-director-containment-291` returned nonzero largely because `tests.test_director_retry` has pre-existing fixture assumptions unrelated to the containment change. The newly added containment prompt test itself also omitted the template's required `story_segment_ending_rules` format argument.
+- `3ce5d047fc8a7292abc5d71f236cfab002a2fd58` — fixes that new containment-test fixture only.
+
+Given the clean live establish/follow-up controls, proceed to another full acceptance instead of blocking on unrelated legacy Director test debt. Continue inspecting the earliest semantic mismatch rather than process return code alone.
+
