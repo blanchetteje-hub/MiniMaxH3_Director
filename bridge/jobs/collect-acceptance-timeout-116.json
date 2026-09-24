@@ -1,8 +1,0 @@
-{
-  "job_id": "collect-acceptance-timeout-116",
-  "kind": "collect_files",
-  "collect": [
-    ".chatgpt_exec_worktree/tests/acceptance/results/amy_zombie_house-*/run.log",
-    ".chatgpt_exec_worktree/tests/acceptance/results/amy_zombie_house-*/run_plan.json"
-  ]
-}

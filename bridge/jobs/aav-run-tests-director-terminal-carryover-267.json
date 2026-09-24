@@ -1,8 +1,0 @@
-{
-  "job_id": "aav-run-tests-director-terminal-carryover-267",
-  "kind": "run_tests",
-  "tests": [
-    "tests.test_director_retry"
-  ],
-  "timeout_seconds": 1200
-}

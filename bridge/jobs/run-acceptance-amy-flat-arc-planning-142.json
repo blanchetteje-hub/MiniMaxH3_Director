@@ -1,8 +1,0 @@
-{
-  "job_id": "run-acceptance-amy-flat-arc-planning-142",
-  "kind": "run_acceptance",
-  "image1": "amy.jpg",
-  "model": "mistral",
-  "planning_only": true,
-  "timeout_seconds": 1800
-}

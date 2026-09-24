@@ -1,8 +1,0 @@
-{
-  "job_id": "run-tests-arc-majority-016",
-  "kind": "run_tests",
-  "tests": [
-    "tests.test_story_arc_structural_guarantees"
-  ],
-  "timeout_seconds": 900
-}

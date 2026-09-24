@@ -1,8 +1,0 @@
-{
-  "job_id": "zzz-run-acceptance-amy-planning-arc-finite-schema-207",
-  "kind": "run_acceptance",
-  "image1": "amy.jpg",
-  "model": "mistral",
-  "planning_only": true,
-  "timeout_seconds": 2400
-}

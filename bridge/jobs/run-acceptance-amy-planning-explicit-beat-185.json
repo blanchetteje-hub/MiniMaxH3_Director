@@ -1,8 +1,0 @@
-{
-  "job_id": "run-acceptance-amy-planning-explicit-beat-185",
-  "kind": "run_acceptance",
-  "image1": "amy.jpg",
-  "model": "mistral",
-  "planning_only": true,
-  "timeout_seconds": 2400
-}

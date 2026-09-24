@@ -1,7 +1,0 @@
-{
-  "job_id": "acm-run-acceptance-amy-planning-gpt-313",
-  "kind": "run_acceptance",
-  "model": "gpt",
-  "planning_only": true,
-  "timeout_seconds": 3600
-}

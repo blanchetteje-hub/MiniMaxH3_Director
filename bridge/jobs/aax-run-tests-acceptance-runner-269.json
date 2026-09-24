@@ -1,6 +1,0 @@
-{
-  "job_id": "aax-run-tests-acceptance-runner-269",
-  "kind": "run_tests",
-  "tests": ["tests.test_acceptance_runner"],
-  "timeout_seconds": 1200
-}

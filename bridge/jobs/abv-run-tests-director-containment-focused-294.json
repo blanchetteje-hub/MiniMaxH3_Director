@@ -1,9 +1,0 @@
-{
-  "job_id": "abv-run-tests-director-containment-focused-294",
-  "kind": "run_tests",
-  "tests": [
-    "tests.test_director_retry.DirectorMicroPromptPipelineTests.test_director_prompt_preserves_locked_containment_handoff",
-    "tests.test_forward_beat_validation"
-  ],
-  "timeout_seconds": 1200
-}

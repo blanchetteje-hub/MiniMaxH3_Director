@@ -1,8 +1,0 @@
-{
-  "job_id": "ack-run-tests-arc-budget-311",
-  "kind": "run_tests",
-  "tests": [
-    "tests.test_story_arc_structural_guarantees"
-  ],
-  "timeout_seconds": 1200
-}

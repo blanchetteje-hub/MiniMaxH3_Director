@@ -1,7 +1,0 @@
-{
-  "job_id": "run-acceptance-amy-minimal-arc-beat-120",
-  "kind": "run_acceptance",
-  "image1": "amy.jpg",
-  "model": "mistral",
-  "timeout_seconds": 3600
-}

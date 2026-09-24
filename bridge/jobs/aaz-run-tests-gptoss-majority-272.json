@@ -1,9 +1,0 @@
-{
-  "job_id": "aaz-run-tests-gptoss-majority-272",
-  "kind": "run_tests",
-  "tests": [
-    "tests.test_story_arc_structural_guarantees",
-    "tests.test_chatgpt_llama_bridge"
-  ],
-  "timeout_seconds": 1200
-}
