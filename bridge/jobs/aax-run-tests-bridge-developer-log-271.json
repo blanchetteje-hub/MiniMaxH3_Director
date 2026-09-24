@@ -1,0 +1,8 @@
+{
+  "job_id": "aax-run-tests-bridge-developer-log-271",
+  "kind": "run_tests",
+  "tests": [
+    "tests.test_chatgpt_llama_bridge"
+  ],
+  "timeout_seconds": 1200
+}
