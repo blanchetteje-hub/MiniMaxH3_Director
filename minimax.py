@@ -11432,7 +11432,6 @@ def build_macro_arc_majority_tail_repair_response_format(total_segments):
                                 "id",
                                 "event",
                                 "beat_number",
-                                "depends_on",
                             ],
                             "additionalProperties": False,
                         },
@@ -11473,7 +11472,7 @@ def parse_macro_arc_majority_tail_repair_result(
         key=lambda event: event.get("beat_number", 0),
     )
     normalized = []
-    allowed = {"id", "event", "beat_number", "depends_on", "state_effects"}
+    allowed = {"id", "event", "beat_number", "state_effects"}
     for index, (raw_event, old_event) in enumerate(
         zip(raw_events, expected),
         start=1,
@@ -11489,20 +11488,9 @@ def parse_macro_arc_majority_tail_repair_result(
         event_text = " ".join(str(raw_event.get("event") or "").split()).strip()
         if not event_text:
             raise ValueError("ARC tail repair event text must be non-empty.")
-        dependencies = raw_event.get("depends_on")
-        if not isinstance(dependencies, list) or any(
-            not isinstance(item, str) or not item.strip()
-            for item in dependencies
-        ):
-            raise ValueError(
-                "ARC tail repair depends_on must be an array of non-empty strings."
-            )
-        dependencies = [" ".join(item.split()).strip() for item in dependencies]
-        expected_dependencies = list(old_event.get("depends_on", []))
-        if dependencies != expected_dependencies:
-            raise ValueError(
-                "ARC tail repair must preserve dependencies exactly."
-            )
+        # Dependencies are deterministic structural bookkeeping. Focused
+        # tail repair preserves the authoritative chain from the existing arc.
+        dependencies = list(old_event.get("depends_on", []))
         state_effects = raw_event.get("state_effects")
         if state_effects is not None:
             state_effects = _validate_state_effects(state_effects)
@@ -12464,11 +12452,6 @@ def build_flat_arc_response_format(total_segments):
                                 },
                                 "state_effects": {
                                     **_typed_state_effect_json_schema(),
-                                },
-                                "depends_on": {
-                                    "type": "array",
-                                    "items": {"type": "string", "minLength": 1},
-                                    "uniqueItems": True,
                                 },
                             },
                             "required": [
