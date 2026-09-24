@@ -1,0 +1,58 @@
+{
+  "job_id": "aaa-gptoss-validator-current-job-243",
+  "kind": "llama_chat",
+  "started_at": 1790211528.7834795,
+  "request": {
+    "model": "/mnt/h/RP_Models/GPT-OSS-20B-Uncensored-HauhauCS-MXFP4-Balanced.gguf",
+    "messages": [
+      {
+        "role": "user",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue.\n\nPREVIOUS FINAL BEAT\nAmy fires her pistol into a horde of surging zombies and slashes with her katana, sending fallen bodies crashing to the ground around her.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nAmy kills the last of the zombies; her house is now soaked in blood. She lets her kids out of the basement.\n\nNEXT JOB\nNone; this is the final beat.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nAmy stands in a blood-soaked house and opens the basement door for Will and Amber to emerge.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept\nparaphrases and clear implications, but require every materially required action\nor result when the job has multiple parts. PREVIOUS FINAL BEAT is history only:\nit may constrain what is possible, but it cannot satisfy, replace, or excuse any\naction or result explicitly assigned to CURRENT JOB. Every such requirement must\nbe visibly accomplished by CANDIDATE BEAT.\n\nB. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as\nauthoritative history. Reject only clear contradictions or physical impossibilities.\n\nC. NEXT JOB: Do not materially complete the distinct NEXT JOB early. Preparation\nand incidental overlap that naturally belongs to the current action are allowed.\nReject only when the distinct work of the next beat has actually been completed,\nincluding semantic equivalents of terminal or exhaustive results.\n\nD. TYPED STATE EFFECTS: Every listed typed effect must be supported by what\nvisibly happens in the candidate.\n\nOUTPUT CONTRACT\nIf valid:\n{\"valid\": true, \"issue\": \"\"}\n\nIf invalid:\n{\"valid\": false, \"issue\": \"short concrete explanation\"}\n\nReturn exactly one JSON object and no markdown."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "length",
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning_content": "We need to evaluate candidate beat: \"Amy stands in a blood-soaked house and opens the basement door for Will and Amber to emerge.\"\n\nCheck against CURRENT JOB: Amy kills last of zombies; her house soaked in blood. She lets kids out of basement.\n\nCandidate beat accomplishes: House is blood-soaked (yes). Opens basement door for kids to emerge (lets them out). Does it mention she killed last zombie? Not explicitly, but \"blood-soaked\" implies many zombies died. But requirement: Amy kills the last of the zombies; her house soaked in blood. She lets kids out. The candidate beat doesn't state that she killed last zombie. It just says she's standing in a blood-soaked house and opens door for kids to emerge. Does that imply she killed them? Possibly implied by \"blood-soaked\" but not explicit. Requirement: Every materially required action or result when job has multiple parts must be visibly accomplished. The job had two parts: kill last zombie, let kids out. Letting kids out is visible. Killing last zombie isn't explicitly shown; only house soaked in blood implies zombies died earlier. But does that count as \"visibly\" accomplishing? It says \"Amy stands in a blood-soaked house\". That indicates the house has been soaked by blood from zombies. Does that imply she killed them? Could be implied but not explicit action. The job requires Amy kills last zombie; her house is now soaked in blood. She lets kids out of basement. So we need to show both: kill last zombie and let kids out. Candidate beat shows house soaked, door opened for kids. But no mention of killing last zombie. Could be implied by \"blood-soaked\" but not explicit action. The requirement says accept clear implications? It says Accept paraphrases and clear semantic implications, but require every materially required action or result when job has multiple parts. So the kill part is a result: house soaked in blood. That is present. But does that satisfy \"Amy kills last zombie\"? She killed them; house soaked indicates they died. The candidate beat doesn't mention she killed them, but it's implied by the state of house. Is that enough? Might be okay.\n\nCheck continuity: PREVIOUS FINAL BEAT: Amy fires pistol into horde and slashes with katana, sending bodies crashing to ground around her. That implies many zombies fell; house likely blood-soaked. So consistent.\n\nNext job none, so no need to avoid finishing next beat.\n\nTyped state effects list empty.\n\nThus candidate beat seems"
+        }
+      }
+    ],
+    "created": 1790211531,
+    "model": "/mnt/h/RP_Models/GPT-OSS-20B-Uncensored-HauhauCS-MXFP4-Balanced.gguf",
+    "system_fingerprint": "b10849-e71b80510",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 512,
+      "prompt_tokens": 467,
+      "total_tokens": 979,
+      "prompt_tokens_details": {
+        "cached_tokens": 465
+      }
+    },
+    "id": "chatcmpl-4pIRV1aHQAuq6xmqw7emqC0tiJBaaPIO",
+    "timings": {
+      "cache_n": 465,
+      "prompt_n": 2,
+      "prompt_ms": 10.281,
+      "prompt_per_token_ms": 5.1405,
+      "prompt_per_second": 194.53360568038127,
+      "predicted_n": 512,
+      "predicted_ms": 2857.915,
+      "predicted_per_token_ms": 5.592788649706458,
+      "predicted_per_second": 178.8016788462918
+    }
+  },
+  "finished_at": 1790211531.7126832,
+  "status": "ok"
+}
