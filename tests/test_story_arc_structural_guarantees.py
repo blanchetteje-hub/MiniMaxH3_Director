@@ -595,6 +595,10 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("at most 3 beats", repair_prompt)
         self.assertIn("must begin no later than Beat 4", repair_prompt)
         self.assertIn("calm baseline", repair_prompt)
+        self.assertIn("plural/repeated process", repair_prompt)
+        self.assertIn("allocate additional ordinary instances", repair_prompt)
+        self.assertIn("distinct persistent threat entities", repair_prompt)
+        self.assertIn("explicit last/final instance", repair_prompt)
         self.assertIn("combine both in the final global beat", repair_prompt)
 
         non_majority = " ".join(
