@@ -1880,3 +1880,24 @@ Windows acceptance UTF-8 hardening:
 After two test-only correction iterations, `aah-run-tests-python-deps-utf8-253`: **PASS, 105/105 tests green**.
 
 `aai-run-acceptance-amy-planning-gptoss-254` is the active fresh GPT-OSS planning verification. Run 250 also exposed a real semantic concern: an eventually accepted ARC carried `set_clothing` with the clothing item as `entity` rather than the wearer, and reused terminal zombie state too broadly across continuing waves. Jobs 255/256 are queued as a bad/valid ARC-validator pair to isolate clothing-state ownership after run 254 finishes. Do not tune token caps until the earliest remaining semantic failure is established.
+
+
+## ARC state-effect integrity follow-up after planning 250
+
+Run 250 also proved two authoritative-state defects worth fixing before the next post-254 acceptance:
+- GPT-OSS could emit `set_clothing` with the garment itself as `entity` instead of the wearer, and ARC VALIDATE could eventually let that through.
+- Multiple later wave events could reuse the same exact threat entity string after assigning it a terminal state, causing the same canonical threat to be removed/killed repeatedly.
+
+Focused fixes already committed:
+- `badb0f4f01fe7bd7e6aaf5ed2940f6fd05779020` — CREATE/VALIDATE/REPAIR now share a compact state-effect argument-ownership contract: location entity=thing moved; item entity=item/owner=person; barrier entity=barrier; threat entity=specific threat/group; containment entity=contained/freed subject/container=enclosing place; condition entity=thing with condition; clothing entity=wearer/item=garment.
+- `9991a52053c05f5f11ab5425e8d761cee23372b9` — prompt-contract regression coverage.
+- `f81d4c60a9e2dcd2096325b5a13f9d40c2ec5ece` — deterministic ARC data-integrity check rejects impossible/redundant terminal transitions for the same exact threat entity string and tells the model to use a distinct entity for a distinct later threat.
+- `c153d8c735b88a8896f8ca7f72be5522ca81f167` — regression coverage.
+
+Current queue order after active acceptance `aai-run-acceptance-amy-planning-gptoss-254`:
+1. `aaj-gptoss-arc-clothing-entity-bad-255` — old-prompt bad clothing ownership probe.
+2. `aak-gptoss-arc-clothing-entity-valid-256` — old-prompt valid control.
+3. `aal-run-tests-arc-effect-ownership-257` — prompt-contract tests.
+4. `aam-run-tests-arc-state-integrity-258` — combined state-integrity regression suite.
+
+Do not launch another acceptance until 254 is inspected and 255-258 are consumed; the next acceptance should run the newest branch containing the dependency, UTF-8, state-ownership, and terminal-threat fixes together.
