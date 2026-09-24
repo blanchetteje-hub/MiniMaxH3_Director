@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-generalization-boundaries-330",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 2200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Choose broad chapter refresh units from STORY. Do not assign beat counts. Do not invent plot. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nA researcher begins a normal shift cataloging samples. An alarm interrupts the routine. The researcher secures the samples and begins a long repeated diagnostic process that occupies most of the story. After that process, one final diagnostic resolves the incident. The researcher shuts down the lab and reunites with a waiting colleague.\n\nA chapter is a LARGE refresh unit. Use the fewest natural broad chapters. Keep continuous setup and the main repeated process together when possible. A short final chapter is appropriate when STORY enters its explicit terminal resolution.\n\nReturn exactly:\n{\"chapters\":[{\"chapter\":1,\"outline\":\"...\"}]}"
+    }
+  ]
+}
