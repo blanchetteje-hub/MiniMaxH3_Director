@@ -1,0 +1,9 @@
+{
+  "job_id": "abs-run-tests-director-containment-291",
+  "kind": "run_tests",
+  "tests": [
+    "tests.test_director_retry",
+    "tests.test_forward_beat_validation"
+  ],
+  "timeout_seconds": 1200
+}
