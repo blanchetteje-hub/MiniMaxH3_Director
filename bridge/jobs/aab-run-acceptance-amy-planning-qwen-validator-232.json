@@ -1,8 +1,0 @@
-{
-  "job_id": "aab-run-acceptance-amy-planning-qwen-validator-232",
-  "kind": "run_acceptance",
-  "image1": "amy.jpg",
-  "model": "qwen",
-  "planning_only": true,
-  "timeout_seconds": 2400
-}
