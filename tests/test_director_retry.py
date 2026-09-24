@@ -505,7 +505,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
 
     def test_director_prompt_preserves_locked_containment_handoff(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(segment_seconds=8)
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
+            segment_seconds=8,
+            story_segment_ending_rules="",
+        )
         self.assertIn("CONTAINMENT HANDOFF", prompt)
         self.assertIn("remaining inside/behind that barrier", prompt)
         self.assertIn("Do not re-co-locate a contained subject", prompt)
