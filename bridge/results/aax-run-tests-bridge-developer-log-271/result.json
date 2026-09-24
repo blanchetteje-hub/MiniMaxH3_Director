@@ -1,0 +1,23 @@
+{
+  "job_id": "aax-run-tests-bridge-developer-log-271",
+  "kind": "run_tests",
+  "started_at": 1790260183.6370835,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_chatgpt_llama_bridge"
+    ],
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "F.\n======================================================================\nFAIL: test_acceptance_log_capture_streams_model_io_and_stats (tests.test_chatgpt_llama_bridge.ChatGPTLlamaBridgeDeveloperLogTests.test_acceptance_log_capture_streams_model_io_and_stats)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"C:\\Program Files (x86)\\Python311\\Lib\\unittest\\mock.py\", line 1378, in patched\n    return func(*newargs, **newkeywargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\test_chatgpt_llama_bridge.py\", line 61, in test_acceptance_log_capture_streams_model_io_and_stats\n    self.assertEqual(\nAssertionError: 'files\\\\developer_log.jsonl' != 'files/developer_log.jsonl'\n- files\\developer_log.jsonl\n?      ^\n+ files/developer_log.jsonl\n?      ^\n\n\n----------------------------------------------------------------------\nRan 2 tests in 0.007s\n\nFAILED (failures=1)\n",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790260184.5273402,
+    "finished_at": 1790260184.7235584
+  },
+  "local_process_failed": true,
+  "finished_at": 1790260184.7235584,
+  "status": "ok"
+}
