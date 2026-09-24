@@ -1,0 +1,7 @@
+{
+  "job_id": "aaq-run-acceptance-amy-planning-gptoss-262",
+  "kind": "run_acceptance",
+  "model": "mistral",
+  "planning_only": true,
+  "timeout_seconds": 3600
+}
