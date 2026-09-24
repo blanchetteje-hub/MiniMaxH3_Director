@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-later-chapter-create-matrix-324",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 3600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Create beats only from the enclosed current chapter and supplied opening context. Do not assume prior-chapter prose. Treat each labeled task independently. Return one valid JSON object only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nThe parent completes the current final confrontation. After that, the parent goes to the secured room, opens it, and reunites with the two children.\n\nA) CREATE WITH MINIMAL-GOLD-LIKE CONTEXT\nOpening context:\n- Parent is in the kitchen facing the unresolved final obstacle.\n- Parent holds the needed hand-held tool ready.\n- Parent's current clothing and visible soiling are established.\n- Two earlier resolved obstacles remain in the kitchen.\nBeat budget: exactly 2.\nCreate two beats.\n\nB) CREATE WITH ONE ADDED FACT\nUse the same context plus:\n- The two children are safe behind the closed steel secured-room door down the hallway.\nBeat budget: exactly 2.\nCreate two beats.\n\nC) COMPARE SUFFICIENCY\nWhich context, A or B, lets Beat 2 continue without inventing an important spatial/containment fact? Return \"A\" or \"B\" and one concise reason.\n\nD) FIRST-BEAT ONLY CHECK\nUsing context A, create only the first beat. This tests whether the gold-like opening facts are sufficient for the refresh beat itself.\n\nReturn exactly:\n{\n \"A\":{\"beats\":[]},\n \"B\":{\"beats\":[]},\n \"C\":{\"better\":\"A\",\"reason\":\"...\"},\n \"D\":{\"beats\":[]}\n}"
+    }
+  ]
+}
