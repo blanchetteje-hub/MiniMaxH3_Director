@@ -9806,12 +9806,20 @@ an action to this beat, CANDIDATE BEAT must show that action being performed or
 completed in this beat. Do not infer the required action only from an aftermath,
 condition, or state that could already have been produced by PREVIOUS FINAL BEAT.
 An aftermath can satisfy an explicitly required result, but it cannot by itself
-satisfy a separately required action. A completed-state phrase such as "with X
-done", "with X slain", "after X was completed", or equivalent grammar describes
-X as already true; it does NOT show the assigned action X occurring in this beat.
-When CURRENT JOB assigns X to the current beat, reject that construction unless
-the candidate also explicitly depicts the action that makes X true. A prerequisite,
-approach, or partial progress is NOT completion of a later required result: if
+satisfy a separately required action.
+
+TEMPORAL ACTION OWNERSHIP: If CURRENT JOB assigns action X to THIS beat, require
+the candidate to narrate X as an event that happens now. Grammar that merely
+presupposes X is already complete is INVALID evidence for X. Examples of invalid
+evidence include "with X done", "with X slain", "after X was completed",
+"once X was finished", "X already lay dead", or any equivalent completed-state
+construction. Those phrases describe the result/state after X; they do not depict
+the assigned action occurring in this beat. Reject even when the completed state
+matches the desired result and even when later parts of CURRENT JOB are shown
+correctly. Accept only if the candidate also narrates the causative action itself
+(e.g. "Amy strikes the zombie and kills it") in this beat.
+
+A prerequisite, approach, or partial progress is NOT completion of a later required result: if
 CURRENT JOB requires
 A then B, doing only A is invalid. Entering a room does not imply locking its
 door; reaching a door does not imply opening it; retrieving a weapon does not
