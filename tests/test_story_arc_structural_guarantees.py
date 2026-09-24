@@ -599,6 +599,18 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("Never reuse or kill the same instance twice", repair_prompt)
         self.assertIn("Use this allocation procedure exactly", repair_prompt)
         self.assertIn("MUST materially perform the emphasized", repair_prompt)
+        validation_prompt = " ".join(
+            "\n".join(
+                message["content"]
+                for message in minimax.build_macro_arc_validation_messages(
+                    "Amy cooks breakfast for her kids.",
+                    arc,
+                    subject_information="Amy; Will; Amber",
+                )
+            ).split()
+        )
+        self.assertIn("material relational participants and beneficiaries", validation_prompt)
+        self.assertIn('"does X for Y" is not fully covered by "does X"', validation_prompt)
         self.assertIn("do not leave a setup-only beat there", repair_prompt)
         self.assertIn("Every beat from Beat", repair_prompt)
         self.assertIn("Names already present in the rejected ARC are not a source-level cap", repair_prompt)
