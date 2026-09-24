@@ -91,10 +91,10 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         )
         self.assertEqual(
             [
-                phase["required_events"][0]["depends_on"]
+                phase["required_events"][0].get("depends_on")
                 for phase in parsed["phases"]
             ],
-            [[], ["E1"], ["E2"]],
+            [None, ["E1"], ["E2"]],
         )
 
     def test_flat_arc_parser_rejects_duplicate_or_missing_beat_jobs(self):
