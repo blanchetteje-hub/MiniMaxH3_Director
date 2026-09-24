@@ -11059,6 +11059,15 @@ Rules:
   event. Use only set_location, set_item_state, set_barrier_state,
   set_threat_state, set_object_state, set_containment, set_condition, and
   set_clothing.
+- STATE EFFECT ARGUMENT OWNERSHIP: set_location.entity is the person/object
+  whose location changes and value is the destination; set_item_state.entity is
+  the item and owner is its person; set_barrier_state.entity is the barrier;
+  set_threat_state.entity is the specific threat/group whose lifecycle changes;
+  set_object_state.entity is the object; set_containment.entity is the person or
+  thing being contained/freed and container is the enclosing place;
+  set_condition.entity is the thing with the condition; set_clothing.entity is
+  the wearer and item is the garment. Never put the garment itself in
+  set_clothing.entity.
 - set_condition is for a persistent post-beat condition, never a temporary
   activity or inferred feeling/state. Its meaningful value words must come from
   the same event text.
@@ -11161,6 +11170,15 @@ Rules:
 - state_effects must describe only persistent facts directly established by the
   owning event. Reject inferred/temporary conditions and wrong typed operations.
   Clothing must use set_clothing, never set_condition.
+  - STATE EFFECT ARGUMENT OWNERSHIP: set_location.entity is the person/object
+  whose location changes and value is the destination; set_item_state.entity is
+  the item and owner is its person; set_barrier_state.entity is the barrier;
+  set_threat_state.entity is the specific threat/group whose lifecycle changes;
+  set_object_state.entity is the object; set_containment.entity is the person or
+  thing being contained/freed and container is the enclosing place;
+  set_condition.entity is the thing with the condition; set_clothing.entity is
+  the wearer and item is the garment. Never put the garment itself in
+  set_clothing.entity.
 - Judge only required_events and state_effects in PROPOSED ARC. Python-owned
   phase bookkeeping is intentionally not part of semantic validation.
 - Do NOT judge majority/relative-duration allocation in this broad validation
@@ -11272,6 +11290,15 @@ Rules:
   state_effects are only persistent facts directly established by their event.
   set_condition is not for temporary activity or inferred state.
 - Clothing must use set_clothing; never set_condition.
+- STATE EFFECT ARGUMENT OWNERSHIP: set_location.entity is the person/object
+  whose location changes and value is the destination; set_item_state.entity is
+  the item and owner is its person; set_barrier_state.entity is the barrier;
+  set_threat_state.entity is the specific threat/group whose lifecycle changes;
+  set_object_state.entity is the object; set_containment.entity is the person or
+  thing being contained/freed and container is the enclosing place;
+  set_condition.entity is the thing with the condition; set_clothing.entity is
+  the wearer and item is the garment. Never put the garment itself in
+  set_clothing.entity.
 - Return only the corrected events array with Beats 1-{int(total_segments)}
   covered exactly once. Do not create phases or phase ranges; Python owns that
   deterministic bookkeeping.
