@@ -45,6 +45,19 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("STATE EFFECTS IF VALID", messages[1]["content"])
         self.assertIn("C. NEXT JOB", messages[1]["content"])
 
+    def test_validator_rejects_completed_state_grammar_for_assigned_action(self):
+        messages = minimax.build_beat_validation_messages(
+            "Amy kills a zombie.",
+            minimax.new_beat_canonical_state(),
+            "Amy kills the last zombie and opens the basement.",
+            None,
+            "With the last zombie slain, Amy opens the basement.",
+        )
+        prompt = messages[1]["content"]
+        self.assertIn('A completed-state phrase such as "with X', prompt)
+        self.assertIn("does NOT show the assigned action X occurring", prompt)
+        self.assertIn("also explicitly depicts the action", prompt)
+
     def test_compact_validator_state_removes_noise_but_preserves_facts(self):
         state = {
             "version": 1,
