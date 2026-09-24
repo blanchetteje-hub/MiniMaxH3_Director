@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-generalization-allocation-331",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Allocate a fixed total beat budget across fixed chapters. Do not change chapter boundaries. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "TOTAL BEATS: 8\n\nFIXED CHAPTER 1:\nNormal shift, alarm, securing samples, and the entire repeated diagnostic process that STORY says occupies MOST of the story.\n\nFIXED CHAPTER 2:\nOne final diagnostic, lab shutdown, and reunion with the colleague.\n\nAllocate beats proportionally to source-emphasized screen time. Counts must sum to 8 and Chapter 1 must receive more than half because it contains the process described as most of the story.\n\nReturn exactly:\n{\"chapter1\":0,\"chapter2\":0}"
+    }
+  ]
+}
