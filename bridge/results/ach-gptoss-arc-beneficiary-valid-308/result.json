@@ -1,0 +1,57 @@
+{
+  "job_id": "ach-gptoss-arc-beneficiary-valid-308",
+  "kind": "llama_chat",
+  "started_at": 1790282623.3884091,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether the proposed ARC event preserves the explicit source action and its material relational participants/beneficiaries. Return exactly one JSON object {\"valid\": boolean, \"issue\": string}. If the source says an action is done for, with, or to someone, dropping that relationship is incomplete source coverage."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Amy is cooking breakfast for her young kids. DEFINED SUBJECTS: Amy; Will and Amber are Amy's kids. PROPOSED EVENT: Amy cooks breakfast for Will and Amber while wearing a black tank top and denim jeans."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-9j29go0uk09dzerqutgc6q",
+    "object": "chat.completion",
+    "created": 1790282623,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to check if the proposed event preserves explicit source action and material relational participants/beneficiaries.\n\nSource says: \"Amy is cooking breakfast for her young kids.\" So subject Amy, action cooking breakfast, beneficiary kids (Will and Amber). The defined subjects are Will and Amber as Amy's kids. Proposed event: \"Amy cooks breakfast for Will and Amber while wearing a black tank top and denim jeans.\"\n\nDoes it preserve the explicit source action? Yes: Amy cooks breakfast for Will and Amber. It preserves beneficiaries. Additional info about clothing is extra but doesn't drop any relation.\n\nThus valid true, issue empty string or maybe \"\".\n\nReturn JSON {\"valid\": true, \"issue\": \"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 183,
+      "completion_tokens": 159,
+      "total_tokens": 342,
+      "completion_tokens_details": {
+        "reasoning_tokens": 139
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790282626.382877,
+  "status": "ok"
+}
