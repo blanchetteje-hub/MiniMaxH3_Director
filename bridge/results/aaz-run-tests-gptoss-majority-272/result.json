@@ -1,0 +1,23 @@
+{
+  "job_id": "aaz-run-tests-gptoss-majority-272",
+  "kind": "run_tests",
+  "started_at": 1790260380.964207,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "-m",
+      "unittest",
+      "tests.test_story_arc_structural_guarantees",
+      "tests.test_chatgpt_llama_bridge"
+    ],
+    "returncode": 0,
+    "stdout": "Added States: \n",
+    "stderr": "...............................\n----------------------------------------------------------------------\nRan 31 tests in 0.010s\n\nOK\n",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790260381.675718,
+    "finished_at": 1790260382.270461
+  },
+  "finished_at": 1790260382.270461,
+  "status": "ok"
+}
