@@ -7706,6 +7706,7 @@ def ask_llm(
     repeat_penalty=None,
     seed=None,
     thinking=None,
+    reasoning_effort=None,
     chat_template=None,
     jinja=None,
     max_tokens=8000,
@@ -7830,6 +7831,8 @@ def ask_llm(
                     if value is not None
                 }
             )
+            if reasoning_effort is not None:
+                request_payload["reasoning_effort"] = reasoning_effort
             if use_beat_validation_settings:
                 # Match tests/LLM/llama_client.py exactly for benchmarked
                 # validator transport. Qwen disables reasoning through the
@@ -14609,6 +14612,7 @@ def generate_beats_from_story(
                                 "total_segments": total_segments,
                             },
                             max_tokens=1000,
+                            reasoning_effort="low",
                             **ARC_LLM_SAMPLING_PARAMETERS,
                         )
                         replacements = parse_macro_arc_majority_tail_repair_result(
@@ -14654,6 +14658,7 @@ def generate_beats_from_story(
                                 "attempt": repair_round,
                                 "total_segments": total_segments,
                             },
+                            reasoning_effort="low",
                             **ARC_LLM_SAMPLING_PARAMETERS,
                         )
                         repaired = parse_flat_arc_plan(
