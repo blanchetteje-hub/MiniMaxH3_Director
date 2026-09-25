@@ -737,12 +737,12 @@ Results:
 - tightened binary 758-777 produced valid JSON for all 20 probes, but four
   important controls remained wrong: 759, 771, 773, and 775.
 
-Decision:
-- one combined merge classifier remains too semantically broad for the 20B
-  model;
-- next contract is two narrow YES/NO judgments: same-action/direct-completion,
-  and immediate reaction caused by LEFT itself;
-- Python will merge only when one of those narrow checks returns YES.
+Historical intermediate decision (superseded by the exact Amy production check
+below):
+- two narrow YES/NO judgments were explored after the combined classifier missed
+  synthetic controls;
+- that decomposition was not adopted because the 20B model became less reliable
+  on direct mechanical chains and causal succession.
 
 
 ### Batch 778-797: narrow semantic decomposition
