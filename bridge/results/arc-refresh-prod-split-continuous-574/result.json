@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod-split-continuous-574",
+  "kind": "llama_chat",
+  "started_at": 1790349842.8849115,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY:\nThe operator tests one subsystem, replaces a failed component, and continues testing the same subsystem.\n\nSOURCE UNIT:\nThe operator tests one subsystem, replaces a failed component, and continues testing the same subsystem.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only when this one source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase, or crosses a major time/location/state discontinuity. Keep terminal resolution plus its immediate closure together. Keep continuous work in the same phase together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-mbj4uzonpbcxrkejqtx0r",
+    "object": "chat.completion",
+    "created": 1790349842,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP_TOGETHER\",\"reason\":\"The source unit describes a continuous sequence of actions—testing a subsystem, replacing a failed component, then continuing the same test—without any major time/location/state discontinuity or distinct terminal‑resolution phase that would warrant splitting into separate chapters.\"}",
+          "reasoning": "We need to decide whether this source unit crosses an internal LARGE H3 chapter phase boundary.\n\nThe story is \"The operator tests one subsystem, replaces a failed component, and continues testing the same subsystem.\" The source unit is identical: \"The operator tests one subsystem, replaces a failed component, and continues testing the same subsystem.\"\n\nWe need to determine if this single source unit crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase or major time/location/state discontinuity. Keep terminal resolution plus its immediate closure together.\n\nSo we have: test -> replace -> continue testing. Does that cross a chapter boundary? A LARGE H3 refresh unit is a chapter. The phrase \"tests one subsystem\" then \"replaces a failed component\" then \"continues testing the same subsystem.\" Are these all part of the same phase or does replacing a component constitute a distinct terminal resolution phase?\n\nWe need to interpret: In many narratives, test -> replace -> continue test might be considered continuous work. The replacement is an action within the same process; it's not necessarily a new chapter boundary unless there's a major time/location/state discontinuity.\n\nThe phrase \"continues testing\" suggests continuity. So likely KEEP_TOGETHER.\n\nThus decision: KEEP_TOGETHER. Reason: No major phase change, just continuation of subsystem test after component replacement.\n\nReturn JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 223,
+      "completion_tokens": 344,
+      "total_tokens": 567,
+      "completion_tokens_details": {
+        "reasoning_tokens": 276
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790349848.1754768,
+  "status": "ok"
+}
