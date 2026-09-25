@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod3-split-weapons-599",
+  "kind": "llama_chat",
+  "started_at": 1790350584.5546136,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nAmy retrieves her hidden pistol and katana and equips them.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only in either case:\n1. this unit contains an explicit substantial time jump/scene break between two narrative phases; or\n2. this unit contains an ongoing/repeated main process followed by its explicit terminal resolution.\nOtherwise choose KEEP_TOGETHER. Ordinary movement, danger changes, tool/weapon changes, terminal resolution plus immediate closure, and continuous work stay together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-i9hrfdyavanb0znec7ja38",
+    "object": "chat.completion",
+    "created": 1790350584,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP_TOGETHER\",\"reason\":\"The unit describes a single continuous action—Amy retrieves her hidden pistol and katana and equips them—with no explicit time jump or scene break between phases, nor an ongoing process followed by a terminal resolution.\"}",
+          "reasoning": "We need to decide if this source unit crosses an internal LARGE H3 chapter phase boundary.\n\nThe source unit is: \"Amy retrieves her hidden pistol and katana and equips them.\"\n\nThis seems like a single action, no time jump or scene break. It's just retrieving weapons and equipping them. No ongoing process followed by explicit terminal resolution? The retrieval and equip are part of the same process. So likely KEEP_TOGETHER.\n\nThus decision: KEEP_TOGETHER. Reason: Single narrative phase, no substantial time jump/scene break, continuous action.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 217,
+      "completion_tokens": 172,
+      "total_tokens": 389,
+      "completion_tokens_details": {
+        "reasoning_tokens": 111
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350587.49608,
+  "status": "ok"
+}
