@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-beatphrase-neutral-478",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE SOURCE UNITS:\n1. Worker prepares breakfast for two children.\n2. A threat breaks a window; worker gets both children into a secured room and locks it.\n3. Worker retrieves Tool-A and Tool-B and equips them.\n4. Worker handles threats elsewhere.\n5. The larger situation remains unresolved.\n\nFIXED BEAT ASSIGNMENT:\nBeat 1 -> [1]\nBeat 2 -> [2]\nBeat 3 -> [3]\nBeat 4 -> [4]\nBeat 5 -> [4]\nBeat 6 -> [5]\n\nWrite one minimal event for each beat using only facts contained in its assigned source-unit IDs.\nDo not invent storage locations, object origins, new objects, motives, or relationships.\nFor repeated source unit 4, Beat 4 and Beat 5 may describe separate instances of handling threats without inventing new plot facts.\n\nReturn JSON with key beats; each object has beat and event."
+    }
+  ]
+}
