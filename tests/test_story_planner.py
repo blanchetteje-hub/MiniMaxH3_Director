@@ -272,7 +272,7 @@ def test_build_story_plan_produces_amy_six_two_and_strict_ownership():
     def fake_llm(messages, **kwargs):
         metadata = kwargs["history_metadata"]
         purpose = metadata["purpose"]
-        unit_id = metadata["source_unit_id"]
+        unit_id = metadata.get("source_unit_id")
         if purpose == "source_unit_split_gate":
             return {"decision": "KEEP_TOGETHER", "reason": "single phase"}
         if purpose == "source_unit_terminal":
@@ -282,6 +282,10 @@ def test_build_story_plan_produces_amy_six_two_and_strict_ownership():
             }
         if purpose == "source_unit_hard_reset":
             return {"decision": "NO", "reason": "continuous story"}
+        if purpose == "source_unit_visible_responsibility":
+            return {"decision": "YES", "reason": "visible source action"}
+        if purpose == "source_unit_local_relation":
+            return {"relation": "NEW_TASK"}
         raise AssertionError(purpose)
 
     plan = build_story_plan(story, 8, fake_llm)
@@ -311,6 +315,10 @@ def test_build_story_plan_does_not_invent_repeatability_for_surplus_beats():
             return {"decision": "NO", "reason": "no central terminal distinction"}
         if purpose == "source_unit_hard_reset":
             return {"decision": "NO", "reason": "continuous"}
+        if purpose == "source_unit_visible_responsibility":
+            return {"decision": "YES", "reason": "visible source action"}
+        if purpose == "source_unit_local_relation":
+            return {"relation": "NEW_TASK"}
         raise AssertionError(purpose)
 
     plan = build_story_plan(story, 3, fake_llm)
@@ -353,3 +361,106 @@ def test_visible_source_responsibility_prompt_keeps_repeated_action_visible():
 
     assert "on-screen action or visible state" in prompt
     assert "genre/premise/summary framing" in prompt
+
+
+def test_local_relation_parser_and_grouping_keep_repeatables_isolated():
+    from story_planner import (
+        build_chapter_spans,
+        group_chapter_source_responsibilities,
+    )
+
+    story = (
+        "An alarm sounds. The worker immediately closes the valve. "
+        "The worker retrieves a tool. The worker equips the tool. "
+        "For most of the shift, the worker repeatedly checks the system."
+    )
+    units = enumerate_source_units(story)
+    chapter = build_chapter_spans(story, units)[0]
+    relations = iter([
+        {"relation": "IMMEDIATE_REACTION"},
+        {"relation": "NEW_TASK"},
+        {"relation": "DIRECT_COMPLETION"},
+    ])
+
+    def fake_llm(messages, **kwargs):
+        return next(relations)
+
+    groups = group_chapter_source_responsibilities(
+        units,
+        chapter,
+        visible_source_unit_ids=[1, 2, 3, 4, 5],
+        repeatable_source_unit_ids=[5],
+        llm_request=fake_llm,
+    )
+
+    assert groups == ((1, 2), (3, 4), (5,))
+
+
+def test_real_amy_story_groups_to_three_finite_beats_plus_repeated_process():
+    from story_planner import build_story_plan
+
+    story = (
+        "A realistic action film about a woman, Amy, protecting her two kids "
+        "(Will and Amber) from a zombie apocalypse.\n"
+        "Amy is at home on a normal day, wearing a tight, black tank top and "
+        "denim jeans, cooking breakfast for her young kids.\n"
+        "Suddenly, a zombie breaks the kitchen door window and Amy sees the danger. "
+        "She rushes her kids to the basement, gets them inside, and then locks the door.\n"
+        "She retrieves her hidden arsenal consisting of a pistol and a katana. "
+        "She equips the weapons.\n\n"
+        "The majority of the film is Amy killing (dismembering, decapitating, etc.) "
+        "zombies as they try and attack her.\n"
+        "Amy kills the last of the zombies, her house now soaked in blood. "
+        "She lets her kids out of the basement."
+    )
+
+    relation_by_pair = {
+        (2, 3): "NEW_TASK",
+        (3, 4): "IMMEDIATE_REACTION",
+        (4, 5): "NEW_TASK",
+        (5, 6): "DIRECT_COMPLETION",
+        (8, 9): "NEW_TASK",
+    }
+
+    def fake_llm(messages, **kwargs):
+        metadata = kwargs["history_metadata"]
+        purpose = metadata["purpose"]
+        unit_id = metadata.get("source_unit_id")
+        if purpose == "source_unit_split_gate":
+            return {"decision": "KEEP_TOGETHER", "reason": "one source phase"}
+        if purpose == "source_unit_terminal":
+            return {
+                "decision": "YES" if unit_id == 8 else "NO",
+                "reason": "only the last-zombie unit is terminal",
+            }
+        if purpose == "source_unit_hard_reset":
+            return {"decision": "NO", "reason": "continuous story"}
+        if purpose == "source_unit_visible_responsibility":
+            return {
+                "decision": "NO" if unit_id == 1 else "YES",
+                "reason": "premise only" if unit_id == 1 else "visible action/state",
+            }
+        if purpose == "source_unit_local_relation":
+            pair = (
+                metadata["left_source_unit_id"],
+                metadata["right_source_unit_id"],
+            )
+            return {"relation": relation_by_pair[pair]}
+        raise AssertionError(purpose)
+
+    plan = build_story_plan(story, 8, fake_llm)
+
+    assert [chapter.source_unit_ids for chapter in plan.chapters] == [
+        (1, 2, 3, 4, 5, 6, 7),
+        (8, 9),
+    ]
+    assert [chapter.beat_count for chapter in plan.chapters] == [6, 2]
+    assert plan.chapters[0].beat_source_unit_ids == (
+        (2,),
+        (3, 4),
+        (5, 6),
+        (7,),
+        (7,),
+        (7,),
+    )
+    assert plan.chapters[1].beat_source_unit_ids == ((8,), (9,))
