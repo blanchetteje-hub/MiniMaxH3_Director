@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-allocation-weight-neutral-440",
+  "kind": "llama_chat",
+  "started_at": 1790299867.5325587,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Assign only relative duration weights. Do not allocate integer beats. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FIXED CHAPTERS:\nChapter 1 is a brief setup.\nChapter 2 is explicitly described as MOST of the story and contains the long repeated central process.\nChapter 3 is a brief final resolution.\n\nAssign each chapter a relative duration weight using small positive integers from 1 to 5.\nThe weights should reflect expected screen time from source emphasis.\n\nReturn JSON with key weights, an array of three integers in chapter order."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yo3hnq090clh0yxqf98ow6",
+    "object": "chat.completion",
+    "created": 1790299867,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"weights\":[1,5,1]}",
+          "reasoning": "We need to assign relative duration weights for chapters: Chapter 1 brief setup; Chapter 2 most story and long repeated central process; Chapter 3 brief final resolution. Use small positive integers from 1 to 5. Likely weight 1,4,1 or maybe 1,5,1? But max is 5. So assign weights [1,5,1] or [1,4,1]. Since chapter 2 is most story and long repeated process, it should be highest weight: 5. The others brief: 1 each. That seems fine.\n\nReturn JSON with key \"weights\" array of three integers in order. Ensure valid JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 177,
+      "completion_tokens": 158,
+      "total_tokens": 335,
+      "completion_tokens_details": {
+        "reasoning_tokens": 139
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790299870.2785227,
+  "status": "ok"
+}
