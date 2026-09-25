@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-visible2-internal-only-655",
+  "kind": "llama_chat",
+  "started_at": 1790354525.4813643,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether one source unit creates a concrete visible beat responsibility. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nMara remembers the previous winter and fears making the same mistake again.\n\nYES = the unit explicitly contains an on-screen action or visible state that must be represented.\nNO = it is only genre/premise/summary framing or purely internal thought with no required visible action/state.\nReturn exactly {\"decision\":\"YES|NO\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 650,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-wwj206dh0k00gq6al76nf0f",
+    "object": "chat.completion",
+    "created": 1790354525,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\"}",
+          "reasoning": "We need to decide if this source unit creates a concrete visible beat responsibility. The sentence: \"Mara remembers the previous winter and fears making the same mistake again.\" This is an internal memory and fear, but does it create a visible action? It says she remembers and fears; that's internal thought. No on-screen action or state explicitly described. So NO.\n\nReturn JSON exactly {\"decision\":\"NO\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 160,
+      "completion_tokens": 95,
+      "total_tokens": 255,
+      "completion_tokens_details": {
+        "reasoning_tokens": 80
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354527.253507,
+  "status": "ok"
+}
