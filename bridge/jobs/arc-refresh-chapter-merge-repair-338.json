@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-chapter-merge-repair-338",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Repair an over-split chapter plan by merging adjacent chapters that do not require a major H3 refresh. Preserve source order and story facts. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nA researcher begins a normal shift. An alarm interrupts. The researcher secures samples and performs a long repeated diagnostic process that occupies most of the story. One final diagnostic then resolves the incident; the researcher shuts down the lab and reunites with a colleague.\n\nOVER-SPLIT PLAN:\n1. Normal shift + alarm.\n2. Secure samples + repeated diagnostic process.\n3. Final diagnostic + shutdown + reunion.\n\nRule: use the fewest broad refresh units. Continuous setup/escalation/main process belong together unless a major narrative reset requires a new chapter. The terminal-resolution transition may justify one.\n\nReturn exactly:\n{\"chapters\":[{\"chapter\":1,\"outline\":\"...\"}]}"
+    }
+  ]
+}
