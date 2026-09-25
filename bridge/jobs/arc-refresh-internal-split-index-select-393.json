@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-internal-split-index-select-393",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Select source-unit IDs that require an internal chapter-boundary inspection. Do not rewrite source text. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE SOURCE UNITS:\n1. A scientist begins a normal shift.\n2. She spends most of the story repeating measurements, then one final measurement resolves the problem and she closes the lab.\n3. She meets her colleague.\n4. She drives home.\n\nSelect only units that themselves contain more than one major narrative phase and therefore may require an internal split.\nReturn a JSON object with key \"inspect_unit_ids\", an array of unit numbers."
+    }
+  ]
+}
