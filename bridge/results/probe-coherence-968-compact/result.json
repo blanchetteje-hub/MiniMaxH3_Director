@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-968-compact",
+  "kind": "llama_chat",
+  "started_at": 1790380294.7871072,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nMara stands inside the laboratory.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nMara closes the laboratory door, then enters the corridor.\n\nNEXT JOB\nNone; this is the final beat.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nMara closes and locks the laboratory door, then walks through that closed door into the corridor.\n\nCHECKS\n1. Read the candidate literally in action order. Carry each completed result forward.\nA completed removal cannot happen again to that same target or part unless it is\nexplicitly restored first. Different targets and unsuccessful attempts are different\ncases. Do not excuse a contradiction as emphasis or silently change an action.\n2. Use PREVIOUS FINAL BEAT and CURRENT STATE as established facts. Reject unavailable\nobjects, unresolved barriers, and impossible actions. Unknown facts are not errors.\nHonor capabilities explicitly established in CURRENT JOB or CURRENT STATE.\n3. CURRENT JOB must happen in this beat, including every required action, result,\nand named participant. History or already-completed-state wording cannot replace\nan assigned action. Harmless staging is allowed; material changes to tools,\nparticipants, locations, or outcomes are not.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Each listed STATE EFFECT must follow from the candidate. Do not invent a\nmissing required action to justify an effect.\n\nReturn one JSON object: valid is a boolean, issue is a short concrete error\nor an empty string when valid. Judge all checks; any clear error makes valid false."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nzulidyss2j2g4aeotfz",
+    "object": "chat.completion",
+    "created": 1790380294,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Mara walks through the laboratory door immediately after closing (and locking) it, implying she can pass through a closed door—contradicting typical door behavior.\"}",
+          "reasoning": "We need to validate beat. PREVIOUS FINAL BEAT: \"Mara stands inside the laboratory.\" So she was standing in lab.\n\nCURRENT STATE {} means no state changes yet? But we have CURRENT JOB: \"Mara closes the laboratory door, then enters the corridor.\"\n\nCandidate beat: \"Mara closes and locks the laboratory door, then walks through that closed door into the corridor.\"\n\nCheck 1: read candidate literally. She closes and locks lab door (action). Then walks through that closed door into corridor.\n\nWe need to see if this matches current job: \"closes the laboratory door\" yes; \"enters the corridor\" yes. The candidate adds lock action, which is extra but okay? Check 3 says CURRENT JOB must happen in beat including every required action, result, and named participant. History or already-completed-state wording cannot replace an assigned action. Harmless staging allowed; material changes to tools participants locations outcomes not.\n\nAdding \"locks\" might be a material change: door now locked. Is that okay? It's extra but doesn't contradict. Should we consider it as valid? The job didn't specify lock, just close. Lock is additional state effect. But check 4 says do not complete distinct NEXT JOB early; identical repeated jobs may continue.\n\nCheck 2: Use PREVIOUS FINAL BEAT and CURRENT STATE as established facts. Reject unavailable objects, unresolved barriers, impossible actions. Unknown facts are not errors. Honor capabilities explicitly established in CURRENT JOB or CURRENT STATE. So we know lab door exists? Yes from previous beat she stands inside lab; presumably there's a door.\n\nShe closes the door: okay. Then walks through that closed door into corridor: She can walk through closed door? If it's closed but unlocked, maybe still passable. But if locked, might need key. The candidate says \"walks through that closed door\" implying it is open enough to walk through even though closed? Usually a closed door means shut; you can't walk through unless opened or broken. So walking through a closed door may be contradictory: If it's closed, she cannot pass. Unless the door is a sliding door? But typical lab door closed means shut.\n\nThus candidate might contradict: She closes and locks then walks through that closed door into corridor. That implies passing through while closed; maybe it was open before closing? Actually \"walks through that closed door\" could mean after closing, she goes through (like pushes the door). Could be okay if it's a sliding or push-through.\n\nBut check 1: A completed removal cannot happen again to same target unless restored. Not relevant.\n\nCheck 3: CURRENT JOB must happen in beat including every required action, result, and named participant. The job says \"Mara closes the laboratory door\" (done). Then \"enters the corridor\". Candidate does that by walking through closed door into corridor. So yes.\n\nBut we added lock; not part of job but okay as extra state effect? But check 4: Do not complete distinct NEXT JOB early. Identical repeated jobs may continue. Not relevant.\n\nCheck 5: Each listed STATE EFFECT must follow from candidate. We have no state effects list given, so fine.\n\nThus main potential issue is walking through closed door. Is that contradictory? If the lab door was closed and locked, she can't walk through unless it's a sliding or push-through. But typical interpretation: closed means shut; you can still pass if it slides open? Might be okay but ambiguous.\n\nBut check 1 says \"Carry each completed result forward.\" She closes and locks door (result). Then walks through that closed door into corridor. That implies she passes through the closed door, which is contradictory unless it's a sliding door or she pushes it. But no mention of pushing; just walking through. So likely error: cannot walk through closed door.\n\nThus valid false with issue \"Walks through closed door after closing and locking\". Let's output JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 429,
+      "completion_tokens": 841,
+      "total_tokens": 1270,
+      "completion_tokens_details": {
+        "reasoning_tokens": 790
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380306.0410273,
+  "status": "ok"
+}
