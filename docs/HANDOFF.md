@@ -510,3 +510,29 @@ The preferred chaptering test is now two independent binary flags per source uni
 Python derives chapter boundaries from those flags.
 
 Batch 526-545 tests the binary flags across Amy, technician, time-jump, and continuous-process controls.
+
+
+### Batch 526-545 summary
+
+The binary terminal classifier was stable across all tested shapes:
+- setup/preparation/main-process units -> NO;
+- decisive final-resolution units -> YES;
+- post-resolution closure units -> NO;
+- later reset/new-phase units -> NO.
+
+The reset classifier remained too permissive when phrased as any major state/location change:
+- Amy's immediate basement move and weapon preparation were incorrectly called resets;
+- technician alarm interruption was incorrectly called a reset;
+- true time/location discontinuities were correctly identified.
+
+Refinement:
+- rename/reset semantics to HARD_RESET;
+- HARD_RESET means a narrative discontinuity between phases: explicit time jump, scene break, relocation after a completed phase, or equivalent restart;
+- immediate cause-and-effect action in one continuous scene is not a hard reset, even if danger, location, equipment, or state changes.
+
+Boundary rule under test in 546-565:
+- always split before HARD_RESET;
+- terminal units start a new chapter only when a later non-reset closure unit exists;
+- a final terminal unit stays with the current chapter;
+- a terminal unit immediately followed by HARD_RESET stays with the current phase and the split occurs at the reset;
+- Amy-shaped flags should produce boundary [4] and 6/2 beat allocation.
