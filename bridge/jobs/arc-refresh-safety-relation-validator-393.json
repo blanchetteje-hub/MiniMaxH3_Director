@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-safety-relation-validator-393",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only whether the candidate preserves safety, separation, and exposure relationships established by STORY. A candidate that moves the active danger into a protected area changes the story materially. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nAmy gets Will and Amber into the basement and locks the door so they are separated from the attacking zombies. Amy then fights the zombies.\n\nCANDIDATE:\nAmy locks Will and Amber in the basement, then fights a swarm of attacking zombies inside the basement with the children.\n\nChoose one validity value from: VALID, INVALID.\nReturn a JSON object with keys \"validity\" and \"issue\"."
+    }
+  ]
+}
