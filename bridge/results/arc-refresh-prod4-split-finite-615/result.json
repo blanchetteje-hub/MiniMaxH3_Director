@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod4-split-finite-615",
+  "kind": "llama_chat",
+  "started_at": 1790350753.7370608,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nThe technician diagnoses the fault, replaces the sensor, and confirms the repair.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only in either case:\n1. this unit contains an explicit substantial time jump/scene break between two narrative phases; or\n2. this unit explicitly describes a long/repeated main process (for example majority, most, repeatedly, throughout, or equivalent duration/repetition wording) followed by its explicit terminal resolution. A one-time finite action chain is NOT this case.\nOtherwise choose KEEP_TOGETHER. Ordinary movement, danger changes, tool/weapon changes, terminal resolution plus immediate closure, and continuous work stay together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yvuz14mf9ezsws9a1q5ha",
+    "object": "chat.completion",
+    "created": 1790350753,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP_TOGETHER\",\"reason\":\"The unit contains a single, concise series of actions (diagnose, replace, confirm) with no explicit time jumps, scene breaks, or repeated processes that would warrant splitting across chapter phases.\"}",
+          "reasoning": "We need to decide if the source unit crosses an internal LARGE H3 chapter phase boundary.\n\nThe source unit is: \"The technician diagnoses the fault, replaces the sensor, and confirms the repair.\"\n\nThis is a single sentence describing a process: diagnose, replace, confirm. It's a short sequence of actions. Does it contain explicit substantial time jump/scene break? No. Does it describe long/repeated main process followed by terminal resolution? It describes a process but not repeated or majority etc. So it's one-time finite action chain.\n\nThus choose KEEP_TOGETHER.\n\nReturn JSON: {\"decision\":\"KEEP_TOGETHER\",\"reason\":\"Single short sequence of actions, no time jump or repetition.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 250,
+      "completion_tokens": 198,
+      "total_tokens": 448,
+      "completion_tokens_details": {
+        "reasoning_tokens": 139
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350757.0187223,
+  "status": "ok"
+}
