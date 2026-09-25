@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-transient-context-neutral-381",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Select only transient/current state needed to execute the whole chapter. Persistent Subject appearance is injected separately by Python. Exclude mere history. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER SOURCE:\nMara finishes the active machine test, then opens the secured side room and reunites with Kai.\n\nESTABLISHED STATE:\n- Mara is at the machine console with the test still active.\n- Mara currently holds the calibration probe.\n- Mara wears a blue jacket and black pants.\n- Oil is smeared across Mara's right sleeve.\n- Kai is waiting behind the closed secured side-room door.\n- A warning alarm sounded earlier.\n- Mara previously used a wrench and put it away.\n\nReturn a JSON object with key \"transient_context\", an array of selected facts."
+    }
+  ]
+}
