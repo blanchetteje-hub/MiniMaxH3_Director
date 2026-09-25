@@ -1,0 +1,7 @@
+{
+  "job_id": "run-tests-beat-refresh-integration-847",
+  "status": "error",
+  "error_type": "ValueError",
+  "error": "Unsupported unittest module: 'tests/test_generate_beats_mode.py'",
+  "finished_at": 1790365093.7852635
+}
