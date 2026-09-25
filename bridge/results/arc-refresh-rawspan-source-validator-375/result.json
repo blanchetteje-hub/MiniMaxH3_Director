@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-rawspan-source-validator-375",
+  "kind": "llama_chat",
+  "started_at": 1790297030.2341075,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate candidate beats against the supplied authoritative chapter source. Unsupported material actions make the candidate invalid. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE CHAPTER SOURCE:\nA worker completes the final task.\nThe worker reunites with the waiting team.\nThe source ends at the reunion.\n\nCANDIDATE:\nBeat 1: The worker completes the final task.\nBeat 2: The worker reunites with the waiting team and then begins a new project.\n\nChoose one validity value from this allowed set: VALID, INVALID.\nReturn a JSON object with keys \"validity\" and \"issue\"."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-90mjynpudah9kbfrx2ptym",
+    "object": "chat.completion",
+    "created": 1790297030,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"validity\":\"INVALID\",\"issue\":\"Beat 2 contains an unsupported action \\\"begins a new project\\\" after the reunion.\"}",
+          "reasoning": "We need to validate candidate beats against authoritative source. Authoritative chapter source has two lines:\n\n1. A worker completes the final task.\n2. The worker reunites with the waiting team.\n\nThe source ends at the reunion.\n\nCandidate beats: Beat 1 matches first line exactly. Beat 2: \"The worker reunites with the waiting team and then begins a new project.\" That adds extra action after reunion, which is not in authoritative source. So it's unsupported material -> invalid. We need to output JSON with validity: INVALID, issue: maybe \"Unsupported additional action 'begins a new project'\". Provide keys exactly.\n\nReturn valid JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 189,
+      "completion_tokens": 168,
+      "total_tokens": 357,
+      "completion_tokens_details": {
+        "reasoning_tokens": 131
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790297033.3039417,
+  "status": "ok"
+}
