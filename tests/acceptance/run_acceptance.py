@@ -83,30 +83,6 @@ def load_benchmark(path: Path) -> dict:
     return benchmark
 
 
-def infer_refresh_interval(beats: list[dict]) -> int | None:
-    refresh_segments = [
-        int(beat["beat"]) for beat in beats if beat.get("mode") == "refresh"
-    ]
-    if not refresh_segments:
-        return None
-
-    count = len(beats)
-    for interval in range(2, count + 1):
-        scheduled = [
-            segment
-            for segment in range(2, count + 1)
-            if segment % interval == 0
-        ]
-        if scheduled == refresh_segments:
-            return interval
-
-    raise ValueError(
-        "Gold refresh schedule cannot be represented by the current "
-        "--refresh interval model. This is an architectural mismatch, not a "
-        "benchmark error."
-    )
-
-
 def parse_h3_prompts(log_text: str) -> dict[int, str]:
     starts = re.compile(
         r"DIRECTOR REQUEST 2: H3 prompt - SEGMENT\s+(\d+)\s*$"
