@@ -1,0 +1,7 @@
+{
+  "job_id": "run-tests-beat-retry-current-849",
+  "status": "error",
+  "error_type": "ValueError",
+  "error": "Unsupported unittest module: 'tests/test_beat_retry_hierarchy.py'",
+  "finished_at": 1790365519.5690818
+}
