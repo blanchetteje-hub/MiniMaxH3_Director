@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-visual-state-neutral-399",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Classify established facts by whether Python should inject them automatically for refresh visual continuity. Do not rewrite facts. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FACTS:\n1. Mara wears a blue jacket and black pants.\n2. Oil is smeared across Mara's right sleeve.\n3. Mara currently holds a calibration probe.\n4. A warning alarm sounded earlier.\n5. Mara used a wrench earlier and put it away.\n6. A cracked display remains visible on the machine console.\n\nA fact is CURRENT_VISIBLE_STATE when it is visibly true at the refresh boundary and should remain available to H3 regardless of semantic chapter need.\n\nReturn a JSON object with keys \"current_visible_state_ids\" and \"other_ids\"."
+    }
+  ]
+}
