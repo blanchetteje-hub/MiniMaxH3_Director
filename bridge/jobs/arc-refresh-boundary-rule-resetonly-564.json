@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-rule-resetonly-564",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1100,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Apply the deterministic chapter rule mechanically. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT FLAGS:\n1. terminal=NO, hard_reset=NO\n2. terminal=NO, hard_reset=NO\n3. terminal=NO, hard_reset=YES\n4. terminal=NO, hard_reset=NO\n\nRULE:\nStart a new chapter before every unit where hard_reset=YES.\n\nReturn JSON with key new_chapter_after, listing the prior unit number after which the new chapter begins."
+    }
+  ]
+}
