@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-gate-timejump-neutral-469",
+  "kind": "llama_chat",
+  "started_at": 1790301298.336505,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nThe team finishes field work at the remote site, then three months later begins analysis in a city laboratory.\n\nA chapter is a LARGE H3 refresh unit.\nSPLIT when this one source unit crosses a major time/location/state reset.\nKEEP_TOGETHER otherwise.\n\nChoose: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1u71gllwxspykbxx88whfc",
+    "object": "chat.completion",
+    "created": 1790301298,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"SPLIT\",\"reason\":\"The source unit describes two distinct events separated by a three‑month interval and a shift from a remote field site to an urban laboratory. This major time gap and location change constitutes a reset, warranting the split into separate chapter units.\"}",
+          "reasoning": "We need to decide whether to split the source unit into multiple chapter units based on \"major time/location/state reset\". The source unit is:\n\n\"The team finishes field work at the remote site, then three months later begins analysis in a city laboratory.\"\n\nSo we have two distinct times: finishing fieldwork at remote site (time 0), and three months later beginning analysis in city lab. That's a major time reset of 3 months. Also location changes from remote site to city lab.\n\nThus it's a major time/location/state reset, so split into separate chapter units. So decision = SPLIT. Reason: The source unit contains two distinct events separated by a significant time gap and change of location, indicating a reset that warrants splitting into separate chapters.\n\nReturn JSON with keys \"decision\" and \"reason\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 159,
+      "completion_tokens": 227,
+      "total_tokens": 386,
+      "completion_tokens_details": {
+        "reasoning_tokens": 160
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790301302.0103843,
+  "status": "ok"
+}
