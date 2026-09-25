@@ -80,5 +80,33 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
             self.assertIn("bridge_log_capture_error", payload)
 
 
+    def test_acceptance_rejects_nonbaseline_model(self):
+        with tempfile.TemporaryDirectory() as temp:
+            with self.assertRaisesRegex(ValueError, "must use the 'gpt' baseline"):
+                bridge.execute_acceptance(
+                    {
+                        "job_id": "bad-model",
+                        "code_branch": "gpt-arc-refresh",
+                        "model": "mistral",
+                    },
+                    Path(temp),
+                    Path(temp) / "result",
+                )
+
+    def test_acceptance_rejects_nonbaseline_branch(self):
+        with tempfile.TemporaryDirectory() as temp:
+            with self.assertRaisesRegex(ValueError, "must run on 'gpt-arc-refresh'"):
+                bridge.execute_acceptance(
+                    {
+                        "job_id": "bad-branch",
+                        "code_branch": "gpt-test-branch",
+                        "model": "gpt",
+                    },
+                    Path(temp),
+                    Path(temp) / "result",
+                )
+
+
+
 if __name__ == "__main__":
     unittest.main()
