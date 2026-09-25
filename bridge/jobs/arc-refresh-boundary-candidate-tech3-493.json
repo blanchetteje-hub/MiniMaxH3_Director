@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-candidate-tech3-493",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE STORY UNITS:\n1. A technician begins a normal shift.\n2. An alarm interrupts; the technician secures the work area.\n3. The technician retrieves required tools.\n4. Most of the story is repeated fault handling.\n5. The final fault is resolved.\n6. The technician releases the waiting team.\n\nCANDIDATE BOUNDARY:\nAfter unit 3.\n\nUse a LARGE H3 refresh bias. Setup through the source-emphasized main process should remain continuous unless a major reset occurs. Terminal resolution may begin a new chapter.\n\nChoose: BOUNDARY or NO_BOUNDARY.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
