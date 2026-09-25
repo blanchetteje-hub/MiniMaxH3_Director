@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-perbeat-validator-missing-502",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE SOURCE UNITS:\n1. Worker opens the cabinet.\n2. Worker takes Tool-A and Tool-B.\n3. Worker places Tool-A on the cart.\n4. Worker carries Tool-B into the hallway.\n\nFIXED ASSIGNMENT:\nBeat 1 -> [1,2]\nBeat 2 -> [3,4]\n\nCANDIDATE BEAT 1:\nWorker opens the cabinet and takes Tool-A.\n\nValidate ONLY Beat 1 against ONLY assigned source units [1,2].\nEvery concrete action in assigned units must appear explicitly.\nDo not infer an omitted action from later beats or later state.\n\nChoose validity from VALID or INVALID.\nIf invalid choose issue_type from MISSING_ACTION or MATERIAL_DEVIATION.\nReturn JSON with keys validity, issue_type, issue."
+    }
+  ]
+}
