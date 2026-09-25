@@ -1,0 +1,9 @@
+{
+  "kind": "run_acceptance",
+  "job_id": "amy-planning-premise-fixed-868",
+  "code_branch": "gpt-arc-refresh",
+  "model": "gpt",
+  "image1": "amy.jpg",
+  "planning_only": true,
+  "timeout_seconds": 3600
+}
