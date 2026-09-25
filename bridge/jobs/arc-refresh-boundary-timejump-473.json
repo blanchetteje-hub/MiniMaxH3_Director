@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-timejump-473",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE SOURCE UNITS:\n1. A team completes field work at a remote site.\n2. Three months later the team begins analysis in a city lab.\n3. Most of this phase is repeated laboratory analysis.\n4. A final test resolves the question and the team prepares the report.\n5. One year later the team returns to the remote site.\n\nA chapter is a LARGE H3 refresh unit.\nUse the FEWEST chapter boundaries that preserve major narrative phases.\nMajor time/location/state resets require new chapters.\nTerminal resolution plus immediate closure may remain in one chapter.\n\nReturn JSON with key new_chapter_after, an array of source-unit numbers."
+    }
+  ]
+}
