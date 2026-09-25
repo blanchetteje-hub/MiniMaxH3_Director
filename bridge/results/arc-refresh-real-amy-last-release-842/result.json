@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-real-amy-last-release-842",
+  "kind": "llama_chat",
+  "started_at": 1790361152.6318252,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nAmy kills the last of the zombies, her house now soaked in blood.\n\nRIGHT:\nShe lets her kids out of the basement.\n\nChoose one:\nMERGE only when RIGHT's PRIMARY ACTION is one of these:\n- the same uninterrupted local action as LEFT;\n- a direct immediate response caused by the event in LEFT itself (for example alarm -> shut down/call for help); or\n- the immediate mechanical completion of the exact object/action LEFT just obtained/opened/started (retrieve -> equip, open -> remove).\nNEW_TASK when RIGHT's PRIMARY ACTION is a distinct objective after LEFT reaches a usable stopping point. A shared larger goal is not enough to MERGE. Carrying, wearing, or using an item from LEFT while performing a different primary task is NEW_TASK. Starting a fresh item/test after LEFT completed one is NEW_TASK.\nFor causality, distinguish LEFT itself from a shared earlier cause: danger -> immediate protection may MERGE, but protection -> fetch gear is NEW_TASK because the gear retrieval responds to the danger, not to the completed protection action.\nJudge only the concrete local actions.\nReturn exactly {\"relation\":\"MERGE|NEW_TASK\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-l5u473wzwd03s8188k5ae",
+    "object": "chat.completion",
+    "created": 1790361152,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need decide if RIGHT's primary action qualifies for merge with LEFT. Left: \"Amy kills the last of the zombies, her house now soaked in blood.\" Primary action: Amy kills the last zombie (action). Right: \"She lets her kids out of the basement.\"\n\nPrimary action right: She lets her kids out of the basement.\n\nIs that a direct immediate response caused by event in LEFT? The left event is killing last zombie. That ends threat, so letting kids out could be immediate response to clearing danger. But is it mechanical completion of exact object/action? No. It's not same local action (killing). Not immediate mechanical completion. So it's distinct objective after left reaches usable stopping point: yes.\n\nThus NEW_TASK. Return JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 326,
+      "completion_tokens": 166,
+      "total_tokens": 492,
+      "completion_tokens_details": {
+        "reasoning_tokens": 150
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790361155.377765,
+  "status": "ok"
+}
