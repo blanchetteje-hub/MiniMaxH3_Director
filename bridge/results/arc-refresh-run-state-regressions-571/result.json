@@ -1,0 +1,19 @@
+{
+  "job_id": "arc-refresh-run-state-regressions-571",
+  "kind": "run_tests",
+  "started_at": 1790347878.1907988,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_state_effect_canonicalization.py",
+      "tests\\test_macro_required_end_state.py",
+      "tests\\test_macro_state_enrichment.py"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "",
+    "stderr": "C:\\Program Files (x86)\\Python311\\python.exe: No module named pytest\n"
+  },
+  "finished_at": 1790347879.017201,
+  "status": "ok"
+}
