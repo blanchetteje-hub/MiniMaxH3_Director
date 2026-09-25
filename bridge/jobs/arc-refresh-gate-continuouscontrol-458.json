@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-gate-continuouscontrol-458",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nShe tests the electrical system, replaces one failed sensor, and continues testing the same engine.\n\nA chapter is a LARGE H3 refresh unit.\nKEEP_TOGETHER means the unit remains one continuous phase.\nSPLIT means it crosses a major reset or distinct terminal-resolution boundary.\n\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
