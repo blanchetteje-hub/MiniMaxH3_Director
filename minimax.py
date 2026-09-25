@@ -1995,18 +1995,53 @@ def get_segments_to_generate(resume_segment, total_segments):
 
 
 # Return whether this non-opening segment uses the refresh workflow.
-def is_refresh_segment(segment_number, refresh_interval):
-    """Return whether this non-opening segment uses the refresh workflow."""
+def source_span_refresh_segments(macro_arc):
+    """Return chapter-opening refresh beats for a source-span story plan."""
+    if not macro_arc_uses_source_span_planner(macro_arc):
+        return ()
+    starts = []
+    for phase in macro_arc.get("phases", []):
+        if not isinstance(phase, dict):
+            continue
+        phase_number = phase.get("phase_number")
+        beat_start = phase.get("beat_start")
+        if (
+            isinstance(phase_number, int)
+            and not isinstance(phase_number, bool)
+            and phase_number > 1
+            and isinstance(beat_start, int)
+            and not isinstance(beat_start, bool)
+            and beat_start > 1
+        ):
+            starts.append(beat_start)
+    return tuple(starts)
 
+
+def is_refresh_segment(segment_number, refresh_interval=None, macro_arc=None):
+    """Return whether this non-opening segment uses the refresh workflow.
+
+    Source-span chapter openings are authoritative when present. The legacy
+    numeric refresh interval remains only for runs without source-span chapters.
+    """
+    segment_number = int(segment_number)
+    if segment_number <= 1:
+        return False
+    chapter_refreshes = source_span_refresh_segments(macro_arc)
+    if chapter_refreshes:
+        return segment_number in chapter_refreshes
     return bool(
         refresh_interval
-        and segment_number > 1
-        and segment_number % refresh_interval == 0
+        and segment_number % int(refresh_interval) == 0
     )
 
 
 # Return whether the rendered-frame visual continuity gate should run.
-def should_run_vision_continuity(segment_number, cadence, refresh_interval=None):
+def should_run_vision_continuity(
+    segment_number,
+    cadence,
+    refresh_interval=None,
+    macro_arc=None,
+):
     """Return whether the rendered-frame visual continuity gate should run."""
 
     segment_number = int(segment_number)
@@ -2017,18 +2052,22 @@ def should_run_vision_continuity(segment_number, cadence, refresh_interval=None)
         return False
     if cadence == 1:
         return True
-    if refresh_interval:
-        next_segment_is_refresh = is_refresh_segment(
-            segment_number + 1,
-            refresh_interval,
-        )
-        if next_segment_is_refresh:
-            return True
+    next_segment_is_refresh = is_refresh_segment(
+        segment_number + 1,
+        refresh_interval,
+        macro_arc=macro_arc,
+    )
+    if next_segment_is_refresh:
+        return True
     return segment_number % cadence == 0
 
 
 # Return the H3 visual-conditioning mode selected by workflow scheduling.
-def conditioning_mode_for_segment(segment_number, refresh_interval=None):
+def conditioning_mode_for_segment(
+    segment_number,
+    refresh_interval=None,
+    macro_arc=None,
+):
     """Return the H3 visual-conditioning mode selected by workflow scheduling."""
 
     segment_number = int(segment_number)
@@ -2036,7 +2075,11 @@ def conditioning_mode_for_segment(segment_number, refresh_interval=None):
         raise ValueError("Segment numbers must be one-based.")
     if segment_number == 1:
         return "initial"
-    if is_refresh_segment(segment_number, refresh_interval):
+    if is_refresh_segment(
+        segment_number,
+        refresh_interval,
+        macro_arc=macro_arc,
+    ):
         return "clean_refresh"
     return "continuation"
 
@@ -23001,6 +23044,7 @@ def _render_segment_with_retries(
     segment_length=None,
     h3_fixture_context=None,
     h3_fixture_path=None,
+    macro_arc=None,
 ):
     """Render one segment, retrying only recoverable ComfyUI failures."""
     h3_prompt = _assert_h3_subject_identity(
@@ -23013,7 +23057,11 @@ def _render_segment_with_retries(
             raise ValueError("Pass loras or lora_override, not both.")
         loras = [lora_override]
     loras = normalize_lora_list(loras)
-    refresh_segment = is_refresh_segment(segment, refresh_interval)
+    refresh_segment = is_refresh_segment(
+        segment,
+        refresh_interval,
+        macro_arc=macro_arc,
+    )
     if refresh_segment:
         print(
             f"AUTO REFRESH: segment {segment} is using "
@@ -23132,8 +23180,13 @@ def render_segment_with_retries(*args, **kwargs):
     refresh_input_directory = (
         args[11] if len(args) > 11 else kwargs.get("refresh_input_directory")
     )
+    macro_arc = kwargs.get("macro_arc")
     refresh_frame_names = []
-    if segment is not None and is_refresh_segment(segment, refresh_interval):
+    if segment is not None and is_refresh_segment(
+        segment,
+        refresh_interval,
+        macro_arc=macro_arc,
+    ):
         refresh_frame_names.append(
             f"minimax_refresh_first_frame_{int(segment):04d}.png"
         )
@@ -25090,6 +25143,7 @@ def _run_main(
                 resume_segment - 1,
                 getattr(args, "vision_continuity", 1),
                 refresh_interval,
+                macro_arc=macro_arc,
             )
             else "prompt"
         )
@@ -25224,6 +25278,7 @@ def _run_main(
         conditioning_mode = conditioning_mode_for_segment(
             segment_number,
             refresh_interval,
+            macro_arc=macro_arc,
         )
         return json.dumps(
             {
@@ -25263,6 +25318,7 @@ def _run_main(
         conditioning_mode = conditioning_mode_for_segment(
             segment_number,
             refresh_interval,
+            macro_arc=macro_arc,
         )
         segment_director_rules = build_director_rules(
             total_length,
@@ -25759,6 +25815,7 @@ def _run_main(
                 render_started_event=render_started,
                 refresh_interval=refresh_interval,
                 continuity_state=continuity_state,
+                macro_arc=macro_arc,
                 # Validate against the same filtered opening summary that was
                 # inserted into this segment's H3 prompt.
                 continuity_summary=payload.get(
