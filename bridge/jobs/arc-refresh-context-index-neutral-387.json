@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-context-index-neutral-387",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Select established facts by ID only. Do not rewrite, paraphrase, or invent facts. Persistent Subject appearance is injected separately by Python. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER SOURCE:\nMara finishes the active machine test.\nMara opens the secured side room and reunites with Kai.\n\nESTABLISHED FACTS:\n1. Mara is at the machine console with the test still active.\n2. Mara currently holds the calibration probe.\n3. Mara wears a blue jacket and black pants.\n4. Oil is smeared across Mara's right sleeve.\n5. Kai is waiting behind the closed secured side-room door.\n6. A warning alarm sounded earlier.\n7. Mara previously used a wrench and put it away.\n\nSelect only transient/current facts needed to execute the whole chapter. Exclude persistent appearance and mere history.\n\nReturn a JSON object with key \"selected_fact_ids\", an array of fact numbers."
+    }
+  ]
+}
