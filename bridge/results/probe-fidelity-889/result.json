@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-fidelity-889",
+  "kind": "llama_chat",
+  "started_at": 1790370998.3408065,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nAmy kills the last zombie, leaving the house soaked in blood.\n\nNEXT JOB\nNone.\n\nCANDIDATE BEAT\nAmy kills the final zombie outside, then burns the house down.\n\nMATERIAL FIDELITY: Harmless local staging is allowed, but reject invented details that materially change the assigned action, participant treatment, object use, location/result, or story meaning. Named tools and weapons must be used in a physically coherent way unless CURRENT JOB explicitly establishes an unusual use; for example a firearm may shoot/strike but does not slash or decapitate as a blade. Do not invent consequential aggression, injury, forced movement, humiliation, or other harmful treatment of a protected/non-hostile participant merely to dramatize an otherwise simple assigned action. Do not reject ordinary neutral staging.\n\nReturn exactly {\"valid\": true, \"issue\": \"\"} if valid, otherwise {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-q8l2z1opkspmnaem0wqt3r",
+    "object": "chat.completion",
+    "created": 1790370998,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\": \"Killed the final zombie outside instead of inside and added burning the house, changing location and outcome\"}",
+          "reasoning": "We need to judge the candidate beat: Amy kills the final zombie outside, then burns the house down. Current job: Amy kills last zombie inside house soaked in blood. Next job none.\n\nCandidate beat changes location of kill (outside vs inside) and adds burning house. That materially changes assigned action: location changed, result added. So invalid. Issue: \"Location of killing changed from inside to outside.\" Also adding burning house is extra. So valid false. Return JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 304,
+      "completion_tokens": 133,
+      "total_tokens": 437,
+      "completion_tokens_details": {
+        "reasoning_tokens": 95
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790371000.3765893,
+  "status": "ok"
+}
