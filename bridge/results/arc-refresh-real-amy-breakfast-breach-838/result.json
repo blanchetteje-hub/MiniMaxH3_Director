@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-real-amy-breakfast-breach-838",
+  "kind": "llama_chat",
+  "started_at": 1790361110.1230972,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\n\nRIGHT:\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger.\n\nChoose one:\nMERGE only when RIGHT's PRIMARY ACTION is one of these:\n- the same uninterrupted local action as LEFT;\n- a direct immediate response caused by the event in LEFT itself (for example alarm -> shut down/call for help); or\n- the immediate mechanical completion of the exact object/action LEFT just obtained/opened/started (retrieve -> equip, open -> remove).\nNEW_TASK when RIGHT's PRIMARY ACTION is a distinct objective after LEFT reaches a usable stopping point. A shared larger goal is not enough to MERGE. Carrying, wearing, or using an item from LEFT while performing a different primary task is NEW_TASK. Starting a fresh item/test after LEFT completed one is NEW_TASK.\nFor causality, distinguish LEFT itself from a shared earlier cause: danger -> immediate protection may MERGE, but protection -> fetch gear is NEW_TASK because the gear retrieval responds to the danger, not to the completed protection action.\nJudge only the concrete local actions.\nReturn exactly {\"relation\":\"MERGE|NEW_TASK\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hpk3102sg1d7pvsakix48w",
+    "object": "chat.completion",
+    "created": 1790361110,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need decide relation between LEFT and RIGHT. Left: Amy cooking breakfast for her kids. Right: zombie breaks kitchen door window and Amy sees danger.\n\nPrimary action of right? \"Zombie breaks the kitchen door window\". That's an event causing danger. Amy sees danger. The primary action is the breaking, but Amy's reaction maybe seeing danger. But we consider primary action as the main event in RIGHT: a zombie breaks the kitchen door window. That is not same local action as left (cooking). It's a distinct objective after left reaches usable stopping point? She was cooking; then zombie breaks window. The right action is an external event, not her own action. So it's NEW_TASK because it's a distinct objective after left's action stops.\n\nThus relation: NEW_TASK. Return JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 345,
+      "completion_tokens": 173,
+      "total_tokens": 518,
+      "completion_tokens_details": {
+        "reasoning_tokens": 157
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790361113.200851,
+  "status": "ok"
+}
