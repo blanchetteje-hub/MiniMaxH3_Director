@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-finite-fit-twoeight1-664",
+  "kind": "llama_chat",
+  "started_at": 1790354690.3497837,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge only whether a fixed number of 8-second video beats is enough for the supplied finite source material. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FINITE SOURCE MATERIAL:\nA technician performs an eight-second pressure check. The technician then performs a separate eight-second electrical check.\n\nAVAILABLE BEATS: 1\nEach beat is 8 seconds.\nEvery concrete visible action/state must be represented in source order.\nActions may share a beat when they fit naturally, and a long finite chain may continue into the next beat at a natural handoff.\nDo not omit, imply away, or materially compress required actions.\nIgnore any pacing outside this finite material.\nReturn exactly {\"decision\":\"ENOUGH|TOO_SMALL\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 750,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2wfm0nllutn47yq2ly8qrj",
+    "object": "chat.completion",
+    "created": 1790354690,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"TOO_SMALL\"}",
+          "reasoning": "We have source: two separate eight-second checks. Each check is 8 seconds long. So total duration = 16 seconds.\n\nAvailable beats: 1 beat of 8 seconds. We need to represent every concrete visible action/state in order. The actions are the pressure check and electrical check, each 8 sec. They cannot be compressed; they must fit exactly. One beat only covers 8 seconds. Pressure check is 8 seconds, so fits one beat. Electrical check also 8 seconds but no more beats available. So not enough.\n\nThus decision: TOO_SMALL. Return JSON {\"decision\":\"TOO_SMALL\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 210,
+      "completion_tokens": 142,
+      "total_tokens": 352,
+      "completion_tokens_details": {
+        "reasoning_tokens": 125
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354692.7709188,
+  "status": "ok"
+}
