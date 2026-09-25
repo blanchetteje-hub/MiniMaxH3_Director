@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-split-choice-resolution-405",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow task. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nShe spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\n\nCANDIDATE A:\nLEFT = She spends most of the story repeating measurements,\nRIGHT = then one final measurement resolves the problem and she immediately closes the lab.\n\nCANDIDATE B:\nLEFT = She spends most of the story repeating measurements, then one final measurement resolves the problem\nRIGHT = and she immediately closes the lab.\n\nChoose the best large-chapter split from: A, B, NONE.\nReturn JSON with keys \"choice\" and \"reason\"."
+    }
+  ]
+}
