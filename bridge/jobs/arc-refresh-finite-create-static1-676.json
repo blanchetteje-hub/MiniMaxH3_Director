@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-finite-create-static1-676",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Turn finite authoritative source material into a fixed number of minimal chronological 8-second beat jobs. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FINITE AUTHORITATIVE SOURCE:\nMara stands in the hangar wearing a red coat beside the grounded plane. Mara closes the hangar door.\n\nBEAT COUNT: 1\nCreate exactly 1 beat jobs.\nEvery concrete visible action/state must appear in source order.\nAdjacent actions may share a beat when natural. A long finite chain may continue into the next beat at a natural handoff.\nDo not invent new objects, characters, locations, outcomes, dialogue, camera work, or specific events not stated by the source.\nKeep each job minimal and source-level.\nReturn exactly {\"beats\":[{\"beat_number\":1,\"beat_job\":\"...\"}]} with 1 consecutive entries."
+    }
+  ]
+}
