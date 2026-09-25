@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-safety-relation-generalize-395",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only whether the candidate preserves safety, separation, and exposure relationships established by STORY. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nA technician seals the rest of the team inside a clean control room to isolate them from a toxic gas leak. The technician remains outside the room to stop the leak.\n\nCANDIDATE:\nThe technician seals the team inside the clean control room, then vents the toxic gas into that same room while the team remains inside.\n\nChoose one validity value from: VALID, INVALID.\nReturn a JSON object with keys \"validity\" and \"issue\"."
+    }
+  ]
+}
