@@ -618,3 +618,68 @@ Bridge:
   before selecting a runner; this bridge-code change requires a local pull and
   process restart.
 - jobs 567-586 are queued implementation-shaped SPLIT/TERMINAL/HARD_RESET checks.
+
+
+### Production prompt lock and runtime wiring update
+
+Production-shaped probes after the initial implementation found and fixed two real prompt issues:
+
+- TERMINAL initially let full-story context leak later resolution backward into an
+  ongoing majority-process unit. The prompt now uses FULL STORY only to identify
+  the central process and judges terminality only from what TARGET UNIT itself
+  explicitly accomplishes.
+  - majority fighting => NO
+  - last zombie/final test => YES
+  - immediate closure => NO
+- SPLIT initially treated a one-time finite chain such as
+  "move kids into basement -> lock door" as process -> resolution.
+  The prompt now requires explicit duration/repetition wording (majority, most,
+  repeatedly, throughout, or equivalent) before process -> terminal can split.
+  - finite escape/protection chain => KEEP_TOGETHER
+  - finite diagnose/replace/confirm chain => KEEP_TOGETHER
+  - long repeated process -> final resolution => SPLIT
+  - explicit three-month jump => SPLIT
+
+Additionally, Python now skips the SPLIT LLM call entirely when no exact
+deterministic cut candidate exists. If story.txt cannot be cut exactly, the unit
+cannot legally split.
+
+State effects:
+- one narrow source-unit persistent-state extraction call now owns source state;
+- activity alone never creates state;
+- location/containment, equipment, barriers, terminal threat state, explicit
+  visible conditions, drops, and clothing are supported;
+- source effects attach only to a source unit's final owned beat;
+- extracted location operations are applied after entity-establishing effects;
+- Chapter refresh replay uses those effects as SOURCE-AUTHORIZED CURRENT STATE.
+
+Runtime:
+- source-span chapter starts now override legacy numeric refresh cadence;
+- Amy-shaped 6/2 plan therefore renders modes:
+  initial, append, append, append, append, append, refresh, append;
+- legacy refresh_interval remains the fallback for non-source-span arcs;
+- refresh workflow validation/load is enabled whenever source-span chapter
+  refreshes exist even if refresh_interval is unset;
+- Beat CREATE/regeneration receives only current chapter source_text;
+- chapter refresh H3 opening context prepends deterministic source-authorized
+  CURRENT facts and labels rendered continuity supplemental.
+
+Recent commits:
+- 680b344 tighten TERMINAL/SPLIT prompts
+- cbc81eb skip impossible split calls
+- 8e61ea6 require explicit duration for internal process splits
+- 41d6846 derive refresh mode from chapter starts
+- 630329a validate refresh workflow for chapter starts
+- 4d40c3e chapter-driven refresh tests
+- bca4079 narrow source-unit state extraction
+- 56e15c9 commit state only on final owned beat
+- 6ff209a order state creation before location updates
+- aaa1fc5 inject source-authorized state at chapter refresh
+- 8267c41 make state operation shapes explicit
+- c51d010 test source-authorized chapter opening replay
+
+Verification status:
+- bridge run_tests routing works;
+- bridge machine currently has no Python environment with pytest, so no project
+  pytest suite has executed there yet;
+- this is an environment/tooling blocker, not a reported test assertion failure.
