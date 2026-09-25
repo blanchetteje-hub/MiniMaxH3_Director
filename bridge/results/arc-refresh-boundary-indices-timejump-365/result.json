@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundary-indices-timejump-365",
+  "kind": "llama_chat",
+  "started_at": 1790296827.18769,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Choose chapter boundaries only. Do not rewrite or summarize story content. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "Each numbered statement is authoritative source material in story order.\n\n1. A survey team completes a week of field work at a remote site.\n2. Three months later, the team reunites at a city laboratory and begins analyzing the collected material.\n\nA chapter is a LARGE H3 refresh unit. Use as few chapter boundaries as the narrative permits. Major time/location/state resets can justify a boundary.\n\nReturn JSON with one key: \"new_chapter_after\".\nIts value must be an array of statement numbers after which a new chapter should begin. Do not include the final statement number."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-wklwg11nm9ab1udrqd53qd",
+    "object": "chat.completion",
+    "created": 1790296827,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"new_chapter_after\":[1]}",
+          "reasoning": "We need to decide where to put chapter boundaries based on statements 1 and 2. Statement 1 is field work at remote site, week long. Statement 2: three months later, team reunites in city lab analyzing material.\n\nMajor time/location/state resets justify a boundary. So after statement 1? The narrative goes from fieldwork to reunion. That seems like a reset of location and time (remote site to city laboratory). So new chapter should begin after statement 1. Also maybe after statement 2 if more statements, but we only have two.\n\nWe need array of statement numbers after which a new chapter begins. Do not include final statement number. Since there are only two statements, the last is statement 2; we don't include it. So we put [1] as boundary after statement 1.\n\nReturn JSON: {\"new_chapter_after\":[1]}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 207,
+      "completion_tokens": 195,
+      "total_tokens": 402,
+      "completion_tokens_details": {
+        "reasoning_tokens": 177
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790296830.4796178,
+  "status": "ok"
+}
