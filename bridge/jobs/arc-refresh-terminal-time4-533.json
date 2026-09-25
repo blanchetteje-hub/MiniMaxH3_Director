@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-terminal-time4-533",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only the requested binary semantic question. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FULL STORY:\n1. A team completes field work.\n2. Later the team begins analysis.\n3. Most of this phase is repeated analysis.\n4. A final test answers the question and the team prepares the report.\n5. Much later the team begins a new phase.\n\nTARGET UNIT:\n4. A final test answers the question and the team prepares the report.\n\nQuestion: Does TARGET UNIT itself decisively complete the central analysis/question of that phase?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
