@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-role-amy3-508",
+  "kind": "llama_chat",
+  "started_at": 1790302241.1032455,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow classification or deterministic rule application. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY CONTEXT:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nTARGET UNIT:\n3. Amy retrieves her hidden pistol and katana and equips them.\n\nClassify TARGET UNIT by its role in the whole story.\nAllowed roles: MAIN_BODY, TERMINAL_RESOLUTION, IMMEDIATE_CLOSURE, RESET_START.\nReturn JSON with keys role and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zsinzxckatljkmcyc38uz",
+    "object": "chat.completion",
+    "created": 1790302241,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"role\":\"RESET_START\",\"reason\":\"The unit occurs immediately after the initial conflict (zombie breaking the door) and equips Amy’s weapons, setting up her readiness for the main body of fighting that follows.\"}",
+          "reasoning": "We need to classify target unit (3) \"Amy retrieves her hidden pistol and katana and equips them.\" Role among allowed: MAIN_BODY, TERMINAL_RESOLUTION, IMMEDIATE_CLOSURE, RESET_START.\n\nStory context: 1 Amy cooks breakfast for Will and Amber. 2 zombie breaks door; Amy gets them into basement and locks door. 3 Amy retrieves pistol & katana and equips them. 4 majority of story is Amy fighting zombies. 5 Amy kills last zombie and house soaked in blood. 6 Amy lets Will and Amber out.\n\nSo target unit (3) occurs before the fight begins, after initial action but before main body. It sets up her weapons for upcoming fights. It's a setup event that leads into the majority of story. So role likely MAIN_BODY? But \"MAIN_BODY\" might refer to central part where most events happen. The fight is majority; this unit is just preceding it. Could be RESET_START: resetting start after initial action, preparing for main body. Or IMMEDIATE_CLOSURE: closing something? Not.\n\nRESET_START seems like a reset of the story's state before main body. \"Amy retrieves her hidden pistol and katana and equips them.\" This resets her readiness to fight; it's a preparation step. So role = RESET_START.\n\nReason: It prepares Amy for upcoming fights, resetting her status after initial action.\n\nThus JSON with keys role and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 239,
+      "completion_tokens": 339,
+      "total_tokens": 578,
+      "completion_tokens_details": {
+        "reasoning_tokens": 286
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790302246.3064463,
+  "status": "ok"
+}
