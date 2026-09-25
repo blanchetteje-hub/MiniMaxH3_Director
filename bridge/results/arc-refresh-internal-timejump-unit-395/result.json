@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-internal-timejump-unit-395",
+  "kind": "llama_chat",
+  "started_at": 1790298271.6983488,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide whether one authoritative source unit should be split across two large H3 chapters. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nA geologist finishes a week of desert field work, then three months later begins laboratory analysis in another city.\n\nA split is appropriate only if this one source unit contains a major time/location/state reset or crosses into a distinct terminal phase.\n\nChoose one decision from: SPLIT, KEEP_TOGETHER.\nReturn a JSON object with keys \"decision\" and \"reason\"."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zvfw76au42jv2v1qzssxs",
+    "object": "chat.completion",
+    "created": 1790298271,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"SPLIT\",\"reason\":\"The source unit covers two distinct phases—field work in the desert and laboratory analysis three months later in another city—separated by a significant time gap and location change, indicating a major reset that warrants splitting into separate H3 chapters.\"}",
+          "reasoning": "We need to decide whether the source unit should be split across two large H3 chapters. The source unit is: \"A geologist finishes a week of desert field work, then three months later begins laboratory analysis in another city.\"\n\nSo it's one event: finishing fieldwork, then after 3 months starts lab analysis elsewhere.\n\nWe need to see if there's a major time/location/state reset or distinct terminal phase crossing. The source unit contains two phases: field work (week) and lab analysis (after 3 months). There's a location change from desert to another city. Also a time gap of three months. That could be considered a reset? It's not huge, but it's a shift.\n\nThe question says \"A split is appropriate only if this one source unit contains a major time/location/state reset or crosses into a distinct terminal phase.\" Does it cross into a distinct terminal phase? Field work ends; lab analysis begins. That's a new phase. The location change and time gap might be considered a reset. So likely SPLIT.\n\nThus decision: SPLIT. Reason: Contains two distinct phases separated by 3 months, different locations, so split across chapters.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 172,
+      "completion_tokens": 299,
+      "total_tokens": 471,
+      "completion_tokens_details": {
+        "reasoning_tokens": 232
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790298276.6959374,
+  "status": "ok"
+}
