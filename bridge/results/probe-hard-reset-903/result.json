@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-903",
+  "kind": "llama_chat",
+  "started_at": 1790371899.9927495,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nThe healer binds the wound.\n\nTARGET UNIT:\nThe patient stands and walks toward the gate.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-4y0ul7vt6j5n2zem78kl7i",
+    "object": "chat.completion",
+    "created": 1790371899,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The two units are connected by continuous narrative flow: the healer binds the wound, then immediately the patient stands and walks toward the gate. There is no explicit time jump, scene break, or relocation stated in the text to mark a hard reset.\"}",
+          "reasoning": "We need to determine if target unit begins after a hard reset relative to previous unit. The previous unit: \"The healer binds the wound.\" Target unit: \"The patient stands and walks toward the gate.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Not inferred from typical film transitions.\n\nWe have two units. Are they separated by hard reset? The previous unit ends with healer binding wound. Then target unit starts with patient stands and walks toward gate. Is there an explicit time jump or scene break? No. There's no explicit mention of time passing, relocation after completed phase, etc. So it's continuous action: the patient was wounded, then heals, then stands and walks. The wound binding is part of healing; patient walking is next action. No hard reset.\n\nThus answer NO.\n\nReturn JSON with decision \"NO\" and reason explaining that no explicit discontinuity.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 299,
+      "completion_tokens": 268,
+      "total_tokens": 567,
+      "completion_tokens_details": {
+        "reasoning_tokens": 201
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790371903.821039,
+  "status": "ok"
+}
