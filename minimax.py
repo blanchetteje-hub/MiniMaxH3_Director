@@ -29,6 +29,7 @@ from gpt_formatter import (
 )
 from mistral_formatter import MistralFormatter
 from qwen_formatter import QwenFormatter
+from story_planner import StoryPlan, build_story_plan
 
 # ============================================================
 # CONSTANTS
@@ -14189,6 +14190,108 @@ def load_story_arc(path, total_segments, source_text):
             flush=True,
         )
         return None
+
+
+
+SOURCE_SPAN_PHASE_PURPOSE = "Execute this exact authoritative story.txt chapter span."
+
+
+def source_span_story_plan_to_macro_arc(plan, total_segments):
+    """Adapt a deterministic StoryPlan to the existing phase runtime shape.
+
+    This is a compatibility envelope only. Narrative source ownership remains
+    in StoryPlan/story.txt; the adapter does not summarize, invent, or move
+    story material.
+    """
+    if not isinstance(plan, StoryPlan):
+        raise TypeError("plan must be a story_planner.StoryPlan.")
+    if isinstance(total_segments, bool):
+        raise ValueError("total_segments must be a positive integer.")
+    total_segments = int(total_segments)
+    if total_segments <= 0 or plan.total_beats != total_segments:
+        raise ValueError(
+            f"StoryPlan beat count {plan.total_beats} does not match requested "
+            f"total {total_segments}."
+        )
+
+    units_by_id = {unit.id: unit for unit in plan.source_units}
+    phases = []
+    beat_number = 1
+    previous_event_id = None
+
+    for planned_chapter in plan.chapters:
+        assignments = planned_chapter.beat_source_unit_ids
+        if assignments is None:
+            raise ValueError(
+                f"Chapter {planned_chapter.chapter} has no deterministic "
+                "beat/source-unit ownership yet."
+            )
+        phase_start = beat_number
+        required_events = []
+        for assignment in assignments:
+            texts = []
+            for source_unit_id in assignment:
+                unit = units_by_id.get(source_unit_id)
+                if unit is None:
+                    raise ValueError(
+                        f"Chapter {planned_chapter.chapter} references unknown "
+                        f"source unit {source_unit_id}."
+                    )
+                texts.append(unit.text)
+            event_text = " ".join(text.strip() for text in texts if text.strip())
+            if not event_text:
+                raise ValueError(
+                    f"Beat {beat_number} has no authoritative source text."
+                )
+            event_id = f"E{beat_number}"
+            event = {
+                "id": event_id,
+                "event": event_text,
+                "beat_number": beat_number,
+                "depends_on": [previous_event_id] if previous_event_id else [],
+                # State effects will be populated by the source-facing semantic
+                # layer; the compatibility adapter itself must not infer them.
+                "state_effects": [],
+            }
+            required_events.append(event)
+            previous_event_id = event_id
+            beat_number += 1
+
+        phase_end = beat_number - 1
+        phases.append({
+            "phase_number": planned_chapter.chapter,
+            "beat_start": phase_start,
+            "beat_end": phase_end,
+            "narrative_purpose": SOURCE_SPAN_PHASE_PURPOSE,
+            "broad_progression": planned_chapter.source_text,
+            "characters_introduced": [],
+            "location": "As established by story.txt.",
+            "required_events": required_events,
+        })
+
+    if beat_number != total_segments + 1:
+        raise ValueError(
+            f"StoryPlan adapter emitted {beat_number - 1} beats; expected "
+            f"{total_segments}."
+        )
+
+    return parse_beat_arc_plan(
+        {"phases": phases},
+        total_segments,
+        validate_state_effects=False,
+    )
+
+
+def phase_authoritative_source(phase, fallback_story):
+    """Return exact chapter source for source-span phases, else legacy story."""
+    if (
+        isinstance(phase, dict)
+        and phase.get("narrative_purpose") == SOURCE_SPAN_PHASE_PURPOSE
+    ):
+        source = str(phase.get("broad_progression") or "").strip()
+        if source:
+            return source
+    return str(fallback_story or "")
 
 
 # Return the characters introduced by the phase containing a beat.
