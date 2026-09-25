@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-job-visible-631",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge one source unit only. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nShe equips the weapons.\n\nQuestion: Does this unit itself require a concrete visible beat responsibility?\nYES = it explicitly contains a visible action/state that must happen on screen.\nNO = it is only premise/genre/summary framing and adds no separate visible action/state.\nDo not judge pacing or other units.\nReturn {\"decision\":\"YES|NO\",\"reason\":\"...\"}."
+    }
+  ]
+}
