@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-prod-terminal-tech-closure-581",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only the requested binary semantic question. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FULL STORY:\nA technician handles repeated faults. A final fault is repaired. The waiting team is released.\n\nTARGET UNIT:\n1. The waiting team is released.\n\nQuestion: Does TARGET UNIT itself decisively end the story's central conflict/process, rather than merely preparing for it or closing the story after it was already resolved?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
