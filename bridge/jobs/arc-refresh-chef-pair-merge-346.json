@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-chef-pair-merge-346",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether two adjacent rough chapters should be one H3 refresh unit. Prefer MERGE unless a major narrative reset makes a fresh generation boundary useful. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY CONTEXT:\nA chef starts normal dinner service. Refrigeration fails. The chef secures ingredients and then spends most of the story repeatedly adapting dishes around the equipment failure.\n\nLEFT CHAPTER:\nNormal dinner service begins; refrigeration fails.\n\nRIGHT CHAPTER:\nChef secures ingredients and repeatedly adapts dishes around the failure.\n\nReturn exactly:\n{\"decision\":\"MERGE\",\"reason\":\"...\"}"
+    }
+  ]
+}
