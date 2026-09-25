@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-900",
+  "kind": "llama_chat",
+  "started_at": 1790371881.6149905,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nMara locks the children in the cellar.\n\nTARGET UNIT:\nShe retrieves her bow from the wall.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-z6xb3ho6ah8n3sr00rrj6",
+    "object": "chat.completion",
+    "created": 1790371881,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The target unit \\\"She retrieves her bow from the wall.\\\" follows immediately after the previous unit \\\"Mara locks the children in the cellar.\\\" without any explicit time jump, scene break, or relocation stated in the text; it appears to be a continuous action within the same narrative phase.\"}",
+          "reasoning": "We need to determine if \"She retrieves her bow from the wall.\" begins after a hard reset from \"Mara locks the children in the cellar.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent textual restart. Not just change of activity.\n\nWe have two units: previous unit: \"Mara locks the children in the cellar.\" target unit: \"She retrieves her bow from the wall.\"\n\nIs there a hard reset? The previous unit ends with locking children in cellar. Next unit retrieving bow from wall. Are they same phase or new? We need to see if there's explicit time jump, scene break, relocation after completed phase.\n\nWe don't have context; but likely it's continuous: She locks them and then retrieves bow. No explicit time jump or scene break. So NO.\n\nReturn JSON with decision \"NO\" and reason explaining that no hard reset is indicated.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 301,
+      "completion_tokens": 268,
+      "total_tokens": 569,
+      "completion_tokens_details": {
+        "reasoning_tokens": 193
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790371885.5316184,
+  "status": "ok"
+}
