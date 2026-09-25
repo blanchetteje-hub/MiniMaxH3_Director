@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-outline-rule0-345",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Revise one chapter outline using only facts from the source. Remove unsupported additions. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE:\nA worker completes the final task and meets the waiting team. The source ends there.\n\nDRAFT:\nThe worker completes the final task, meets the waiting team, and then starts a new project.\n\nACCEPTED BEATS:\n1. Worker completes the final task.\n2. Worker meets the waiting team.\n\nReturn:\n{\"chapter_outline\":\"...\"}"
+    }
+  ]
+}
