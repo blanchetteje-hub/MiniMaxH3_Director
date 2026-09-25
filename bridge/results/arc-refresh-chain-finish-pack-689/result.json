@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-chain-finish-pack-689",
+  "kind": "llama_chat",
+  "started_at": 1790354959.0907636,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one adjacent beat-scale action-chain boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nMara finishes painting the wall and sets down the brush.\n\nRIGHT:\nMara packs the painting supplies into a storage box.\n\nDoes RIGHT continue the same immediate beat-scale action chain as LEFT, or begin a new beat-scale responsibility?\nCONTINUE = RIGHT is the immediate reaction, completion, or direct use of what LEFT just established; there is no meaningful completed handoff between them.\nNEW_CHAIN = LEFT establishes a calm baseline before a disruption, LEFT completes one local objective before a distinct task begins, or RIGHT starts a new local phase/objective.\nIgnore exact seconds and overall pacing. Judge only the local action relationship.\nReturn exactly {\"decision\":\"CONTINUE|NEW_CHAIN\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jllay7uc0fm6vp25uue3f",
+    "object": "chat.completion",
+    "created": 1790354959,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"CONTINUE\"}",
+          "reasoning": "We need to judge if RIGHT continues same immediate beat-scale action chain as LEFT.\n\nLEFT: \"Mara finishes painting the wall and sets down the brush.\"\n\nRIGHT: \"Mara packs the painting supplies into a storage box.\"\n\nSo after finishing painting, she sets down brush. Then she packs supplies. Is that continuation? She finished painting; next step is packing supplies. That seems like same chain of painting activity: finish painting then pack supplies. So CONTINUE.\n\nBut check definitions: CONTINUE = RIGHT is immediate reaction, completion, or direct use of what LEFT just established; no meaningful completed handoff between them. NEW_CHAIN if LEFT establishes calm baseline before disruption, completes one local objective before distinct task begins, or starts new phase/objective.\n\nHere she finishes painting (objective) and then packs supplies (next step). That is same chain: finishing painting leads to packing supplies. So CONTINUE.\n\nReturn JSON exactly {\"decision\":\"CONTINUE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 224,
+      "completion_tokens": 206,
+      "total_tokens": 430,
+      "completion_tokens_details": {
+        "reasoning_tokens": 190
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354962.4025261,
+  "status": "ok"
+}
