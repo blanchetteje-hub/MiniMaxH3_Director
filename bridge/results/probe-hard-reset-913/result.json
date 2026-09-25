@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-913",
+  "kind": "llama_chat",
+  "started_at": 1790372011.878923,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nThe child closes the bedroom door.\n\nTARGET UNIT:\nLater that evening, in the school gym, the ceremony begins.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-mlq3wytt3k5rmsej64zii",
+    "object": "chat.completion",
+    "created": 1790372011,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The target unit explicitly states a time jump (“later that evening”) and relocates the setting to the school gym, indicating a hard reset from the previous bedroom scene.\"}",
+          "reasoning": "We need to determine if target unit begins after a hard reset from previous unit. Previous unit: \"The child closes the bedroom door.\" Target unit: \"Later that evening, in the school gym, the ceremony begins.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Not inferred from typical film transitions.\n\nWe have previous unit: child closes bedroom door. That indicates location: bedroom. Then target unit says \"Later that evening, in the school gym, the ceremony begins.\" This is explicit time jump (\"later that evening\") and explicit relocation to school gym. So yes, it's a hard reset. The phrase \"Later that evening\" indicates time jump; \"in the school gym\" indicates location change. So decision: YES.\n\nReason: explicit time jump and relocation. Provide JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 304,
+      "completion_tokens": 240,
+      "total_tokens": 544,
+      "completion_tokens_details": {
+        "reasoning_tokens": 189
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790372015.21174,
+  "status": "ok"
+}
