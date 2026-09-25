@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-clause-boundary-timejump-378",
+  "kind": "llama_chat",
+  "started_at": 1790297108.8403625,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow semantic task. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "Choose chapter boundaries only from numbered authoritative source units.\n\n1. A survey team finishes its field work at a remote site.\n2. Three months later, the team reunites in a city laboratory.\n3. They begin analyzing the collected material.\n4. The analysis continues through several related tests.\n\nA chapter is a LARGE H3 refresh unit. Use as few boundaries as the narrative permits. Major time/location/state resets can justify a new chapter.\n\nReturn a JSON object with key \"new_chapter_after\", an array of source-unit numbers. Do not include the final unit number."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5qp793jjiy4t7ejg3ysy7m",
+    "object": "chat.completion",
+    "created": 1790297108,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"new_chapter_after\":[1]}",
+          "reasoning": "We need to choose chapter boundaries from numbered authoritative source units: 1,2,3,4. A chapter is a LARGE H3 refresh unit. Use as few boundaries as narrative permits. Major time/location/state resets justify new chapter.\n\nNarrative: \n1. Survey team finishes field work at remote site.\n2. Three months later, the team reunites in city lab.\n3. They begin analyzing collected material.\n4. Analysis continues through several related tests.\n\nTime reset from 1 to 2 (remote site to city lab). That's major location/time change. So new chapter after unit 1? That would start a new chapter at unit 2. Also maybe another boundary between analysis begins and continues? But \"They begin analyzing\" is the start of analysis; then \"analysis continues through several related tests.\" Might be same chapter because it's continuous process. So only one boundary: after unit 1.\n\nReturn JSON with key \"new_chapter_after\": [1]. Do not include final unit number (4). That matches requirement.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 202,
+      "completion_tokens": 228,
+      "total_tokens": 430,
+      "completion_tokens_details": {
+        "reasoning_tokens": 210
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790297112.6720948,
+  "status": "ok"
+}
