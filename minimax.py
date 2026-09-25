@@ -25186,12 +25186,18 @@ def _run_main(
     )
     print(f"Formatter:            {getattr(args, 'model', 'gpt')}")
     print(f"Global LoRAs:         {len(global_loras)}")
+    chapter_refreshes = source_span_refresh_segments(macro_arc)
     print(
         "Auto refresh:         "
         + (
-            f"every {refresh_interval} segment(s)"
-            if refresh_interval is not None
-            else "disabled"
+            "chapter starts at segment(s) "
+            + ", ".join(map(str, chapter_refreshes))
+            if chapter_refreshes
+            else (
+                f"every {refresh_interval} segment(s)"
+                if refresh_interval is not None
+                else "disabled"
+            )
         )
     )
     print(f"Vision continuity:    {visual_continuity_label}")
@@ -25221,7 +25227,7 @@ def _run_main(
             f"append workflow '{APPEND_WORKFLOW_FILE}'",
             is_append=True
         )
-    if refresh_interval is not None:
+    if chapter_refreshes or refresh_interval is not None:
         refresh_test = load_workflow(REFRESH_WORKFLOW_FILE)
         if not test_prompt_generation:
             validate_refresh_workflow(
