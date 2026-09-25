@@ -136,3 +136,61 @@ def test_legacy_refresh_interval_remains_fallback_without_source_span_arc():
     assert minimax.source_span_refresh_segments(legacy_arc) == ()
     assert minimax.is_refresh_segment(2, refresh_interval=2, macro_arc=legacy_arc)
     assert not minimax.is_refresh_segment(3, refresh_interval=2, macro_arc=legacy_arc)
+
+
+
+def test_repeated_source_unit_state_commits_only_on_last_owned_beat():
+    plan = _amy_plan()
+    arc = minimax.source_span_story_plan_to_macro_arc(
+        plan,
+        8,
+        state_effects_by_unit={
+            4: [{
+                "op": "set_threat_state",
+                "entity": "zombies",
+                "value": "active",
+            }],
+        },
+    )
+
+    first_phase = arc["phases"][0]
+    assert first_phase["required_events"][3]["state_effects"] == []
+    assert first_phase["required_events"][4]["state_effects"] == []
+    assert first_phase["required_events"][5]["state_effects"] == [{
+        "op": "set_threat_state",
+        "entity": "zombies",
+        "value": "active",
+    }]
+
+
+def test_source_unit_state_parser_rejects_invented_location_destination():
+    with pytest.raises(ValueError, match="not explicitly grounded"):
+        minimax.parse_source_unit_state_effects(
+            {
+                "state_effects": [{
+                    "op": "set_location",
+                    "entity": "Will",
+                    "value": "outside",
+                }],
+            },
+            "Amy lets Will out of the basement.",
+        )
+
+
+def test_source_unit_state_parser_accepts_explicit_containment_release():
+    assert minimax.parse_source_unit_state_effects(
+        {
+            "state_effects": [{
+                "op": "set_containment",
+                "entity": "Will",
+                "container": "basement",
+                "value": "free",
+            }],
+        },
+        "Amy lets Will out of the basement.",
+    ) == [{
+        "op": "set_containment",
+        "entity": "Will",
+        "container": "basement",
+        "value": "free",
+    }]
