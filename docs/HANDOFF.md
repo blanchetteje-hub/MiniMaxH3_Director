@@ -459,3 +459,20 @@ Conclusion:
   2. preventing chapter-boundary over-splitting of continuous setup/escalation into the main process;
   3. Beat CREATE source-drift controls;
   4. one-candidate/one-first-issue validator output.
+
+
+### Batch 466-485 summary
+
+Key results:
+- Unit gate: mixed ongoing-to-terminal SPLIT passed; continuous KEEP_TOGETHER passed; time-jump SPLIT passed.
+- Global chapter-boundary selection remained unreliable: technician, researcher, continuous, and Amy controls over-split.
+- Fixed beat/source-unit phrasing worked well and avoided the earlier storage-location invention.
+- Unconstrained source-unit assignment could violate order and mix unrelated units.
+- Whole-sequence validation could incorrectly infer an omitted assigned action from a later state.
+
+Current test direction:
+- evaluate chapter boundaries one candidate at a time;
+- enforce deterministic structural rules on beat/source-unit assignment;
+- validate each beat only against its assigned source units.
+
+Batch 486-505 is queued for those contracts.
