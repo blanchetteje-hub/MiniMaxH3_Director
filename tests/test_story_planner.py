@@ -353,6 +353,20 @@ def test_hard_reset_prompt_excludes_premise_to_first_scene_transition():
     assert "first concrete scene is NO" in prompt
 
 
+
+def test_hard_reset_prompt_forbids_inferred_cinematic_breaks():
+    from story_planner import build_hard_reset_messages
+
+    units = enumerate_source_units(
+        "Mara equips her sword. For most of the night, Mara fights raiders."
+    )
+    prompt = build_hard_reset_messages(units[0], units[1])[-1]["content"]
+
+    assert "Do NOT infer a cut, time passage, relocation, montage break, or new phase" in prompt
+    assert "from preparation changing into action" in prompt
+    assert "If the discontinuity is not stated or directly entailed" in prompt
+
+
 def test_visible_source_responsibility_classifier_filters_framing_only_units():
     from story_planner import classify_visible_source_unit_ids
 
