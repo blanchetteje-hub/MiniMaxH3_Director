@@ -135,6 +135,82 @@ def collect_files(source_root: Path, patterns, destination: Path, max_bytes: int
     return collected
 
 
+def ensure_code_test_worktree(source_root: Path, branch: str) -> Path:
+    """Return a detached worktree synced to one explicitly named repo branch."""
+    branch = str(branch or "").strip()
+    if not branch:
+        raise ValueError("run_tests requires code_branch.")
+    run_git(["check-ref-format", "--branch", branch], source_root)
+    run_git(["fetch", "origin", branch], source_root)
+
+    safe_name = "".join(
+        character if character.isalnum() or character in "._-" else "_"
+        for character in branch
+    )
+    worktree = source_root / f".chatgpt_test_{safe_name}"
+    remote_ref = f"origin/{branch}"
+
+    if worktree.exists():
+        if not (worktree / ".git").exists():
+            raise RuntimeError(
+                f"Test worktree path exists but is not a git worktree: {worktree}"
+            )
+        run_git(["checkout", "--detach", remote_ref], worktree)
+        run_git(["reset", "--hard", remote_ref], worktree)
+        run_git(["clean", "-fd"], worktree)
+    else:
+        run_git(
+            ["worktree", "add", "--detach", str(worktree), remote_ref],
+            source_root,
+            capture=False,
+        )
+    return worktree
+
+
+def run_pytest_job(source_root: Path, job: dict) -> dict:
+    """Run pytest only on repository test paths in a dedicated code worktree."""
+    code_branch = str(job.get("code_branch") or "").strip()
+    test_paths = job.get("tests")
+    if not isinstance(test_paths, list) or not test_paths:
+        raise ValueError("run_tests requires a non-empty tests array.")
+
+    worktree = ensure_code_test_worktree(source_root, code_branch)
+    normalized = []
+    tests_root = (worktree / "tests").resolve()
+    for raw_path in test_paths:
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            raise ValueError("run_tests test paths must be non-empty strings.")
+        path = safe_source_path(worktree, raw_path.strip())
+        try:
+            path.relative_to(tests_root)
+        except ValueError as error:
+            raise ValueError(
+                f"run_tests may only execute paths under tests/: {raw_path!r}"
+            ) from error
+        if not path.exists():
+            raise ValueError(f"Requested test path does not exist: {raw_path!r}")
+        normalized.append(str(path.relative_to(worktree)))
+
+    timeout = int(job.get("timeout_seconds") or 900)
+    timeout = max(1, min(timeout, 1800))
+    completed = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", *normalized],
+        cwd=worktree,
+        text=True,
+        capture_output=True,
+        timeout=timeout,
+        check=False,
+    )
+    return {
+        "code_branch": code_branch,
+        "tests": normalized,
+        "returncode": completed.returncode,
+        "passed": completed.returncode == 0,
+        "stdout": completed.stdout,
+        "stderr": completed.stderr,
+    }
+
+
 def execute_job(job: dict, endpoint: str, source_root: Path, result_dir: Path,
                 max_file_bytes: int) -> dict:
     job_id = str(job.get("job_id") or "").strip()
@@ -180,6 +256,8 @@ def execute_job(job: dict, endpoint: str, source_root: Path, result_dir: Path,
         )
     elif kind == "collect_files":
         pass
+    elif kind == "run_tests":
+        result["test_run"] = run_pytest_job(source_root, job)
     else:
         raise ValueError(f"Unsupported bridge job kind: {kind!r}")
 
