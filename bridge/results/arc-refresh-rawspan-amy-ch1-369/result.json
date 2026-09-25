@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-rawspan-amy-ch1-369",
+  "kind": "llama_chat",
+  "started_at": 1790296952.4504669,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Create beats only from the supplied chapter source span and opening context. Do not use knowledge outside the span. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING CONTEXT:\nAmy, Will, and Amber are at home in an intact ordinary kitchen on a normal morning. Amy wears a tight black tank top and denim jeans.\n\nCURRENT CHAPTER SOURCE:\nAmy is at home on a normal day, cooking breakfast for Will and Amber.\nA zombie breaks the kitchen door window; Amy sees the danger and rushes Will and Amber into the basement and locks the door.\nAmy retrieves her hidden pistol and katana and equips them.\nThe majority of this chapter is Amy fighting attacking zombies.\n\nBEAT BUDGET: exactly 6.\n\nRequirements:\n- preserve the ordinary beginning before danger;\n- every concrete source action must happen explicitly;\n- source details are authoritative;\n- the larger zombie conflict is still unresolved when this chapter ends;\n- do not release Will or Amber.\n\nReturn a JSON object with key \"beats\", containing exactly six numbered beat objects with an \"event\" field."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 3200,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-80bqjge7kp7nh75jv37tr",
+    "object": "chat.completion",
+    "created": 1790296952,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"beats\":[{\"event\":\"Amy cooks breakfast for Will and Amber in the kitchen.\"},{\"event\":\"A zombie breaks through the kitchen door window.\"},{\"event\":\"Amy spots the intruder, pulls Will and Amber into the basement, and locks the door behind them.\"},{\"event\":\"She grabs her hidden pistol and katana from a closet and equips both weapons.\"},{\"event\":\"The zombies swarm the basement; Amy engages in combat with the attacking zombies.\"},{\"event\":\"Despite her efforts, more zombies keep coming—her fight is still ongoing when the chapter ends.\"}]}",
+          "reasoning": "We need to create beats from supplied chapter source span and opening context. Beats: 6. Must preserve ordinary beginning before danger; every concrete source action must happen explicitly; source details authoritative; larger zombie conflict unresolved when this chapter ends; do not release Will or Amber.\n\nLet's list events:\n\n1. Amy cooking breakfast for Will and Amber (ordinary morning).\n2. A zombie breaks the kitchen door window.\n3. Amy sees danger, rushes Will and Amber into basement and locks door.\n4. Amy retrieves hidden pistol and katana and equips them.\n5. Majority of chapter: Amy fighting attacking zombies.\n\nWe need 6 beats; we can split fight into two beats maybe: first wave of zombies attack, second wave or ongoing fight. Or beat 5: Amy fights zombies; beat 6: Zombies still attacking unresolved.\n\nLet's craft beats:\n\n1. Amy cooks breakfast for Will and Amber in the kitchen.\n2. A zombie breaks through the kitchen door window.\n3. Amy spots the intruder, pulls Will and Amber into the basement, and locks the door behind them.\n4. She grabs her hidden pistol and katana from a closet and equips both weapons.\n5. The zombies swarm the basement; Amy engages in combat with the attacking zombies.\n6. Despite her efforts, more zombies keep coming—her fight is still ongoing when the chapter ends.\n\nEnsure each beat event field contains description. Beats numbered 1-6. JSON object beats: array of objects { \"event\": \"...\"}.\n\nReturn only JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 283,
+      "completion_tokens": 431,
+      "total_tokens": 714,
+      "completion_tokens_details": {
+        "reasoning_tokens": 307
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790296959.4904923,
+  "status": "ok"
+}
