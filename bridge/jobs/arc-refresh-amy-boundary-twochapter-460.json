@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-amy-boundary-twochapter-460",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE SOURCE UNITS:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nChoose chapter boundaries only.\nA new chapter should begin only at a major narrative reset or at the transition from the main body into terminal resolution.\nDo not create chapter breaks merely because the story changes action.\n\nReturn JSON with key new_chapter_after, an array of source-unit numbers."
+    }
+  ]
+}
