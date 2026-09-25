@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-hardreset-nextday-553",
+  "kind": "llama_chat",
+  "started_at": 1790303540.015935,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nA worker finishes the evening inspection and goes home.\n\nTARGET UNIT:\nThe next morning, the worker returns to the same building and begins a new inspection.\n\nA HARD RESET means a discontinuity between narrative phases, including an explicit substantial time jump.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-n8lmig1ptst4w953fsrs8",
+    "object": "chat.completion",
+    "created": 1790303540,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The target unit begins the next morning after the worker has gone home, indicating an explicit substantial time jump that creates a discontinuity between narrative phases.\"}",
+          "reasoning": "We need decide if target unit begins after a hard reset from previous unit. Previous: worker finishes evening inspection goes home. Target: next morning, returns to same building starts new inspection. There's time jump (next morning). That's a discontinuity between narrative phases including explicit substantial time jump. So yes it's a hard reset. Return JSON with decision \"YES\" and reason explaining.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 168,
+      "completion_tokens": 122,
+      "total_tokens": 290,
+      "completion_tokens_details": {
+        "reasoning_tokens": 75
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790303542.1545842,
+  "status": "ok"
+}
