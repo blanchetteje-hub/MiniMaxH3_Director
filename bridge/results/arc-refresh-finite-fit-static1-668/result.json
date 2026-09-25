@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-finite-fit-static1-668",
+  "kind": "llama_chat",
+  "started_at": 1790354794.953712,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge only whether a fixed number of 8-second video beats is enough for the supplied finite source material. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FINITE SOURCE MATERIAL:\nMara stands in the hangar wearing a red coat beside the grounded plane. Mara closes the hangar door.\n\nAVAILABLE BEATS: 1\nEach beat is 8 seconds.\nEvery concrete visible action/state must be represented in source order.\nActions may share a beat when they fit naturally, and a long finite chain may continue into the next beat at a natural handoff.\nDo not omit, imply away, or materially compress required actions.\nIgnore any pacing outside this finite material.\nReturn exactly {\"decision\":\"ENOUGH|TOO_SMALL\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 750,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-24387ccxl6rf571svfxgzt",
+    "object": "chat.completion",
+    "created": 1790354794,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"ENOUGH\"}",
+          "reasoning": "We need to judge if 1 beat of 8 seconds is enough for the source material. Source: \"Mara stands in the hangar wearing a red coat beside the grounded plane. Mara closes the hangar door.\" So actions: 1) Mara stands in hangar, wearing red coat, beside grounded plane. That's one state. Then action: she closes the hangar door.\n\nWe need to represent every concrete visible action/state in source order. Each beat is 8 seconds. We can share a beat if they fit naturally; long chain may continue into next beat at natural handoff. But we only have 1 beat available. Is that enough? Let's estimate: The first state \"Mara stands\" could be represented as an initial pose, maybe takes some time to show her standing. Then closing the door is a motion action. Could both fit in 8 seconds? Possibly yes if she just closes quickly. But we need to represent each concrete visible action/state. We have two actions: stand (state) and close door (action). They can share beat if they fit naturally. The question: \"Every concrete visible action/state must be represented in source order.\" So we need to show both. If 8 seconds is enough for both, then ENOUGH.\n\nBut maybe the standing state might require a moment? But it's just a pose; could be shown at start of beat. Then closing door within same beat. That seems plausible. The question: \"Actions may share a beat when they fit naturally.\" So yes. So 1 beat is enough. Return {\"decision\":\"ENOUGH\"}.\n\nCheck if any nuance: The plane is grounded, but that's just context. No action needed for that. She stands beside it; no movement. Then she closes door. That could be done in less than 8 seconds. So ENOUGH.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 213,
+      "completion_tokens": 390,
+      "total_tokens": 603,
+      "completion_tokens_details": {
+        "reasoning_tokens": 374
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354800.904853,
+  "status": "ok"
+}
