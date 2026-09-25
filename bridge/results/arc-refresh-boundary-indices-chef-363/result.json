@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundary-indices-chef-363",
+  "kind": "llama_chat",
+  "started_at": 1790296805.6153042,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Choose chapter boundaries only. Do not rewrite or summarize story content. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "Each numbered statement is authoritative source material in story order.\n\n1. A chef begins a normal dinner service.\n2. Refrigeration fails; the chef secures the ingredients.\n3. The chef spends most of the story repeatedly adapting dishes around the equipment failure.\n4. Near the end, one final repair restores refrigeration; the chef finishes the last order and closes the kitchen with the staff.\n\nA chapter is a LARGE H3 refresh unit. Use as few chapter boundaries as the narrative permits. Keep continuous setup/escalation and the main repeated process together when possible. Major time/location/state resets or entry into explicit terminal resolution can justify a boundary.\n\nReturn JSON with one key: \"new_chapter_after\".\nIts value must be an array of statement numbers after which a new chapter should begin. Do not include the final statement number."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ca1a6zn8opmytcdk1ce3",
+    "object": "chat.completion",
+    "created": 1790296805,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"new_chapter_after\":[3]}",
+          "reasoning": "We need to decide where to put chapter boundaries based on statements 1-4. We have four numbered statements.\n\nStatement 1: A chef begins a normal dinner service.\n2: Refrigeration fails; the chef secures the ingredients.\n3: The chef spends most of the story repeatedly adapting dishes around equipment failure.\n4: Near end, one final repair restores refrigeration; chef finishes last order and closes kitchen with staff.\n\nWe need to choose chapter boundaries after certain statement numbers. We should use as few chapters as narrative permits. Keep continuous setup/escalation and main repeated process together when possible. Major time/location/state resets or entry into explicit terminal resolution can justify a boundary.\n\nSo we have 4 statements, but maybe we want two chapters: first covers statements 1-3 (setup, failure, adaptation). Second covers statement 4 (repair and closing). Or could be three chapters: 1-2 as one chapter? But \"continuous setup/escalation\" suggests keep 1-3 together. So likely new_chapter_after = [3] meaning after statement 3 start a new chapter for the final repair.\n\nBut we might also consider that statement 4 is near end, but maybe it's part of same chapter? The last order and closing could be considered terminal resolution; so boundary before it: after 3. So array [3].\n\nReturn JSON with key \"new_chapter_after\" value array [3]. Ensure no final statement number included (so not include 4). Good.\n\nLet's output JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 257,
+      "completion_tokens": 326,
+      "total_tokens": 583,
+      "completion_tokens_details": {
+        "reasoning_tokens": 308
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790296810.8879542,
+  "status": "ok"
+}
