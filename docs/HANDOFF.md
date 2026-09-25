@@ -536,3 +536,47 @@ Boundary rule under test in 546-565:
 - a final terminal unit stays with the current chapter;
 - a terminal unit immediately followed by HARD_RESET stays with the current phase and the split occurs at the reset;
 - Amy-shaped flags should produce boundary [4] and 6/2 beat allocation.
+
+
+### Batch 546-565 final chaptering conclusion
+
+The HARD_RESET definition passed every semantic control:
+- Amy attack/protection continuation => NO.
+- Amy weapon preparation => NO.
+- technician alarm interruption => NO.
+- technician tool retrieval => NO.
+- continuous room-to-room movement => NO.
+- three-month field-to-lab transition => YES.
+- one-year later return => YES.
+- next-morning restart => YES.
+- relocation after a completed field phase => YES.
+- inciting alarm + immediate reaction => NO.
+
+Terminal classification was already stable in 526-545.
+
+The remaining 556-565 failures were not semantic-planner failures; they came from asking the LLM to execute deterministic boundary/output math:
+- several responses changed the requested index-list schema into boolean arrays;
+- 565 incorrectly invented a third Amy chapter and returned 6/1/1 instead of the required [4] boundary and 6/2 allocation.
+
+Therefore chapter architecture probing is closed:
+- LLM owns only narrow SPLIT/KEEP, exact cut choice, TERMINAL yes/no, and HARD_RESET yes/no.
+- Python owns source spans, boundaries, chapters, beat allocation, and structural beat/source-unit assignment.
+
+Implementation started on gpt-arc-refresh:
+- story_planner.py added for exact source units, deterministic chapter boundaries/spans, beat allocation, and source-unit/beat assignment.
+- narrow TERMINAL and HARD_RESET prompts/parsers added.
+- gated internal source-unit SPLIT/KEEP + deterministic cut candidates + exact cut selection added.
+- focused local tests pass (14 tests at last local run before bridge integration).
+
+Implementation commits:
+- 797759d Add deterministic source-span chapter planner
+- 2d8c751 Test deterministic source-span chapter planner
+- 05dd476 Add narrow source-unit semantic classifiers
+- a27162b Test source-unit semantic classifier contracts
+- f95f004 Add exact source-unit refinement pipeline
+- d41282f Test exact source-unit refinement
+
+Bridge:
+- gpt-runtime commit a4c7fa8 adds a safe run_tests job kind.
+- run_tests checks out the requested code branch in a detached dedicated worktree and permits only pytest paths under tests/.
+- the local bridge process must be updated/restarted before run_tests jobs can be used.
