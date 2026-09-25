@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-clause-boundary-continuous-377",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow semantic task. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "Choose chapter boundaries only from numbered authoritative source units.\n\n1. A mechanic begins diagnosing one engine.\n2. She tests the electrical system.\n3. She replaces one failed sensor.\n4. She continues testing the same engine.\n5. She confirms the engine is operating correctly and ends the repair.\n\nA chapter is a LARGE H3 refresh unit. Continuous actions in the same task should remain together unless a meaningful reset occurs.\n\nReturn a JSON object with key \"new_chapter_after\", an array of source-unit numbers. Do not include the final unit number."
+    }
+  ]
+}
