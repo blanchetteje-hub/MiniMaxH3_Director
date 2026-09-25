@@ -12,7 +12,7 @@ import re
 from typing import Iterable, Sequence
 
 
-_SENTENCE_END_RE = re.compile(r"[.!?](?=\\s|$)")
+_SENTENCE_END_RE = re.compile(r"[.!?](?=\s|$)")
 
 
 @dataclass(frozen=True)
