@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-assignment-repair-505",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNITS:\n1. Setup.\n2. Protection action.\n3. Tool preparation.\n4. Main repeated process.\n5. Unresolved ending.\n\nREPEATABLE UNIT:\n4\n\nBAD ASSIGNMENT:\nBeat 1 -> [1]\nBeat 2 -> [2,4]\nBeat 3 -> [4]\nBeat 4 -> [3,4]\nBeat 5 -> [4,5]\nBeat 6 -> [4]\n\nISSUE:\nAssignment violates source order and combines repeatable unit 4 with other units.\n\nRepair only the structural assignment.\nKeep exactly 6 beats.\nNon-repeatable units appear exactly once.\nOnly unit 4 may repeat.\nReturn JSON with key beats; each object has beat and source_unit_ids only."
+    }
+  ]
+}
