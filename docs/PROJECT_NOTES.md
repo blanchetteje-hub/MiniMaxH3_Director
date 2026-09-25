@@ -558,3 +558,58 @@ Python structural work:
 9. assign source units monotonically to beats; only explicitly repeatable source units may repeat.
 
 Do not ask the LLM to execute these deterministic rules. Probe 565 demonstrated that even with correct flags it could invent a third chapter and produce 6/1/1 instead of the deterministic Amy 6/2 result.
+
+
+## Locked chapter semantic contracts
+
+The chapter semantic calls are now considered locked unless a concrete
+implementation run exposes a new failure.
+
+### Internal source-unit split
+
+Python first enumerates whether an exact legal cut point exists. If none exists,
+KEEP_TOGETHER is deterministic and no LLM call is made.
+
+When an exact cut is possible, SPLIT is allowed only for:
+- an explicit substantial time jump/scene break inside the unit; or
+- source-explicit long/repeated main process wording followed by its explicit
+  terminal resolution.
+
+A one-time finite action chain is KEEP_TOGETHER even when its final action
+finishes that local task.
+
+### TERMINAL
+
+FULL STORY may identify the central conflict/process, but only TARGET UNIT may
+supply the evidence that the process ends. Later story events cannot be credited
+backward.
+
+### HARD_RESET
+
+HARD_RESET remains a true narrative discontinuity only: substantial time jump,
+scene break, relocation after a completed phase, or equivalent restart.
+Immediate cause/effect, alarms, danger changes, equipment changes, and continuous
+movement are not resets.
+
+## Source-authorized CURRENT state at refresh
+
+Source-unit persistent state extraction is a separate narrow semantic call.
+Python owns when effects become authoritative.
+
+Rules:
+- temporary activity creates no persistent state;
+- explicit movement into an enclosed place produces location + containment;
+- explicit release from that place produces containment=free without inventing
+  a destination;
+- explicit equipment/drop/barrier/clothing/lifecycle/visible-condition results
+  may produce typed effects;
+- generic testing/using/replacing/fighting does not imply object/threat state;
+- a source unit's effects commit only on its final assigned beat.
+
+At a source-span chapter refresh, Python replays all source effects from prior
+beats, compacts the resulting current state, and prepends it to the refresh
+opening context as authoritative. Rendered continuity is supplemental and must
+not override source-authorized facts.
+
+Source-span chapter starts are the refresh schedule. Legacy refresh_interval is
+used only when the loaded arc is not a source-span planner arc.
