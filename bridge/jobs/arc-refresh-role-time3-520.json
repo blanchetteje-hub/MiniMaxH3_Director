@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-role-time3-520",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow classification or deterministic rule application. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FULL STORY CONTEXT:\n1. A team completes field work at a remote site.\n2. Three months later the team begins analysis in a city lab.\n3. Most of this phase is repeated laboratory analysis.\n4. A final test resolves the question and the team prepares the report.\n5. One year later the team returns to the remote site.\n\nTARGET UNIT:\n3. Most of this phase is repeated laboratory analysis.\n\nClassify TARGET UNIT by its role in the whole story.\nAllowed roles: MAIN_BODY, TERMINAL_RESOLUTION, IMMEDIATE_CLOSURE, RESET_START.\nReturn JSON with keys role and reason."
+    }
+  ]
+}
