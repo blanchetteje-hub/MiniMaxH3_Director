@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-hardreset-continuousmove-552",
+  "kind": "llama_chat",
+  "started_at": 1790303528.167993,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nA worker finishes checking the kitchen.\n\nTARGET UNIT:\nThe worker immediately walks down the hallway and checks the next room.\n\nA HARD RESET means a discontinuity between narrative phases. Continuous movement during the same immediate sequence is NOT a hard reset.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-7smghojo3kry9wqn4uibg",
+    "object": "chat.completion",
+    "created": 1790303528,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The target unit continues the worker’s immediate sequence of actions—after finishing checking the kitchen, the worker immediately walks down the hallway and checks the next room. This is continuous movement within the same narrative phase, not a hard reset.\"}",
+          "reasoning": "We need to decide if target unit begins after a hard reset relative to previous unit. Hard reset means discontinuity between narrative phases; continuous movement during same immediate sequence is NOT a hard reset.\n\nPrevious: \"A worker finishes checking the kitchen.\" Target: \"The worker immediately walks down the hallway and checks the next room.\"\n\nDoes this start after a hard reset? The worker finished checking kitchen, then immediately walks down hallway. Is that a new narrative phase or continuous movement? Finishing one activity (checking kitchen) to walking down hallway is likely a transition but still same immediate sequence of actions by worker. It's continuous movement: finishing one task and moving to next room. So not hard reset.\n\nThus decision NO. Provide reason. JSON with keys \"decision\" and \"reason\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 167,
+      "completion_tokens": 219,
+      "total_tokens": 386,
+      "completion_tokens_details": {
+        "reasoning_tokens": 155
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790303531.747244,
+  "status": "ok"
+}
