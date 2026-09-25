@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-finite-create-amy2-670",
+  "kind": "llama_chat",
+  "started_at": 1790354706.1323926,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Turn finite authoritative source material into a fixed number of minimal chronological 8-second beat jobs. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FINITE AUTHORITATIVE SOURCE:\nAmy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger.\nShe rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden emergency gear consisting of two handheld tools.\nShe equips the tools.\n\nBEAT COUNT: 2\nCreate exactly 2 beat jobs.\nEvery concrete visible action/state must appear in source order.\nAdjacent actions may share a beat when natural. A long finite chain may continue into the next beat at a natural handoff.\nDo not invent new objects, characters, locations, outcomes, dialogue, camera work, or specific events not stated by the source.\nKeep each job minimal and source-level.\nReturn exactly {\"beats\":[{\"beat_number\":1,\"beat_job\":\"...\"}]} with 2 consecutive entries."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yt28venv7jj1v0pyyjc7t5",
+    "object": "chat.completion",
+    "created": 1790354706,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"beats\":[{\"beat_number\":1,\"beat_job\":\"Amy is at home wearing a tight black tank top and denim jeans, cooking breakfast for her young kids when a zombie breaks the kitchen door window and she sees danger, rushes her kids to the basement, gets them inside, and locks the door.\"},{\"beat_number\":2,\"beat_job\":\"She retrieves her hidden emergency gear consisting of two handheld tools and equips the tools.\"}]}",
+          "reasoning": "We need to produce JSON only: {\"beats\":[{...},{...}]}.\n\nBeat count 2. Each beat job is a string describing actions in order, minimal and source-level. Must include every concrete visible action/state in source order. Adjacent actions may share a beat when natural. A long finite chain may continue into next beat at a natural handoff.\n\nSource: Amy at home on normal day wearing tight black tank top denim jeans cooking breakfast for young kids. Suddenly zombie breaks kitchen door window and Amy sees danger. She rushes her kids to basement, gets them inside, locks the door. Retrieves hidden emergency gear consisting of two handheld tools. Equips the tools.\n\nWe need 2 beats covering all actions in order. Let's list actions:\n\n1. Amy is at home on a normal day.\n2. Wearing tight black tank top and denim jeans.\n3. Cooking breakfast for her young kids.\n4. Suddenly, zombie breaks kitchen door window.\n5. Amy sees danger.\n6. She rushes her kids to the basement.\n7. Gets them inside.\n8. Locks the door.\n9. Retrieves hidden emergency gear consisting of two handheld tools.\n10. Equips the tools.\n\nWe need 2 beats: maybe beat1 covers up to locking door, beat2 covers retrieving and equipping tools. But we must include all actions in order. Beat1 could be: Amy at home wearing tank top jeans cooking breakfast for kids; zombie breaks kitchen window; she sees danger; rushes kids to basement; gets them inside; locks the door. That's 6 actions.\n\nBeat2: retrieves hidden emergency gear consisting of two handheld tools; equips the tools. That's 3 actions.\n\nWe need minimal but source-level. So beat1 string: \"Amy is at home wearing a tight black tank top and denim jeans, cooking breakfast for her young kids when a zombie breaks the kitchen door window and she sees danger, rushes her kids to the basement, gets them inside, and locks the door.\" Beat2: \"She retrieves her hidden emergency gear consisting of two handheld tools and equips the tools.\"\n\nCheck order: yes. All actions included.\n\nReturn JSON with beats array length 2. Each beat has beat_number 1 or 2. Provide exactly that structure.\n\nLet's produce final answer.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 287,
+      "completion_tokens": 562,
+      "total_tokens": 849,
+      "completion_tokens_details": {
+        "reasoning_tokens": 463
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354714.7025304,
+  "status": "ok"
+}
