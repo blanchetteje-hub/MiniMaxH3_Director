@@ -683,3 +683,49 @@ Verification status:
 - bridge machine currently has no Python environment with pytest, so no project
   pytest suite has executed there yet;
 - this is an environment/tooling blocker, not a reported test assertion failure.
+
+
+### Chapter semantics locked; refresh/state integration
+
+Production-shaped probe results:
+- tightened TERMINAL prompt fixed the false positive on Amy's majority-fighting
+  unit: ongoing/majority process => NO, last-zombie resolution => YES,
+  post-resolution release => NO.
+- tightened SPLIT prompt now requires explicit duration/repetition wording for
+  the process->terminal case. Amy protection/lock chain => KEEP_TOGETHER;
+  mixed "most of story repeatedly X, then final X resolves" => SPLIT;
+  one-time diagnose/replace/confirm chain => KEEP_TOGETHER.
+- HARD_RESET remains stable: immediate cause/effect => NO; explicit substantial
+  time/location restart => YES.
+- source units with no deterministic exact cut candidate skip the SPLIT LLM
+  call entirely.
+
+Runtime integration:
+- source-span chapter openings now drive H3 refresh scheduling.
+- for the Amy 6/2 plan, conditioning modes are:
+  initial, append, append, append, append, append, refresh, append.
+- numeric refresh_interval is retained only as a legacy fallback when the arc
+  is not source-span planned.
+- visual-continuity cadence and refresh-workflow validation use the same
+  chapter-aware scheduling.
+
+Persistent state:
+- one narrow source_unit_state_effects call extracts only explicit persistent
+  post-unit state.
+- activity alone is forbidden from creating state.
+- tested clean cases include basement location/barrier, equipped weapons,
+  containment release, explicit location after time jump, clothing, dropped
+  item/location, dead threat, and visible blood condition.
+- repeated/ongoing fighting/testing returns [] rather than invented state.
+- source-unit effects attach only to the final beat assigned to that unit, so
+  repeated source units do not commit terminal state early.
+
+Recent commits:
+- 680b344 tighten source-unit terminal/split prompts
+- cbc81eb skip split LLM calls without an exact cut
+- 8e61ea6 require explicit duration for internal process splits
+- 41d6846 derive refresh workflow from source-span chapter starts
+- 630329a validate refresh workflow for chapter starts
+- 4d40c3e test chapter-driven refresh scheduling
+- bca4079 add narrow source-unit persistent-state extraction
+- abf94b6 test source-unit state effect ownership
