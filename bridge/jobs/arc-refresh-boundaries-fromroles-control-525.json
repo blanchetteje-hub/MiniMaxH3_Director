@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundaries-fromroles-control-525",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Apply the deterministic boundary rule mechanically. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT ROLES:\n1. MAIN_BODY\n2. MAIN_BODY\n3. MAIN_BODY\n4. MAIN_BODY\n5. TERMINAL_RESOLUTION\n6. IMMEDIATE_CLOSURE\n\nRULE:\n- Chapter 1 starts at unit 1.\n- Start a new chapter BEFORE any TERMINAL_RESOLUTION unit.\n- Start a new chapter BEFORE any RESET_START unit.\n- Do not start a chapter before IMMEDIATE_CLOSURE when it directly follows TERMINAL_RESOLUTION.\n- Otherwise keep the unit in the current chapter.\n\nReturn JSON with key new_chapter_after, listing unit numbers AFTER which a new chapter begins."
+    }
+  ]
+}
