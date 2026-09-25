@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod-split-timejump-575",
+  "kind": "llama_chat",
+  "started_at": 1790349859.3416636,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY:\nThe team completes field work, and three months later begins analysis in a city laboratory.\n\nSOURCE UNIT:\nThe team completes field work, and three months later begins analysis in a city laboratory.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only when this one source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase, or crosses a major time/location/state discontinuity. Keep terminal resolution plus its immediate closure together. Keep continuous work in the same phase together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-0u7rbbgd7ujqh50emo7oe9b",
+    "object": "chat.completion",
+    "created": 1790349859,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"SPLIT\",\"reason\":\"The source unit spans two distinct phases—completion of field work followed by analysis in a city laboratory after a three‑month gap—representing a major time/location discontinuity that crosses an internal LARGE H3 chapter boundary.\"}",
+          "reasoning": "We need to decide whether this source unit crosses an internal LARGE H3 chapter phase boundary.\n\nThe source unit is \"The team completes field work, and three months later begins analysis in a city laboratory.\"\n\nThis sentence contains two events: completion of field work; then after 3 months, beginning analysis. The question: does it cross a large H3 chapter phase boundary? A chapter is a LARGE H3 refresh unit. So we need to see if this source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase or major time/location/state discontinuity.\n\nWe have field work completion (end of field work) and then analysis in city lab after 3 months. That is a time gap, location change. So likely it crosses a chapter boundary: the end of fieldwork phase to start of analysis phase. The source unit contains both phases; so we should split? But question says choose SPLIT only when this one source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase, or crosses major time/location/state discontinuity.\n\nHere it does cross: field work completion to analysis in city lab after 3 months. So yes, it's crossing a chapter boundary. So decision = SPLIT. Reason: The sentence contains two phases separated by a three-month gap and location change from field site to city laboratory, indicating a transition between distinct phases of the story.\n\nReturn JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 221,
+      "completion_tokens": 358,
+      "total_tokens": 579,
+      "completion_tokens_details": {
+        "reasoning_tokens": 294
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790349864.7591033,
+  "status": "ok"
+}
