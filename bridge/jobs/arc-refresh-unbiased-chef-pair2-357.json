@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-unbiased-chef-pair2-357",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Make one narrow chapter-boundary decision. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "A chapter is a large H3 refresh unit.\n\nSTORY CONTEXT:\nA chef spends most of the story repeatedly adapting dishes around failed refrigeration. Near the end, one final repair restores refrigeration; the chef finishes the last order and closes with staff.\n\nLEFT:\nRepeated adaptation around the equipment failure remains ongoing.\n\nRIGHT:\nFinal repair restores refrigeration; last order; closing.\n\nChoose one decision from this allowed set: MERGE, KEEP.\nReturn a JSON object with \"decision\" and \"reason\"."
+    }
+  ]
+}
