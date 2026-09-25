@@ -1,0 +1,9 @@
+{
+  "kind": "run_tests",
+  "job_id": "run-tests-story-planner-current-843",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_story_planner.py"
+  ],
+  "timeout_seconds": 900
+}
