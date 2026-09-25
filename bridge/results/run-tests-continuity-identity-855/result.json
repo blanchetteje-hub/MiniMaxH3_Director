@@ -1,0 +1,22 @@
+{
+  "job_id": "run-tests-continuity-identity-855",
+  "kind": "run_tests",
+  "started_at": 1790366570.1905015,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_combined_continuity_parsing.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "..........................                                               [100%]\n26 passed in 2.57s\n",
+    "stderr": ""
+  },
+  "finished_at": 1790366574.7698584,
+  "status": "ok"
+}
