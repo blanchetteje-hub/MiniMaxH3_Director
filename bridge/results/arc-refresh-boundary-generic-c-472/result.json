@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundary-generic-c-472",
+  "kind": "llama_chat",
+  "started_at": 1790301265.6841223,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE SOURCE UNITS:\n1. A researcher begins a normal shift.\n2. An alarm interrupts; samples are secured.\n3. The researcher prepares the required instruments.\n4. Most of the story is repeated diagnostic work.\n5. One final diagnostic resolves the incident.\n6. The researcher shuts down the lab and reunites with a colleague.\n\nA chapter is a LARGE H3 refresh unit.\nUse the FEWEST chapter boundaries that preserve major narrative phases.\nNormal setup, inciting event, protective/preparatory actions, and the source-emphasized main process are one continuous escalation unless a major time/location/state reset occurs.\nExplicit terminal resolution plus immediate closure may form the final chapter.\n\nReturn JSON with key new_chapter_after, an array of source-unit numbers."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-c17z4lwrk5slpk24k22tyk",
+    "object": "chat.completion",
+    "created": 1790301265,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"new_chapter_after\":[2,4,5]}",
+          "reasoning": "We need to produce JSON with key \"new_chapter_after\" and value is an array of source unit numbers that mark where chapters start? The instruction: \"A chapter is a LARGE H3 refresh unit. Use the FEWEST chapter boundaries that preserve major narrative phases.\" So we have 6 units. We want to group them into chapters, using fewest boundaries while preserving major phases: normal setup (unit1), inciting event (unit2?), protective/preparatory actions (units3-4?), main process (unit5?), terminal resolution + immediate closure (unit6?). But maybe combine some.\n\nWe need array of source-unit numbers that mark the start of each new chapter? \"new_chapter_after\" likely means after which unit a new chapter starts. So if we have chapters starting at units 1,3,5,6? Let's think: Unit1 normal shift -> first chapter. Inciting event (unit2) maybe same chapter as setup because it's immediate. Protective/preparatory actions (units3-4) could be next chapter. Main process (unit5) main diagnostic work - maybe separate chapter. Terminal resolution + closure (unit6). So chapters: 1,3,5,6? But unit6 is terminal resolution; after it no more units.\n\nThus new_chapter_after array would contain [2,4,5]? Wait \"new_chapter_after\" means after which source-unit a new chapter begins. If first chapter starts at unit1 automatically. Then next chapters start after certain units: after unit2? Actually inciting event is part of same as setup; maybe no boundary until protective actions start (unit3). So new chapter after unit2? That would mean chapter 2 starts at unit3. Next major phase main process begins at unit5, so new chapter after unit4. Terminal resolution immediate closure could be separate or same as last? If we want final chapter for terminal resolution + closure maybe start at unit6; but it's the last unit anyway.\n\nThus array: [2,4] if only two boundaries (chapters 1-3). But they said \"FEWEST chapter boundaries that preserve major narrative phases.\" We have normal setup/inciting event as one phase. Protective/preparatory actions as second. Source-emphasized main process as third? Actually main process is unit5; but protective/preparatory includes units3-4, then main process unit5 maybe separate. Then terminal resolution + closure could be final chapter.\n\nSo we might have 4 chapters: 1 (units1-2), 2 (units3-4), 3 (unit5), 4 (unit6). Boundaries after unit2,4,5? Actually new chapter starts at units3,5,6. So \"new_chapter_after\" would be [2,4,5]. That seems plausible.\n\nReturn JSON: {\"new_chapter_after\":[2,4,5]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 239,
+      "completion_tokens": 620,
+      "total_tokens": 859,
+      "completion_tokens_details": {
+        "reasoning_tokens": 598
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790301275.163209,
+  "status": "ok"
+}
