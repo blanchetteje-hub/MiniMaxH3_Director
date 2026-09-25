@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-combined-validator-protected-409",
+  "kind": "llama_chat",
+  "started_at": 1790298624.8100271,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only the requested chapter-beat contract. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE CHAPTER SOURCE:\nA caregiver gets two people into a secured room and locks the barrier.\nThe caregiver then handles outside threats while the two people remain protected inside.\n\nCANDIDATE BEATS:\n1. The caregiver locks the two people inside the secured room.\n2. The caregiver handles the threats inside that same secured room beside them.\n\nValidate with this procedure:\n1. Every concrete source action assigned to this chapter must happen explicitly.\n2. Harmless presentation detail is allowed, but material changes to events, plot-relevant objects, relationships, protected state, location significance, or outcome are not.\n3. Do not perform responsibility belonging outside this chapter.\n\nChoose validity from: VALID, INVALID.\nIf invalid, choose issue_type from: MISSING_ACTION, MATERIAL_DEVIATION, CHAPTER_SCOPE.\nReturn JSON with keys \"validity\", \"issue_type\", and \"issue\"."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-y30ex5gqm9e10ea88gdwang",
+    "object": "chat.completion",
+    "created": 1790298624,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"validity\":\"INVALID\",\"issue_type\":\"MATERIAL_DEVIATION\",\"issue\":\"Beat 2 incorrectly states that the caregiver handles threats inside the secured room beside them, whereas the source specifies handling outside threats while the two people remain protected inside.\"}",
+          "reasoning": "We need to validate candidate beats against source. Source says: caregiver gets two people into a secured room and locks the barrier. Then handles outside threats while the two remain protected inside.\n\nCandidate beat 1: The caregiver locks the two people inside the secured room. That matches source? Source: \"gets two people into a secured room and locks the barrier.\" So yes, they lock them in. Beat 1 says locks the two people inside; that implies locking them inside. Good.\n\nBeat 2: The caregiver handles the threats inside that same secured room beside them. But source says caregiver handles outside threats while the two remain protected inside. Beat 2 says handles threats inside the same secured room beside them. That is a deviation: sources say outside threats, beat says inside. So material deviation. Also location significance changed.\n\nThus invalid with issue_type MATERIAL_DEVIATION. Provide \"issue\" description.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 266,
+      "completion_tokens": 241,
+      "total_tokens": 507,
+      "completion_tokens_details": {
+        "reasoning_tokens": 181
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790298628.937009,
+  "status": "ok"
+}
