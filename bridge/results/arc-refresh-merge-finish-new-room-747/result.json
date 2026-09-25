@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-merge-finish-new-room-747",
+  "kind": "llama_chat",
+  "started_at": 1790359362.671787,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nMara finishes painting the wall and sets down the brush.\n\nRIGHT:\nMara walks into the office and begins repairing a computer.\n\nChoose one:\nMERGE = RIGHT is an immediate reaction to LEFT, continues the same uninterrupted local action, or is the immediate mechanical completion of what LEFT just obtained/opened/started.\nNEW_TASK = LEFT reaches a usable stopping point and RIGHT begins a distinct local action/objective. Starting a fresh item/test after LEFT completed one is NEW_TASK. Merely carrying or wearing something from LEFT while doing a different task is NEW_TASK.\nJudge only the concrete local actions.\nReturn exactly {\"relation\":\"MERGE|NEW_TASK\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hel3lopem5jxgak6astkz",
+    "object": "chat.completion",
+    "created": 1790359362,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need to decide if RIGHT is MERGE (immediate reaction, same action) or NEW_TASK.\n\nLEFT: \"Mara finishes painting the wall and sets down the brush.\" So she finished painting a wall. She set down the brush.\n\nRIGHT: \"Mara walks into the office and begins repairing a computer.\"\n\nIs this an immediate reaction to LEFT? She just painted a wall; then she goes to office and repairs computer. That seems like distinct local action, not continuation of painting. The paint job is finished; she sets down brush. Then she starts new task: walking into office and repairing computer.\n\nThus NEW_TASK. Return JSON {\"relation\":\"NEW_TASK\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 226,
+      "completion_tokens": 151,
+      "total_tokens": 377,
+      "completion_tokens_details": {
+        "reasoning_tokens": 135
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790359365.3208542,
+  "status": "ok"
+}
