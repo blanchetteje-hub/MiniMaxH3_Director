@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-959-diagnostic",
+  "kind": "llama_chat",
+  "started_at": 1790380229.2004418,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge only whether the candidate's action sequence is physically coherent.\nRead actions literally and in order, using the established facts. Carry each\ncompleted result forward: a completed removal cannot happen again to that same\ntarget or part unless explicitly restored first. Do not silently reinterpret a\ncompleted action as an attempt. Different targets are different cases. A wound\nis not automatically removal or death. Respect explicitly established magical\ncapabilities. Unknown facts alone are not contradictions.\nReturn one JSON object: valid is a boolean indicating a coherent sequence; issue\nis a short concrete contradiction or an empty string. Do not judge job coverage,\nnext-job ownership, or missing state-effect records in this diagnostic."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nShe retrieves her hidden arsenal—a pistol and a katana—from the closet in the basement, then equips both weapons.\n\nCURRENT STATE\n{\"characters\":{\"Amy\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"home\",\"accessible\":true,\"clothing\":{\"upper\":{\"item\":\"tight black tank top\",\"damage\":\"none\"},\"lower\":{\"item\":\"denim jeans\",\"damage\":\"none\"}},\"held_objects\":[\"pistol\",\"katana\"],\"equipped_objects\":[\"weapons\"],\"status\":\"alive/conscious unless stated otherwise\"},\"Will\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"},\"Amber\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"}},\"environment\":{\"barriers\":{\"kitchen door window\":{\"status\":\"broken\"},\"door\":{\"status\":\"locked\"}}}}\n\nCURRENT JOB\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nNEXT JOB\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nSTATE EFFECTS IF VALID\n[{\"id\":\"E4\",\"state_effects\":[]}]\n\nCANDIDATE BEAT\nAs a zombie lunges at her, Amy shoots its torso, then decapitates it with the katana."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jes469rhrwi1ag5tglul",
+    "object": "chat.completion",
+    "created": 1790380229,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if candidate beat is physically coherent given current state.\n\nCurrent state: Amy has pistol and katana equipped. Will and Amber are zombies? They are \"contained\" in basement; but not necessarily zombies yet. The beat says \"As a zombie lunges at her\". Which zombie? Could be Will or Amber, or another zombie. But they are contained and inaccessible. So maybe some other zombie lunge from outside? There's no mention of any other zombies present. However the job is Amy killing zombies as they attack her. So it's plausible that there are zombies attacking.\n\nWe need to check if \"shoots its torso\" then decapitates with katana: She has pistol and katana, so she can shoot torso (pistol). Then decapitate with katana. That seems physically coherent. No contradictions about prior injuries or status. The zombie is not specified as Will/Amber; but they are contained. So the lunge could be from a different zombie.\n\nThus valid: true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 611,
+      "completion_tokens": 226,
+      "total_tokens": 837,
+      "completion_tokens_details": {
+        "reasoning_tokens": 208
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380232.5202987,
+  "status": "ok"
+}
