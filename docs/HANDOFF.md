@@ -729,3 +729,24 @@ Recent commits:
 - 4d40c3e test chapter-driven refresh scheduling
 - bca4079 add narrow source-unit persistent-state extraction
 - abf94b6 test source-unit state effect ownership
+
+
+### Batch 698-777: local visible-responsibility grouping
+
+Production grouping was tested first as a four-way relationship classifier and
+then as a binary MERGE/NEW_TASK classifier.
+
+Results:
+- four-way 698-717 was mostly useful but ambiguous cases could spend the entire
+  completion budget debating labels;
+- binary 738-757 improved completion behavior but still over-merged shared-goal
+  and incidental-tool-use cases;
+- tightened binary 758-777 produced valid JSON for all 20 probes, but four
+  important controls remained wrong: 759, 771, 773, and 775.
+
+Decision:
+- one combined merge classifier remains too semantically broad for the 20B
+  model;
+- next contract is two narrow YES/NO judgments: same-action/direct-completion,
+  and immediate reaction caused by LEFT itself;
+- Python will merge only when one of those narrow checks returns YES.
