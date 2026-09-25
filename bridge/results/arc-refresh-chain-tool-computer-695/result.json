@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-chain-tool-computer-695",
+  "kind": "llama_chat",
+  "started_at": 1790354997.3167536,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one adjacent beat-scale action-chain boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nMara removes the meter from the equipment case.\n\nRIGHT:\nMara turns away and begins booting an unrelated office computer.\n\nDoes RIGHT continue the same immediate beat-scale action chain as LEFT, or begin a new beat-scale responsibility?\nCONTINUE = RIGHT is the immediate reaction, completion, or direct use of what LEFT just established; there is no meaningful completed handoff between them.\nNEW_CHAIN = LEFT establishes a calm baseline before a disruption, LEFT completes one local objective before a distinct task begins, or RIGHT starts a new local phase/objective.\nIgnore exact seconds and overall pacing. Judge only the local action relationship.\nReturn exactly {\"decision\":\"CONTINUE|NEW_CHAIN\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-wlsa30ymteklr32el7bwss",
+    "object": "chat.completion",
+    "created": 1790354997,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NEW_CHAIN\"}",
+          "reasoning": "We need to judge if RIGHT continues same immediate beat-scale action chain as LEFT.\n\nLEFT: \"Mara removes the meter from the equipment case.\"\n\nRIGHT: \"Mara turns away and begins booting an unrelated office computer.\"\n\nBeat-scale action chain: The meter removal is a local objective. Then she turns away and boots an unrelated office computer. Is that continuation or new? She removed meter, then turned away to boot another device. That seems like a distinct task (booting unrelated office computer). So it's NEW_CHAIN.\n\nThus decision: \"NEW_CHAIN\". Return JSON exactly {\"decision\":\"NEW_CHAIN\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 224,
+      "completion_tokens": 138,
+      "total_tokens": 362,
+      "completion_tokens_details": {
+        "reasoning_tokens": 122
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354999.593598,
+  "status": "ok"
+}
