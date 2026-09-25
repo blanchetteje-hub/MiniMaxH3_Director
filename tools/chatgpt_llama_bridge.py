@@ -211,10 +211,20 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
 
     explicit_python = os.environ.get("MINIMAX_TEST_PYTHON", "").strip()
     pytest_executable = shutil.which("pytest")
+    windows_venv_python = source_root / ".venv" / "Scripts" / "python.exe"
+    posix_venv_python = source_root / ".venv" / "bin" / "python"
+    py_launcher = shutil.which("py")
+
     if explicit_python:
         command = [explicit_python, "-m", "pytest", "-q", *normalized]
+    elif windows_venv_python.exists():
+        command = [str(windows_venv_python), "-m", "pytest", "-q", *normalized]
+    elif posix_venv_python.exists():
+        command = [str(posix_venv_python), "-m", "pytest", "-q", *normalized]
     elif pytest_executable:
         command = [pytest_executable, "-q", *normalized]
+    elif py_launcher:
+        command = [py_launcher, "-m", "pytest", "-q", *normalized]
     else:
         command = [sys.executable, "-m", "pytest", "-q", *normalized]
 
