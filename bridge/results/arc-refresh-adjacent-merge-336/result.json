@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-adjacent-merge-336",
+  "kind": "llama_chat",
+  "started_at": 1790295754.4430602,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent draft chapters should be merged. A chapter is a large H3 refresh unit, so prefer MERGE unless a major narrative reset makes a new refresh useful. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "STORY CONTEXT:\nA researcher begins a normal shift. An alarm interrupts. The researcher secures samples and then begins a long repeated diagnostic process that occupies most of the story.\n\nDRAFT CHAPTER 1:\nNormal shift and alarm.\n\nDRAFT CHAPTER 2:\nSecure samples and perform the repeated diagnostic process.\n\nQuestion: Is there a major narrative reset requiring a refresh between these chapters, or should they be one broad chapter?\n\nReturn exactly:\n{\"decision\":\"MERGE\",\"reason\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-9ow3i0by77so7dq262gtnr",
+    "object": "chat.completion",
+    "created": 1790295754,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"MERGE\",\"reason\":\"The transition from the normal shift to the alarm is a single event that immediately leads into securing samples and beginning the repeated diagnostic process; there’s no major narrative reset or new thematic shift between these sections.\"}",
+          "reasoning": "We need to decide whether two adjacent draft chapters should merge. The context: Chapter 1 is normal shift and alarm; Chapter 2 secure samples and perform repeated diagnostic process.\n\nNarrative reset? There's an alarm interrupting the shift, then researcher secures samples and begins a long repeated diagnostic process that occupies most of story. So chapter 1 sets up shift + alarm; chapter 2 continues with securing samples and diagnostics. No major narrative reset between them: just continuation. So merge.\n\nReturn JSON {\"decision\":\"MERGE\",\"reason\":\"...\"} Provide reason explaining no reset, continuous action.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 216,
+      "completion_tokens": 178,
+      "total_tokens": 394,
+      "completion_tokens_details": {
+        "reasoning_tokens": 119
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790295757.7373836,
+  "status": "ok"
+}
