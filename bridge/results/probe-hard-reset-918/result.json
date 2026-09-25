@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-918",
+  "kind": "llama_chat",
+  "started_at": 1790377805.2468204,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nSam starts the pump.\n\nTARGET UNIT:\nRepeatedly, Sam checks the pressure gauge.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. A duration phrase such as 'for most of the night', 'for hours', 'throughout the day', or 'repeatedly' describes how long an activity lasts; it is NOT by itself a jump from PREVIOUS UNIT. Likewise, ordinary movement into a new place (entering a room/building, crossing a doorway, walking to another area) is NOT a hard reset unless the source explicitly marks a narrative restart around that relocation. If the discontinuity is not stated or directly entailed by the two source units, answer NO.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-ironavxu4g933sbjot7c1f",
+    "object": "chat.completion",
+    "created": 1790377805,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The target unit \\\"Repeatedly, Sam checks the pressure gauge.\\\" follows directly from the previous unit \\\"Sam starts the pump.\\\" without an explicit time jump, scene break, relocation, or other narrative restart. The word \\\"repeatedly\\\" merely indicates duration of the activity and does not constitute a hard reset.\"}",
+          "reasoning": "We need to determine if \"Repeatedly, Sam checks the pressure gauge.\" begins after a hard reset from \"Sam starts the pump.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent textual restart. Duration phrase like 'repeatedly' describes how long activity lasts; not a jump.\n\nWe have two units: previous unit: \"Sam starts the pump.\" target unit: \"Repeatedly, Sam checks the pressure gauge.\"\n\nIs there a hard reset between them? The text likely continues after starting pump to checking gauge repeatedly. No explicit time jump or scene break. So answer NO.\n\nReturn JSON with decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 285,
+      "completion_tokens": 224,
+      "total_tokens": 509,
+      "completion_tokens_details": {
+        "reasoning_tokens": 144
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790377808.4123733,
+  "status": "ok"
+}
