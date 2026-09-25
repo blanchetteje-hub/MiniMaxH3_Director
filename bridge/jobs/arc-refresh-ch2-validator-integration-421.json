@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-ch2-validator-integration-421",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1900,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested repair or validation task. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE CHAPTER SOURCE:\nThe parent completes the final confrontation.\nThe home is left visibly damaged from the conflict.\nThe parent opens the secured basement and lets both children out.\n\nCANDIDATE BEATS:\n1. Parent completes the final confrontation and the damaged home remains visible around them.\n2. Parent opens the secured basement door and lets both children out.\n\nCheck:\n1. Required source actions happen explicitly.\n2. Harmless presentation detail is allowed.\n3. Material changes to events, relationships, significant location, or outcome are invalid.\n4. No post-story event may be added.\n\nChoose validity from: VALID, INVALID.\nIf invalid choose issue_type from: MISSING_ACTION, MATERIAL_DEVIATION, CHAPTER_SCOPE.\nReturn JSON with keys validity, issue_type, issue."
+    }
+  ]
+}
