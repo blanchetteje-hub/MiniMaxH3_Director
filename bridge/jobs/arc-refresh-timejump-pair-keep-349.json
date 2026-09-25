@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-timejump-pair-keep-349",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether two adjacent rough chapters should be merged. A major time/location/state reset favors KEEP. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY CONTEXT:\nA survey team completes a week of field work. Three months later, the team reunites at a city laboratory to analyze the collected material.\n\nLEFT CHAPTER:\nField work concludes at the remote site.\n\nRIGHT CHAPTER:\nThree months later, the team reunites in the city laboratory and begins analysis.\n\nReturn exactly:\n{\"decision\":\"KEEP\",\"reason\":\"...\"}"
+    }
+  ]
+}
