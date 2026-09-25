@@ -14293,6 +14293,34 @@ def phase_authoritative_source(phase, fallback_story):
             return source
     return str(fallback_story or "")
 
+def macro_arc_uses_source_span_planner(macro_arc):
+    """Return whether every phase is a source-span compatibility phase."""
+    phases = macro_arc.get("phases") if isinstance(macro_arc, dict) else None
+    return bool(phases) and all(
+        isinstance(phase, dict)
+        and phase.get("narrative_purpose") == SOURCE_SPAN_PHASE_PURPOSE
+        for phase in phases
+    )
+
+
+def build_source_span_macro_arc_from_story(
+    story,
+    total_segments,
+    llm_request,
+    *,
+    history_metadata=None,
+):
+    """Build the preferred source-authoritative chapter plan and adapter arc."""
+    plan = build_story_plan(
+        story,
+        total_segments,
+        llm_request,
+        history_metadata=history_metadata,
+        sampling_parameters=ARC_LLM_SAMPLING_PARAMETERS,
+    )
+    return plan, source_span_story_plan_to_macro_arc(plan, total_segments)
+
+
 
 # Return the characters introduced by the phase containing a beat.
 def phase_characters_introduced_for_beat(macro_arc, beat_number):
