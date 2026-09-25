@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-rawspan-breakfast-onebeat-373",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Create beats only from the supplied chapter source. The assigned beat budget must complete the source responsibility. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER SOURCE:\nAmy cooks breakfast for Will and Amber on a normal morning.\n\nBEAT BUDGET: exactly 1.\n\nThe single beat must visibly complete the chapter source responsibility for both Will and Amber.\n\nReturn a JSON object with key \"beats\", containing exactly one numbered beat object with an \"event\" field."
+    }
+  ]
+}
