@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod-split-amy-attack-568",
+  "kind": "llama_chat",
+  "started_at": 1790349799.0264428,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY:\nA zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n\nSOURCE UNIT:\nA zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only when this one source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase, or crosses a major time/location/state discontinuity. Keep terminal resolution plus its immediate closure together. Keep continuous work in the same phase together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-g4753fkc3qmti9bqxmwb5",
+    "object": "chat.completion",
+    "created": 1790349799,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP_TOGETHER\",\"reason\":\"The source unit describes a single, continuous sequence of actions—zombie breaking the kitchen door window followed by Amy moving Will and Amber into the basement and locking it—without any major time, location, or state discontinuity that would warrant splitting into separate chapter phases.\"}",
+          "reasoning": "We need to decide whether this source unit crosses an internal LARGE H3 chapter phase boundary.\n\nThe source unit is a single sentence: \"A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\"\n\nThis seems like one continuous action sequence: zombie breaking, then Amy moving people and locking. It's all in same location (kitchen/basement). No major time or state discontinuity? The actions are sequential but still part of same process: reacting to zombie break.\n\nThus likely KEEP_TOGETHER.\n\nReturn JSON with decision \"KEEP_TOGETHER\" and reason explaining that it's continuous work within the same phase.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 229,
+      "completion_tokens": 205,
+      "total_tokens": 434,
+      "completion_tokens_details": {
+        "reasoning_tokens": 131
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790349802.5210938,
+  "status": "ok"
+}
