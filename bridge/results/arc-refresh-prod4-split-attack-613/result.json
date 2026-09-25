@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod4-split-attack-613",
+  "kind": "llama_chat",
+  "started_at": 1790350747.6805835,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nA zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only in either case:\n1. this unit contains an explicit substantial time jump/scene break between two narrative phases; or\n2. this unit explicitly describes a long/repeated main process (for example majority, most, repeatedly, throughout, or equivalent duration/repetition wording) followed by its explicit terminal resolution. A one-time finite action chain is NOT this case.\nOtherwise choose KEEP_TOGETHER. Ordinary movement, danger changes, tool/weapon changes, terminal resolution plus immediate closure, and continuous work stay together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-dp10rnms3640md0mod375",
+    "object": "chat.completion",
+    "created": 1790350747,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP_TOGETHER\",\"reason\":\"The unit describes a single, continuous sequence of actions—zombie breaks the kitchen door window, Amy moves Will and Amber into the basement, then locks the door—without any explicit substantial time jump or scene break between phases.\"}",
+          "reasoning": "We need to decide if the source unit crosses an internal LARGE H3 chapter phase boundary.\n\nThe source unit is:\n\n\"A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\"\n\nThis seems like a single action: zombie breaks door, Amy moves people into basement, locks door. No explicit time jump or scene break. It's one continuous event. So KEEP_TOGETHER.\n\nReturn JSON with decision \"KEEP_TOGETHER\" and reason explaining that no substantial time jump/scene break; it's a single narrative phase.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 256,
+      "completion_tokens": 177,
+      "total_tokens": 433,
+      "completion_tokens_details": {
+        "reasoning_tokens": 111
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350750.5509531,
+  "status": "ok"
+}
