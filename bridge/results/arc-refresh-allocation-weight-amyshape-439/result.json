@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-allocation-weight-amyshape-439",
+  "kind": "llama_chat",
+  "started_at": 1790299858.421109,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Assign only relative duration weights. Do not allocate integer beats. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FIXED CHAPTERS:\nChapter 1 contains setup plus the main repeated process explicitly described as the MAJORITY of the story.\nChapter 2 contains only final resolution plus immediate closure.\n\nAssign each chapter a relative duration weight using small positive integers from 1 to 5.\nThe weights should reflect expected screen time from source emphasis.\n\nReturn JSON with key weights, an array of two integers in chapter order."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ooi6955ke58yd2kmr8hyg",
+    "object": "chat.completion",
+    "created": 1790299858,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"weights\":[4,2]}",
+          "reasoning": "We need to assign relative duration weights for Chapter 1 and Chapter 2. The user says: \"Assign each chapter a relative duration weight using small positive integers from 1 to 5.\" So we choose numbers between 1-5 inclusive, presumably integer values. They want an array of two integers in chapter order.\n\nWe need to reflect expected screen time from source emphasis: Chapter 1 contains setup plus main repeated process explicitly described as the majority of story; Chapter 2 only final resolution and immediate closure. So likely Chapter 1 gets higher weight than Chapter 2, maybe 4 vs 2 or 5 vs 3? The weights should be relative durations.\n\nWe can choose [4,2] or [5,3]. Which is better? They said \"small positive integers from 1 to 5.\" Both are small. Let's pick [4,2], as Chapter 1 gets double weight of Chapter 2. That seems plausible: majority vs resolution.\n\nReturn JSON with key weights and array. So:\n\n{\n  \"weights\": [4, 2]\n}\n\nThat's it.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 173,
+      "completion_tokens": 240,
+      "total_tokens": 413,
+      "completion_tokens_details": {
+        "reasoning_tokens": 223
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790299862.4180417,
+  "status": "ok"
+}
