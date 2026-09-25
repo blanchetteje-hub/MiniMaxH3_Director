@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-allocation-control-434",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow decision. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "TOTAL BEATS: 8\n\nFIXED CHAPTER 1:\nSetup plus the main repeated process, explicitly described as the majority of the story.\n\nFIXED CHAPTER 2:\nFinal resolution plus immediate closure.\n\nEvery chapter must receive at least one beat. Counts must sum to 8. The majority chapter must receive more than half.\n\nReturn JSON with key beat_counts, an array of two integers in chapter order."
+    }
+  ]
+}
