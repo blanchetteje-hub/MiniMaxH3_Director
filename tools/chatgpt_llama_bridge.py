@@ -25,6 +25,7 @@ import urllib.error
 import urllib.request
 
 
+BRIDGE_BUILD = "2026-09-25-run-tests-v3"
 DEFAULT_BRANCH = "gpt-runtime"
 DEFAULT_ENDPOINT = "http://127.0.0.1:1234"
 DEFAULT_POLL_SECONDS = 2.0
@@ -442,6 +443,7 @@ def main(argv=None):
 
     endpoint = args.endpoint.rstrip("/")
     model = discover_model(endpoint)
+    print(f"Bridge build: {BRIDGE_BUILD}")
     print(f"Bridge connected to llama.cpp: {endpoint}")
     print(f"Detected model: {model}")
     print(f"Mailbox branch: {args.branch}")
