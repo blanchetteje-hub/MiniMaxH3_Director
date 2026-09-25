@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-role-time1-518",
+  "kind": "llama_chat",
+  "started_at": 1790302323.5163717,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow classification or deterministic rule application. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY CONTEXT:\n1. A team completes field work at a remote site.\n2. Three months later the team begins analysis in a city lab.\n3. Most of this phase is repeated laboratory analysis.\n4. A final test resolves the question and the team prepares the report.\n5. One year later the team returns to the remote site.\n\nTARGET UNIT:\n1. A team completes field work at a remote site.\n\nClassify TARGET UNIT by its role in the whole story.\nAllowed roles: MAIN_BODY, TERMINAL_RESOLUTION, IMMEDIATE_CLOSURE, RESET_START.\nReturn JSON with keys role and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6yl5y9bpmbhsmrlgpjex2b",
+    "object": "chat.completion",
+    "created": 1790302323,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"role\":\"RESET_START\",\"reason\":\"The target unit marks the opening event of the narrative, initiating the sequence of actions that follow.\"}",
+          "reasoning": "We need to classify target unit \"A team completes field work at a remote site.\" as one of allowed roles: MAIN_BODY, TERMINAL_RESOLUTION, IMMEDIATE_CLOSURE, RESET_START.\n\nStory context:\n\n1. A team completes field work at a remote site.\n2. Three months later the team begins analysis in a city lab.\n3. Most of this phase is repeated laboratory analysis.\n4. A final test resolves the question and the team prepares the report.\n5. One year later the team returns to the remote site.\n\nTarget unit: first sentence, \"A team completes field work at a remote site.\" This appears as the opening event; it's the start of story. So role likely RESET_START (the beginning). MAIN_BODY would be main events? But this is initial action that sets up rest. TERMINAL_RESOLUTION is end resolution. IMMEDIATE_CLOSURE maybe closing after main body? The first sentence is at start, so \"RESET_START\".\n\nReason: It initiates the story and sets context.\n\nReturn JSON with keys role and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 215,
+      "completion_tokens": 252,
+      "total_tokens": 467,
+      "completion_tokens_details": {
+        "reasoning_tokens": 214
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790302327.7477546,
+  "status": "ok"
+}
