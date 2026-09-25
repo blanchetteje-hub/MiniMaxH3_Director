@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-chef-postmerge-keep-348",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether two adjacent rough chapters should be merged. A terminal-resolution transition may justify KEEP. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY CONTEXT:\nA chef starts normal service, refrigeration fails, ingredients are secured, and the chef spends most of the story repeatedly adapting dishes. Near the end, a final repair restores refrigeration; the chef finishes the last order and closes.\n\nLEFT CHAPTER:\nNormal service through the entire repeated adaptation process.\n\nRIGHT CHAPTER:\nFinal repair, last order, and closing.\n\nReturn exactly:\n{\"decision\":\"KEEP\",\"reason\":\"...\"}"
+    }
+  ]
+}
