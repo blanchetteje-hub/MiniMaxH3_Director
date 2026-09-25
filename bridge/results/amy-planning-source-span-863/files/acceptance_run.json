@@ -1,0 +1,248 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_zombie_house",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_zombie_house.json",
+  "benchmark_sha256": "1ca25dc3598d1541117e0cb0ea9b147d73fc8abd3f3580e6da12674757bc9491",
+  "repository_revision": "894c8472c8a00e8c95063da6fef8ec69676d0a70",
+  "created_at_utc": "2026-09-25T20:46:35Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "--generate-beats",
+    "8",
+    "--model",
+    "gpt"
+  ],
+  "exit_code": 0,
+  "capture_status": {
+    "complete": true,
+    "mode": "planning_only",
+    "expected_segments": 0,
+    "captured_segments": [],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 1,
+        "narrative_purpose": "Execute this exact authoritative story.txt chapter span.",
+        "broad_progression": "A realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.",
+        "characters_introduced": [],
+        "location": "As established by story.txt.",
+        "required_end_state": "A realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.",
+        "required_events": [
+          {
+            "id": "E1",
+            "event": "A realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.",
+            "beat_number": 1,
+            "state_effects": []
+          }
+        ],
+        "source_text": "A realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse."
+      },
+      {
+        "phase_number": 2,
+        "beat_start": 2,
+        "beat_end": 6,
+        "narrative_purpose": "Execute this exact authoritative story.txt chapter span.",
+        "broad_progression": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids. Suddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door. She retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons. The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.",
+        "characters_introduced": [],
+        "location": "As established by story.txt.",
+        "required_end_state": "The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.",
+        "required_events": [
+          {
+            "id": "E2",
+            "event": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+            "beat_number": 2,
+            "depends_on": [
+              "E1"
+            ],
+            "state_effects": [
+              {
+                "op": "set_clothing",
+                "entity": "Amy",
+                "slot": "upper",
+                "item": "tight black tank top",
+                "damage": "none"
+              },
+              {
+                "op": "set_clothing",
+                "entity": "Amy",
+                "slot": "lower",
+                "item": "denim jeans",
+                "damage": "none"
+              },
+              {
+                "op": "set_location",
+                "entity": "Amy",
+                "value": "home"
+              }
+            ]
+          },
+          {
+            "id": "E3",
+            "event": "Suddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.",
+            "beat_number": 3,
+            "depends_on": [
+              "E2"
+            ],
+            "state_effects": [
+              {
+                "op": "set_barrier_state",
+                "entity": "kitchen door window",
+                "value": "broken"
+              },
+              {
+                "op": "set_containment",
+                "entity": "Will",
+                "container": "basement",
+                "value": "contained"
+              },
+              {
+                "op": "set_containment",
+                "entity": "Amber",
+                "container": "basement",
+                "value": "contained"
+              },
+              {
+                "op": "set_barrier_state",
+                "entity": "door",
+                "value": "locked"
+              },
+              {
+                "op": "set_location",
+                "entity": "Will",
+                "value": "basement"
+              },
+              {
+                "op": "set_location",
+                "entity": "Amber",
+                "value": "basement"
+              }
+            ]
+          },
+          {
+            "id": "E4",
+            "event": "She retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.",
+            "beat_number": 4,
+            "depends_on": [
+              "E3"
+            ],
+            "state_effects": [
+              {
+                "op": "set_item_state",
+                "entity": "pistol",
+                "owner": "Amy",
+                "value": "held"
+              },
+              {
+                "op": "set_item_state",
+                "entity": "katana",
+                "owner": "Amy",
+                "value": "held"
+              },
+              {
+                "op": "set_item_state",
+                "entity": "weapons",
+                "owner": "Amy",
+                "value": "equipped"
+              }
+            ]
+          },
+          {
+            "id": "E5",
+            "event": "The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.",
+            "beat_number": 5,
+            "depends_on": [
+              "E4"
+            ],
+            "state_effects": []
+          },
+          {
+            "id": "E6",
+            "event": "The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.",
+            "beat_number": 6,
+            "depends_on": [
+              "E5"
+            ],
+            "state_effects": []
+          }
+        ],
+        "source_text": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her."
+      },
+      {
+        "phase_number": 3,
+        "beat_start": 7,
+        "beat_end": 8,
+        "narrative_purpose": "Execute this exact authoritative story.txt chapter span.",
+        "broad_progression": "Amy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.",
+        "characters_introduced": [],
+        "location": "As established by story.txt.",
+        "required_end_state": "She lets her kids out of the basement.",
+        "required_events": [
+          {
+            "id": "E7",
+            "event": "Amy kills the last of the zombies, her house now soaked in blood.",
+            "beat_number": 7,
+            "depends_on": [
+              "E6"
+            ],
+            "state_effects": [
+              {
+                "op": "set_threat_state",
+                "entity": "zombies",
+                "value": "dead"
+              },
+              {
+                "op": "set_condition",
+                "entity": "house",
+                "value": "soaked in blood"
+              }
+            ]
+          },
+          {
+            "id": "E8",
+            "event": "She lets her kids out of the basement.",
+            "beat_number": 8,
+            "depends_on": [
+              "E7"
+            ],
+            "state_effects": [
+              {
+                "op": "set_containment",
+                "entity": "Will",
+                "container": "basement",
+                "value": "free"
+              },
+              {
+                "op": "set_containment",
+                "entity": "Amber",
+                "container": "basement",
+                "value": "free"
+              }
+            ]
+          }
+        ],
+        "source_text": "Amy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement."
+      }
+    ]
+  },
+  "generated_beats_text": "# Phase 1\n1. Amy shields Will and Amber from a horde of zombies while preparing a quick breakfast on the kitchen counter.\n# Phase 2\n2. Amy cooks pancakes while Will eats cereal and Amber hums in a bright kitchen, all wearing her tight black tank top and denim jeans.\n3. Suddenly a zombie shatters the kitchen window; Amy pulls Will and Amber into the basement, then slams and locks the door behind them.\n4. She slides open a hidden compartment in her closet, retrieves a pistol and a katana, and equips both with quick precision.\n5. When the first zombie rushes through the basement door, Amy fires the pistol then decapitates it with a swift slash of the katana before it can reach them.\n6. A second zombie surges through the basement door, and Amy fires her pistol before slashing its head off with a swift strike of the katana.\n# Phase 3\n7. With a decisive slash of her katana, Amy kills the last zombie as sheets of crimson spill over every surface, soaking the house in blood.\n8. She opens the basement door wide and pulls Will and Amber up into the bright living room, their faces gleaming with relief.\n",
+  "segments": [],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "beats.txt": "generated\\beats.txt",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
