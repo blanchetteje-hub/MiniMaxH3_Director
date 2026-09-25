@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-895",
+  "kind": "llama_chat",
+  "started_at": 1790371821.3619497,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nMara buckles on her sword.\n\nTARGET UNIT:\nFor most of the night, Mara fights raiders.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-c2d7k4pk6uprl2ek1u9nmn",
+    "object": "chat.completion",
+    "created": 1790371821,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The target unit begins with an explicit time reference (“For most of the night”), indicating a time jump from the earlier action of Mara buckling her sword, which constitutes a hard reset between narrative phases.\"}",
+          "reasoning": "We need to determine if target unit begins after a hard reset relative to previous unit. Previous: \"Mara buckles on her sword.\" Target: \"For most of the night, Mara fights raiders.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent textual restart. Not inferred from typical film progression.\n\nWe have previous unit: \"Mara buckles on her sword.\" That is a single action. Target: \"For most of the night, Mara fights raiders.\" This indicates time passage (\"most of the night\") and activity change (fights). Is that a hard reset? The phrase \"for most of the night\" suggests a time jump from when she buckles to later in the night. That is an explicit time jump? It says \"For most of the night\". That implies after some time has passed, she fights raiders. So yes, it's a time jump. But we need to check if it's explicitly stated or directly entailed by two source units. The previous unit doesn't mention time; but the target unit mentions \"most of the night\" which indicates that earlier action happened at some point earlier in the night. That is a time jump. So it qualifies as hard reset.\n\nThus decision: YES. Reason: explicit time jump indicated by \"For most of the night\". Return JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 303,
+      "completion_tokens": 343,
+      "total_tokens": 646,
+      "completion_tokens_details": {
+        "reasoning_tokens": 285
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790371826.118603,
+  "status": "ok"
+}
