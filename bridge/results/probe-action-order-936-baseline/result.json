@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-action-order-936-baseline",
+  "kind": "llama_chat",
+  "started_at": 1790380039.2276678,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nShe retrieves her hidden arsenal—a pistol and a katana—from the closet in the basement, then equips both weapons.\n\nCURRENT STATE\n{\"characters\":{\"Amy\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"home\",\"accessible\":true,\"clothing\":{\"upper\":{\"item\":\"tight black tank top\",\"damage\":\"none\"},\"lower\":{\"item\":\"denim jeans\",\"damage\":\"none\"}},\"held_objects\":[\"pistol\",\"katana\"],\"equipped_objects\":[\"weapons\"],\"status\":\"alive/conscious unless stated otherwise\"},\"Will\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"},\"Amber\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"}},\"environment\":{\"barriers\":{\"kitchen door window\":{\"status\":\"broken\"},\"door\":{\"status\":\"locked\"}}}}\n\nCURRENT JOB\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nNEXT JOB\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nSTATE EFFECTS IF VALID\n[{\"id\":\"E4\",\"state_effects\":[]}]\n\nCANDIDATE BEAT\nAs a zombie lunges at her, Amy fires her pistol to sever its head, then decapitates it with the katana.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept\nparaphrases and clear implications, but require every materially required action\nor result when the job has multiple parts. PREVIOUS FINAL BEAT is history only:\nit may constrain what is possible, but it cannot satisfy, replace, or excuse any\naction or result explicitly assigned to CURRENT JOB. Every such requirement must\nbe visibly accomplished by CANDIDATE BEAT. When CURRENT JOB explicitly assigns\nan action to this beat, CANDIDATE BEAT must show that action being performed or\ncompleted in this beat. Do not infer the required action only from an aftermath,\ncondition, or state that could already have been produced by PREVIOUS FINAL BEAT.\nAn aftermath can satisfy an explicitly required result, but it cannot by itself\nsatisfy a separately required action.\n\nTEMPORAL ACTION OWNERSHIP: If CURRENT JOB assigns action X to THIS beat, require\nthe candidate to narrate X as an event that happens now. Grammar that merely\npresupposes X is already complete is INVALID evidence for X. Examples of invalid\nevidence include \"with X done\", \"with X slain\", \"after X was completed\",\n\"once X was finished\", \"X already lay dead\", or any equivalent completed-state\nconstruction. Those phrases describe the result/state after X; they do not depict\nthe assigned action occurring in this beat. Reject even when the completed state\nmatches the desired result and even when later parts of CURRENT JOB are shown\ncorrectly. Accept only if the candidate also narrates the causative action itself\n(e.g. \"Amy strikes the zombie and kills it\") in this beat.\n\nA prerequisite, approach, or partial progress is NOT completion of a later required result: if\nCURRENT JOB requires\nA then B, doing only A is invalid. Entering a room does not imply locking its\ndoor; reaching a door does not imply opening it; retrieving a weapon does not\nimply equipping it; drawing a weapon does not imply firing it. Named relational\nparticipants are material: if CURRENT JOB says an action is done for, with, or\nto named people, the candidate must preserve those named participants or their\ndirect visible participation/result. Reject a solo rewrite that drops named\nbeneficiaries or participants. Do not reject harmless visible detail.\n\nB. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as\nauthoritative history. Reject only clear contradictions or physical impossibilities,\nsuch as repeating an irreversible action, using an unavailable object, crossing a\nknown closed or locked barrier without resolving it, escaping containment without\nrelease, contradicting a known location, or reviving a dead, destroyed, removed,\nor otherwise terminal entity. Unknown is not automatically contradictory. Apply\nexplicit candidate actions in order when they change what becomes possible.\n\nC. NEXT JOB: Do not materially complete the distinct NEXT JOB early. Preparation\nand incidental overlap that naturally belongs to the current action are allowed.\nReject only when the distinct work of the next beat has actually been completed,\nincluding semantic equivalents of terminal or exhaustive results.\n\nD. TYPED STATE EFFECTS: Every listed typed effect must be supported by what\nvisibly happens in the candidate. Judge meaning, not exact verbs. Possession is\nnot automatically equipped; breaking a barrier is not automatically entering\nthrough it; a wound is not automatically death. Reject explicit contradiction or\npartial action when the assigned effect requires a complete result. Do not require\nstate effects for temporary detail that is not assigned. Any new persistent change\ncreated by the candidate must be represented by an assigned typed effect.\n\nE. MATERIAL FIDELITY: Harmless local staging is allowed, but reject invented\ndetails that materially change the assigned action, participant treatment, object\nuse, location/result, or story meaning. Named tools and weapons must be used in a\nphysically coherent way unless CURRENT JOB explicitly establishes an unusual use;\nfor example a firearm may shoot/strike but does not slash or decapitate as a blade.\nDo not invent consequential aggression, injury, forced movement, humiliation, or\nother harmful treatment of a protected/non-hostile participant merely to dramatize\nan otherwise simple assigned action. Do not reject ordinary neutral staging.\n\nOUTPUT CONTRACT\nIf valid:\n{\"valid\": true, \"issue\": \"\"}\n\nIf invalid:\n{\"valid\": false, \"issue\": \"short concrete explanation\"}\n\nReturn exactly one JSON object and no markdown. The issue value must always be a\nstring. Do not output category names, issue codes, lists, or arrays."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ud4aqn9zj9y1mqy9anq5",
+    "object": "chat.completion",
+    "created": 1790380039,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to evaluate candidate beat: \"As a zombie lunges at her, Amy fires her pistol to sever its head, then decapitates it with the katana.\"\n\nCheck against CURRENT JOB: The majority of film is Amy killing zombies as they attack her. So this beat must show Amy killing (dismembering, decapitating) zombies when they try and attack her.\n\nThe candidate shows zombie lunge at her; Amy fires pistol to sever head; then decap with katana. That satisfies kill/dismember/decap. It uses both weapons as she has them equipped? She had earlier retrieved arsenal from closet in basement, equips both weapons. So she is armed. The beat says \"fires her pistol\" and \"then decapitates it with the katana.\" That's two actions: firing pistol to sever head; then decapitate with katana.\n\nCheck A: Does candidate show action? Yes: \"fires her pistol\" (action) and \"decapitates it with the katana\" (action). Both are in beat. Good.\n\nB continuity: Zombie lunge at her, she fires pistol. She has pistol; it's in hand. No contradictions. The zombie head severed by pistol? That is plausible. Then decapitate with katana - maybe after head already separated? But decapitating again? Could be redundant but still decapitation. It's okay.\n\nC NEXT JOB: Not yet next beat, so fine.\n\nD typed state effects: We have no typed effect list given; only E4 empty. So nothing to check.\n\nE fidelity: No invented details that change meaning. She uses pistol and katana correctly. Good.\n\nThus valid. Return JSON with true.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 1456,
+      "completion_tokens": 369,
+      "total_tokens": 1825,
+      "completion_tokens_details": {
+        "reasoning_tokens": 349
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380044.6178002,
+  "status": "ok"
+}
