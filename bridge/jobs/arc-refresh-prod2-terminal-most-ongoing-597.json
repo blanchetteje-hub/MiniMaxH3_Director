@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 350,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-prod2-terminal-most-ongoing-597",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only the requested binary semantic question. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FULL STORY:\nMost of the day is spent repairing damaged panels. The last panel is repaired before shutdown.\n\nTARGET UNIT:\n1. Most of the day is spent repairing damaged panels.\n\nUse FULL STORY only to identify the central conflict/process.\nJudge only what TARGET UNIT itself explicitly accomplishes. Do not credit TARGET UNIT for a later event elsewhere in the story. An ongoing/repeated main-process statement is NO unless this unit itself explicitly completes/resolves/ends that process.\nDoes TARGET UNIT itself decisively end the central conflict/process?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
