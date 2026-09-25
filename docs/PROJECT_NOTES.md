@@ -77,102 +77,186 @@ Use:
 
 Do not preserve `phase` terminology merely for compatibility when implementing this branch.
 
-### Step 1: create the chapter outline
+### Step 1: deterministically expose authoritative source units
 
-Create a rough chapter split for the complete story.
+Do not ask the local LLM to rewrite `story.txt` into chapter prose before chaptering.
 
-The chapter outline is deliberately coarse. Its main purpose is to designate **what happens in each chapter** and preserve the story's order and coverage.
+Generated rough outlines were a demonstrated source-drift surface: on neutral probes the 20B model invented events, objects, and micro-scenes while trying to "helpfully" expand the story.
 
-A minimal conceptual shape is:
+Instead, Python exposes `story.txt` as ordered **authoritative source units** while preserving exact source text.
+
+Start with conservative sentence-sized units. Do not globally explode the story into tiny clause units; probe 379 showed that overly fine units make the chapter planner over-split.
+
+Conceptually:
+
+```json
+{
+  "source_units": [
+    {
+      "id": 1,
+      "text": "Exact contiguous text from story.txt."
+    }
+  ]
+}
+```
+
+### Step 2: refine only source units that contain an internal phase boundary
+
+A sentence-sized source unit can occasionally contain both:
+
+- an ongoing/main narrative phase; and
+- a major reset or distinct terminal-resolution phase.
+
+Do **not** ask one LLM call to select all such units. A multi-unit selector produced false positives.
+
+Instead, inspect each source unit independently with one tiny semantic decision:
+
+`SPLIT | KEEP_TOGETHER`
+
+Use a large-refresh bias:
+
+- continuous action in the same phase -> `KEEP_TOGETHER`;
+- terminal resolution plus its immediate closure/aftermath -> `KEEP_TOGETHER`;
+- major time/location/state reset -> `SPLIT`;
+- ongoing/main process followed inside the same unit by a distinct terminal-resolution phase -> `SPLIT`.
+
+If a unit returns `SPLIT`, Python enumerates exact candidate cut points from the original source text. The LLM chooses among those candidates (or `NONE`). The LLM does not rewrite either side.
+
+Candidate cut-point selection must run **only after** the unit-level gate returns `SPLIT`. Otherwise the 20B model may choose a grammatical cut merely because one is available.
+
+### Step 3: choose chapter boundaries by source-unit index
+
+After source-unit refinement, the LLM receives the ordered authoritative units and returns only chapter-boundary indices.
+
+It does not write chapter summaries.
+
+Conceptually:
+
+```json
+{
+  "new_chapter_after": [6]
+}
+```
+
+Python then builds each chapter from exact contiguous source units.
+
+Evidence across independent story shapes:
+
+- Amy benchmark shape -> one boundary before terminal resolution;
+- chef failure/adaptation story -> one boundary before final repair/closing;
+- researcher diagnostics story -> one boundary before final diagnostic/resolution;
+- explicit time/location jump -> boundary at the reset;
+- multiple major resets -> multiple returned indices;
+- one continuous repair sequence -> no boundary.
+
+This index-only approach prevents the chapter planner from inventing narrative content.
+
+A chapter therefore needs source ownership, not an LLM-authored plot outline. A minimal conceptual shape is:
 
 ```json
 {
   "chapters": [
     {
       "chapter": 1,
-      "outline": "Basic plot responsibility of this chapter."
+      "source_unit_ids": [1, 2, 3],
+      "beat_count": 6
     }
   ]
 }
 ```
 
-Do not overstuff the chapter object before evidence shows more fields are necessary.
+### Step 4: allocate beat counts after chapter spans are fixed
 
-The chapter outline is a working draft, not authority. `story.txt` remains authority.
+Chapter-boundary selection and beat allocation are separate calls.
 
-### Step 2: create beats one chapter at a time
+The total segment budget is deterministic runtime input.
 
-Start with Chapter 1.
+The allocator receives:
 
-The Beat CREATE call for a chapter has **no knowledge of anything outside that chapter**.
+- exact fixed chapter source spans;
+- total beat count;
+- source emphasis/duration language such as "most" or "majority".
 
-It may receive only what is needed to execute that enclosed chapter, such as:
+It may assign integer beat counts only. It may not move story material between chapters.
 
-- the current chapter outline;
-- the compact opening context for that chapter;
-- deterministic renderer/runtime constraints such as available segment count or segment duration.
+Across Amy-shaped, chef, and researcher controls, isolating this responsibility produced the intended 6/2 allocation for an eight-beat story whose main process occupies most of the source.
 
-It must **not** receive:
+### Step 5: create beats one chapter at a time from exact source
 
-- the previous chapter outline or prose;
-- the next chapter outline or prose;
+Beat CREATE receives:
+
+1. the exact authoritative source span for the current chapter;
+2. the compact opening context for that chapter;
+3. its exact beat budget;
+4. deterministic renderer/runtime constraints.
+
+It has **no knowledge of source material outside that chapter**.
+
+It must not receive:
+
+- the previous chapter prose;
+- the next chapter prose;
 - future beats;
-- a narrative summary of the rest of the book;
-- hidden knowledge from adjacent chapters.
+- a summary of the rest of the story;
+- an LLM-generated chapter outline that can compete with `story.txt`.
 
-The purpose is to stop the local model from solving the whole story while it is supposed to be solving one chapter.
+The assigned beats must explicitly perform the concrete source actions owned by the chapter. A later state does not prove an omitted action occurred.
 
-### Step 3: validate/repair the chapter beats against story.txt
+Creative presentation detail is allowed inside unspecified story space, but Beat CREATE remains subject to story-facing validation.
 
-The generated beats are judged against **`story.txt`**, not against the rough chapter outline.
+### Step 6: validate/repair chapter beats against authoritative source
 
-The story-facing validator/repairer may use `story.txt` because it is enforcing the source of truth.
+The validator receives the authoritative current chapter source and may also receive explicit later-chapter responsibility when needed to enforce scope.
 
-If the beats fit the story better than the rough chapter outline, **change the chapter outline**.
+A compact combined validator is currently preferred over several overlapping semantic subsystems. Its demonstrated responsibilities are:
 
-Repair until the chapter's beats:
+1. **required action coverage** — every concrete assigned source action must actually happen;
+2. **material source fidelity** — harmless presentation detail is allowed, but material changes to events, plot-relevant objects, relationships, protected/danger state, location significance, or outcome are not;
+3. **chapter ownership** — later-chapter responsibility may not happen early.
 
-- perform the story events assigned to that part of the story;
-- do not invent material events outside the story;
-- do not steal events that belong to a later chapter;
-- form a usable sequence of H3 segments;
-- begin from the supplied chapter opening context.
+Return the first issue with a small machine-readable category such as:
 
-The rough outline exists to organize the work; it is not a contract that can overrule the story.
+- `MISSING_ACTION`
+- `MATERIAL_DEVIATION`
+- `CHAPTER_SCOPE`
 
-### Step 4: treat every next chapter as enclosed
+Repair only the demonstrated issue, then validate again.
 
-When moving to Chapter N+1, the chapter planner does not receive Chapter N or Chapter N+2.
+### Step 7: build later-chapter opening context from canonical state
 
-As far as its creative/beat-generation calls are concerned, Chapter N+1 is an enclosed unit.
+A later chapter remains enclosed.
 
-It receives:
+Do not ask the LLM to rewrite continuity prose. That caused state mutation.
 
-1. its own chapter outline; and
-2. a compact description of **how this chapter starts**.
+Instead:
 
-That opening context should contain only the minimum established facts necessary to continue correctly: location, subject state, held objects, injuries, important environment state, or other continuity that materially affects the first beat.
+- Python owns persistent Subject identity/appearance and canonical established state;
+- Python automatically exposes current visible continuity that must survive a refresh, such as clothing, held objects, visible substances/injuries, and relevant visible environment aftermath;
+- a tiny semantic selector may choose additional transient/current facts by **fact ID only** when the whole enclosed chapter needs them, for example the location of people waiting behind a secured door;
+- mere history is excluded.
 
-Do not dump the previous chapter into the prompt.
+The LLM returns IDs, not rewritten facts. Python copies the authoritative fact text.
 
-Opening-context sufficiency is empirical: start minimal, run the chapter, and add only the missing beginning facts demonstrated by failures.
+The design target remains:
 
-### LLM call decomposition
+> Know more internally; expose only what this chapter needs.
 
-There is no requirement to preserve the old number or arrangement of LLM calls.
+### Current LLM call decomposition
 
-Break the work into as many narrow calls as makes sense for the local model. A likely starting decomposition is:
+The current evidence-supported decomposition is:
 
-1. STORY -> CHAPTERS CREATE
-2. STORY + CHAPTERS -> CHAPTERS VALIDATE/REPAIR, only as much as needed for coverage/order
-3. CURRENT CHAPTER + OPENING CONTEXT -> BEATS CREATE
-4. STORY + CURRENT CHAPTER + CANDIDATE BEATS -> BEATS VALIDATE
-5. STORY + CURRENT CHAPTER + CANDIDATE BEATS + ISSUE -> BEATS REPAIR
-6. accepted beat -> H3 scene/prompt work, split into narrow calls when useful
+1. Python: `story.txt -> authoritative source units`
+2. each source unit -> internal `SPLIT | KEEP_TOGETHER`
+3. only for `SPLIT` units: exact candidate cut points -> choose cut
+4. refined source units -> chapter-boundary indices
+5. fixed chapter spans + total segment budget -> beat-count allocation
+6. current exact chapter source + opening context + beat budget -> BEATS CREATE
+7. authoritative chapter source + candidate beats -> BEATS VALIDATE
+8. authoritative chapter source + candidate beats + issue -> BEATS REPAIR
+9. Python canonical state + next chapter -> fact-ID selection / refresh-context composition
+10. accepted beats -> downstream H3 scene/prompt work
 
-This is a starting hypothesis, not a locked architecture.
-
-Do not reintroduce old ARC/BEATS machinery simply because it already exists in code.
+Each LLM call should remain narrow. Do not combine these responsibilities merely to reduce call count.
 
 ## Beat budgets and the Amy acceptance chapter boundary
 
@@ -243,7 +327,7 @@ What it notably does **not** need:
 
 This is the baseline rule for later chapters:
 
-> Give the new chapter the smallest set of already-established facts needed to render and continue its first beat correctly.
+> Give the new chapter the smallest authoritative current-state context needed to execute the whole enclosed chapter correctly, while Python separately preserves visible continuity required by the refresh.
 
 Treat those categories as empirical guidance, not as a rigid schema. Add another opening-context fact only when a real failure shows the chapter needed it.
 
