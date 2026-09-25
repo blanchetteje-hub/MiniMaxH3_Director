@@ -253,3 +253,67 @@ def test_refine_source_units_keeps_continuous_unit_without_cut_call():
 
     assert [unit.text for unit in refined] == [story]
     assert calls == ["source_unit_split_gate"]
+
+
+
+def test_build_story_plan_produces_amy_six_two_and_strict_ownership():
+    from story_planner import build_story_plan
+
+    story = (
+        "Amy cooks breakfast for Will and Amber. "
+        "A zombie breaks the kitchen door window; Amy gets Will and Amber into "
+        "the basement and locks the door. "
+        "Amy retrieves her hidden pistol and katana and equips them. "
+        "The majority of the film is Amy killing zombies as they attack. "
+        "Amy kills the last zombie and the house is soaked in blood. "
+        "Amy lets Will and Amber out of the basement."
+    )
+
+    def fake_llm(messages, **kwargs):
+        metadata = kwargs["history_metadata"]
+        purpose = metadata["purpose"]
+        unit_id = metadata["source_unit_id"]
+        if purpose == "source_unit_split_gate":
+            return {"decision": "KEEP_TOGETHER", "reason": "single phase"}
+        if purpose == "source_unit_terminal":
+            return {
+                "decision": "YES" if unit_id == 5 else "NO",
+                "reason": "terminal only at the last-zombie unit",
+            }
+        if purpose == "source_unit_hard_reset":
+            return {"decision": "NO", "reason": "continuous story"}
+        raise AssertionError(purpose)
+
+    plan = build_story_plan(story, 8, fake_llm)
+
+    assert [chapter.source_unit_ids for chapter in plan.chapters] == [
+        (1, 2, 3, 4),
+        (5, 6),
+    ]
+    assert [chapter.beat_count for chapter in plan.chapters] == [6, 2]
+    assert plan.chapters[0].beat_source_unit_ids == (
+        (1,), (2,), (3,), (4,), (4,), (4,)
+    )
+    assert plan.chapters[1].beat_source_unit_ids == ((5,), (6,))
+    assert plan.total_beats == 8
+
+
+def test_build_story_plan_does_not_invent_repeatability_for_surplus_beats():
+    from story_planner import build_story_plan
+
+    story = "A worker inspects the room. The worker closes the door."
+
+    def fake_llm(messages, **kwargs):
+        purpose = kwargs["history_metadata"]["purpose"]
+        if purpose == "source_unit_split_gate":
+            return {"decision": "KEEP_TOGETHER", "reason": "continuous"}
+        if purpose == "source_unit_terminal":
+            return {"decision": "NO", "reason": "no central terminal distinction"}
+        if purpose == "source_unit_hard_reset":
+            return {"decision": "NO", "reason": "continuous"}
+        raise AssertionError(purpose)
+
+    plan = build_story_plan(story, 3, fake_llm)
+
+    assert [chapter.beat_count for chapter in plan.chapters] == [3]
+    assert plan.chapters[0].beat_source_unit_ids is None
