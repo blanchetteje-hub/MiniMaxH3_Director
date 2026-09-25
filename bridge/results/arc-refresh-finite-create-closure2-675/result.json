@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-finite-create-closure2-675",
+  "kind": "llama_chat",
+  "started_at": 1790354744.7026086,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Turn finite authoritative source material into a fixed number of minimal chronological 8-second beat jobs. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FINITE AUTHORITATIVE SOURCE:\nMara neutralizes the final hazard, leaving the room soaked from the cleanup system. Mara opens the safe room and lets the waiting children out.\n\nBEAT COUNT: 2\nCreate exactly 2 beat jobs.\nEvery concrete visible action/state must appear in source order.\nAdjacent actions may share a beat when natural. A long finite chain may continue into the next beat at a natural handoff.\nDo not invent new objects, characters, locations, outcomes, dialogue, camera work, or specific events not stated by the source.\nKeep each job minimal and source-level.\nReturn exactly {\"beats\":[{\"beat_number\":1,\"beat_job\":\"...\"}]} with 2 consecutive entries."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ejhnhxv0z46qsa4cu95k3c",
+    "object": "chat.completion",
+    "created": 1790354744,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"beats\":[{\"beat_number\":1,\"beat_job\":\"Mara neutralizes the final hazard; the room is left soaked from the cleanup system.\"},{\"beat_number\":2,\"beat_job\":\"Mara opens the safe room and lets the waiting children out.\"}]}",
+          "reasoning": "We need to produce JSON only: {\"beats\":[{...},{...}]}.\n\nBeat count 2. Source text:\n\n\"Mara neutralizes the final hazard, leaving the room soaked from the cleanup system. Mara opens the safe room and lets the waiting children out.\"\n\nActions in order:\n1) Mara neutralizes the final hazard.\n2) The room becomes soaked from the cleanup system (state).\n3) Mara opens the safe room.\n4) She lets the waiting children out.\n\nWe need to group into 2 beats, adjacent actions may share a beat when natural. So maybe Beat 1: \"Mara neutralizes the final hazard\" and \"the room is left soaked\". Beat 2: \"Mara opens the safe room and lets the waiting children out.\" That seems natural.\n\nBeat jobs minimal source-level. Each job string should describe those actions in order, no extra objects etc.\n\nSo beat_job for beat1: \"Mara neutralizes the final hazard; the room is left soaked from the cleanup system.\"\n\nbeat2: \"Mara opens the safe room and lets the waiting children out.\"\n\nReturn JSON accordingly. Ensure exactly 2 entries.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 238,
+      "completion_tokens": 298,
+      "total_tokens": 536,
+      "completion_tokens_details": {
+        "reasoning_tokens": 234
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354749.3772879,
+  "status": "ok"
+}
