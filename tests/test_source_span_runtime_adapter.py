@@ -261,9 +261,9 @@ def test_source_unit_state_effects_attach_only_to_final_assigned_beat():
         state_effects_by_unit={
             4: [
                 {
-                    "op": "set_condition",
+                    "op": "set_threat_state",
                     "entity": "zombies",
-                    "value": "attacking",
+                    "value": "active",
                 }
             ],
             5: [
@@ -281,9 +281,9 @@ def test_source_unit_state_effects_attach_only_to_final_assigned_beat():
     assert chapter1[4]["state_effects"] == []
     assert chapter1[5]["state_effects"] == [
         {
-            "op": "set_condition",
+            "op": "set_threat_state",
             "entity": "zombies",
-            "value": "attacking",
+            "value": "active",
         }
     ]
     assert arc["phases"][1]["required_events"][0]["state_effects"] == [
