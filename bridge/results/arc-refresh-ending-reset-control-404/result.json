@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-ending-reset-control-404",
+  "kind": "llama_chat",
+  "started_at": 1790298500.5060668,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide whether one source unit should stay in one large chapter or be split. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nOne final analysis resolves the research question. Six months later, the geologist begins a new expedition in another country.\n\nAn ending action followed by a major time and location reset may require a split.\n\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys \"decision\" and \"reason\"."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-04fwmc7zf2kbx0bqxlngr8f",
+    "object": "chat.completion",
+    "created": 1790298500,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"SPLIT\",\"reason\":\"The source unit contains an ending action—one final analysis resolving the research question—followed by a significant time jump (six months later) and a new geographic setting, which suggests it should be split for clearer narrative flow.\"}",
+          "reasoning": "We need to decide whether this source unit should stay together or be split. The source unit is:\n\n\"One final analysis resolves the research question. Six months later, the geologist begins a new expedition in another country.\"\n\nThis contains two events: one final analysis resolving the research question; then six months later, the geologist starts a new expedition elsewhere.\n\nThe instruction says: \"An ending action followed by a major time and location reset may require a split.\" Indeed we have an ending action (final analysis resolves) followed by a major time jump (six months later) and location change (another country). So likely split into two units. The decision is SPLIT.\n\nWe need to output JSON with keys \"decision\" and \"reason\". Reason: because the unit contains an ending action followed by a significant time and location reset, which suggests splitting for clarity.\n\nThus:\n\n{\n  \"decision\": \"SPLIT\",\n  \"reason\": \"The source unit includes an ending action (final analysis resolves) followed by a major time jump of six months and a change in location to another country; this warrants splitting into two units.\"\n}\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 158,
+      "completion_tokens": 296,
+      "total_tokens": 454,
+      "completion_tokens_details": {
+        "reasoning_tokens": 231
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790298505.2641957,
+  "status": "ok"
+}
