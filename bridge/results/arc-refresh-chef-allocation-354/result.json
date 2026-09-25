@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-chef-allocation-354",
+  "kind": "llama_chat",
+  "started_at": 1790296596.3039014,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Allocate a fixed beat budget across fixed chapters. Preserve chapter boundaries. Source-emphasized duration controls allocation. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "TOTAL BEATS: 8\n\nCHAPTER 1:\nNormal service, failure, securing ingredients, and the repeated adaptation process explicitly described as MOST of the story.\n\nCHAPTER 2:\nFinal repair, last order, and closing.\n\nReturn exactly:\n{\"chapter1\":0,\"chapter2\":0}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-tiwbtk7v1slhvp0cv0vldh",
+    "object": "chat.completion",
+    "created": 1790296596,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"chapter1\":6,\"chapter2\":2}",
+          "reasoning": "We need to allocate beats across chapters. Total beats:8. Chapter boundaries fixed. Source-emphasized duration controls allocation. The user says \"Normal service, failure, securing ingredients, and the repeated adaptation process explicitly described as MOST of the story.\" That is chapter 1 content. So majority of beats should go to chapter 1. Then chapter2 has final repair, last order, closing.\n\nWe need to decide how many beats each gets. Most of the story: maybe 6 beats for chapter1 and 2 beats for chapter2? Or 7/1? \"MOST\" could be >50%. Let's allocate 6 beats to chapter1, 2 to chapter2. That sums to 8.\n\nReturn JSON exactly {\"chapter1\":0,\"chapter2\":0} but with numbers: {\"chapter1\":6,\"chapter2\":2}. Ensure no extra spaces? They said Return exactly: {\"chapter1\":0,\"chapter2\":0}. So we need that format, just replace zeros. Probably keep same spacing: after colon no space before number? In example they had 0 directly. We'll use numbers without spaces.\n\nThus output: {\"chapter1\":6,\"chapter2\":2}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 160,
+      "completion_tokens": 266,
+      "total_tokens": 426,
+      "completion_tokens_details": {
+        "reasoning_tokens": 245
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790296600.6804073,
+  "status": "ok"
+}
