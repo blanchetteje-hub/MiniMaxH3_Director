@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-action-ownership-validator-343",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate whether every concrete action assigned to the current chapter is actually narrated as happening in the candidate beats. A later state does not prove an omitted action occurred. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nMara opens the closet, takes the red backpack and the flashlight, puts on the red backpack, and carries the flashlight into the hallway.\n\nCANDIDATE:\nBeat 1: Mara opens the closet and takes the red backpack.\nBeat 2: Mara puts on the red backpack and carries the flashlight into the hallway.\n\nThe candidate never narrates Mara taking the flashlight; it only shows her carrying it later.\n\nReturn exactly:\n{\"valid\":false,\"issue\":\"...\"}"
+    }
+  ]
+}
