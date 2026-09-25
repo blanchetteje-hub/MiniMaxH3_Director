@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-mixed-unit-scan-multi-398",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Identify authoritative source units that internally cross a major H3 chapter boundary. Return unit IDs only; do not rewrite source. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNITS:\n1. The survey team finishes a week of field work, then three months later reunites in a city laboratory.\n2. They begin analyzing the collected material through several related tests.\n3. The analysis occupies most of the story, then one final test establishes the answer and the team closes the project.\n4. The team celebrates together that evening.\n\nFlag a unit only if that single unit internally contains both sides of a major time/location/state reset or both an ongoing/main process and a distinct terminal-resolution phase.\n\nReturn a JSON object with key \"split_unit_ids\", an array of unit numbers."
+    }
+  ]
+}
