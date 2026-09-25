@@ -526,3 +526,27 @@ Use the current branch head as authoritative; do not rely on stale SHA values in
 4. Commit focused changes to `gpt-arc-refresh`.
 5. Run targeted tests/probes.
 6. Progress toward the locked gold benchmark.
+
+
+## Implemented source-span planner contract
+
+The production planner implementation now follows the empirically proven ownership split:
+
+LLM semantic calls:
+1. per sentence-sized source unit: SPLIT or KEEP_TOGETHER;
+2. only after SPLIT: choose one Python-enumerated exact cut point or NONE;
+3. per refined source unit: TERMINAL YES/NO;
+4. per refined source unit after unit 1: HARD_RESET YES/NO.
+
+Python structural work:
+1. preserve exact offsets/text from story.txt;
+2. renumber refined source units deterministically;
+3. create a boundary before HARD_RESET units;
+4. create a terminal/closure chapter only when a terminal unit has a later non-reset closure unit;
+5. keep a final terminal unit in its current chapter;
+6. keep a terminal unit with its phase when the next unit is a hard reset, splitting only at the reset;
+7. build chapter text by slicing the original story, never by LLM rewriting;
+8. allocate one minimum beat per authoritative source unit, then allocate surplus capacity to explicitly emphasized chapters;
+9. assign source units monotonically to beats; only explicitly repeatable source units may repeat.
+
+Do not ask the LLM to execute these deterministic rules. Probe 565 demonstrated that even with correct flags it could invent a third chapter and produce 6/1/1 instead of the deterministic Amy 6/2 result.
