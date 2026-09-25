@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-rawspan-amy-allocation-371",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Allocate a fixed beat budget across fixed chapter source spans. Do not move source material between chapters. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "TOTAL BEATS: 8\n\nCHAPTER 1 SOURCE:\nAmy is at home on a normal day, cooking breakfast for Will and Amber.\nA zombie breaks the kitchen door window; Amy sees the danger and rushes Will and Amber into the basement and locks the door.\nAmy retrieves her hidden pistol and katana and equips them.\nThe majority of the story is Amy fighting attacking zombies.\n\nCHAPTER 2 SOURCE:\nAmy kills the last zombie; the house is now soaked in blood.\nAmy lets Will and Amber out of the basement.\n\nAllocate all 8 beats. Source-emphasized duration matters. Every chapter must receive at least one beat.\n\nReturn JSON with key \"beat_counts\", whose value is an array of two integers in chapter order."
+    }
+  ]
+}
