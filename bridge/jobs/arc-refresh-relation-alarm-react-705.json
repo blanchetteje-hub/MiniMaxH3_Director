@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 650,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-relation-alarm-react-705",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Classify only the concrete local relationship between two adjacent source responsibilities. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nAn alarm sounds and a warning light begins flashing.\n\nRIGHT:\nThe technician immediately crosses to the nearby control panel and shuts the system down.\n\nChoose the single best relationship of RIGHT to LEFT:\nSAME_ACTION = RIGHT continues the same concrete action/process on the same local task.\nIMMEDIATE_REACTION = LEFT introduces a new event/change and RIGHT is the immediate response to that new event.\nDIRECT_COMPLETION = RIGHT directly uses, finishes, or equips what LEFT just obtained/opened/started as one small local sequence.\nNEW_TASK = LEFT reaches a usable stopping point and RIGHT begins a distinct local action/objective.\nJudge the local actions, not the characters' overall goal or story goal.\nReturn exactly {\"relation\":\"SAME_ACTION|IMMEDIATE_REACTION|DIRECT_COMPLETION|NEW_TASK\"}."
+    }
+  ]
+}
