@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-compact-v2-979",
+  "kind": "llama_chat",
+  "started_at": 1790380513.7728875,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nA third zombie advances—Amy slashes its neck with the katana after a quick shot to weaken it.\n\nCURRENT STATE\n{\"characters\":{\"Amy\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"home\",\"accessible\":true,\"clothing\":{\"upper\":{\"item\":\"tight black tank top\",\"damage\":\"none\"},\"lower\":{\"item\":\"denim jeans\",\"damage\":\"none\"}},\"held_objects\":[\"pistol\",\"katana\"],\"equipped_objects\":[\"weapons\"],\"status\":\"alive/conscious unless stated otherwise\"},\"Will\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"},\"Amber\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"}},\"environment\":{\"barriers\":{\"kitchen door window\":{\"status\":\"broken\"},\"door\":{\"status\":\"locked\"}}}}\n\nCURRENT JOB\nAmy kills the last of the zombies, her house now soaked in blood.\n\nNEXT JOB\nShe lets her kids out of the basement.\n\nSTATE EFFECTS IF VALID\n[{\"id\":\"E7\",\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombies\",\"value\":\"dead\"},{\"op\":\"set_condition\",\"entity\":\"house\",\"value\":\"soaked in blood\"}]}]\n\nCANDIDATE BEAT\nAmy cuts through the last zombie's neck with the katana, killing it; blood sprays across the already blood-soaked house.\n\nCHECKS\n1. Read actions literally in order and carry each stated result forward. Reject\nrepeating a completed removal on the same target or part unless it was restored.\nDifferent targets and failed attempts are different cases. Do not excuse a\ncontradiction as emphasis or invent an intervening action.\n2. Use only established facts from PREVIOUS FINAL BEAT and CURRENT STATE.\nAn injury does not establish death. An earlier target is not automatically the\nlast target. Reject unavailable objects and unresolved barriers; unknown facts\nalone are not errors.\n3. CURRENT JOB must happen now, including every required action, result, and\nnamed participant. Already-completed-state wording cannot replace an assigned\naction. Allow neutral staging, but reject material changes to tools, participants,\nlocations, or outcomes. Ordinary impacts cannot transform an entire solid body\ninto liquid or another material without an explicitly established capability.\nHonor unusual capabilities established by CURRENT JOB or CURRENT STATE.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Check only the listed STATE EFFECTS: each must follow from visible candidate\nactions. An empty effects list imposes no additional requirements. Do not demand\nnew effect records for unlisted details.\n\nReturn one JSON object: valid is a boolean; issue is a short concrete error or\nan empty string when valid. Any clear error makes valid false."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-9o4zdbu62n6pjx2potsil",
+    "object": "chat.completion",
+    "created": 1790380513,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Repeats removing the last zombie’s neck, a completed action from the previous beat\"}",
+          "reasoning": "We need to validate candidate beat against checks and state effects. Candidate beat: \"Amy cuts through the last zombie's neck with the katana, killing it; blood sprays across the already blood-soaked house.\"\n\nCheck 1: Actions literally in order. Amy cuts through last zombie's neck with katana -> kills it. Blood sprays across already blood-soaked house. That matches previous final beat? Previous final beat said \"Amy slashes its neck with the katana after a quick shot to weaken it.\" So that was third zombie, she slashed neck. Now candidate says cuts through last zombie's neck with katana killing it; blood sprays across already blood-soaked house. That's consistent: last zombie is same as third? It could be. No repetition of removal on same target unless restored. The previous beat removed the third zombie's neck. That was a removal action. This new beat also removes its neck again? Wait, \"last zombie\" might refer to that same one or maybe another. But if it's the last zombie, and we already killed it in previous final beat, then this would be repeating removal on same target (the neck). The check says: Reject repeating a completed removal on the same target or part unless restored. So is the neck removed? In previous beat, Amy slashes its neck with katana after quick shot to weaken it. That implies she cut the neck; that likely killed zombie. So last zombie's neck was already cut. Now candidate again cuts through last zombie's neck: that's repeating removal on same target (the neck). Unless the neck was restored? No. So this is a repetition of removal action on same part, which should be rejected.\n\nBut maybe \"last zombie\" refers to third zombie; but it's still the same one. The previous beat removed its neck. So yes repeated removal. Check 1 says reject repeating completed removal unless restored. So candidate beat invalid.\n\nCheck 2: Use only established facts from PREVIOUS FINAL BEAT and CURRENT STATE. We have Amy has katana, zombies alive? Zombies entity not listed but we know last zombie exists. Blood-soaked house is already in current job. The action kills it; blood sprays across already blood-soaked house. That matches.\n\nCheck 3: Current job must happen now including every required action, result, named participant. Already-completed-state wording cannot replace assigned action. So \"Amy cuts through the last zombie's neck with katana\" is an action that hasn't been done yet? But previous beat had her slashing its neck; but that's same removal. The current job says Amy kills the last of zombies, house soaked in blood. That includes killing last zombie and house soaked. Candidate beat does kill last zombie (killing it). House already soaked from earlier. So okay.\n\nCheck 4: Do not complete distinct next job early. Next job is letting kids out; not relevant.\n\nState effects: E7 set_threat_state zombies dead, set_condition house soaked in blood. The candidate beat kills the last zombie -> all zombies dead? Yes. House soaked already. So state effect satisfied.\n\nThus main issue: repeated removal of neck. So valid false with error \"Repeated removal of same target part\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 797,
+      "completion_tokens": 685,
+      "total_tokens": 1482,
+      "completion_tokens_details": {
+        "reasoning_tokens": 651
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380523.1387546,
+  "status": "ok"
+}
