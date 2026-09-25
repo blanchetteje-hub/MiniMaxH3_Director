@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 800,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-merge2-attack-escape-639",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Make one narrow 8-second beat-grouping decision. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger.\n\nRIGHT:\nShe rushes her kids to the basement, gets them inside, and then locks the door.\n\nCan every concrete visible action/state in LEFT and RIGHT fit naturally in one 8-second video beat?\nMERGE only for one immediate continuous action chain or natural setup/completion chain.\nKEEP_SEPARATE if they are distinct tasks/phases, if the left is a calm baseline before a new danger/change, if combining would compress required actions, or if RIGHT is explicitly long/repeated.\nReturn exactly {\"decision\":\"MERGE|KEEP_SEPARATE\"}."
+    }
+  ]
+}
