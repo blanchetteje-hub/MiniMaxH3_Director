@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-timejump1-496",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE STORY UNITS:\n1. A team completes field work at a remote site.\n2. Three months later the team begins analysis in a city lab.\n3. Most of this phase is repeated laboratory analysis.\n4. A final test resolves the question and the team prepares the report.\n5. One year later the team returns to the remote site.\n\nCANDIDATE BOUNDARY:\nAfter unit 1.\n\nMajor time/location/state resets require a new LARGE H3 chapter.\nChoose: BOUNDARY or NO_BOUNDARY.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
