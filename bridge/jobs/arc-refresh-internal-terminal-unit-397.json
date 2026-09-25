@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-internal-terminal-unit-397",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide whether one authoritative source unit should be split across two large H3 chapters. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nOne final laboratory test resolves the research question, and the geologist prepares the report for the team.\n\nA split is appropriate only if this one source unit contains a major reset or crosses from an ongoing main process into a distinct new phase.\n\nChoose one decision from: SPLIT, KEEP_TOGETHER.\nReturn a JSON object with keys \"decision\" and \"reason\"."
+    }
+  ]
+}
