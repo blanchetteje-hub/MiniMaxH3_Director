@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-job-visible-626",
+  "kind": "llama_chat",
+  "started_at": 1790351702.9894915,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source unit only. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\n\nQuestion: Does this unit itself require a concrete visible beat responsibility?\nYES = it explicitly contains a visible action/state that must happen on screen.\nNO = it is only premise/genre/summary framing and adds no separate visible action/state.\nDo not judge pacing or other units.\nReturn {\"decision\":\"YES|NO\",\"reason\":\"...\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-old363w6hhbhs4lzk0ogxq",
+    "object": "chat.completion",
+    "created": 1790351703,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The source unit is a brief summary of the film’s premise and does not specify any particular visible action or state that must occur on screen.\"}",
+          "reasoning": "We need to decide if the source unit itself requires a concrete visible beat responsibility. The unit: \"A realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\" This is a premise/summary framing; it doesn't specify a particular visible action or state that must happen on screen. It's just describing the overall plot. So answer NO.\n\nReturn JSON with decision:\"NO\" reason: \"The unit only provides a general premise, no specific beat.\"\n\n",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 178,
+      "completion_tokens": 146,
+      "total_tokens": 324,
+      "completion_tokens_details": {
+        "reasoning_tokens": 100
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790351705.4974427,
+  "status": "ok"
+}
