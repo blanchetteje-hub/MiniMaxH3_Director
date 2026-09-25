@@ -816,3 +816,117 @@ def plan_story_chapters(
     )
     chapters = build_chapter_spans(story, units)
     return units, chapters
+
+
+_EXPLICIT_REPEATABLE_PATTERNS = (
+    re.compile(r"\bmajority\b", re.IGNORECASE),
+    re.compile(r"\bmost\s+of\b", re.IGNORECASE),
+    re.compile(r"\brepeatedly\b", re.IGNORECASE),
+    re.compile(r"\bthroughout\b", re.IGNORECASE),
+    re.compile(r"\bover\s+and\s+over\b", re.IGNORECASE),
+)
+
+
+@dataclass(frozen=True)
+class PlannedChapter:
+    """One fixed chapter with deterministic beat budget/source ownership."""
+
+    chapter: int
+    source_unit_ids: tuple[int, ...]
+    source_text: str
+    beat_count: int
+    beat_source_unit_ids: tuple[tuple[int, ...], ...] | None
+
+
+@dataclass(frozen=True)
+class StoryPlan:
+    """Complete source-authoritative planning result."""
+
+    source_units: tuple[SourceUnit, ...]
+    chapters: tuple[PlannedChapter, ...]
+
+    @property
+    def total_beats(self) -> int:
+        return sum(chapter.beat_count for chapter in self.chapters)
+
+
+def explicit_repeatable_source_unit_ids(
+    units: Sequence[SourceUnit],
+) -> list[int]:
+    """Return units whose own source wording explicitly authorizes repetition."""
+
+    result = []
+    for unit in units:
+        if any(pattern.search(unit.text) for pattern in _EXPLICIT_REPEATABLE_PATTERNS):
+            result.append(unit.id)
+    return result
+
+
+def build_story_plan(
+    story: str,
+    total_beats: int,
+    llm_request,
+    *,
+    history_metadata: dict | None = None,
+    sampling_parameters: dict | None = None,
+) -> StoryPlan:
+    """Build the full deterministic source/chapter/beat-budget plan.
+
+    Beat/source ownership is made explicit when Python can prove it from
+    one-beat-per-unit coverage plus source-authorized repeatability. If a
+    chapter has surplus beats but no explicit repeatable source unit, its
+    ownership is left unset for the later chapter Beat CREATE step rather than
+    inventing a repetition rule.
+    """
+
+    units, chapter_spans = plan_story_chapters(
+        story,
+        llm_request,
+        history_metadata=history_metadata,
+        sampling_parameters=sampling_parameters,
+    )
+    repeatable = explicit_repeatable_source_unit_ids(units)
+    beat_counts = allocate_chapter_beats(
+        chapter_spans,
+        total_beats,
+        emphasized_source_unit_ids=repeatable,
+    )
+
+    planned = []
+    repeatable_set = set(repeatable)
+    for chapter, beat_count in zip(chapter_spans, beat_counts):
+        chapter_repeatable = [
+            unit_id
+            for unit_id in chapter.source_unit_ids
+            if unit_id in repeatable_set
+        ]
+        assignments = None
+        if beat_count == len(chapter.source_unit_ids) or chapter_repeatable:
+            assignments = tuple(
+                assign_source_units_to_beats(
+                    chapter.source_unit_ids,
+                    beat_count,
+                    repeatable_source_unit_ids=chapter_repeatable,
+                )
+            )
+
+        planned.append(
+            PlannedChapter(
+                chapter=chapter.chapter,
+                source_unit_ids=chapter.source_unit_ids,
+                source_text=chapter.source_text,
+                beat_count=beat_count,
+                beat_source_unit_ids=assignments,
+            )
+        )
+
+    result = StoryPlan(
+        source_units=tuple(units),
+        chapters=tuple(planned),
+    )
+    if result.total_beats != int(total_beats):
+        raise ValueError(
+            f"Story plan allocated {result.total_beats} beats; expected "
+            f"{int(total_beats)}."
+        )
+    return result
