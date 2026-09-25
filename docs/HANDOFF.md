@@ -14,6 +14,41 @@ Active development branch:
 
 `gpt-arc-refresh`
 
+## Current status snapshot — 2026-09-25
+
+Latest accepted planning run inspected: **job 935** (`amy-planning-hard-reset-stable-935`).
+
+Current local 20B result:
+- source-span planner stayed active;
+- Amy planned as exactly **2 chapters / 6 + 2 beats**;
+- no inferred split before the repeated-combat section;
+- Beat 1 required 5 validator attempts and Beat 2 required 4, demonstrating that the local validate/repair loop is actively correcting missing actions and next-job leakage;
+- final accepted beats are structurally/source aligned enough to continue forward, though prompt-quality work remains.
+
+Recent classifier stabilization:
+- premise/framing no longer consumes a beat or creates a false reset;
+- HARD_RESET must be source-explicit rather than inferred from cinematic convention;
+- duration wording such as “for most of the night” is not itself a time jump;
+- ordinary movement into another room/building is not itself a narrative reset;
+- the revised HARD_RESET contract scored **20/20** on the latest adversarial cross-genre follow-up batch.
+
+Recent beat-validator refinement:
+- material-fidelity guidance was restored inside the existing single validator;
+- it now rejects demonstrated failures such as invented props, materially changed participant treatment, and incoherent object use;
+- do not create a separate fidelity subsystem unless a real failure proves the single validator insufficient.
+
+Important commits:
+- `0764c96` clarify premise handling in chapter classifiers
+- `861073b` restore material fidelity check to beat validator
+- `a49788e` require source-explicit hard resets
+- `82ffecb` distinguish duration and ordinary movement from hard resets
+
+Immediate next step:
+1. inspect/grade the final accepted beat text from job 935 against the locked Amy gold;
+2. if planning remains acceptable, advance from planning-only acceptance toward full H3 prompt generation;
+3. fix only the earliest observed local-runtime failure;
+4. keep all production behavior generic across genres; Amy/zombies are an acceptance fixture, not production logic.
+
 
 ## Ultimate goal
 
@@ -31,16 +66,18 @@ Chapter outlines, beats, continuity, and other intermediate artifacts are revisa
 
 ## Current architecture
 
-The new model is chapter-first:
+The active implementation is source-span chapter-first:
 
-1. Split the complete story into rough chapters.
-2. In `story_arc.json`, use `chapters`, not `phases`.
-3. Generate beats for one chapter at a time.
-4. Beat CREATE receives only the current chapter plus the minimum opening context/runtime constraints. It has no adjacent-chapter knowledge.
-5. Validate/repair those beats against `story.txt`, not against the rough chapter outline.
-6. The chapter outline may change if the beats fit the source story better.
-7. Each later chapter is treated as enclosed and receives only a compact description of how it begins.
-8. Use as many narrow LLM calls as prove useful. Do not reproduce the old call graph by habit.
+1. Python enumerates exact sentence-sized `SourceUnit` spans from `story.txt`.
+2. A local 20B LLM makes only narrow semantic decisions: internal SPLIT/KEEP_TOGETHER where legal cuts exist, TERMINAL, HARD_RESET, visible responsibility, local grouping, source-state extraction, beat generation, and beat validation/repair.
+3. Python deterministically owns exact cuts, chapter boundaries, beat arithmetic, source/beat ownership, state application, and refresh scheduling.
+4. Chapter text is always sliced from authoritative `story.txt`; the LLM does not rewrite chapter outlines.
+5. Visible finite responsibilities are grouped locally; explicit repeated/emphasized source material may receive surplus beats.
+6. Beats are generated one chapter at a time from exact authoritative source plus compact opening context and an exact beat budget.
+7. The single forward validator checks current-job completion, continuity/possibility, next-job leakage, typed state effects, and material fidelity; rejected beats are regenerated and revalidated.
+8. Later chapter opening context is composed from Python-owned CURRENT state, not historical recap or an LLM relevance pass.
+9. Source-span chapter starts determine H3 refresh points. The compatibility arc may still serialize as `phases`; logical chapter ownership comes from the source-span planner.
+10. Final runtime must work entirely locally: deterministic code + local models. GPT-5.6 Sol is development-time tooling only and is not a production dependency.
 
 ## Chapter-controlled H3 modes
 
@@ -71,7 +108,7 @@ It remains the behavioral target. The architecture must derive the desired promp
 
 Generated prompts do not need string equality; they must preserve required events, exclusions, timing, continuity, audio/music progression, and expected end state.
 
-GPT-5.6 Sol remains the fuzzy final evaluator against the gold target.
+GPT-5.6 Sol is used only during development as an external fuzzy benchmark against the gold target. The finished program must not require Sol or any cloud LLM to run correctly.
 
 ## Global H3 facts that survive the architecture reset
 
