@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-merge-sample-next-749",
+  "kind": "llama_chat",
+  "started_at": 1790359424.5600295,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe technician completes one sample test and places the sample aside.\n\nRIGHT:\nThe technician immediately begins a fresh test on the next sample.\n\nChoose one:\nMERGE = RIGHT is an immediate reaction to LEFT, continues the same uninterrupted local action, or is the immediate mechanical completion of what LEFT just obtained/opened/started.\nNEW_TASK = LEFT reaches a usable stopping point and RIGHT begins a distinct local action/objective. Starting a fresh item/test after LEFT completed one is NEW_TASK. Merely carrying or wearing something from LEFT while doing a different task is NEW_TASK.\nJudge only the concrete local actions.\nReturn exactly {\"relation\":\"MERGE|NEW_TASK\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-9cgwwggqdmlmaka6detso",
+    "object": "chat.completion",
+    "created": 1790359424,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need to decide if RIGHT is MERGE or NEW_TASK relative to LEFT.\n\nLEFT: \"The technician completes one sample test and places the sample aside.\"\n\nSo action: complete a test, then place sample aside. That ends that local task? The sample test is completed; placing it aside is part of finishing that test. So after this, the next step is starting fresh test on next sample.\n\nRIGHT: \"The technician immediately begins a fresh test on the next sample.\"\n\nIs this an immediate reaction to LEFT, continues same uninterrupted local action, or mechanical completion of what LEFT just obtained/opened/started? The test was completed; placing aside. Starting new test is distinct objective. So it's NEW_TASK. Because starting a fresh item/test after completing one is NEW_TASK.\n\nThus relation: \"NEW_TASK\". Return JSON exactly {\"relation\":\"NEW_TASK\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 226,
+      "completion_tokens": 187,
+      "total_tokens": 413,
+      "completion_tokens_details": {
+        "reasoning_tokens": 171
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790359427.610813,
+  "status": "ok"
+}
