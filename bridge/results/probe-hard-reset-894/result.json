@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-894",
+  "kind": "llama_chat",
+  "started_at": 1790371805.8920786,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nShe equips the weapons.\n\nTARGET UNIT:\nThe majority of the film is Amy fighting attackers.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-8m6xmx7s8ry96ogzk3s8",
+    "object": "chat.completion",
+    "created": 1790371805,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"No explicit time jump, scene break, or relocation is stated between \\\"She equips the weapons.\\\" and \\\"The majority of the film is Amy fighting attackers.\\\" The latter merely describes the film’s main action without indicating a new narrative phase.\"}",
+          "reasoning": "We need to determine if target unit begins after a hard reset from previous unit. Previous unit: \"She equips the weapons.\" Target unit: \"The majority of the film is Amy fighting attackers.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent textual restart.\n\nWe have two units: previous unit says she equips weapons. Next unit says majority of film is Amy fighting attackers. Is there a hard reset? The phrase \"The majority of the film\" indicates a new phase maybe? But it's not explicitly stated as time jump or scene break. It's just a statement about the film's majority. It could be considered a new phase but not explicit.\n\nWe need to see if there's an explicit discontinuity: e.g., \"She equips the weapons.\" Then next unit: \"The majority of the film is Amy fighting attackers.\" There's no explicit time jump, scene break, relocation after completed phase. So it's likely NO.\n\nThus decision: NO. Reason: No explicit hard reset indicated; just a statement about majority of film.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 299,
+      "completion_tokens": 289,
+      "total_tokens": 588,
+      "completion_tokens_details": {
+        "reasoning_tokens": 224
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790371810.0937264,
+  "status": "ok"
+}
