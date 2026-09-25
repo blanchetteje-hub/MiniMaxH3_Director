@@ -194,3 +194,59 @@ def test_source_unit_state_parser_accepts_explicit_containment_release():
         "container": "basement",
         "value": "free",
     }]
+
+
+
+def test_chapter_refresh_replays_source_authorized_current_state():
+    plan = _amy_plan()
+    arc = minimax.source_span_story_plan_to_macro_arc(
+        plan,
+        8,
+        state_effects_by_unit={
+            2: [
+                {"op": "set_location", "entity": "Will", "value": "basement"},
+                {"op": "set_location", "entity": "Amber", "value": "basement"},
+                {
+                    "op": "set_containment",
+                    "entity": "Will",
+                    "container": "basement",
+                    "value": "contained",
+                },
+                {
+                    "op": "set_containment",
+                    "entity": "Amber",
+                    "container": "basement",
+                    "value": "contained",
+                },
+                {
+                    "op": "set_barrier_state",
+                    "entity": "basement door",
+                    "value": "locked",
+                },
+            ],
+            3: [
+                {
+                    "op": "set_item_state",
+                    "entity": "pistol",
+                    "owner": "Amy",
+                    "value": "equipped",
+                },
+                {
+                    "op": "set_item_state",
+                    "entity": "katana",
+                    "owner": "Amy",
+                    "value": "equipped",
+                },
+            ],
+        },
+    )
+
+    opening = minimax.format_source_authorized_opening_state(arc, 7)
+
+    assert "SOURCE-AUTHORIZED CURRENT STATE" in opening
+    assert '"containment":"contained"' in opening
+    assert '"contained_in":"basement"' in opening
+    assert "basement door" in opening
+    assert '"status":"locked"' in opening
+    assert "pistol" in opening
+    assert "katana" in opening
