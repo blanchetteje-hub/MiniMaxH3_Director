@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-clause-boundary-amy-379",
+  "kind": "llama_chat",
+  "started_at": 1790297120.6413693,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Choose chapter boundaries only from numbered authoritative source units. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window.\n3. Amy sees the danger and gets Will and Amber into the basement.\n4. Amy locks the basement door.\n5. Amy retrieves her hidden pistol and katana and equips them.\n6. The majority of the story is Amy fighting attacking zombies.\n7. Amy kills the last zombie and the house is soaked in blood.\n8. Amy lets Will and Amber out of the basement.\n\nA chapter is a LARGE H3 refresh unit. Keep continuous setup/escalation and the source-emphasized main process together when possible. Entry into explicit terminal resolution may justify a new chapter.\n\nReturn a JSON object with key \"new_chapter_after\", an array of source-unit numbers. Do not include the final unit number."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-45nncqjg5zy0xje6v65etan",
+    "object": "chat.completion",
+    "created": 1790297120,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"new_chapter_after\":[3,5,6,7]}",
+          "reasoning": "We need to choose chapter boundaries only from numbered authoritative source units. The list is 1-8. We must decide where to break into chapters, each being a large H3 refresh unit. Keep continuous setup/escalation and main process together when possible. Entry into explicit terminal resolution may justify new chapter.\n\nSo we have story: Amy cooks breakfast (unit1). Zombie breaks kitchen door window (2). Amy sees danger gets Will & Amber into basement (3). Locks basement door (4). Retrieves pistol/katana equips them (5). Majority of story is fighting zombies (6). She kills last zombie and house soaked in blood (7). Lets Will & Amber out (8).\n\nWe need to decide chapter boundaries. Likely: Chapter 1 covers units 1-3? Setup breakfast, danger appears, Amy gets them into basement. That's setup.\n\nChapter 2 could cover unit4-5: locking door, equipping weapons. Escalation.\n\nChapter 3 covers unit6: majority fighting zombies. Main process.\n\nChapter 4 covers unit7-8: killing last zombie and letting Will & Amber out (resolution). But maybe unit7 is the climax; unit8 resolution. So we might break after unit7? The instruction says \"Entry into explicit terminal resolution may justify a new chapter.\" Unit7 is climax, unit8 resolution. Could be separate chapters.\n\nThus boundaries at units: 3,5,6,7? Let's think:\n\n- After unit3 (Amy gets Will & Amber into basement). That's setup.\n- After unit5 (equips weapons) maybe start fighting.\n- After unit6 (majority of story is Amy fighting zombies). That could be main process; after that we go to climax at 7. So new chapter before 7? Yes.\n\nThus boundaries: [3,5,6] or [3,5,6]? Wait if we break after 6 then next starts with unit7 (climax) and ends with unit8 resolution maybe same chapter? But instruction says \"Entry into explicit terminal resolution may justify a new chapter.\" So unit7 is climax; unit8 resolution. Could be separate chapters: one for climax (unit7), one for resolution (unit8). That would add boundary after 7.\n\nThus boundaries at units: 3,5,6,7? But we need to not include final unit number. Final unit is 8. So array of source-unit numbers where new chapter starts after that unit. So if chapters start after 3, after 5, after 6, after 7. That gives [3,5,6,7]. Let's double-check: Chapter1 units1-3; Chapter2 units4-5? Wait we said after 3 boundary means next chapter starts at unit4. Good.\n\nAfter 5 boundary -> next chapter starts at unit6. After 6 boundary -> next chapter starts at unit7. After 7 boundary -> next chapter starts at unit8 (resolution). That seems fine.\n\nReturn JSON: {\"new_chapter_after\":[3,5,6,7]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 252,
+      "completion_tokens": 655,
+      "total_tokens": 907,
+      "completion_tokens_details": {
+        "reasoning_tokens": 631
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790297131.0480797,
+  "status": "ok"
+}
