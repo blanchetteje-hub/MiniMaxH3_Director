@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundary-rule-terminalreset-563",
+  "kind": "llama_chat",
+  "started_at": 1790303494.435841,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT FLAGS:\n1. terminal=NO, hard_reset=NO\n2. terminal=NO, hard_reset=NO\n3. terminal=YES, hard_reset=NO\n4. terminal=NO, hard_reset=YES\n\nApply this rule:\n- split before every hard_reset=YES unit;\n- if a terminal unit is immediately followed by hard_reset=YES, keep the terminal unit in the current chapter and split only at the reset.\n\nReturn JSON with key new_chapter_after."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-cbz1gvournri5faza7tig",
+    "object": "chat.completion",
+    "created": 1790303494,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"new_chapter_after\": [false, false, true, false]\n}\n```\n",
+          "reasoning": "We have 4 source units with flags:\n\n1: terminal NO, hard_reset NO\n2: terminal NO, hard_reset NO\n3: terminal YES, hard_reset NO\n4: terminal NO, hard_reset YES\n\nRule: split before every hard_reset=YES unit; if a terminal unit is immediately followed by hard_reset=YES, keep the terminal unit in current chapter and split only at reset.\n\nWe need to determine new_chapter_after array? Likely for each source unit index, indicate after which units we start new chapters. The key \"new_chapter_after\" probably list indices where new chapter starts after that unit? Let's interpret: For each unit i (1-indexed), if a split occurs before it, then the previous unit ends a chapter and this one begins next. But they ask for new_chapter_after; maybe array of booleans indicating whether a new chapter starts after that unit.\n\nLet's compute splits:\n\nUnit 4 has hard_reset YES => split before unit 4. So unit 3 ends chapter, unit 4 starts new chapter.\n\nAlso rule: if terminal unit immediately followed by hard_reset=YES, keep the terminal in current chapter and split only at reset. Here unit 3 is terminal YES but not followed by hard_reset YES (unit 4 has hard_reset yes). Wait it is followed by hard_reset yes indeed. So terminal unit 3 is immediately before a hard_reset. According to rule: keep terminal unit in current chapter and split only at the reset. That means we don't split after unit 3? Actually splitting occurs before unit 4 anyway; but maybe normally if terminal YES, you might split after it? But rule says keep terminal in current chapter and split only at reset. So no extra split after unit 3.\n\nThus splits: before unit 4 (i.e., new chapter starts at unit 4). Also maybe start of first chapter is unit1 by default.\n\nSo new_chapter_after array for units 1-4:\n\nAfter unit1? No.\nAfter unit2? No.\nAfter unit3? Yes, because split before unit4. After unit4? Maybe no further units.\n\nThus [false,false,true,false] or [0,0,1,0].\n\nReturn JSON with key new_chapter_after: array of booleans maybe.\n\nLet's output:\n\n{\"new_chapter_after\":[false,false,true,false]}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 190,
+      "completion_tokens": 517,
+      "total_tokens": 707,
+      "completion_tokens_details": {
+        "reasoning_tokens": 484
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790303502.3531103,
+  "status": "ok"
+}
