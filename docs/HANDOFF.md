@@ -1,6 +1,6 @@
 # MiniMax H3 — Development Handoff
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 Read `docs/PROJECT_NOTES.md` first. It is the architectural source of truth.
 
@@ -14,9 +14,6 @@ Active development branch:
 
 `gpt-arc-refresh`
 
-This branch was created from `gpt-test-branch` on 2026-09-24 specifically for a chapter-first architecture reset.
-
-Always inspect the current branch head. Do not trust stale SHAs in chat history.
 
 ## Ultimate goal
 
@@ -32,9 +29,7 @@ Creative execution inside the story is allowed. Material deviation outside the s
 
 Chapter outlines, beats, continuity, and other intermediate artifacts are revisable derived data. They do not overrule `story.txt`.
 
-## New branch direction
-
-The old locked ARC/BEATS architecture is intentionally **not** a constraint on this branch.
+## Current architecture
 
 The new model is chapter-first:
 
@@ -49,14 +44,14 @@ The new model is chapter-first:
 
 ## Chapter-controlled H3 modes
 
-Refresh cadence is no longer user-controlled.
+Refresh cadence is chapter-controlled.
 
 - First beat of Chapter 1: initial generation with `Minimax_auto_API.json`.
 - Later beats in the same chapter: append.
 - First beat of every later chapter: refresh.
 - Remaining beats in that chapter: append.
 
-Arbitrary "refresh every N segments" scheduling is obsolete and should be removed when runtime work begins.
+Chapter boundaries determine refresh points; fixed interval scheduling is retained only where compatibility requires it.
 
 ## Gold refresh as the opening-context reference
 
@@ -118,9 +113,9 @@ Normal worker command:
 
 The worker can execute direct `llama_chat` jobs and allowlisted local test/acceptance jobs.
 
-Important global caveat: the current bridge executable worktree defaults to `gpt-test-branch`. Until that plumbing is changed, branch-reset experiments on `gpt-arc-refresh` should use direct `llama_chat` jobs rather than accidentally running old-branch production tests.
+`run_tests` jobs specify their target code branch explicitly. The bridge mailbox remains isolated on `gpt-runtime`.
 
-The bridge process does not hot-reload changes to `tools/chatgpt_llama_bridge.py`; bridge-code changes require a local pull/restart.
+The bridge detects changes to its own script during mailbox sync and restarts automatically.
 
 ## Branch state
 
@@ -128,8 +123,7 @@ Completed on `gpt-arc-refresh`:
 
 - architecture-reset branch created;
 - `docs/PROJECT_NOTES.md` rewritten around the chapter-first approach;
-- inherited old-branch acceptance/debug chronology removed from this handoff;
-- no production planner/runtime code has been replaced yet.
+- chapter-first planner/runtime integration is active on this branch.
 
 ### Chapter-first probe findings
 
@@ -202,7 +196,7 @@ The next direct probes should focus on:
 
 ### Probe batch 326-335
 
-Queued together on 2026-09-24 to minimize user bridge handoffs:
+Queued together on 2026-09-24:
 
 - 326: story-authority validator using VALID/INVALID enum
 - 327: story-authority validator using explicit boolean decision procedure
@@ -579,14 +573,14 @@ Implementation commits:
 Bridge:
 - gpt-runtime commit a4c7fa8 adds a safe run_tests job kind.
 - run_tests checks out the requested code branch in a detached dedicated worktree and permits only pytest paths under tests/.
-- the local bridge process must be updated/restarted before run_tests jobs can be used.
+- `run_tests` jobs target an explicit code branch in a detached test worktree.
 
 
 ### Source-span runtime integration started
 
 The new planner is now preferred by `generate_beats_from_story()` when it can
 produce fully deterministic beat/source ownership. Unsupported/ambiguous cases
-fall back to the legacy ARC loop instead of failing the run.
+fall back to the compatibility ARC path instead of failing the run.
 
 Implemented:
 - `story_planner.py`: exact source units, gated internal split/cut refinement,
@@ -594,11 +588,11 @@ Implemented:
   beat budgets, explicit-repeatability detection, and deterministic ownership.
 - `minimax.py`: StoryPlan -> existing phase-runtime compatibility adapter.
 - Source-span phases preserve exact `source_text` separately from normalized
-  legacy `broad_progression`.
+  compatibility `broad_progression`.
 - Beat CREATE and Beat regeneration receive only the current source-span
   chapter text; later/earlier chapter prose is hidden.
-- Cached source-span arcs bypass the obsolete broad macro-arc validator.
-- Legacy ARC creation/validation remains as a migration fallback.
+- Cached source-span arcs bypass the broad macro-arc validator.
+- ARC creation/validation remains as a compatibility fallback.
 
 Recent implementation commits:
 - 4ae3daf complete deterministic chapter-plan object
@@ -607,7 +601,7 @@ Recent implementation commits:
 - b208539 adapter tests
 - 5cc25a5 chapter-scoped Beat CREATE
 - e186ade source-span macro-arc builder
-- e6e2a7d preferred source-span path with legacy fallback
+- e6e2a7d preferred source-span path with compatibility fallback
 - eed8b75 preferred-path integration test
 - 3eaea40 preserve exact source_text through phase parsing
 
@@ -615,8 +609,7 @@ Bridge:
 - first branch-native planner test job reached the worker, proving run_tests
   routing works, but the selected Windows Python had no pytest.
 - gpt-runtime d7e063a now probes available local Python environments for pytest
-  before selecting a runner; this bridge-code change requires a local pull and
-  process restart.
+  before selecting a runner.
 - jobs 567-586 are queued implementation-shaped SPLIT/TERMINAL/HARD_RESET checks.
 
 
@@ -654,10 +647,10 @@ State effects:
 - Chapter refresh replay uses those effects as SOURCE-AUTHORIZED CURRENT STATE.
 
 Runtime:
-- source-span chapter starts now override legacy numeric refresh cadence;
+- source-span chapter starts now override numeric refresh cadence;
 - Amy-shaped 6/2 plan therefore renders modes:
   initial, append, append, append, append, append, refresh, append;
-- legacy refresh_interval remains the fallback for non-source-span arcs;
+- refresh_interval remains the compatibility fallback for non-source-span arcs;
 - refresh workflow validation/load is enabled whenever source-span chapter
   refreshes exist even if refresh_interval is unset;
 - Beat CREATE/regeneration receives only current chapter source_text;
@@ -704,7 +697,7 @@ Runtime integration:
 - source-span chapter openings now drive H3 refresh scheduling.
 - for the Amy 6/2 plan, conditioning modes are:
   initial, append, append, append, append, append, refresh, append.
-- numeric refresh_interval is retained only as a legacy fallback when the arc
+- numeric refresh_interval is retained only as a compatibility fallback when the arc
   is not source-span planned.
 - visual-continuity cadence and refresh-workflow validation use the same
   chapter-aware scheduling.
