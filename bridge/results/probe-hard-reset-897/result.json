@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-897",
+  "kind": "llama_chat",
+  "started_at": 1790371846.0401309,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nThe pilot seals the cockpit.\n\nTARGET UNIT:\nShe launches the ship.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-44tpegzmdicol577vaggal",
+    "object": "chat.completion",
+    "created": 1790371846,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The transition from sealing the cockpit to launching the ship is an immediate cause-and-effect action within the same narrative phase; no explicit time jump, scene break, or relocation is stated.\"}",
+          "reasoning": "We need to determine if \"She launches the ship.\" begins after a hard reset from \"The pilot seals the cockpit.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Not just change in activity.\n\nWe have two units: previous unit: \"The pilot seals the cockpit.\" target unit: \"She launches the ship.\"\n\nIs there an explicit discontinuity? The previous unit ends with sealing cockpit; next unit launching ship. Is that a hard reset? We need to see if there's explicit time jump, scene break, relocation after completed phase. There's no explicit mention of time jump or scene break. It's just a new action. So it's not a hard reset.\n\nThus answer NO.\n\nReturn JSON: {\"decision\":\"NO\",\"reason\":\"No explicit time jump, scene break, or relocation indicated between sealing the cockpit and launching the ship.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 295,
+      "completion_tokens": 248,
+      "total_tokens": 543,
+      "completion_tokens_details": {
+        "reasoning_tokens": 194
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790371849.5228004,
+  "status": "ok"
+}
