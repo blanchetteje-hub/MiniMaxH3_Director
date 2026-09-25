@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-finite-fit-simple1-663",
+  "kind": "llama_chat",
+  "started_at": 1790354683.5900614,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge only whether a fixed number of 8-second video beats is enough for the supplied finite source material. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FINITE SOURCE MATERIAL:\nA technician opens a drawer, takes a key, and unlocks the cabinet beside the drawer.\n\nAVAILABLE BEATS: 1\nEach beat is 8 seconds.\nEvery concrete visible action/state must be represented in source order.\nActions may share a beat when they fit naturally, and a long finite chain may continue into the next beat at a natural handoff.\nDo not omit, imply away, or materially compress required actions.\nIgnore any pacing outside this finite material.\nReturn exactly {\"decision\":\"ENOUGH|TOO_SMALL\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 750,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-h3mcwh9cwedqy0w8e9jio",
+    "object": "chat.completion",
+    "created": 1790354683,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"ENOUGH\"}",
+          "reasoning": "We need to judge if 1 beat of 8 seconds is enough for the source material: \"A technician opens a drawer, takes a key, and unlocks the cabinet beside the drawer.\" We have three actions: open drawer (action), take key (action), unlock cabinet (action). Each action may be represented in beats. They can share a beat if fit naturally. 8 seconds is long enough for maybe all three? But we need to decide \"ENOUGH\" or \"TOO_SMALL\". The instruction says every concrete visible action/state must be represented in source order. Actions may share a beat when they fit naturally, and a long finite chain may continue into the next beat at natural handoff.\n\nWe have 1 beat of 8 seconds. Is that enough to represent all actions? Likely yes: opening drawer (maybe 2-3 sec), taking key (1-2 sec), unlocking cabinet (2-3 sec). All within 8 secs. So decision \"ENOUGH\". Return JSON exactly {\"decision\":\"ENOUGH\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 209,
+      "completion_tokens": 229,
+      "total_tokens": 438,
+      "completion_tokens_details": {
+        "reasoning_tokens": 213
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354687.1722894,
+  "status": "ok"
+}
