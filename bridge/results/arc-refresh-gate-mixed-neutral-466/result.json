@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-gate-mixed-neutral-466",
+  "kind": "llama_chat",
+  "started_at": 1790301070.388198,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nThe operator spends most of the story repeating inspections, then one final inspection resolves the issue and the operator immediately shuts down the station.\n\nA chapter is a LARGE H3 refresh unit.\nSPLIT only when this one source unit crosses from the source-emphasized main/ongoing phase into a distinct terminal-resolution phase or a major reset.\nKEEP_TOGETHER when the whole unit remains one phase, including terminal resolution plus its immediate closure.\n\nChoose: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-q56o73cceo9vlf9vce56g",
+    "object": "chat.completion",
+    "created": 1790301070,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"SPLIT\",\"reason\":\"The operator’s repeated inspections represent the main/ongoing phase, while the final inspection that resolves the issue followed immediately by shutting down the station marks a distinct terminal‑resolution phase. The source unit crosses from ongoing into this resolution phase, so it should be split.\"}",
+          "reasoning": "We need to decide whether to split or keep together based on source unit description. The operator repeats inspections, then final inspection resolves issue and shuts down station. So the phase is ongoing inspections (main/ongoing) and terminal resolution (final inspection + shutdown). According to rule: SPLIT only when this one source unit crosses from main/ongoing into distinct terminal-resolution or major reset. KEEP_TOGETHER if whole unit remains one phase, including terminal resolution plus its immediate closure.\n\nHere we have repeated inspections (main), then final inspection resolves issue and operator shuts down station immediately. That seems like a transition to terminal resolution + immediate closure. So should split? The source unit crosses from ongoing into distinct terminal-resolution: yes. So SPLIT. Provide JSON with decision \"SPLIT\" and reason.\n\nReturn valid JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 194,
+      "completion_tokens": 240,
+      "total_tokens": 434,
+      "completion_tokens_details": {
+        "reasoning_tokens": 167
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790301074.3711338,
+  "status": "ok"
+}
