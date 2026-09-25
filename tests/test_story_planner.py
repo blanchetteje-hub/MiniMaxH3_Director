@@ -371,9 +371,10 @@ def test_local_relation_prompt_distinguishes_mechanical_completion_from_later_us
     )
     prompt = build_local_relation_messages(units[0], units[1])[-1]["content"]
 
-    assert "one local beat job" in prompt
-    assert "Merely carrying or wearing something" in prompt
+    assert "RIGHT's PRIMARY ACTION" in prompt
+    assert "Carrying, wearing, or using an item from LEFT" in prompt
     assert "Starting a fresh item/test" in prompt
+    assert "protection -> fetch gear is NEW_TASK" in prompt
 
 
 def test_local_relation_parser_and_grouping_keep_repeatables_isolated():
