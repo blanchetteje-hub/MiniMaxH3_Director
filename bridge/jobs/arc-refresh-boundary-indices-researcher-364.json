@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-indices-researcher-364",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Choose chapter boundaries only. Do not rewrite or summarize story content. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "Each numbered statement is authoritative source material in story order.\n\n1. A researcher begins a normal shift cataloging samples.\n2. An alarm interrupts; the researcher secures the samples.\n3. The researcher begins a long repeated diagnostic process that occupies most of the story.\n4. One final diagnostic resolves the incident.\n5. The researcher shuts down the lab and reunites with a waiting colleague.\n\nA chapter is a LARGE H3 refresh unit. Use as few chapter boundaries as the narrative permits. Keep continuous setup/escalation and the main repeated process together when possible. Major time/location/state resets or entry into explicit terminal resolution can justify a boundary.\n\nReturn JSON with one key: \"new_chapter_after\".\nIts value must be an array of statement numbers after which a new chapter should begin. Do not include the final statement number."
+    }
+  ]
+}
