@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-job-merge-arsenal-equip-636",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge one adjacent beat-grouping decision. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT SOURCE RESPONSIBILITY:\nShe retrieves her hidden arsenal consisting of a pistol and a katana.\n\nRIGHT SOURCE RESPONSIBILITY:\nShe equips the weapons.\n\nCan ALL concrete actions/states in LEFT and RIGHT be completed naturally in ONE 8-second H3 beat without dropping, implying-away, or materially compressing a required action?\nMERGE only when they form one immediate continuous action sequence or one natural setup/completion chain.\nKEEP_SEPARATE when:\n- LEFT is an explicit calm baseline and RIGHT is the inciting danger/change;\n- LEFT reaches a meaningful completed handoff and RIGHT starts a distinct new task;\n- combining them would likely force omission or premature completion;\n- RIGHT is an explicitly long/repeated process.\nChoose MERGE or KEEP_SEPARATE.\nReturn {\"decision\":\"MERGE|KEEP_SEPARATE\",\"reason\":\"...\"}."
+    }
+  ]
+}
