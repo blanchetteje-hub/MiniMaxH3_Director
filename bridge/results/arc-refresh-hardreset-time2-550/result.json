@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-hardreset-time2-550",
+  "kind": "llama_chat",
+  "started_at": 1790303561.4953582,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nA team completes field work at a remote site.\n\nTARGET UNIT:\nThree months later the team begins analysis in a city laboratory.\n\nA HARD RESET means a discontinuity between narrative phases, including a major explicit time jump or relocation after a completed phase.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-uig1a05zmb840uh32o2z6e",
+    "object": "chat.completion",
+    "created": 1790303561,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The target unit starts three months later in a different setting (city laboratory) following completion of field work at a remote site, indicating both an explicit time jump and relocation—key indicators of a hard reset.\"}",
+          "reasoning": "We need to decide if the target unit begins after a hard reset from previous unit. The previous unit: \"A team completes field work at a remote site.\" Then target unit: \"Three months later the team begins analysis in a city laboratory.\"\n\nHard reset means discontinuity between narrative phases, including major explicit time jump or relocation after completed phase.\n\nWe have an explicit time jump of three months and relocation from remote site to city lab. That qualifies as hard reset? The definition says includes major explicit time jump or relocation after a completed phase. Yes, it's both: time jump (three months) and relocation (remote site to city laboratory). So yes, target unit begins after a hard reset.\n\nReturn JSON with decision \"YES\" and reason explaining that the three-month gap and change of location constitute a discontinuity/hard reset.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 169,
+      "completion_tokens": 225,
+      "total_tokens": 394,
+      "completion_tokens_details": {
+        "reasoning_tokens": 166
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790303565.1967273,
+  "status": "ok"
+}
