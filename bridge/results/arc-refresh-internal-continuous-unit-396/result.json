@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-internal-continuous-unit-396",
+  "kind": "llama_chat",
+  "started_at": 1790298292.6186514,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide whether one authoritative source unit should be split across two large H3 chapters. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nThe geologist performs several related laboratory tests, compares the results, and continues the same analysis.\n\nA split is appropriate only if this one source unit contains a major time/location/state reset or crosses into a distinct terminal phase.\n\nChoose one decision from: SPLIT, KEEP_TOGETHER.\nReturn a JSON object with keys \"decision\" and \"reason\"."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-3fnddxvjrcfcqxfycu66ug",
+    "object": "chat.completion",
+    "created": 1790298292,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP_TOGETHER\",\"reason\":\"The source unit describes a continuous sequence of laboratory tests, result comparison, and ongoing analysis by the geologist, all occurring within the same phase without any major time/location/state reset or distinct terminal transition.\"}",
+          "reasoning": "We need to decide whether the source unit should be split across two large H3 chapters. The source unit is:\n\n\"The geologist performs several related laboratory tests, compares the results, and continues the same analysis.\"\n\nThis seems like one continuous activity: performing lab tests, comparing results, continuing analysis. No major time/location/state reset or distinct terminal phase. So keep together.\n\nReturn JSON with decision \"KEEP_TOGETHER\" and reason explaining that it's a single continuous process without resets.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 169,
+      "completion_tokens": 157,
+      "total_tokens": 326,
+      "completion_tokens_details": {
+        "reasoning_tokens": 96
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790298295.4719262,
+  "status": "ok"
+}
