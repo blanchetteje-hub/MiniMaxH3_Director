@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-969-diagnostic",
+  "kind": "llama_chat",
+  "started_at": 1790380308.7184598,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge only whether the candidate's action sequence is physically coherent.\nRead actions literally and in order, using the established facts. Carry each\ncompleted result forward: a completed removal cannot happen again to that same\ntarget or part unless explicitly restored first. Do not silently reinterpret a\ncompleted action as an attempt. Different targets are different cases. A wound\nis not automatically removal or death. Respect explicitly established magical\ncapabilities. Unknown facts alone are not contradictions.\nReturn one JSON object: valid is a boolean indicating a coherent sequence; issue\nis a short concrete contradiction or an empty string. Do not judge job coverage,\nnext-job ownership, or missing state-effect records in this diagnostic."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nMara stands inside the laboratory.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nMara closes the laboratory door, then enters the corridor.\n\nNEXT JOB\nNone; this is the final beat.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nMara closes and locks the laboratory door, then walks through that closed door into the corridor."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-kv5dx6c0nm790jyiugpov",
+    "object": "chat.completion",
+    "created": 1790380308,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Mara cannot walk through a closed (locked) laboratory door.\"}",
+          "reasoning": "We need to judge if candidate's action sequence physically coherent given current state: Mara stands inside lab; no other facts. The job says \"Mara closes the laboratory door, then enters the corridor.\" Candidate beat: \"Mara closes and locks the laboratory door, then walks through that closed door into the corridor.\"\n\nCheck coherence: She is inside lab, can close door (makes sense). Then she walks through that closed door into corridor. If door is closed but not locked? But candidate says also locks it. Walking through a closed door might be possible if it's just closed and not locked; but if locked, you need key or force to open. She \"walks through that closed door\" implies the door remains closed but she passes through? That seems contradictory: If door is closed, how can she walk through? Unless it means she walks through the doorway (the space) after closing it behind her. But phrase \"closed door\" could mean it's shut; you can still pass if you open it or push. She might close and lock then walk through that same door into corridor: maybe she closes it, locks it, but then opens it to go? The candidate says walks through the closed door - implies door remains closed while passing? That seems physically impossible unless door is a sliding door that can be walked through when closed? But typical door you need open. So contradiction.\n\nAlso \"walks through that closed door\" could mean she passes through the doorway after closing it, but then it's still closed behind her; she might have opened it to pass. The phrase ambiguous: She closes and locks the door, then walks through that closed door into corridor. If locked, she can't walk through unless she unlocks or opens.\n\nThus likely contradiction: cannot walk through a closed (and locked) door without opening/unlocking. So invalid.\n\nReturn JSON with valid false and issue string \"Mara cannot walk through a closed (locked) laboratory door.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 287,
+      "completion_tokens": 423,
+      "total_tokens": 710,
+      "completion_tokens_details": {
+        "reasoning_tokens": 392
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380314.4647217,
+  "status": "ok"
+}
