@@ -136,34 +136,49 @@ def collect_files(source_root: Path, patterns, destination: Path, max_bytes: int
 
 
 def ensure_code_test_worktree(source_root: Path, branch: str) -> Path:
-    """Return a detached worktree synced to one explicitly named repo branch."""
+    """Return a detached sibling worktree synced to one repo branch."""
     branch = str(branch or "").strip()
     if not branch:
         raise ValueError("run_tests requires code_branch.")
     run_git(["check-ref-format", "--branch", branch], source_root)
     run_git(["fetch", "origin", branch], source_root)
+    run_git(["worktree", "prune"], source_root)
 
     safe_name = "".join(
         character if character.isalnum() or character in "._-" else "_"
         for character in branch
     )
-    worktree = source_root / f".chatgpt_test_{safe_name}"
+
+    common_raw = run_git(
+        ["rev-parse", "--git-common-dir"],
+        source_root,
+    ).stdout.strip()
+    common_git = Path(common_raw)
+    if not common_git.is_absolute():
+        common_git = (source_root / common_git).resolve()
+    else:
+        common_git = common_git.resolve()
+    main_repo_root = common_git.parent
+    worktree = (
+        main_repo_root.parent
+        / f"{main_repo_root.name}.chatgpt_test_{safe_name}"
+    )
     remote_ref = f"origin/{branch}"
 
     if worktree.exists():
         if not (worktree / ".git").exists():
-            raise RuntimeError(
-                f"Test worktree path exists but is not a git worktree: {worktree}"
-            )
-        run_git(["checkout", "--detach", remote_ref], worktree)
-        run_git(["reset", "--hard", remote_ref], worktree)
-        run_git(["clean", "-fd"], worktree)
-    else:
-        run_git(
-            ["worktree", "add", "--detach", str(worktree), remote_ref],
-            source_root,
-            capture=False,
-        )
+            shutil.rmtree(worktree)
+            run_git(["worktree", "prune"], source_root)
+        else:
+            run_git(["checkout", "--detach", remote_ref], worktree)
+            run_git(["reset", "--hard", remote_ref], worktree)
+            run_git(["clean", "-fd"], worktree)
+            return worktree
+
+    run_git(
+        ["worktree", "add", "--force", "--detach", str(worktree), remote_ref],
+        source_root,
+    )
     return worktree
 
 
@@ -293,8 +308,8 @@ def sync_branch(worktree: Path, branch: str) -> None:
     simply be processed again.
     """
     run_git(["fetch", "origin", branch], worktree)
-    run_git(["reset", "--hard", f"origin/{branch}"], worktree, capture=False)
-    run_git(["clean", "-fd"], worktree, capture=False)
+    run_git(["reset", "--hard", f"origin/{branch}"], worktree)
+    run_git(["clean", "-fd"], worktree)
 
 
 def commit_result(worktree: Path, branch: str, result_dir: Path, job_id: str) -> None:
