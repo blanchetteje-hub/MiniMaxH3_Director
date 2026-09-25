@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-hardreset-relocation-554",
+  "kind": "llama_chat",
+  "started_at": 1790303544.4299345,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nThe survey team completes its field campaign.\n\nTARGET UNIT:\nAfter the campaign is finished, the team relocates to a distant laboratory and begins the analysis phase.\n\nA HARD RESET means a discontinuity between completed narrative phases, including relocation into a distinct later phase.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-wr6hjk0xjrpz433q2x9z29",
+    "object": "chat.completion",
+    "created": 1790303544,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The target unit begins after the team relocates to a distant laboratory and initiates a new analysis phase, marking a distinct narrative shift from the completed field campaign. This relocation into a separate later phase constitutes a hard reset.\"}",
+          "reasoning": "We need to decide if target unit begins after a hard reset from previous unit. Previous: \"The survey team completes its field campaign.\" Target: \"After the campaign is finished, the team relocates to a distant laboratory and begins the analysis phase.\"\n\nHard reset means discontinuity between completed narrative phases, including relocation into distinct later phase.\n\nHere we have completion of field campaign (phase 1). Then they relocate to lab and begin analysis phase. That seems like a new phase after relocation: yes it's a hard reset because there's relocation into a distinct later phase. So decision YES. Reason: The target unit starts with relocation, indicating discontinuity from previous field campaign.\n\nReturn JSON: {\"decision\":\"YES\",\"reason\":\"...\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 171,
+      "completion_tokens": 207,
+      "total_tokens": 378,
+      "completion_tokens_details": {
+        "reasoning_tokens": 145
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790303547.7879827,
+  "status": "ok"
+}
