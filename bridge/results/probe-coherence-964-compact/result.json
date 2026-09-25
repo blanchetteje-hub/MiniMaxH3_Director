@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-964-compact",
+  "kind": "llama_chat",
+  "started_at": 1790380271.4070587,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nNone; this is the first beat.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nLior removes the single crystal from its socket to disable the ward.\n\nNEXT JOB\nNone; this is the final beat.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nLior pulls the only crystal completely out of its socket, then pulls the same crystal out of that socket again.\n\nCHECKS\n1. Read the candidate literally in action order. Carry each completed result forward.\nA completed removal cannot happen again to that same target or part unless it is\nexplicitly restored first. Different targets and unsuccessful attempts are different\ncases. Do not excuse a contradiction as emphasis or silently change an action.\n2. Use PREVIOUS FINAL BEAT and CURRENT STATE as established facts. Reject unavailable\nobjects, unresolved barriers, and impossible actions. Unknown facts are not errors.\nHonor capabilities explicitly established in CURRENT JOB or CURRENT STATE.\n3. CURRENT JOB must happen in this beat, including every required action, result,\nand named participant. History or already-completed-state wording cannot replace\nan assigned action. Harmless staging is allowed; material changes to tools,\nparticipants, locations, or outcomes are not.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Each listed STATE EFFECT must follow from the candidate. Do not invent a\nmissing required action to justify an effect.\n\nReturn one JSON object: valid is a boolean, issue is a short concrete error\nor an empty string when valid. Judge all checks; any clear error makes valid false."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-u7dl9i9b7autlk0zx1gj",
+    "object": "chat.completion",
+    "created": 1790380271,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Crystal removed twice without being restored to its socket\"}",
+          "reasoning": "We need to evaluate candidate beat: \"Lior pulls the only crystal completely out of its socket, then pulls the same crystal out of that socket again.\"\n\nPrevious final beat none. Current state {}.\n\nCurrent job: Lior removes the single crystal from its socket to disable the ward.\n\nSo current job requires removal action. Candidate has two removals: first removal and second removal of same crystal. Check 1: A completed removal cannot happen again unless restored. So pulling out twice is a contradiction because after first pull, it's no longer in socket; can't pull it again from that socket. Unless the crystal was reinserted? Not stated. So candidate beat violates check 1.\n\nThus invalid. Issue: \"Crystal removed twice without being replaced.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 436,
+      "completion_tokens": 177,
+      "total_tokens": 613,
+      "completion_tokens_details": {
+        "reasoning_tokens": 150
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380274.1903381,
+  "status": "ok"
+}
