@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-924",
+  "kind": "llama_chat",
+  "started_at": 1790377873.6009667,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nThe mechanic finishes at the bench.\n\nTARGET UNIT:\nShe crosses into the adjoining bay.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. A duration phrase such as 'for most of the night', 'for hours', 'throughout the day', or 'repeatedly' describes how long an activity lasts; it is NOT by itself a jump from PREVIOUS UNIT. Likewise, ordinary movement into a new place (entering a room/building, crossing a doorway, walking to another area) is NOT a hard reset unless the source explicitly marks a narrative restart around that relocation. If the discontinuity is not stated or directly entailed by the two source units, answer NO.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-6ncjurnxx4dw7bocb4tngj",
+    "object": "chat.completion",
+    "created": 1790377873,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The target unit merely describes the mechanic moving from one place to another (crossing into an adjoining bay). This ordinary relocation does not constitute a hard reset unless the source text explicitly marks a narrative restart, time jump, or scene break around it. No such explicit cue is present between the two units.\"}",
+          "reasoning": "We need to decide if target unit begins after a hard reset from previous unit. Previous: \"The mechanic finishes at the bench.\" Target: \"She crosses into the adjoining bay.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, scene break, explicitly stated relocation after completed phase, or equivalent textual restart.\n\nWe have previous unit ends with mechanic finishing at bench. Then target unit says she crosses into adjoining bay. Is that a hard reset? The movement is crossing into adjoining bay. But the rule: ordinary movement into new place (entering room/building, crossing doorway, walking to another area) is NOT a hard reset unless source explicitly marks narrative restart around relocation.\n\nSo we need to see if there's explicit mention of relocation after completed phase or scene break. The target unit says she crosses into adjoining bay. That indicates relocation but not necessarily a hard reset. There's no explicit time jump or scene break. So answer NO.\n\nReturn JSON: decision: \"NO\", reason: explanation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 285,
+      "completion_tokens": 285,
+      "total_tokens": 570,
+      "completion_tokens_details": {
+        "reasoning_tokens": 207
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790377877.6221302,
+  "status": "ok"
+}
