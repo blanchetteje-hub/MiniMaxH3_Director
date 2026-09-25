@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-coherence-963-diagnostic",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge only whether the candidate's action sequence is physically coherent.\nRead actions literally and in order, using the established facts. Carry each\ncompleted result forward: a completed removal cannot happen again to that same\ntarget or part unless explicitly restored first. Do not silently reinterpret a\ncompleted action as an attempt. Different targets are different cases. A wound\nis not automatically removal or death. Respect explicitly established magical\ncapabilities. Unknown facts alone are not contradictions.\nReturn one JSON object: valid is a boolean indicating a coherent sequence; issue\nis a short concrete contradiction or an empty string. Do not judge job coverage,\nnext-job ownership, or missing state-effect records in this diagnostic."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS FINAL BEAT\nA third zombie advances\u2014Amy slashes its neck with the katana after a quick shot to weaken it.\n\nCURRENT STATE\n{\"characters\":{\"Amy\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"home\",\"accessible\":true,\"clothing\":{\"upper\":{\"item\":\"tight black tank top\",\"damage\":\"none\"},\"lower\":{\"item\":\"denim jeans\",\"damage\":\"none\"}},\"held_objects\":[\"pistol\",\"katana\"],\"equipped_objects\":[\"weapons\"],\"status\":\"alive/conscious unless stated otherwise\"},\"Will\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"},\"Amber\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"}},\"environment\":{\"barriers\":{\"kitchen door window\":{\"status\":\"broken\"},\"door\":{\"status\":\"locked\"}}}}\n\nCURRENT JOB\nAmy kills the last of the zombies, her house now soaked in blood.\n\nNEXT JOB\nShe lets her kids out of the basement.\n\nSTATE EFFECTS IF VALID\n[{\"id\":\"E7\",\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombies\",\"value\":\"dead\"},{\"op\":\"set_condition\",\"entity\":\"house\",\"value\":\"soaked in blood\"}]}]\n\nCANDIDATE BEAT\nAmy cuts through the last zombie's neck with the katana, killing it; blood sprays across the already blood-soaked house."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 2048,
+  "timeout_seconds": 600
+}

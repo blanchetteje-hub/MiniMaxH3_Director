@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-coherence-965-diagnostic",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge only whether the candidate's action sequence is physically coherent.\nRead actions literally and in order, using the established facts. Carry each\ncompleted result forward: a completed removal cannot happen again to that same\ntarget or part unless explicitly restored first. Do not silently reinterpret a\ncompleted action as an attempt. Different targets are different cases. A wound\nis not automatically removal or death. Respect explicitly established magical\ncapabilities. Unknown facts alone are not contradictions.\nReturn one JSON object: valid is a boolean indicating a coherent sequence; issue\nis a short concrete contradiction or an empty string. Do not judge job coverage,\nnext-job ownership, or missing state-effect records in this diagnostic."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS FINAL BEAT\nNone; this is the first beat.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nLior removes the single crystal from its socket to disable the ward.\n\nNEXT JOB\nNone; this is the final beat.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nLior pulls the only crystal completely out of its socket, then pulls the same crystal out of that socket again."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 2048,
+  "timeout_seconds": 600
+}

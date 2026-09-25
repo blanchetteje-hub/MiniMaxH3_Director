@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-coherence-959-diagnostic",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge only whether the candidate's action sequence is physically coherent.\nRead actions literally and in order, using the established facts. Carry each\ncompleted result forward: a completed removal cannot happen again to that same\ntarget or part unless explicitly restored first. Do not silently reinterpret a\ncompleted action as an attempt. Different targets are different cases. A wound\nis not automatically removal or death. Respect explicitly established magical\ncapabilities. Unknown facts alone are not contradictions.\nReturn one JSON object: valid is a boolean indicating a coherent sequence; issue\nis a short concrete contradiction or an empty string. Do not judge job coverage,\nnext-job ownership, or missing state-effect records in this diagnostic."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS FINAL BEAT\nShe retrieves her hidden arsenal\u2014a pistol and a katana\u2014from the closet in the basement, then equips both weapons.\n\nCURRENT STATE\n{\"characters\":{\"Amy\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"home\",\"accessible\":true,\"clothing\":{\"upper\":{\"item\":\"tight black tank top\",\"damage\":\"none\"},\"lower\":{\"item\":\"denim jeans\",\"damage\":\"none\"}},\"held_objects\":[\"pistol\",\"katana\"],\"equipped_objects\":[\"weapons\"],\"status\":\"alive/conscious unless stated otherwise\"},\"Will\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"},\"Amber\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"}},\"environment\":{\"barriers\":{\"kitchen door window\":{\"status\":\"broken\"},\"door\":{\"status\":\"locked\"}}}}\n\nCURRENT JOB\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nNEXT JOB\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nSTATE EFFECTS IF VALID\n[{\"id\":\"E4\",\"state_effects\":[]}]\n\nCANDIDATE BEAT\nAs a zombie lunges at her, Amy shoots its torso, then decapitates it with the katana."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 2048,
+  "timeout_seconds": 600
+}
