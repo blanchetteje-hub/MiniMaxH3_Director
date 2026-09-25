@@ -124,34 +124,42 @@ If a unit returns `SPLIT`, Python enumerates exact candidate cut points from the
 
 Candidate cut-point selection must run **only after** the unit-level gate returns `SPLIT`. Otherwise the 20B model may choose a grammatical cut merely because one is available.
 
-### Step 3: choose chapter boundaries by source-unit index
+### Step 3: classify TERMINAL and HARD_RESET; Python derives boundaries
 
-After source-unit refinement, the LLM receives the ordered authoritative units and returns only chapter-boundary indices.
+After source-unit refinement, do **not** ask the local model to choose chapter
+indices directly. That judgment remained too subjective even when evaluated one
+candidate boundary at a time.
 
-It does not write chapter summaries.
+Instead, each refined source unit receives two narrow semantic judgments:
 
-Conceptually:
+1. **TERMINAL** — does this unit itself decisively end the central
+   conflict/process?
+2. **HARD_RESET** — does this unit begin after a real narrative discontinuity
+   such as a substantial time jump, scene break, or relocation after a completed
+   phase?
 
-```json
-{
-  "new_chapter_after": [6]
-}
-```
+HARD_RESET explicitly does **not** include an inciting event, immediate
+cause-and-effect movement, equipping tools/weapons, danger changes, or
+room-to-room movement inside one continuous event.
 
-Python then builds each chapter from exact contiguous source units.
+Python owns the chapter rule:
 
-Evidence across independent story shapes:
+- split before every HARD_RESET unit;
+- when a TERMINAL unit has a later non-reset closure unit, start the
+  terminal/closure chapter before that TERMINAL unit;
+- a final TERMINAL unit stays in the current chapter;
+- a TERMINAL unit immediately followed by HARD_RESET stays with its current
+  phase and the split occurs at the reset.
 
-- Amy benchmark shape -> one boundary before terminal resolution;
-- chef failure/adaptation story -> one boundary before final repair/closing;
-- researcher diagnostics story -> one boundary before final diagnostic/resolution;
-- explicit time/location jump -> boundary at the reset;
-- multiple major resets -> multiple returned indices;
-- one continuous repair sequence -> no boundary.
+The production HARD_RESET wording passed all tested Amy, technician,
+continuous-movement, next-day, relocation, and explicit-time-jump controls.
+TERMINAL also passed the focused setup/main/final/closure controls.
 
-This index-only approach prevents the chapter planner from inventing narrative content.
+Python then builds each chapter from exact contiguous source spans. The LLM
+never writes chapter summaries or performs boundary arithmetic.
 
-A chapter therefore needs source ownership, not an LLM-authored plot outline. A minimal conceptual shape is:
+A chapter therefore needs source ownership, not an LLM-authored plot outline.
+A minimal conceptual shape is:
 
 ```json
 {
@@ -272,7 +280,7 @@ The current evidence-supported decomposition is:
 1. Python: `story.txt -> authoritative source units`
 2. each source unit -> internal `SPLIT | KEEP_TOGETHER`
 3. only for `SPLIT` units: exact candidate cut points -> choose cut
-4. refined source units -> chapter-boundary indices
+4. refined source units -> TERMINAL and HARD_RESET binary flags; Python derives chapter boundaries
 5. fixed chapter spans + total segment budget -> beat-count allocation
 6. current exact chapter source + opening context + beat budget -> BEATS CREATE
 7. authoritative chapter source + candidate beats -> BEATS VALIDATE
