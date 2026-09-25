@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-action-ownership-repair-344",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Repair candidate beats so every assigned concrete action happens explicitly in the current chapter. Do not add new actions. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nMara opens the closet, takes the red backpack and the flashlight, puts on the red backpack, and carries the flashlight into the hallway.\n\nBEAT BUDGET: exactly 2.\n\nCANDIDATE:\nBeat 1: Mara opens the closet and takes the red backpack.\nBeat 2: Mara puts on the red backpack and carries the flashlight into the hallway.\n\nISSUE:\nTaking the flashlight is only implied by the later carried state.\n\nReturn exactly:\n{\"beats\":[{\"beat\":1,\"event\":\"...\"},{\"beat\":2,\"event\":\"...\"}]}"
+    }
+  ]
+}
