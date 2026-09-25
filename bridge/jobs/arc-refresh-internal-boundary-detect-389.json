@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-internal-boundary-detect-389",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide whether one authoritative source unit contains an internal narrative transition strong enough to justify splitting that unit across two large H3 chapters. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nShe spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\n\nA split is appropriate only if the unit contains both the ongoing/main process and a distinct terminal-resolution phase.\n\nChoose one decision from: SPLIT, KEEP_TOGETHER.\nReturn a JSON object with keys \"decision\" and \"reason\"."
+    }
+  ]
+}
