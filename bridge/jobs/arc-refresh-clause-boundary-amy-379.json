@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-clause-boundary-amy-379",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Choose chapter boundaries only from numbered authoritative source units. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window.\n3. Amy sees the danger and gets Will and Amber into the basement.\n4. Amy locks the basement door.\n5. Amy retrieves her hidden pistol and katana and equips them.\n6. The majority of the story is Amy fighting attacking zombies.\n7. Amy kills the last zombie and the house is soaked in blood.\n8. Amy lets Will and Amber out of the basement.\n\nA chapter is a LARGE H3 refresh unit. Keep continuous setup/escalation and the source-emphasized main process together when possible. Entry into explicit terminal resolution may justify a new chapter.\n\nReturn a JSON object with key \"new_chapter_after\", an array of source-unit numbers. Do not include the final unit number."
+    }
+  ]
+}
