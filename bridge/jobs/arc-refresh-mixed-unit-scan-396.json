@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-mixed-unit-scan-396",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Identify authoritative source units that internally cross a major H3 chapter boundary. Return unit IDs only; do not rewrite source. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNITS:\n1. A scientist begins a normal shift and prepares the experiment.\n2. She spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\n3. She meets her waiting colleague.\n4. A mechanic tests an electrical system, replaces one failed sensor, and continues testing the same engine.\n\nA unit should be flagged only if it internally contains both sides of a major narrative reset or both an ongoing/main process and a distinct terminal-resolution phase.\n\nReturn a JSON object with key \"split_unit_ids\", an array of unit numbers."
+    }
+  ]
+}
