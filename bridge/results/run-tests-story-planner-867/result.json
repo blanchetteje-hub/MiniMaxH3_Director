@@ -1,0 +1,22 @@
+{
+  "job_id": "run-tests-story-planner-867",
+  "kind": "run_tests",
+  "started_at": 1790370125.5173173,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_story_planner.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": ".......................                                                  [100%]\n23 passed in 2.01s\n",
+    "stderr": ""
+  },
+  "finished_at": 1790370129.5852242,
+  "status": "ok"
+}
