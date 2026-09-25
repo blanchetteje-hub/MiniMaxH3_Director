@@ -90,3 +90,49 @@ def test_source_span_adapter_refuses_ambiguous_surplus_ownership():
 
     with pytest.raises(ValueError, match="no deterministic"):
         minimax.source_span_story_plan_to_macro_arc(plan, 2)
+
+
+
+def test_source_span_chapter_starts_drive_refresh_modes():
+    arc = minimax.source_span_story_plan_to_macro_arc(_amy_plan(), 8)
+
+    assert minimax.source_span_refresh_segments(arc) == (7,)
+    assert [
+        minimax.conditioning_mode_for_segment(
+            segment,
+            refresh_interval=2,
+            macro_arc=arc,
+        )
+        for segment in range(1, 9)
+    ] == [
+        "initial",
+        "continuation",
+        "continuation",
+        "continuation",
+        "continuation",
+        "continuation",
+        "clean_refresh",
+        "continuation",
+    ]
+    assert minimax.is_refresh_segment(7, refresh_interval=2, macro_arc=arc)
+    assert not minimax.is_refresh_segment(2, refresh_interval=2, macro_arc=arc)
+    assert not minimax.is_refresh_segment(8, refresh_interval=2, macro_arc=arc)
+
+
+def test_legacy_refresh_interval_remains_fallback_without_source_span_arc():
+    legacy_arc = {
+        "phases": [{
+            "phase_number": 1,
+            "beat_start": 1,
+            "beat_end": 4,
+            "narrative_purpose": "Legacy phase",
+            "broad_progression": "Legacy progression",
+            "characters_introduced": [],
+            "location": "Legacy location",
+            "required_events": [],
+        }]
+    }
+
+    assert minimax.source_span_refresh_segments(legacy_arc) == ()
+    assert minimax.is_refresh_segment(2, refresh_interval=2, macro_arc=legacy_arc)
+    assert not minimax.is_refresh_segment(3, refresh_interval=2, macro_arc=legacy_arc)
