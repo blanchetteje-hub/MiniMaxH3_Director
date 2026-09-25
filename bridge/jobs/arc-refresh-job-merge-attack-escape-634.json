@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-job-merge-attack-escape-634",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge one adjacent beat-grouping decision. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT SOURCE RESPONSIBILITY:\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger.\n\nRIGHT SOURCE RESPONSIBILITY:\nShe rushes her kids to the basement, gets them inside, and then locks the door.\n\nCan ALL concrete actions/states in LEFT and RIGHT be completed naturally in ONE 8-second H3 beat without dropping, implying-away, or materially compressing a required action?\nMERGE only when they form one immediate continuous action sequence or one natural setup/completion chain.\nKEEP_SEPARATE when LEFT is a calm baseline and RIGHT is the inciting danger/change, when LEFT reaches a completed handoff and RIGHT starts a distinct task, when combining them would likely force omission/premature completion, or when RIGHT is an explicitly long/repeated process.\nChoose MERGE or KEEP_SEPARATE.\nReturn {\"decision\":\"MERGE|KEEP_SEPARATE\",\"reason\":\"...\"}."
+    }
+  ]
+}
