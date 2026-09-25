@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-rawspan-amy-allocation-371",
+  "kind": "llama_chat",
+  "started_at": 1790296980.8882596,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Allocate a fixed beat budget across fixed chapter source spans. Do not move source material between chapters. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "TOTAL BEATS: 8\n\nCHAPTER 1 SOURCE:\nAmy is at home on a normal day, cooking breakfast for Will and Amber.\nA zombie breaks the kitchen door window; Amy sees the danger and rushes Will and Amber into the basement and locks the door.\nAmy retrieves her hidden pistol and katana and equips them.\nThe majority of the story is Amy fighting attacking zombies.\n\nCHAPTER 2 SOURCE:\nAmy kills the last zombie; the house is now soaked in blood.\nAmy lets Will and Amber out of the basement.\n\nAllocate all 8 beats. Source-emphasized duration matters. Every chapter must receive at least one beat.\n\nReturn JSON with key \"beat_counts\", whose value is an array of two integers in chapter order."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-3j7scs7mjh7m8p80gqrqi",
+    "object": "chat.completion",
+    "created": 1790296980,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"beat_counts\":[6,2]}",
+          "reasoning": "We need to allocate 8 beats across chapters, each at least one beat. The source emphasizes durations: Chapter1 has majority fighting zombies; Chapter2 just kills last zombie and lets out. So likely more beats for Ch1.\n\nPossible distribution: [6,2] or [7,1]. But we must consider \"source-emphasized duration matters.\" That suggests the chapter with longer content gets more beats. The first chapter is longer (multiple scenes). Second has only two actions. So maybe 6 beats to Chapter1 and 2 to Chapter2.\n\nBut also could be 5-3? Let's think: Ch1 source includes cooking breakfast, zombie break in, rush to basement, lock door, retrieve pistol/katana, equip them, majority fighting zombies. That's many beats. Ch2 just kills last zombie and lets out. So maybe 7 beats for Ch1, 1 beat for Ch2.\n\nBut \"Every chapter must receive at least one beat.\" Yes.\n\nWe need allocate all 8 beats: sum to 8.\n\nWhich distribution best matches source emphasis? I'd say [6,2] or [7,1]. Which is more plausible? The majority of story fighting zombies could be many beats. But the first scene cooking breakfast might be a beat too. So maybe 5 beats for Ch1 (cooking, zombie break, rush to basement, lock door, equip weapons) and then rest fights: but that's already 5. Then remaining 3 beats are fights? That would make [5,3]. But second chapter only kills last zombie and lets out; that could be two beats. So maybe [6,2] is good.\n\nLet's decide on [6,2].\n\nReturn JSON with key \"beat_counts\" array of two ints: [6, 2].\n\nCheck sum: 8. Good.\n\nReturn valid JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 248,
+      "completion_tokens": 397,
+      "total_tokens": 645,
+      "completion_tokens_details": {
+        "reasoning_tokens": 379
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790296987.384977,
+  "status": "ok"
+}
