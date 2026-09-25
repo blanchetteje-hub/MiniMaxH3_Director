@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-rawspan-concrete-create-372",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 2200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Create beats only from the supplied chapter source. Every concrete source action must happen explicitly. Do not add new actions. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER SOURCE:\nMara opens the closet.\nMara takes the red backpack and the flashlight.\nMara puts on the red backpack.\nMara carries the flashlight into the hallway.\n\nBEAT BUDGET: exactly 2.\n\nReturn a JSON object with key \"beats\", containing exactly two numbered beat objects with an \"event\" field."
+    }
+  ]
+}
