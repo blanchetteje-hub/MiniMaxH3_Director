@@ -812,3 +812,17 @@ Relevant commits:
 
 Next target: broader beat-generation and refresh integration, fixing only observed
 failures on the gpt-arc-refresh production path.
+
+
+### Broader beat/refresh integration checkpoint
+
+The next integration layer also passes on gpt-arc-refresh:
+- tests/test_generate_beats_mode.py
+- tests/test_refresh_context_latents.py
+- tests/test_forward_beat_validation.py
+- tests/test_beat_plan_localization.py
+
+No production changes were required at this layer.
+
+Next target: beat retry/repair/auditing orchestration and structural guarantees,
+continuing to fix only observed failures.
