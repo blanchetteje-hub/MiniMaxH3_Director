@@ -327,6 +327,32 @@ def test_build_story_plan_does_not_invent_repeatability_for_surplus_beats():
     assert plan.chapters[0].beat_source_unit_ids is None
 
 
+
+def test_visible_responsibility_prompt_marks_about_framing_as_nonbeat_material():
+    from story_planner import build_visible_responsibility_messages
+
+    unit = enumerate_source_units(
+        "A realistic action film about a woman protecting her children from zombies."
+    )[0]
+    prompt = build_visible_responsibility_messages(unit)[-1]["content"]
+
+    assert "what the film/story is ABOUT remains NO" in prompt
+    assert "later concrete source units own those actions" in prompt
+
+
+def test_hard_reset_prompt_excludes_premise_to_first_scene_transition():
+    from story_planner import build_hard_reset_messages
+
+    units = enumerate_source_units(
+        "A horror film about a mother protecting her child. "
+        "Mara is at home cooking breakfast."
+    )
+    prompt = build_hard_reset_messages(units[0], units[1])[-1]["content"]
+
+    assert "genre/premise/summary sentence is NOT an actual completed phase" in prompt
+    assert "first concrete scene is NO" in prompt
+
+
 def test_visible_source_responsibility_classifier_filters_framing_only_units():
     from story_planner import classify_visible_source_unit_ids
 
