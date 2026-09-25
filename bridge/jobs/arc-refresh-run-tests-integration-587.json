@@ -1,0 +1,12 @@
+{
+  "job_id": "arc-refresh-run-tests-integration-587",
+  "kind": "run_tests",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_story_planner.py",
+    "tests/test_source_span_runtime_adapter.py",
+    "tests/test_source_span_generation_path.py",
+    "tests/test_beat_retry_hierarchy.py"
+  ],
+  "timeout_seconds": 1200
+}
