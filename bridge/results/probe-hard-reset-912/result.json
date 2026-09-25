@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-912",
+  "kind": "llama_chat",
+  "started_at": 1790372003.1466725,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nThe astronaut enters cryosleep.\n\nTARGET UNIT:\nTwo centuries later, the ship's computer wakes her above a new world.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-yayrx66kv8r1c2w1g432pqh",
+    "object": "chat.completion",
+    "created": 1790372003,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The target unit begins with the explicit time jump “Two centuries later,” indicating a hard reset from the previous phase where the astronaut enters cryosleep.\"}",
+          "reasoning": "We need to determine if target unit begins after a hard reset from previous unit. The previous unit: \"The astronaut enters cryosleep.\" Target unit: \"Two centuries later, the ship's computer wakes her above a new world.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Not inferred.\n\nWe have previous unit ends with astronaut enters cryosleep. That is a phase. Then target unit says \"Two centuries later, the ship's computer wakes her above a new world.\" This indicates explicit time jump: two centuries later. So yes, it's a hard reset because there's an explicit time jump. The phrase \"two centuries later\" explicitly states time passage. That's a discontinuity.\n\nThus decision YES. Reason: explicit time jump of two centuries between units.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 306,
+      "completion_tokens": 228,
+      "total_tokens": 534,
+      "completion_tokens_details": {
+        "reasoning_tokens": 180
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790372006.3478694,
+  "status": "ok"
+}
