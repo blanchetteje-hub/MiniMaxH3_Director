@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-context-needed-positive-340",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether one established fact is required by the whole enclosed chapter. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nA researcher finishes the current diagnostic, then walks to a sealed side room and reunites with the colleague waiting there.\n\nFACT:\nThe colleague is waiting behind the sealed side-room door at the end of the corridor.\n\nWould omitting this fact force the chapter planner to guess an important location or containment fact?\n\nReturn exactly:\n{\"needed\":true,\"reason\":\"...\"}"
+    }
+  ]
+}
