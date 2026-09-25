@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-compact-v2-977",
+  "kind": "llama_chat",
+  "started_at": 1790380494.4408758,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nShe retrieves her hidden arsenal—a pistol and a katana—from the closet in the basement, then equips both weapons.\n\nCURRENT STATE\n{\"characters\":{\"Amy\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"home\",\"accessible\":true,\"clothing\":{\"upper\":{\"item\":\"tight black tank top\",\"damage\":\"none\"},\"lower\":{\"item\":\"denim jeans\",\"damage\":\"none\"}},\"held_objects\":[\"pistol\",\"katana\"],\"equipped_objects\":[\"weapons\"],\"status\":\"alive/conscious unless stated otherwise\"},\"Will\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"},\"Amber\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"}},\"environment\":{\"barriers\":{\"kitchen door window\":{\"status\":\"broken\"},\"door\":{\"status\":\"locked\"}}}}\n\nCURRENT JOB\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nNEXT JOB\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nSTATE EFFECTS IF VALID\n[{\"id\":\"E4\",\"state_effects\":[]}]\n\nCANDIDATE BEAT\nAs a zombie lunges at her, Amy shoots its torso, then decapitates it with the katana.\n\nCHECKS\n1. Read actions literally in order and carry each stated result forward. Reject\nrepeating a completed removal on the same target or part unless it was restored.\nDifferent targets and failed attempts are different cases. Do not excuse a\ncontradiction as emphasis or invent an intervening action.\n2. Use only established facts from PREVIOUS FINAL BEAT and CURRENT STATE.\nAn injury does not establish death. An earlier target is not automatically the\nlast target. Reject unavailable objects and unresolved barriers; unknown facts\nalone are not errors.\n3. CURRENT JOB must happen now, including every required action, result, and\nnamed participant. Already-completed-state wording cannot replace an assigned\naction. Allow neutral staging, but reject material changes to tools, participants,\nlocations, or outcomes. Ordinary impacts cannot transform an entire solid body\ninto liquid or another material without an explicitly established capability.\nHonor unusual capabilities established by CURRENT JOB or CURRENT STATE.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Check only the listed STATE EFFECTS: each must follow from visible candidate\nactions. An empty effects list imposes no additional requirements. Do not demand\nnew effect records for unlisted details.\n\nReturn one JSON object: valid is a boolean; issue is a short concrete error or\nan empty string when valid. Any clear error makes valid false."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-27fu2wj44mq369ymqjsgtm",
+    "object": "chat.completion",
+    "created": 1790380494,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to validate candidate beat against previous final beat and current state, job etc. Candidate beat: \"As a zombie lunges at her, Amy shoots its torso, then decapitates it with the katana.\"\n\nCheck if all facts align.\n\nPrevious final beat: She retrieves hidden arsenal—a pistol and a katana—from closet in basement, equips both weapons. So she has pistol and katana equipped. Current state shows Amy holds \"pistol\" and \"katana\", equipped_objects [\"weapons\"]. Good.\n\nZombie lunge at her: we have zombies? The environment includes Will and Amber as contained in basement; but they are alive/conscious unless stated otherwise, not zombies. But the story says majority of film is Amy killing zombies. So there must be zombie(s). Are any zombies present? Not explicitly listed. But maybe \"zombies\" refers to Will or Amber after being turned? The state doesn't say they're zombies. They are just characters with no injuries and located in basement, contained.\n\nBut candidate beat mentions a zombie lunges at her. That implies existence of a zombie target. Is that established? No. So is it an error? According to check 2: Use only established facts from PREVIOUS FINAL BEAT and CURRENT STATE. An earlier target not automatically last target. Reject unavailable objects etc. Unknown facts alone are not errors. But \"zombie\" isn't in state; but maybe it's implied by current job that zombies attack her. The current job says majority of film is Amy killing zombies as they try to attack her. So the zombie lunge could be part of that. It's a new event, so okay.\n\nBut we need to check if she shoots its torso: She has pistol equipped; shooting torso is fine. Then decapitates with katana: She has katana. Decapitation removes head from body. Is there any prior removal? No. So it's first time removing head. Good.\n\nCheck for repeated removal on same target or part unless restored: Not relevant.\n\nCheck if zombie lunge at her: The zombie is a target; we don't know its location relative to Amy, but presumably in the basement where she is. She has weapons equipped. So shooting torso then decapitation works.\n\nAny barrier issues? Kitchen door window broken, door locked. But not needed for this action.\n\nCheck job: CURRENT JOB must happen now, including every required action, result, and named participant. Already-completed-state wording cannot replace an assigned action. The current job is \"The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\" So this beat includes a zombie lunge at her, she shoots torso then decapitate. That matches.\n\nCheck state effects: E4 has empty list; no effect required.\n\nThus candidate beat seems valid.\n\nAny missing details? The zombie's head removed but not specified what happens to it. But that's fine.\n\nAlso check that the zombie is a target of both actions: first shot, then decapitation. That's okay.\n\nNo contradictions with previous final beat or current state.\n\nTherefore valid true, issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 794,
+      "completion_tokens": 656,
+      "total_tokens": 1450,
+      "completion_tokens_details": {
+        "reasoning_tokens": 638
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380503.404079,
+  "status": "ok"
+}
