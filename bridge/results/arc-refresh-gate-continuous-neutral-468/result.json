@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-gate-continuous-neutral-468",
+  "kind": "llama_chat",
+  "started_at": 1790301287.4289792,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nThe operator tests one subsystem, replaces a failed component, and continues testing the same subsystem.\n\nA chapter is a LARGE H3 refresh unit.\nSPLIT only for a major time/location/state reset or a transition from the main ongoing phase into distinct terminal resolution.\nContinuous work in the same phase remains together.\n\nChoose: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8mks9afsbl5ts2hkcv6ue",
+    "object": "chat.completion",
+    "created": 1790301287,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP_TOGETHER\",\"reason\":\"The operator tests a subsystem, replaces a failed component, and continues testing that same subsystem—continuous work within one phase with no major reset or distinct terminal resolution.\"}",
+          "reasoning": "We need to decide whether to split or keep together based on description. The source unit: \"The operator tests one subsystem, replaces a failed component, and continues testing the same subsystem.\" So it's continuous work in same phase? It says operator tests one subsystem, replaces a failed component, then continues testing that same subsystem. That seems like continuous work within same phase; no major time/location/state reset or transition to distinct terminal resolution. So keep together.\n\nReturn JSON: {\"decision\":\"KEEP_TOGETHER\",\"reason\":\"Continuous work on the same subsystem without major resets.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 167,
+      "completion_tokens": 167,
+      "total_tokens": 334,
+      "completion_tokens_details": {
+        "reasoning_tokens": 114
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790301290.178095,
+  "status": "ok"
+}
