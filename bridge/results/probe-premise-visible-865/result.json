@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-premise-visible-865",
+  "kind": "llama_chat",
+  "started_at": 1790370042.811515,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether one authoritative source unit creates a concrete visible beat responsibility. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\n\nYES = this unit itself requires a concrete on-screen event or visible state to happen in the adaptation.\nNO = this unit is genre/premise/summary framing or purely internal thought. A sentence saying what the film/story is ABOUT remains NO even if its premise names an action such as protecting, escaping, fighting, or surviving; later concrete source units own those actions.\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-cg4cpv6of6w1a5oc9ba",
+    "object": "chat.completion",
+    "created": 1790370042,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The unit describes the overall premise of the film—Amy protecting her kids from a zombie apocalypse—which frames the story but does not specify a particular on‑screen event or visible state that must occur in the adaptation.\"}",
+          "reasoning": "We need to decide whether this unit requires a concrete on-screen event or visible state in the adaptation. The unit is \"A realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\"\n\nThis is a genre/premise/summary framing: it's describing the film's premise. It says \"protecting her two kids from a zombie apocalypse.\" That is an action but it's part of the premise. The unit itself is not a concrete event; it frames the story. So answer NO.\n\nReturn JSON with decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 210,
+      "completion_tokens": 175,
+      "total_tokens": 385,
+      "completion_tokens_details": {
+        "reasoning_tokens": 115
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790370045.4461012,
+  "status": "ok"
+}
