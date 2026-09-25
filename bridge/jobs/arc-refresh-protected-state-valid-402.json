@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-protected-state-valid-402",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only whether the candidate materially changes a protected relationship or protected-space state established by SOURCE. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE:\nA caregiver gets two people into a secured room and locks the barrier. The caregiver then handles outside threats while the two people remain protected inside.\n\nCANDIDATE:\nThe caregiver locks the two people in the secured room, then handles the outside threats elsewhere while the two people remain protected behind the locked barrier.\n\nChoose one validity value from: VALID, INVALID.\nReturn a JSON object with keys \"validity\" and \"issue\"."
+    }
+  ]
+}
