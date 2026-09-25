@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-merge-gear-fight-754",
+  "kind": "llama_chat",
+  "started_at": 1790359374.995423,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nMara equips her emergency gear.\n\nRIGHT:\nMara begins a prolonged patrol, confronting hazards throughout the night.\n\nChoose one:\nMERGE = RIGHT is an immediate reaction to LEFT, continues the same uninterrupted local action, or is the immediate mechanical completion of what LEFT just obtained/opened/started.\nNEW_TASK = LEFT reaches a usable stopping point and RIGHT begins a distinct local action/objective. Starting a fresh item/test after LEFT completed one is NEW_TASK. Merely carrying or wearing something from LEFT while doing a different task is NEW_TASK.\nJudge only the concrete local actions.\nReturn exactly {\"relation\":\"MERGE|NEW_TASK\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-uvum9x51quy5bwkulgmf",
+    "object": "chat.completion",
+    "created": 1790359375,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need to decide if RIGHT is MERGE (immediate reaction, continues same action) or NEW_TASK.\n\nLEFT: \"Mara equips her emergency gear.\" That means she puts on gear. This is a local action of equipping gear.\n\nRIGHT: \"Mara begins a prolonged patrol, confronting hazards throughout the night.\"\n\nIs this an immediate continuation? Equipping gear then beginning patrol could be considered same continuous activity (patrol). But does patrolling start immediately after equipping gear? The phrase \"begins a prolonged patrol\" suggests starting a new task. However, it's likely that she equips gear to prepare for patrol; the patrol is the main action.\n\nMERGE: If RIGHT is immediate reaction to LEFT and continues same uninterrupted local action or mechanical completion of what LEFT just obtained/opened/started. Equipping gear then patrolling might be considered separate tasks? She equips gear (action) then begins patrol (new). The gear equipping is a preparation step, not the patrol itself.\n\nThus likely NEW_TASK: she stops at equip gear and starts new task patrol.\n\nBut consider \"Mara equips her emergency gear\" could be part of patrol. But it's a distinct action: equipping gear vs patrolling hazards. So NEW_TASK.\n\nReturn JSON {\"relation\":\"NEW_TASK\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 222,
+      "completion_tokens": 274,
+      "total_tokens": 496,
+      "completion_tokens_details": {
+        "reasoning_tokens": 258
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790359379.2669632,
+  "status": "ok"
+}
