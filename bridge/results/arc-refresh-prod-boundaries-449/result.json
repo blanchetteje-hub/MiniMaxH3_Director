@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-prod-boundaries-449",
+  "kind": "llama_chat",
+  "started_at": 1790300203.798799,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE SOURCE UNITS:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nChoose chapter boundaries only.\nA chapter is a LARGE H3 refresh unit.\nKeep continuous setup/escalation and the source-emphasized main process together.\nEntry into explicit terminal resolution may begin a new chapter.\n\nReturn JSON with key new_chapter_after, an array of source-unit numbers. Do not include the final unit number."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-pq13axk8pghbyzcb576",
+    "object": "chat.completion",
+    "created": 1790300203,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"new_chapter_after\":[2,4]}",
+          "reasoning": "We need to choose chapter boundaries only. A chapter is a LARGE H3 refresh unit. Keep continuous setup/escalation and the source-emphasized main process together. Entry into explicit terminal resolution may begin a new chapter.\n\nReturn JSON with key \"new_chapter_after\", an array of source-unit numbers. Do not include final unit number.\n\nWe have 6 units:\n\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nWe need to decide where to put chapter boundaries (after which unit). A large H3 refresh unit likely means a major break after some units. Keep continuous setup/escalation and source-emphasized main process together. So maybe:\n\n- Chapter 1: Units 1-2? Setup: breakfast, zombie breaks door, basement lock.\n- Chapter 2: Unit 3 (Amy equips weapons) + maybe start of fighting? But unit 4 is majority fight. Maybe combine units 3 and 4 into one chapter: Amy equips weapons then fights zombies.\n\n- Then terminal resolution: killing last zombie and house soaked in blood (unit5). That could be a new chapter, or part of same as fight? The instruction says entry into explicit terminal resolution may begin a new chapter. So unit5 might start a new chapter.\n\n- After that, unit6 is letting Will and Amber out; maybe that's the final resolution after last zombie killed. Could be in same chapter as 5 or separate? \"Entry into explicit terminal resolution may begin a new chapter.\" The killing of last zombie is terminal resolution. Then letting them out might be part of resolution too but could be next.\n\nWe need to list source-unit numbers where we start new chapters, after which unit number? Actually key new_chapter_after: array of source-unit numbers. So for each boundary, we give the unit number after which a new chapter starts. For example if we have boundaries after units 2 and 4 and maybe 5? Let's decide.\n\nOption A:\n\n- After unit 2 -> start Chapter 2 (Amy equips weapons + fight)\n- After unit 4 -> start Chapter 3 (terminal resolution: kill last zombie, house soaked in blood)\n- After unit 5 -> start Chapter 4 (letting Will and Amber out)\n\nBut maybe we don't need a chapter after unit5 if it's part of same terminal resolution. But the instruction says entry into explicit terminal resolution may begin a new chapter. So unit5 is that entry; so yes, new chapter starts at unit5.\n\nThus boundaries: after units 2,4? Wait unit4 is majority fight; maybe we want to keep continuous setup/escalation and source-emphasized main process together. The main process is fighting zombies (unit4). That should be a single chapter. So start of that chapter could be after unit3 or at unit3? Actually unit3 equips weapons, then unit4 fights. They are continuous: equip then fight. So maybe we want to keep them together in one chapter. So new chapter starts before unit3? After unit2. Yes.\n\nThen terminal resolution is unit5 (kill last zombie). That could be a separate chapter starting at unit5. Then after that, unit6 letting out might be part of same or next. But \"Entry into explicit terminal resolution may begin a new chapter.\" So unit5 starts new chapter. Unit6 maybe continues resolution but not necessarily new? Could be same as unit5's chapter: kill last zombie and house soaked in blood then let them out. That could all be one chapter.\n\nBut we need to decide boundaries after which units start new chapters. If we have 4 chapters, boundaries after units 2,4? Wait if we have 3 chapters:\n\n- Chapter1: Units1-2\n- Chapter2: Units3-4 (equip + fight)\n- Chapter3: Units5-6 (kill last zombie and let out)\n\nThen new_chapter_after would be [2] because chapter starts after unit2. But also maybe a boundary before unit5? Actually if we have 3 chapters, boundaries are after units 2 and 4? Wait second chapter ends at unit4; third begins at unit5. So new_chapter_after array should contain the numbers of source-units after which a new chapter starts: that would be [2] for start of Chapter2, and [4] for start of Chapter3. But we also might want to include 6? No because last unit not included.\n\nThus answer could be {\"new_chapter_after\":[2,4]}.\n\nBut the instruction says \"Do not include the final unit number.\" So if we had boundary after unit5 (start chapter at 5), then we'd list [5] but not 6. But our boundaries are after units 2 and 4. That seems fine.\n\nCheck: After unit2 -> start new chapter with equip + fight. After unit4 -> start new chapter with kill last zombie & let out. Yes.\n\nThus output JSON: {\"new_chapter_after\":[2,4]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 245,
+      "completion_tokens": 1119,
+      "total_tokens": 1364,
+      "completion_tokens_details": {
+        "reasoning_tokens": 1099
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790300220.665033,
+  "status": "ok"
+}
