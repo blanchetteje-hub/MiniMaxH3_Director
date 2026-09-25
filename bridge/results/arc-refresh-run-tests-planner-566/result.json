@@ -1,0 +1,22 @@
+{
+  "job_id": "arc-refresh-run-tests-planner-566",
+  "kind": "run_tests",
+  "started_at": 1790348838.823095,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_story_planner.py"
+    ],
+    "runner": [
+      "C:\\Windows\\py.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "",
+    "stderr": "C:\\Program Files (x86)\\Python311\\python.exe: No module named pytest\n"
+  },
+  "finished_at": 1790348839.616051,
+  "status": "ok"
+}
