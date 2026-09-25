@@ -29,6 +29,10 @@ def test_generate_beats_prefers_source_span_planner_and_scopes_chapter_source():
                 "decision": "YES" if unit_id == 3 else "NO",
                 "reason": "one-year discontinuity only at unit 3",
             }
+        if purpose == "source_unit_visible_responsibility":
+            return {"decision": "YES", "reason": "visible source action"}
+        if purpose == "source_unit_local_relation":
+            return {"relation": "NEW_TASK"}
         if purpose == "source_unit_state_effects":
             return {"state_effects": []}
         if purpose == "beat_generation":
