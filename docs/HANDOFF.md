@@ -580,3 +580,41 @@ Bridge:
 - gpt-runtime commit a4c7fa8 adds a safe run_tests job kind.
 - run_tests checks out the requested code branch in a detached dedicated worktree and permits only pytest paths under tests/.
 - the local bridge process must be updated/restarted before run_tests jobs can be used.
+
+
+### Source-span runtime integration started
+
+The new planner is now preferred by `generate_beats_from_story()` when it can
+produce fully deterministic beat/source ownership. Unsupported/ambiguous cases
+fall back to the legacy ARC loop instead of failing the run.
+
+Implemented:
+- `story_planner.py`: exact source units, gated internal split/cut refinement,
+  TERMINAL/HARD_RESET classification, deterministic boundaries, chapter spans,
+  beat budgets, explicit-repeatability detection, and deterministic ownership.
+- `minimax.py`: StoryPlan -> existing phase-runtime compatibility adapter.
+- Source-span phases preserve exact `source_text` separately from normalized
+  legacy `broad_progression`.
+- Beat CREATE and Beat regeneration receive only the current source-span
+  chapter text; later/earlier chapter prose is hidden.
+- Cached source-span arcs bypass the obsolete broad macro-arc validator.
+- Legacy ARC creation/validation remains as a migration fallback.
+
+Recent implementation commits:
+- 4ae3daf complete deterministic chapter-plan object
+- 83df479 chapter-plan tests
+- ea07f46 source-span -> phase compatibility adapter
+- b208539 adapter tests
+- 5cc25a5 chapter-scoped Beat CREATE
+- e186ade source-span macro-arc builder
+- e6e2a7d preferred source-span path with legacy fallback
+- eed8b75 preferred-path integration test
+- 3eaea40 preserve exact source_text through phase parsing
+
+Bridge:
+- first branch-native planner test job reached the worker, proving run_tests
+  routing works, but the selected Windows Python had no pytest.
+- gpt-runtime d7e063a now probes available local Python environments for pytest
+  before selecting a runner; this bridge-code change requires a local pull and
+  process restart.
+- jobs 567-586 are queued implementation-shaped SPLIT/TERMINAL/HARD_RESET checks.
