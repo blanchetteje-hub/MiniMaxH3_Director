@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-reset-continuous3-544",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only the requested binary semantic question or deterministic rule. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FULL STORY:\n1. A mechanic begins diagnosing one engine.\n2. The mechanic tests the electrical system.\n3. The mechanic replaces one failed sensor.\n4. The mechanic continues testing the same engine.\n5. The mechanic confirms the repair is complete.\n\nTARGET UNIT:\n3. The mechanic replaces one failed sensor.\n\nQuestion: Does TARGET UNIT begin a new phase after a major time, location, or state reset, rather than continuing the same repair process?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
