@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundaries-fromroles-control-525",
+  "kind": "llama_chat",
+  "started_at": 1790302350.4735715,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Apply the deterministic boundary rule mechanically. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT ROLES:\n1. MAIN_BODY\n2. MAIN_BODY\n3. MAIN_BODY\n4. MAIN_BODY\n5. TERMINAL_RESOLUTION\n6. IMMEDIATE_CLOSURE\n\nRULE:\n- Chapter 1 starts at unit 1.\n- Start a new chapter BEFORE any TERMINAL_RESOLUTION unit.\n- Start a new chapter BEFORE any RESET_START unit.\n- Do not start a chapter before IMMEDIATE_CLOSURE when it directly follows TERMINAL_RESOLUTION.\n- Otherwise keep the unit in the current chapter.\n\nReturn JSON with key new_chapter_after, listing unit numbers AFTER which a new chapter begins."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1200,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5y40gzqi447642nff2hmxv",
+    "object": "chat.completion",
+    "created": 1790302350,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"new_chapter_after\":[4]}",
+          "reasoning": "We need to parse units 1-6 and determine after which units a new chapter starts. Units: 1 MAIN_BODY, 2 MAIN_BODY, 3 MAIN_BODY, 4 MAIN_BODY, 5 TERMINAL_RESOLUTION, 6 IMMEDIATE_CLOSURE.\n\nRules:\n\n- Chapter 1 starts at unit 1.\n- Start a new chapter BEFORE any TERMINAL_RESOLUTION unit.\n- Start a new chapter BEFORE any RESET_START unit. (No reset start units here)\n- Do not start a chapter before IMMEDIATE_CLOSURE when it directly follows TERMINAL_RESOLUTION.\n- Otherwise keep the unit in current chapter.\n\nWe need to list unit numbers AFTER which a new chapter begins. So if we start a new chapter before unit 5, that means after unit 4? Wait: \"new_chapter_after\" listing unit numbers AFTER which a new chapter begins. If we start a new chapter BEFORE any TERMINAL_RESOLUTION unit (unit 5), then the new chapter starts at unit 5; so it is after unit 4. So we list 4.\n\nAlso, if there were RESET_START units they'd be before them too.\n\nDo not start a chapter before IMMEDIATE_CLOSURE when it directly follows TERMINAL_RESOLUTION: Here unit 6 (IMMEDIATE_CLOSURE) directly follows unit 5 (TERMINAL_RESOLUTION). So don't start new chapter before unit 6. That means no new chapter after unit 5? Wait, we already started a new chapter before unit 5; that is fine. The rule says do not start a chapter before IMMEDIATE_CLOSURE when it directly follows TERMINAL_RESOLUTION. Since unit 6 follows terminal resolution, we don't start a new chapter before unit 6. So no new chapter after unit 5? But the earlier rule already started one before unit 5; that is fine.\n\nThus only new chapter starts at unit 5 (after unit 4). Also maybe after unit 1? Chapter 1 starts at unit 1, but that's not \"new\" after any previous. So we list [4].\n\nCheck if any other chapters: After unit 6? No rule to start before IMMEDIATE_CLOSURE unless preceding terminal resolution? But it's already following terminal resolution; no new chapter.\n\nThus output JSON with key new_chapter_after: [4].",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 212,
+      "completion_tokens": 497,
+      "total_tokens": 709,
+      "completion_tokens_details": {
+        "reasoning_tokens": 479
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790302358.3295903,
+  "status": "ok"
+}
