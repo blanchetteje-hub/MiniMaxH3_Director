@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-ending-closure-control-403",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide whether one source unit should stay in one large chapter or be split. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nOne final analysis resolves the research question, and the geologist immediately prepares the final report for the same team.\n\nAn ending action plus its immediate closure normally stays in one large chapter. Split only for a separate phase or major reset.\n\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys \"decision\" and \"reason\"."
+    }
+  ]
+}
