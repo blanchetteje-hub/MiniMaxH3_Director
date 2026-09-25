@@ -232,7 +232,8 @@ Instead:
 
 - Python owns persistent Subject identity/appearance and canonical established state;
 - Python automatically exposes current visible continuity that must survive a refresh, such as clothing, held objects, visible substances/injuries, and relevant visible environment aftermath;
-- a tiny semantic selector may choose additional transient/current facts by **fact ID only** when the whole enclosed chapter needs them, for example the location of people waiting behind a secured door;
+- additional transient/current facts are evaluated one fact at a time with a tiny NEEDED / NOT_NEEDED decision; Python assembles the selected IDs;
+- do not ask the 20B model to multi-select from a broad fact list: probe 422 over-selected unrelated history;
 - mere history is excluded.
 
 The LLM returns IDs, not rewritten facts. Python copies the authoritative fact text.
@@ -253,7 +254,7 @@ The current evidence-supported decomposition is:
 6. current exact chapter source + opening context + beat budget -> BEATS CREATE
 7. authoritative chapter source + candidate beats -> BEATS VALIDATE
 8. authoritative chapter source + candidate beats + issue -> BEATS REPAIR
-9. Python canonical state + next chapter -> fact-ID selection / refresh-context composition
+9. Python canonical state + next chapter -> per-fact NEEDED / NOT_NEEDED checks / refresh-context composition
 10. accepted beats -> downstream H3 scene/prompt work
 
 Each LLM call should remain narrow. Do not combine these responsibilities merely to reduce call count.
