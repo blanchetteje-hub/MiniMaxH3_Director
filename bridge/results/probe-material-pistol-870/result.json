@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-material-pistol-870",
+  "kind": "llama_chat",
+  "started_at": 1790370770.685915,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nAmy kills the last zombie, leaving the house soaked in blood.\n\nNEXT JOB\nAmy lets the kids out of the basement.\n\nCANDIDATE BEAT\nAmy slashes the final zombie's neck with her pistol, splattering blood across every wall of her house.\n\nMATERIAL FIDELITY: Harmless local staging is allowed, but reject invented details that materially change the assigned action, participant treatment, object use, location/result, or story meaning. Named tools and weapons must be used in a physically coherent way unless CURRENT JOB explicitly establishes an unusual use; for example a firearm may shoot/strike but does not slash or decapitate as a blade. Do not reject ordinary neutral staging.\n\nReturn exactly {\"valid\": true, \"issue\": \"\"} if valid, otherwise {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-w1id2riowgjwqxon3pyoji",
+    "object": "chat.completion",
+    "created": 1790370770,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\":\"Pistol used as a blade to slash the zombie's neck\"}",
+          "reasoning": "We need to judge the candidate beat: \"Amy slashes the final zombie's neck with her pistol, splattering blood across every wall of her house.\"\n\nCurrent job: Amy kills the last zombie, leaving the house soaked in blood.\n\nNext job: Amy lets the kids out of the basement.\n\nCandidate beat: Amy slashes the final zombie's neck with her pistol, splattering blood across every wall of her house.\n\nWe need to check if it matches meaning. The current job says she kills the last zombie, leaving the house soaked in blood. The candidate says she slashes the final zombie's neck with her pistol. That is a mismatch: using pistol as a blade? Pistol can't slash; it's a firearm. So that changes participant treatment and object use. Also \"splattering blood across every wall\" matches soaked in blood, but \"every wall\" maybe too specific but okay. The main issue: slashing with pistol is physically incoherent unless unusual use established. It's not. So reject.\n\nReturn {\"valid\": false, \"issue\":\"Pistol used as a blade to slash the zombie's neck\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 286,
+      "completion_tokens": 255,
+      "total_tokens": 541,
+      "completion_tokens_details": {
+        "reasoning_tokens": 224
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790370774.2087805,
+  "status": "ok"
+}
