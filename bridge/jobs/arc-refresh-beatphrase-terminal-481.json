@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-beatphrase-terminal-481",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE SOURCE UNITS:\n1. Worker completes the final task.\n2. Worker reunites with the waiting team.\n\nFIXED BEAT ASSIGNMENT:\nBeat 1 -> [1]\nBeat 2 -> [2]\n\nWrite one minimal event for each beat using only its assigned source unit.\nDo not add aftermath after source unit 2.\n\nReturn JSON with key beats; each object has beat and event."
+    }
+  ]
+}
