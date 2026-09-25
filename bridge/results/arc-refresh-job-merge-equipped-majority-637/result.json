@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-job-merge-equipped-majority-637",
+  "kind": "llama_chat",
+  "started_at": 1790351789.897881,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one adjacent beat-grouping decision. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT SOURCE RESPONSIBILITY:\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nRIGHT SOURCE RESPONSIBILITY:\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nCan ALL concrete actions/states in LEFT and RIGHT be completed naturally in ONE 8-second H3 beat without dropping, implying-away, or materially compressing a required action?\nMERGE only when they form one immediate continuous action sequence or one natural setup/completion chain.\nKEEP_SEPARATE when:\n- LEFT is an explicit calm baseline and RIGHT is the inciting danger/change;\n- LEFT reaches a meaningful completed handoff and RIGHT starts a distinct new task;\n- combining them would likely force omission or premature completion;\n- RIGHT is an explicitly long/repeated process.\nChoose MERGE or KEEP_SEPARATE.\nReturn {\"decision\":\"MERGE|KEEP_SEPARATE\",\"reason\":\"...\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-qkud7ecy3thtmqc51rhrvh",
+    "object": "chat.completion",
+    "created": 1790351789,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP_SEPARATE\",\"reason\":\"The left beat (retrieving and equipping a pistol and katana) is a brief setup that completes before the fight begins, while the right beat (killing zombies as they attack her) is an ongoing, repeated process that extends beyond 8 seconds. Combining them would force compression of either the weapon‑equipping sequence or the continuous killing action, so they should remain separate beats.\"}",
+          "reasoning": "We need to judge one adjacent beat-grouping decision. LEFT SOURCE RESPONSIBILITY: She retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nRIGHT SOURCE RESPONSIBILITY: The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nQuestion: Can ALL concrete actions/states in LEFT and RIGHT be completed naturally in ONE 8-second H3 beat without dropping, implying-away, or materially compressing a required action? Merge only when they form one immediate continuous action sequence or one natural setup/completion chain. Keep separate if left is calm baseline and right inciting danger; left reaches meaningful handoff and right starts distinct new task; combining would force omission or premature completion; right explicitly long/repeated process.\n\nWe need to decide MERGE or KEEP_SEPARATE.\n\nLEFT: retrieving hidden arsenal (pistol, katana) + equipping weapons. That's a set of actions: find stash, pick up pistol, pick up katana, equip both. That could be done in 8 seconds? Possibly yes if quick. But it's a setup for combat.\n\nRIGHT: majority of film is Amy killing zombies as they attack her. This is a long process (multiple kills). So RIGHT is an explicitly long/repeated process. The left action sets up the weapons, right is ongoing killings. They are not one immediate continuous sequence; left ends with equipping weapons, then right begins fighting.\n\nThus KEEP_SEPARATE likely. Because left is baseline setup, right is inciting danger and repeated kills. So decision: KEEP_SEPARATE.\n\nReason: Left's actions complete before the fight starts; right continues beyond 8 seconds. They are distinct tasks. Also combining would compress or omit details of equipping weapons vs fighting.\n\nThus JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 281,
+      "completion_tokens": 469,
+      "total_tokens": 750,
+      "completion_tokens_details": {
+        "reasoning_tokens": 370
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790351797.0840147,
+  "status": "ok"
+}
