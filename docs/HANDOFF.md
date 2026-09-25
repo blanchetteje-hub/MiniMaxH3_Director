@@ -408,3 +408,30 @@ Early results:
 - 412: combined validator caught premature later-chapter resolution as CHAPTER_SCOPE.
 - 413: combined validator caught an extra plot-relevant item as MATERIAL_DEVIATION.
 - 406 and the clean VALID control remain to be checked/completed before implementation.
+
+
+### Final architecture probe conclusions before implementation
+
+Latest results close the remaining planner questions.
+
+Validator:
+- 425 confirmed the compact validator returns the first issue in rule order: MISSING_ACTION took precedence over a simultaneous extra-object deviation.
+- Clean VALID controls pass.
+- The same compact validator has now demonstrated MISSING_ACTION, MATERIAL_DEVIATION, and CHAPTER_SCOPE.
+
+Context:
+- semantic relevance selection is not reliable enough for the 20B model;
+- 428 and 429 hallucinated relevance for unrelated historical facts;
+- 433 showed deterministic CURRENT-only context is sufficient when all needed current facts are present;
+- 437 showed omitting the waiting subjects' current location/containment makes context insufficient;
+- 438 showed harmless extra CURRENT visible environment state is acceptable;
+- therefore canonical state should mark CURRENT vs HISTORY and Python should include current truth while excluding history, without LLM relevance filtering.
+
+Beat allocation:
+- generic "majority" wording alone produced 5/3 in 434;
+- source-unit-count-aware allocation produced 6/2 in 441;
+- 442 accepted 6/2;
+- 443 rejected 5/3 as underweighting the majority chapter relative to source-unit ownership;
+- current preferred rule: minimum capacity for authoritative source units, then deterministic leftover-beat assignment toward explicitly source-emphasized longer chapters.
+
+Architecture probing has reached diminishing returns. Unless implementation exposes a new concrete failure, the next step should be production implementation on gpt-arc-refresh rather than more prompt probes.
