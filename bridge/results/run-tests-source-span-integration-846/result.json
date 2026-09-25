@@ -1,0 +1,7 @@
+{
+  "job_id": "run-tests-source-span-integration-846",
+  "status": "error",
+  "error_type": "ValueError",
+  "error": "Unsupported unittest module: 'tests/test_source_span_generation_path.py'",
+  "finished_at": 1790364921.289223
+}
