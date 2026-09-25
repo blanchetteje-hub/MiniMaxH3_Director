@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-beatphrase-amy-479",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE SOURCE UNITS:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. Amy fights attacking zombies.\n5. The larger zombie conflict remains unresolved.\n\nFIXED BEAT ASSIGNMENT:\nBeat 1 -> [1]\nBeat 2 -> [2]\nBeat 3 -> [3]\nBeat 4 -> [4]\nBeat 5 -> [4]\nBeat 6 -> [5]\n\nWrite one minimal event for each beat using only facts contained in its assigned source-unit IDs.\nDo not invent where the hidden weapons were stored.\nDo not move zombies into the protected basement.\nDo not invent new weapons or post-story events.\n\nReturn JSON with key beats; each object has beat and event."
+    }
+  ]
+}
