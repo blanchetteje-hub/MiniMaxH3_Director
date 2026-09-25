@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod-reset-alarm-585",
+  "kind": "llama_chat",
+  "started_at": 1790349761.8300138,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nA technician begins a normal shift.\n\nTARGET UNIT:\nAn alarm interrupts; the technician secures the work area.\n\nA HARD RESET means a discontinuity between narrative phases: an explicit time jump, scene break, relocation after a completed phase, or equivalent restart. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ynyegyabijdv84k7tec048",
+    "object": "chat.completion",
+    "created": 1790349761,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The target unit follows immediately from the previous one without an explicit time jump, scene break, or relocation—an alarm interruption occurs within the same continuous shift.\"}",
+          "reasoning": "We need to determine whether target unit begins after a hard reset from previous unit. Previous unit: \"A technician begins a normal shift.\" Target unit: \"An alarm interrupts; the technician secures the work area.\"\n\nHard reset defined as discontinuity between narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent restart.\n\nWe have two units: first is beginning of shift (normal). Second has an alarm interrupting and technician securing. Is there a hard reset? The target unit begins with \"An alarm interrupts\" - that's immediate cause-and-effect action in same continuous sequence? It's an interruption but still part of the same shift, not a time jump or scene break. So it's not a hard reset.\n\nThus decision: NO. Reason: No explicit discontinuity; alarm interrupt is within same phase. Return JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 197,
+      "completion_tokens": 222,
+      "total_tokens": 419,
+      "completion_tokens_details": {
+        "reasoning_tokens": 173
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790349765.5753803,
+  "status": "ok"
+}
