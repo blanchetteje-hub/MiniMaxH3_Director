@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-current-only-missingpeople-437",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow decision. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nThe worker finishes the active task, then opens the secured room and lets two waiting people out.\n\nCURRENT CANONICAL STATE:\n1. Worker is at the workstation facing the still-active task.\n2. Worker currently holds the active tool.\n3. Worker's clothing is established.\n4. A visible substance remains on the clothing.\n5. Two earlier completed objects remain visible nearby.\n\nThe current location/containment of the two waiting people is omitted.\n\nChoose: SUFFICIENT or INSUFFICIENT.\nReturn JSON with keys decision and issue."
+    }
+  ]
+}
