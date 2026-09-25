@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod2-split-closure-588",
+  "kind": "llama_chat",
+  "started_at": 1790350283.1482599,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY:\nAmy cooks breakfast for Will and Amber. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door. Amy retrieves her hidden pistol and katana and equips them. The majority of the film is Amy killing zombies as they attack. Amy kills the last zombie and the house is soaked in blood. Amy lets Will and Amber out of the basement.\n\nSOURCE UNIT:\nAmy lets Will and Amber out of the basement.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only in either case:\n1. this unit contains an explicit substantial time jump/scene break between two narrative phases; or\n2. this unit contains an ongoing/repeated main process followed by its explicit terminal resolution.\nOtherwise choose KEEP_TOGETHER. Ordinary movement, danger changes, tool/weapon changes, terminal resolution plus immediate closure, and continuous work stay together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-q4jtgnj6akihsb06c24x",
+    "object": "chat.completion",
+    "created": 1790350283,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to decide whether the source unit \"Amy lets Will and Amber out of the basement.\" crosses an internal LARGE H3 chapter phase boundary.\n\nThe instruction says: A chapter is a LARGE H3 refresh unit. Choose SPLIT only if this unit contains explicit substantial time jump/scene break between two narrative phases; or it contains ongoing/repeated main process followed by its explicit terminal resolution. Otherwise choose KEEP_TOGETHER. Ordinary movement, danger changes, tool/weapon changes, terminal resolution plus immediate closure, and continuous work stay together.\n\nWe need to decide if this unit crosses a phase boundary. The source unit is \"Amy lets Will and Amber out of the basement.\" This seems like an action that resolves the previous process (killing zombies in basement). It might be considered as the terminal resolution of the main process: Amy kills last zombie, house soaked in blood, then she lets them out. So it's a terminal resolution plus immediate closure? The instruction says \"terminal resolution plus immediate closure\" stays together. That suggests that this unit should stay with previous actions? But we need to decide if it crosses boundary.\n\nWe have the story: Amy cooks breakfast for Will and Amber. A zombie breaks kitchen door window; Amy gets them into basement, locks door. She retrieves pistol/katana, equips them. Majority of film is Amy killing zombies as they attack. Amy kills last zombie and house soaked in blood. Amy lets Will and Amber out of the basement.\n\nSo \"Amy lets Will and Amber out of the basement\" is after she killed last zombie. It's a terminal resolution: letting them out. It might be considered part of same phase? The previous phase was killing zombies, which ended with last zombie death. Then house",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 295,
+      "completion_tokens": 350,
+      "total_tokens": 645,
+      "completion_tokens_details": {
+        "reasoning_tokens": 347
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350288.7013378,
+  "status": "ok"
+}
