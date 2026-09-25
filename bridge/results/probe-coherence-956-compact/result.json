@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-956-compact",
+  "kind": "llama_chat",
+  "started_at": 1790380197.110247,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nShe retrieves her hidden arsenal—a pistol and a katana—from the closet in the basement, then equips both weapons.\n\nCURRENT STATE\n{\"characters\":{\"Amy\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"home\",\"accessible\":true,\"clothing\":{\"upper\":{\"item\":\"tight black tank top\",\"damage\":\"none\"},\"lower\":{\"item\":\"denim jeans\",\"damage\":\"none\"}},\"held_objects\":[\"pistol\",\"katana\"],\"equipped_objects\":[\"weapons\"],\"status\":\"alive/conscious unless stated otherwise\"},\"Will\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"},\"Amber\":{\"prior_injuries\":\"none\",\"injury_history\":\"no injury event has been established at any earlier beat\",\"location\":\"basement\",\"containment\":\"contained\",\"contained_in\":\"basement\",\"accessible\":false,\"clothing\":{\"upper\":{\"damage\":\"none\"},\"lower\":{\"damage\":\"none\"}},\"status\":\"alive/conscious unless stated otherwise\"}},\"environment\":{\"barriers\":{\"kitchen door window\":{\"status\":\"broken\"},\"door\":{\"status\":\"locked\"}}}}\n\nCURRENT JOB\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nNEXT JOB\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nSTATE EFFECTS IF VALID\n[{\"id\":\"E4\",\"state_effects\":[]}]\n\nCANDIDATE BEAT\nAs a zombie lunges at her, Amy fires her pistol to sever its head, then decapitates it with the katana.\n\nCHECKS\n1. Read the candidate literally in action order. Carry each completed result forward.\nA completed removal cannot happen again to that same target or part unless it is\nexplicitly restored first. Different targets and unsuccessful attempts are different\ncases. Do not excuse a contradiction as emphasis or silently change an action.\n2. Use PREVIOUS FINAL BEAT and CURRENT STATE as established facts. Reject unavailable\nobjects, unresolved barriers, and impossible actions. Unknown facts are not errors.\nHonor capabilities explicitly established in CURRENT JOB or CURRENT STATE.\n3. CURRENT JOB must happen in this beat, including every required action, result,\nand named participant. History or already-completed-state wording cannot replace\nan assigned action. Harmless staging is allowed; material changes to tools,\nparticipants, locations, or outcomes are not.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Each listed STATE EFFECT must follow from the candidate. Do not invent a\nmissing required action to justify an effect.\n\nReturn one JSON object: valid is a boolean, issue is a short concrete error\nor an empty string when valid. Judge all checks; any clear error makes valid false."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nxw25ivrjqa7n5bqfiui62",
+    "object": "chat.completion",
+    "created": 1790380197,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The head is severed by the pistol first, so it cannot be decapitated a second time with the katana unless restored; this double removal contradicts the state rules.\"}",
+          "reasoning": "We need validate beat: \"As a zombie lunges at her, Amy fires her pistol to sever its head, then decapitates it with the katana.\"\n\nCheck 1: Action order: zombie lunge -> Amy fires pistol to sever head -> decapitate with katana.\n\nResult: Zombie's head removed. After that, decapitation again? The head already severed by pistol; decapitating again is redundant but could be same action? \"Decapitates it\" refers to the zombie (head). If head already severed, decapitation might refer to removing body from head? But head gone. So maybe decapitate means remove head with katana after lunge. The pistol severed head; then katana decapitates again same target: can't happen twice unless restored. So contradiction.\n\nCheck 2: Objects available: Amy has pistol and katana, both equipped. Zombie present in basement? Not specified but likely. Lunge at her implies zombie is near. No barrier issues.\n\nZombie not listed as character; but zombies are generic. Should be fine.\n\nCheck 3: Current job: \"The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\" This beat includes decapitation action. Good.\n\nBut head severed twice? That's a contradiction. So invalid.\n\nReturn valid false with issue: \"Head already severed by pistol; cannot be decapitated again without restoration.\"\n\nCheck if any other issues: The zombie lunge at Amy, but no mention of location. But okay.\n\nThus output JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 757,
+      "completion_tokens": 384,
+      "total_tokens": 1141,
+      "completion_tokens_details": {
+        "reasoning_tokens": 330
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380202.6950583,
+  "status": "ok"
+}
