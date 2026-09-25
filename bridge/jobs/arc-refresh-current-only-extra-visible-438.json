@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-current-only-extra-visible-438",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow decision. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nThe worker finishes the active task, then opens the secured room and lets two waiting people out.\n\nCURRENT CANONICAL STATE:\n1. Worker is at the workstation facing the still-active task.\n2. Worker currently holds the active tool.\n3. Two people are waiting behind the closed secured-room door.\n4. A cracked display remains visible on a nearby console.\n5. A dropped box remains visible on the floor.\n\nAll listed facts are currently true, not history.\n\nDoes including current but nonessential visible environment state materially confuse or contradict the chapter?\nChoose: ACCEPTABLE or PROBLEMATIC.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
