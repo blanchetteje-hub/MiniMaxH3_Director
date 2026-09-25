@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-hardreset-inciting-555",
+  "kind": "llama_chat",
+  "started_at": 1790303533.902469,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nA family is eating breakfast in the kitchen.\n\nTARGET UNIT:\nAn alarm suddenly sounds; the family immediately runs into the hallway.\n\nA HARD RESET means a discontinuity between narrative phases. An inciting event and immediate reaction inside the same continuous timeline are NOT a hard reset.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-cjttkypv3kiulnad2ushjj",
+    "object": "chat.completion",
+    "created": 1790303533,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The target unit contains an inciting event (alarm) followed immediately by a reaction (family runs), which occurs within the same continuous narrative phase of breakfast, so it is not a hard reset.\"}",
+          "reasoning": "We need to decide if target unit begins after a hard reset relative to previous unit. Hard reset means discontinuity between narrative phases; inciting event and immediate reaction inside same continuous timeline are NOT a hard reset.\n\nPrevious: \"A family is eating breakfast in the kitchen.\" That's one phase, presumably ongoing breakfast scene.\n\nTarget: \"An alarm suddenly sounds; the family immediately runs into the hallway.\"\n\nThis seems like an inciting event (alarm) and immediate reaction (runs). It's within same continuous timeline? The previous unit ends with them eating. Then target starts with alarm sounding. Is that a hard reset? If it's just continuation of narrative, not a new phase? But \"An alarm suddenly sounds\" could be considered a new event but still part of the same scene: breakfast interrupted by alarm. So no hard reset.\n\nThus decision NO. Reason: inciting event and immediate reaction within continuous timeline; no discontinuity.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 174,
+      "completion_tokens": 242,
+      "total_tokens": 416,
+      "completion_tokens_details": {
+        "reasoning_tokens": 185
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790303537.8495693,
+  "status": "ok"
+}
