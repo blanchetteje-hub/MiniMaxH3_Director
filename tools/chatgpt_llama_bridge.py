@@ -676,7 +676,7 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     image1 = safe_source_path(source_root, image1_raw)
     if not image1.is_file():
         raise FileNotFoundError(f"Acceptance image not found: {image1}")
-    model = str(job.get("model") or "mistral").strip()
+    model = str(job.get("model") or "gpt").strip()
     if not re.fullmatch(r"[A-Za-z0-9_.-]+", model):
         raise ValueError(f"Unsupported model selector: {model!r}")
 
