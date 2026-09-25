@@ -1,0 +1,12 @@
+{
+  "kind": "run_tests",
+  "job_id": "run-tests-baseline-consistency-860",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_chatgpt_llama_bridge.py",
+    "tests/test_acceptance_runner.py",
+    "tests/test_desktop_app.py",
+    "tests/test_story_planner.py"
+  ],
+  "timeout_seconds": 1800
+}
