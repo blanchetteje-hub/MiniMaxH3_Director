@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-split-candidate-measurements-399",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Choose among precomputed exact source split candidates. Do not rewrite source. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nShe spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\n\nCANDIDATE A:\nLEFT = She spends most of the story repeating measurements\nRIGHT = then one final measurement resolves the problem and she immediately closes the lab.\n\nCANDIDATE B:\nLEFT = She spends most of the story repeating measurements, then one final measurement resolves the problem\nRIGHT = and she immediately closes the lab.\n\nChoose one value from: A, B, NONE.\nPick a split only if it creates a meaningful large H3 chapter boundary.\n\nReturn a JSON object with keys \"choice\" and \"reason\"."
+    }
+  ]
+}
