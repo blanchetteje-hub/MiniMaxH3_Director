@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-internal-split-index-select-393",
+  "kind": "llama_chat",
+  "started_at": 1790298247.7714002,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Select source-unit IDs that require an internal chapter-boundary inspection. Do not rewrite source text. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE SOURCE UNITS:\n1. A scientist begins a normal shift.\n2. She spends most of the story repeating measurements, then one final measurement resolves the problem and she closes the lab.\n3. She meets her colleague.\n4. She drives home.\n\nSelect only units that themselves contain more than one major narrative phase and therefore may require an internal split.\nReturn a JSON object with key \"inspect_unit_ids\", an array of unit numbers."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-xnd1jzilsq91fqjny1c7",
+    "object": "chat.completion",
+    "created": 1790298247,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"inspect_unit_ids\":[2]}",
+          "reasoning": "We need to select source-unit IDs that have more than one major narrative phase, requiring internal chapter-boundary inspection.\n\nGiven units:\n\n1. A scientist begins a normal shift. (Probably single phase: beginning shift)\n2. She spends most of the story repeating measurements, then one final measurement resolves the problem and she closes the lab. This has at least two phases: repeated measurements vs final resolution + closing lab.\n3. She meets her colleague. Single phase meeting\n4. She drives home. Single phase driving\n\nThus only unit 2 qualifies.\n\nReturn JSON with key \"inspect_unit_ids\": [2].\n\nCheck if any other units have more than one major narrative phase? Unit 1: begins shift, maybe just start; no phases beyond that. So only 2.\n\nReturn valid JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 188,
+      "completion_tokens": 178,
+      "total_tokens": 366,
+      "completion_tokens_details": {
+        "reasoning_tokens": 161
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790298250.7716146,
+  "status": "ok"
+}
