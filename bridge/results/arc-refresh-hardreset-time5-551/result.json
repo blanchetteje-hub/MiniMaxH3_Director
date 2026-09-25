@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-hardreset-time5-551",
+  "kind": "llama_chat",
+  "started_at": 1790303567.4329371,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nA final test resolves the question and the team prepares the report.\n\nTARGET UNIT:\nOne year later the team returns to the remote site.\n\nA HARD RESET means a discontinuity between narrative phases, including a major explicit time jump or relocation after a completed phase.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-khk26bc1ne8bcpr04znhub",
+    "object": "chat.completion",
+    "created": 1790303567,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The target unit begins with an explicit one‑year time jump and the team’s return to the remote site, indicating a major discontinuity from the preceding narrative phase.\"}",
+          "reasoning": "We need to decide if the target unit begins after a hard reset relative to previous unit. The previous unit: \"A final test resolves the question and the team prepares the report.\" That is one narrative phase ending.\n\nTarget unit: \"One year later the team returns to the remote site.\"\n\nIs there a major explicit time jump or relocation? Yes, it's explicitly \"one year later\" indicating a time jump of 1 year. Also relocation: they return to remote site (maybe same as before). So yes, it is a hard reset.\n\nThus decision YES. Reason: explicit one-year time jump and relocation after previous phase. Return JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 171,
+      "completion_tokens": 185,
+      "total_tokens": 356,
+      "completion_tokens_details": {
+        "reasoning_tokens": 134
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790303570.49422,
+  "status": "ok"
+}
