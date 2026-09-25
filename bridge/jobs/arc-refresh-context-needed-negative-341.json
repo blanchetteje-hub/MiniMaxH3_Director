@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-context-needed-negative-341",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether one established fact is required by the whole enclosed chapter. Historical facts that do not affect current execution should be excluded. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nA researcher finishes the current diagnostic, then walks to a sealed side room and reunites with the colleague waiting there.\n\nFACT:\nAn alarm sounded earlier.\n\nWould omitting this fact force the chapter planner to guess anything needed to execute or render the current chapter correctly?\n\nReturn exactly:\n{\"needed\":false,\"reason\":\"...\"}"
+    }
+  ]
+}
