@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-rawspan-source-validator-375",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate candidate beats against the supplied authoritative chapter source. Unsupported material actions make the candidate invalid. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE CHAPTER SOURCE:\nA worker completes the final task.\nThe worker reunites with the waiting team.\nThe source ends at the reunion.\n\nCANDIDATE:\nBeat 1: The worker completes the final task.\nBeat 2: The worker reunites with the waiting team and then begins a new project.\n\nChoose one validity value from this allowed set: VALID, INVALID.\nReturn a JSON object with keys \"validity\" and \"issue\"."
+    }
+  ]
+}
