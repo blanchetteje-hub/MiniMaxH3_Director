@@ -177,3 +177,79 @@ def test_classify_source_units_uses_terminal_and_hard_reset_calls():
         "source_unit_terminal",
         "source_unit_hard_reset",
     ]
+
+
+
+def test_cut_candidates_preserve_exact_mixed_phase_sentence():
+    from story_planner import enumerate_cut_candidates
+
+    story = (
+        "She spends most of the story repeating measurements, then one final "
+        "measurement resolves the problem and she immediately closes the lab."
+    )
+    unit = enumerate_source_units(story)[0]
+    candidates = enumerate_cut_candidates(unit)
+
+    assert [
+        (candidate.label, candidate.left_text, candidate.right_text)
+        for candidate in candidates
+    ] == [
+        (
+            "A",
+            "She spends most of the story repeating measurements,",
+            "then one final measurement resolves the problem and she immediately closes the lab.",
+        ),
+        (
+            "B",
+            "She spends most of the story repeating measurements, then one final measurement resolves the problem",
+            "and she immediately closes the lab.",
+        ),
+    ]
+
+
+def test_refine_source_units_only_uses_cut_choice_after_split_gate():
+    from story_planner import refine_source_units
+
+    story = (
+        "She spends most of the story repeating measurements, then one final "
+        "measurement resolves the problem and she immediately closes the lab."
+    )
+    units = enumerate_source_units(story)
+    responses = iter([
+        {"decision": "SPLIT", "reason": "ongoing process crosses into resolution"},
+        {"choice": "A", "reason": "resolution begins on the right"},
+    ])
+    purposes = []
+
+    def fake_llm(messages, **kwargs):
+        purposes.append(kwargs["history_metadata"]["purpose"])
+        return next(responses)
+
+    refined = refine_source_units(story, units, fake_llm)
+
+    assert [unit.text for unit in refined] == [
+        "She spends most of the story repeating measurements,",
+        "then one final measurement resolves the problem and she immediately closes the lab.",
+    ]
+    assert purposes == ["source_unit_split_gate", "source_unit_cut_choice"]
+    assert all(story[unit.start:unit.end] == unit.text for unit in refined)
+
+
+def test_refine_source_units_keeps_continuous_unit_without_cut_call():
+    from story_planner import refine_source_units
+
+    story = (
+        "The operator tests one subsystem, replaces a failed component, and "
+        "continues testing the same subsystem."
+    )
+    units = enumerate_source_units(story)
+    calls = []
+
+    def fake_llm(messages, **kwargs):
+        calls.append(kwargs["history_metadata"]["purpose"])
+        return {"decision": "KEEP_TOGETHER", "reason": "continuous work"}
+
+    refined = refine_source_units(story, units, fake_llm)
+
+    assert [unit.text for unit in refined] == [story]
+    assert calls == ["source_unit_split_gate"]
