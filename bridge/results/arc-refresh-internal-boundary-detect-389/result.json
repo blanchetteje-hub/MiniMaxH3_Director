@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-internal-boundary-detect-389",
+  "kind": "llama_chat",
+  "started_at": 1790297276.8307436,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide whether one authoritative source unit contains an internal narrative transition strong enough to justify splitting that unit across two large H3 chapters. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nShe spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\n\nA split is appropriate only if the unit contains both the ongoing/main process and a distinct terminal-resolution phase.\n\nChoose one decision from: SPLIT, KEEP_TOGETHER.\nReturn a JSON object with keys \"decision\" and \"reason\"."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2yj3ibj3wq58e85dmpymon",
+    "object": "chat.completion",
+    "created": 1790297276,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"SPLIT\",\"reason\":\"The source unit contains an ongoing process—repeating measurements—and a distinct terminal-resolution phase where the final measurement resolves the problem, prompting her to close the lab.\"}",
+          "reasoning": "We need to decide whether this source unit should be split into two H3 chapters. The unit is: \"She spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\"\n\nSo it's a narrative that has an ongoing process (repeating measurements) and a distinct terminal resolution phase (final measurement resolves problem, closing lab). That seems like two phases.\n\nThe instruction says: A split is appropriate only if the unit contains both the ongoing/main process and a distinct terminal-resolution phase. This unit does contain those. So we should SPLIT.\n\nReturn JSON with decision \"SPLIT\" and reason explaining that it has main process and resolution.\n\nLet's produce JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 178,
+      "completion_tokens": 193,
+      "total_tokens": 371,
+      "completion_tokens_details": {
+        "reasoning_tokens": 141
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790297280.0986397,
+  "status": "ok"
+}
