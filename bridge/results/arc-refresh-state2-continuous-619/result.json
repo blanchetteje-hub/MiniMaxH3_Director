@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-state2-continuous-619",
+  "kind": "llama_chat",
+  "started_at": 1790350860.552115,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nThe operator tests one subsystem, replaces a failed component, and continues testing the same subsystem.\n\nExtract only persistent post-unit facts explicitly established by SOURCE UNIT.\nActivity alone never creates state. Do not infer results from testing, using, handling, replacing, attacking, moving through, or other ordinary actions unless SOURCE UNIT explicitly states the post-state.\nDo not invent synonyms, destinations, entity names, conditions, or object quality.\n\nApply these rules in order:\n1. set_location only when SOURCE UNIT explicitly puts an entity at/in/to a named destination. Do not use it for \"out of X\" when no destination is named.\n2. set_item_state only for explicit possession/equipment results: stored, held, equipped, dropped, or lost.\n3. set_barrier_state only for an explicitly named barrier explicitly opened, closed, locked, unlocked, blocked, broken, or destroyed.\n4. set_threat_state only for an explicit lifecycle result: incapacitated, dead, removed, or cleared. Ongoing attacking/fighting is not a state effect.\n5. set_object_state only when SOURCE UNIT explicitly states the object's resulting state as intact, damaged, destroyed, active, inactive, or used. Merely testing/using/replacing an object is not enough.\n6. set_containment when SOURCE UNIT explicitly puts an entity into/inside a named container or enclosed place (contained), or explicitly lets/removes it out of that named container/place (free).\n7. set_condition only for an explicit persistent visible condition stated after the action; copy the condition wording from SOURCE UNIT.\n8. set_clothing only for explicitly worn clothing.\n\nAllowed JSON operation shapes:\n- {\"op\":\"set_location\",\"entity\":\"...\",\"value\":\"...\"}\n- {\"op\":\"set_item_state\",\"entity\":\"...\",\"owner\":\"...\",\"value\":\"stored|held|equipped|dropped|lost\"}\n- {\"op\":\"set_barrier_state\",\"entity\":\"...\",\"value\":\"open|closed|locked|unlocked|blocked|broken|destroyed\"}\n- {\"op\":\"set_threat_state\",\"entity\":\"...\",\"value\":\"incapacitated|dead|removed|cleared\"}\n- {\"op\":\"set_object_state\",\"entity\":\"...\",\"value\":\"intact|damaged|destroyed|active|inactive|used\"}\n- {\"op\":\"set_containment\",\"entity\":\"...\",\"container\":\"...\",\"value\":\"contained|free\"}\n- {\"op\":\"set_condition\",\"entity\":\"...\",\"value\":\"...\"}\n- {\"op\":\"set_clothing\",\"entity\":\"...\",\"slot\":\"upper|lower\",\"item\":\"...\",\"damage\":\"none|damaged|destroyed\"}\n\nReturn {\"state_effects\":[]} when no rule applies. Return JSON only."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2j9bc4d6g8wr2efj8ihoj",
+    "object": "chat.completion",
+    "created": 1790350860,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"state_effects\":[] }",
+          "reasoning": "We need to extract explicit persistent post-unit state from the source unit: \"The operator tests one subsystem, replaces a failed component, and continues testing the same subsystem.\"\n\nSo we have an operator performing actions on subsystems and components.\n\nWhat are entities? Subsystem, component. The operator tests one subsystem -> maybe no state change. Replaces a failed component -> that implies the component is replaced; so the new component is now in place? But rule: set_item_state only for possession/equipment results: stored, held, equipped, dropped, lost. Not relevant.\n\nset_object_state when object resulting state as intact/damaged/etc. The component was failed (damaged). Replaced it -> maybe the old component becomes removed or destroyed? But not explicit. \"Failed\" indicates damaged; replaced implies new one is installed. But no explicit statement of state change: e.g., \"the subsystem now has a new component\". Not given.\n\nSet_containment when entity put into container/place. Subsystem contains components. Replacing component means old component removed from subsystem, new inserted? No explicit mention.\n\nThus maybe no rule applies. The only explicit persistent fact is that the operator continues testing same subsystem; but that's activity not state.\n\nSo output {\"state_effects\":[]}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 644,
+      "completion_tokens": 270,
+      "total_tokens": 914,
+      "completion_tokens_details": {
+        "reasoning_tokens": 254
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350865.0388703,
+  "status": "ok"
+}
