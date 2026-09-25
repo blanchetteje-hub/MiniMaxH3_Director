@@ -1,0 +1,7 @@
+{
+  "job_id": "arc-refresh-current-only-sufficient-436",
+  "status": "error",
+  "error_type": "HTTPError",
+  "error": "HTTP Error 400: Bad Request",
+  "finished_at": 1790299820.7076805
+}
