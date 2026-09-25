@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-split-choice-timejump-407",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow task. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nA geologist finishes a week of desert field work, then three months later begins laboratory analysis in another city.\n\nCANDIDATE A:\nLEFT = A geologist finishes a week of desert field work,\nRIGHT = then three months later begins laboratory analysis in another city.\n\nCANDIDATE B:\nLEFT = A geologist finishes a week of desert field work, then three months later\nRIGHT = begins laboratory analysis in another city.\n\nChoose the best large-chapter split from: A, B, NONE.\nReturn JSON with keys \"choice\" and \"reason\"."
+    }
+  ]
+}
