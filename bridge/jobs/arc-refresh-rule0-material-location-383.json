@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-rule0-material-location-383",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate whether a candidate stays within STORY. Creative presentation details are allowed only when they do not materially change events, relationships, danger, location significance, or outcome. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nAmy gets Will and Amber into the basement and locks the door. Amy then equips her weapons and fights attacking zombies.\n\nCANDIDATE:\nAfter locking Will and Amber in the basement, Amy equips her weapons and fights a swarm of attacking zombies inside the basement with the children.\n\nChoose one validity value from: VALID, INVALID.\nReturn a JSON object with keys \"validity\" and \"issue\"."
+    }
+  ]
+}
