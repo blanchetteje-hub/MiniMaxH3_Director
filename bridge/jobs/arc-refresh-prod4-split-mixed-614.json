@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-prod4-split-mixed-614",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nShe spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only in either case:\n1. this unit contains an explicit substantial time jump/scene break between two narrative phases; or\n2. this unit explicitly describes a long/repeated main process (for example majority, most, repeatedly, throughout, or equivalent duration/repetition wording) followed by its explicit terminal resolution. A one-time finite action chain is NOT this case.\nOtherwise choose KEEP_TOGETHER. Ordinary movement, danger changes, tool/weapon changes, terminal resolution plus immediate closure, and continuous work stay together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
