@@ -1,0 +1,9 @@
+{
+  "kind": "run_tests",
+  "job_id": "run-tests-bridge-merge-854",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_chatgpt_llama_bridge.py"
+  ],
+  "timeout_seconds": 900
+}
