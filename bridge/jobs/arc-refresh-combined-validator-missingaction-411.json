@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-combined-validator-missingaction-411",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only the requested chapter-beat contract. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE CHAPTER SOURCE:\nA worker opens the cabinet.\nThe worker takes Item-A and Item-B.\nThe worker places Item-A on the cart.\nThe worker carries Item-B into the hallway.\n\nCANDIDATE BEATS:\n1. The worker opens the cabinet, takes Item-A, and places it on the cart.\n2. The worker carries Item-B into the hallway.\n\nCheck in order:\n1. Every assigned concrete action must be explicitly narrated; a later state does not prove an omitted action.\n2. Harmless presentation detail is allowed; material changes are not.\n3. No responsibility outside this chapter.\n\nChoose validity from: VALID, INVALID.\nIf invalid, choose issue_type from: MISSING_ACTION, MATERIAL_DEVIATION, CHAPTER_SCOPE.\nReturn JSON with keys validity, issue_type, issue."
+    }
+  ]
+}
