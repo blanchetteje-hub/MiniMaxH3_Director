@@ -255,7 +255,7 @@ class MiniMaxBridge:
                 settings.get("trim_frames", 2), "Trim frames"
             ),
             "refresh": _positive_int(
-                settings.get("refresh", 4), "Refresh interval"
+                settings.get("refresh", 4), "Legacy refresh fallback"
             ),
             "vision_continuity": _non_negative_int(
                 settings.get("vision_continuity", 0), "Vision continuity"
@@ -326,8 +326,8 @@ class MiniMaxBridge:
                 raise ValueError("Generation settings must be an object.")
             beat_count = _positive_int(settings.get("beat_count"), "Story beats")
             model = str(settings.get("model", "gpt")).strip().lower()
-            if model not in {"mistral", "ministral", "qwen"}:
-                raise ValueError("Model formatter must be 'mistral' or 'qwen'.")
+            if model not in {"gpt", "mistral", "qwen"}:
+                raise ValueError("Model formatter must be 'gpt', 'mistral', or 'qwen'.")
             return [
                 self.python_executable,
                 "-u",
