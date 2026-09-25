@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-transient-context-only-380",
+  "kind": "llama_chat",
+  "started_at": 1790297149.130254,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Select only transient/current state needed to execute the whole chapter. Persistent Subject appearance is injected separately by Python. Exclude mere history. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT CHAPTER SOURCE:\nAmy kills the last zombie.\nAmy lets Will and Amber out of the basement.\n\nESTABLISHED STATE:\n- Amy is in the kitchen facing the still-active final zombie.\n- Amy holds a raised katana.\n- Amy wears a black tank top and denim jeans.\n- Amy's front is covered in green vomit.\n- Two earlier zombie corpses remain on the kitchen floor.\n- Will and Amber are safe behind the closed steel basement door down the hallway.\n- Amy discarded a pistol earlier.\n- The kitchen door window broke earlier.\n- Breakfast happened earlier.\n\nReturn a JSON object with key \"transient_context\", an array of selected facts."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-3t0it9bq6hr2mzxxiskxfd",
+    "object": "chat.completion",
+    "created": 1790297149,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"transient_context\":[\"Amy is standing in the kitchen facing the last active zombie.\",\"She holds a raised katana ready to strike.\",\"Her front is covered in green vomit; she wears a black tank top and denim jeans.\",\"Two earlier zombie corpses lie on the kitchen floor.\",\"Will and Amber are now outside the basement, positioned in the hallway as the steel door opens behind them.\",\"The last zombie remains alive until Amy kills it.\"]}",
+          "reasoning": "We need to return only transient/current state needed for this chapter: Amy kills last zombie, lets Will and Amber out of basement. So we include facts relevant now: Amy in kitchen facing final zombie; holds raised katana; wearing black tank top denim jeans; front covered green vomit; two earlier corpses on floor; Will & Amber safe behind closed steel basement door down hallway; Amy discarded pistol earlier (maybe not needed); kitchen door window broke earlier (not current). Breakfast happened earlier. So transient facts: Amy in kitchen facing final zombie, holds katana, wearing clothes, front covered green vomit, two zombie corpses on floor, Will & Amber safe behind closed steel basement door down hallway.\n\nAlso maybe mention that the last zombie is still active. And that she will kill it. Also that Will and Amber are out of basement? Actually \"lets Will and Amber out of the basement\" means they exit basement to kitchen/hallway. So after action, Will & Amber in hallway or kitchen? They were behind closed steel door down hallway; Amy lets them out: so they move from basement into hallway (or kitchen). So transient state includes that Will and Amber are now outside basement, maybe in hallway.\n\nAlso mention the final zombie still active until killed. Also mention Amy's front covered green vomit remains.\n\nThus JSON array of facts:\n\n- Amy is standing in the kitchen facing the last active zombie.\n- Amy holds a raised katana ready to strike.\n- Amy wears a black tank top and denim jeans; her front is covered in green vomit.\n- Two earlier zombie corpses lie on the kitchen floor.\n- Will and Amber are now outside the basement, positioned in the hallway (or kitchen).\n- The last zombie remains alive until killed.\n\nWe can include that the steel door behind them is closed. But that's still relevant: they were behind it; after letting out, it's open? Actually \"lets Will and Amber out of the basement\" implies opening the door. So the steel door now open. So we could mention that the steel basement door is open.\n\nThus facts:\n\n- Amy in kitchen facing last zombie.\n- Holds raised katana.\n- Wearing black tank top denim jeans; front covered green vomit.\n- Two earlier corpses on floor.\n- Will and Amber are outside basement, in hallway (door now open).\n- Last zombie still active until killed.\n\nReturn JSON with key \"transient_context\" array of these facts.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 239,
+      "completion_tokens": 595,
+      "total_tokens": 834,
+      "completion_tokens_details": {
+        "reasoning_tokens": 495
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790297158.406839,
+  "status": "ok"
+}
