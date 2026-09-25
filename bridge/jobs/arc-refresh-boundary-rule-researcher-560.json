@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-rule-researcher-560",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1300,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT FLAGS:\n1. terminal=NO, hard_reset=NO\n2. terminal=NO, hard_reset=NO\n3. terminal=NO, hard_reset=NO\n4. terminal=YES, hard_reset=NO\n5. terminal=NO, hard_reset=NO\n\nApply this rule:\n- split before every hard_reset=YES unit;\n- split before terminal=YES only if a later unit exists and the next unit is not a hard reset;\n- final terminal unit stays in the current chapter.\n\nReturn JSON with key new_chapter_after."
+    }
+  ]
+}
