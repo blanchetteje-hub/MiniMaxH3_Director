@@ -1,0 +1,9 @@
+{
+  "kind": "run_tests",
+  "job_id": "run-tests-source-grounding-862",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_source_span_runtime_adapter.py"
+  ],
+  "timeout_seconds": 900
+}
