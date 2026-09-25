@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 250,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-response-veto-breach-protect-820",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only the narrow binary semantic question. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nA hostile figure begins climbing through the broken window.\n\nRIGHT:\nMara rushes the children into the safe room.\n\nQuestion: Is LEFT itself a completed character response to an earlier problem, with RIGHT beginning another distinct character response to that same earlier problem?\nYES only when BOTH are separate response actions to an earlier shared cause. LEFT must itself be a character response action; if LEFT is the danger/event/problem, answer NO. If RIGHT mechanically completes or directly continues LEFT, answer NO.\nReturn exactly {\"separate_responses\":\"YES|NO\"}."
+    }
+  ]
+}
