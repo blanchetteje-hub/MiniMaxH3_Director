@@ -257,7 +257,10 @@ def build_command(
 
     segment_length = float(beats[0]["length_seconds"])
     total_length = segment_length * len(beats)
-    refresh_interval = infer_refresh_interval(beats)
+    # Chapter/source-span planning owns refresh boundaries. Never feed the
+    # gold benchmark's refresh locations back into the runtime; doing so could
+    # mask a broken chapter planner.
+    refresh_interval = None
 
     command = [
         python_executable,
@@ -273,11 +276,9 @@ def build_command(
         "--image1",
         str(image1),
     ]
-    # The application defaults to a refresh cadence of 4, so explicitly
-    # override it even when the benchmark has no refresh beats.
-    command.extend(
-        ["--refresh", str(refresh_interval if refresh_interval is not None else 999999)]
-    )
+    # Disable the legacy numeric fallback for acceptance. Source-span chapter
+    # starts must produce refreshes on their own.
+    command.extend(["--refresh", "999999"])
     command.extend(extra_args)
     return command, refresh_interval
 
