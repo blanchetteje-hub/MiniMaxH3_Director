@@ -35,6 +35,15 @@ When an intermediate artifact disagrees with `story.txt`, change the artifact, n
 7. Architecture changes are allowed whenever evidence supports them.
 8. The new chapter-first design starts from a clean sheet. The old ARC/BEATS call structure is **not** a constraint.
 
+### Probe hygiene
+
+When testing the local model, never embed the expected semantic answer in the required output example.
+
+- For an enum decision, specify the allowed values (for example, `MERGE` or `KEEP`) without pre-filling the desired one.
+- For booleans, specify the field type/rule without showing the expected `true` or `false` for that test case.
+- For lists/indices, describe the allowed shape without supplying the expected elements.
+- Treat any probe that telegraphed the expected answer as prompt-shape evidence only, not independent behavioral evidence.
+
 ### 20B operating assumption
 
 Treat the local 20B-class model as capable but instruction-fragile.
