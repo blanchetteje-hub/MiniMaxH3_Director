@@ -11775,7 +11775,7 @@ def parse_beat_arc_plan(
         "broad_progression", "characters_introduced", "location",
         "required_events",
     }
-    allowed_phase_fields = required_fields | {"required_end_state"}
+    allowed_phase_fields = required_fields | {"required_end_state", "source_text"}
     allowed_event_fields = {"id", "event", "beat_number", "depends_on", "state_effects"}
     normalized_phases = []
     required_event_ids = set()
@@ -11916,7 +11916,7 @@ def parse_beat_arc_plan(
             if state_effects is not None:
                 normalized_event["state_effects"] = state_effects
             normalized_events.append(normalized_event)
-        normalized_phases.append({
+        normalized_phase = {
             "phase_number": phase_number,
             "beat_start": start,
             "beat_end": end,
@@ -11930,7 +11930,16 @@ def parse_beat_arc_plan(
                 normalized_events[-1]["event"] if normalized_events else progression
             ),
             "required_events": normalized_events,
-        })
+        }
+        if "source_text" in phase:
+            source_text = phase.get("source_text")
+            if not isinstance(source_text, str) or not source_text:
+                raise ValueError(
+                    f"Macro arc phase {phase_number} source_text must be a "
+                    "non-empty string when provided."
+                )
+            normalized_phase["source_text"] = source_text
+        normalized_phases.append(normalized_phase)
         expected_start = end + 1
 
     known_event_ids = {
@@ -14264,6 +14273,7 @@ def source_span_story_plan_to_macro_arc(plan, total_segments):
             "beat_end": phase_end,
             "narrative_purpose": SOURCE_SPAN_PHASE_PURPOSE,
             "broad_progression": planned_chapter.source_text,
+            "source_text": planned_chapter.source_text,
             "characters_introduced": [],
             "location": "As established by story.txt.",
             "required_events": required_events,
@@ -14288,6 +14298,9 @@ def phase_authoritative_source(phase, fallback_story):
         isinstance(phase, dict)
         and phase.get("narrative_purpose") == SOURCE_SPAN_PHASE_PURPOSE
     ):
+        source = phase.get("source_text")
+        if isinstance(source, str) and source:
+            return source
         source = str(phase.get("broad_progression") or "").strip()
         if source:
             return source
