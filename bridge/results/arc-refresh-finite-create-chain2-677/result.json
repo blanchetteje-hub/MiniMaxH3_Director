@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-finite-create-chain2-677",
+  "kind": "llama_chat",
+  "started_at": 1790354736.4433217,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Turn finite authoritative source material into a fixed number of minimal chronological 8-second beat jobs. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FINITE AUTHORITATIVE SOURCE:\nA technician opens the access hatch, removes the old sensor, carries it to the bench, installs a replacement sensor, closes the hatch, and confirms the machine is running normally.\n\nBEAT COUNT: 2\nCreate exactly 2 beat jobs.\nEvery concrete visible action/state must appear in source order.\nAdjacent actions may share a beat when natural. A long finite chain may continue into the next beat at a natural handoff.\nDo not invent new objects, characters, locations, outcomes, dialogue, camera work, or specific events not stated by the source.\nKeep each job minimal and source-level.\nReturn exactly {\"beats\":[{\"beat_number\":1,\"beat_job\":\"...\"}]} with 2 consecutive entries."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-xrnl4j2m0njx5h6rz076c",
+    "object": "chat.completion",
+    "created": 1790354736,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"beats\":[{\"beat_number\":1,\"beat_job\":\"Technician opens the access hatch, removes the old sensor, and carries it to the bench.\"},{\"beat_number\":2,\"beat_job\":\"Installs a replacement sensor, closes the hatch, and confirms the machine is running normally.\"}]}",
+          "reasoning": "We need to produce JSON: beats array of two objects.\n\nEach beat_job string should contain actions in order, but can combine adjacent actions if natural. Must include every concrete visible action/state in source order. Source list:\n\n- technician opens the access hatch\n- removes old sensor\n- carries it to bench\n- installs replacement sensor\n- closes hatch\n- confirms machine running normally\n\nWe need 2 beats.\n\nBeat1: maybe \"Technician opens the access hatch, removes the old sensor, and carries it to the bench.\" That's three actions. Beat2: \"Installs a replacement sensor, closes the hatch, and confirms the machine is running normally.\"\n\nCheck order: all in source order. Yes.\n\nReturn JSON exactly as specified. Ensure beat_number 1 then 2. Use minimal string. No extra punctuation? It's fine to have commas. Provide array with two objects.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 244,
+      "completion_tokens": 248,
+      "total_tokens": 492,
+      "completion_tokens_details": {
+        "reasoning_tokens": 178
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354740.435892,
+  "status": "ok"
+}
