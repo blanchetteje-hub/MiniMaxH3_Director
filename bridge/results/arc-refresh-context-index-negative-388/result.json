@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-context-index-negative-388",
+  "kind": "llama_chat",
+  "started_at": 1790297258.9507725,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Select established facts by ID only. Do not rewrite or invent facts. Persistent appearance is injected separately by Python. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT CHAPTER SOURCE:\nMara finishes the active machine test and shuts down the console.\n\nESTABLISHED FACTS:\n1. Mara is at the machine console with the test still active.\n2. Mara currently holds the calibration probe.\n3. Mara wears a blue jacket and black pants.\n4. Oil is smeared across Mara's right sleeve.\n5. Kai is waiting behind the closed secured side-room door.\n6. A warning alarm sounded earlier.\n7. Mara previously used a wrench and put it away.\n\nSelect only transient/current facts needed to execute the whole chapter. Exclude persistent appearance, unrelated other-character state, and mere history.\n\nReturn a JSON object with key \"selected_fact_ids\", an array of fact numbers."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-y8x6v1z9a9iy3wh8slt9ij",
+    "object": "chat.completion",
+    "created": 1790297258,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"selected_fact_ids\":[1,2]}",
+          "reasoning": "We need to select transient or current facts relevant for executing this chapter: Mara finishes active machine test and shuts down console. So we need facts about Mara at console, test still active (but finishing), holds calibration probe? She might hold it during test; but after finishing maybe she puts it away? But fact 2 says currently holds the calibration probe. That is relevant. Fact 1: at machine console with test still active - yes. Fact 4: oil smeared across right sleeve - could be relevant for appearance, but that's persistent? It's a transient state of her clothing; might matter if she interacts. But it's about appearance, not other-character state. The instruction says exclude persistent appearance separately injected by Python. So we should exclude fact 3 (blue jacket and black pants) as appearance. Fact 4 is oil smear - also appearance but maybe considered transient? It's a physical condition that could affect actions; but the instruction: \"Exclude persistent appearance, unrelated other-character state, and mere history.\" Oil smear might be part of her current state affecting interactions with machine? But it's not about other character or history. It may be relevant for chapter execution if she uses oil to calibrate? Not sure. The test is active; she finishes it and shuts down console. She holds calibration probe (fact 2). Fact 1: at console, test still active. After finishing, the test becomes inactive but that might not need fact selection.\n\nAlso fact 6: warning alarm sounded earlier - history. Might be relevant? But it's a past event; maybe not needed for current actions unless she reacts to it now. She finishes test and shuts down console; no mention of alarm. So we can exclude.\n\nFact 7: previously used wrench and put away - history, so exclude.\n\nKai waiting behind door (fact5) is other-character state but unrelated? He might be relevant if chapter involves him later. But currently it's just Mara finishing test. Kai's presence may not affect this action. Exclude.\n\nThus selected facts: 1 and 2 maybe also 4? Let's decide: The oil smear could influence her ability to hold probe or interact with console; but likely not needed for executing the chapter. So we include only 1 and 2.\n\nReturn JSON: {\"selected_fact_ids\": [1,2]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 247,
+      "completion_tokens": 490,
+      "total_tokens": 737,
+      "completion_tokens_details": {
+        "reasoning_tokens": 471
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790297266.9040363,
+  "status": "ok"
+}
