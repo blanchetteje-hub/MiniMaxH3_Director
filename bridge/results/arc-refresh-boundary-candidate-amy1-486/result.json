@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundary-candidate-amy1-486",
+  "kind": "llama_chat",
+  "started_at": 1790301631.478833,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE STORY UNITS:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nCANDIDATE BOUNDARY:\nAfter unit 1.\n\nA chapter is a LARGE H3 refresh unit.\nNormal setup, inciting danger, protection/preparation, and the source-emphasized main process should remain one continuous chapter unless there is a major reset.\nTerminal resolution may begin a new chapter.\n\nChoose: BOUNDARY or NO_BOUNDARY.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-l0vf76zy73t16jboeg7gc7",
+    "object": "chat.completion",
+    "created": 1790301631,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"BOUNDARY\",\"reason\":\"Unit 1 serves as a normal setup scene (Amy cooks breakfast). The inciting danger begins in Unit 2 when a zombie breaks through, marking a natural transition from everyday life to conflict. Placing a chapter boundary after Unit 1 keeps the narrative flow clear and highlights the shift into the main action.\"}",
+          "reasoning": "We need to decide if boundary after unit 1 (Amy cooks breakfast) should be a chapter break. The units list: 1-6. Boundary candidate is after unit 1. We must choose whether to put a new chapter there or not.\n\nConsider the structure: Unit 1 is normal setup, inciting danger? Actually inciting danger occurs in unit 2 (zombie breaks door). So unit 1 is just breakfast cooking; it's part of normal setup. The next units are inciting danger and main process. Usually you keep them together until a major reset or resolution. Here after unit 6 the house soaked in blood, then Amy lets Will and Amber out: that's terminal resolution? Actually killing last zombie and letting them out is resolution.\n\nSo boundary after unit 1 would separate normal setup from inciting danger. That seems fine; it's a natural break between breakfast scene and attack. So choose BOUNDARY.\n\nReason: Unit 1 sets up characters, then unit 2 introduces conflict. A chapter break there keeps the narrative flow clear.\n\nReturn JSON with decision \"BOUNDARY\" and reason string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 259,
+      "completion_tokens": 307,
+      "total_tokens": 566,
+      "completion_tokens_details": {
+        "reasoning_tokens": 226
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790301636.239612,
+  "status": "ok"
+}
