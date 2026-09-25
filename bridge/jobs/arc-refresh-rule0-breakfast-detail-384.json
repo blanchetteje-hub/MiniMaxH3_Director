@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-rule0-breakfast-detail-384",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate whether a candidate stays within STORY. Harmless presentation/execution detail is allowed when it does not materially change events, relationships, danger, objects central to plot, or outcome. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nAmy cooks breakfast for Will and Amber on a normal morning.\n\nCANDIDATE:\nAmy cooks pancakes and eggs, plates the food, and serves breakfast to Will and Amber.\n\nChoose one validity value from: VALID, INVALID.\nReturn a JSON object with keys \"validity\" and \"issue\"."
+    }
+  ]
+}
