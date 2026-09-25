@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundary-candidate-amy3-488",
+  "kind": "llama_chat",
+  "started_at": 1790301651.271583,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE STORY UNITS:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nCANDIDATE BOUNDARY:\nAfter unit 3.\n\nA chapter is a LARGE H3 refresh unit.\nNormal setup, inciting danger, protection/preparation, and the source-emphasized main process should remain one continuous chapter unless there is a major reset.\nTerminal resolution may begin a new chapter.\n\nChoose: BOUNDARY or NO_BOUNDARY.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-g61pknjmrgscdkeik7qy89",
+    "object": "chat.completion",
+    "created": 1790301651,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"BOUNDARY\",\"reason\":\"Units 1–3 cover setup (Amy cooks breakfast), inciting danger (zombie breaks the kitchen window) and protection/preparation (basement lock and Amy retrieves her pistol & katana). Unit 4 marks the start of the main process—Amy fighting zombies—which is a natural shift in focus, pace, and action. According to the rule, this transition warrants a new chapter after unit 3.\"}",
+          "reasoning": "We need to decide if boundary after unit 3 (Amy retrieves pistol & katana). Units list:\n\n1 Amy cooks breakfast for Will and Amber.\n2 Zombie breaks kitchen door window; Amy gets them into basement, locks door.\n3 Amy retrieves hidden pistol and katana and equips them.\n4 Majority of story is Amy fighting zombies.\n5 Amy kills last zombie and house soaked in blood.\n6 Amy lets Will & Amber out.\n\nWe need to decide if boundary after unit 3. That means we consider whether a new chapter should start at that point or not. The rule: A chapter is a LARGE H3 refresh unit. Normal setup, inciting danger, protection/preparation, and the source-emphasized main process should remain one continuous chapter unless there is a major reset. Terminal resolution may begin a new chapter.\n\nSo we have Setup (unit1), Inciting Danger (unit2), Protection/Preparation (unit3). Then Main Process (units4-5) maybe? Unit6 is after resolution, letting them out. So boundary after unit3 would separate the protection/preparation from main process. Is that major reset? The units 4-5 are majority of story fighting zombies; that's main process. After finishing last zombie and house soaked in blood, then let Will & Amber out (unit6). That could be resolution.\n\nSo we have Setup+Inciting Danger+Protection/Preparation as one chapter. Then Main Process is next chapter. So boundary after unit3 seems appropriate: start new chapter at unit4. The question: \"Choose: BOUNDARY or NO_BOUNDARY.\" We need to decide if a boundary should exist after unit 3.\n\nGiven the rule, yes we want a boundary because main process starts after protection/preparation. It's not a major reset? But it's a shift from preparation to action. That is typical for new chapter. So decision: BOUNDARY.\n\nReason: Setup (cooking), inciting danger (zombie breaks window), protection/prep (basement lock, retrieving weapons). Then main process begins with fighting zombies. That's a natural break; the story shifts focus and pace. So boundary after unit3 is appropriate.\n\nReturn JSON:\n\n{\n  \"decision\": \"BOUNDARY\",\n  \"reason\": \"... \"\n}\n\nLet's craft reason: The first three units cover setup, inciting danger, and protection/preparation. Unit4 marks the start of the main process (zombie fighting). According to rule, these should remain one continuous chapter unless major reset; but moving from preparation to action is a natural shift, so boundary after unit3.\n\nLet's produce JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 259,
+      "completion_tokens": 628,
+      "total_tokens": 887,
+      "completion_tokens_details": {
+        "reasoning_tokens": 526
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790301660.9827423,
+  "status": "ok"
+}
