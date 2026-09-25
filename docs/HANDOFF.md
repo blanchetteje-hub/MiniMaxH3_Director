@@ -351,3 +351,60 @@ Still to test:
 - whether statement-level granularity is sufficient when the natural refresh boundary falls inside one long sentence;
 - Beat CREATE directly from exact chapter source spans;
 - whether concrete action coverage remains reliable when the chapter input is raw source text rather than a generated outline.
+
+
+### Source-span architecture lock
+
+The chapter-first probes now support replacing generated rough chapter outlines with exact authoritative source spans.
+
+Evidence:
+- boundary-index planning worked across Amy, chef, researcher, time-jump, multi-reset, and continuous stories;
+- generated chapter prose repeatedly introduced source drift;
+- per-unit SPLIT/KEEP decisions were more reliable than global unit selection;
+- exact candidate cut points should be offered only after a unit-level SPLIT decision;
+- fact-ID continuity selection avoids LLM rewriting established state;
+- persistent/current visible continuity is better treated as Python-owned state.
+
+PROJECT_NOTES.md now defines the current planner as:
+
+1. Python creates exact authoritative source units.
+2. Each unit independently receives SPLIT/KEEP_TOGETHER.
+3. Only SPLIT units get deterministic candidate cut points; the LLM chooses the cut.
+4. Refined units produce chapter-boundary indices.
+5. Python builds exact chapter source spans.
+6. Fixed spans receive beat-count allocation.
+7. Exact current source + opening context + budget go to Beat CREATE.
+8. A compact story-facing validator checks required-action coverage, material deviation, and chapter scope.
+9. Repair the demonstrated issue and validate again.
+10. Python canonical state plus fact-ID semantic selection compose later refresh context.
+
+### Probe results 393-404
+
+- 393: correct internal-inspection selection on one mixed-phase unit.
+- 394: false-positive global unit selection; inspect one unit per call instead.
+- 395: time/location jump inside one unit -> SPLIT.
+- 396: continuous same-phase unit -> KEEP_TOGETHER.
+- 397: overly aggressive split of terminal resolution -> immediate report.
+- 398/399: visible-state classification consistently selected clothing, visible residue, held object, and visible environment damage while excluding history.
+- 400: Python visual continuity + minimal semantic context was sufficient for the Amy refresh chapter.
+- 401: protected-space relationship change -> INVALID.
+- 402: protected-space-preserving control -> VALID.
+- 403: revised large-chapter rule keeps terminal resolution + immediate closure together.
+- 404: major time/location reset after resolution -> SPLIT.
+
+### Probe batch 405-414
+
+Purpose:
+- deterministic candidate cut-point selection only after a unit-level SPLIT gate;
+- one compact validator covering MISSING_ACTION, MATERIAL_DEVIATION, and CHAPTER_SCOPE.
+
+Early results:
+- 405: ongoing -> resolution sentence chose the correct earlier cut.
+- 407: time-jump sentence chose the correct earlier cut.
+- 408: chose a grammatical split in terminal closure, proving candidate cut selection must not run unless the prior unit-level gate returned SPLIT.
+- 409: combined validator caught protected-state/location deviation as MATERIAL_DEVIATION.
+- 410: combined validator accepted harmless storage-location detail.
+- 411: combined validator caught an implied-but-omitted acquisition as MISSING_ACTION.
+- 412: combined validator caught premature later-chapter resolution as CHAPTER_SCOPE.
+- 413: combined validator caught an extra plot-relevant item as MATERIAL_DEVIATION.
+- 406 and the clean VALID control remain to be checked/completed before implementation.
