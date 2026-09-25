@@ -840,3 +840,18 @@ Relevant commit:
 Next target: confirm the rest of the orchestration/structural layer together:
 beat plan auditor, beat repair orchestration, retry hierarchy, and structural
 guarantees.
+
+
+### Orchestration layer checkpoint
+
+The combined orchestration/structural batch now passes on gpt-arc-refresh:
+- tests/test_beat_plan_auditor.py
+- tests/test_beat_plan_repair_orchestration.py
+- tests/test_beat_retry_hierarchy.py
+- tests/test_story_arc_structural_guarantees.py
+
+No further production changes were required after updating the stale retry
+fixture.
+
+Next target: a broader non-LLM test sweep to catch regressions outside the
+source-span/beat path already verified.
