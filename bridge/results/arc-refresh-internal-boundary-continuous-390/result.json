@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-internal-boundary-continuous-390",
+  "kind": "llama_chat",
+  "started_at": 1790297271.431363,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide whether one authoritative source unit contains an internal narrative transition strong enough to justify splitting that unit across two large H3 chapters. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nShe tests the electrical system, replaces one failed sensor, and continues testing the same engine.\n\nA split is appropriate only if the unit contains a major time/location/state reset or a distinct terminal-resolution phase.\n\nChoose one decision from: SPLIT, KEEP_TOGETHER.\nReturn a JSON object with keys \"decision\" and \"reason\"."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-t5ohb3kwy85vvpq7lo3s2",
+    "object": "chat.completion",
+    "created": 1790297271,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP_TOGETHER\",\"reason\":\"The unit describes a continuous sequence of actions—testing the electrical system, replacing a sensor, then continuing to test the same engine—with no major time/location/state reset or distinct terminal-resolution phase that would warrant splitting into separate chapters.\"}",
+          "reasoning": "We need to decide whether this source unit should be split across two large H3 chapters. The rule: A split is appropriate only if the unit contains a major time/location/state reset or distinct terminal-resolution phase.\n\nThe sentence: \"She tests the electrical system, replaces one failed sensor, and continues testing the same engine.\" This seems like continuous action within same context; no major reset or distinct resolution phase. So keep together.\n\nReturn JSON with decision \"KEEP_TOGETHER\" and reason explaining that it's a single continuous activity without reset.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 174,
+      "completion_tokens": 173,
+      "total_tokens": 347,
+      "completion_tokens_details": {
+        "reasoning_tokens": 107
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790297274.552622,
+  "status": "ok"
+}
