@@ -1,0 +1,18 @@
+{
+  "job_id": "arc-refresh-run-arc-regressions-570",
+  "kind": "run_tests",
+  "started_at": 1790347866.08599,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_story_arc_structural_guarantees.py",
+      "tests\\test_simplified_prompt_regressions.py"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "",
+    "stderr": "C:\\Program Files (x86)\\Python311\\python.exe: No module named pytest\n"
+  },
+  "finished_at": 1790347866.8904014,
+  "status": "ok"
+}
