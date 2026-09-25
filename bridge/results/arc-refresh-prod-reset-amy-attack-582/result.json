@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod-reset-amy-attack-582",
+  "kind": "llama_chat",
+  "started_at": 1790349768.8348317,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nAmy cooks breakfast for Will and Amber.\n\nTARGET UNIT:\nA zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n\nA HARD RESET means a discontinuity between narrative phases: an explicit time jump, scene break, relocation after a completed phase, or equivalent restart. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-gznzcoyasvs2x3ow710sj",
+    "object": "chat.completion",
+    "created": 1790349768,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The transition from Amy cooking breakfast to the zombie breaking the kitchen door window is an immediate cause‑and‑effect event within a continuous narrative phase; there is no explicit time jump or scene break indicating a hard reset.\"}",
+          "reasoning": "We need to determine whether target unit begins after a hard reset relative to previous unit. The rule: A hard reset means discontinuity between narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent restart. Immediate cause-and-effect action in same continuous sequence is NOT a hard reset.\n\nPrevious unit: \"Amy cooks breakfast for Will and Amber.\" So the scene is Amy cooking breakfast with Will and Amber present. The target unit: \"A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\"\n\nWe need to see if this begins after a hard reset from previous unit.\n\nThe transition: From cooking breakfast to zombie breaking door, then Amy moves them to basement. Is that an immediate cause-and-effect action in same continuous sequence? The zombie breaks kitchen door window - that's an event causing change. Then Amy gets Will and Amber into the basement and locks the door. Are these actions part of same continuous narrative phase or a new one?\n\nWe need to see if there's explicit time jump, scene break, relocation after completed phase, etc.\n\nThe previous unit ends with cooking breakfast; no mention of time jump. The target unit starts with zombie breaking window - that is an event causing immediate action: Amy moves them into basement and locks door. This seems like a continuous sequence: the zombie breaks window (cause), then Amy gets Will and Amber into basement and locks door (effect). So it's not a hard reset because it's cause-and-effect in same continuous sequence.\n\nThus answer NO.\n\nReturn JSON with decision \"NO\" and reason explaining that it's immediate cause-and-effect, no scene break.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 207,
+      "completion_tokens": 389,
+      "total_tokens": 596,
+      "completion_tokens_details": {
+        "reasoning_tokens": 328
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790349774.8371234,
+  "status": "ok"
+}
