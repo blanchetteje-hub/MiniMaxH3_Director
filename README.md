@@ -851,10 +851,10 @@ the same generation options as the CLI:
 | **Repair** | Rerender an existing middle segment that has clips on both sides. |
 | **Steps** | Set BasicScheduler sampling steps for all workflows. |
 | **Trim frames** | Remove this many frames from the start of each segment after the first during stitching; defaults to `2`. Set to `0` to disable the trim. |
-| **Refresh interval** | Use the refresh workflow on every Nth segment. |
+| **Legacy refresh fallback** | Numeric refresh cadence used only when no source-span chapter refresh schedule is available. |
 | **Vision continuity** | Ask an image-capable LM Studio model to inspect rendered frames on a cadence; `0` disables this. |
 | **Retention analysis** | Include structured retention guidance in non-initial H3 prompts. |
-| **Formatter** | Match either the Mistral or Qwen response format to the model loaded in LM Studio. |
+| **Formatter** | Select the GPT, Mistral, or Qwen formatter; GPT is the current default. |
 | **First-frame instructions** | Add opening-frame instructions for `<Picture 1>` on segment 1. |
 | **LoRA Path** | Directory used to verify global and beat-specific LoRA files. |
 | **Global LoRAs** | Apply any number of named LoRAs, in order, to every beat. |
@@ -873,7 +873,7 @@ app.
 The three main settings are positional arguments:
 
 ```text
-python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--test-prompt-generation] [--vision-continuity N] [--repair SEGMENT] [--model {mistral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
+python minimax.py SEGMENT_LENGTH TOTAL_LENGTH MEGAPIXELS [ff] [--resume SEGMENT] [--steps STEPS] [--trim-frames FRAMES] [--refresh SEGMENTS] [--retention] [--test-prompt-generation] [--vision-continuity N] [--repair SEGMENT] [--model {gpt,mistral,qwen}] [--lora_dir DIRECTORY] [--image1 PATH ... --image6 PATH] [--lora LORA_NAME:STRENGTH ...]
 ```
 
 Separate values with spaces as shown above. For convenience, commas are also
@@ -888,12 +888,12 @@ accepted, including both `python minimax.py 5, 10, .2` and
 | `--resume SEGMENT` | Continue at this one-based segment number; defaults to `1`. |
 | `--steps STEPS` | BasicScheduler sampling steps for both workflows; defaults to `6`. |
 | `--trim-frames FRAMES` | Trim this many leading frames from every segment after the first when stitching; defaults to `2`, and `0` disables the trim. |
-| `--refresh SEGMENTS` | Auto refresh on every Nth segment using `Minimax_auto_refresh_API.json`; defaults to every `4` segments. |
+| `--refresh SEGMENTS` | Compatibility fallback used only when no source-span chapter refresh schedule is available. |
 | `--retention` | Add retention analysis to non-initial H3 prompts; disabled by default. |
 | `--test-prompt-generation` | Generate and print all prompts without submitting anything to ComfyUI or rendering video; disabled by default. |
 | `--vision-continuity N` | Run rendered-frame continuity checks every `N` segments; `0` disables them, `1` checks every segment, and larger values check on a cadence. |
 | `--repair SEGMENT` | Rerender one existing middle segment using its checkpoint and neighboring clips; cannot be combined with a resume segment other than `1`. |
-| `--model {mistral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `mistral`. |
+| `--model {gpt,mistral,qwen}` | Select the response formatter for the user-loaded LM Studio model; defaults to `gpt`. |
 | `--lora_dir DIRECTORY` | Directory containing LoRA files; defaults to `/mnt/h/StableDiffusion/loras` in this checkout. |
 | `--image1 PATH` through `--image6 PATH` | Override the corresponding numbered reference image in the initial, append, and refresh workflows. |
 | `--lora LORA_NAME:STRENGTH` | Apply a global LoRA to every beat. Repeat the option for any number of ordered LoRAs. |
