@@ -1,0 +1,22 @@
+{
+  "job_id": "run-tests-premise-classifiers-864",
+  "kind": "run_tests",
+  "started_at": 1790370047.8300035,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_story_planner.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "...................F...                                                  [100%]\n================================== FAILURES ===================================\n___ test_visible_source_responsibility_prompt_keeps_repeated_action_visible ___\n\n    def test_visible_source_responsibility_prompt_keeps_repeated_action_visible():\n        from story_planner import build_visible_responsibility_messages\n    \n        unit = enumerate_source_units(\n            \"For most of the night, Mara repeatedly repairs damaged radios.\"\n        )[0]\n        prompt = build_visible_responsibility_messages(unit)[-1][\"content\"]\n    \n>       assert \"on-screen action or visible state\" in prompt\nE       AssertionError: assert 'on-screen action or visible state' in 'SOURCE UNIT:\\nFor most of the night, Mara repeatedly repairs damaged radios.\\n\\nYES = this unit itself requires a con...ng; later concrete source units own those actions.\\nChoose one: YES or NO.\\nReturn JSON with keys decision and reason.'\n\ntests\\test_story_planner.py:388: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_story_planner.py::test_visible_source_responsibility_prompt_keeps_repeated_action_visible\n1 failed, 22 passed in 2.00s\n",
+    "stderr": ""
+  },
+  "finished_at": 1790370051.7254953,
+  "status": "ok"
+}
