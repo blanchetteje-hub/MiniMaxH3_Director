@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-fidelity-885",
+  "kind": "llama_chat",
+  "started_at": 1790370967.9812143,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nAmy cooks breakfast for her young kids.\n\nNEXT JOB\nNone.\n\nCANDIDATE BEAT\nAmy orders pizza and leaves the children alone while she drives away.\n\nMATERIAL FIDELITY: Harmless local staging is allowed, but reject invented details that materially change the assigned action, participant treatment, object use, location/result, or story meaning. Named tools and weapons must be used in a physically coherent way unless CURRENT JOB explicitly establishes an unusual use; for example a firearm may shoot/strike but does not slash or decapitate as a blade. Do not invent consequential aggression, injury, forced movement, humiliation, or other harmful treatment of a protected/non-hostile participant merely to dramatize an otherwise simple assigned action. Do not reject ordinary neutral staging.\n\nReturn exactly {\"valid\": true, \"issue\": \"\"} if valid, otherwise {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-v9xkon2aj6gkpreaxzes",
+    "object": "chat.completion",
+    "created": 1790370968,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\":\"Amy changes her action from cooking breakfast for the kids to ordering pizza and leaving them alone while driving away, altering both the object used and the participants’ treatment.\"}",
+          "reasoning": "We need to judge the candidate beat: Amy orders pizza and leaves the children alone while she drives away. Current job: Amy cooks breakfast for her young kids. Next job: None.\n\nSo current action is cooking breakfast. The beat says she orders pizza (different food) and leaves kids alone while driving away. That changes the assigned action: instead of cooking breakfast, she orders pizza. Also she leaves children alone while driving away - that might be a change in participant treatment? She leaves them alone; maybe that's okay. But the current job is \"Amy cooks breakfast for her young kids.\" The beat says she orders pizza and leaves kids alone while she drives away. That changes the object use: cooking vs ordering pizza. Also location/result: breakfast at home vs pizza delivered? She drives away, leaving kids alone. That might be a change in meaning: from cooking breakfast to ordering pizza and driving away. So it's not faithful.\n\nThus invalid. Issue: \"Changes Amy's action from cooking breakfast to ordering pizza and leaves children alone while she drives away.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 299,
+      "completion_tokens": 262,
+      "total_tokens": 561,
+      "completion_tokens_details": {
+        "reasoning_tokens": 211
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790370971.7125342,
+  "status": "ok"
+}
