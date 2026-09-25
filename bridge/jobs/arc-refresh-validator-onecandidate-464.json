@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-validator-onecandidate-464",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE:\nA worker opens the cabinet.\nThe worker takes Tool-A and Tool-B.\nThe worker places Tool-A on the cart.\n\nONE CANDIDATE SEQUENCE:\nBeat 1: Worker opens the cabinet and takes Tool-A.\nBeat 2: Worker places Tool-A on the cart and equips unlisted Tool-C.\n\nTreat Beat 1 and Beat 2 as one candidate sequence.\nCheck in this exact order:\n1. MISSING_ACTION\n2. MATERIAL_DEVIATION\n3. CHAPTER_SCOPE\n\nReturn exactly one result object.\nChoose validity from: VALID, INVALID.\nIf invalid choose one issue_type from: MISSING_ACTION, MATERIAL_DEVIATION, CHAPTER_SCOPE.\nReturn JSON with keys validity, issue_type, issue."
+    }
+  ]
+}
