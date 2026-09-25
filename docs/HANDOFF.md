@@ -476,3 +476,21 @@ Current test direction:
 - validate each beat only against its assigned source units.
 
 Batch 486-505 is queued for those contracts.
+
+
+### Batch 486-505 summary
+
+Key results:
+- Candidate-by-candidate boundary decisions were still subjective. Amy controls incorrectly accepted boundaries after units 1 and 3; technician controls also accepted an early boundary after unit 2.
+- Correct terminal boundary behavior remained consistent: boundary before terminal resolution was accepted; terminal resolution plus immediate closure stayed together.
+- Strict beat/source-unit assignment passed for both neutral and Amy controls: [1],[2],[3],[4],[4],[5].
+- Structural assignment validator correctly rejected nonadjacent mixing, backward source order, and combining the repeatable unit with other units.
+- Structural assignment repair produced the correct monotonic assignment.
+- Per-beat validation against only assigned source units correctly caught the omitted Tool-B action, accepted the good control, and rejected an extra Tool-C as MATERIAL_DEVIATION.
+
+Current direction:
+- Beat planning decomposition is now strongly supported: deterministic assignment structure -> minimal phrasing -> per-beat assigned-source validation -> targeted repair.
+- Chapter boundary judgment remains the main unresolved planner problem.
+- Batch 506-525 replaces direct boundary judgment with one-source-unit-at-a-time role classification:
+  MAIN_BODY, TERMINAL_RESOLUTION, IMMEDIATE_CLOSURE, RESET_START.
+- If role classification is stable, Python will derive chapter boundaries deterministically before TERMINAL_RESOLUTION and RESET_START units, while keeping IMMEDIATE_CLOSURE with its terminal-resolution unit.
