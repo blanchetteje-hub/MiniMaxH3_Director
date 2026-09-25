@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-finite-create-amy2-670",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Turn finite authoritative source material into a fixed number of minimal chronological 8-second beat jobs. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FINITE AUTHORITATIVE SOURCE:\nAmy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger.\nShe rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden emergency gear consisting of two handheld tools.\nShe equips the tools.\n\nBEAT COUNT: 2\nCreate exactly 2 beat jobs.\nEvery concrete visible action/state must appear in source order.\nAdjacent actions may share a beat when natural. A long finite chain may continue into the next beat at a natural handoff.\nDo not invent new objects, characters, locations, outcomes, dialogue, camera work, or specific events not stated by the source.\nKeep each job minimal and source-level.\nReturn exactly {\"beats\":[{\"beat_number\":1,\"beat_job\":\"...\"}]} with 2 consecutive entries."
+    }
+  ]
+}
