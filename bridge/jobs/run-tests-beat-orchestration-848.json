@@ -1,0 +1,12 @@
+{
+  "kind": "run_tests",
+  "job_id": "run-tests-beat-orchestration-848",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_beat_plan_auditor.py",
+    "tests/test_beat_plan_repair_orchestration.py",
+    "tests/test_beat_retry_hierarchy.py",
+    "tests/test_story_arc_structural_guarantees.py"
+  ],
+  "timeout_seconds": 900
+}
