@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-rawspan-context-extract-374",
+  "kind": "llama_chat",
+  "started_at": 1790297016.7457504,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Select the minimum established current state needed to execute the entire supplied chapter source. Exclude mere history. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT CHAPTER SOURCE:\nAmy kills the last zombie; the house is now soaked in blood.\nAmy lets Will and Amber out of the basement.\n\nESTABLISHED STATE:\n- Amy is in the kitchen facing the still-active final zombie.\n- Amy holds a raised katana.\n- Amy wears a black tank top and denim jeans.\n- Amy's front is covered in green vomit.\n- Two earlier zombie corpses remain on the kitchen floor.\n- Will and Amber are safe behind the closed steel basement door down the hallway.\n- Amy discarded a pistol earlier.\n- The kitchen door window broke earlier.\n- Breakfast happened earlier.\n\nInclude a fact only if the opening state, persistent visual continuity, or a later action in this chapter needs it.\n\nReturn a JSON object with key \"opening_context\", whose value is an array of selected established facts."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 2200,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-7fwaqsvd5aja96bml7la6l",
+    "object": "chat.completion",
+    "created": 1790297016,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"opening_context\":[\"Amy is in the kitchen facing the still-active final zombie.\",\"Amy holds a raised katana.\",\"Two earlier zombie corpses remain on the kitchen floor.\",\"Will and Amber are safe behind the closed steel basement door down the hallway.\",\"Amy's front is covered in green vomit.\"]}",
+          "reasoning": "We need to select minimum established current state needed to execute entire supplied chapter source: Amy kills last zombie; house soaked in blood. Amy lets Will and Amber out of basement.\n\nGiven the opening context, we have a list of established facts. We must include only those that are necessary for this chapter's actions or visual continuity. Let's analyze:\n\nFacts given:\n- Amy is in kitchen facing final zombie.\n- Amy holds raised katana.\n- Amy wears black tank top denim jeans.\n- Amy front covered green vomit.\n- Two earlier zombie corpses on floor.\n- Will and Amber safe behind closed steel basement door down hallway.\n- Amy discarded pistol earlier.\n- Kitchen door window broke earlier.\n- Breakfast happened earlier.\n\nNow, for the chapter: \"Amy kills last zombie; house soaked in blood. Amy lets Will and Amber out of basement.\"\n\nWe need to know that Amy is facing final zombie (yes). She holds katana (to kill). The two earlier corpses on floor may be visual continuity but not necessary? Might show kitchen has zombies, so yes maybe keep them.\n\nWill and Amber safe behind closed steel door: needed for letting them out. Also the basement door being closed ensures they are inside; after Amy lets them out, they'd exit through that door. So we need that fact.\n\nAmy front covered green vomit: visual continuity but not necessary? Might be relevant to show her appearance before she kills zombie and opens door. Could keep it.\n\nKitchen door window broke earlier: maybe for context of house soaked in blood; but not needed for actions. But could help with visual continuity (house soaked). Not essential though.\n\nBreakfast happened earlier: irrelevant.\n\nAmy discarded pistol earlier: not used now, so can drop.\n\nThus minimal facts:\n- Amy is in kitchen facing final zombie.\n- Amy holds raised katana.\n- Two earlier zombie corpses on floor.\n- Will and Amber safe behind closed steel basement door down hallway.\n- Amy front covered green vomit (maybe optional).\nWe might include the two zombie corpses for visual continuity. The rest can be omitted.\n\nReturn JSON with key opening_context array of selected facts.\n\nLet's produce:\n\n{\n  \"opening_context\": [\n    \"Amy is in the kitchen facing the still-active final zombie.\",\n    \"Amy holds a raised katana.\",\n    \"Two earlier zombie corpses remain on the kitchen floor.\",\n    \"Will and Amber are safe behind the closed steel basement door down the hallway.\"\n  ]\n}\n\nWe could include green vomit but maybe not needed. The question: Include a fact only if opening state, persistent visual continuity, or later action needs it. Green vomit is part of her front; might be visible when she kills zombie and opens door. So yes it's visual continuity.\n\nThus add that too:\n\n{\n  \"opening_context\": [\n    \"Amy is in the kitchen facing the still-active final zombie.\",\n    \"Amy holds a raised katana.\",\n    \"Two earlier zombie corpses remain on the kitchen floor.\",\n    \"Will and Amber are safe behind the closed steel basement door down the hallway.\",\n    \"Amy's front is covered in green vomit.\"\n  ]\n}\n\nReturn JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 267,
+      "completion_tokens": 708,
+      "total_tokens": 975,
+      "completion_tokens_details": {
+        "reasoning_tokens": 637
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790297027.8731265,
+  "status": "ok"
+}
