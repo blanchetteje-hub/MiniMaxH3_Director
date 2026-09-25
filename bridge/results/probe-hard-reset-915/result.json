@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-915",
+  "kind": "llama_chat",
+  "started_at": 1790372732.8714285,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nMara puts on her coat.\n\nTARGET UNIT:\nFor most of the night, Mara repairs flood gates.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. A duration phrase such as 'for most of the night', 'for hours', 'throughout the day', or 'repeatedly' describes how long an activity lasts; it is NOT by itself a jump from PREVIOUS UNIT. Likewise, ordinary movement into a new place (entering a room/building, crossing a doorway, walking to another area) is NOT a hard reset unless the source explicitly marks a narrative restart around that relocation. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-syxgxp4jbbcj9ohnoxsoul",
+    "object": "chat.completion",
+    "created": 1790372732,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The target unit begins with a duration phrase describing how long the activity lasts; it does not contain an explicit time jump, scene break, or relocation that would constitute a hard reset from the previous unit.\"}",
+          "reasoning": "We need to determine if target unit begins after a hard reset from previous unit. Previous unit: \"Mara puts on her coat.\" Target unit: \"For most of the night, Mara repairs flood gates.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent textual restart.\n\nWe have only two units. The previous unit ends with \"Mara puts on her coat.\" Then target unit starts with \"For most of the night, Mara repairs flood gates.\"\n\nIs there an explicit time jump? No. There's no phrase like \"Later that night\" or \"The next day\". It's just a duration phrase describing how long activity lasts. The question: does this count as hard reset? According to definition, duration phrase is NOT by itself a jump from PREVIOUS UNIT. So it's not a hard reset.\n\nThus answer NO.\n\nReturn JSON with decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 335,
+      "completion_tokens": 249,
+      "total_tokens": 584,
+      "completion_tokens_details": {
+        "reasoning_tokens": 191
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790372736.3637645,
+  "status": "ok"
+}
