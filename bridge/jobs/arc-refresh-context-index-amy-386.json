@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-context-index-amy-386",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Select established facts by ID only. Do not rewrite, paraphrase, or invent facts. Persistent Subject appearance is injected separately by Python. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER SOURCE:\nAmy kills the last zombie.\nAmy lets Will and Amber out of the basement.\n\nESTABLISHED FACTS:\n1. Amy is in the kitchen facing the still-active final zombie.\n2. Amy holds a raised katana.\n3. Amy wears a black tank top and denim jeans.\n4. Amy's front is covered in green vomit.\n5. Two earlier zombie corpses remain on the kitchen floor.\n6. Will and Amber are safe behind the closed steel basement door down the hallway.\n7. Amy discarded a pistol earlier.\n8. The kitchen door window broke earlier.\n9. Breakfast happened earlier.\n\nSelect only transient/current facts needed to execute the whole chapter. Exclude persistent appearance and mere history.\n\nReturn a JSON object with key \"selected_fact_ids\", an array of fact numbers."
+    }
+  ]
+}
