@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-972-compact",
+  "kind": "llama_chat",
+  "started_at": 1790380336.4583294,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nNone; this is the first beat.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nThe blood mage destroys the attacking golem with a spell that turns the golem into liquid blood.\n\nNEXT JOB\nNone; this is the final beat.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nThe blood mage casts the spell; the golem bursts into liquid blood and collapses into a pool.\n\nCHECKS\n1. Read the candidate literally in action order. Carry each completed result forward.\nA completed removal cannot happen again to that same target or part unless it is\nexplicitly restored first. Different targets and unsuccessful attempts are different\ncases. Do not excuse a contradiction as emphasis or silently change an action.\n2. Use PREVIOUS FINAL BEAT and CURRENT STATE as established facts. Reject unavailable\nobjects, unresolved barriers, and impossible actions. Unknown facts are not errors.\nHonor capabilities explicitly established in CURRENT JOB or CURRENT STATE.\n3. CURRENT JOB must happen in this beat, including every required action, result,\nand named participant. History or already-completed-state wording cannot replace\nan assigned action. Harmless staging is allowed; material changes to tools,\nparticipants, locations, or outcomes are not.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Each listed STATE EFFECT must follow from the candidate. Do not invent a\nmissing required action to justify an effect.\n\nReturn one JSON object: valid is a boolean, issue is a short concrete error\nor an empty string when valid. Judge all checks; any clear error makes valid false."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-29aiywuqhuf4wq5qv1gfvp",
+    "object": "chat.completion",
+    "created": 1790380336,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to validate beat. PREVIOUS FINAL BEAT None. CURRENT STATE {} (empty). CURRENT JOB: \"The blood mage destroys the attacking golem with a spell that turns the golem into liquid blood.\" So job includes action: blood mage casts spell, destroying golem turning it into liquid blood.\n\nCandidate beat: \"The blood mage casts the spell; the golem bursts into liquid blood and collapses into a pool.\"\n\nCheck if matches. It says blood mage casts the spell (ok). Golem bursts into liquid blood and collapses into a pool. That implies destruction, yes. Does it mention that it's attacking? Not necessary but okay. The job: \"The blood mage destroys the attacking golem with a spell that turns the golem into liquid blood.\" Candidate says goes to liquid blood; collapse into pool. That's consistent.\n\nCheck 1: action order: cast spell -> golem bursts into liquid blood and collapses into pool. Good.\n\nRemoval of golem? Golem is destroyed, so removed from state. No further removal needed.\n\nCheck 2: PREVIOUS FINAL BEAT none, current state empty; no missing objects. The golem exists as attacking golem presumably in the scene. It's not mentioned but implied. That's fine.\n\nCheck 3: CURRENT JOB must happen including every required action, result, named participant. We have blood mage casts spell (action). Golem bursts into liquid blood and collapses into pool (result). Named participants: blood mage, golem. Good.\n\nCheck 4: No distinct NEXT job early; none.\n\nCheck 5: Each listed STATE EFFECT must follow from candidate. There are no state effects listed in the beat? The \"STATE EFFECTS IF VALID\" is [] empty. So fine.\n\nThus valid true. Issue \"\".\n\nReturn JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 440,
+      "completion_tokens": 385,
+      "total_tokens": 825,
+      "completion_tokens_details": {
+        "reasoning_tokens": 367
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380341.812478,
+  "status": "ok"
+}
