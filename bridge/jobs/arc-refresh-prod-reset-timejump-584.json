@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-prod-reset-timejump-584",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only the requested binary semantic question. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS UNIT:\nA team completes field work at a remote site.\n\nTARGET UNIT:\nThree months later the team begins analysis in a city laboratory.\n\nA HARD RESET means a discontinuity between narrative phases: an explicit time jump, scene break, relocation after a completed phase, or equivalent restart. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
