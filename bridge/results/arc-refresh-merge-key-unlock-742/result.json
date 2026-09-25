@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-merge-key-unlock-742",
+  "kind": "llama_chat",
+  "started_at": 1790359388.4102666,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nMara takes the key from the hook.\n\nRIGHT:\nMara immediately uses the key to unlock the storage door.\n\nChoose one:\nMERGE = RIGHT is an immediate reaction to LEFT, continues the same uninterrupted local action, or is the immediate mechanical completion of what LEFT just obtained/opened/started.\nNEW_TASK = LEFT reaches a usable stopping point and RIGHT begins a distinct local action/objective. Starting a fresh item/test after LEFT completed one is NEW_TASK. Merely carrying or wearing something from LEFT while doing a different task is NEW_TASK.\nJudge only the concrete local actions.\nReturn exactly {\"relation\":\"MERGE|NEW_TASK\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-j7ud6bmibkgxpcdzz9dsu",
+    "object": "chat.completion",
+    "created": 1790359388,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if RIGHT belongs to same beat job as LEFT.\n\nLEFT: \"Mara takes the key from the hook.\" So action: Mara picks up key. That ends with her holding key.\n\nRIGHT: \"Mara immediately uses the key to unlock the storage door.\"\n\nIs this an immediate reaction? She uses the key right after taking it, unlocking a door. That's continuing same local action (using key). The key is used for unlocking; it's mechanical completion of what she just obtained. So MERGE.\n\nThus output {\"relation\":\"MERGE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 223,
+      "completion_tokens": 128,
+      "total_tokens": 351,
+      "completion_tokens_details": {
+        "reasoning_tokens": 112
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790359390.580032,
+  "status": "ok"
+}
