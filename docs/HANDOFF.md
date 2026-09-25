@@ -782,3 +782,33 @@ edge cases from earlier batches remain useful evidence about the 20B model's
 limits, but they do not justify adding more grouping layers while the actual
 planner path is correct. Treat local grouping as sufficient for the current
 production target and move to the next runtime/integration failure.
+
+
+### Source-span integration checkpoint
+
+After the local planner suite passed 21/21, the dedicated source-span integration
+tests were run and repaired against the current chapter-first path.
+
+Fixes:
+- escaped literal JSON examples inside the source-unit state extraction f-string;
+  the unescaped braces were causing source-span planning to throw and silently
+  fall back to the compatibility ARC path;
+- refreshed stale source-span test fixtures for current visible-responsibility
+  and local-relation calls;
+- kept lexical state-effect grounding strict and corrected the adapter fixture
+  rather than weakening production validation.
+
+Current local status:
+- tests/test_story_planner.py: 21/21 passing
+- tests/test_source_span_generation_path.py: passing
+- tests/test_source_span_runtime_adapter.py: 11/11 passing
+
+Relevant commits:
+- d6524bb8 fix stale local grouping prompt assertion
+- 12429e7d update source-span generation fixture for grouped planner
+- 6f021d0d ground source-span adapter state fixture
+- 1d6e6f89 escape JSON examples in source state prompt
+- d5eaef23 use typed threat state in final-beat fixture
+
+Next target: broader beat-generation and refresh integration, fixing only observed
+failures on the gpt-arc-refresh production path.
