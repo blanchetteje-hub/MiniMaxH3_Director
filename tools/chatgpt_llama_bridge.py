@@ -6,8 +6,9 @@ JSON jobs to bridge/jobs/ on that branch. This process polls, sends allowed
 requests only to the configured local llama.cpp endpoint, writes results under
 bridge/results/, then commits and pushes them.
 
-No inbound port is opened. The bridge never executes shell commands supplied by
-jobs and never lets jobs choose the network endpoint.
+No inbound port is opened. The bridge never executes arbitrary shell commands supplied by jobs and never
+lets jobs choose the network endpoint. Local execution is limited to explicit
+allowlisted test/acceptance job kinds.
 """
 
 from __future__ import annotations
@@ -16,6 +17,9 @@ import argparse
 import glob
 import json
 import os
+import re
+import signal
+import threading
 from pathlib import Path
 import shutil
 import subprocess
@@ -25,32 +29,103 @@ import urllib.error
 import urllib.request
 
 
-BRIDGE_BUILD = "2026-09-25-push-retry-v4"
 DEFAULT_BRANCH = "gpt-runtime"
 DEFAULT_ENDPOINT = "http://127.0.0.1:1234"
 DEFAULT_POLL_SECONDS = 2.0
 DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
+DEFAULT_CODE_BRANCH = "gpt-test-branch"
+DEFAULT_EXEC_WORKTREE_NAME = ".chatgpt_exec_worktree"
+
+_ACTIVE_LOCAL_PROCESS = None
 
 
-def run_git(args, cwd, *, check=True, capture=True):
-    return subprocess.run(
-        ["git", *args],
-        cwd=cwd,
-        check=check,
-        text=True,
-        capture_output=capture,
+def _bridge_emergency_stop(_signum=None, _frame=None):
+    """Hard-stop the bridge and any active allowlisted local child process."""
+
+    process = _ACTIVE_LOCAL_PROCESS
+    if process is not None and process.poll() is None:
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    [
+                        "taskkill",
+                        "/PID",
+                        str(process.pid),
+                        "/T",
+                        "/F",
+                    ],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                )
+            else:
+                process.kill()
+        except Exception:
+            pass
+    try:
+        os.write(2, b"\nBridge emergency stop requested; exiting immediately.\n")
+    finally:
+        os._exit(130)
+
+
+def install_bridge_interrupt_handlers():
+    """Make Ctrl+C and Windows Ctrl+Q stop the bridge immediately."""
+
+    signal.signal(signal.SIGINT, _bridge_emergency_stop)
+    if os.name == "nt" and hasattr(signal, "SIGBREAK"):
+        signal.signal(signal.SIGBREAK, _bridge_emergency_stop)
+
+
+def start_bridge_emergency_stop_listener():
+    """On Windows, make Ctrl+Q work even while waiting on a child process."""
+
+    if os.name != "nt":
+        return None
+
+    import msvcrt
+
+    def watch_keyboard():
+        while True:
+            try:
+                key = msvcrt.getwch()
+            except (EOFError, OSError):
+                return
+            if key == "\x11":  # Ctrl+Q
+                _bridge_emergency_stop()
+
+    listener = threading.Thread(
+        target=watch_keyboard,
+        name="bridge-emergency-stop-listener",
+        daemon=True,
     )
+    listener.start()
+    return listener
+
+
+def run_git(args, cwd, *, check=True, capture=True, timeout=30):
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["GCM_INTERACTIVE"] = "Never"
+    try:
+        return subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            check=check,
+            text=True,
+            capture_output=capture,
+            timeout=timeout,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            f"git command timed out after {timeout}s: git {' '.join(args)}"
+        ) from error
 
 
 def repo_root():
-    """Return the main repository root, even when launched inside a worktree."""
-    result = run_git(["rev-parse", "--git-common-dir"], Path.cwd())
-    common_git = Path(result.stdout.strip())
-    if not common_git.is_absolute():
-        common_git = (Path.cwd() / common_git).resolve()
-    else:
-        common_git = common_git.resolve()
-    return common_git.parent
+    result = run_git(["rev-parse", "--show-toplevel"], Path.cwd())
+    return Path(result.stdout.strip()).resolve()
 
 
 def ensure_worktree(source_root: Path, worktree: Path, branch: str) -> None:
@@ -140,6 +215,127 @@ def collect_files(source_root: Path, patterns, destination: Path, max_bytes: int
                 "size": size,
             })
     return collected
+
+
+def local_python(source_root: Path) -> Path:
+    """Use the project's virtualenv Python when available."""
+
+    candidates = [
+        source_root / ".venv" / "Scripts" / "python.exe",
+        source_root / ".venv" / "bin" / "python",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return Path(sys.executable).resolve()
+
+
+def ensure_exec_worktree(source_root: Path, branch: str = DEFAULT_CODE_BRANCH) -> Path:
+    """Create/update a detached worktree for unattended test execution."""
+
+    worktree = source_root / DEFAULT_EXEC_WORKTREE_NAME
+    run_git(["fetch", "--no-tags", "origin", branch], source_root, timeout=30)
+    if not worktree.exists():
+        run_git(
+            [
+                "worktree",
+                "add",
+                "--detach",
+                "--force",
+                str(worktree),
+                f"origin/{branch}",
+            ],
+            source_root,
+            capture=False,
+            timeout=30,
+        )
+    elif not (worktree / ".git").exists():
+        raise RuntimeError(
+            f"Execution worktree path exists but is not a git worktree: {worktree}"
+        )
+    run_git(
+        ["reset", "--hard", f"origin/{branch}"],
+        worktree,
+        timeout=15,
+    )
+    return worktree
+
+
+def run_local_process(command, cwd: Path, timeout: int) -> dict:
+    """Run one allowlisted local process and capture its complete text output."""
+
+    global _ACTIVE_LOCAL_PROCESS
+    started = time.time()
+    process = subprocess.Popen(
+        [str(part) for part in command],
+        cwd=cwd,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=os.environ.copy(),
+    )
+    _ACTIVE_LOCAL_PROCESS = process
+    timed_out = False
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+            )
+        else:
+            process.kill()
+        stdout, stderr = process.communicate()
+    finally:
+        _ACTIVE_LOCAL_PROCESS = None
+
+    return {
+        "command": [str(part) for part in command],
+        "returncode": process.returncode,
+        "stdout": stdout,
+        "stderr": stderr,
+        "timed_out": timed_out,
+        "timeout_seconds": int(timeout) if timed_out else None,
+        "started_at": started,
+        "finished_at": time.time(),
+    }
+
+
+def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
+    """Copy the newest acceptance report/log into the mailbox result."""
+
+    results_root = exec_root / "tests" / "acceptance" / "results"
+    candidates = sorted(
+        (
+            path for path in results_root.glob("amy_zombie_house-*")
+            if path.is_dir()
+            and (
+                (path / "acceptance_run.json").is_file()
+                or (path / "run.log").is_file()
+            )
+        ),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    if not candidates:
+        raise RuntimeError("Acceptance runner produced no result directory or run.log.")
+    latest = candidates[0]
+    artifacts_dir = result_dir / "files"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    copied = {}
+    for filename in ("acceptance_run.json", "run.log"):
+        source = latest / filename
+        if source.is_file():
+            target = artifacts_dir / filename
+            shutil.copy2(source, target)
+            copied[filename] = str(target.relative_to(result_dir))
+    copied["source_result_dir"] = str(latest.relative_to(exec_root))
+    return copied
 
 
 def ensure_code_test_worktree(source_root: Path, branch: str) -> Path:
@@ -298,6 +494,221 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
     }
 
 
+
+def execute_local_tests(job: dict, source_root: Path) -> dict:
+    """Run only explicitly named unittest modules from the repository tests tree."""
+
+    tests = job.get("tests")
+    if tests is None:
+        tests = [
+            "tests.test_story_arc_structural_guarantees",
+            "tests.test_refresh_context_latents",
+            "tests.test_continuation_frame_anchor",
+            "tests.test_reference_pruning",
+        ]
+    if not isinstance(tests, list) or not tests:
+        raise ValueError("run_tests requires a non-empty tests array.")
+    safe_tests = []
+    for test in tests:
+        value = str(test).strip()
+        if not re.fullmatch(r"tests(?:\.[A-Za-z_][A-Za-z0-9_]*)+", value):
+            raise ValueError(f"Unsupported unittest module: {value!r}")
+        safe_tests.append(value)
+
+    exec_root = ensure_exec_worktree(source_root)
+    python = local_python(source_root)
+    return run_local_process(
+        [python, "-m", "unittest", *safe_tests],
+        exec_root,
+        timeout=int(job.get("timeout_seconds") or 900),
+    )
+
+
+def _find_lms_cli() -> str | None:
+    """Return the LM Studio CLI path when it is installed."""
+
+    found = shutil.which("lms")
+    if found:
+        return found
+
+    executable_names = (
+        ("lms.exe", "lms.cmd", "lms")
+        if os.name == "nt"
+        else ("lms",)
+    )
+    for name in executable_names:
+        candidate = Path.home() / ".lmstudio" / "bin" / name
+        if candidate.is_file():
+            return str(candidate)
+    return None
+
+
+def start_lmstudio_developer_log(result_dir: Path) -> dict:
+    """Capture LM Studio model input/output + stats for one bridge run."""
+
+    artifacts_dir = result_dir / "files"
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    log_path = artifacts_dir / "developer_log.jsonl"
+    stderr_path = artifacts_dir / "developer_log.stderr.log"
+
+    cli = _find_lms_cli()
+    if cli is None:
+        log_path.write_text(
+            json.dumps({
+                "bridge_log_capture_error": (
+                    "LM Studio CLI 'lms' was not found; developer log capture "
+                    "could not start."
+                )
+            }, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        return {
+            "process": None,
+            "log_path": log_path,
+            "stderr_path": stderr_path,
+            "stdout_handle": None,
+            "stderr_handle": None,
+        }
+
+    stdout_handle = log_path.open("wb")
+    stderr_handle = stderr_path.open("wb")
+    command = [
+        cli,
+        "log",
+        "stream",
+        "--source",
+        "model",
+        "--filter",
+        "input,output",
+        "--json",
+        "--stats",
+    ]
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=result_dir,
+            stdin=subprocess.DEVNULL,
+            stdout=stdout_handle,
+            stderr=stderr_handle,
+        )
+        # Give the log subscriber a brief chance to attach before MiniMax starts.
+        time.sleep(0.5)
+        if process.poll() is not None:
+            raise RuntimeError(
+                f"LM Studio log stream exited immediately with "
+                f"code {process.returncode}."
+            )
+    except Exception as error:
+        stdout_handle.close()
+        stderr_handle.close()
+        log_path.write_text(
+            json.dumps({
+                "bridge_log_capture_error": str(error),
+                "command": command,
+            }, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        return {
+            "process": None,
+            "log_path": log_path,
+            "stderr_path": stderr_path,
+            "stdout_handle": None,
+            "stderr_handle": None,
+        }
+
+    return {
+        "process": process,
+        "log_path": log_path,
+        "stderr_path": stderr_path,
+        "stdout_handle": stdout_handle,
+        "stderr_handle": stderr_handle,
+    }
+
+
+def stop_lmstudio_developer_log(capture: dict, result_dir: Path) -> dict:
+    """Stop one LM Studio log stream and return mailbox artifact paths."""
+
+    process = capture.get("process")
+    if process is not None and process.poll() is None:
+        try:
+            process.terminate()
+            process.wait(timeout=5)
+        except Exception:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                )
+            else:
+                process.kill()
+            try:
+                process.wait(timeout=5)
+            except Exception:
+                pass
+
+    for key in ("stdout_handle", "stderr_handle"):
+        handle = capture.get(key)
+        if handle is not None and not handle.closed:
+            handle.flush()
+            handle.close()
+
+    artifacts = {}
+    for name, key in (
+        ("developer_log.jsonl", "log_path"),
+        ("developer_log.stderr.log", "stderr_path"),
+    ):
+        path = capture.get(key)
+        if isinstance(path, Path) and path.is_file():
+            artifacts[name] = str(path.relative_to(result_dir))
+    return artifacts
+
+
+def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
+    """Run the fixed prompt-generation acceptance suite on latest gpt-test-branch."""
+
+    exec_root = ensure_exec_worktree(source_root)
+    python = local_python(source_root)
+    image1_raw = str(job.get("image1") or "amy.jpg").strip()
+    image1 = safe_source_path(source_root, image1_raw)
+    if not image1.is_file():
+        raise FileNotFoundError(f"Acceptance image not found: {image1}")
+    model = str(job.get("model") or "mistral").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", model):
+        raise ValueError(f"Unsupported model selector: {model!r}")
+
+    command = [
+        python,
+        "tests/acceptance/run_acceptance.py",
+        "--image1",
+        image1,
+        "--model",
+        model,
+    ]
+    if bool(job.get("planning_only")):
+        command.append("--planning-only")
+
+    developer_capture = start_lmstudio_developer_log(result_dir)
+    try:
+        process = run_local_process(
+            command,
+            exec_root,
+            timeout=int(job.get("timeout_seconds") or 3600),
+        )
+    finally:
+        developer_artifacts = stop_lmstudio_developer_log(
+            developer_capture,
+            result_dir,
+        )
+
+    artifacts = copy_acceptance_artifacts(exec_root, result_dir)
+    artifacts.update(developer_artifacts)
+    process["artifacts"] = artifacts
+    return process
+
+
 def execute_job(job: dict, endpoint: str, source_root: Path, result_dir: Path,
                 max_file_bytes: int) -> dict:
     job_id = str(job.get("job_id") or "").strip()
@@ -341,10 +752,12 @@ def execute_job(job: dict, endpoint: str, source_root: Path, result_dir: Path,
             payload=payload,
             timeout=int(job.get("timeout_seconds") or 600),
         )
-    elif kind == "collect_files":
-        pass
     elif kind == "run_tests":
         result["test_run"] = run_pytest_job(source_root, job)
+    elif kind == "run_acceptance":
+        result["process"] = execute_acceptance(job, source_root, result_dir)
+    elif kind == "collect_files":
+        pass
     else:
         raise ValueError(f"Unsupported bridge job kind: {kind!r}")
 
@@ -356,6 +769,10 @@ def execute_job(job: dict, endpoint: str, source_root: Path, result_dir: Path,
             result_dir / "files",
             max_file_bytes,
         )
+
+    process = result.get("process")
+    if isinstance(process, dict) and process.get("returncode") not in (None, 0):
+        result["local_process_failed"] = True
 
     result["finished_at"] = time.time()
     return result
@@ -372,43 +789,83 @@ def processed_ids(results_root: Path) -> set[str]:
 
 
 def sync_branch(worktree: Path, branch: str) -> None:
-    """Reset the disposable mailbox worktree to the remote branch head.
+    """Make the isolated mailbox worktree exactly match the remote branch."""
 
-    The mailbox contains only ChatGPT-authored jobs and bridge-authored results.
-    If a local result was written or committed but not pushed before an
-    interruption, discarding it is safe: the remote job still exists and will
-    simply be processed again.
-    """
-    run_git(["fetch", "origin", branch], worktree)
-    run_git(["reset", "--hard", f"origin/{branch}"], worktree)
-    run_git(["clean", "-fd"], worktree)
+    run_git(["fetch", "--no-tags", "origin", branch], worktree, timeout=30)
+    run_git(
+        ["reset", "--hard", f"origin/{branch}"],
+        worktree,
+        timeout=15,
+    )
 
 
 def commit_result(worktree: Path, branch: str, result_dir: Path, job_id: str) -> None:
+    """Publish one result without losing it when ChatGPT updates the mailbox.
+
+    The assistant may add another job to gpt-runtime while the local worker is
+    finishing a long llama/acceptance run.  That makes a normal push race with
+    the newer remote commit.  Rebase this result-only commit onto the latest
+    mailbox tip and retry instead of letting the next poll reset/discard it and
+    execute the expensive job again.
+    """
+
     relative = result_dir.relative_to(worktree)
+    result_json = relative / "result.json"
     run_git(["add", str(relative)], worktree)
     status = run_git(["status", "--porcelain"], worktree).stdout.strip()
     if not status:
         return
     run_git(["commit", "-m", f"Bridge result {job_id}"], worktree, capture=False)
 
-    # A new ChatGPT-authored job may land after the result commit but before
-    # this push. Rebase the result commit onto the newest mailbox head and
-    # retry instead of leaving the worktree permanently diverged.
-    last_error = None
-    for attempt in range(10):
-        try:
-            # There is an unavoidable race between the pull and push because
-            # ChatGPT may add another mailbox job at any moment. Keep these
-            # expected retry failures captured so transient ref-lock/non-fast-
-            # forward messages do not look like fatal bridge errors.
-            run_git(["pull", "--rebase", "origin", branch], worktree)
-            run_git(["push", "origin", branch], worktree)
+    last_error = ""
+    for attempt in range(1, 4):
+        pushed = run_git(
+            ["push", "origin", branch],
+            worktree,
+            check=False,
+            timeout=60,
+        )
+        if pushed.returncode == 0:
             return
-        except subprocess.CalledProcessError as error:
-            last_error = error
-            time.sleep(min(0.25 * (attempt + 1), 2.0))
-    raise last_error
+
+        last_error = (pushed.stderr or pushed.stdout or "").strip()
+        run_git(["fetch", "--no-tags", "origin", branch], worktree, timeout=30)
+
+        # Another worker/process may already have published this exact job.
+        remote_has_result = run_git(
+            [
+                "cat-file",
+                "-e",
+                f"origin/{branch}:{result_json.as_posix()}",
+            ],
+            worktree,
+            check=False,
+            timeout=15,
+        ).returncode == 0
+        if remote_has_result:
+            run_git(["reset", "--hard", f"origin/{branch}"], worktree, timeout=15)
+            return
+
+        try:
+            run_git(
+                ["rebase", f"origin/{branch}"],
+                worktree,
+                capture=False,
+                timeout=60,
+            )
+        except (subprocess.CalledProcessError, RuntimeError):
+            run_git(["rebase", "--abort"], worktree, check=False, timeout=15)
+            raise
+
+        print(
+            f"Mailbox advanced while publishing {job_id}; "
+            f"rebased result and retrying push ({attempt}/3).",
+            flush=True,
+        )
+
+    raise RuntimeError(
+        f"Could not publish bridge result {job_id} after 3 attempts: {last_error}"
+    )
 
 
 def write_result(result_dir: Path, payload: dict) -> None:
@@ -457,6 +914,13 @@ def process_once(source_root: Path, worktree: Path, branch: str, endpoint: str,
             }
         write_result(result_dir, payload)
         commit_result(worktree, branch, result_dir, job_id)
+        if str(job.get("kind") or "").strip() == "run_acceptance":
+            print(
+                "===========\n"
+                "Pass back to GPT\n"
+                "===========",
+                flush=True,
+            )
         completed.add(job_id)
         handled += 1
     return handled
@@ -485,7 +949,6 @@ def parse_args(argv=None):
 
 
 def main(argv=None):
-    loaded_script_bytes = Path(__file__).resolve().read_bytes()
     args = parse_args(argv)
     source_root = repo_root()
     worktree = (
@@ -497,7 +960,6 @@ def main(argv=None):
 
     endpoint = args.endpoint.rstrip("/")
     model = discover_model(endpoint)
-    print(f"Bridge build: {BRIDGE_BUILD}")
     print(f"Bridge connected to llama.cpp: {endpoint}")
     print(f"Detected model: {model}")
     print(f"Mailbox branch: {args.branch}")
@@ -507,6 +969,7 @@ def main(argv=None):
     max_file_bytes = int(args.max_file_mb * 1024 * 1024)
     while True:
         try:
+            print("Checking mailbox...", flush=True)
             handled = process_once(
                 source_root,
                 worktree,
@@ -516,11 +979,6 @@ def main(argv=None):
             )
             if handled:
                 print(f"Processed {handled} bridge job(s).")
-
-            current_script = Path(__file__).resolve()
-            if current_script.read_bytes() != loaded_script_bytes:
-                print("Bridge code changed during mailbox sync; restarting automatically.")
-                os.execv(sys.executable, [sys.executable, *sys.argv])
         except urllib.error.URLError as error:
             print(f"llama.cpp connection error: {error}", file=sys.stderr)
         except subprocess.CalledProcessError as error:
@@ -528,11 +986,17 @@ def main(argv=None):
                 f"git bridge error ({error.returncode}): "
                 f"{error.stderr or error.stdout or error}",
                 file=sys.stderr,
+                flush=True,
             )
+        except RuntimeError as error:
+            print(f"bridge error: {error}", file=sys.stderr, flush=True)
         if args.once:
             return 0
         time.sleep(max(0.5, args.poll_seconds))
 
 
 if __name__ == "__main__":
+    install_bridge_interrupt_handlers()
+    start_bridge_emergency_stop_listener()
+    print("Bridge emergency stop: press Ctrl+C (or Ctrl+Q on Windows).")
     raise SystemExit(main())
