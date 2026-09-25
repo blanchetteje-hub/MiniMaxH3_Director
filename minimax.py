@@ -9403,7 +9403,7 @@ def _required_event_phase_map(macro_arc):
     return mapping
 
 
-def _apply_required_event_state_effects(state, events):
+def _apply_required_event_state_effects(state, events, *, log=True):
     """Apply source-authorized required-event effects and register them as hard state."""
     state = normalize_beat_canonical_state(state)
     progress = state["story_progress"]
@@ -9433,15 +9433,69 @@ def _apply_required_event_state_effects(state, events):
             updates = _apply_state_operation(state, effect)
             for path, value in updates.items():
                 persistent[path] = copy.deepcopy(value)
-            print(
-                f"Required event {event.get('id', '?')} applied persistent state: "
-                f"{effect['op']} = {json.dumps(effect, ensure_ascii=False)}",
-                flush=True,
-            )
+            if log:
+                print(
+                    f"Required event {event.get('id', '?')} applied persistent state: "
+                    f"{effect['op']} = {json.dumps(effect, ensure_ascii=False)}",
+                    flush=True,
+                )
         state = normalize_beat_canonical_state(state)
     state["story_progress"]["persistent_state_effects"] = persistent
     return normalize_beat_canonical_state(state)
 
+
+
+
+def source_authorized_state_before_beat(
+    macro_arc,
+    beat_number,
+    subject_information="",
+):
+    """Replay source-owned effects strictly before one beat."""
+    beat_number = int(beat_number)
+    state = _seed_known_beat_characters(
+        new_beat_canonical_state(),
+        macro_arc=macro_arc,
+        subject_information=subject_information,
+    )
+    events = sorted(
+        (
+            event
+            for event in _required_event_records(macro_arc)
+            if isinstance(event.get("beat_number"), int)
+            and not isinstance(event.get("beat_number"), bool)
+            and int(event["beat_number"]) < beat_number
+        ),
+        key=lambda event: int(event["beat_number"]),
+    )
+    if events:
+        state = _apply_required_event_state_effects(
+            state,
+            events,
+            log=False,
+        )
+    return compact_beat_validation_state(state)
+
+
+def format_source_authorized_opening_state(
+    macro_arc,
+    beat_number,
+    subject_information="",
+):
+    """Render deterministic current story facts for a chapter refresh."""
+    if not macro_arc_uses_source_span_planner(macro_arc):
+        return ""
+    state = source_authorized_state_before_beat(
+        macro_arc,
+        beat_number,
+        subject_information=subject_information,
+    )
+    if not state:
+        return ""
+    return (
+        "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n"
+        + json.dumps(state, ensure_ascii=False, separators=(",", ":"))
+    )
 
 
 
@@ -25547,6 +25601,21 @@ def _run_main(
             str(opening_summary_text or "").strip()
             if segment_number > 1 else ""
         )
+        source_opening_state = ""
+        if conditioning_mode == "clean_refresh":
+            source_opening_state = format_source_authorized_opening_state(
+                macro_arc,
+                segment_number,
+                subject_information=subject_information,
+            )
+        if source_opening_state:
+            rendered_context = opening_summary or "N/A"
+            opening_summary = (
+                source_opening_state
+                + "\n\nRENDERED CONTINUITY (supplemental; do not override "
+                "source-authorized facts)\n"
+                + rendered_context
+            )
         excluded_picture_ids = (
             get_conditioning_excluded_picture_ids(
                 opening_state,
