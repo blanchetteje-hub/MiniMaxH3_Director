@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundary-candidate-amy2-487",
+  "kind": "llama_chat",
+  "started_at": 1790301641.3244941,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE STORY UNITS:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nCANDIDATE BOUNDARY:\nAfter unit 2.\n\nA chapter is a LARGE H3 refresh unit.\nNormal setup, inciting danger, protection/preparation, and the source-emphasized main process should remain one continuous chapter unless there is a major reset.\nTerminal resolution may begin a new chapter.\n\nChoose: BOUNDARY or NO_BOUNDARY.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-o3gx1qhm0ra8pgnpz2332n",
+    "object": "chat.completion",
+    "created": 1790301641,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO_BOUNDARY\",\"reason\":\"Units 1–3 form a single narrative arc of normal setup, inciting danger and protection/preparation before the main process of fighting zombies begins in unit 4. Splitting after unit 2 would separate Amy’s weapon retrieval (unit 3) from the subsequent action, breaking the continuous flow that the chapter structure requires.\"}",
+          "reasoning": "We need to decide if boundary after unit 2. Units list:\n\n1 Amy cooks breakfast for Will and Amber.\n2 A zombie breaks the kitchen door window; Amy gets Will and Amber into basement and locks door.\n3 Amy retrieves pistol/katana equips them.\n4 majority fighting zombies\n5 kills last zombie house soaked in blood\n6 lets Will & Amber out of basement.\n\nBoundary after unit 2: So we would split chapter between units 1-2 and rest? Let's analyze. A chapter is a large H3 refresh unit, normal setup inciting danger protection/preparation main process continuous unless major reset. After unit 2, the inciting danger (zombie breaks window) occurs; then Amy gets them into basement and locks door: that's protection/preparation. Then unit 3 retrieval of weapons is preparation for fighting. Unit 4 majority fight zombies - main process. So units 1-2 could be setup/inciting danger/protection? Actually unit 1 is normal breakfast, sets up characters. Unit 2 inciting danger + protection. That seems like one chapter: Setup and inciting danger and protection. Then unit 3 onward are main process (fight). But the rule says \"Normal setup, inciting danger, protection/preparation, and source-emphasized main process should remain one continuous chapter unless there is a major reset.\" So if we keep units 1-2 as part of same chapter with unit 3? Wait: The phrase includes preparation. Unit 3 is retrieval of weapons (preparation). So that could be included in the same chapter before main process starts at unit 4. But boundary after unit 2 would separate them, making a new chapter starting at unit 3. That might break continuity because unit 3 is still part of protection/preparation for fighting.\n\nThus likely no boundary: keep units 1-3 together as one continuous chapter until the fight begins (unit 4). So decision NO_BOUNDARY. Provide reason accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 259,
+      "completion_tokens": 488,
+      "total_tokens": 747,
+      "completion_tokens_details": {
+        "reasoning_tokens": 402
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790301649.0586984,
+  "status": "ok"
+}
