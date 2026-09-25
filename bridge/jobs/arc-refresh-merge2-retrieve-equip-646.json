@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 800,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-merge2-retrieve-equip-646",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Make one narrow 8-second beat-grouping decision. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nThe technician retrieves a wrench from the toolbox.\n\nRIGHT:\nThe technician grips the wrench and positions it on the loose fitting.\n\nCan every concrete visible action/state in LEFT and RIGHT fit naturally in one 8-second video beat?\nMERGE only for one immediate continuous action chain or natural setup/completion chain.\nKEEP_SEPARATE if they are distinct tasks/phases, if LEFT is a calm baseline before a new danger/change, if combining would compress required actions, or if RIGHT is explicitly long/repeated.\nReturn exactly {\"decision\":\"MERGE|KEEP_SEPARATE\"}."
+    }
+  ]
+}
