@@ -557,7 +557,7 @@ Normal worker command:
 
 No inbound port or public tunnel is required.
 
-The running bridge does not hot-reload changes to its own Python code. If the bridge implementation changes, the user's local checkout must be updated and the bridge restarted.
+The current bridge detects changes to its own script during mailbox sync and restarts automatically. An older running bridge without that support requires a manual update/restart.
 
 Bridge test jobs default to the active `gpt-arc-refresh` code branch.
 Acceptance jobs are hard-locked to `gpt-arc-refresh` + model `gpt`; the bridge
@@ -604,7 +604,7 @@ Python structural work:
 5. keep a final terminal unit in its current chapter;
 6. keep a terminal unit with its phase when the next unit is a hard reset, splitting only at the reset;
 7. build chapter text by slicing the original story, never by LLM rewriting;
-8. allocate one minimum beat per authoritative source unit, then allocate surplus capacity to explicitly emphasized chapters;
+8. group finite visible responsibilities, allocate one minimum beat per group, then allocate surplus capacity to explicitly repeatable groups;
 9. assign source units monotonically to beats; only explicitly repeatable source units may repeat.
 
 Do not ask the LLM to execute these deterministic rules. Probe 565 demonstrated that even with correct flags it could invent a third chapter and produce 6/1/1 instead of the deterministic Amy 6/2 result.
@@ -690,25 +690,24 @@ spans, beat budgets, beat/source ownership, refresh scheduling, and when
 persistent state effects are committed.
 
 
-### Local grouping refinement — probes 698-777
+### Historical grouping experiment — superseded
 
-The original four-way local relation classifier and a later binary
-`MERGE | NEW_TASK` version both exposed the same 20B limitation: combining
-multiple semantic reasons to merge in one decision causes overthinking and
-over-merging.
+Probes 698–777 exposed over-merging on synthetic controls. A two-call
+continuation/reaction decomposition was explored but not adopted. The active
+contract is the single binary `MERGE | NEW_TASK` classifier documented above;
+exact production pairs 838–842 passed. Do not reintroduce the abandoned
+multi-call grouping experiment from historical notes.
 
-Evidence:
-- four-way probes 698-717 mostly classified useful controls correctly, but
-  ambiguous tool/use cases consumed the full completion budget;
-- binary probes 738-757 reduced format/token failures but still confused shared
-  purpose or incidental tool use with a local continuation;
-- tightened binary probes 758-777 all returned valid JSON, but materially
-  over-merged four controls: retrieve respirator -> inspect a different system
-  while wearing it; retrieve wrench -> dismantle a separate pump; completed
-  child protection -> fetch gear; open door -> inspect a computer.
+## Current acceptance gate — job 935 review
 
-Conclusion:
-- do not keep tuning one overloaded merge classifier;
-- split grouping into narrow semantic YES/NO calls and let Python combine them;
-- shared larger purpose, incidental possession/use, and sequence adjacency are
-  not sufficient by themselves to merge source responsibilities.
+A structurally complete planning capture is not semantic acceptance. Job 935
+produced the correct 6/2 allocation but accepted a beat that performed the same
+irreversible removal twice on one target, and a realistic body transformation
+unsupported by the source.
+
+Test fixes inside the existing validator before advancing to H3 generation.
+Batch 936–955 compares the full current validator with a shorter sequential
+possibility check across matched cross-genre controls. This is an experiment,
+not an adopted production contract. Preserve explicitly source-authorized
+fantastical capabilities and distinguish different targets from repeated actions
+on the same target.

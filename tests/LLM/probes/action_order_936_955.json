@@ -1,0 +1,88 @@
+{
+  "source_revision": "67777b5",
+  "source_capture": "amy-planning-hard-reset-stable-935",
+  "purpose": "Paired full production validator vs replacement of check B only; expected labels never sent to model.",
+  "proposed_check_b": "B. CONTINUITY / POSSIBILITY: Start from PREVIOUS FINAL BEAT and CURRENT STATE.\nRead CANDIDATE BEAT actions in order. After each action, carry its stated result\ninto the next action. Reject a later action that requires an object, body part,\nlocation, or access that is no longer available, unless an intervening action\nexplicitly restores it. This applies within one beat as well as across beats.\nUnknown facts alone are not contradictions. Respect unusual capabilities\nexplicitly established by CURRENT JOB or CURRENT STATE.",
+  "cases": [
+    {
+      "name": "captured_double_decapitation",
+      "expected_valid": false,
+      "jobs": [
+        "probe-action-order-936-baseline",
+        "probe-action-order-937-ordered"
+      ]
+    },
+    {
+      "name": "wound_then_decapitate",
+      "expected_valid": true,
+      "jobs": [
+        "probe-action-order-938-baseline",
+        "probe-action-order-939-ordered"
+      ]
+    },
+    {
+      "name": "captured_shattering_body",
+      "expected_valid": false,
+      "jobs": [
+        "probe-action-order-940-baseline",
+        "probe-action-order-941-ordered"
+      ]
+    },
+    {
+      "name": "ordinary_final_kill",
+      "expected_valid": true,
+      "jobs": [
+        "probe-action-order-942-baseline",
+        "probe-action-order-943-ordered"
+      ]
+    },
+    {
+      "name": "fantasy_same_crystal_twice",
+      "expected_valid": false,
+      "jobs": [
+        "probe-action-order-944-baseline",
+        "probe-action-order-945-ordered"
+      ]
+    },
+    {
+      "name": "fantasy_crystal_reinserted",
+      "expected_valid": true,
+      "jobs": [
+        "probe-action-order-946-baseline",
+        "probe-action-order-947-ordered"
+      ]
+    },
+    {
+      "name": "locked_door_ignored",
+      "expected_valid": false,
+      "jobs": [
+        "probe-action-order-948-baseline",
+        "probe-action-order-949-ordered"
+      ]
+    },
+    {
+      "name": "locked_door_resolved",
+      "expected_valid": true,
+      "jobs": [
+        "probe-action-order-950-baseline",
+        "probe-action-order-951-ordered"
+      ]
+    },
+    {
+      "name": "explicit_magic_exception",
+      "expected_valid": true,
+      "jobs": [
+        "probe-action-order-952-baseline",
+        "probe-action-order-953-ordered"
+      ]
+    },
+    {
+      "name": "different_targets",
+      "expected_valid": true,
+      "jobs": [
+        "probe-action-order-954-baseline",
+        "probe-action-order-955-ordered"
+      ]
+    }
+  ]
+}

@@ -16,38 +16,52 @@ Active development branch:
 
 ## Current status snapshot — 2026-09-25
 
-Latest accepted planning run inspected: **job 935** (`amy-planning-hard-reset-stable-935`).
+Latest planning capture inspected: **job 935** (`amy-planning-hard-reset-stable-935`),
+code revision `82ffecba376244f1781cc0daade4d49e4d513a53`.
 
-Current local 20B result:
-- source-span planner stayed active;
-- Amy planned as exactly **2 chapters / 6 + 2 beats**;
-- no inferred split before the repeated-combat section;
-- Beat 1 required 5 validator attempts and Beat 2 required 4, demonstrating that the local validate/repair loop is actively correcting missing actions and next-job leakage;
-- final accepted beats are structurally/source aligned enough to continue forward, though prompt-quality work remains.
+Structural planning passes: source-span planning remained active and produced
+exactly **2 chapters / 6 + 2 beats**. This is not yet semantic acceptance.
 
-Recent classifier stabilization:
-- premise/framing no longer consumes a beat or creates a false reset;
-- HARD_RESET must be source-explicit rather than inferred from cinematic convention;
-- duration wording such as “for most of the night” is not itself a time jump;
-- ordinary movement into another room/building is not itself a narrative reset;
-- the revised HARD_RESET contract scored **20/20** on the latest adversarial cross-genre follow-up batch.
+Review of the actual accepted beats and developer log found:
+- Beat 4 fires a pistol to sever a zombie's head, then decapitates that same
+  zombie with a katana. The production validator explicitly accepted this
+  internally contradictory sequence; it checked the actions independently.
+- Beat 7 describes the last zombie "shattering into blood", an unsupported
+  physical transformation in the realistic action story.
+- Beats 4–6 also repeat nearly the same pistol/neck/katana sequence, so action
+  variety remains a later prompt-quality concern.
+- Beat 3 places the arsenal in a basement closet after the children are locked
+  inside the basement. Treat access continuity as a review concern, not a proven
+  failure without resolving the exact location/access assumptions.
 
-Recent beat-validator refinement:
-- material-fidelity guidance was restored inside the existing single validator;
-- it now rejects demonstrated failures such as invented props, materially changed participant treatment, and incoherent object use;
-- do not create a separate fidelity subsystem unless a real failure proves the single validator insufficient.
+**Do not advance to full H3 generation yet.** Fix the demonstrated accepted-beat
+coherence failure first, within the existing single validator.
 
-Important commits:
-- `0764c96` clarify premise handling in chapter classifiers
-- `861073b` restore material fidelity check to beat validator
-- `a49788e` require source-explicit hard resets
-- `82ffecb` distinguish duration and ordinary movement from hard resets
+Queued batch **936–955** on `gpt-runtime` (commit `716c003`):
+- 10 matched cases, each tested against the full production validator and a
+  candidate replacement of check B only;
+- two exact captured bad beats plus corrected controls, fantasy crystal
+  removal, laboratory access, an explicit magic exception, and different-target
+  decapitation;
+- proposed B uses a short action-order procedure that carries each stated result
+  into the next action; no production prompt change has been adopted yet;
+- expected labels stay in `tests/LLM/probes/action_order_936_955.json`, never in
+  model requests;
+- identical sampling: temperature 0, seed 42, repeat_penalty 1.15, max_tokens 2048.
+  Score completion/truncation separately from semantic accuracy.
 
-Immediate next step:
-1. inspect/grade the final accepted beat text from job 935 against the locked Amy gold;
-2. if planning remains acceptable, advance from planning-only acceptance toward full H3 prompt generation;
-3. fix only the earliest observed local-runtime failure;
-4. keep all production behavior generic across genres; Amy/zombies are an acceptance fixture, not production logic.
+Next steps:
+1. Inspect results 936–955 against the manifest, including explanations: an
+   unrelated rejection does not prove the targeted contradiction was caught.
+2. Adopt a check-B replacement only if it fixes the actual failure without
+   breaking valid controls. The physical-transformation miss may require a
+   separate focused revision of the existing material-fidelity check.
+3. Run a fresh planning acceptance after any verified production change, then
+   advance to full H3 prompts only when accepted beats are coherent.
+4. Keep production behavior generic across genres and entirely local.
+
+The worker needs only to remain running; these are existing `llama_chat` jobs
+and require no bridge-code update or restart.
 
 
 ## Ultimate goal
