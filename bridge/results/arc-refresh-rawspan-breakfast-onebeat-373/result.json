@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-rawspan-breakfast-onebeat-373",
+  "kind": "llama_chat",
+  "started_at": 1790297008.437411,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Create beats only from the supplied chapter source. The assigned beat budget must complete the source responsibility. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT CHAPTER SOURCE:\nAmy cooks breakfast for Will and Amber on a normal morning.\n\nBEAT BUDGET: exactly 1.\n\nThe single beat must visibly complete the chapter source responsibility for both Will and Amber.\n\nReturn a JSON object with key \"beats\", containing exactly one numbered beat object with an \"event\" field."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hg67229xw18jjji1bvqdcb",
+    "object": "chat.completion",
+    "created": 1790297008,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\n  \"beats\": [\n    {\n      \"beatNumber\": 1,\n      \"event\": \"Amy whips up a hearty breakfast—pancakes, eggs, bacon, and coffee—and plates it neatly on two dishes before bringing them to Will’s table and handing Amber a toast.\"\n    }\n  ]\n}",
+          "reasoning": "We need to produce beats only from supplied chapter source. The source says: Amy cooks breakfast for Will and Amber on a normal morning. Beat budget 1. Single beat must visibly complete the chapter source responsibility for both Will and Amber.\n\nSo we create one beat that shows Amy cooking breakfast, maybe serving it to Will and Amber. Must \"visibly complete\" the source responsibility for both Will and Amber: meaning show that she cooks breakfast for them; perhaps she serves them or they eat? The beat should cover the action of cooking breakfast for both. So event could be something like \"Amy prepares a hearty breakfast, plating pancakes, eggs, bacon, and coffee, then brings it to Will's table and gives Amber a toast.\" That covers.\n\nReturn JSON with key beats: array containing one object {1:{event:\"...\"}? Actually beat objects numbered maybe as keys or an array of objects each having \"number\" field. The instruction says \"exactly one numbered beat object\". So likely format:\n\n{\n  \"beats\": [\n    {\n      \"beatNumber\": 1,\n      \"event\": \"... \"\n    }\n  ]\n}\n\nBut they said key \"beats\", containing exactly one numbered beat object with an \"event\" field. Could be like:\n\n{ \"beats\":[{\"number\":1,\"event\":\"...\"}] }\n\nLet's choose number: 1.\n\nReturn valid JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 163,
+      "completion_tokens": 353,
+      "total_tokens": 516,
+      "completion_tokens_details": {
+        "reasoning_tokens": 279
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790297014.316446,
+  "status": "ok"
+}
