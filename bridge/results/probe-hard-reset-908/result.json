@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-908",
+  "kind": "llama_chat",
+  "started_at": 1790371957.3700337,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nThe knight buries his brother.\n\nTARGET UNIT:\nAfter a decade of peace, war returns to the kingdom.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-kbpv5ntvnfc2caezmdq6",
+    "object": "chat.completion",
+    "created": 1790371957,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The target unit begins with the phrase \\\"After a decade of peace,\\\" which explicitly indicates a ten‑year time jump from the previous event (the knight burying his brother). This explicit temporal discontinuity qualifies as a hard reset between narrative phases.\"}",
+          "reasoning": "We need to determine if target unit begins after a hard reset from previous unit. Previous unit: \"The knight buries his brother.\" Target unit: \"After a decade of peace, war returns to the kingdom.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart.\n\nWe have previous unit ends with burying brother. Then target says \"After a decade of peace, war returns to the kingdom.\" That indicates a time jump of a decade. Is that an explicit time jump? The phrase \"After a decade of peace\" implies a period of ten years passed since last event. So yes, it's an explicit time jump. So hard reset: YES.\n\nReason: explicit time jump of decade between burying brother and war returns.\n\nReturn JSON with decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 303,
+      "completion_tokens": 246,
+      "total_tokens": 549,
+      "completion_tokens_details": {
+        "reasoning_tokens": 179
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790371961.013205,
+  "status": "ok"
+}
