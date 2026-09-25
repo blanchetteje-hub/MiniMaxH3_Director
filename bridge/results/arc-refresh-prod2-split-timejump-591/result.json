@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod2-split-timejump-591",
+  "kind": "llama_chat",
+  "started_at": 1790350315.9440143,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY:\nThe team completes field work, and three months later begins analysis in a city laboratory.\n\nSOURCE UNIT:\nThe team completes field work, and three months later begins analysis in a city laboratory.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only in either case:\n1. this unit contains an explicit substantial time jump/scene break between two narrative phases; or\n2. this unit contains an ongoing/repeated main process followed by its explicit terminal resolution.\nOtherwise choose KEEP_TOGETHER. Ordinary movement, danger changes, tool/weapon changes, terminal resolution plus immediate closure, and continuous work stay together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-59j84iq1f5lp0dxvw1q96",
+    "object": "chat.completion",
+    "created": 1790350315,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"SPLIT\",\"reason\":\"The unit contains an explicit substantial time jump—three months between completing field work and beginning analysis—which marks a clear narrative phase break.\"}",
+          "reasoning": "We need to decide if this source unit crosses an internal LARGE H3 chapter phase boundary.\n\nThe source unit is a single sentence: \"The team completes field work, and three months later begins analysis in a city laboratory.\"\n\nThis contains a time jump of three months between two phases: completing fieldwork and beginning analysis. That seems like a substantial time jump/scene break. According to rule 1: if the unit contains an explicit substantial time jump/scene break between two narrative phases => SPLIT.\n\nThus decision is SPLIT. Reason: explicit time jump of three months indicates separate phases, so split into two units.\n\nReturn JSON with keys \"decision\" and \"reason\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 242,
+      "completion_tokens": 181,
+      "total_tokens": 423,
+      "completion_tokens_details": {
+        "reasoning_tokens": 135
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350319.0119386,
+  "status": "ok"
+}
