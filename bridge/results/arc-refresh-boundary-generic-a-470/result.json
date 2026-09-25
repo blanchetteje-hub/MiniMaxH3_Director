@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundary-generic-a-470",
+  "kind": "llama_chat",
+  "started_at": 1790301237.0146084,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE SOURCE UNITS:\n1. A technician begins a normal shift.\n2. An alarm interrupts; the technician secures the work area.\n3. The technician retrieves the required tools.\n4. The majority of the story is the technician repeatedly handling faults.\n5. The final fault is resolved.\n6. The technician releases the waiting team.\n\nA chapter is a LARGE H3 refresh unit.\nUse the FEWEST chapter boundaries that preserve major narrative phases.\nNormal setup, inciting event, protective/preparatory actions, and the source-emphasized main process are one continuous escalation unless a major time/location/state reset occurs.\nExplicit terminal resolution plus immediate closure may form the final chapter.\n\nReturn JSON with key new_chapter_after, an array of source-unit numbers."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6pg7jcrkkmpitk6ymr369",
+    "object": "chat.completion",
+    "created": 1790301237,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"new_chapter_after\":[3,5]}",
+          "reasoning": "We need to produce JSON: {\"new_chapter_after\": [source unit numbers]}. The units are numbered 1-6 as given. We must decide where to put chapter boundaries (H3). Use fewest chapters that preserve major narrative phases.\n\nNarrative phases: normal setup, inciting event, protective/preparatory actions, main process (fault handling), final resolution and closure.\n\nWe have units:\n\n1. Technician begins shift.\n2. Alarm interrupts; technician secures area.\n3. Technician retrieves tools.\n4. Majority of story is repeated fault handling.\n5. Final fault resolved.\n6. Technician releases waiting team.\n\nSo phases: 1-2 inciting event? Actually 1 normal setup, 2 inciting event (alarm). Then protective/preparatory actions: 3 secures area and gets tools maybe combined with 4? But main process is repeated faults (unit 4) until final fault resolved (5). So we might have chapters:\n\nChapter 1: Units 1-2 (setup + alarm)\nChapter 2: Unit 3 (retrieves tools)\nBut unit 3 could be part of protective actions. Maybe combine with 4? But main process is repeated faults, so maybe chapter 2 includes units 3-5? Actually 3 retrieving tools and 4 fault handling are preparatory to main process; but the main process is repeated faults until final resolved. So we might have:\n\nChapter 1: Units 1-2 (setup + alarm)\nChapter 2: Unit 3 (retrieves tools) maybe small.\nBut we want fewest chapters, so combine 3 with 4? But 4 is majority of story; but 3 sets up for it. So chapter 2 could be units 3-5? That would include retrieving tools and fault handling until final resolved. Then Chapter 3: Unit 6 (releases waiting team). That's three chapters.\n\nAlternatively, combine 1-3 into one chapter: normal setup + alarm + retrieve tools; then main process 4-5 as second chapter; then release team as third. That seems good: 3 chapters.\n\nBut maybe we can reduce to two? Combine units 1-2 and 3 into first chapter (setup, alarm, retrieve). Then second chapter includes units 4-6 (fault handling, final resolution, release). But that might lose the explicit final resolution separate from main process. The instruction: \"Explicit terminal resolution plus immediate closure may form the final chapter.\" So maybe we need a third chapter for unit 6.\n\nThus new_chapter_after array indicates after which source-unit numbers chapters end? We need to return an array of source-unit numbers where new chapters start? Actually key is new_chapter_after, an array of source-unit numbers. That likely means after these units, a new chapter begins. So if we have three chapters: first ends at unit 3 (after retrieving tools), second ends at unit 5 (final fault resolved), third ends at unit 6 maybe but no further? Actually last chapter may end at 6.\n\nSo array could be [3,5] meaning after units 3 and 5 new chapters start. That gives three chapters: 1-3, 4-5, 6. But we might want to include after 2 as well? Let's think:\n\nIf first chapter is units 1-2 (setup + alarm). Then second starts at unit 3. So array [2] would indicate new chapter after unit 2. Then third starts at unit 5 maybe? Actually main process includes repeated faults until final resolved; we might want to end before final resolution? But instruction: \"Explicit terminal resolution plus immediate closure may form the final chapter.\" That suggests final fault resolved and release team could be separate chapters or same.\n\nWe can have:\n\nChapter1: units 1-2\nChapter2: unit3 (retrieve tools)\nChapter3: units4-5 (fault handling + final resolve)\nChapter4: unit6 (release)\n\nThat's four chapters. But we want fewest.\n\nLet's choose three chapters as earlier: [3,5]. That gives:\n\nChap1: 1-3\nChap2: 4-5\nChap3: 6\n\nThis preserves phases: normal setup + alarm + retrieve tools; main process repeated faults and final resolution; release team. Good.\n\nThus output JSON: {\"new_chapter_after\":[3,5]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 239,
+      "completion_tokens": 931,
+      "total_tokens": 1170,
+      "completion_tokens_details": {
+        "reasoning_tokens": 911
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790301250.9886212,
+  "status": "ok"
+}
