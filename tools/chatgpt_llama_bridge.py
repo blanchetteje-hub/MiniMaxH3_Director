@@ -285,7 +285,14 @@ def processed_ids(results_root: Path) -> set[str]:
 
 
 def sync_branch(worktree: Path, branch: str) -> None:
-    run_git(["pull", "--ff-only", "origin", branch], worktree)
+    """Synchronize the mailbox while preserving an unpushed local result commit.
+
+    ChatGPT may add a new job on the remote mailbox branch while the bridge is
+    processing and committing a result locally. That makes a fast-forward-only
+    pull invalid even though both sides contain legitimate mailbox changes.
+    Rebasing is safe here because the bridge creates only result commits.
+    """
+    run_git(["pull", "--rebase", "origin", branch], worktree)
 
 
 def commit_result(worktree: Path, branch: str, result_dir: Path, job_id: str) -> None:
@@ -295,7 +302,20 @@ def commit_result(worktree: Path, branch: str, result_dir: Path, job_id: str) ->
     if not status:
         return
     run_git(["commit", "-m", f"Bridge result {job_id}"], worktree, capture=False)
-    run_git(["push", "origin", branch], worktree, capture=False)
+
+    # A new ChatGPT-authored job may land after the result commit but before
+    # this push. Rebase the result commit onto the newest mailbox head and
+    # retry instead of leaving the worktree permanently diverged.
+    last_error = None
+    for _attempt in range(5):
+        try:
+            run_git(["pull", "--rebase", "origin", branch], worktree)
+            run_git(["push", "origin", branch], worktree, capture=False)
+            return
+        except subprocess.CalledProcessError as error:
+            last_error = error
+            time.sleep(0.5)
+    raise last_error
 
 
 def write_result(result_dir: Path, payload: dict) -> None:
