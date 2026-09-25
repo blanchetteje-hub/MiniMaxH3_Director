@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-allocation-threechapters-424",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Allocate a fixed beat budget across fixed chapters. Do not change chapter boundaries or move source material. Source-emphasized duration controls allocation. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "TOTAL BEATS: 12\n\nCHAPTER 1:\nBrief setup and transition into the main process.\n\nCHAPTER 2:\nThe source explicitly says this repeated process occupies MOST of the story.\n\nCHAPTER 3:\nShort final resolution and immediate closing.\n\nEvery chapter must receive at least one beat. Counts must sum to 12. The chapter containing MOST of the story must receive more than half of all beats.\n\nReturn a JSON object with key \"beat_counts\", an array of three integers in chapter order."
+    }
+  ]
+}
