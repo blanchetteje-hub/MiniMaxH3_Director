@@ -1,0 +1,9 @@
+{
+  "kind": "run_tests",
+  "job_id": "run-tests-beat-retry-current-849",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_beat_retry_hierarchy.py"
+  ],
+  "timeout_seconds": 900
+}
