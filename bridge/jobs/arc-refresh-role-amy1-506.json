@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-role-amy1-506",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow classification or deterministic rule application. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FULL STORY CONTEXT:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nTARGET UNIT:\n1. Amy cooks breakfast for Will and Amber.\n\nClassify TARGET UNIT by its role in the whole story.\nAllowed roles:\n- MAIN_BODY: setup, inciting event, protection/preparation, or ongoing central process before terminal resolution\n- TERMINAL_RESOLUTION: the decisive event that ends the central conflict/process\n- IMMEDIATE_CLOSURE: direct aftermath/closure following terminal resolution\n- RESET_START: begins a new phase after a major time/location/state reset\n\nChoose exactly one role.\nReturn JSON with keys role and reason."
+    }
+  ]
+}
