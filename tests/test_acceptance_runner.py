@@ -102,7 +102,7 @@ detailed_description: world
             "python",
             benchmark,
             Path("amy.jpg"),
-            "mistral",
+            "gpt",
             0.5,
             [],
             planning_only=True,
@@ -115,7 +115,7 @@ detailed_description: world
                 "--generate-beats",
                 "8",
                 "--model",
-                "mistral",
+                "gpt",
             ],
         )
         self.assertIsNone(refresh_interval)
