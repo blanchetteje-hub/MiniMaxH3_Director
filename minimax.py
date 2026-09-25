@@ -12487,6 +12487,164 @@ def _typed_state_effect_json_schema():
     }
 
 
+
+def build_source_unit_state_effect_messages(
+    source_unit_text,
+    subject_information="",
+):
+    """Build one narrow persistent-state extraction request."""
+    subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract explicit persistent post-unit state only. Never infer "
+                "a state from activity. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""
+SOURCE UNIT:
+{str(source_unit_text or '').strip()}
+
+DEFINED SUBJECTS:
+{subject_text}
+
+Extract only persistent post-unit facts explicitly established by SOURCE UNIT.
+Activity alone never creates state. Do not infer results from testing, using,
+handling, replacing, attacking, moving through, or other ordinary actions unless
+SOURCE UNIT explicitly states the post-state.
+Do not invent synonyms, destinations, entity names, conditions, or object quality.
+
+Apply these rules in order:
+1. set_location only when SOURCE UNIT explicitly puts an entity at/in/to a named
+   destination. Do not use it for "out of X" when no destination is named.
+2. set_item_state only for explicit possession/equipment results: stored, held,
+   equipped, dropped, or lost.
+3. set_barrier_state only for an explicitly named barrier explicitly opened,
+   closed, locked, unlocked, blocked, broken, or destroyed.
+4. set_threat_state only for an explicit lifecycle result: incapacitated, dead,
+   removed, or cleared. Ongoing attacking/fighting is not a state effect.
+5. set_object_state only when SOURCE UNIT explicitly states the object's
+   resulting state as intact, damaged, destroyed, active, inactive, or used.
+   Merely testing/using/replacing an object is not enough.
+6. When SOURCE UNIT explicitly puts an entity into/inside a named enclosed
+   place, emit BOTH set_location to that place and set_containment=contained.
+   When it explicitly lets/removes an entity out of that named place, emit
+   set_containment=free and do not invent a new location.
+7. set_condition only for an explicit persistent visible condition stated after
+   the action; copy the condition wording from SOURCE UNIT.
+8. set_clothing only for explicitly worn clothing.
+
+Return one JSON object with exactly one key: state_effects.
+Use an empty state_effects array when no rule applies.
+""".strip(),
+        },
+    ]
+
+
+def build_source_unit_state_effect_response_format():
+    """Return the strict typed schema for one source-unit state extraction."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "source_unit_state_effects",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "state_effects": {
+                        **_typed_state_effect_json_schema(),
+                    },
+                },
+                "required": ["state_effects"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_source_unit_state_effects(
+    raw_result,
+    source_unit_text,
+    formatter=None,
+    llm_request=None,
+):
+    """Parse and structurally validate one source-unit persistent-state result."""
+    formatter = formatter or ACTIVE_FORMATTER
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = formatter.sanitize_generated_text(candidate)
+        try:
+            candidate = parse_llm_json_content(candidate, llm_request=llm_request)
+            if isinstance(candidate, UnrepairedJSON):
+                return candidate
+        except json.JSONDecodeError as error:
+            raise ValueError(
+                "Source-unit state-effect response must be valid JSON."
+            ) from error
+    if not isinstance(candidate, dict) or set(candidate) != {"state_effects"}:
+        raise ValueError(
+            "Source-unit state-effect response must contain only state_effects."
+        )
+
+    effects = _validate_state_effects(candidate["state_effects"])
+    effects = _validate_required_event_state_effect_grounding(
+        str(source_unit_text or ""),
+        effects,
+    )
+
+    # Free-form destinations/containers/items must remain source-grounded.
+    # Entity identity itself may come from subjects.txt/pronoun resolution, so
+    # do not require entity/owner fields to appear lexically in this unit.
+    source_folded = " ".join(str(source_unit_text or "").casefold().split())
+    for effect in effects:
+        for field in ("value", "container", "item"):
+            if field not in effect:
+                continue
+            if effect["op"] != "set_location" and field == "value":
+                continue
+            value = " ".join(str(effect[field]).casefold().split())
+            if value and value not in source_folded:
+                raise ValueError(
+                    f"Source-unit state effect {effect['op']} {field} "
+                    f"{effect[field]!r} is not explicitly grounded in SOURCE UNIT."
+                )
+    return effects
+
+
+def extract_source_span_state_effects(
+    plan,
+    llm_request,
+    *,
+    history_metadata=None,
+    subject_information="",
+):
+    """Extract persistent state once per authoritative source unit."""
+    effects_by_unit = {}
+    for unit in plan.source_units:
+        raw = llm_request(
+            build_source_unit_state_effect_messages(
+                unit.text,
+                subject_information=subject_information,
+            ),
+            response_format=build_source_unit_state_effect_response_format(),
+            history_metadata={
+                **(history_metadata or {}),
+                "purpose": "source_unit_state_effects",
+                "source_unit_id": unit.id,
+            },
+            **ARC_LLM_SAMPLING_PARAMETERS,
+        )
+        effects_by_unit[unit.id] = parse_source_unit_state_effects(
+            raw,
+            unit.text,
+            llm_request=llm_request,
+        )
+    return effects_by_unit
+
+
 # Build beat arc response format.
 def build_beat_arc_response_format(total_segments):
     if total_segments <= 0:
