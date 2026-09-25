@@ -1,0 +1,10 @@
+{
+  "job_id": "arc-refresh-run-arc-regressions-570",
+  "kind": "run_tests",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_story_arc_structural_guarantees.py",
+    "tests/test_simplified_prompt_regressions.py"
+  ],
+  "timeout_seconds": 1200
+}
