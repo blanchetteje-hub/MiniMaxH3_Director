@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-state2-timejump-622",
+  "kind": "llama_chat",
+  "started_at": 1790350904.215575,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nThree months later the team begins analysis in a city laboratory.\n\nExtract only persistent post-unit facts explicitly established by SOURCE UNIT.\nActivity alone never creates state. Do not infer results from testing, using, handling, replacing, attacking, moving through, or other ordinary actions unless SOURCE UNIT explicitly states the post-state.\nDo not invent synonyms, destinations, entity names, conditions, or object quality.\n\nApply these rules in order:\n1. set_location only when SOURCE UNIT explicitly puts an entity at/in/to a named destination. Do not use it for \"out of X\" when no destination is named.\n2. set_item_state only for explicit possession/equipment results: stored, held, equipped, dropped, or lost.\n3. set_barrier_state only for an explicitly named barrier explicitly opened, closed, locked, unlocked, blocked, broken, or destroyed.\n4. set_threat_state only for an explicit lifecycle result: incapacitated, dead, removed, or cleared. Ongoing attacking/fighting is not a state effect.\n5. set_object_state only when SOURCE UNIT explicitly states the object's resulting state as intact, damaged, destroyed, active, inactive, or used. Merely testing/using/replacing an object is not enough.\n6. set_containment when SOURCE UNIT explicitly puts an entity into/inside a named container or enclosed place (contained), or explicitly lets/removes it out of that named container/place (free).\n7. set_condition only for an explicit persistent visible condition stated after the action; copy the condition wording from SOURCE UNIT.\n8. set_clothing only for explicitly worn clothing.\n\nAllowed JSON operation shapes:\n- {\"op\":\"set_location\",\"entity\":\"...\",\"value\":\"...\"}\n- {\"op\":\"set_item_state\",\"entity\":\"...\",\"owner\":\"...\",\"value\":\"stored|held|equipped|dropped|lost\"}\n- {\"op\":\"set_barrier_state\",\"entity\":\"...\",\"value\":\"open|closed|locked|unlocked|blocked|broken|destroyed\"}\n- {\"op\":\"set_threat_state\",\"entity\":\"...\",\"value\":\"incapacitated|dead|removed|cleared\"}\n- {\"op\":\"set_object_state\",\"entity\":\"...\",\"value\":\"intact|damaged|destroyed|active|inactive|used\"}\n- {\"op\":\"set_containment\",\"entity\":\"...\",\"container\":\"...\",\"value\":\"contained|free\"}\n- {\"op\":\"set_condition\",\"entity\":\"...\",\"value\":\"...\"}\n- {\"op\":\"set_clothing\",\"entity\":\"...\",\"slot\":\"upper|lower\",\"item\":\"...\",\"damage\":\"none|damaged|destroyed\"}\n\nReturn {\"state_effects\":[]} when no rule applies. Return JSON only."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-69hjdzsljsc3bl9lac81aj",
+    "object": "chat.completion",
+    "created": 1790350904,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"state_effects\":[{\"op\":\"set_location\",\"entity\":\"team\",\"value\":\"city laboratory\"}]}",
+          "reasoning": "We need to parse the source unit: \"Three months later the team begins analysis in a city laboratory.\"\n\nExplicit facts? The sentence says that three months later, the team begins analysis in a city laboratory.\n\nSo we have entity \"team\" location set to \"city laboratory\". That's explicit placement. So rule 1: set_location for entity \"team\", value \"city laboratory\".\n\nAnything else? No other entities or states mentioned. So only one operation.\n\nReturn JSON with state_effects array containing that op.\n\nThus output:\n\n{\"state_effects\":[{\"op\":\"set_location\",\"entity\":\"team\",\"value\":\"city laboratory\"}]}\n\nCheck format: each op shape is correct. Yes.\n\nNo other facts.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 638,
+      "completion_tokens": 173,
+      "total_tokens": 811,
+      "completion_tokens_details": {
+        "reasoning_tokens": 142
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350907.1978514,
+  "status": "ok"
+}
