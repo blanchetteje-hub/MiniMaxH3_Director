@@ -167,19 +167,29 @@ A chapter therefore needs source ownership, not an LLM-authored plot outline. A 
 
 ### Step 4: allocate beat counts after chapter spans are fixed
 
-Chapter-boundary selection and beat allocation are separate calls.
+Do not rely on a free-form semantic allocator to interpret words such as "majority" by itself.
 
-The total segment budget is deterministic runtime input.
+Probe evidence showed that a generic majority-only allocator can return 5/3 for the Amy-shaped 8-beat case, which is structurally legal but wrong for the locked gold target.
 
-The allocator receives:
+The current preferred allocator is deterministic Python using authoritative source-unit ownership:
 
-- exact fixed chapter source spans;
-- total beat count;
-- source emphasis/duration language such as "most" or "majority".
+1. give each authoritative source unit enough beat capacity to be explicitly represented;
+2. every chapter must receive at least one beat;
+3. when total beats exceed the source-unit minimum, distribute remaining beats toward chapters with explicit source duration/emphasis such as `majority` or `most`;
+4. preserve fixed chapter boundaries and never move source material.
 
-It may assign integer beat counts only. It may not move story material between chapters.
+For the Amy acceptance shape:
 
-Across Amy-shaped, chef, and researcher controls, isolating this responsibility produced the intended 6/2 allocation for an eight-beat story whose main process occupies most of the source.
+- Chapter 1 owns 4 authoritative source units and contains the source-emphasized majority process;
+- Chapter 2 owns 2 authoritative source units and contains terminal resolution/closure;
+- total beats = 8;
+- minimum coverage consumes 6 beats;
+- the 2 remaining beats go to the majority chapter;
+- result = **6/2**.
+
+A probe using this exact rule returned 6/2, accepted 6/2, and rejected 5/3 as underweighting the majority chapter.
+
+Use an LLM only if a future source contains ambiguous duration/emphasis that Python cannot deterministically resolve.
 
 ### Step 5: create beats one chapter at a time from exact source
 
@@ -224,23 +234,36 @@ Repair only the demonstrated issue, then validate again.
 
 ### Step 7: build later-chapter opening context from canonical state
 
-A later chapter remains enclosed.
+Do not ask the local LLM to decide which historical facts are relevant.
 
-Do not ask the LLM to rewrite continuity prose. That caused state mutation.
+That approach repeatedly hallucinated relevance for unrelated history such as a discarded tool or an earlier broken window.
 
-Instead:
+Instead, canonical state records must distinguish at least:
 
-- Python owns persistent Subject identity/appearance and canonical established state;
-- Python automatically exposes current visible continuity that must survive a refresh, such as clothing, held objects, visible substances/injuries, and relevant visible environment aftermath;
-- additional transient/current facts are evaluated one fact at a time with a tiny NEEDED / NOT_NEEDED decision; Python assembles the selected IDs;
-- do not ask the 20B model to multi-select from a broad fact list: probe 422 over-selected unrelated history;
-- mere history is excluded.
+- **CURRENT** — true now;
+- **HISTORY** — happened earlier but is no longer current state.
 
-The LLM returns IDs, not rewritten facts. Python copies the authoritative fact text.
+The chapter-context builder is deterministic Python:
+
+1. include authoritative CURRENT state needed to represent the refresh boundary;
+2. include current protected/location/containment facts for subjects that the enclosed chapter will act on later;
+3. include persistent/current visible continuity from Python-owned Subject/environment state;
+4. exclude HISTORY records by default;
+5. do not ask the 20B model to rewrite or semantically filter the included facts.
+
+Evidence:
+- current-state-only context was judged sufficient when the needed current location/containment fact was present;
+- omitting the waiting people's current location made the context insufficient;
+- extra currently-visible environment facts were acceptable and did not confuse the chapter;
+- semantic relevance probes incorrectly marked unrelated historical facts as needed.
+
+Therefore prefer a small amount of harmless extra **current** state over giving the 20B model access to historical facts and asking it to decide relevance.
+
+The LLM receives authoritative fact text, not rewritten continuity prose.
 
 The design target remains:
 
-> Know more internally; expose only what this chapter needs.
+> Know more internally; expose current truth, not historical narrative.
 
 ### Current LLM call decomposition
 
