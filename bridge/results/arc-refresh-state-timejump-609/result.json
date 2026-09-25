@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-state-timejump-609",
+  "kind": "llama_chat",
+  "started_at": 1790350727.5184665,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only explicit persistent post-unit state. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nThree months later the team begins analysis in a city laboratory.\n\nExtract only persistent facts that are explicitly true AFTER this source unit finishes.\nDo not infer unstated facts. Do not record temporary activity, emotion, intention, or ordinary action.\n\nAllowed operations and exact fields:\n- set_location: op, entity, value\n- set_item_state: op, entity, owner, value where value is stored|held|equipped|dropped|lost\n- set_barrier_state: op, entity, value where value is open|closed|locked|unlocked|blocked|broken|destroyed\n- set_threat_state: op, entity, value where value is active|incapacitated|dead|removed|cleared\n- set_object_state: op, entity, value where value is intact|damaged|destroyed|active|inactive|used\n- set_containment: op, entity, container, value where value is contained|free\n- set_condition: op, entity, value; value must use words explicitly present in SOURCE UNIT\n- set_clothing: op, entity, slot, item, damage where slot is upper|lower and damage is none|damaged|destroyed\n\nUse [] when no allowed persistent fact is explicitly established.\nReturn JSON only with exactly one key: state_effects."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6lsb0eaqssyflyro9x5xf",
+    "object": "chat.completion",
+    "created": 1790350727,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"state_effects\":[{\"op\":\"set_location\",\"entity\":\"team\",\"value\":\"city laboratory\"}]}",
+          "reasoning": "We need to parse the source unit:\n\n\"Three months later the team begins analysis in a city laboratory.\"\n\nSo after this, what explicit facts? The team begins analysis in a city laboratory.\n\nThus we have entity \"team\". They are at location \"city laboratory\"? So set_location: op=..., entity=\"team\", value=\"city laboratory\".\n\nAlso maybe they begin analysis. But that's an activity; not persistent fact. We don't record temporary activity, emotion, intention, or ordinary action. Analysis is a temporary activity.\n\nThus only persistent state: team located in city laboratory.\n\nSo JSON:\n\n{\n  \"state_effects\": [\n    {\"op\":\"set_location\",\"entity\":\"team\",\"value\":\"city laboratory\"}\n  ]\n}\n\nCheck allowed fields: set_location has op, entity, value. Yes.\n\nReturn exactly one key: state_effects. Use [] when no facts; but we have one fact.\n\nThus final answer.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 357,
+      "completion_tokens": 216,
+      "total_tokens": 573,
+      "completion_tokens_details": {
+        "reasoning_tokens": 185
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350731.0321147,
+  "status": "ok"
+}
