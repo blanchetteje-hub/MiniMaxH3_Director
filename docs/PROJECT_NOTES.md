@@ -613,3 +613,28 @@ not override source-authorized facts.
 
 Source-span chapter starts are the refresh schedule. Legacy refresh_interval is
 used only when the loaded arc is not a source-span planner arc.
+
+
+## Locked source-unit semantic contracts
+
+The source-span planner now uses only these narrow semantic calls:
+
+1. SPLIT/KEEP_TOGETHER, and only when Python has at least one exact candidate
+   cut point. SPLIT is allowed only for:
+   - an explicit substantial time/scene discontinuity inside the unit; or
+   - source wording that explicitly describes a long/repeated process
+     (majority, most, repeatedly, throughout, equivalent) followed by its
+     terminal resolution.
+   One-time finite action chains stay together.
+2. TERMINAL YES/NO. FULL STORY may identify the central process, but the target
+   unit receives no credit for later events. Ongoing/repeated main-process
+   wording is NO unless that unit itself explicitly resolves the process.
+3. HARD_RESET YES/NO. Immediate cause/effect, danger changes, equipment changes,
+   and room-to-room movement remain NO; substantial explicit phase restarts are
+   YES.
+4. source_unit_state_effects: extract only explicit persistent post-unit facts.
+   Never promote activity alone into state.
+
+Python remains authoritative for cut enumeration, chapter boundaries, chapter
+spans, beat budgets, beat/source ownership, refresh scheduling, and when
+persistent state effects are committed.
