@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod3-split-attack-598",
+  "kind": "llama_chat",
+  "started_at": 1790350543.2329803,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nA zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only in either case:\n1. this unit contains an explicit substantial time jump/scene break between two narrative phases; or\n2. this unit contains an ongoing/repeated main process followed by its explicit terminal resolution.\nOtherwise choose KEEP_TOGETHER. Ordinary movement, danger changes, tool/weapon changes, terminal resolution plus immediate closure, and continuous work stay together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-o2nutjsf1jqh1ru3omjtyi",
+    "object": "chat.completion",
+    "created": 1790350543,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"SPLIT\",\"reason\":\"The source unit contains a main process (Amy brings Will and Amber into the basement) followed by its explicit terminal resolution (locking the door). No substantial time jump or scene break is present, but the process–resolution pattern qualifies it for splitting.\"}",
+          "reasoning": "We need to decide if the source unit crosses an internal LARGE H3 chapter phase boundary.\n\nThe source unit is:\n\n\"A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\"\n\nThis seems like a single narrative action: zombie breaks door, Amy brings Will & Amber into basement, locks door. No explicit time jump or scene break. It's continuous work? There's an ongoing process (Amy bringing them in) followed by terminal resolution (locks door). But it's all within one unit.\n\nWe need to decide between SPLIT and KEEP_TOGETHER. The rule: choose SPLIT only if the unit contains an explicit substantial time jump/scene break between two narrative phases; or it contains an ongoing/repeated main process followed by its explicit terminal resolution. Otherwise keep together.\n\nHere, Amy gets Will & Amber into basement (process) then locks door (resolution). That fits second condition: ongoing process followed by explicit terminal resolution. So we should SPLIT? Wait the rule says choose SPLIT only in either case: 1. this unit contains an explicit substantial time jump/scene break between two narrative phases; or 2. this unit contains an ongoing/repeated main process followed by its explicit terminal resolution.\n\nSo yes, it has a process (Amy gets them into basement) and then locks door (terminal). So SPLIT.\n\nBut is that considered \"ongoing/repeated main process\"? Amy getting Will & Amber into the basement could be seen as one action. It's not repeated. But it's an ongoing process? The phrase \"gets ... into\" implies a single action, but maybe qualifies as process. The rule says if it contains an ongoing/repeated main process followed by its explicit terminal resolution. That seems to apply: Amy gets them in (process) then locks door (terminal). So SPLIT.\n\nThus decision = SPLIT. Reason: unit includes process of moving characters into basement and terminal action of locking door, no time jump but qualifies as process + resolution.\n\nReturn JSON with keys \"decision\" and \"reason\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 226,
+      "completion_tokens": 483,
+      "total_tokens": 709,
+      "completion_tokens_details": {
+        "reasoning_tokens": 414
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350550.797146,
+  "status": "ok"
+}
