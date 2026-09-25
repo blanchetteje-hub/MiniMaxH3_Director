@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-beat-coverage-validator-355",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only whether every concrete action assigned to CURRENT CHAPTER is explicitly performed in the candidate beats. Do not infer omitted actions from later states. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nA technician opens the cabinet, takes the blue case and keycard, puts the blue case on the cart, and uses the keycard to open the lab door.\n\nCANDIDATE:\nBeat 1: Technician opens the cabinet, takes the blue case, and puts it on the cart.\nBeat 2: Technician uses the keycard to open the lab door.\n\nThe candidate never explicitly narrates taking the keycard.\n\nReturn exactly:\n{\"valid\":false,\"issue\":\"...\"}"
+    }
+  ]
+}
