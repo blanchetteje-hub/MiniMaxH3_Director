@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-allocation-control-434",
+  "kind": "llama_chat",
+  "started_at": 1790299772.5850878,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow decision. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "TOTAL BEATS: 8\n\nFIXED CHAPTER 1:\nSetup plus the main repeated process, explicitly described as the majority of the story.\n\nFIXED CHAPTER 2:\nFinal resolution plus immediate closure.\n\nEvery chapter must receive at least one beat. Counts must sum to 8. The majority chapter must receive more than half.\n\nReturn JSON with key beat_counts, an array of two integers in chapter order."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-w24erhq1q6nwl0fvc0yhmb",
+    "object": "chat.completion",
+    "created": 1790299772,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"beat_counts\":[5,3]}",
+          "reasoning": "We need to output a JSON object: {\"beat_counts\": [x,y]} where x beats for chapter1 and y beats for chapter2. Total beats 8. Majority chapter is chapter1 (Setup plus main repeated process). So chapter1 must have more than half of 8, i.e., >4 => at least 5 beats. Chapter2 gets remaining beats: 3.\n\nThus beat_counts = [5,3]. Ensure sum to 8. Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 170,
+      "completion_tokens": 116,
+      "total_tokens": 286,
+      "completion_tokens_details": {
+        "reasoning_tokens": 98
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790299774.7349358,
+  "status": "ok"
+}
