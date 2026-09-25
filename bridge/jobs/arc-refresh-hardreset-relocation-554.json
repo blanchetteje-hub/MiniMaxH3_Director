@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-hardreset-relocation-554",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1300,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS UNIT:\nThe survey team completes its field campaign.\n\nTARGET UNIT:\nAfter the campaign is finished, the team relocates to a distant laboratory and begins the analysis phase.\n\nA HARD RESET means a discontinuity between completed narrative phases, including relocation into a distinct later phase.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose YES or NO.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
