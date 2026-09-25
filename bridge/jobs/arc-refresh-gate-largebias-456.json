@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-gate-largebias-456",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nShe spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\n\nA chapter is a LARGE H3 refresh unit.\nKEEP_TOGETHER means the entire unit belongs to one large narrative phase.\nSPLIT means the unit crosses from the main/ongoing phase into a distinct terminal-resolution phase or major reset.\n\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
