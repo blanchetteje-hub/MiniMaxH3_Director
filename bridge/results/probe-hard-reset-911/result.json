@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-911",
+  "kind": "llama_chat",
+  "started_at": 1790371995.4526215,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nThe queen signs the treaty.\n\nTARGET UNIT:\nWeeks later in another kingdom, her envoy delivers the sealed copy.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-f1t6g5cmm6k7m2y4si8k3n",
+    "object": "chat.completion",
+    "created": 1790371995,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The target unit begins with an explicit time jump (“Weeks later”) and a relocation to another kingdom, indicating a clear narrative discontinuity from the previous unit where the queen signs the treaty.\"}",
+          "reasoning": "We need to determine if target unit begins after a hard reset relative to previous unit. The previous unit: \"The queen signs the treaty.\" Target unit: \"Weeks later in another kingdom, her envoy delivers the sealed copy.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. We have explicit time jump (\"weeks later\") and explicit relocation to another kingdom. So yes, it's a hard reset.\n\nThus decision YES. Reason: explicit time jump and relocation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 303,
+      "completion_tokens": 173,
+      "total_tokens": 476,
+      "completion_tokens_details": {
+        "reasoning_tokens": 118
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790371998.062888,
+  "status": "ok"
+}
