@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-merge2-gear-fight-774",
+  "kind": "llama_chat",
+  "started_at": 1790359763.6256142,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nMara equips her emergency gear.\n\nRIGHT:\nMara begins a prolonged patrol, confronting hazards throughout the night.\n\nChoose one:\nMERGE only when RIGHT's PRIMARY ACTION is one of these:\n- the same uninterrupted local action as LEFT;\n- a direct immediate response caused by the event in LEFT itself (for example alarm -> shut down/call for help); or\n- the immediate mechanical completion of the exact object/action LEFT just obtained/opened/started (retrieve -> equip, open -> remove).\nNEW_TASK when RIGHT's PRIMARY ACTION is a distinct objective after LEFT reaches a usable stopping point. A shared larger goal is not enough to MERGE. Carrying, wearing, or using an item from LEFT while performing a different primary task is NEW_TASK. Starting a fresh item/test after LEFT completed one is NEW_TASK.\nFor causality, distinguish LEFT itself from a shared earlier cause: danger -> immediate protection may MERGE, but protection -> fetch gear is NEW_TASK because the gear retrieval responds to the danger, not to the completed protection action.\nJudge only the concrete local actions.\nReturn exactly {\"relation\":\"MERGE|NEW_TASK\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-lfuo6xjqblkuv8lwixisb",
+    "object": "chat.completion",
+    "created": 1790359763,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need decide relation between LEFT and RIGHT responsibilities. Left: \"Mara equips her emergency gear.\" Right: \"Mara begins a prolonged patrol, confronting hazards throughout the night.\"\n\nPrimary action of left is equip gear (object acquisition). Primary action of right is begin patrol (prolonged patrol). Is that same uninterrupted local action? No. Is it direct immediate response caused by event in LEFT itself? Gear equips then patrol starts; but gear equipping triggers patrol? Could be: after equipping gear, she begins patrol. That seems a distinct objective after left reaches usable stopping point. So NEW_TASK.\n\nThus relation is NEW_TASK. Return JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 322,
+      "completion_tokens": 147,
+      "total_tokens": 469,
+      "completion_tokens_details": {
+        "reasoning_tokens": 131
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790359766.1232562,
+  "status": "ok"
+}
