@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-adjacent-keep-337",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether two adjacent draft chapters should be merged. A chapter is a large H3 refresh unit. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY CONTEXT:\nA researcher performs a long repeated diagnostic process that occupies most of the story. After that process, one final diagnostic resolves the incident; the researcher shuts down the lab and reunites with a waiting colleague.\n\nDRAFT CHAPTER 1:\nThe repeated diagnostic process remains ongoing.\n\nDRAFT CHAPTER 2:\nThe final diagnostic resolves the incident, followed by shutdown and reunion.\n\nQuestion: Does the explicit transition into terminal resolution justify keeping the new chapter boundary?\n\nReturn exactly:\n{\"decision\":\"KEEP\",\"reason\":\"...\"}"
+    }
+  ]
+}
