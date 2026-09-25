@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-state2-terminal-620",
+  "kind": "llama_chat",
+  "started_at": 1790350892.0487103,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nAmy kills the last zombie and the house is soaked in blood.\n\nExtract only persistent post-unit facts explicitly established by SOURCE UNIT.\nActivity alone never creates state. Do not infer results from testing, using, handling, replacing, attacking, moving through, or other ordinary actions unless SOURCE UNIT explicitly states the post-state.\nDo not invent synonyms, destinations, entity names, conditions, or object quality.\n\nApply these rules in order:\n1. set_location only when SOURCE UNIT explicitly puts an entity at/in/to a named destination. Do not use it for \"out of X\" when no destination is named.\n2. set_item_state only for explicit possession/equipment results: stored, held, equipped, dropped, or lost.\n3. set_barrier_state only for an explicitly named barrier explicitly opened, closed, locked, unlocked, blocked, broken, or destroyed.\n4. set_threat_state only for an explicit lifecycle result: incapacitated, dead, removed, or cleared. Ongoing attacking/fighting is not a state effect.\n5. set_object_state only when SOURCE UNIT explicitly states the object's resulting state as intact, damaged, destroyed, active, inactive, or used. Merely testing/using/replacing an object is not enough.\n6. set_containment when SOURCE UNIT explicitly puts an entity into/inside a named container or enclosed place (contained), or explicitly lets/removes it out of that named container/place (free).\n7. set_condition only for an explicit persistent visible condition stated after the action; copy the condition wording from SOURCE UNIT.\n8. set_clothing only for explicitly worn clothing.\n\nAllowed JSON operation shapes:\n- {\"op\":\"set_location\",\"entity\":\"...\",\"value\":\"...\"}\n- {\"op\":\"set_item_state\",\"entity\":\"...\",\"owner\":\"...\",\"value\":\"stored|held|equipped|dropped|lost\"}\n- {\"op\":\"set_barrier_state\",\"entity\":\"...\",\"value\":\"open|closed|locked|unlocked|blocked|broken|destroyed\"}\n- {\"op\":\"set_threat_state\",\"entity\":\"...\",\"value\":\"incapacitated|dead|removed|cleared\"}\n- {\"op\":\"set_object_state\",\"entity\":\"...\",\"value\":\"intact|damaged|destroyed|active|inactive|used\"}\n- {\"op\":\"set_containment\",\"entity\":\"...\",\"container\":\"...\",\"value\":\"contained|free\"}\n- {\"op\":\"set_condition\",\"entity\":\"...\",\"value\":\"...\"}\n- {\"op\":\"set_clothing\",\"entity\":\"...\",\"slot\":\"upper|lower\",\"item\":\"...\",\"damage\":\"none|damaged|destroyed\"}\n\nReturn {\"state_effects\":[]} when no rule applies. Return JSON only."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-23sz20vo1q4itk7kko0tlp",
+    "object": "chat.completion",
+    "created": 1790350892,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombie\",\"value\":\"dead\"},{\"op\":\"set_condition\",\"entity\":\"house\",\"value\":\"soaked in blood\"}]}",
+          "reasoning": "We need to extract explicit persistent post-unit facts from the source unit: \"Amy kills the last zombie and the house is soaked in blood.\"\n\nFacts:\n- Amy kills the last zombie => threat state of zombie? The zombie is dead. But we don't have entity name for zombie; maybe just \"zombie\". We can set_threat_state for zombie as dead.\n- House soaked in blood: condition on house: \"soaked in blood\" (visible). So set_condition for house with value \"soaked in blood\".\nAlso, Amy kills the last zombie implies that there are no zombies left. But we only capture state of zombie entity.\n\nWe don't have location changes or item states etc.\n\nThus two operations:\n1. {\"op\":\"set_threat_state\",\"entity\":\"zombie\",\"value\":\"dead\"}\n2. {\"op\":\"set_condition\",\"entity\":\"house\",\"value\":\"soaked in blood\"}\n\nReturn as array under \"state_effects\".\n\nCheck rule 4: set_threat_state only for explicit lifecycle result: dead, etc. Yes.\n\nRule 7: set_condition only for explicit persistent visible condition stated after the action; copy wording from source unit. The phrase is \"the house is soaked in blood.\" So value \"soaked in blood\". Good.\n\nReturn JSON:\n\n{\"state_effects\":[ {\"op\":\"set_threat_state\",\"entity\":\"zombie\",\"value\":\"dead\"}, {\"op\":\"set_condition\",\"entity\":\"house\",\"value\":\"soaked in blood\"} ]}\n\nCheck if any other? Amy kills last zombie: maybe also set_threat_state for \"Amy\"? No, she is not a threat. So done.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 639,
+      "completion_tokens": 383,
+      "total_tokens": 1022,
+      "completion_tokens_details": {
+        "reasoning_tokens": 334
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350898.079133,
+  "status": "ok"
+}
