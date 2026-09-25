@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-beatassign-validator-good-501",
+  "kind": "llama_chat",
+  "started_at": 1790301789.2327223,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNITS:\n1. Setup.\n2. Protection action.\n3. Tool preparation.\n4. Main repeated process.\n5. Unresolved ending.\n\nREPEATABLE UNIT:\n4\n\nCANDIDATE ASSIGNMENT:\nBeat 1 -> [1]\nBeat 2 -> [2]\nBeat 3 -> [3]\nBeat 4 -> [4]\nBeat 5 -> [4]\nBeat 6 -> [5]\n\nValidate only structural assignment rules:\n- source-unit order never moves backward;\n- non-repeatable units appear exactly once;\n- only repeatable unit 4 may repeat;\n- a beat may contain only adjacent source-unit IDs;\n- unit 4 may not be combined with another unit.\n\nChoose: VALID or INVALID.\nReturn JSON with keys decision and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-h2pf9gt1d85w9qq5zjj3t",
+    "object": "chat.completion",
+    "created": 1790301789,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"VALID\",\"issue\":\"\"}",
+          "reasoning": "We need to validate assignment of beats to source units. Source units list:\n\n1. Setup\n2. Protection action\n3. Tool preparation\n4. Main repeated process (repeatable)\n5. Unresolved ending\n\nBeat assignments:\nBeat 1 -> [1]\nBeat 2 -> [2]\nBeat 3 -> [3]\nBeat 4 -> [4]\nBeat 5 -> [4]\nBeat 6 -> [5]\n\nCheck rules:\n\n- source-unit order never moves backward: Beats should follow increasing unit IDs. Beat 1 has 1, beat 2 has 2 (increase), beat 3 has 3 (increase), beat 4 has 4 (increase), beat 5 also 4 (same or increase? It's same as previous; not moving backward). Beat 6 has 5 (increase from 4). So order fine.\n\n- non-repeatable units appear exactly once: Units 1,2,3,5 are non-repeatable. They each appear once: unit 1 at beat1, unit2 at beat2, unit3 at beat3, unit5 at beat6. Good.\n\n- only repeatable unit 4 may repeat: Unit 4 appears twice (beats 4 and 5). That's allowed.\n\n- a beat may contain only adjacent source-unit IDs; beats have single ID each so fine.\n\n- unit 4 may not be combined with another unit: Beat 4 has [4] alone, beat5 also [4]. So no combination. Good.\n\nThus assignment is VALID.\n\nReturn JSON:\n\n{\n \"decision\": \"VALID\",\n \"issue\": \"\"\n}\n\nBut issue maybe empty string or null? Provide as per spec: keys decision and issue. Issue could be \"\" if none. Let's output that.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 242,
+      "completion_tokens": 378,
+      "total_tokens": 620,
+      "completion_tokens_details": {
+        "reasoning_tokens": 359
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790301795.155351,
+  "status": "ok"
+}
