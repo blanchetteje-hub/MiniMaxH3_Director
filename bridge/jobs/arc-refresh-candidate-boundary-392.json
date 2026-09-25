@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-candidate-boundary-392",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide whether a proposed split between two exact source fragments is a valid large H3 chapter boundary. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT SOURCE FRAGMENT:\nShe spends most of the story repeating measurements.\n\nRIGHT SOURCE FRAGMENT:\nOne final measurement resolves the problem and she immediately closes the lab.\n\nChoose one decision from: BOUNDARY, NO_BOUNDARY.\nReturn a JSON object with keys \"decision\" and \"reason\"."
+    }
+  ]
+}
