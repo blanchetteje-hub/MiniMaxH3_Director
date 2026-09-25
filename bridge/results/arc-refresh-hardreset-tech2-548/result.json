@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-hardreset-tech2-548",
+  "kind": "llama_chat",
+  "started_at": 1790303549.9427822,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nA technician begins a normal shift.\n\nTARGET UNIT:\nAn alarm interrupts; the technician secures the work area.\n\nA HARD RESET means a discontinuity between narrative phases: explicit time jump, scene break, relocation after a completed phase, or equivalent restart. An interruption within the same continuous scene is NOT a hard reset.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-g6ckpoif2b8bl6gebd3sw",
+    "object": "chat.completion",
+    "created": 1790303549,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The alarm interrupts and continues the technician’s ongoing shift without an explicit time jump, scene break, or relocation—so it remains part of the same continuous narrative phase.\"}",
+          "reasoning": "We need to decide if target unit begins after a hard reset relative to previous unit. The previous unit: \"A technician begins a normal shift.\" Target unit: \"An alarm interrupts; the technician secures the work area.\"\n\nHard reset defined as discontinuity between narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent restart. An interruption within same continuous scene is NOT hard reset.\n\nWe have previous unit describing start of shift. Then target unit describes an alarm interrupting and technician securing area. Is that a hard reset? The alarm interrupts the normal shift; but it's still part of same continuous scene (shift). There's no explicit time jump or scene break indicated. So not a hard reset. Therefore decision NO.\n\nReturn JSON: {\"decision\":\"NO\",\"reason\":\"The alarm interruption occurs within the same continuous shift scene, with no explicit time jump or scene break indicating a restart.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 183,
+      "completion_tokens": 233,
+      "total_tokens": 416,
+      "completion_tokens_details": {
+        "reasoning_tokens": 182
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790303553.748371,
+  "status": "ok"
+}
