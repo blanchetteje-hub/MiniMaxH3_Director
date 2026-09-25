@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-third-story-339",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Choose broad chapter refresh units only. Do not assign beat counts. Use the fewest natural chapters and do not invent plot. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nA chef begins a normal dinner service. A refrigeration failure interrupts the routine. The chef secures the ingredients and spends most of the story repeatedly adapting dishes around the equipment failure. Near the end, one final repair restores refrigeration; the chef finishes the last order and closes the kitchen with the staff.\n\nA chapter is a LARGE H3 refresh unit. Keep continuous setup and the source-emphasized main repeated process together when possible. A short final chapter may begin at the explicit terminal resolution.\n\nReturn exactly:\n{\"chapters\":[{\"chapter\":1,\"outline\":\"...\"}]}"
+    }
+  ]
+}
