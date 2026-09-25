@@ -43,8 +43,14 @@ def run_git(args, cwd, *, check=True, capture=True):
 
 
 def repo_root():
-    result = run_git(["rev-parse", "--show-toplevel"], Path.cwd())
-    return Path(result.stdout.strip()).resolve()
+    """Return the main repository root, even when launched inside a worktree."""
+    result = run_git(["rev-parse", "--git-common-dir"], Path.cwd())
+    common_git = Path(result.stdout.strip())
+    if not common_git.is_absolute():
+        common_git = (Path.cwd() / common_git).resolve()
+    else:
+        common_git = common_git.resolve()
+    return common_git.parent
 
 
 def ensure_worktree(source_root: Path, worktree: Path, branch: str) -> None:
