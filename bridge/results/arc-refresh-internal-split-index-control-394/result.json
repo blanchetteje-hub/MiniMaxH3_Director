@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-internal-split-index-control-394",
+  "kind": "llama_chat",
+  "started_at": 1790298241.4989688,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Select source-unit IDs that require an internal chapter-boundary inspection. Do not rewrite source text. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE SOURCE UNITS:\n1. A mechanic begins diagnosing one engine.\n2. She tests the electrical system, replaces one failed sensor, and continues testing the same engine.\n3. She confirms the repair is complete.\n4. She cleans the tools and closes the garage.\n\nSelect only units that themselves contain more than one major narrative phase and therefore may require an internal split.\nReturn a JSON object with key \"inspect_unit_ids\", an array of unit numbers."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5g91f0v39s4kzpvy773tmr",
+    "object": "chat.completion",
+    "created": 1790298241,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"inspect_unit_ids\":[2,4]}",
+          "reasoning": "We need to select source-unit IDs that have more than one major narrative phase, requiring internal chapter-boundary inspection.\n\nGiven units:\n\n1. A mechanic begins diagnosing one engine. (One phase)\n2. She tests the electrical system, replaces one failed sensor, and continues testing the same engine. (Multiple phases: test electrical system; replace sensor; continue testing) So unit 2 has more than one major narrative phase.\n3. She confirms the repair is complete. (One phase)\n4. She cleans the tools and closes the garage. (Two? \"cleans the tools\" and \"closes the garage\". Might be considered two phases). But likely it's a single action: cleans tools and closes garage, but could be two separate actions. The phrase \"and\" indicates two actions. So unit 4 might have more than one major narrative phase.\n\nThus inspect_unit_ids should include [2,4].\n\nReturn JSON object with key \"inspect_unit_ids\": array of unit numbers.\n\nNo extra text.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 191,
+      "completion_tokens": 222,
+      "total_tokens": 413,
+      "completion_tokens_details": {
+        "reasoning_tokens": 203
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790298245.365347,
+  "status": "ok"
+}
