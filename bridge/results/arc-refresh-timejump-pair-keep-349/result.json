@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-timejump-pair-keep-349",
+  "kind": "llama_chat",
+  "started_at": 1790296644.827796,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent rough chapters should be merged. A major time/location/state reset favors KEEP. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "STORY CONTEXT:\nA survey team completes a week of field work. Three months later, the team reunites at a city laboratory to analyze the collected material.\n\nLEFT CHAPTER:\nField work concludes at the remote site.\n\nRIGHT CHAPTER:\nThree months later, the team reunites in the city laboratory and begins analysis.\n\nReturn exactly:\n{\"decision\":\"KEEP\",\"reason\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-l12tix598l9iw6ey7sdny",
+    "object": "chat.completion",
+    "created": 1790296644,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP\",\"reason\":\"The chapters mark distinct phases—concluding fieldwork at the remote site versus reuniting three months later in a city laboratory to begin analysis—so they should remain separate.\"}",
+          "reasoning": "We need decide whether two adjacent rough chapters should be merged. The left chapter: Field work concludes at the remote site. Right chapter: Three months later, the team reunites in the city lab and begins analysis. There's a time jump of three months. That is a major reset? It's a location change too (remote to city). So likely KEEP separate. Reason: significant temporal shift and new setting.\n\nReturn JSON exactly with decision \"KEEP\" and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 176,
+      "completion_tokens": 145,
+      "total_tokens": 321,
+      "completion_tokens_details": {
+        "reasoning_tokens": 92
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790296647.535176,
+  "status": "ok"
+}
