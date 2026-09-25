@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundary-candidate-amy4-489",
+  "kind": "llama_chat",
+  "started_at": 1790301665.519202,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE STORY UNITS:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nCANDIDATE BOUNDARY:\nAfter unit 4.\n\nA chapter is a LARGE H3 refresh unit.\nNormal setup, inciting danger, protection/preparation, and the source-emphasized main process should remain one continuous chapter unless there is a major reset.\nTerminal resolution may begin a new chapter.\n\nChoose: BOUNDARY or NO_BOUNDARY.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-i9zvcfy1cjc3hrol9xsau",
+    "object": "chat.completion",
+    "created": 1790301665,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"BOUNDARY\",\"reason\":\"Units 1–3 provide the normal set‑up, inciting danger, and preparation for protection. Unit 4 contains the main process of Amy fighting zombies. After this main action ends, unit 5 marks a terminal resolution—killing the last zombie and leaving the house soaked in blood—which is a major reset that can begin a new chapter. Therefore a boundary after unit 4 is appropriate.\"}",
+          "reasoning": "We need to decide if boundary after unit 4. Units list:\n\n1 Amy cooks breakfast for Will and Amber.\n2 Zombie breaks kitchen door window; Amy gets Will and Amber into basement and locks the door.\n3 Amy retrieves hidden pistol and katana, equips them.\n4 Majority of story is Amy fighting attacking zombies.\n5 Amy kills last zombie and house soaked in blood.\n6 Amy lets Will and Amber out.\n\nBoundary after unit 4: So between unit 4 (majority fight) and unit 5. We need to decide if boundary or no_boundary. The rule: A chapter is a LARGE H3 refresh unit. Normal setup, inciting danger, protection/preparation, and the source-emphasized main process should remain one continuous chapter unless there is a major reset. Terminal resolution may begin new chapter.\n\nSo units 1-4 are Setup (cooking breakfast), Inciting Danger (zombie breaks door window), Protection/Preparation (Amy gets them into basement, locks door; retrieves pistol and katana). Main Process: Amy fighting zombies. So all these four units belong to one continuous chapter. After unit 4, the main process ends? Actually majority of story is fight; after that, she kills last zombie and house soaked in blood - that's still part of main process maybe? But they say \"majority of the story is Amy fighting attacking zombies.\" That could include killing last zombie as part of fight. So unit 5 might be still within same chapter if it's just resolution of fight. However, after unit 4, we have a major reset: She kills last zombie and house soaked in blood - that's terminal resolution? The main process ends at the kill; then she lets Will and Amber out (unit6). That could start new chapter.\n\nBut boundary is after unit 4. So they propose to put boundary between unit4 and unit5. Is that correct? Let's analyze: Unit1-3 are setup, inciting danger, protection/preparation. Unit4 is main process. After unit4, the fight continues; but maybe unit5 is still part of main process (kill last zombie). But if we consider \"major reset\" after unit4? The fight might be considered continuous until kill. So boundary after 4 may split main process into two parts: majority fight and final kill. That seems okay.\n\nBut rule says terminal resolution may begin a new chapter. Killing the last zombie is part of resolution, but maybe still within same chapter if it's just concluding the fight. But \"house soaked in blood\" indicates aftermath; could be considered part of resolution too. So boundary after unit4 might separate main process from its resolution. That seems plausible.\n\nThus decision: BOUNDARY. Reason: Units 1-3 setup and protection, unit4 main process; after that, unit5 is terminal resolution (kill last zombie) which may start new chapter. So choose BOUNDARY.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 259,
+      "completion_tokens": 690,
+      "total_tokens": 949,
+      "completion_tokens_details": {
+        "reasoning_tokens": 590
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790301676.3574343,
+  "status": "ok"
+}
