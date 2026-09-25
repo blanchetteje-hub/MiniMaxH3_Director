@@ -14406,12 +14406,17 @@ def load_story_arc(path, total_segments, source_text):
 SOURCE_SPAN_PHASE_PURPOSE = "Execute this exact authoritative story.txt chapter span."
 
 
-def source_span_story_plan_to_macro_arc(plan, total_segments):
+def source_span_story_plan_to_macro_arc(
+    plan,
+    total_segments,
+    state_effects_by_unit=None,
+):
     """Adapt a deterministic StoryPlan to the existing phase runtime shape.
 
     This is a compatibility envelope only. Narrative source ownership remains
     in StoryPlan/story.txt; the adapter does not summarize, invent, or move
-    story material.
+    story material. Source-unit persistent effects commit only on that unit's
+    final assigned beat.
     """
     if not isinstance(plan, StoryPlan):
         raise TypeError("plan must be a story_planner.StoryPlan.")
@@ -14425,10 +14430,20 @@ def source_span_story_plan_to_macro_arc(plan, total_segments):
         )
 
     units_by_id = {unit.id: unit for unit in plan.source_units}
-    phases = []
-    beat_number = 1
-    previous_event_id = None
+    raw_effects = dict(state_effects_by_unit or {})
+    effects_by_unit = {}
+    for raw_unit_id, raw_unit_effects in raw_effects.items():
+        unit_id = int(raw_unit_id)
+        if unit_id not in units_by_id:
+            raise ValueError(
+                f"State effects reference unknown source unit {unit_id}."
+            )
+        effects_by_unit[unit_id] = _validate_state_effects(
+            copy.deepcopy(raw_unit_effects)
+        )
 
+    last_beat_for_unit = {}
+    cursor = 1
     for planned_chapter in plan.chapters:
         assignments = planned_chapter.beat_source_unit_ids
         if assignments is None:
@@ -14436,11 +14451,24 @@ def source_span_story_plan_to_macro_arc(plan, total_segments):
                 f"Chapter {planned_chapter.chapter} has no deterministic "
                 "beat/source-unit ownership yet."
             )
+        for assignment in assignments:
+            for source_unit_id in assignment:
+                last_beat_for_unit[int(source_unit_id)] = cursor
+            cursor += 1
+
+    phases = []
+    beat_number = 1
+    previous_event_id = None
+
+    for planned_chapter in plan.chapters:
+        assignments = planned_chapter.beat_source_unit_ids
         phase_start = beat_number
         required_events = []
         for assignment in assignments:
             texts = []
+            event_effects = []
             for source_unit_id in assignment:
+                source_unit_id = int(source_unit_id)
                 unit = units_by_id.get(source_unit_id)
                 if unit is None:
                     raise ValueError(
@@ -14448,6 +14476,11 @@ def source_span_story_plan_to_macro_arc(plan, total_segments):
                         f"source unit {source_unit_id}."
                     )
                 texts.append(unit.text)
+                if last_beat_for_unit.get(source_unit_id) == beat_number:
+                    event_effects.extend(
+                        copy.deepcopy(effects_by_unit.get(source_unit_id, []))
+                    )
+
             event_text = " ".join(text.strip() for text in texts if text.strip())
             if not event_text:
                 raise ValueError(
@@ -14459,9 +14492,7 @@ def source_span_story_plan_to_macro_arc(plan, total_segments):
                 "event": event_text,
                 "beat_number": beat_number,
                 "depends_on": [previous_event_id] if previous_event_id else [],
-                # State effects will be populated by the source-facing semantic
-                # layer; the compatibility adapter itself must not infer them.
-                "state_effects": [],
+                "state_effects": event_effects,
             }
             required_events.append(event)
             previous_event_id = event_id
@@ -14491,6 +14522,7 @@ def source_span_story_plan_to_macro_arc(plan, total_segments):
         total_segments,
         validate_state_effects=False,
     )
+
 
 
 def phase_authoritative_source(phase, fallback_story):
@@ -14523,6 +14555,7 @@ def build_source_span_macro_arc_from_story(
     llm_request,
     *,
     history_metadata=None,
+    subject_information="",
 ):
     """Build the preferred source-authoritative chapter plan and adapter arc."""
     plan = build_story_plan(
@@ -14532,7 +14565,17 @@ def build_source_span_macro_arc_from_story(
         history_metadata=history_metadata,
         sampling_parameters=ARC_LLM_SAMPLING_PARAMETERS,
     )
-    return plan, source_span_story_plan_to_macro_arc(plan, total_segments)
+    state_effects_by_unit = extract_source_span_state_effects(
+        plan,
+        llm_request,
+        history_metadata=history_metadata,
+        subject_information=subject_information,
+    )
+    return plan, source_span_story_plan_to_macro_arc(
+        plan,
+        total_segments,
+        state_effects_by_unit=state_effects_by_unit,
+    )
 
 
 
@@ -15429,6 +15472,7 @@ def generate_beats_from_story(
                                 total_segments,
                                 llm_request,
                                 history_metadata=history_metadata,
+                                subject_information=subject_information,
                             )
                         )
                         print(
