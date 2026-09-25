@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-response-veto-gloves-clean-831",
+  "kind": "llama_chat",
+  "started_at": 1790361000.091583,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the narrow binary semantic question. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe technician puts on gloves after a chemical spill.\n\nRIGHT:\nThe technician begins cleaning the spill.\n\nQuestion: Is LEFT itself a completed character response to an earlier problem, with RIGHT beginning another distinct character response to that same earlier problem?\nYES only when BOTH are separate response actions to an earlier shared cause. LEFT must itself be a character response action; if LEFT is the danger/event/problem, answer NO. If RIGHT mechanically completes or directly continues LEFT, answer NO.\nReturn exactly {\"separate_responses\":\"YES|NO\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 250,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-txck9k4zo1vipggutikl7",
+    "object": "chat.completion",
+    "created": 1790361000,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"separate_responses\":\"YES\"}",
+          "reasoning": "We need to determine: Is LEFT itself a completed character response to an earlier problem? The earlier problem presumably is \"chemical spill\". LEFT: \"The technician puts on gloves after a chemical spill.\" That seems like a response action. It's a separate action, not the event itself. So it's a completed response.\n\nRIGHT: \"The technician begins cleaning the spill.\" That's another distinct character response to that same earlier problem (the spill). It is not mechanically completing or directly continuing LEFT; it starts a new activity. So they are separate responses. Therefore answer YES.\n\nReturn JSON exactly {\"separate_responses\":\"YES\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 193,
+      "completion_tokens": 141,
+      "total_tokens": 334,
+      "completion_tokens_details": {
+        "reasoning_tokens": 123
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790361002.4156034,
+  "status": "ok"
+}
