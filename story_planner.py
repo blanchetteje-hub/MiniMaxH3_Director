@@ -827,6 +827,70 @@ def plan_story_chapters(
     return units, chapters
 
 
+def build_visible_responsibility_messages(
+    unit: SourceUnit,
+) -> list[dict[str, str]]:
+    """Ask only whether one source unit owns required visible beat material."""
+
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Decide only whether one authoritative source unit creates a "
+                "concrete visible beat responsibility. Return valid JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "SOURCE UNIT:\n"
+                f"{unit.text}\n\n"
+                "YES = this unit explicitly contains an on-screen action or "
+                "visible state that must be represented.\n"
+                "NO = this unit is only genre/premise/summary framing or purely "
+                "internal thought with no required visible action/state.\n"
+                "Choose one: YES or NO.\n"
+                "Return JSON with keys decision and reason."
+            ),
+        },
+    ]
+
+
+def classify_visible_source_unit_ids(
+    units: Sequence[SourceUnit],
+    llm_request,
+    *,
+    history_metadata: dict | None = None,
+    sampling_parameters: dict | None = None,
+) -> list[int]:
+    """Return source-unit IDs that own concrete visible beat responsibility."""
+
+    units = list(units)
+    if not units:
+        return []
+    _validate_ordered_units(units)
+
+    sampling = dict(sampling_parameters or {})
+    history = dict(history_metadata or {})
+    visible_ids: list[int] = []
+
+    for unit in units:
+        raw_result = llm_request(
+            build_visible_responsibility_messages(unit),
+            response_format=build_binary_decision_response_format(),
+            history_metadata={
+                **history,
+                "purpose": "source_unit_visible_responsibility",
+                "source_unit_id": unit.id,
+            },
+            **sampling,
+        )
+        if parse_binary_decision(raw_result):
+            visible_ids.append(unit.id)
+
+    return visible_ids
+
+
 _EXPLICIT_REPEATABLE_PATTERNS = (
     re.compile(r"\bmajority\b", re.IGNORECASE),
     re.compile(r"\bmost\s+of\b", re.IGNORECASE),
