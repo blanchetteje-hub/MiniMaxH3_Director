@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-allocation-weight-neutral-440",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Assign only relative duration weights. Do not allocate integer beats. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FIXED CHAPTERS:\nChapter 1 is a brief setup.\nChapter 2 is explicitly described as MOST of the story and contains the long repeated central process.\nChapter 3 is a brief final resolution.\n\nAssign each chapter a relative duration weight using small positive integers from 1 to 5.\nThe weights should reflect expected screen time from source emphasis.\n\nReturn JSON with key weights, an array of three integers in chapter order."
+    }
+  ]
+}
