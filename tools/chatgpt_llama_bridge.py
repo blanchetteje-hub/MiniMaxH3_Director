@@ -677,18 +677,19 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
             f"Acceptance jobs must run on {ACCEPTANCE_CODE_BRANCH!r}; "
             f"got {code_branch!r}."
         )
-    exec_root = ensure_exec_worktree(source_root, code_branch)
-    python = local_python(source_root)
-    image1_raw = str(job.get("image1") or "amy.jpg").strip()
-    image1 = safe_source_path(source_root, image1_raw)
-    if not image1.is_file():
-        raise FileNotFoundError(f"Acceptance image not found: {image1}")
     model = str(job.get("model") or ACCEPTANCE_MODEL).strip()
     if model != ACCEPTANCE_MODEL:
         raise ValueError(
             f"Acceptance jobs must use the {ACCEPTANCE_MODEL!r} baseline; "
             f"got {model!r}."
         )
+
+    exec_root = ensure_exec_worktree(source_root, code_branch)
+    python = local_python(source_root)
+    image1_raw = str(job.get("image1") or "amy.jpg").strip()
+    image1 = safe_source_path(source_root, image1_raw)
+    if not image1.is_file():
+        raise FileNotFoundError(f"Acceptance image not found: {image1}")
 
     command = [
         python,
