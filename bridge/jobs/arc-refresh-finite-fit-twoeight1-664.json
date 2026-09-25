@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 750,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-finite-fit-twoeight1-664",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge only whether a fixed number of 8-second video beats is enough for the supplied finite source material. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FINITE SOURCE MATERIAL:\nA technician performs an eight-second pressure check. The technician then performs a separate eight-second electrical check.\n\nAVAILABLE BEATS: 1\nEach beat is 8 seconds.\nEvery concrete visible action/state must be represented in source order.\nActions may share a beat when they fit naturally, and a long finite chain may continue into the next beat at a natural handoff.\nDo not omit, imply away, or materially compress required actions.\nIgnore any pacing outside this finite material.\nReturn exactly {\"decision\":\"ENOUGH|TOO_SMALL\"}."
+    }
+  ]
+}
