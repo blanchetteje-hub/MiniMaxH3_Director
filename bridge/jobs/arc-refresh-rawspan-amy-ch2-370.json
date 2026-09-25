@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-rawspan-amy-ch2-370",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 2400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Create beats only from the supplied chapter source span and opening context. Do not use knowledge outside the span. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "OPENING CONTEXT:\nAmy is in the kitchen facing the still-active final zombie.\nAmy holds a raised katana.\nAmy wears a black tank top and denim jeans.\nAmy's front is covered in green vomit.\nTwo earlier zombie corpses remain on the kitchen floor.\nWill and Amber are safe behind the closed steel basement door down the hallway.\n\nCURRENT CHAPTER SOURCE:\nAmy kills the last zombie; the house is now soaked in blood.\nAmy lets Will and Amber out of the basement.\n\nBEAT BUDGET: exactly 2.\n\nRequirements:\n- every concrete source action must happen explicitly;\n- source details are authoritative;\n- no new plot event after the reunion.\n\nReturn a JSON object with key \"beats\", containing exactly two numbered beat objects with an \"event\" field."
+    }
+  ]
+}
