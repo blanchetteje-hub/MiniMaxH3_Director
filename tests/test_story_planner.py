@@ -317,3 +317,39 @@ def test_build_story_plan_does_not_invent_repeatability_for_surplus_beats():
 
     assert [chapter.beat_count for chapter in plan.chapters] == [3]
     assert plan.chapters[0].beat_source_unit_ids is None
+
+
+def test_visible_source_responsibility_classifier_filters_framing_only_units():
+    from story_planner import classify_visible_source_unit_ids
+
+    story = (
+        "A grounded drama about a pilot trying to reunite with her family. "
+        "Mara stands in the hangar wearing a red coat. "
+        "Mara remembers the previous winter."
+    )
+    units = enumerate_source_units(story)
+    responses = iter([
+        {"decision": "NO", "reason": "premise only"},
+        {"decision": "YES", "reason": "visible state"},
+        {"decision": "NO", "reason": "internal thought only"},
+    ])
+    purposes = []
+
+    def fake_llm(messages, **kwargs):
+        purposes.append(kwargs["history_metadata"]["purpose"])
+        return next(responses)
+
+    assert classify_visible_source_unit_ids(units, fake_llm) == [2]
+    assert purposes == ["source_unit_visible_responsibility"] * 3
+
+
+def test_visible_source_responsibility_prompt_keeps_repeated_action_visible():
+    from story_planner import build_visible_responsibility_messages
+
+    unit = enumerate_source_units(
+        "For most of the night, Mara repeatedly repairs damaged radios."
+    )[0]
+    prompt = build_visible_responsibility_messages(unit)[-1]["content"]
+
+    assert "on-screen action or visible state" in prompt
+    assert "genre/premise/summary framing" in prompt
