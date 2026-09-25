@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-chef-pair-keep-347",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether two adjacent rough chapters should be one H3 refresh unit. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY CONTEXT:\nA chef spends most of the story repeatedly adapting dishes around failed refrigeration. Near the end, one final repair restores refrigeration; the chef finishes the last order and closes with staff.\n\nLEFT CHAPTER:\nRepeated adaptation around the equipment failure is still ongoing.\n\nRIGHT CHAPTER:\nFinal repair restores refrigeration; last order is finished; kitchen closes.\n\nReturn exactly:\n{\"decision\":\"KEEP\",\"reason\":\"...\"}"
+    }
+  ]
+}
