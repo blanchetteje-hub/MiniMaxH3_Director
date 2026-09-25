@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-premise-visible-865",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether one authoritative source unit creates a concrete visible beat responsibility. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\n\nYES = this unit itself requires a concrete on-screen event or visible state to happen in the adaptation.\nNO = this unit is genre/premise/summary framing or purely internal thought. A sentence saying what the film/story is ABOUT remains NO even if its premise names an action such as protecting, escaping, fighting, or surviving; later concrete source units own those actions.\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.1,
+  "max_tokens": 500
+}
