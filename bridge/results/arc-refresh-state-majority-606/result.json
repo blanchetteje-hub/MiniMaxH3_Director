@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-state-majority-606",
+  "kind": "llama_chat",
+  "started_at": 1790350679.8202605,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only explicit persistent post-unit state. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nThe majority of the film is Amy killing zombies as they attack.\n\nExtract only persistent facts that are explicitly true AFTER this source unit finishes.\nDo not infer unstated facts. Do not record temporary activity, emotion, intention, or ordinary action.\n\nAllowed operations and exact fields:\n- set_location: op, entity, value\n- set_item_state: op, entity, owner, value where value is stored|held|equipped|dropped|lost\n- set_barrier_state: op, entity, value where value is open|closed|locked|unlocked|blocked|broken|destroyed\n- set_threat_state: op, entity, value where value is active|incapacitated|dead|removed|cleared\n- set_object_state: op, entity, value where value is intact|damaged|destroyed|active|inactive|used\n- set_containment: op, entity, container, value where value is contained|free\n- set_condition: op, entity, value; value must use words explicitly present in SOURCE UNIT\n- set_clothing: op, entity, slot, item, damage where slot is upper|lower and damage is none|damaged|destroyed\n\nUse [] when no allowed persistent fact is explicitly established.\nReturn JSON only with exactly one key: state_effects."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-f70hitvahf5d643aqotbmq",
+    "object": "chat.completion",
+    "created": 1790350679,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"state_effects\": [\n    {\n      \"op\": \"set_threat_state\",\n      \"entity\": \"zombies\",\n      \"value\": \"active\"\n    }\n  ]\n}\n```\n",
+          "reasoning": "We need to parse the source unit: \"The majority of the film is Amy killing zombies as they attack.\"\n\nSo explicit facts after this source unit finishes:\n\n- Amy kills zombies? The phrase says \"Amy killing zombies as they attack.\" So it's an action, not a persistent state.\n\nBut we might infer that zombies are being killed. But that's temporary activity. We need only persistent facts explicitly true after the source unit finishes. That means at the end of this sentence, what is known to be true? The majority of film: Amy killing zombies as they attack. So maybe \"Amy\" is alive and active? Not explicit.\n\nWe have no location info. No items. No barriers. Threat state? Zombies are being killed; but after the unit finishes, zombies might still exist or not? It says majority of film is Amy killing zombies as they attack. That implies zombies are present (they attack). So threat state: zombies active? But \"zombies\" entity unspecified.\n\nWe need to use allowed operations and exact fields. We can set_threat_state for entity \"zombie(s)\" value active. Or maybe \"zombies\". The source unit says \"zombies as they attack.\" That indicates zombies are attacking, so active threat. So we could set_threat_state: op=..., entity=zombie, value=active.\n\nAlso Amy is killing them; but no state for Amy? Could be \"Amy\" has action of killing zombies. But that's temporary activity. Not persistent.\n\nWe can also set_condition maybe \"killing\". But condition field expects words explicitly present in source unit. The word \"killing\" appears. So we could set_condition: op=..., entity=zombie, value=killing? Actually the entity is zombie(s). Condition might be \"killing\"? That seems odd. Maybe set_condition for Amy: value=\"killing\". But condition field expects words explicitly present in source unit; \"killing\" is there.\n\nBut what does set_condition mean? It sets a condition like \"injured\", etc. So maybe we can say Amy has condition \"killing\". Not sure.\n\nBetter to use threat state: zombies active.\n\nAlso maybe set_object_state for zombie as intact/damaged/destructed? They are being killed, so they might be damaged or destroyed. But not explicit that they're dead; just killing them. Could be still alive but attacked. So we can say \"zombie\" value=active (threat state). That is persistent.\n\nAlso maybe set_barrier_state: none.\n\nSet_location: Amy location? Not given.\n\nThus only one fact: zombies active threat.\n\nWe need JSON with key state_effects and array of objects each representing a fact using allowed operations. So:\n\n{\n  \"state_effects\": [\n    {\n      \"op\": \"set_threat_state\",\n      \"entity\": \"zombie\",\n      \"value\": \"active\"\n    }\n  ]\n}\n\nCheck if entity should be plural? The source unit says zombies, but we can use singular or plural; not specified. Use \"zombies\".\n\nThus:\n\n{\n  \"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"zombies\",\"value\":\"active\"}]\n}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 358,
+      "completion_tokens": 701,
+      "total_tokens": 1059,
+      "completion_tokens_details": {
+        "reasoning_tokens": 646
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350690.415879,
+  "status": "ok"
+}
