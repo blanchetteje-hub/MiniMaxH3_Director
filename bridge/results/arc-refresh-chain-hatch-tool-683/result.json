@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-chain-hatch-tool-683",
+  "kind": "llama_chat",
+  "started_at": 1790354924.0327556,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one adjacent beat-scale action-chain boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe technician finishes sealing the access hatch.\n\nRIGHT:\nThe technician crosses to the toolbox and retrieves a wrench.\n\nDoes RIGHT continue the same immediate beat-scale action chain as LEFT, or begin a new beat-scale responsibility?\nCONTINUE = RIGHT is the immediate reaction, completion, or direct use of what LEFT just established; there is no meaningful completed handoff between them.\nNEW_CHAIN = LEFT establishes a calm baseline before a disruption, LEFT completes one local objective before a distinct task begins, or RIGHT starts a new local phase/objective.\nIgnore exact seconds and overall pacing. Judge only the local action relationship.\nReturn exactly {\"decision\":\"CONTINUE|NEW_CHAIN\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-31pv4ogaxqks8wtiqjuhai",
+    "object": "chat.completion",
+    "created": 1790354924,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NEW_CHAIN\"}",
+          "reasoning": "We need to judge if RIGHT continues same beat-scale chain as LEFT.\n\nLEFT: \"The technician finishes sealing the access hatch.\" That is an action: finishing sealing the hatch.\n\nRIGHT: \"The technician crosses to the toolbox and retrieves a wrench.\"\n\nIs that immediate reaction, completion or direct use of what left established? The left action ends with sealing the hatch. Then right action is crossing to toolbox retrieving wrench. Does this continue same beat-scale chain? Usually beat scale refers to local actions within a scene; if one action leads directly into another without pause, it's same chain.\n\nSealing hatch then going to get wrench: likely new objective (getting tool). But could be considered continuation of the task of preparing for next step. The left establishes baseline before disruption? Actually sealing hatch is completion of one local objective. Then retrieving wrench is a distinct task. So NEW_CHAIN seems appropriate.\n\nThus decision: \"NEW_CHAIN\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 220,
+      "completion_tokens": 199,
+      "total_tokens": 419,
+      "completion_tokens_details": {
+        "reasoning_tokens": 183
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354927.2896,
+  "status": "ok"
+}
