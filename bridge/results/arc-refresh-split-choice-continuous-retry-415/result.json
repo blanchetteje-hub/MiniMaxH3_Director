@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-split-choice-continuous-retry-415",
+  "kind": "llama_chat",
+  "started_at": 1790298913.4393775,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Choose whether one continuous source sentence should be split into separate large chapters. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nShe tests one system, replaces one failed sensor, and continues testing the same machine.\n\nPossible cut A: after the first test.\nPossible cut B: after replacing the sensor.\n\nChoose one value: A, B, NONE.\nReturn JSON with keys choice and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1200,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-qh51nwijdt911ckb4gh97j",
+    "object": "chat.completion",
+    "created": 1790298913,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"choice\":\"B\",\"reason\":\"Cutting after \\\"replaces one failed sensor,\\\" neatly divides two distinct actions—testing the system, then replacing the sensor—making each part a coherent chunk suitable for separate large chapters.\"}",
+          "reasoning": "We need to choose whether to split into separate large chapters at a point in source sentence. The sentence is \"She tests one system, replaces one failed sensor, and continues testing the same machine.\" We have two possible cuts: after first test (i.e., after \"tests one system,\"), or after replacing the sensor (\"replaces one failed sensor,\"). Which cut would make sense for large chapters? Probably after replacing the sensor because that is a distinct action. After first test might be too early; but maybe it's okay. The sentence has three actions: tests, replaces, continues testing. Splitting after replacing gives two parts: \"She tests one system, replaces one failed sensor,\" and \"and continues testing the same machine.\" That seems like a natural break between actions.\n\nThus choose B. Provide JSON with choice:\"B\" and reason explaining that it separates distinct actions for chapter division.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 147,
+      "completion_tokens": 234,
+      "total_tokens": 381,
+      "completion_tokens_details": {
+        "reasoning_tokens": 179
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790298917.5313654,
+  "status": "ok"
+}
