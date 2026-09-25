@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-compact-v2-983",
+  "kind": "llama_chat",
+  "started_at": 1790380552.613813,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nMara stands inside the laboratory.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nMara closes the laboratory door, then enters the corridor.\n\nNEXT JOB\nNone; this is the final beat.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nMara closes and locks the laboratory door, then unlocks and opens it and steps into the corridor.\n\nCHECKS\n1. Read actions literally in order and carry each stated result forward. Reject\nrepeating a completed removal on the same target or part unless it was restored.\nDifferent targets and failed attempts are different cases. Do not excuse a\ncontradiction as emphasis or invent an intervening action.\n2. Use only established facts from PREVIOUS FINAL BEAT and CURRENT STATE.\nAn injury does not establish death. An earlier target is not automatically the\nlast target. Reject unavailable objects and unresolved barriers; unknown facts\nalone are not errors.\n3. CURRENT JOB must happen now, including every required action, result, and\nnamed participant. Already-completed-state wording cannot replace an assigned\naction. Allow neutral staging, but reject material changes to tools, participants,\nlocations, or outcomes. Ordinary impacts cannot transform an entire solid body\ninto liquid or another material without an explicitly established capability.\nHonor unusual capabilities established by CURRENT JOB or CURRENT STATE.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Check only the listed STATE EFFECTS: each must follow from visible candidate\nactions. An empty effects list imposes no additional requirements. Do not demand\nnew effect records for unlisted details.\n\nReturn one JSON object: valid is a boolean; issue is a short concrete error or\nan empty string when valid. Any clear error makes valid false."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-gans3kp8qlsj8drtkrzgqe",
+    "object": "chat.completion",
+    "created": 1790380552,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to validate candidate beat against previous final beat and current state, etc.\n\nPrevious Final Beat: \"Mara stands inside the laboratory.\"\n\nCurrent State: {} (empty). So no facts beyond that? But we have from previous final beat: Mara is standing inside lab. Also lab door presumably open? Not specified. The lab door status unknown; but earlier maybe closed? No info. Current job: \"Mara closes the laboratory door, then enters the corridor.\" That means she must close the door (so door becomes closed). Then enter corridor (she moves from lab to corridor). So after current job, Mara is in corridor.\n\nCandidate beat: \"Mara closes and locks the laboratory door, then unlocks and opens it and steps into the corridor.\"\n\nSo candidate does more actions: closes and locks door; then unlocks and opens it; then steps into corridor. That means she ends up inside corridor with door open? Actually after unlocking and opening, she is in corridor but door open.\n\nCheck conditions:\n\n1. Read actions literally in order and carry each stated result forward. Reject repeating a completed removal on same target unless restored. Different targets etc. So we have: closes and locks the lab door (door becomes closed+locked). Then unlocks it (door unlocked) then opens it (door opened). Steps into corridor.\n\nNo repetition of removal? Closing is removing open state; locking is adding lock property. Unlocking removes lock, opening removes closed state. No repeated removal on same target unless restored: we close door (removes open), lock door (adds lock). Then unlock door (remove lock) - that's a removal but not previously removed? It's removal of lock which was added earlier. That's fine. Open door is removing closed property; that was set by closing earlier, so it's removal after addition. So okay.\n\n2. Use only established facts from previous final beat and current state. We have Mara inside lab. Door status unknown. But we can close it. No issue.\n\n3. Current job must happen now: \"Mara closes the laboratory door, then enters the corridor.\" Candidate includes closing (and locking) but also unlocking/opening before entering corridor. That is extra actions not required by current job. The requirement says: Already-completed-state wording cannot replace an assigned action. So we need to include all required actions: close lab door and enter corridor. We have that. But we added lock/unlock/open which are additional. Are they allowed? It doesn't say must be exactly those; but \"CURRENT JOB must happen now, including every required action, result, and named participant.\" Additional actions may be okay as long as not contradicting. So closing door is done. Enter corridor: steps into corridor. Good.\n\nBut we also unlocked/opened the door before stepping in. That means she opened it while still inside lab? She closed+locked then unlocks+opens; that implies she opens from inside, so door becomes open again. Then steps into corridor. That's fine.\n\n4. Do not complete a distinct NEXT JOB early. No next job.\n\n5. Check only listed STATE EFFECTS: empty list => no additional requirements.\n\nThus candidate beat seems valid. But check if any contradiction: The lab door was closed and locked, then unlocked/opened; that means it ends open. That's fine. She steps into corridor. So final state: Mara in corridor, door open. No contradictions with previous final beat? That had her standing inside lab. Now she is in corridor. Good.\n\nThus valid true, issue \"\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 472,
+      "completion_tokens": 734,
+      "total_tokens": 1206,
+      "completion_tokens_details": {
+        "reasoning_tokens": 716
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380562.399264,
+  "status": "ok"
+}
