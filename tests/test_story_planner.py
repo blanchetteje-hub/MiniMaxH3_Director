@@ -363,6 +363,19 @@ def test_visible_source_responsibility_prompt_keeps_repeated_action_visible():
     assert "genre/premise/summary framing" in prompt
 
 
+def test_local_relation_prompt_distinguishes_mechanical_completion_from_later_use():
+    from story_planner import build_local_relation_messages
+
+    units = enumerate_source_units(
+        "Mara retrieves a wrench. Mara later uses the wrench while repairing a different assembly."
+    )
+    prompt = build_local_relation_messages(units[0], units[1])[-1]["content"]
+
+    assert "immediate next mechanical step" in prompt
+    assert "Merely using equipment later" in prompt
+    assert "Starting a fresh item/test" in prompt
+
+
 def test_local_relation_parser_and_grouping_keep_repeatables_isolated():
     from story_planner import (
         build_chapter_spans,
