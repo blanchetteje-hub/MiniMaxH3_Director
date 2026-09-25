@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-amy-boundary-pairmerge-461",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY UNITS:\n1. Breakfast.\n2. Breach + children secured.\n3. Weapons equipped.\n4. Main repeated fighting process.\n5. Final confrontation.\n6. Children released.\n\nCURRENT ROUGH CHAPTERS:\nChapter 1 = units 1-2\nChapter 2 = units 3-4\nChapter 3 = units 5-6\n\nDecide only whether Chapter 1 and Chapter 2 should be merged into one LARGE H3 refresh unit.\n\nChoose one: MERGE or KEEP.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
