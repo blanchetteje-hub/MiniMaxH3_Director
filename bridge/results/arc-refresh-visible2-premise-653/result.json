@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-visible2-premise-653",
+  "kind": "llama_chat",
+  "started_at": 1790354530.3323936,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether one source unit creates a concrete visible beat responsibility. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nA grounded drama about a pilot trying to reunite with her family after a storm.\n\nYES = the unit explicitly contains an on-screen action or visible state that must be represented.\nNO = it is only genre/premise/summary framing or purely internal thought with no required visible action/state.\nReturn exactly {\"decision\":\"YES|NO\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 650,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-dnz4ubbmscl89d2xp1iasx",
+    "object": "chat.completion",
+    "created": 1790354530,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\"}",
+          "reasoning": "We need to decide if this source unit creates a concrete visible beat responsibility. The sentence: \"A grounded drama about a pilot trying to reunite with her family after a storm.\" It's a premise/summary, not an on-screen action or state. So NO. Return JSON exactly {\"decision\":\"NO\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 163,
+      "completion_tokens": 77,
+      "total_tokens": 240,
+      "completion_tokens_details": {
+        "reasoning_tokens": 62
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354531.832189,
+  "status": "ok"
+}
