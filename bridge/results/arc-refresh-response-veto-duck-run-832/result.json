@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-response-veto-duck-run-832",
+  "kind": "llama_chat",
+  "started_at": 1790360973.704271,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the narrow binary semantic question. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nMara ducks behind a desk after a gunshot.\n\nRIGHT:\nMara runs toward the rear exit.\n\nQuestion: Is LEFT itself a completed character response to an earlier problem, with RIGHT beginning another distinct character response to that same earlier problem?\nYES only when BOTH are separate response actions to an earlier shared cause. LEFT must itself be a character response action; if LEFT is the danger/event/problem, answer NO. If RIGHT mechanically completes or directly continues LEFT, answer NO.\nReturn exactly {\"separate_responses\":\"YES|NO\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 250,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-cekosyrbzpqks81jzmr46",
+    "object": "chat.completion",
+    "created": 1790360973,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"separate_responses\":\"YES\"}",
+          "reasoning": "We need to parse: The question asks: \"Is LEFT itself a completed character response to an earlier problem, with RIGHT beginning another distinct character response to that same earlier problem?\" So we have two actions:\n\nLEFT: Mara ducks behind a desk after a gunshot.\n\nRIGHT: Mara runs toward the rear exit.\n\nWe must determine if LEFT is a completed character response to an earlier problem (the gunshot). And whether RIGHT begins another distinct character response to that same earlier problem. If both are separate responses, answer YES; else NO.\n\nLEFT: \"Mara ducks behind a desk after a gunshot.\" That seems like a reaction to the gunshot. It's a single action. Is it a completed character response? It is an immediate reaction. Yes it's a response. RIGHT: \"Mara runs toward the rear exit.\" This could be another distinct response to the same problem (gunshot). She ducks, then later runs. So they are separate responses.\n\nThus answer YES. Return JSON exactly {\"separate_responses\":\"YES\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 195,
+      "completion_tokens": 226,
+      "total_tokens": 421,
+      "completion_tokens_details": {
+        "reasoning_tokens": 208
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790360977.2289748,
+  "status": "ok"
+}
