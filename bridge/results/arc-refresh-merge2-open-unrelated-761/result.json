@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-merge2-open-unrelated-761",
+  "kind": "llama_chat",
+  "started_at": 1790359787.7316113,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe technician opens the access panel.\n\nRIGHT:\nThe technician turns away and begins documenting an unrelated spill.\n\nChoose one:\nMERGE only when RIGHT's PRIMARY ACTION is one of these:\n- the same uninterrupted local action as LEFT;\n- a direct immediate response caused by the event in LEFT itself (for example alarm -> shut down/call for help); or\n- the immediate mechanical completion of the exact object/action LEFT just obtained/opened/started (retrieve -> equip, open -> remove).\nNEW_TASK when RIGHT's PRIMARY ACTION is a distinct objective after LEFT reaches a usable stopping point. A shared larger goal is not enough to MERGE. Carrying, wearing, or using an item from LEFT while performing a different primary task is NEW_TASK. Starting a fresh item/test after LEFT completed one is NEW_TASK.\nFor causality, distinguish LEFT itself from a shared earlier cause: danger -> immediate protection may MERGE, but protection -> fetch gear is NEW_TASK because the gear retrieval responds to the danger, not to the completed protection action.\nJudge only the concrete local actions.\nReturn exactly {\"relation\":\"MERGE|NEW_TASK\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-4z2fgjhvq1b6tkx1c4u4t4",
+    "object": "chat.completion",
+    "created": 1790359787,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We have LEFT: \"The technician opens the access panel.\" RIGHT: \"The technician turns away and begins documenting an unrelated spill.\"\n\nPrimary action of LEFT is opening a panel. Primary action of RIGHT is turning away and beginning to document an unrelated spill.\n\nIs that same uninterrupted local action? No, it's different. Is it direct immediate response caused by event in LEFT itself? The spill is unrelated; not directly caused by opening the panel. So no. Immediate mechanical completion of exact object/action: Not relevant. So NEW_TASK.\n\nThus relation = \"NEW_TASK\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 320,
+      "completion_tokens": 128,
+      "total_tokens": 448,
+      "completion_tokens_details": {
+        "reasoning_tokens": 112
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790359789.8869195,
+  "status": "ok"
+}
