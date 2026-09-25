@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-prod-beatcreate-ch2-454",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "PYTHON CURRENT STATE:\nAmy is in the kitchen facing the still-active final zombie.\nAmy holds the current weapon ready.\nAmy wears a black tank top and denim jeans.\nAmy's front is covered in green vomit.\nTwo earlier zombie corpses remain on the kitchen floor.\nWill and Amber are safe behind the closed steel basement door down the hallway.\n\nCURRENT CHAPTER SOURCE:\nAmy kills the last zombie; the house is now soaked in blood.\nAmy lets Will and Amber out of the basement.\n\nBEAT BUDGET: exactly 2.\n\nCreate exactly two beats.\nEvery concrete source action must happen explicitly.\nDo not add a post-story event.\nReturn JSON with key beats."
+    }
+  ]
+}
