@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-rough-split-coverage-351",
+  "kind": "llama_chat",
+  "started_at": 1790296630.8344398,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Create a rough ordered chapter split that covers STORY. It is acceptable to over-split slightly because a later adjacent-merge pass will collapse unnecessary boundaries. Do not invent events. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "STORY:\nA chef starts normal dinner service. Refrigeration fails. The chef secures ingredients and spends most of the story repeatedly adapting dishes around the failure. Near the end, one final repair restores refrigeration; the chef finishes the last order and closes with staff.\n\nGoal here is coverage and order, not finding the minimum chapter count.\n\nReturn exactly:\n{\"chapters\":[{\"chapter\":1,\"outline\":\"...\"}]}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hmc2gzggnlqi5gylusp2th",
+    "object": "chat.completion",
+    "created": 1790296630,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"chapters\":[{\"chapter\":1,\"outline\":\"Chef begins the evening's dinner service with routine preparations.\"},{\"chapter\":2,\"outline\":\"The refrigeration unit suddenly stops working, throwing a chill into the kitchen.\"},{\"chapter\":3,\"outline\":\"He checks the fridge, confirms failure, and informs staff of the issue.\"},{\"chapter\":4,\"outline\":\"Securing ingredients from pantry, freezer, and fresh produce to keep dishes viable.\"},{\"chapter\":5,\"outline\":\"First dish adaptation – swapping chilled components for room‑temperature alternatives.\"},{\"chapter\":6,\"outline\":\"Second dish adaptation – reworking menu items to use available ingredients.\"},{\"chapter\":7,\"outline\":\"Third adaptation – improvising with fresh herbs and sauces to compensate for missing cold elements.\"},{\"chapter\":8,\"outline\":\"Staff coordination – adjusting orders, communicating changes to diners.\"},{\"chapter\":9,\"outline\":\"Final repair – a technician fixes the refrigeration system after several attempts.\"},{\"chapter\":10,\"outline\":\"Chef completes the last order using restored fridge temperatures.\"},{\"chapter\":11,\"outline\":\"Closing remarks – he thanks staff, reflects on resilience, and ends service.\"}]}",
+          "reasoning": "We need to produce JSON: {\"chapters\":[{ \"chapter\": 1, \"outline\": \"...\"}]}. Outline should cover story events in rough ordered chapters. We can over-split slightly; no minimum count needed.\n\nStory: Chef starts normal dinner service. Refrigeration fails. The chef secures ingredients and spends most of the story repeatedly adapting dishes around failure. Near end, one final repair restores refrigeration; chef finishes last order and closes with staff.\n\nWe need to cover coverage and order. So maybe 8-10 chapters? Let's think:\n\n1: Opening - Chef starts dinner service.\n2: Refrigeration fails unexpectedly.\n3: Immediate reaction - check fridge, realize failure.\n4: Securing ingredients - gather from pantry, etc.\n5: First adaptation dish - adjust menu.\n6: Second adaptation - more dishes adapted.\n7: Third adaptation - maybe improvising with fresh produce.\n8: Staff coordination and adjustments.\n9: Final repair of refrigeration system.\n10: Last order finished.\n11: Closing with staff.\n\nWe can split into 11 chapters. Outline each chapter in a sentence or two summarizing events.\n\nReturn JSON exactly as specified. Ensure no extra keys, just \"chapters\" array. Each element has \"chapter\": number and \"outline\":\"...\".\n\nLet's craft outlines:\n\n1: Chef begins the evening's dinner service with routine preparations.\n2: The refrigeration unit suddenly stops working, throwing a chill into the kitchen.\n3: He checks the fridge, confirms failure, and informs staff of the issue.\n4: Securing ingredients from pantry, freezer, and fresh produce to keep dishes viable.\n5: First dish adaptation – swapping chilled components for room‑temperature alternatives.\n6: Second dish adaptation – reworking menu items to use available ingredients.\n7: Third adaptation – improvising with fresh herbs and sauces to compensate for missing cold elements.\n8: Staff coordination – adjusting orders, communicating changes to diners.\n9: Final repair – a technician fixes the refrigeration system after several attempts.\n10: Chef completes the last order using restored fridge temperatures.\n11: Closing remarks – he thanks staff, reflects on resilience, and ends service.\n\nLet's produce JSON. Ensure proper escaping of quotes inside outline strings? Use double quotes for outer string; inner single quotes fine or escape double quotes. We'll use single quotes inside to avoid escapes. But we need double quotes around keys and values. Outline can contain apostrophes but not double quotes. So okay.\n\nReturn: {\"chapters\":[{...}, {...}]}.\n\nLet's produce 11 chapters.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 197,
+      "completion_tokens": 755,
+      "total_tokens": 952,
+      "completion_tokens_details": {
+        "reasoning_tokens": 514
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790296642.5520625,
+  "status": "ok"
+}
