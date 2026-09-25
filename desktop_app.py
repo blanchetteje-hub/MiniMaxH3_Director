@@ -43,7 +43,7 @@ DEFAULT_SETTINGS = {
     "vision_continuity": "0",
     "retention": False,
     "repair": "",
-    "model": "ministral",
+    "model": "gpt",
     "first_frame": False,
     "loras": [],
     "beat_count": "",
@@ -267,9 +267,9 @@ class MiniMaxBridge:
             "first_frame": bool(settings.get("first_frame", False)),
         }
 
-        model = str(settings.get("model", "ministral")).strip().lower()
-        if model not in {"mistral", "ministral", "qwen"}:
-            raise ValueError("Model formatter must be 'mistral' or 'qwen'.")
+        model = str(settings.get("model", "gpt")).strip().lower()
+        if model not in {"gpt", "mistral", "qwen"}:
+            raise ValueError("Model formatter must be 'gpt', 'mistral', or 'qwen'.")
         validated["model"] = model
 
         repair_value = settings.get("repair")
@@ -325,7 +325,7 @@ class MiniMaxBridge:
             if not isinstance(settings, dict):
                 raise ValueError("Generation settings must be an object.")
             beat_count = _positive_int(settings.get("beat_count"), "Story beats")
-            model = str(settings.get("model", "ministral")).strip().lower()
+            model = str(settings.get("model", "gpt")).strip().lower()
             if model not in {"mistral", "ministral", "qwen"}:
                 raise ValueError("Model formatter must be 'mistral' or 'qwen'.")
             return [
