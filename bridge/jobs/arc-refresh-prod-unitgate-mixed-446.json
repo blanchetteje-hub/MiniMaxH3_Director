@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-prod-unitgate-mixed-446",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nShe spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\n\nDecide whether this one authoritative source unit should be split across two LARGE H3 chapters.\n\nChoose one decision from: SPLIT, KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
