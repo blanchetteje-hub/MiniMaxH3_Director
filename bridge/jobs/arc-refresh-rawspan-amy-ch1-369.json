@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-rawspan-amy-ch1-369",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 3200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Create beats only from the supplied chapter source span and opening context. Do not use knowledge outside the span. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "OPENING CONTEXT:\nAmy, Will, and Amber are at home in an intact ordinary kitchen on a normal morning. Amy wears a tight black tank top and denim jeans.\n\nCURRENT CHAPTER SOURCE:\nAmy is at home on a normal day, cooking breakfast for Will and Amber.\nA zombie breaks the kitchen door window; Amy sees the danger and rushes Will and Amber into the basement and locks the door.\nAmy retrieves her hidden pistol and katana and equips them.\nThe majority of this chapter is Amy fighting attacking zombies.\n\nBEAT BUDGET: exactly 6.\n\nRequirements:\n- preserve the ordinary beginning before danger;\n- every concrete source action must happen explicitly;\n- source details are authoritative;\n- the larger zombie conflict is still unresolved when this chapter ends;\n- do not release Will or Amber.\n\nReturn a JSON object with key \"beats\", containing exactly six numbered beat objects with an \"event\" field."
+    }
+  ]
+}
