@@ -184,11 +184,12 @@ After chapter spans are fixed:
    mandatory video beat;
 2. isolate every explicitly long/repeated source unit such as `majority`,
    `most of`, or `repeatedly`;
-3. for adjacent finite visible units only, classify the local relationship:
-   `SAME_ACTION`, `IMMEDIATE_REACTION`, `DIRECT_COMPLETION`, or
-   `NEW_TASK`;
-4. Python groups the first three relationship types and splits on
-   `NEW_TASK`;
+3. for adjacent finite visible units only, use narrow binary semantic checks
+   rather than one overloaded relationship taxonomy:
+   - does RIGHT continue/directly complete LEFT's same local action/object?
+   - is RIGHT an immediate response caused by the event in LEFT itself?
+4. Python merges when either narrow check is YES; otherwise it starts a new
+   responsibility;
 5. every repeatable unit remains its own group;
 6. the grouped visible responsibilities form the deterministic minimum beat
    count;
@@ -311,9 +312,10 @@ The current evidence-supported decomposition is:
 4. refined source units -> TERMINAL and HARD_RESET binary flags; Python derives chapter boundaries
 5. each refined source unit -> visible responsibility `YES | NO`
 6. Python isolates explicit repeatable/emphasized units
-7. adjacent finite visible units -> one local relationship:
-   `SAME_ACTION | IMMEDIATE_REACTION | DIRECT_COMPLETION | NEW_TASK`
-8. Python groups visible responsibilities, computes chapter minimums, allocates
+7. adjacent finite visible units -> narrow continuation/completion and
+   direct-reaction YES/NO checks
+8. Python merges when either check is YES, then groups visible responsibilities,
+   computes chapter minimums, allocates
    surplus beats only to source-authorized repeatable groups, and creates exact
    beat/source ownership
 9. current exact chapter source + grouped beat jobs + opening context -> BEATS CREATE
@@ -679,3 +681,27 @@ The source-span planner now uses only these narrow semantic calls:
 Python remains authoritative for cut enumeration, chapter boundaries, chapter
 spans, beat budgets, beat/source ownership, refresh scheduling, and when
 persistent state effects are committed.
+
+
+### Local grouping refinement — probes 698-777
+
+The original four-way local relation classifier and a later binary
+`MERGE | NEW_TASK` version both exposed the same 20B limitation: combining
+multiple semantic reasons to merge in one decision causes overthinking and
+over-merging.
+
+Evidence:
+- four-way probes 698-717 mostly classified useful controls correctly, but
+  ambiguous tool/use cases consumed the full completion budget;
+- binary probes 738-757 reduced format/token failures but still confused shared
+  purpose or incidental tool use with a local continuation;
+- tightened binary probes 758-777 all returned valid JSON, but materially
+  over-merged four controls: retrieve respirator -> inspect a different system
+  while wearing it; retrieve wrench -> dismantle a separate pump; completed
+  child protection -> fetch gear; open door -> inspect a computer.
+
+Conclusion:
+- do not keep tuning one overloaded merge classifier;
+- split grouping into narrow semantic YES/NO calls and let Python combine them;
+- shared larger purpose, incidental possession/use, and sequence adjacency are
+  not sufficient by themselves to merge source responsibilities.
