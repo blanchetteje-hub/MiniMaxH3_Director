@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-role-amy1-506",
+  "kind": "llama_chat",
+  "started_at": 1790302205.9356294,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow classification or deterministic rule application. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY CONTEXT:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nTARGET UNIT:\n1. Amy cooks breakfast for Will and Amber.\n\nClassify TARGET UNIT by its role in the whole story.\nAllowed roles:\n- MAIN_BODY: setup, inciting event, protection/preparation, or ongoing central process before terminal resolution\n- TERMINAL_RESOLUTION: the decisive event that ends the central conflict/process\n- IMMEDIATE_CLOSURE: direct aftermath/closure following terminal resolution\n- RESET_START: begins a new phase after a major time/location/state reset\n\nChoose exactly one role.\nReturn JSON with keys role and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ugyxh3nlqvfpjtik1pnd7",
+    "object": "chat.completion",
+    "created": 1790302205,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"role\":\"MAIN_BODY\",\"reason\":\"Amy cooking breakfast occurs before the inciting zombie attack, serving as a setup/preparation event that establishes characters and context for the ensuing conflict.\"}",
+          "reasoning": "We need to classify target unit \"Amy cooks breakfast for Will and Amber.\" Role in whole story.\n\nStory context: 1) Amy cooks breakfast for Will and Amber. 2) zombie breaks door, etc. So cooking breakfast is before inciting event (zombie break). It's setup/preparation. According to allowed roles: MAIN_BODY includes setup, inciting event, protection/preparation, or ongoing central process before terminal resolution.\n\nThus role = \"MAIN_BODY\". Reason: it's part of the initial setting and preparation before conflict begins.\n\nReturn JSON with keys role and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 292,
+      "completion_tokens": 163,
+      "total_tokens": 455,
+      "completion_tokens_details": {
+        "reasoning_tokens": 116
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790302208.5036004,
+  "status": "ok"
+}
