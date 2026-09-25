@@ -750,3 +750,23 @@ Decision:
 - next contract is two narrow YES/NO judgments: same-action/direct-completion,
   and immediate reaction caused by LEFT itself;
 - Python will merge only when one of those narrow checks returns YES.
+
+
+### Batch 778-797: narrow semantic decomposition
+
+Splitting local grouping into separate continuation/completion and direct-reaction
+questions did not produce a generally reliable classifier. The continuation
+probe became too literal and rejected obvious mechanical chains such as
+retrieve->equip and open->remove; the reaction probe still tended to treat
+mere temporal succession as causation.
+
+Do not overfit all synthetic controls. For the real Amy-shaped grouping, the
+tightened binary MERGE/NEW_TASK contract from 758-777 already preserves the
+important relations:
+- breach/attack -> immediate protect/escape: MERGE
+- retrieve weapons/gear -> equip: MERGE
+- equip -> prolonged/repeated confrontation: NEW_TASK
+
+The remaining real failure is completed protection/escape -> retrieve gear,
+which must be NEW_TASK even though both actions respond to the same earlier
+danger. Next probes should target that shared-earlier-cause distinction.
