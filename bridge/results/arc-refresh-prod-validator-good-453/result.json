@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-prod-validator-good-453",
+  "kind": "llama_chat",
+  "started_at": 1790300279.8185668,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE CHAPTER SOURCE:\nA worker opens the cabinet.\nThe worker takes Tool-A and Tool-B.\nThe worker places Tool-A on the cart.\nThe worker carries Tool-B into the hallway.\n\nCANDIDATE BEATS:\n1. Worker opens the cabinet and takes Tool-A and Tool-B.\n2. Worker places Tool-A on the cart and carries Tool-B into the hallway.\n\nCheck in order:\n1. MISSING_ACTION\n2. MATERIAL_DEVIATION\n3. CHAPTER_SCOPE\n\nChoose validity from: VALID, INVALID.\nIf invalid, choose one issue_type from: MISSING_ACTION, MATERIAL_DEVIATION, CHAPTER_SCOPE.\nReturn JSON with keys validity, issue_type, issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-z25fvzr4psnl4p6fuw7sb",
+    "object": "chat.completion",
+    "created": 1790300279,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"validity\":\"VALID\",\"issue_type\":\"\",\"issue\":\"\"}",
+          "reasoning": "We need to check candidate beats against source.\n\nSource actions in order:\n1. worker opens cabinet\n2. takes Tool-A and Tool-B (two tools)\n3. places Tool-A on cart\n4. carries Tool-B into hallway\n\nCandidate beat 1: \"Worker opens the cabinet and takes Tool-A and Tool-B.\" That covers first two actions combined, okay.\n\nBeat 2: \"Worker places Tool-A on the cart and carries Tool-B into the hallway.\" That's beats 3 and 4 combined, ok.\n\nCheck for missing action? All present. Material deviation? Tools same. Chapter scope? Both within cabinet context. So VALID.\n\nReturn JSON with validity:\"VALID\", issue_type maybe null or empty string? The keys: validity, issue_type, issue. For valid, issue_type could be \"\" and issue \"\". Probably set to null. Let's output:\n\n{\n  \"validity\":\"VALID\",\n  \"issue_type\":\"\",\n  \"issue\":\"\"\n}\n\nCheck format.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 227,
+      "completion_tokens": 220,
+      "total_tokens": 447,
+      "completion_tokens_details": {
+        "reasoning_tokens": 197
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790300283.4436123,
+  "status": "ok"
+}
