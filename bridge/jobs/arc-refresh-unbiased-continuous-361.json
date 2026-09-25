@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-unbiased-continuous-361",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Make one narrow chapter-boundary decision. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "A chapter is a large H3 refresh unit.\n\nSTORY:\nA mechanic starts diagnosing an engine, tests several components, replaces a failed sensor, then continues testing the same engine.\n\nLEFT:\nInitial diagnosis and component tests.\n\nRIGHT:\nReplace the failed sensor and continue testing the same engine.\n\nChoose one decision from this allowed set: MERGE, KEEP.\nReturn a JSON object with \"decision\" and \"reason\"."
+    }
+  ]
+}
