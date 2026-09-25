@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-job-visible-632",
+  "kind": "llama_chat",
+  "started_at": 1790351769.7047954,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source unit only. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nQuestion: Does this unit itself require a concrete visible beat responsibility?\nYES = it explicitly contains a visible action/state that must happen on screen.\nNO = it is only premise/genre/summary framing and adds no separate visible action/state.\nDo not judge pacing or other units.\nReturn {\"decision\":\"YES|NO\",\"reason\":\"...\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-xshfo3nxutqd7eq6iv2gi",
+    "object": "chat.completion",
+    "created": 1790351769,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The unit describes specific, observable actions—Amy dismembering and decapitating zombies—which must be shown on screen.\"}",
+          "reasoning": "We need to decide if the source unit requires a concrete visible beat responsibility. The unit: \"The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\" This describes that most of the film shows Amy killing zombies in various ways. That is a visible action/state on screen. So YES.\n\nReason: It explicitly contains visible actions (killing zombies). It's not just premise/genre framing; it's describing what happens on screen. So decision YES.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 182,
+      "completion_tokens": 147,
+      "total_tokens": 329,
+      "completion_tokens_details": {
+        "reasoning_tokens": 105
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790351772.1658428,
+  "status": "ok"
+}
