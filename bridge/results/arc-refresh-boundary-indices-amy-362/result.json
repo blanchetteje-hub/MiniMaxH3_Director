@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundary-indices-amy-362",
+  "kind": "llama_chat",
+  "started_at": 1790296791.0180638,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Choose chapter boundaries only. Do not rewrite or summarize story content. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "Each numbered statement is authoritative source material in story order.\n\n1. Amy is at home on a normal day, cooking breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy sees the danger and rushes Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is now soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nA chapter is a LARGE H3 refresh unit. Use as few chapter boundaries as the narrative permits. Keep continuous setup/escalation and the main repeated process together when possible. Major time/location/state resets or entry into explicit terminal resolution can justify a boundary.\n\nReturn JSON with one key: \"new_chapter_after\".\nIts value must be an array of statement numbers after which a new chapter should begin. Do not include the final statement number."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-3104daql7ws188d6c6ezwq",
+    "object": "chat.completion",
+    "created": 1790296791,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"new_chapter_after\":[4]}",
+          "reasoning": "We need to decide where to put chapter boundaries based on narrative flow. Statements 1-6 in order.\n\nWe want as few chapters as possible, but use major resets or explicit terminal resolution for boundary.\n\nLet's analyze:\n\nStatement 1: Amy at home cooking breakfast. Setup.\n\nStatement 2: Zombie breaks kitchen door window; Amy rushes Will and Amber into basement and locks the door. This is a shift from normal day to danger. Could be same chapter? The setup continues until action begins. But maybe we can keep statements 1-3 in one chapter (setup + equip). Statement 4: majority of story fighting zombies, could be main chunk.\n\nStatement 5: Amy kills last zombie and house soaked in blood - this is a terminal resolution moment. Could start new chapter after statement 5? Actually the instruction says \"Do not include final statement number.\" So we need to list numbers after which new chapters begin. We can have boundary after statement 2 or 3, maybe after 4.\n\nLet's think: Statement 1-3 are setup and equip; statement 4 is action; statement 5 is resolution; statement 6 is letting Will and Amber out (post-resolution). So we could have boundaries:\n\nAfter statement 3? That would separate equip from fighting. After statement 5? That separates last zombie kill from letting them out.\n\nBut maybe we can combine statements 1-4 into one chapter: normal day to fight; then after statement 5 start new chapter for aftermath and exit. But the instruction says \"Major time/location/state resets or entry into explicit terminal resolution can justify a boundary.\" The killing of last zombie is terminal resolution, so that could be end of chapter. So we might have two chapters: first from statements 1-4; second from statement 5 onward (statements 5 and 6). But the final statement number should not be included in array.\n\nSo new_chapter_after would contain [4] because after statement 4, a new chapter begins at statement 5. That seems minimal.\n\nCheck: Statement 4 is majority of story fighting zombies; statement 5 is last zombie kill and house soaked in blood (terminal resolution). So yes boundary after 4.\n\nThus JSON:\n\n{\"new_chapter_after\":[4]}\n\nReturn only that.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 292,
+      "completion_tokens": 486,
+      "total_tokens": 778,
+      "completion_tokens_details": {
+        "reasoning_tokens": 468
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790296798.7810578,
+  "status": "ok"
+}
