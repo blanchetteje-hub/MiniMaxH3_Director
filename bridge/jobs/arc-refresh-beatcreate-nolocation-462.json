@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-beatcreate-nolocation-462",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER SOURCE:\nA worker prepares breakfast for two children.\nA threat breaks a window; the worker gets both children into a secured room and locks it.\nThe worker retrieves Tool-A and Tool-B and equips them.\nThe majority of the chapter is the worker handling threats elsewhere.\nThe larger situation remains unresolved when the chapter ends.\n\nBEAT BUDGET: exactly 6.\n\nCreate exactly six beats.\nEvery source action must happen explicitly.\nDo not invent storage locations, carried-object origins, new plot-relevant objects, or new protected-space relationships.\nHarmless visual presentation detail is allowed.\n\nReturn JSON with key beats."
+    }
+  ]
+}
