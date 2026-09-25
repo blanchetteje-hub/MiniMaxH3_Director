@@ -1,0 +1,11 @@
+{
+  "job_id": "arc-refresh-run-state-regressions-574",
+  "kind": "run_tests",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_state_effect_canonicalization.py",
+    "tests/test_macro_required_end_state.py",
+    "tests/test_macro_state_enrichment.py"
+  ],
+  "timeout_seconds": 1200
+}
