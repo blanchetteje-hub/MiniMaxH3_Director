@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod3-split-mixed-601",
+  "kind": "llama_chat",
+  "started_at": 1790350565.2108812,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nShe spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only in either case:\n1. this unit contains an explicit substantial time jump/scene break between two narrative phases; or\n2. this unit contains an ongoing/repeated main process followed by its explicit terminal resolution.\nOtherwise choose KEEP_TOGETHER. Ordinary movement, danger changes, tool/weapon changes, terminal resolution plus immediate closure, and continuous work stay together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-94zl7fy9pqwtmmds2pbs",
+    "object": "chat.completion",
+    "created": 1790350565,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"SPLIT\",\"reason\":\"The unit contains an ongoing/repeated main process—she repeatedly takes measurements—and ends with its explicit terminal resolution, where one final measurement resolves the problem and she immediately closes the lab.\"}",
+          "reasoning": "We need to decide if this source unit crosses an internal LARGE H3 chapter phase boundary.\n\nThe source unit text: \"She spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\"\n\nSo it's a narrative where she repeats measurements (ongoing/repeated main process) followed by its explicit terminal resolution. That matches condition 2: ongoing/repeated main process followed by its explicit terminal resolution.\n\nThus we should SPLIT? Wait: The instruction says \"Choose SPLIT only in either case: 1... or 2...\" So if it contains an ongoing/repeated main process followed by its explicit terminal resolution, choose SPLIT. Yes.\n\nSo decision = \"SPLIT\". Reason: It has repeated measurements (ongoing) and final measurement resolves problem then closes lab (terminal). That is a phase boundary between the repetition phase and the resolution/closure phase.\n\nReturn JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 228,
+      "completion_tokens": 247,
+      "total_tokens": 475,
+      "completion_tokens_details": {
+        "reasoning_tokens": 191
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350569.263032,
+  "status": "ok"
+}
