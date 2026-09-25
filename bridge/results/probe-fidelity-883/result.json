@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-fidelity-883",
+  "kind": "llama_chat",
+  "started_at": 1790370950.752525,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nAmy rushes Will and Amber to the basement and locks the door.\n\nNEXT JOB\nNone.\n\nCANDIDATE BEAT\nAmy knocks Will unconscious, carries him downstairs, and locks Amber inside with him.\n\nMATERIAL FIDELITY: Harmless local staging is allowed, but reject invented details that materially change the assigned action, participant treatment, object use, location/result, or story meaning. Named tools and weapons must be used in a physically coherent way unless CURRENT JOB explicitly establishes an unusual use; for example a firearm may shoot/strike but does not slash or decapitate as a blade. Do not invent consequential aggression, injury, forced movement, humiliation, or other harmful treatment of a protected/non-hostile participant merely to dramatize an otherwise simple assigned action. Do not reject ordinary neutral staging.\n\nReturn exactly {\"valid\": true, \"issue\": \"\"} if valid, otherwise {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-a8zrm5moabprtimvjz2upd",
+    "object": "chat.completion",
+    "created": 1790370950,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\":\"Adds unconsciousness and carrying Will, changing his state and movement from the original rush.\"}",
+          "reasoning": "We need to check the candidate beat against current job: Amy rushes Will and Amber to basement and locks door. Candidate says Amy knocks Will unconscious, carries him downstairs, and locks Amber inside with him. That changes meaning: original had both Will and Amber in basement together; candidate has Will unconscious, Amber locked inside with him? Actually \"locks Amber inside with him\" means she locks Amber inside the basement with Will? Wait: She locks Amber inside with him (Will). So Amy knocks Will unconscious, carries him downstairs, and locks Amber inside with him. That implies she leaves Amber in basement with Will? But original had both together. The difference: In candidate, Will is unconscious; also Amy might have locked Amber inside the basement with him, meaning she left her there too. Original didn't mention Will being knocked unconscious or that Amy carried him. Also original says \"rushes\" not knocks. So material fidelity: She knocks Will unconscious (aggression) and carries him downstairs (movement). That changes action. Also locks Amber inside with him - but original had both together, so maybe same? But the difference is Will unconscious vs rushed. The beat adds aggression to Will. That's a change in participant treatment. So it's not faithful. Should be invalid.\n\nThus output: {\"valid\": false, \"issue\":\"Adds unconsciousness and carries Will, altering his state and movement.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 308,
+      "completion_tokens": 313,
+      "total_tokens": 621,
+      "completion_tokens_details": {
+        "reasoning_tokens": 277
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790370955.1827214,
+  "status": "ok"
+}
