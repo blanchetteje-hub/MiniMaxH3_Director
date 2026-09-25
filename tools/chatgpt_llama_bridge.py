@@ -189,6 +189,67 @@ def ensure_code_test_worktree(source_root: Path, branch: str) -> Path:
     return worktree
 
 
+def _select_pytest_runner(source_root: Path) -> list[str]:
+    """Choose the first fixed local Python/pytest runner that actually has pytest."""
+    explicit_python = os.environ.get("MINIMAX_TEST_PYTHON", "").strip()
+    windows_venv_python = source_root / ".venv" / "Scripts" / "python.exe"
+    posix_venv_python = source_root / ".venv" / "bin" / "python"
+
+    interpreter_candidates = []
+    if explicit_python:
+        interpreter_candidates.append(explicit_python)
+    for candidate in (
+        str(windows_venv_python) if windows_venv_python.exists() else "",
+        str(posix_venv_python) if posix_venv_python.exists() else "",
+        shutil.which("python") or "",
+        shutil.which("python3") or "",
+        shutil.which("py") or "",
+        sys.executable,
+    ):
+        if candidate and candidate not in interpreter_candidates:
+            interpreter_candidates.append(candidate)
+
+    attempted = []
+    for interpreter in interpreter_candidates:
+        command = [interpreter, "-m", "pytest"]
+        attempted.append(interpreter)
+        try:
+            probe = subprocess.run(
+                [*command, "--version"],
+                cwd=source_root,
+                text=True,
+                capture_output=True,
+                timeout=30,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if probe.returncode == 0:
+            return command
+
+    pytest_executable = shutil.which("pytest")
+    if pytest_executable:
+        try:
+            probe = subprocess.run(
+                [pytest_executable, "--version"],
+                cwd=source_root,
+                text=True,
+                capture_output=True,
+                timeout=30,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            probe = None
+        if probe is not None and probe.returncode == 0:
+            return [pytest_executable]
+
+    raise RuntimeError(
+        "No local Python environment with pytest was found. Checked: "
+        + ", ".join(attempted or ["none"])
+        + ". Set MINIMAX_TEST_PYTHON to a Python executable that has pytest."
+    )
+
+
 def run_pytest_job(source_root: Path, job: dict) -> dict:
     """Run pytest only on repository test paths in a dedicated code worktree."""
     code_branch = str(job.get("code_branch") or "").strip()
@@ -215,25 +276,8 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
 
     timeout = int(job.get("timeout_seconds") or 900)
     timeout = max(1, min(timeout, 1800))
-
-    explicit_python = os.environ.get("MINIMAX_TEST_PYTHON", "").strip()
-    pytest_executable = shutil.which("pytest")
-    windows_venv_python = source_root / ".venv" / "Scripts" / "python.exe"
-    posix_venv_python = source_root / ".venv" / "bin" / "python"
-    py_launcher = shutil.which("py")
-
-    if explicit_python:
-        command = [explicit_python, "-m", "pytest", "-q", *normalized]
-    elif windows_venv_python.exists():
-        command = [str(windows_venv_python), "-m", "pytest", "-q", *normalized]
-    elif posix_venv_python.exists():
-        command = [str(posix_venv_python), "-m", "pytest", "-q", *normalized]
-    elif pytest_executable:
-        command = [pytest_executable, "-q", *normalized]
-    elif py_launcher:
-        command = [py_launcher, "-m", "pytest", "-q", *normalized]
-    else:
-        command = [sys.executable, "-m", "pytest", "-q", *normalized]
+    runner = _select_pytest_runner(source_root)
+    command = [*runner, "-q", *normalized]
 
     completed = subprocess.run(
         command,
@@ -246,7 +290,7 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
     return {
         "code_branch": code_branch,
         "tests": normalized,
-        "runner": command[:3],
+        "runner": runner,
         "returncode": completed.returncode,
         "passed": completed.returncode == 0,
         "stdout": completed.stdout,
