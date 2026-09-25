@@ -248,3 +248,42 @@ Therefore the next batch deliberately narrows those failures:
 - 345: strict Rule-0 chapter-outline revision
 
 Continue to prefer tiny one-decision calls over larger 20B prompts.
+
+
+### Probe results 336-345
+
+The narrow follow-up contracts worked cleanly:
+
+- 336: PASS — setup/alarm + securing/main repeated process => MERGE.
+- 337: PASS — ongoing repeated process -> explicit terminal resolution => KEEP.
+- 338: PASS — over-split neutral 3-chapter plan repaired to the desired 2 broad chapters.
+- 339: open-ended chapter CREATE still over-split the third neutral story into 3 chapters.
+- 340: PASS — later colleague-location/containment fact correctly marked needed.
+- 341: PASS — earlier alarm correctly marked not needed.
+- 342: PASS — stricter opening-context extraction excluded alarm/breakfast/put-away history and retained only current/later-needed state.
+- 343: PASS — validator caught an assigned action that was only implied by a later state.
+- 344: PASS — repair explicitly restored the omitted action.
+- 345: PASS — strict outline revision removed unsupported aftermath and added nothing new.
+
+Architectural implication:
+- Do not keep trying to make the 20B chapter CREATE globally optimize for the fewest chapters.
+- Let STORY -> rough ordered chapters prioritize coverage/order.
+- Then run a tiny adjacent-chapter MERGE/KEEP decision.
+- Python performs the merge deterministically.
+- Repeat until no adjacent pair should merge.
+- Terminal resolution, major time/location/state resets, or other demonstrated hard resets may justify KEEP.
+- This is simpler and empirically more reliable than a global chapter-count validator.
+
+### Probe batch 346-355
+
+Queued to stress-test that merge-loop architecture:
+- 346: chef first-pair MERGE
+- 347: chef terminal boundary KEEP
+- 348: post-merge terminal KEEP
+- 349: major time/location reset KEEP
+- 350: continuous-process MERGE
+- 351: rough-split creation optimized only for coverage/order
+- 352: return FIRST adjacent merge pair
+- 353: stable two-chapter list returns no merge pair
+- 354: chef fixed-chapter 8-beat allocation
+- 355: second explicit-action coverage validator control
