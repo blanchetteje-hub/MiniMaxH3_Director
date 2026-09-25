@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-refined-multireset-417",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Choose chapter boundaries only from refined authoritative source units. Do not rewrite source. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "REFINED AUTHORITATIVE SOURCE UNITS:\n1. A geologist finishes a week of field work at a remote site.\n2. Three months later, she begins laboratory analysis in another city.\n3. The laboratory analysis continues through repeated tests and occupies most of this phase.\n4. One final test resolves the research question and she prepares the report.\n5. One year later, she returns to the remote site.\n\nA chapter is a LARGE H3 refresh unit. Use as few boundaries as the narrative permits. Major time/location/state resets justify new chapters; terminal resolution plus immediate closure may remain together.\n\nReturn a JSON object with key \"new_chapter_after\", an array of source-unit numbers. Do not include the final unit number."
+    }
+  ]
+}
