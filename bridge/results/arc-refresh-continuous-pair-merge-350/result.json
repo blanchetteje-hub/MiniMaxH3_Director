@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-continuous-pair-merge-350",
+  "kind": "llama_chat",
+  "started_at": 1790296608.7079062,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent rough chapters should be merged. Continuous action without a meaningful reset favors MERGE. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "STORY CONTEXT:\nA mechanic starts diagnosing an engine, tests several components, replaces a failed sensor, then continues testing the same engine.\n\nLEFT CHAPTER:\nInitial diagnosis and component tests.\n\nRIGHT CHAPTER:\nReplace the failed sensor and continue testing the same engine.\n\nReturn exactly:\n{\"decision\":\"MERGE\",\"reason\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-4ugh2x4wcwcilkyc4a55p",
+    "object": "chat.completion",
+    "created": 1790296608,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"MERGE\",\"reason\":\"The two chapters describe consecutive steps in diagnosing and repairing the same engine—initial tests followed by replacing a failed component and continuing the test sequence—without any meaningful narrative break.\"}",
+          "reasoning": "We need to decide whether two adjacent rough chapters should be merged. The context: left chapter is initial diagnosis and component tests; right chapter is replace the failed sensor and continue testing the same engine. They are continuous action without a reset, so merge.\n\nReturn JSON only with decision MERGE and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 166,
+      "completion_tokens": 113,
+      "total_tokens": 279,
+      "completion_tokens_details": {
+        "reasoning_tokens": 60
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790296610.8713713,
+  "status": "ok"
+}
