@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-916",
+  "kind": "llama_chat",
+  "started_at": 1790377584.5277545,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nEli checks the console.\n\nTARGET UNIT:\nFor hours, Eli monitors the reactor.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. A duration phrase such as 'for most of the night', 'for hours', 'throughout the day', or 'repeatedly' describes how long an activity lasts; it is NOT by itself a jump from PREVIOUS UNIT. Likewise, ordinary movement into a new place (entering a room/building, crossing a doorway, walking to another area) is NOT a hard reset unless the source explicitly marks a narrative restart around that relocation. If the discontinuity is not stated or directly entailed by the two source units, answer NO.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-501xv9kuzs46gp18r965rn",
+    "object": "chat.completion",
+    "created": 1790377584,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The target unit simply extends the activity with a duration phrase ('For hours'), indicating continuous monitoring rather than an explicit time jump, scene break, or relocation that would constitute a hard reset.\"}",
+          "reasoning": "We need to determine if TARGET UNIT begins after a hard reset relative to PREVIOUS UNIT. The previous unit: \"Eli checks the console.\" Target unit: \"For hours, Eli monitors the reactor.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent textual restart.\n\nWe have two units: \"Eli checks the console.\" Then \"For hours, Eli monitors the reactor.\" Is there a hard reset? The phrase \"for hours\" indicates duration of activity. But is that a hard reset? No, it's just describing how long an activity lasts; not a jump. There's no explicit time jump or scene break. So answer NO.\n\nReturn JSON: {\"decision\":\"NO\",\"reason\":\"The target unit continues the same narrative phase with a duration phrase 'for hours', not a hard reset.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 285,
+      "completion_tokens": 235,
+      "total_tokens": 520,
+      "completion_tokens_details": {
+        "reasoning_tokens": 180
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790377589.2420864,
+  "status": "ok"
+}
