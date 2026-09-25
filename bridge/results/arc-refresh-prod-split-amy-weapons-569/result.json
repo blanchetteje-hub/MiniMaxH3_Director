@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod-split-amy-weapons-569",
+  "kind": "llama_chat",
+  "started_at": 1790349835.926945,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY:\nAmy retrieves her hidden pistol and katana and equips them.\n\nSOURCE UNIT:\nAmy retrieves her hidden pistol and katana and equips them.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only when this one source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase, or crosses a major time/location/state discontinuity. Keep terminal resolution plus its immediate closure together. Keep continuous work in the same phase together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6nkkzb1q96j59er7lg7eyg",
+    "object": "chat.completion",
+    "created": 1790349835,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP_TOGETHER\",\"reason\":\"The source unit describes a single continuous action (retrieving and equipping weapons) that does not cross a major time/location/state discontinuity nor transition into a distinct terminal‑resolution phase, so it stays within the same LARGE H3 chapter.\"}",
+          "reasoning": "We need to decide if this source unit crosses an internal LARGE H3 chapter phase boundary.\n\nThe story: \"Amy retrieves her hidden pistol and katana and equips them.\" The source unit is the same sentence. A chapter is a LARGE H3 refresh unit. We must choose SPLIT only when this one source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase, or crosses a major time/location/state discontinuity.\n\nWe need to determine if \"Amy retrieves her hidden pistol and katana and equips them.\" is crossing a chapter boundary. It seems like it's just retrieving and equipping; likely part of the same action sequence. No major time/location change. So we keep together: KEEP_TOGETHER.\n\nReason: It's continuous work within same phase, no terminal resolution or discontinuity.\n\nReturn JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 211,
+      "completion_tokens": 242,
+      "total_tokens": 453,
+      "completion_tokens_details": {
+        "reasoning_tokens": 173
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790349839.7082722,
+  "status": "ok"
+}
