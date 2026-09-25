@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-currentstate-filter-433",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow decision. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CANONICAL FACTS:\n1. Worker is at the workstation facing the still-active task.\n2. Worker currently holds the active tool.\n3. Worker's clothing is established.\n4. A visible substance remains on the clothing.\n5. Two people are currently waiting behind the closed secured-room door down the hallway.\n6. A different tool was discarded earlier.\n7. A window broke earlier.\n8. Breakfast happened earlier.\n\nPython has metadata indicating whether each fact is CURRENT or HISTORY.\n\nCURRENT FACT IDS:\n[1,2,3,4,5]\n\nCURRENT CHAPTER:\nWorker finishes the active task, then opens the secured room and lets the two waiting people out.\n\nNo semantic filtering is allowed. Use all CURRENT facts and no HISTORY facts.\n\nJudge whether this current-state-only context is sufficient.\nChoose: SUFFICIENT or INSUFFICIENT.\nReturn JSON with keys decision and issue."
+    }
+  ]
+}
