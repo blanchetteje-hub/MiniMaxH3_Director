@@ -12663,14 +12663,22 @@ def parse_source_unit_state_effects(
     # Free-form destinations/containers/items must remain source-grounded.
     # Entity identity itself may come from subjects.txt/pronoun resolution, so
     # do not require entity/owner fields to appear lexically in this unit.
-    source_folded = " ".join(str(source_unit_text or "").casefold().split())
+    def grounding_text(value):
+        # Ground semantically identical source wording across harmless punctuation
+        # differences (for example "tight, black tank top" vs "tight black tank
+        # top") without accepting synonyms or reordered/invented wording.
+        return " ".join(
+            re.findall(r"[\w']+", str(value or "").casefold(), flags=re.UNICODE)
+        )
+
+    source_folded = grounding_text(source_unit_text)
     for effect in effects:
         for field in ("value", "container", "item"):
             if field not in effect:
                 continue
             if effect["op"] != "set_location" and field == "value":
                 continue
-            value = " ".join(str(effect[field]).casefold().split())
+            value = grounding_text(effect[field])
             if value and value not in source_folded:
                 raise ValueError(
                     f"Source-unit state effect {effect['op']} {field} "
