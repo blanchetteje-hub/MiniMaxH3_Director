@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-granularity-check-368",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Choose chapter boundaries from numbered source units. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNITS:\n1. A scientist begins a normal shift and prepares the experiment.\n2. She spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\n3. She meets her waiting colleague.\n\nUse as few large H3 chapters as possible.\n\nIf a natural chapter boundary falls inside one source unit rather than between units, identify that source unit.\n\nReturn JSON with two fields:\n- new_chapter_after: array of unit numbers\n- split_needed_inside_unit: unit number or null"
+    }
+  ]
+}
