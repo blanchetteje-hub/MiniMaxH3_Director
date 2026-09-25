@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-amy-ch2-jobs-625",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Turn one exact story chapter into the requested number of minimal chronological video-beat jobs. Source text is authoritative. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE CHAPTER SOURCE\nAmy kills the last of the zombies, her house now soaked in blood. She lets her kids out of the basement.\n\nBEAT COUNT\n2\n\nCreate exactly 2 minimal beat jobs.\n\nRules:\n- Cover every concrete visible source action/state in source order.\n- High-level genre/premise framing guides the jobs but does not need its own visible action.\n- Bundle adjacent finite source actions when the beat budget requires it.\n- A long finite action chain may be divided across adjacent beats at a natural handoff.\n- An explicitly long/repeated process (majority, most, repeatedly, etc.) may occupy multiple adjacent beats. Each such beat remains an ordinary instance of that source-authorized process unless the chapter source itself states a terminal/final instance.\n- Do not invent storage locations, new objects, new characters, new locations, new outcomes, or specific combat events not stated by this chapter.\n- Keep each job minimal and source-level. No camera, dialogue, timestamps, staging, or cinematic embellishment.\n- Do not use story material outside this chapter.\n\nReturn exactly:\n{\"beats\":[{\"beat_number\":1,\"beat_job\":\"minimal source-grounded job\"}]}\n\nReturn 2 entries with consecutive beat_number values starting at 1."
+    }
+  ]
+}
