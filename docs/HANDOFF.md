@@ -435,3 +435,27 @@ Beat allocation:
 - current preferred rule: minimum capacity for authoritative source units, then deterministic leftover-beat assignment toward explicitly source-emphasized longer chapters.
 
 Architecture probing has reached diminishing returns. Unless implementation exposes a new concrete failure, the next step should be production implementation on gpt-arc-refresh rather than more prompt probes.
+
+
+### Production-contract batch 446-455
+
+Results:
+- 446: FAIL — mixed source unit containing a source-emphasized main process followed by explicit terminal resolution incorrectly returned KEEP_TOGETHER.
+- 447: transport error (HTTP 400), no semantic result.
+- 448: PASS — once told the prior gate was SPLIT, chose the correct earlier cut point.
+- 449: FAIL — Amy boundary planner returned [2,4], over-splitting setup/protection away from arming/main combat. Gold-implied target is one boundary after unit 4.
+- 450: PARTIAL/FAIL — six-beat Beat CREATE covered all source responsibilities and remained unresolved, but invented unsupported presentation/location details ("pistol from jacket pocket", "katana in pantry") and pushed attacking threats toward the basement door. This reinforces that Beat CREATE requires immediate story-facing validation/repair.
+- 451: PASS — combined validator caught protected-space/location deviation as MATERIAL_DEVIATION.
+- 452: PASS — repair fixed only that demonstrated issue and preserved six beats.
+- 453: PASS — clean validator control returned VALID.
+- 454: PASS/PARTIAL — Chapter 2 Beat CREATE performed the final confrontation and child release without post-story material; detail remains presentation-level.
+- 455: FORMAT FAIL — intended first-issue precedence test was misread as two independent candidates and returned two result objects. The production validator prompt must make clear that all listed beats form one candidate sequence and exactly one first issue is returned.
+
+Conclusion:
+- validator/repair architecture remains sound;
+- production chapter planning contracts are not yet stable enough to implement unchanged;
+- next probes should target only:
+  1. large-refresh bias in the per-unit SPLIT/KEEP gate;
+  2. preventing chapter-boundary over-splitting of continuous setup/escalation into the main process;
+  3. Beat CREATE source-drift controls;
+  4. one-candidate/one-first-issue validator output.
