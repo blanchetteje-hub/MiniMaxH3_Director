@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod-reset-nextday-586",
+  "kind": "llama_chat",
+  "started_at": 1790349786.2312467,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nA worker finishes the evening inspection and goes home.\n\nTARGET UNIT:\nThe next morning the worker returns and starts a new inspection.\n\nA HARD RESET means a discontinuity between narrative phases: an explicit time jump, scene break, relocation after a completed phase, or equivalent restart. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-d0weu7062ghe9zq48kpomw",
+    "object": "chat.completion",
+    "created": 1790349786,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The worker finishes the evening inspection, goes home, and then returns the next morning to start a new inspection—this relocation after completing one narrative phase constitutes a hard reset.\"}",
+          "reasoning": "We need to decide whether target unit begins after a hard reset relative to previous unit. Previous unit ends evening inspection; worker goes home. Target unit starts next morning, returns and starts new inspection.\n\nHard reset defined as discontinuity between narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent restart. The worker going home is relocation after completing the evening inspection. Then next morning he returns. That seems a hard reset because it's a relocation after a completed phase (home). So yes, target unit begins after a hard reset.\n\nReturn JSON with decision: \"YES\" and reason explaining that there's explicit time jump/relocation after completion of previous phase.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 200,
+      "completion_tokens": 187,
+      "total_tokens": 387,
+      "completion_tokens_details": {
+        "reasoning_tokens": 135
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790349789.326237,
+  "status": "ok"
+}
