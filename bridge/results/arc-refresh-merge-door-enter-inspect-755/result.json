@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-merge-door-enter-inspect-755",
+  "kind": "llama_chat",
+  "started_at": 1790359452.337416,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nMara unlocks and opens the office door.\n\nRIGHT:\nMara enters the office and begins inspecting the damaged computer.\n\nChoose one:\nMERGE = RIGHT is an immediate reaction to LEFT, continues the same uninterrupted local action, or is the immediate mechanical completion of what LEFT just obtained/opened/started.\nNEW_TASK = LEFT reaches a usable stopping point and RIGHT begins a distinct local action/objective. Starting a fresh item/test after LEFT completed one is NEW_TASK. Merely carrying or wearing something from LEFT while doing a different task is NEW_TASK.\nJudge only the concrete local actions.\nReturn exactly {\"relation\":\"MERGE|NEW_TASK\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zz2ujv1df2l1zs9977l1n9",
+    "object": "chat.completion",
+    "created": 1790359452,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need to decide if RIGHT belongs to same job as LEFT (MERGE) or new task.\n\nLEFT: \"Mara unlocks and opens the office door.\" So action: unlocking, opening door. That is a local action of opening door.\n\nRIGHT: \"Mara enters the office and begins inspecting the damaged computer.\"\n\nIs entering the office an immediate reaction to opening? Yes, after opening door she goes inside. Inspecting computer is distinct from opening door. But does it continue same uninterrupted local action? The phrase says MERGE if RIGHT is immediate reaction to LEFT, continues same uninterrupted local action, or mechanical completion of what LEFT just obtained/opened/started.\n\nOpening the office door: She unlocks and opens. After that she enters the office (immediate). Inspecting computer is a new objective but still part of same job? The rule says \"Starting a fresh item/test after LEFT completed one is NEW_TASK.\" So inspecting damaged computer is a distinct local action/objective, so it's NEW_TASK.\n\nThus relation: NEW_TASK.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 224,
+      "completion_tokens": 225,
+      "total_tokens": 449,
+      "completion_tokens_details": {
+        "reasoning_tokens": 209
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790359455.9414034,
+  "status": "ok"
+}
