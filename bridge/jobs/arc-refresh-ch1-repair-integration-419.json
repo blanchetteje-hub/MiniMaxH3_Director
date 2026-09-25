@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-ch1-repair-integration-419",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1900,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested repair or validation task. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE CHAPTER SOURCE:\nA parent begins a normal morning preparing breakfast for two children.\nA threat breaks the kitchen door window; the parent gets both children into the secured basement and locks the door.\nThe parent retrieves exactly Tool-A and Tool-B and equips them.\nThe majority of this chapter is the parent handling threats elsewhere while the children remain protected in the secured basement.\nThe larger situation remains unresolved when this chapter ends.\n\nCANDIDATE BEATS:\n1. Parent prepares breakfast for both children.\n2. A threat breaks the kitchen door window.\n3. Parent gets both children into the secured basement and locks the door.\n4. Parent retrieves Tool-A and Tool-B from a closet and equips them.\n5. Threats enter the secured basement; parent handles them there beside the children.\n6. More threats remain and the larger situation is unresolved.\n\nISSUE:\nBeat 5 materially changes the protected-space relationship by moving the threats into the secured basement.\n\nRepair only the demonstrated issue. Keep exactly 6 beats. Preserve all other valid source responsibilities. Harmless presentation detail may remain.\nReturn JSON with key beats containing six numbered beat objects."
+    }
+  ]
+}
