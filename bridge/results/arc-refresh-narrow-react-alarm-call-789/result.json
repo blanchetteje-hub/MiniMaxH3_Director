@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-narrow-react-alarm-call-789",
+  "kind": "llama_chat",
+  "started_at": 1790360223.3082535,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the narrow binary semantic question. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nAn alarm sounds and a warning light flashes.\n\nRIGHT:\nThe technician immediately calls the supervisor to report the alarm.\n\nQuestion: Is RIGHT an immediate response directly caused by the new event/change in LEFT itself?\nYES only when LEFT itself creates the condition that RIGHT immediately responds to. If LEFT is merely another completed step responding to an earlier shared cause, answer NO. If RIGHT begins a separate task that is not caused by LEFT itself, answer NO.\nReturn exactly {\"decision\":\"YES|NO\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 250,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5s1z6arosyot3wg4ktq4qn",
+    "object": "chat.completion",
+    "created": 1790360223,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\"}",
+          "reasoning": "We need decide if RIGHT (technician calls supervisor) is immediate response directly caused by new event/change in LEFT (alarm sounds and warning light flashes). The alarm triggers the technician to call. So YES. Return JSON: {\"decision\":\"YES\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 186,
+      "completion_tokens": 64,
+      "total_tokens": 250,
+      "completion_tokens_details": {
+        "reasoning_tokens": 49
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790360224.6241574,
+  "status": "ok"
+}
