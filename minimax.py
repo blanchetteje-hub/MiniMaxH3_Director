@@ -18935,9 +18935,11 @@ def _strip_combined_continuity_identity_metadata(candidate):
         stripped["subjects"] = keyed_subjects
         subjects = keyed_subjects
     if isinstance(subjects, dict):
-        python_owned = set(
-            (*SUBJECT_IDENTITY_FIELDS, *SUBJECT_CANONICAL_METADATA_FIELDS)
-        )
+        python_owned = {
+            "id",
+            *SUBJECT_IDENTITY_FIELDS,
+            *SUBJECT_CANONICAL_METADATA_FIELDS,
+        }
         for record in subjects.values():
             if not isinstance(record, dict):
                 continue
