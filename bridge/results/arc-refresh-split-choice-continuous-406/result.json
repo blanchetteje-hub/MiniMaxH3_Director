@@ -1,0 +1,7 @@
+{
+  "job_id": "arc-refresh-split-choice-continuous-406",
+  "status": "error",
+  "error_type": "HTTPError",
+  "error": "HTTP Error 400: Bad Request",
+  "finished_at": 1790298579.0703228
+}
