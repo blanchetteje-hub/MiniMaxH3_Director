@@ -29,10 +29,18 @@ class BeatRetryHierarchyTests(unittest.TestCase):
             nonlocal validation_count
             purpose = kwargs.get("history_metadata", {}).get("purpose")
             purposes.append(purpose)
-            if purpose == "macro_arc_create":
-                return ARC
-            if purpose == "macro_arc_validate":
-                return {"valid": True, "issues": []}
+            if purpose == "source_unit_split_gate":
+                return {"decision": "KEEP_TOGETHER", "reason": "single finite action"}
+            if purpose == "source_unit_terminal":
+                return {"decision": "YES", "reason": "the source action completes"}
+            if purpose == "source_unit_hard_reset":
+                return {"decision": "NO", "reason": "single continuous source unit"}
+            if purpose == "source_unit_visible_responsibility":
+                return {"decision": "YES", "reason": "visible action"}
+            if purpose == "source_unit_local_relation":
+                return {"relation": "NEW_TASK"}
+            if purpose == "source_unit_state_effects":
+                return {"state_effects": []}
             if purpose == "beat_generation":
                 return {"beats": ["Operator completes action X."]}
             if purpose == "beat_validation":
@@ -53,7 +61,8 @@ class BeatRetryHierarchyTests(unittest.TestCase):
             )
 
         self.assertEqual(result, ["Operator completes action X."])
-        self.assertEqual(purposes.count("macro_arc_validate"), 1)
+        self.assertNotIn("macro_arc_create", purposes)
+        self.assertNotIn("macro_arc_validate", purposes)
         self.assertEqual(purposes.count("beat_validation"), 2)
         self.assertNotIn("macro_state_preparation", purposes)
         self.assertNotIn("macro_state_semantic_validation", purposes)
