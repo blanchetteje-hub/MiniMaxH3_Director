@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-transient-context-neutral-381",
+  "kind": "llama_chat",
+  "started_at": 1790297138.8840075,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Select only transient/current state needed to execute the whole chapter. Persistent Subject appearance is injected separately by Python. Exclude mere history. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT CHAPTER SOURCE:\nMara finishes the active machine test, then opens the secured side room and reunites with Kai.\n\nESTABLISHED STATE:\n- Mara is at the machine console with the test still active.\n- Mara currently holds the calibration probe.\n- Mara wears a blue jacket and black pants.\n- Oil is smeared across Mara's right sleeve.\n- Kai is waiting behind the closed secured side-room door.\n- A warning alarm sounded earlier.\n- Mara previously used a wrench and put it away.\n\nReturn a JSON object with key \"transient_context\", an array of selected facts."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-wcny0sbpax8bg3kbdct0w6",
+    "object": "chat.completion",
+    "created": 1790297138,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"transient_context\":[\"Mara at machine console with test still active\",\"Mara holds the calibration probe\",\"Mara wears a blue jacket and black pants\",\"Oil smeared across Mara's right sleeve\",\"Kai waiting behind the closed secured side‑room door\"]}",
+          "reasoning": "We need to return only transient/current state needed for whole chapter, exclude history. Facts: machine test active; Mara at console; holds calibration probe; wears blue jacket black pants; oil on right sleeve; Kai behind door; warning alarm sounded earlier (history? maybe still relevant). Also she used wrench and put it away - that's past action but might be relevant to current state that wrench is in drawer. But it's history of her using wrench, not current. The prompt says exclude mere history. So we include facts about machine test active, Mara at console holding probe, wearing clothes, oil on sleeve, Kai behind door, warning alarm sounded earlier? That was earlier but still might be relevant as context; maybe the alarm is off now. But it's a fact that it sounded earlier. It's not current state of alarm? Might be considered history. So we can exclude \"warning alarm sounded earlier\". The wrench put away: that's past action, so exclude.\n\nThus transient facts: Mara at machine console with test active; holds calibration probe; wears blue jacket black pants; oil on right sleeve; Kai behind door. Also maybe the side room is secured? But that might be background. We can include \"secured side-room door closed\". That could be current state. So array of these.\n\nReturn JSON: {\"transient_context\": [ ... ]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 224,
+      "completion_tokens": 332,
+      "total_tokens": 556,
+      "completion_tokens_details": {
+        "reasoning_tokens": 269
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790297144.3960931,
+  "status": "ok"
+}
