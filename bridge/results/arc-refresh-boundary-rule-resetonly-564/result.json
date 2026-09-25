@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-boundary-rule-resetonly-564",
+  "kind": "llama_chat",
+  "started_at": 1790303586.0577004,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Apply the deterministic chapter rule mechanically. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT FLAGS:\n1. terminal=NO, hard_reset=NO\n2. terminal=NO, hard_reset=NO\n3. terminal=NO, hard_reset=YES\n4. terminal=NO, hard_reset=NO\n\nRULE:\nStart a new chapter before every unit where hard_reset=YES.\n\nReturn JSON with key new_chapter_after, listing the prior unit number after which the new chapter begins."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1100,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-pfxjy88btmpxmi0ubkgwkc",
+    "object": "chat.completion",
+    "created": 1790303586,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"new_chapter_after\":[2]}",
+          "reasoning": "We have 4 source units. Units: 1,2,3,4. Hard reset flags: 1:NO, 2:NO, 3:YES, 4:NO.\n\nRule: Start a new chapter before every unit where hard_reset=YES. So before unit 3 we start a new chapter. That means the new chapter begins after prior unit number? The key \"new_chapter_after\" listing the prior unit number after which the new chapter begins. If new chapter starts before unit 3, then it is after unit 2. So list [2]. Also maybe if multiple hard resets, we would have more entries.\n\nThus output JSON: {\"new_chapter_after\":[2]}. Ensure valid JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 170,
+      "completion_tokens": 165,
+      "total_tokens": 335,
+      "completion_tokens_details": {
+        "reasoning_tokens": 147
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790303589.066505,
+  "status": "ok"
+}
