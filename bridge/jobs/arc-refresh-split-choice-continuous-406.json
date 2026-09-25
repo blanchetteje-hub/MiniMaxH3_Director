@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-split-choice-continuous-406",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow task. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nShe tests the electrical system, replaces one failed sensor, and continues testing the same engine.\n\nCANDIDATE A:\nLEFT = She tests the electrical system,\nRIGHT = replaces one failed sensor, and continues testing the same engine.\n\nCANDIDATE B:\nLEFT = She tests the electrical system, replaces one failed sensor,\nRIGHT = and continues testing the same engine.\n\nChoose the best large-chapter split from: A, B, NONE.\nReturn JSON with keys \"choice\" and \"reason\"."
+    }
+  ]
+}
