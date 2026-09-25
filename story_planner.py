@@ -901,12 +901,7 @@ _LOCAL_RELATION_RESPONSE_FORMAT = {
             "properties": {
                 "relation": {
                     "type": "string",
-                    "enum": [
-                        "SAME_ACTION",
-                        "IMMEDIATE_REACTION",
-                        "DIRECT_COMPLETION",
-                        "NEW_TASK",
-                    ],
+                    "enum": ["MERGE", "NEW_TASK"],
                 },
             },
             "required": ["relation"],
@@ -915,25 +910,19 @@ _LOCAL_RELATION_RESPONSE_FORMAT = {
     },
 }
 
-_MERGE_LOCAL_RELATIONS = {
-    "SAME_ACTION",
-    "IMMEDIATE_REACTION",
-    "DIRECT_COMPLETION",
-}
-
 
 def build_local_relation_messages(
     left_unit: SourceUnit,
     right_unit: SourceUnit,
 ) -> list[dict[str, str]]:
-    """Classify one adjacent finite visible source-unit relationship."""
+    """Decide whether two adjacent finite visible units share one beat job."""
 
     return [
         {
             "role": "system",
             "content": (
-                "Classify only the concrete local relationship between two "
-                "adjacent source responsibilities. Return valid JSON only."
+                "Decide only whether two adjacent source responsibilities belong "
+                "to one local beat job. Return valid JSON only."
             ),
         },
         {
@@ -943,20 +932,15 @@ def build_local_relation_messages(
                 f"{left_unit.text}\n\n"
                 "RIGHT:\n"
                 f"{right_unit.text}\n\n"
-                "Choose the single best relationship of RIGHT to LEFT:\n"
-                "SAME_ACTION = RIGHT continues the same uninterrupted concrete "
-                "action/process on the same local task. Starting a fresh item/test "
-                "after LEFT completed one is not SAME_ACTION.\n"
-                "IMMEDIATE_REACTION = LEFT introduces a new event/change and "
-                "RIGHT is the immediate response to that new event.\n"
-                "DIRECT_COMPLETION = RIGHT is the immediate next mechanical step "
-                "on the specific thing LEFT just obtained/opened/started (for example "
-                "retrieve -> equip, open -> remove, take key -> unlock). Merely using "
-                "equipment later during a distinct task is not DIRECT_COMPLETION.\n"
-                "NEW_TASK = LEFT reaches a usable stopping point and RIGHT begins "
-                "a distinct local action/objective.\n"
-                "Judge the local actions, not the characters' overall goal or "
-                "story goal.\n"
+                "Choose one:\n"
+                "MERGE = RIGHT is an immediate reaction to LEFT, continues the same "
+                "uninterrupted local action, or is the immediate mechanical completion "
+                "of what LEFT just obtained/opened/started.\n"
+                "NEW_TASK = LEFT reaches a usable stopping point and RIGHT begins a "
+                "distinct local action/objective. Starting a fresh item/test after "
+                "LEFT completed one is NEW_TASK. Merely carrying or wearing something "
+                "from LEFT while doing a different task is NEW_TASK.\n"
+                "Judge only the concrete local actions.\n"
                 "Return JSON with the single key relation."
             ),
         },
@@ -964,7 +948,7 @@ def build_local_relation_messages(
 
 
 def parse_local_relation(raw_result: object) -> str:
-    """Parse one strict local source-unit relationship result."""
+    """Parse one strict MERGE/NEW_TASK result."""
 
     candidate = raw_result
     if isinstance(candidate, str):
@@ -977,12 +961,8 @@ def parse_local_relation(raw_result: object) -> str:
     if not isinstance(candidate, dict) or set(candidate) != {"relation"}:
         raise ValueError("Local relation response must contain only relation.")
     relation = candidate.get("relation")
-    allowed = _MERGE_LOCAL_RELATIONS | {"NEW_TASK"}
-    if relation not in allowed:
-        raise ValueError(
-            "Local relation must be SAME_ACTION, IMMEDIATE_REACTION, "
-            "DIRECT_COMPLETION, or NEW_TASK."
-        )
+    if relation not in {"MERGE", "NEW_TASK"}:
+        raise ValueError("Local relation must be MERGE or NEW_TASK.")
     return str(relation)
 
 
@@ -1062,7 +1042,7 @@ def group_chapter_source_responsibilities(
             **sampling,
         )
         relation_value = parse_local_relation(raw_relation)
-        if relation_value in _MERGE_LOCAL_RELATIONS:
+        if relation_value == "MERGE":
             current.append(unit_id)
         else:
             flush_current()
