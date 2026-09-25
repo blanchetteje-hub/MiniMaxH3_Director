@@ -475,3 +475,344 @@ def classify_source_units(
         )
 
     return classified
+
+
+@dataclass(frozen=True)
+class CutCandidate:
+    """One deterministic exact cut point inside a source unit."""
+
+    label: str
+    offset: int
+    left_text: str
+    right_text: str
+
+
+_SPLIT_DECISION_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "story_unit_split_decision",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "decision": {
+                    "type": "string",
+                    "enum": ["SPLIT", "KEEP_TOGETHER"],
+                },
+                "reason": {"type": "string", "minLength": 1},
+            },
+            "required": ["decision", "reason"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
+def build_split_decision_response_format() -> dict:
+    return _SPLIT_DECISION_RESPONSE_FORMAT
+
+
+def build_source_unit_split_messages(
+    story: str,
+    unit: SourceUnit,
+) -> list[dict[str, str]]:
+    """Ask whether one sentence-sized unit crosses an internal large phase."""
+
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Decide only whether this one authoritative source unit crosses "
+                "an internal LARGE H3 chapter phase boundary. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "FULL STORY:\n"
+                f"{str(story or '').strip()}\n\n"
+                "SOURCE UNIT:\n"
+                f"{unit.text}\n\n"
+                "A chapter is a LARGE H3 refresh unit.\n"
+                "Choose SPLIT only when this one source unit itself crosses from "
+                "an ongoing/source-emphasized main process into a distinct "
+                "terminal-resolution phase, or crosses a major time/location/"
+                "state discontinuity. Keep terminal resolution plus its immediate "
+                "closure together. Keep continuous work in the same phase together.\n"
+                "Choose one: SPLIT or KEEP_TOGETHER.\n"
+                "Return JSON with keys decision and reason."
+            ),
+        },
+    ]
+
+
+def parse_split_decision(raw_result: object) -> bool:
+    """Return True only for a strict SPLIT result."""
+
+    candidate = raw_result
+    if isinstance(candidate, str):
+        import json
+
+        try:
+            candidate = json.loads(candidate)
+        except json.JSONDecodeError as error:
+            raise ValueError("Split decision response must be valid JSON.") from error
+    if not isinstance(candidate, dict):
+        raise ValueError("Split decision response must be a JSON object.")
+    if set(candidate) != {"decision", "reason"}:
+        raise ValueError("Split decision must contain only decision and reason.")
+    decision = candidate.get("decision")
+    reason = candidate.get("reason")
+    if decision not in {"SPLIT", "KEEP_TOGETHER"}:
+        raise ValueError("Split decision must be SPLIT or KEEP_TOGETHER.")
+    if not isinstance(reason, str) or not reason.strip():
+        raise ValueError("Split decision reason must be a non-empty string.")
+    return decision == "SPLIT"
+
+
+def enumerate_cut_candidates(unit: SourceUnit) -> list[CutCandidate]:
+    """Enumerate exact grammatical cut points without rewriting source text."""
+
+    text = unit.text
+    offsets: set[int] = set()
+
+    for match in re.finditer(r"[,;:](?=\s)", text):
+        offsets.add(match.end())
+
+    for match in re.finditer(
+        r"\s+(?=(?:and|but|then|while|after|before|when)\b)",
+        text,
+        flags=re.IGNORECASE,
+    ):
+        offsets.add(match.start())
+
+    candidates: list[CutCandidate] = []
+    labels = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    for offset in sorted(offsets):
+        left = text[:offset].rstrip()
+        right = text[offset:].lstrip()
+        if len(left) < 8 or len(right) < 8:
+            continue
+        normalized_offset = len(text[:offset].rstrip())
+        while normalized_offset < len(text) and text[normalized_offset].isspace():
+            normalized_offset += 1
+        right_start = normalized_offset
+        left_end = offset
+        while left_end > 0 and text[left_end - 1].isspace():
+            left_end -= 1
+        if left_end <= 0 or right_start >= len(text):
+            continue
+        candidates.append(
+            CutCandidate(
+                label=(
+                    labels[len(candidates)]
+                    if len(candidates) < len(labels)
+                    else str(len(candidates) + 1)
+                ),
+                offset=right_start,
+                left_text=text[:left_end],
+                right_text=text[right_start:],
+            )
+        )
+    return candidates
+
+
+def build_cut_choice_messages(
+    unit: SourceUnit,
+    candidates: Sequence[CutCandidate],
+) -> list[dict[str, str]]:
+    """Ask for one exact deterministic cut after a prior SPLIT decision."""
+
+    candidate_lines = []
+    for candidate in candidates:
+        candidate_lines.append(
+            f"CANDIDATE {candidate.label}:\n"
+            f"LEFT = {candidate.left_text}\n"
+            f"RIGHT = {candidate.right_text}"
+        )
+    allowed = ", ".join(candidate.label for candidate in candidates)
+    return [
+        {
+            "role": "system",
+            "content": (
+                "The prior unit gate already returned SPLIT. Choose only the "
+                "best supplied exact cut point. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "SOURCE UNIT:\n"
+                f"{unit.text}\n\n"
+                + "\n\n".join(candidate_lines)
+                + "\n\n"
+                f"Choose one value from: {allowed}, NONE.\n"
+                "Prefer the cut that keeps the ongoing/main process on the left "
+                "and the distinct terminal/reset phase on the right. Do not "
+                "rewrite either side.\n"
+                "Return JSON with keys choice and reason."
+            ),
+        },
+    ]
+
+
+def build_cut_choice_response_format(
+    candidates: Sequence[CutCandidate],
+) -> dict:
+    choices = [candidate.label for candidate in candidates] + ["NONE"]
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_unit_cut_choice",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "choice": {"type": "string", "enum": choices},
+                    "reason": {"type": "string", "minLength": 1},
+                },
+                "required": ["choice", "reason"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_cut_choice(
+    raw_result: object,
+    candidates: Sequence[CutCandidate],
+) -> CutCandidate | None:
+    """Parse one supplied candidate label or NONE."""
+
+    candidate_result = raw_result
+    if isinstance(candidate_result, str):
+        import json
+
+        try:
+            candidate_result = json.loads(candidate_result)
+        except json.JSONDecodeError as error:
+            raise ValueError("Cut choice response must be valid JSON.") from error
+    if not isinstance(candidate_result, dict):
+        raise ValueError("Cut choice response must be a JSON object.")
+    if set(candidate_result) != {"choice", "reason"}:
+        raise ValueError("Cut choice must contain only choice and reason.")
+    reason = candidate_result.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        raise ValueError("Cut choice reason must be a non-empty string.")
+
+    by_label = {candidate.label: candidate for candidate in candidates}
+    choice = candidate_result.get("choice")
+    if choice == "NONE":
+        return None
+    if choice not in by_label:
+        raise ValueError("Cut choice did not name a supplied candidate.")
+    return by_label[choice]
+
+
+def refine_source_units(
+    story: str,
+    units: Sequence[SourceUnit],
+    llm_request,
+    *,
+    history_metadata: dict | None = None,
+    sampling_parameters: dict | None = None,
+) -> list[SourceUnit]:
+    """Refine only units explicitly gated SPLIT, preserving exact source spans."""
+
+    units = list(units)
+    if not units:
+        return []
+    _validate_ordered_units(units)
+
+    sampling = dict(sampling_parameters or {})
+    history = dict(history_metadata or {})
+    refined_spans: list[tuple[int, int]] = []
+
+    for unit in units:
+        split_raw = llm_request(
+            build_source_unit_split_messages(story, unit),
+            response_format=build_split_decision_response_format(),
+            history_metadata={
+                **history,
+                "purpose": "source_unit_split_gate",
+                "source_unit_id": unit.id,
+            },
+            **sampling,
+        )
+        if not parse_split_decision(split_raw):
+            refined_spans.append((unit.start, unit.end))
+            continue
+
+        candidates = enumerate_cut_candidates(unit)
+        if not candidates:
+            refined_spans.append((unit.start, unit.end))
+            continue
+
+        cut_raw = llm_request(
+            build_cut_choice_messages(unit, candidates),
+            response_format=build_cut_choice_response_format(candidates),
+            history_metadata={
+                **history,
+                "purpose": "source_unit_cut_choice",
+                "source_unit_id": unit.id,
+            },
+            **sampling,
+        )
+        chosen = parse_cut_choice(cut_raw, candidates)
+        if chosen is None:
+            refined_spans.append((unit.start, unit.end))
+            continue
+
+        absolute_cut = unit.start + chosen.offset
+        left_end = absolute_cut
+        while left_end > unit.start and story[left_end - 1].isspace():
+            left_end -= 1
+        right_start = absolute_cut
+        while right_start < unit.end and story[right_start].isspace():
+            right_start += 1
+
+        if left_end <= unit.start or right_start >= unit.end:
+            refined_spans.append((unit.start, unit.end))
+            continue
+        refined_spans.append((unit.start, left_end))
+        refined_spans.append((right_start, unit.end))
+
+    refined: list[SourceUnit] = []
+    for start, end in refined_spans:
+        refined.append(
+            SourceUnit(
+                id=len(refined) + 1,
+                start=start,
+                end=end,
+                text=story[start:end],
+            )
+        )
+    return refined
+
+
+def plan_story_chapters(
+    story: str,
+    llm_request,
+    *,
+    history_metadata: dict | None = None,
+    sampling_parameters: dict | None = None,
+) -> tuple[list[SourceUnit], list[ChapterSpan]]:
+    """Run the source-span planner through exact chapter construction."""
+
+    units = enumerate_source_units(story)
+    units = refine_source_units(
+        story,
+        units,
+        llm_request,
+        history_metadata=history_metadata,
+        sampling_parameters=sampling_parameters,
+    )
+    units = classify_source_units(
+        story,
+        units,
+        llm_request,
+        history_metadata=history_metadata,
+        sampling_parameters=sampling_parameters,
+    )
+    chapters = build_chapter_spans(story, units)
+    return units, chapters
