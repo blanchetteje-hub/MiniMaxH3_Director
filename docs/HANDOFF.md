@@ -224,3 +224,27 @@ Early results:
 - 330/331/332/334/335 were still pending at the last status sweep.
 
 Interpretation so far: the validator does not need a new semantic subsystem. A shorter explicit decision contract fixes the 322 contradiction. Continue favoring the smallest contract that works.
+
+
+### Probe results 330-335 and next batch 336-345
+
+Completed findings:
+- 330 over-split the neutral researcher story into setup / repeated-process / terminal-resolution chapters.
+- 331 correctly allocated the fixed two-chapter neutral story as 6/2.
+- 332 preserved named items and rejected invented items, but omitted the explicit action of taking the flashlight before later carrying it.
+- 334 over-retained irrelevant history: it treated an earlier alarm as required opening context.
+- 335 was too permissive and accepted both the over-split and broad two-chapter plans.
+
+Therefore the next batch deliberately narrows those failures:
+- 336: adjacent-chapter MERGE check
+- 337: adjacent-chapter KEEP control at terminal resolution
+- 338: merge-repair of the neutral over-split plan
+- 339: third-story broad-boundary generalization
+- 340: positive single-fact context necessity
+- 341: negative single-fact context necessity
+- 342: strict minimal context extraction
+- 343: explicit-action ownership validator
+- 344: explicit-action ownership repair
+- 345: strict Rule-0 chapter-outline revision
+
+Continue to prefer tiny one-decision calls over larger 20B prompts.
