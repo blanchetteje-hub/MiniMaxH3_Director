@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-pairwise-loop-stable-353",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Given an ordered rough chapter list, identify only the FIRST adjacent pair that should merge. If none should merge, return null. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nA chef starts normal dinner service. Refrigeration fails. The chef secures ingredients and spends most of the story repeatedly adapting dishes around the failure. Near the end, one final repair restores refrigeration; the chef finishes the last order and closes.\n\nROUGH CHAPTERS:\n1. Normal service through the entire repeated adaptation process.\n2. Final repair; last order; closing.\n\nReturn exactly:\n{\"merge_pair\":null,\"reason\":\"...\"}"
+    }
+  ]
+}
