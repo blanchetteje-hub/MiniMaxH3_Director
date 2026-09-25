@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-gate-mixed-neutral-466",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nThe operator spends most of the story repeating inspections, then one final inspection resolves the issue and the operator immediately shuts down the station.\n\nA chapter is a LARGE H3 refresh unit.\nSPLIT only when this one source unit crosses from the source-emphasized main/ongoing phase into a distinct terminal-resolution phase or a major reset.\nKEEP_TOGETHER when the whole unit remains one phase, including terminal resolution plus its immediate closure.\n\nChoose: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
