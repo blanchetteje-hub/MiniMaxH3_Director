@@ -1,0 +1,88 @@
+{
+  "purpose": "Diagnose full-validator overload after both 936/937 accepted the actual double-removal error. Compact single validator vs narrow coherence diagnostic. Neither is adopted production code.",
+  "source_batch": "936-955",
+  "compact_checks": "CHECKS\n1. Read the candidate literally in action order. Carry each completed result forward.\nA completed removal cannot happen again to that same target or part unless it is\nexplicitly restored first. Different targets and unsuccessful attempts are different\ncases. Do not excuse a contradiction as emphasis or silently change an action.\n2. Use PREVIOUS FINAL BEAT and CURRENT STATE as established facts. Reject unavailable\nobjects, unresolved barriers, and impossible actions. Unknown facts are not errors.\nHonor capabilities explicitly established in CURRENT JOB or CURRENT STATE.\n3. CURRENT JOB must happen in this beat, including every required action, result,\nand named participant. History or already-completed-state wording cannot replace\nan assigned action. Harmless staging is allowed; material changes to tools,\nparticipants, locations, or outcomes are not.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Each listed STATE EFFECT must follow from the candidate. Do not invent a\nmissing required action to justify an effect.\n\nReturn one JSON object: valid is a boolean, issue is a short concrete error\nor an empty string when valid. Judge all checks; any clear error makes valid false.",
+  "diagnostic_instruction": "Judge only whether the candidate's action sequence is physically coherent.\nRead actions literally and in order, using the established facts. Carry each\ncompleted result forward: a completed removal cannot happen again to that same\ntarget or part unless explicitly restored first. Do not silently reinterpret a\ncompleted action as an attempt. Different targets are different cases. A wound\nis not automatically removal or death. Respect explicitly established magical\ncapabilities. Unknown facts alone are not contradictions.\nReturn one JSON object: valid is a boolean indicating a coherent sequence; issue\nis a short concrete contradiction or an empty string. Do not judge job coverage,\nnext-job ownership, or missing state-effect records in this diagnostic.",
+  "cases": [
+    {
+      "name": "captured_double_decapitation",
+      "expected_valid": false,
+      "jobs": [
+        "probe-coherence-956-compact",
+        "probe-coherence-957-diagnostic"
+      ]
+    },
+    {
+      "name": "wound_then_decapitate",
+      "expected_valid": true,
+      "jobs": [
+        "probe-coherence-958-compact",
+        "probe-coherence-959-diagnostic"
+      ]
+    },
+    {
+      "name": "captured_shattering_body",
+      "expected_valid": false,
+      "jobs": [
+        "probe-coherence-960-compact",
+        "probe-coherence-961-diagnostic"
+      ]
+    },
+    {
+      "name": "ordinary_final_kill",
+      "expected_valid": true,
+      "jobs": [
+        "probe-coherence-962-compact",
+        "probe-coherence-963-diagnostic"
+      ]
+    },
+    {
+      "name": "fantasy_same_crystal_twice",
+      "expected_valid": false,
+      "jobs": [
+        "probe-coherence-964-compact",
+        "probe-coherence-965-diagnostic"
+      ]
+    },
+    {
+      "name": "fantasy_crystal_reinserted",
+      "expected_valid": true,
+      "jobs": [
+        "probe-coherence-966-compact",
+        "probe-coherence-967-diagnostic"
+      ]
+    },
+    {
+      "name": "locked_door_ignored",
+      "expected_valid": false,
+      "jobs": [
+        "probe-coherence-968-compact",
+        "probe-coherence-969-diagnostic"
+      ]
+    },
+    {
+      "name": "locked_door_resolved",
+      "expected_valid": true,
+      "jobs": [
+        "probe-coherence-970-compact",
+        "probe-coherence-971-diagnostic"
+      ]
+    },
+    {
+      "name": "explicit_magic_exception",
+      "expected_valid": true,
+      "jobs": [
+        "probe-coherence-972-compact",
+        "probe-coherence-973-diagnostic"
+      ]
+    },
+    {
+      "name": "different_targets",
+      "expected_valid": true,
+      "jobs": [
+        "probe-coherence-974-compact",
+        "probe-coherence-975-diagnostic"
+      ]
+    }
+  ]
+}

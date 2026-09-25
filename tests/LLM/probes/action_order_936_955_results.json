@@ -1,0 +1,245 @@
+{
+  "results": [
+    {
+      "job": "probe-action-order-936-baseline",
+      "case": "captured_double_decapitation",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": false,
+      "completion_tokens": 369
+    },
+    {
+      "job": "probe-action-order-937-ordered",
+      "case": "captured_double_decapitation",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": false,
+      "completion_tokens": 290
+    },
+    {
+      "job": "probe-action-order-938-baseline",
+      "case": "wound_then_decapitate",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 290
+    },
+    {
+      "job": "probe-action-order-939-ordered",
+      "case": "wound_then_decapitate",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 326
+    },
+    {
+      "job": "probe-action-order-940-baseline",
+      "case": "captured_shattering_body",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": false,
+      "completion_tokens": 445
+    },
+    {
+      "job": "probe-action-order-941-ordered",
+      "case": "captured_shattering_body",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": false,
+      "completion_tokens": 438
+    },
+    {
+      "job": "probe-action-order-942-baseline",
+      "case": "ordinary_final_kill",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Repeats the same cut on the last zombie that was already slain in the previous beat"
+      },
+      "matches_reference": false,
+      "completion_tokens": 736
+    },
+    {
+      "job": "probe-action-order-943-ordered",
+      "case": "ordinary_final_kill",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 393
+    },
+    {
+      "job": "probe-action-order-944-baseline",
+      "case": "fantasy_same_crystal_twice",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Crystal pulled out of its socket twice\u2014after the first pull it\u2019s already removed, so pulling again is impossible"
+      },
+      "matches_reference": true,
+      "completion_tokens": 319
+    },
+    {
+      "job": "probe-action-order-945-ordered",
+      "case": "fantasy_same_crystal_twice",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": false,
+      "completion_tokens": 215
+    },
+    {
+      "job": "probe-action-order-946-baseline",
+      "case": "fantasy_crystal_reinserted",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 246
+    },
+    {
+      "job": "probe-action-order-947-ordered",
+      "case": "fantasy_crystal_reinserted",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 277
+    },
+    {
+      "job": "probe-action-order-948-baseline",
+      "case": "locked_door_ignored",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": false,
+      "completion_tokens": 238
+    },
+    {
+      "job": "probe-action-order-949-ordered",
+      "case": "locked_door_ignored",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": false,
+      "completion_tokens": 210
+    },
+    {
+      "job": "probe-action-order-950-baseline",
+      "case": "locked_door_resolved",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 201
+    },
+    {
+      "job": "probe-action-order-951-ordered",
+      "case": "locked_door_resolved",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 204
+    },
+    {
+      "job": "probe-action-order-952-baseline",
+      "case": "explicit_magic_exception",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 210
+    },
+    {
+      "job": "probe-action-order-953-ordered",
+      "case": "explicit_magic_exception",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 193
+    },
+    {
+      "job": "probe-action-order-954-baseline",
+      "case": "different_targets",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 251
+    },
+    {
+      "job": "probe-action-order-955-ordered",
+      "case": "different_targets",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 262
+    }
+  ],
+  "note": "Reference labels assess these targeted controls, not broad validator accuracy. Review issue explanations as well as labels."
+}

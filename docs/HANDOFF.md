@@ -37,31 +37,41 @@ Review of the actual accepted beats and developer log found:
 **Do not advance to full H3 generation yet.** Fix the demonstrated accepted-beat
 coherence failure first, within the existing single validator.
 
-Queued batch **936–955** on `gpt-runtime` (commit `716c003`):
-- 10 matched cases, each tested against the full production validator and a
-  candidate replacement of check B only;
-- two exact captured bad beats plus corrected controls, fantasy crystal
-  removal, laboratory access, an explicit magic exception, and different-target
-  decapitation;
-- proposed B uses a short action-order procedure that carries each stated result
-  into the next action; no production prompt change has been adopted yet;
-- expected labels stay in `tests/LLM/probes/action_order_936_955.json`, never in
-  model requests;
-- identical sampling: temperature 0, seed 42, repeat_penalty 1.15, max_tokens 2048.
-  Score completion/truncation separately from semantic accuracy.
+Completed batch **936–955** (`gpt-runtime` queue commit `716c003`):
+- 10 matched cases, full production validator versus replacement of check B;
+- **6/10 reference-label matches for each variant**, all 20 normal completions;
+- both accept the captured double decapitation, unsupported body transformation,
+  and walking through a still-closed locked door;
+- the replacement also regresses the repeated-crystal-removal case, while fixing
+  an unsupported dead-target assumption on the corrected final-kill control;
+- no proposed production change was adopted;
+- manifests and scored verdicts are in `tests/LLM/probes/`.
+
+Follow-up batch **956–975** queued (`gpt-runtime` commit `4d0e006`):
+- same 10 cases, comparing a compact single validator against an isolated action
+  coherence diagnostic;
+- both explicitly distinguish completed removal from attempts, restored objects,
+  different targets, and source-authorized magic;
+- the diagnostic tests whether broader validation responsibilities distract the
+  model; it is not an added production pipeline or architecture decision;
+- expected labels remain outside model requests;
+- sampling held fixed: temperature 0, seed 42, repeat_penalty 1.15,
+  max_tokens 2048. The first batch used only 193–736 completion tokens.
 
 Next steps:
-1. Inspect results 936–955 against the manifest, including explanations: an
-   unrelated rejection does not prove the targeted contradiction was caught.
-2. Adopt a check-B replacement only if it fixes the actual failure without
-   breaking valid controls. The physical-transformation miss may require a
-   separate focused revision of the existing material-fidelity check.
-3. Run a fresh planning acceptance after any verified production change, then
-   advance to full H3 prompts only when accepted beats are coherent.
-4. Keep production behavior generic across genres and entirely local.
+1. Inspect 956–975 against `tests/LLM/probes/coherence_956_975.json`, including
+   concrete issue explanations, not only valid/invalid labels.
+2. Prefer a shorter existing validator if it catches the real errors and preserves
+   good controls. Do not adopt a narrow diagnostic as a new subsystem merely
+   because it performs better on this small sample.
+3. Recheck coverage, next-job leakage, and typed effects before adopting a compact
+   full-validator replacement; this batch tests coherence, not all responsibilities.
+4. Run fresh planning acceptance after a verified production change, then advance
+   to full H3 prompts only when accepted beats are coherent.
+5. Keep production behavior generic across genres and entirely local.
 
-The worker needs only to remain running; these are existing `llama_chat` jobs
-and require no bridge-code update or restart.
+The worker processed the first batch during this turn and is receiving the next.
+No bridge update/restart or local code pull is required for these direct probes.
 
 
 ## Ultimate goal

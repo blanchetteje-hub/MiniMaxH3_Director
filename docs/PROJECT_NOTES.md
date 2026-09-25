@@ -706,8 +706,11 @@ irreversible removal twice on one target, and a realistic body transformation
 unsupported by the source.
 
 Test fixes inside the existing validator before advancing to H3 generation.
-Batch 936–955 compares the full current validator with a shorter sequential
-possibility check across matched cross-genre controls. This is an experiment,
-not an adopted production contract. Preserve explicitly source-authorized
+Batch 936–955 completed with 6/10 reference-label matches for both the full
+current validator and its shorter sequential-possibility variant. Neither caught
+the actual double-removal error; the proposed replacement is not adopted.
+Batch 956–975 tests a compact single validator versus an isolated coherence
+diagnostic to distinguish prompt overload from semantic difficulty. Neither is
+an adopted production contract or an added production subsystem. Preserve explicitly source-authorized
 fantastical capabilities and distinguish different targets from repeated actions
 on the same target.
