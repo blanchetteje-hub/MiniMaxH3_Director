@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-prod-beatcreate-ch1-450",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "OPENING CONTEXT:\nAmy, Will, and Amber are in an ordinary intact kitchen on a normal morning.\nAmy wears a black tank top and denim jeans.\n\nCURRENT CHAPTER SOURCE:\nAmy cooks breakfast for Will and Amber.\nA zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\nAmy retrieves her hidden pistol and katana and equips them.\nThe majority of this chapter is Amy fighting attacking zombies.\nThe larger zombie conflict remains unresolved when this chapter ends.\n\nBEAT BUDGET: exactly 6.\n\nCreate exactly six beats.\nEvery concrete source action must happen explicitly.\nHarmless presentation detail is allowed.\nDo not release Will or Amber.\nDo not resolve the final zombie conflict.\n\nReturn JSON with key beats."
+    }
+  ]
+}
