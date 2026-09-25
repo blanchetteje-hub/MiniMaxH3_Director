@@ -25,7 +25,7 @@ import urllib.error
 import urllib.request
 
 
-BRIDGE_BUILD = "2026-09-25-run-tests-v3"
+BRIDGE_BUILD = "2026-09-25-push-retry-v4"
 DEFAULT_BRANCH = "gpt-runtime"
 DEFAULT_ENDPOINT = "http://127.0.0.1:1234"
 DEFAULT_POLL_SECONDS = 2.0
@@ -396,14 +396,18 @@ def commit_result(worktree: Path, branch: str, result_dir: Path, job_id: str) ->
     # this push. Rebase the result commit onto the newest mailbox head and
     # retry instead of leaving the worktree permanently diverged.
     last_error = None
-    for _attempt in range(5):
+    for attempt in range(10):
         try:
+            # There is an unavoidable race between the pull and push because
+            # ChatGPT may add another mailbox job at any moment. Keep these
+            # expected retry failures captured so transient ref-lock/non-fast-
+            # forward messages do not look like fatal bridge errors.
             run_git(["pull", "--rebase", "origin", branch], worktree)
-            run_git(["push", "origin", branch], worktree, capture=False)
+            run_git(["push", "origin", branch], worktree)
             return
         except subprocess.CalledProcessError as error:
             last_error = error
-            time.sleep(0.5)
+            time.sleep(min(0.25 * (attempt + 1), 2.0))
     raise last_error
 
 
