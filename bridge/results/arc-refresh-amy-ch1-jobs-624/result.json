@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-amy-ch1-jobs-624",
+  "kind": "llama_chat",
+  "started_at": 1790351517.2062936,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Turn one exact story chapter into the requested number of minimal chronological video-beat jobs. Source text is authoritative. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "AUTHORITATIVE CHAPTER SOURCE\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\n\nBEAT COUNT\n6\n\nCreate exactly 6 minimal beat jobs.\n\nRules:\n- Cover every concrete visible source action/state in source order.\n- High-level genre/premise framing guides the jobs but does not need its own visible action.\n- Bundle adjacent finite source actions when the beat budget requires it.\n- A long finite action chain may be divided across adjacent beats at a natural handoff.\n- An explicitly long/repeated process (majority, most, repeatedly, etc.) may occupy multiple adjacent beats. Each such beat remains an ordinary instance of that source-authorized process unless the chapter source itself states a terminal/final instance.\n- Do not invent storage locations, new objects, new characters, new locations, new outcomes, or specific combat events not stated by this chapter.\n- Keep each job minimal and source-level. No camera, dialogue, timestamps, staging, or cinematic embellishment.\n- Do not use story material outside this chapter.\n\nReturn exactly:\n{\"beats\":[{\"beat_number\":1,\"beat_job\":\"minimal source-grounded job\"}]}\n\nReturn 6 entries with consecutive beat_number values starting at 1."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 1800,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-k335p5al4zyycp6fwn1u",
+    "object": "chat.completion",
+    "created": 1790351517,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"beats\":[{\"beat_number\":1,\"beat_job\":\"Amy cooks breakfast for Will and Amber while wearing a tight black tank top and denim jeans.\"},{\"beat_number\":2,\"beat_job\":\"A zombie breaks the kitchen door window, Amy sees danger.\"},{\"beat_number\":3,\"beat_job\":\"She rushes her kids to the basement, gets them inside, and locks the door.\"},{\"beat_number\":4,\"beat_job\":\"She retrieves her hidden arsenal consisting of a pistol and a katana.\"},{\"beat_number\":5,\"beat_job\":\"Amy equips the weapons.\"},{\"beat_number\":6,\"beat_job\":\"Amy kills zombies (dismembering, decapitating) as they attack her.\"}]}",
+          "reasoning": "We need to produce JSON array of beats, each minimal job covering the actions in order. Source: \"A realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.\n\nThe majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\"\n\nWe need 6 beats covering all concrete visible source actions in order. Let's list them:\n\n1. Amy at home on normal day wearing tight black tank top and denim jeans cooking breakfast for kids.\n2. Zombie breaks kitchen door window; Amy sees danger.\n3. She rushes kids to basement, gets them inside, locks the door.\n4. Retrieves hidden arsenal: pistol and katana.\n5. Equips weapons.\n6. Majority of film is Amy killing zombies (dismembering, decapitating etc.) as they attack her.\n\nWe need 6 beats; we have exactly 6 actions above. So each beat can be one action. But \"majority\" might be a process that could occupy multiple beats? The rule: an explicitly long/repeated process may occupy multiple adjacent beats. Here majority of film is killing zombies, but it's repeated many times. Could split into two beats: first kill zombie(s) (dismembering), second decapitating etc. But the source says \"Amy killing (dismembering, decapitating, etc.) zombies as they try and attack her.\" That's a single process with multiple actions inside parentheses. We could treat each of those as separate beats? The rule: Each such beat remains an ordinary instance of that source-authorized process unless the chapter source itself states a terminal/final instance. So we can split \"dismembering\" and \"decapitating\" into two beats, but then we'd have 7 beats total. We need exactly 6.\n\nWe could bundle some earlier actions: maybe combine cooking breakfast with wearing clothes? But that's one beat already. Or combine retrieving arsenal and equipping weapons as one beat. That would reduce to 5 beats; we need 6. So keep them separate.\n\nThus beats:\n\n1. Amy cooks breakfast for kids while wearing tight black tank top and denim jeans.\n2. Zombie breaks kitchen door window, Amy sees danger.\n3. She rushes kids to basement, gets them inside, locks the door.\n4. Retrieves hidden arsenal: pistol and katana.\n5. Equips weapons.\n6. Amy kills zombies (dismembering, decapitating) as they attack her.\n\nBut beat 6 includes both dismembering and decapitating; that's okay.\n\nReturn JSON with beats array of objects each having beat_number and beat_job string minimal source-grounded job.\n\nLet's craft the jobs:\n\nBeat1: \"Amy cooks breakfast for Will and Amber while wearing a tight black tank top and denim jeans.\"\nBeat2: \"A zombie breaks the kitchen door window, Amy sees danger.\"\nBeat3: \"She rushes her kids to the basement, gets them inside, and locks the door.\"\nBeat4: \"She retrieves her hidden arsenal consisting of a pistol and a katana.\"\nBeat5: \"Amy equips the weapons.\"\nBeat6: \"Amy kills zombies (dismembering, decapitating) as they attack her.\"\n\nReturn JSON. Ensure beat_number 1-6.\n\nLet's produce final answer.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 466,
+      "completion_tokens": 922,
+      "total_tokens": 1388,
+      "completion_tokens_details": {
+        "reasoning_tokens": 768
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790351530.9194973,
+  "status": "ok"
+}
