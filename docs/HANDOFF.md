@@ -287,3 +287,34 @@ Queued to stress-test that merge-loop architecture:
 - 353: stable two-chapter list returns no merge pair
 - 354: chef fixed-chapter 8-beat allocation
 - 355: second explicit-action coverage validator control
+
+
+### Probe-hygiene correction and clean batch 356-365
+
+A test-design flaw was discovered in batch 336-355: several prompts embedded the expected decision directly in the required JSON example (for example, `"decision":"KEEP"`, `true`, or `false`). Those probes are useful for prompt-shape exploration but are not clean independent evidence for the semantic decision.
+
+This was made explicit in `PROJECT_NOTES.md`: future probes must specify allowed output values/types without pre-filling the expected answer.
+
+The flaw was exposed by 347: the model returned KEEP, but its reason said the two sections formed a single coherent arc and that combining them preserved continuity.
+
+A clean replacement batch 356-365 was therefore queued.
+
+Early unbiased results:
+- 356: MERGE for chef setup/failure -> securing/repeated adaptation.
+- 357: KEEP for repeated adaptation -> final repair/closing.
+- 358: MERGE for researcher setup/alarm -> securing/repeated diagnostics.
+- 359: KEEP for repeated diagnostics -> final resolution/shutdown/reunion.
+- 360: KEEP across a three-month time jump + location reset.
+- 361: MERGE for one continuous engine diagnosis/repair/testing sequence.
+- 362: boundary-index-only Amy test returned `new_chapter_after:[4]`, correctly placing the refresh boundary after the main repeated zombie-fighting process and before the explicit final-resolution material.
+- 363-365 were still pending at the last sweep.
+
+Additional important finding from 351:
+- telling the 20B model that over-splitting was acceptable caused severe source drift: it expanded a short chef story into 11 invented micro-chapters, adding technician/menu/staff actions not present in STORY.
+- Therefore, do not encourage arbitrary rough over-splitting.
+
+Promising simplification under test:
+- number authoritative source statements;
+- ask the LLM only for chapter-boundary indices;
+- Python builds chapter source spans directly from exact `story.txt` material;
+- this may eliminate generated chapter-outline drift entirely.
