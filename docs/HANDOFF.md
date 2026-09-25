@@ -763,3 +763,22 @@ important relations:
 The remaining real failure is completed protection/escape -> retrieve gear,
 which must be NEW_TASK even though both actions respond to the same earlier
 danger. Next probes should target that shared-earlier-cause distinction.
+
+
+### Exact Amy production grouping check — probes 838-842
+
+The current binary local grouping contract was run against the five exact
+finite source-unit pairs used by the real Amy planner fixture.
+
+Results:
+- 838 breakfast -> breach: NEW_TASK
+- 839 breach -> protect children: MERGE
+- 840 protect children -> retrieve arsenal: NEW_TASK
+- 841 retrieve arsenal -> equip weapons: MERGE
+- 842 last zombie -> release children: NEW_TASK
+
+All five production-relevant decisions matched the intended grouping. Synthetic
+edge cases from earlier batches remain useful evidence about the 20B model's
+limits, but they do not justify adding more grouping layers while the actual
+planner path is correct. Treat local grouping as sufficient for the current
+production target and move to the next runtime/integration failure.
