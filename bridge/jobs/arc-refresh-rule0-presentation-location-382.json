@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-rule0-presentation-location-382",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate whether a candidate stays within STORY. Creative presentation details are allowed when they do not materially change events, objects, relationships, danger, or outcome. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nAmy retrieves her hidden pistol and katana and equips them.\n\nCANDIDATE:\nAmy opens a closet, retrieves the hidden pistol and katana from inside, and equips them.\n\nChoose one validity value from: VALID, INVALID.\nReturn a JSON object with keys \"validity\" and \"issue\"."
+    }
+  ]
+}
