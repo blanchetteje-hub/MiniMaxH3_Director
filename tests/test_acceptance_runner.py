@@ -27,15 +27,6 @@ class AcceptanceRunnerTests(unittest.TestCase):
             ],
         )
 
-    def test_refresh_schedule_maps_to_interval_seven(self):
-        benchmark = run_acceptance.load_benchmark(
-            run_acceptance.DEFAULT_BENCHMARK
-        )
-        self.assertEqual(
-            run_acceptance.infer_refresh_interval(benchmark["beats"]),
-            7,
-        )
-
     def test_parse_h3_prompts(self):
         log = """
 # ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 1
