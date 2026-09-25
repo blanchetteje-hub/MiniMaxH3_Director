@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-gate-largebias-456",
+  "kind": "llama_chat",
+  "started_at": 1790300650.0834255,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nShe spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\n\nA chapter is a LARGE H3 refresh unit.\nKEEP_TOGETHER means the entire unit belongs to one large narrative phase.\nSPLIT means the unit crosses from the main/ongoing phase into a distinct terminal-resolution phase or major reset.\n\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-fvf7q6xz00m7w6w92m7maf",
+    "object": "chat.completion",
+    "created": 1790300650,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"SPLIT\",\"reason\":\"The source unit contains both the main phase of repeated measurements and a distinct terminal-resolution event when the final measurement solves the problem and she immediately closes the lab.\"}",
+          "reasoning": "We need to decide if this source unit is split or keep together. The description: \"She spends most of the story repeating measurements, then one final measurement resolves the problem and she immediately closes the lab.\" So it's a narrative phase where she repeats measurements (main ongoing), then final measurement resolves problem and she closes lab - that seems like terminal resolution. Does it cross into distinct terminal-resolution? Yes, the closing lab is a distinct event. The unit likely includes both phases: main/ongoing and terminal resolution. According to rule: SPLIT means the unit crosses from main phase into distinct terminal-resolution or major reset. So this unit does cross; thus decision = \"SPLIT\". Reason: because final measurement resolves problem and she closes lab, marking a distinct terminal resolution.\n\nReturn JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 179,
+      "completion_tokens": 215,
+      "total_tokens": 394,
+      "completion_tokens_details": {
+        "reasoning_tokens": 164
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790300653.5287232,
+  "status": "ok"
+}
