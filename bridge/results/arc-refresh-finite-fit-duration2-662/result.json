@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-finite-fit-duration2-662",
+  "kind": "llama_chat",
+  "started_at": 1790354653.0478628,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge only whether a fixed number of 8-second video beats is enough for the supplied finite source material. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FINITE SOURCE MATERIAL:\nA technician spends five seconds calibrating a meter. The technician then spends five seconds recording the result.\n\nAVAILABLE BEATS: 2\nEach beat is 8 seconds.\nEvery concrete visible action/state must be represented in source order.\nActions may share a beat when they fit naturally, and a long finite chain may continue into the next beat at a natural handoff.\nDo not omit, imply away, or materially compress required actions.\nIgnore any pacing outside this finite material.\nReturn exactly {\"decision\":\"ENOUGH|TOO_SMALL\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 750,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-za740julravh9lzz0g83j",
+    "object": "chat.completion",
+    "created": 1790354653,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"ENOUGH\"}",
+          "reasoning": "We need to judge if 2 beats of 8 seconds each (total 16 seconds) are enough for the source material: technician spends five seconds calibrating a meter, then five seconds recording result. That's total 10 seconds. Beats can share actions when fit naturally; long chain may continue into next beat at natural handoff.\n\nWe have two beats of 8 sec = 16 sec available. Source is 10 sec. So enough. Decision: ENOUGH. Return JSON exactly {\"decision\":\"ENOUGH\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 210,
+      "completion_tokens": 121,
+      "total_tokens": 331,
+      "completion_tokens_details": {
+        "reasoning_tokens": 105
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354655.2458172,
+  "status": "ok"
+}
