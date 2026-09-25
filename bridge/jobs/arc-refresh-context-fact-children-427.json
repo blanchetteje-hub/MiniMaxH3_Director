@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-context-fact-children-427",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow decision. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nThe parent completes the final confrontation, then opens the secured room and lets the two children out.\n\nFACT:\nThe two children are safe behind the closed secured-room door down the hallway.\n\nWould omitting this fact force the chapter planner to guess current location/containment needed later in the chapter?\nChoose: NEEDED or NOT_NEEDED.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
