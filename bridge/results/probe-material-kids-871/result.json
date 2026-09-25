@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-material-kids-871",
+  "kind": "llama_chat",
+  "started_at": 1790370764.044546,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nAmy lets her kids out of the basement.\n\nNEXT JOB\nNone; this is the final beat.\n\nCANDIDATE BEAT\nAmy opens the basement hatch and pushes Will and Amber onto the muddy floor as they step into the living room.\n\nMATERIAL FIDELITY: Harmless local staging is allowed, but reject invented details that materially change the assigned action, participant treatment, object use, location/result, or story meaning. Do not invent consequential aggression, injury, forced movement, humiliation, or other harmful treatment of a protected/non-hostile participant merely to dramatize an otherwise simple assigned action. Do not reject ordinary neutral staging.\n\nReturn exactly {\"valid\": true, \"issue\": \"\"} if valid, otherwise {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-wou0cnpetzpr57g61o4f4c",
+    "object": "chat.completion",
+    "created": 1790370764,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\": \"Adds pushing onto a muddy floor, changing the original simple release of the kids from the basement.\"}",
+          "reasoning": "We need to judge the candidate beat: \"Amy opens the basement hatch and pushes Will and Amber onto the muddy floor as they step into the living room.\"\n\nOriginal beat: Amy lets her kids out of the basement. So she releases them from basement, presumably into living room.\n\nThe candidate says she opens hatch and pushes Will and Amber onto muddy floor as they step into living room. That adds pushing onto muddy floor. Is that a change? The original didn't mention muddy floor or pushing. It just says lets her kids out of the basement. So \"pushes\" is an action not in original; also \"onto muddy floor\" changes location (floor). Also \"step into living room\" maybe okay. But pushing them onto muddy floor might be considered a change: it adds aggression? Pushing could be mild but it's a movement. The instruction says: \"Do not invent consequential aggression, injury, forced movement, humiliation, or other harmful treatment of a protected/non-hostile participant merely to dramatize an otherwise simple assigned action.\" Pushing them onto muddy floor is forced movement and maybe mild aggression. So that changes meaning. Also muddy floor might be new detail.\n\nThus candidate beat is invalid. Issue: \"Adds pushing onto muddy floor, altering original action.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 274,
+      "completion_tokens": 291,
+      "total_tokens": 565,
+      "completion_tokens_details": {
+        "reasoning_tokens": 252
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790370768.1726353,
+  "status": "ok"
+}
