@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-merge2-key-unlock-762",
+  "kind": "llama_chat",
+  "started_at": 1790359774.7543998,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nMara takes the key from the hook.\n\nRIGHT:\nMara immediately uses the key to unlock the storage door.\n\nChoose one:\nMERGE only when RIGHT's PRIMARY ACTION is one of these:\n- the same uninterrupted local action as LEFT;\n- a direct immediate response caused by the event in LEFT itself (for example alarm -> shut down/call for help); or\n- the immediate mechanical completion of the exact object/action LEFT just obtained/opened/started (retrieve -> equip, open -> remove).\nNEW_TASK when RIGHT's PRIMARY ACTION is a distinct objective after LEFT reaches a usable stopping point. A shared larger goal is not enough to MERGE. Carrying, wearing, or using an item from LEFT while performing a different primary task is NEW_TASK. Starting a fresh item/test after LEFT completed one is NEW_TASK.\nFor causality, distinguish LEFT itself from a shared earlier cause: danger -> immediate protection may MERGE, but protection -> fetch gear is NEW_TASK because the gear retrieval responds to the danger, not to the completed protection action.\nJudge only the concrete local actions.\nReturn exactly {\"relation\":\"MERGE|NEW_TASK\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-chb4ktot3dgqqwxcdh2s7",
+    "object": "chat.completion",
+    "created": 1790359774,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We have two adjacent source responsibilities. LEFT: \"Mara takes the key from the hook.\" RIGHT: \"Mara immediately uses the key to unlock the storage door.\"\n\nPrimary action of LEFT is taking the key (retrieve). Primary action of RIGHT is using the key to unlock a door.\n\nIs that same uninterrupted local action? No, it's different actions: take vs use. Is it direct immediate response caused by event in LEFT itself? The event in LEFT is \"takes the key from hook\". That gives her the key; she uses it immediately to unlock storage door. That's an immediate mechanical completion of exact object/action left just obtained/opened/started: retrieve -> equip, open->remove. Here it's retrieve (take) then use (unlock). Is that considered direct immediate response? The rule says \"the immediate mechanical completion of the exact object/action LEFT just obtained/opened/started\". Taking a key is obtaining it; using it to unlock door is mechanical completion of that object: you take key, then use it. That seems like MERGE.\n\nThus relation = MERGE.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 323,
+      "completion_tokens": 233,
+      "total_tokens": 556,
+      "completion_tokens_details": {
+        "reasoning_tokens": 217
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790359778.5465314,
+  "status": "ok"
+}
