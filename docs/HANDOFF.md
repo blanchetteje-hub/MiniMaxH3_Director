@@ -826,3 +826,17 @@ No production changes were required at this layer.
 
 Next target: beat retry/repair/auditing orchestration and structural guarantees,
 continuing to fix only observed failures.
+
+
+### Beat retry/orchestration checkpoint
+
+The stale beat-retry hierarchy fixture was updated to exercise the current
+source-span planner rather than intentionally falling into the compatibility
+ARC path. The focused retry test now passes.
+
+Relevant commit:
+- cb0cfc95 update beat retry test for source-span planner
+
+Next target: confirm the rest of the orchestration/structural layer together:
+beat plan auditor, beat repair orchestration, retry hierarchy, and structural
+guarantees.
