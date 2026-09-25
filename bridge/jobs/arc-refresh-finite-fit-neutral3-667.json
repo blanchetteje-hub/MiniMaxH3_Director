@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 750,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-finite-fit-neutral3-667",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge only whether a fixed number of 8-second video beats is enough for the supplied finite source material. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FINITE SOURCE MATERIAL:\nA parent calmly prepares breakfast for two children.\nSuddenly, an alarm sounds and a warning light begins flashing.\nThe parent rushes the children down a corridor to a safe room, gets them inside, and closes the door.\nThe parent retrieves an emergency gear bag.\nThe parent equips the flashlight and radio from the bag.\n\nAVAILABLE BEATS: 3\nEach beat is 8 seconds.\nEvery concrete visible action/state must be represented in source order.\nActions may share a beat when they fit naturally, and a long finite chain may continue into the next beat at a natural handoff.\nDo not omit, imply away, or materially compress required actions.\nIgnore any pacing outside this finite material.\nReturn exactly {\"decision\":\"ENOUGH|TOO_SMALL\"}."
+    }
+  ]
+}
