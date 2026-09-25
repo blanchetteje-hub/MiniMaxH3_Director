@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-relation2-retrieve-later-use-719",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Classify only the concrete local relationship between two adjacent source responsibilities. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nMara retrieves a respirator from the cabinet.\n\nRIGHT:\nMara enters the contaminated room and begins inspecting the ventilation system while wearing it.\n\nChoose the single best relationship of RIGHT to LEFT:\nSAME_ACTION = RIGHT continues the same uninterrupted concrete action/process on the same local task. Starting a fresh item/test after LEFT completed one is not SAME_ACTION.\nIMMEDIATE_REACTION = LEFT introduces a new event/change and RIGHT is the immediate response to that new event.\nDIRECT_COMPLETION = RIGHT is the immediate next mechanical step on the specific thing LEFT just obtained/opened/started (for example retrieve -> equip, open -> remove, take key -> unlock). Merely using equipment later during a distinct task is not DIRECT_COMPLETION.\nNEW_TASK = LEFT reaches a usable stopping point and RIGHT begins a distinct local action/objective.\nJudge the local actions, not the characters' overall goal or story goal.\nReturn exactly {\"relation\":\"SAME_ACTION|IMMEDIATE_REACTION|DIRECT_COMPLETION|NEW_TASK\"}."
+    }
+  ]
+}
