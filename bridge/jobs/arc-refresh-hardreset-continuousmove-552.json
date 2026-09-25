@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-hardreset-continuousmove-552",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1300,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS UNIT:\nA worker finishes checking the kitchen.\n\nTARGET UNIT:\nThe worker immediately walks down the hallway and checks the next room.\n\nA HARD RESET means a discontinuity between narrative phases. Continuous movement during the same immediate sequence is NOT a hard reset.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose YES or NO.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
