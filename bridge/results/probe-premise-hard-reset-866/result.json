@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-premise-hard-reset-866",
+  "kind": "llama_chat",
+  "started_at": 1790370034.2222555,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nA realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\n\nTARGET UNIT:\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\n\nA HARD RESET means a discontinuity between actual narrative phases: an explicit time jump, scene break, relocation after a completed phase, or equivalent restart. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-yxoifi4bsvft3zv9f4jaq",
+    "object": "chat.completion",
+    "created": 1790370034,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The target unit begins the story’s first concrete scene after a genre/premise sentence, which is not an actual narrative phase. Thus there is no hard reset between the previous unit and the target unit.\"}",
+          "reasoning": "We need to determine if TARGET UNIT begins after a hard reset relative to PREVIOUS UNIT. Hard reset defined as discontinuity between actual narrative phases: explicit time jump, scene break, relocation after completed phase, etc. Moving from framing into story's first concrete scene is not a hard reset. Immediate cause-and-effect action in same continuous sequence is not a hard reset.\n\nPREVIOUS UNIT: \"A realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.\" That's a genre/premise/summary sentence. It's not an actual narrative phase; it's framing. So the first concrete scene would be something like Amy at home cooking breakfast? But we need to see if TARGET UNIT begins after a hard reset from PREVIOUS UNIT.\n\nTARGET UNIT: \"Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\"\n\nThis seems to be the first concrete scene. The transition from the genre/premise sentence (PREVIOUS UNIT) to this scene is moving from framing into story's first concrete scene. According to definition: \"A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO.\" So it's not a hard reset.\n\nThus decision: NO. Reason: The transition is from framing to first concrete scene; no explicit time jump or scene break beyond that.\n\nReturn JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 259,
+      "completion_tokens": 358,
+      "total_tokens": 617,
+      "completion_tokens_details": {
+        "reasoning_tokens": 299
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790370039.2757158,
+  "status": "ok"
+}
