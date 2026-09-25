@@ -34,6 +34,8 @@ DEFAULT_ENDPOINT = "http://127.0.0.1:1234"
 DEFAULT_POLL_SECONDS = 2.0
 DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 DEFAULT_CODE_BRANCH = "gpt-arc-refresh"
+ACCEPTANCE_MODEL = "gpt"
+ACCEPTANCE_CODE_BRANCH = "gpt-arc-refresh"
 DEFAULT_EXEC_WORKTREE_NAME = ".chatgpt_exec_worktree"
 
 _ACTIVE_LOCAL_PROCESS = None
@@ -669,16 +671,24 @@ def stop_lmstudio_developer_log(capture: dict, result_dir: Path) -> dict:
 def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     """Run the fixed prompt-generation acceptance suite on one code branch."""
 
-    code_branch = str(job.get("code_branch") or DEFAULT_CODE_BRANCH).strip()
+    code_branch = str(job.get("code_branch") or ACCEPTANCE_CODE_BRANCH).strip()
+    if code_branch != ACCEPTANCE_CODE_BRANCH:
+        raise ValueError(
+            f"Acceptance jobs must run on {ACCEPTANCE_CODE_BRANCH!r}; "
+            f"got {code_branch!r}."
+        )
     exec_root = ensure_exec_worktree(source_root, code_branch)
     python = local_python(source_root)
     image1_raw = str(job.get("image1") or "amy.jpg").strip()
     image1 = safe_source_path(source_root, image1_raw)
     if not image1.is_file():
         raise FileNotFoundError(f"Acceptance image not found: {image1}")
-    model = str(job.get("model") or "gpt").strip()
-    if not re.fullmatch(r"[A-Za-z0-9_.-]+", model):
-        raise ValueError(f"Unsupported model selector: {model!r}")
+    model = str(job.get("model") or ACCEPTANCE_MODEL).strip()
+    if model != ACCEPTANCE_MODEL:
+        raise ValueError(
+            f"Acceptance jobs must use the {ACCEPTANCE_MODEL!r} baseline; "
+            f"got {model!r}."
+        )
 
     command = [
         python,
