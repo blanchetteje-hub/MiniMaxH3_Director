@@ -1,0 +1,7 @@
+{
+  "job_id": "arc-refresh-context-fact-visible-residue-431",
+  "status": "error",
+  "error_type": "HTTPError",
+  "error": "HTTP Error 400: Bad Request",
+  "finished_at": 1790299750.1655405
+}
