@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-role-continuous2-524",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow classification. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FULL STORY CONTEXT:\n1. A mechanic begins diagnosing one engine.\n2. The mechanic tests the electrical system.\n3. The mechanic replaces one failed sensor.\n4. The mechanic continues testing the same engine.\n5. The mechanic confirms the repair is complete.\n\nTARGET UNIT:\n5. The mechanic confirms the repair is complete.\n\nClassify TARGET UNIT by its role in the whole story.\nAllowed roles: MAIN_BODY, TERMINAL_RESOLUTION, IMMEDIATE_CLOSURE, RESET_START.\nReturn JSON with keys role and reason."
+    }
+  ]
+}
