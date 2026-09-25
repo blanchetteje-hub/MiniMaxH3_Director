@@ -1,0 +1,10 @@
+{
+  "kind": "run_tests",
+  "job_id": "run-tests-source-span-integration-845",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_source_span_generation_path.py",
+    "tests/test_source_span_runtime_adapter.py"
+  ],
+  "timeout_seconds": 900
+}
