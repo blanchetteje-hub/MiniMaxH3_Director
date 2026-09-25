@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-indices-chef-363",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Choose chapter boundaries only. Do not rewrite or summarize story content. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "Each numbered statement is authoritative source material in story order.\n\n1. A chef begins a normal dinner service.\n2. Refrigeration fails; the chef secures the ingredients.\n3. The chef spends most of the story repeatedly adapting dishes around the equipment failure.\n4. Near the end, one final repair restores refrigeration; the chef finishes the last order and closes the kitchen with the staff.\n\nA chapter is a LARGE H3 refresh unit. Use as few chapter boundaries as the narrative permits. Keep continuous setup/escalation and the main repeated process together when possible. Major time/location/state resets or entry into explicit terminal resolution can justify a boundary.\n\nReturn JSON with one key: \"new_chapter_after\".\nIts value must be an array of statement numbers after which a new chapter should begin. Do not include the final statement number."
+    }
+  ]
+}
