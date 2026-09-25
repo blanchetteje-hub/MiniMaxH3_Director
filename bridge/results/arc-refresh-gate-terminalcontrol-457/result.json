@@ -1,0 +1,7 @@
+{
+  "job_id": "arc-refresh-gate-terminalcontrol-457",
+  "status": "error",
+  "error_type": "HTTPError",
+  "error": "HTTP Error 400: Bad Request",
+  "finished_at": 1790300659.3620107
+}
