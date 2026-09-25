@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-clause-boundary-timejump-378",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow semantic task. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "Choose chapter boundaries only from numbered authoritative source units.\n\n1. A survey team finishes its field work at a remote site.\n2. Three months later, the team reunites in a city laboratory.\n3. They begin analyzing the collected material.\n4. The analysis continues through several related tests.\n\nA chapter is a LARGE H3 refresh unit. Use as few boundaries as the narrative permits. Major time/location/state resets can justify a new chapter.\n\nReturn a JSON object with key \"new_chapter_after\", an array of source-unit numbers. Do not include the final unit number."
+    }
+  ]
+}
