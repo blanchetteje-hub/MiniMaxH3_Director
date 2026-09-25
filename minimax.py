@@ -12611,6 +12611,11 @@ def parse_source_unit_state_effects(
                     f"Source-unit state effect {effect['op']} {field} "
                     f"{effect[field]!r} is not explicitly grounded in SOURCE UNIT."
                 )
+
+    # Apply entity-establishing state before location. This is especially
+    # important for dropped/lost items, whose environment record is created by
+    # set_item_state before a source-explicit location can be assigned.
+    effects.sort(key=lambda effect: effect.get("op") == "set_location")
     return effects
 
 
