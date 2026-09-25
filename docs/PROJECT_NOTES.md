@@ -559,9 +559,10 @@ No inbound port or public tunnel is required.
 
 The running bridge does not hot-reload changes to its own Python code. If the bridge implementation changes, the user's local checkout must be updated and the bridge restarted.
 
-Bridge test/acceptance jobs default to the active `gpt-arc-refresh` code branch,
-and acceptance jobs may also specify `code_branch` explicitly. The local bridge
-process must be restarted after bridge-code changes.
+Bridge test jobs default to the active `gpt-arc-refresh` code branch.
+Acceptance jobs are hard-locked to `gpt-arc-refresh` + model `gpt`; the bridge
+rejects a different branch or model instead of silently running a non-baseline
+acceptance. The local bridge process must be restarted after bridge-code changes.
 
 ## Active development branch
 
