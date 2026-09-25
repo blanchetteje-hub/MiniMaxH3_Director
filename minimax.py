@@ -14900,7 +14900,7 @@ def generate_beats_from_story(
                     flush=True,
                 )
                 messages = build_beat_generation_messages(
-                    story,
+                    phase_authoritative_source(current_phase, story),
                     total_segments,
                     correction,
                     beat_instructions,
@@ -15030,7 +15030,7 @@ def generate_beats_from_story(
             f"Generate a replacement for Beat {beat_number} only."
         )
         messages = build_beat_generation_messages(
-            story,
+            phase_authoritative_source(current_phase, story),
             total_segments,
             correction=correction_text,
             beat_instructions=beat_instructions,
