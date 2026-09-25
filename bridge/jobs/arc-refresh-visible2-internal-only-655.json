@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 650,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-visible2-internal-only-655",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether one source unit creates a concrete visible beat responsibility. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nMara remembers the previous winter and fears making the same mistake again.\n\nYES = the unit explicitly contains an on-screen action or visible state that must be represented.\nNO = it is only genre/premise/summary framing or purely internal thought with no required visible action/state.\nReturn exactly {\"decision\":\"YES|NO\"}."
+    }
+  ]
+}
