@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-ending-reset-control-404",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide whether one source unit should stay in one large chapter or be split. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nOne final analysis resolves the research question. Six months later, the geologist begins a new expedition in another country.\n\nAn ending action followed by a major time and location reset may require a split.\n\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys \"decision\" and \"reason\"."
+    }
+  ]
+}
