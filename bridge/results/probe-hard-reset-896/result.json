@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-896",
+  "kind": "llama_chat",
+  "started_at": 1790371834.4041061,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nThe wizard opens the spellbook.\n\nTARGET UNIT:\nHe casts a fire spell at the charging troll.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-082p46ndj0w8b9rx90uyvhv",
+    "object": "chat.completion",
+    "created": 1790371834,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The wizard opening the spellbook and then casting a fire spell at the charging troll occur in the same continuous sequence with no explicit time jump, scene break, or relocation between them.\"}",
+          "reasoning": "We need to determine if target unit begins after a hard reset from previous unit. Previous unit: \"The wizard opens the spellbook.\" Target unit: \"He casts a fire spell at the charging troll.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent textual restart. Not just change in activity.\n\nWe have two units: opening spellbook and casting fire spell at charging troll. Are they separated by a hard reset? The wizard opens the spellbook (phase). Then he casts a fire spell at the charging troll (action). Is there an explicit time jump, scene break, relocation after completed phase? No. It's immediate cause-and-effect action in same continuous sequence. So not a hard reset.\n\nThus answer NO.\n\nReturn JSON: {\"decision\":\"NO\",\"reason\":\"The wizard opening the spellbook and casting a fire spell are part of the same continuous narrative phase; no explicit time jump, scene break, or relocation is indicated.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 301,
+      "completion_tokens": 262,
+      "total_tokens": 563,
+      "completion_tokens_details": {
+        "reasoning_tokens": 208
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790371838.2599156,
+  "status": "ok"
+}
