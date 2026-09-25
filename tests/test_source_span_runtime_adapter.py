@@ -250,3 +250,87 @@ def test_chapter_refresh_replays_source_authorized_current_state():
     assert '"status":"locked"' in opening
     assert "pistol" in opening
     assert "katana" in opening
+
+
+
+def test_source_unit_state_effects_attach_only_to_final_assigned_beat():
+    plan = _amy_plan()
+    arc = minimax.source_span_story_plan_to_macro_arc(
+        plan,
+        8,
+        state_effects_by_unit={
+            4: [
+                {
+                    "op": "set_condition",
+                    "entity": "house",
+                    "value": "blood",
+                }
+            ],
+            5: [
+                {
+                    "op": "set_threat_state",
+                    "entity": "last zombie",
+                    "value": "dead",
+                }
+            ],
+        },
+    )
+
+    chapter1 = arc["phases"][0]["required_events"]
+    assert chapter1[3]["state_effects"] == []
+    assert chapter1[4]["state_effects"] == []
+    assert chapter1[5]["state_effects"] == [
+        {
+            "op": "set_condition",
+            "entity": "house",
+            "value": "blood",
+        }
+    ]
+    assert arc["phases"][1]["required_events"][0]["state_effects"] == [
+        {
+            "op": "set_threat_state",
+            "entity": "last zombie",
+            "value": "dead",
+        }
+    ]
+
+
+def test_source_unit_state_parser_rejects_invented_location_destination():
+    with pytest.raises(ValueError, match="not explicitly grounded"):
+        minimax.parse_source_unit_state_effects(
+            {
+                "state_effects": [
+                    {
+                        "op": "set_location",
+                        "entity": "Will",
+                        "value": "outside",
+                    }
+                ]
+            },
+            "Amy lets Will out of the basement.",
+        )
+
+
+def test_source_unit_state_parser_allows_explicit_containment_release():
+    effects = minimax.parse_source_unit_state_effects(
+        {
+            "state_effects": [
+                {
+                    "op": "set_containment",
+                    "entity": "Will",
+                    "container": "basement",
+                    "value": "free",
+                }
+            ]
+        },
+        "Amy lets Will out of the basement.",
+    )
+
+    assert effects == [
+        {
+            "op": "set_containment",
+            "entity": "Will",
+            "container": "basement",
+            "value": "free",
+        }
+    ]
