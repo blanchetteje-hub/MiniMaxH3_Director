@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-hardreset-amy3-547",
+  "kind": "llama_chat",
+  "started_at": 1790303521.4405522,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nA zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n\nTARGET UNIT:\nAmy retrieves her hidden pistol and katana and equips them.\n\nA HARD RESET means a discontinuity between narrative phases: explicit time jump, scene break, relocation after a completed phase, or equivalent restart. Immediate cause-and-effect action in the same continuous scene is NOT a hard reset.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jub3pvhxfkar28s1dmd5nh",
+    "object": "chat.completion",
+    "created": 1790303521,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"Amy’s retrieval of her hidden pistol and katana occurs immediately after she locks the door in the basement; it is a direct continuation within the same scene rather than an explicit time jump or new narrative phase.\"}",
+          "reasoning": "We need to decide if target unit begins after a hard reset relative to previous unit. Previous: zombie breaks kitchen door window; Amy gets Will and Amber into basement, locks the door. So that is one scene. Target: Amy retrieves her hidden pistol and katana and equips them.\n\nIs there a hard reset? The question: \"Does TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\" A hard reset means discontinuity between narrative phases: explicit time jump, scene break, relocation after a completed phase, or equivalent restart. Immediate cause-and-effect action in same continuous scene is NOT a hard reset.\n\nWe need to see if retrieving pistol and katana is immediate cause effect? After locking door, Amy might retrieve hidden weapons. That could be immediate within same scene: she gets them from somewhere (maybe her pocket). But the phrase \"retrieves her hidden pistol and katana\" implies she had them hidden earlier; retrieving them may happen after locking door but still in same basement scene.\n\nThus no hard reset. So decision NO. Provide reason: it's continuous scene, immediate cause-effect. Return JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 200,
+      "completion_tokens": 286,
+      "total_tokens": 486,
+      "completion_tokens_details": {
+        "reasoning_tokens": 227
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790303525.968939,
+  "status": "ok"
+}
