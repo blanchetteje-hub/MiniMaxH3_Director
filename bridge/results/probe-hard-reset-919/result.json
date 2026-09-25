@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-919",
+  "kind": "llama_chat",
+  "started_at": 1790377825.2092927,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nThe cook clears the counter.\n\nTARGET UNIT:\nAll evening, the cook prepares meals.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. A duration phrase such as 'for most of the night', 'for hours', 'throughout the day', or 'repeatedly' describes how long an activity lasts; it is NOT by itself a jump from PREVIOUS UNIT. Likewise, ordinary movement into a new place (entering a room/building, crossing a doorway, walking to another area) is NOT a hard reset unless the source explicitly marks a narrative restart around that relocation. If the discontinuity is not stated or directly entailed by the two source units, answer NO.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-peir0fr6r19mcj1p1x0wk",
+    "object": "chat.completion",
+    "created": 1790377825,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The phrase \\\"All evening\\\" indicates a duration after the cook clears the counter, but it does not explicitly mark a narrative restart or time jump. It is simply a duration phrase describing how long the subsequent activity lasts, so there is no hard reset between the two units.\"}",
+          "reasoning": "We need to decide if target unit begins after a hard reset from previous unit. Previous: \"The cook clears the counter.\" Target: \"All evening, the cook prepares meals.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent textual restart.\n\nWe have two units: previous and target. The previous unit ends with \"The cook clears the counter.\" That is a single action. Target starts with \"All evening, the cook prepares meals.\" This indicates a duration phrase \"All evening\". Does that constitute a hard reset? It's a time jump from clearing counter to all evening. But is it explicit? The phrase \"All evening\" indicates a span of time after the previous event. It could be considered a time jump but not necessarily a hard reset unless explicitly stated or entailed. The definition: duration phrase such as 'for most of the night', 'for hours', 'throughout the day', or 'repeatedly' describes how long an activity lasts; it is NOT by itself a jump from PREVIOUS UNIT.\n\nThus \"All evening\" is a duration phrase, not a hard reset. So answer NO.\n\nReturn JSON: {\"decision\":\"NO\",\"reason\":\"The phrase \\\"All evening\\\" indicates a duration after the previous action but does not explicitly mark a narrative restart or time jump; it is just a duration phrase.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 285,
+      "completion_tokens": 359,
+      "total_tokens": 644,
+      "completion_tokens_details": {
+        "reasoning_tokens": 287
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790377830.2807376,
+  "status": "ok"
+}
