@@ -1,0 +1,7 @@
+{
+  "job_id": "run-tests-orchestration-confirm-850",
+  "status": "error",
+  "error_type": "ValueError",
+  "error": "Unsupported unittest module: 'tests/test_beat_plan_auditor.py'",
+  "finished_at": 1790365668.265419
+}
