@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-971-diagnostic",
+  "kind": "llama_chat",
+  "started_at": 1790380331.1184192,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge only whether the candidate's action sequence is physically coherent.\nRead actions literally and in order, using the established facts. Carry each\ncompleted result forward: a completed removal cannot happen again to that same\ntarget or part unless explicitly restored first. Do not silently reinterpret a\ncompleted action as an attempt. Different targets are different cases. A wound\nis not automatically removal or death. Respect explicitly established magical\ncapabilities. Unknown facts alone are not contradictions.\nReturn one JSON object: valid is a boolean indicating a coherent sequence; issue\nis a short concrete contradiction or an empty string. Do not judge job coverage,\nnext-job ownership, or missing state-effect records in this diagnostic."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nMara stands inside the laboratory.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nMara closes the laboratory door, then enters the corridor.\n\nNEXT JOB\nNone; this is the final beat.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nMara closes and locks the laboratory door, then unlocks and opens it and steps into the corridor."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jwjdi1dp7vl65glk03ybbu",
+    "object": "chat.completion",
+    "created": 1790380331,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if candidate's action sequence physically coherent given current state: Mara stands inside lab. The job says \"Mara closes the laboratory door, then enters the corridor.\" So expected actions: close door (maybe lock?), then step through? Actually \"enters the corridor\" implies she goes from lab into corridor by opening door and stepping out.\n\nCandidate beat: \"Mara closes and locks the laboratory door, then unlocks and opens it and steps into the corridor.\"\n\nSequence: She is inside lab. Closes and locks door (makes sense). Then unlocks and opens it (so she unlocked lock, opened door) and steps into corridor. That seems physically coherent. No contradictions.\n\nCheck if any removal or state changes? Door closed then locked; unlocking implies it's open again. Steps into corridor: passes through door. All good.\n\nThus valid true, issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 289,
+      "completion_tokens": 196,
+      "total_tokens": 485,
+      "completion_tokens_details": {
+        "reasoning_tokens": 178
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380334.0029478,
+  "status": "ok"
+}
