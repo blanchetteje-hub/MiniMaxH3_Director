@@ -26,7 +26,7 @@ import urllib.request
 
 
 DEFAULT_BRANCH = "gpt-runtime"
-DEFAULT_ENDPOINT = "http://127.0.0.1:8080"
+DEFAULT_ENDPOINT = "http://127.0.0.1:1234"
 DEFAULT_POLL_SECONDS = 2.0
 DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 
