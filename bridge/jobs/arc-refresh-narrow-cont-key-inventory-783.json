@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 250,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-narrow-cont-key-inventory-783",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only the narrow binary semantic question. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nMara takes the key from the hook.\n\nRIGHT:\nMara walks to the loading bay and begins inventorying crates, keeping the key in her pocket.\n\nQuestion: Does RIGHT continue the same uninterrupted concrete local action as LEFT, or immediately complete/use the exact object/action LEFT just obtained, opened, or started?\nYES only for the same local action/object sequence. A different primary task is NO even if it carries, wears, or uses something from LEFT. Starting a fresh item/test after LEFT completed one is NO.\nReturn exactly {\"decision\":\"YES|NO\"}."
+    }
+  ]
+}
