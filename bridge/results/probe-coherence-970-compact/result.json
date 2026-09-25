@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-970-compact",
+  "kind": "llama_chat",
+  "started_at": 1790380317.0423012,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS FINAL BEAT\nMara stands inside the laboratory.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nMara closes the laboratory door, then enters the corridor.\n\nNEXT JOB\nNone; this is the final beat.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nMara closes and locks the laboratory door, then unlocks and opens it and steps into the corridor.\n\nCHECKS\n1. Read the candidate literally in action order. Carry each completed result forward.\nA completed removal cannot happen again to that same target or part unless it is\nexplicitly restored first. Different targets and unsuccessful attempts are different\ncases. Do not excuse a contradiction as emphasis or silently change an action.\n2. Use PREVIOUS FINAL BEAT and CURRENT STATE as established facts. Reject unavailable\nobjects, unresolved barriers, and impossible actions. Unknown facts are not errors.\nHonor capabilities explicitly established in CURRENT JOB or CURRENT STATE.\n3. CURRENT JOB must happen in this beat, including every required action, result,\nand named participant. History or already-completed-state wording cannot replace\nan assigned action. Harmless staging is allowed; material changes to tools,\nparticipants, locations, or outcomes are not.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Each listed STATE EFFECT must follow from the candidate. Do not invent a\nmissing required action to justify an effect.\n\nReturn one JSON object: valid is a boolean, issue is a short concrete error\nor an empty string when valid. Judge all checks; any clear error makes valid false."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jtqrj6fta5ky5y7vm9c2n",
+    "object": "chat.completion",
+    "created": 1790380317,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to validate beat. PREVIOUS FINAL BEAT: \"Mara stands inside the laboratory.\" So she was standing in lab.\n\nCURRENT STATE {} means no state changes yet? But we have CURRENT JOB: \"Mara closes the laboratory door, then enters the corridor.\"\n\nSo current job says she closes the lab door and enters corridor. That implies she is still inside lab when closing door? She stands inside lab; to close door she must be at it. Then after closing, she enters corridor (so passes through). So final state: she is in corridor.\n\nCandidate beat: \"Mara closes and locks the laboratory door, then unlocks and opens it and steps into the corridor.\"\n\nSo candidate adds locking, unlocking, opening before stepping into corridor. That means she closed & locked; then unlocked & opened; then stepped into corridor. But if she had already entered corridor in current job? The current job says \"Mara closes the laboratory door, then enters the corridor.\" So closing and entering are actions. Candidate has extra unlock/open step between close and enter.\n\nCheck 1: read candidate literally in action order. Completed removal cannot happen again to same target unless restored first. Here we have \"closes\" (removes closed? Actually 'close' is an action that changes door state from open to closed). Then locks the lab door - that's a new action, not removal of something else. Then unlocks and opens it: unlocking removes lock; opening removes closed state. So it's fine.\n\nBut we need to check if \"closes\" then \"locks\" then \"unlocks\" then \"opens\". The close sets door from open to closed. Locking doesn't change that? It adds a lock property. Unlocking removes the lock, but door remains closed until opened. Opening changes state to open. So sequence is fine.\n\nBut does it conflict with current job requirement: \"Mara closes the laboratory door, then enters the corridor.\" Candidate has closing and locking; unlocking & opening before stepping into corridor. That means she opens door after closing? Wait close sets door closed. Then unlocks and opens - that reopens door. So she steps into corridor through open door. That's fine.\n\nBut does it violate \"A completed removal cannot happen again to same target unless restored first.\" The 'close' removes the open state; then 'open' restores it. That is allowed. No repeated removal of same property without restoration? We removed 'closed'? Actually we closed, so added closed. Then opened, removing closed. That's fine.\n\nCheck 2: Use PREVIOUS FINAL BEAT and CURRENT STATE as established facts. She stands inside lab. Door presumably open (since she was standing). So closing door is possible. Locking door also possible. Unlocking after locking? Yes. Opening after unlocking? Yes. Steps into corridor - yes.\n\nNo unknown objects or barriers. Good.\n\nCheck 3: CURRENT JOB must happen in this beat, including every required action, result, and named participant. The current job says \"Mara closes the laboratory door, then enters the corridor.\" Candidate includes closing (yes) but also locks, unlocks, opens before stepping into corridor. Does it include entering corridor? Yes she steps into corridor. So all actions present: close, enter corridor. But does it include 'enter' action explicitly? It says \"steps into the corridor\" which is same as enters. Good.\n\nBut we need to ensure that no required action omitted. The current job requires closing and entering. Candidate has those. Additional actions fine.\n\nCheck 4: Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue. No next job.\n\nCheck 5: Each listed STATE EFFECT must follow from candidate. There are none given. So okay.\n\nThus beat seems valid. But check if \"closes and locks the laboratory door\" implies she closes then locks? Yes. Then unlocks & opens it. That means after closing, it's closed; lock adds lock property. Unlock removes lock but still closed. Open changes to open. Good.\n\nAny contradiction: She was inside lab before close. After opening, she steps into corridor. All good.\n\nThus valid true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 431,
+      "completion_tokens": 868,
+      "total_tokens": 1299,
+      "completion_tokens_details": {
+        "reasoning_tokens": 850
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790380328.6936398,
+  "status": "ok"
+}
