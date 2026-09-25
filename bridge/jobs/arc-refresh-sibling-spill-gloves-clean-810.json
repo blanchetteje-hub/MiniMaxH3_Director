@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 250,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-sibling-spill-gloves-clean-810",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only the narrow binary semantic question. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nA chemical bottle breaks and liquid spreads across the floor.\n\nRIGHT:\nThe technician puts on protective gloves. The technician begins cleaning the spill.\n\nQuestion: Are LEFT and RIGHT separate sibling responses to the same earlier danger/problem/situation, rather than RIGHT being caused by or mechanically completing LEFT?\nYES = both actions independently respond to the same earlier situation; finishing LEFT does not itself create the need for RIGHT.\nNO = RIGHT is directly caused/enabled by LEFT itself, mechanically completes LEFT, or LEFT is the earlier danger/problem that RIGHT responds to.\nJudge only this sibling-response distinction.\nReturn exactly {\"sibling_responses\":\"YES|NO\"}."
+    }
+  ]
+}
