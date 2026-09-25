@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-perbeat-validator-deviation-504",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE SOURCE UNIT:\n3. Worker retrieves Tool-A and Tool-B and equips them.\n\nFIXED ASSIGNMENT:\nBeat 3 -> [3]\n\nCANDIDATE BEAT 3:\nWorker retrieves Tool-A, Tool-B, and Tool-C and equips all three.\n\nValidate ONLY Beat 3 against ONLY assigned source unit 3.\nHarmless presentation detail is allowed, but new plot-relevant objects are a material deviation.\n\nChoose validity from VALID or INVALID.\nIf invalid choose issue_type from MISSING_ACTION or MATERIAL_DEVIATION.\nReturn JSON with keys validity, issue_type, issue."
+    }
+  ]
+}
