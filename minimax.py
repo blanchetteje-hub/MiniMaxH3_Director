@@ -12593,14 +12593,14 @@ Apply these rules in order:
 
 Each state_effect is ONE operation object. Never combine multiple operations in
 one object. Use only these exact shapes:
-- {"op":"set_location","entity":"...","value":"..."}
-- {"op":"set_item_state","entity":"...","owner":"...","value":"stored|held|equipped|dropped|lost"}
-- {"op":"set_barrier_state","entity":"...","value":"open|closed|locked|unlocked|blocked|broken|destroyed"}
-- {"op":"set_threat_state","entity":"...","value":"incapacitated|dead|removed|cleared"}
-- {"op":"set_object_state","entity":"...","value":"intact|damaged|destroyed|active|inactive|used"}
-- {"op":"set_containment","entity":"...","container":"...","value":"contained|free"}
-- {"op":"set_condition","entity":"...","value":"..."}
-- {"op":"set_clothing","entity":"...","slot":"upper|lower","item":"...","damage":"none|damaged|destroyed"}
+- {{"op":"set_location","entity":"...","value":"..."}}
+- {{"op":"set_item_state","entity":"...","owner":"...","value":"stored|held|equipped|dropped|lost"}}
+- {{"op":"set_barrier_state","entity":"...","value":"open|closed|locked|unlocked|blocked|broken|destroyed"}}
+- {{"op":"set_threat_state","entity":"...","value":"incapacitated|dead|removed|cleared"}}
+- {{"op":"set_object_state","entity":"...","value":"intact|damaged|destroyed|active|inactive|used"}}
+- {{"op":"set_containment","entity":"...","container":"...","value":"contained|free"}}
+- {{"op":"set_condition","entity":"...","value":"..."}}
+- {{"op":"set_clothing","entity":"...","slot":"upper|lower","item":"...","damage":"none|damaged|destroyed"}}
 
 Return one JSON object with exactly one key: state_effects.
 Use an empty state_effects array when no rule applies.
