@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-fidelity-890",
+  "kind": "llama_chat",
+  "started_at": 1790371002.5718055,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nAmy lets her kids out of the basement.\n\nNEXT JOB\nNone.\n\nCANDIDATE BEAT\nAmy opens the basement door and calls for Will and Amber to come upstairs.\n\nMATERIAL FIDELITY: Harmless local staging is allowed, but reject invented details that materially change the assigned action, participant treatment, object use, location/result, or story meaning. Named tools and weapons must be used in a physically coherent way unless CURRENT JOB explicitly establishes an unusual use; for example a firearm may shoot/strike but does not slash or decapitate as a blade. Do not invent consequential aggression, injury, forced movement, humiliation, or other harmful treatment of a protected/non-hostile participant merely to dramatize an otherwise simple assigned action. Do not reject ordinary neutral staging.\n\nReturn exactly {\"valid\": true, \"issue\": \"\"} if valid, otherwise {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-ls4gvlgtx4k1uxj2tiqaes",
+    "object": "chat.completion",
+    "created": 1790371002,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to judge the candidate beat: \"Amy opens the basement door and calls for Will and Amber to come upstairs.\"\n\nCurrent job: Amy lets her kids out of the basement. So she is letting them out. The next job: None.\n\nThe candidate beat says Amy opens the basement door and calls for Will and Amber to come upstairs. That matches letting kids out. She opens door, calls them up. That's consistent. No extra details like \"Will and Amber\" are her kids? Yes. It's fine. No invented detail that changes meaning. So valid. Return {\"valid\": true, \"issue\": \"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 302,
+      "completion_tokens": 144,
+      "total_tokens": 446,
+      "completion_tokens_details": {
+        "reasoning_tokens": 124
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790371004.759841,
+  "status": "ok"
+}
