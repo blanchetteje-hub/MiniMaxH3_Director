@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-beatassign-strict-neutral-498",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE SOURCE UNITS:\n1. Worker prepares breakfast for two children.\n2. A threat breaks a window; worker gets both children into a secured room and locks it.\n3. Worker retrieves Tool-A and Tool-B and equips them.\n4. The majority of the chapter is worker handling threats elsewhere.\n5. The larger situation remains unresolved.\n\nBEAT BUDGET: exactly 6.\n\nAssign source units to beats under these structural rules:\n- source-unit order must never move backward;\n- each non-repeatable source unit appears exactly once;\n- only source unit 4 may repeat;\n- a beat may contain only adjacent source-unit IDs;\n- do not combine source unit 4 with any other unit;\n- every beat must have at least one source unit.\n\nReturn JSON with key beats; each object has beat and source_unit_ids only."
+    }
+  ]
+}
