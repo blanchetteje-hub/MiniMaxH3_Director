@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-finite-create-amy3-669",
+  "kind": "llama_chat",
+  "started_at": 1790354717.744486,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Turn finite authoritative source material into a fixed number of minimal chronological 8-second beat jobs. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FINITE AUTHORITATIVE SOURCE:\nAmy is at home on a normal day, wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger.\nShe rushes her kids to the basement, gets them inside, and then locks the door.\nShe retrieves her hidden emergency gear consisting of two handheld tools.\nShe equips the tools.\n\nBEAT COUNT: 3\nCreate exactly 3 beat jobs.\nEvery concrete visible action/state must appear in source order.\nAdjacent actions may share a beat when natural. A long finite chain may continue into the next beat at a natural handoff.\nDo not invent new objects, characters, locations, outcomes, dialogue, camera work, or specific events not stated by the source.\nKeep each job minimal and source-level.\nReturn exactly {\"beats\":[{\"beat_number\":1,\"beat_job\":\"...\"}]} with 3 consecutive entries."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-20z1gi73r95e21mkqnyw6r",
+    "object": "chat.completion",
+    "created": 1790354717,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"beats\":[{\"beat_number\":1,\"beat_job\":\"Amy is at home wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\"},{\"beat_number\":2,\"beat_job\":\"A zombie breaks the kitchen door window; Amy sees danger, rushes her kids to the basement, gets them inside, and locks the door.\"},{\"beat_number\":3,\"beat_job\":\"She retrieves her hidden emergency gear consisting of two handheld tools and equips the tools.\"}]}",
+          "reasoning": "We need to produce JSON array of beats: beat_number 1-3. Each beat_job string summarizing actions in that beat, minimal, source-level.\n\nSource order:\n\nAmy at home normal day wearing tight black tank top and denim jeans cooking breakfast for her young kids.\nSuddenly zombie breaks kitchen door window and Amy sees danger.\nShe rushes kids to basement, gets them inside, locks the door.\nRetrieves hidden emergency gear consisting of two handheld tools.\nEquips the tools.\n\nWe need 3 beats. We can group actions: Beat1: Amy at home wearing tank top denim jeans cooking breakfast for young kids. Beat2: Zombie breaks kitchen door window; Amy sees danger; She rushes kids to basement, gets them inside, locks door. Beat3: Retrieves hidden emergency gear of two handheld tools and equips the tools.\n\nCheck order: All actions appear in source order within beats. Yes.\n\nReturn JSON exactly as specified. Ensure beat_job strings minimal but include all visible actions/states. Use simple sentences maybe comma separated.\n\nLet's craft:\n\nBeat1: \"Amy is at home wearing a tight black tank top and denim jeans, cooking breakfast for her young kids.\"\n\nBeat2: \"A zombie breaks the kitchen door window; Amy sees danger, rushes her kids to the basement, gets them inside, and locks the door.\"\n\nBeat3: \"She retrieves her hidden emergency gear consisting of two handheld tools and equips the tools.\"\n\nReturn JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 287,
+      "completion_tokens": 401,
+      "total_tokens": 688,
+      "completion_tokens_details": {
+        "reasoning_tokens": 293
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354723.8781404,
+  "status": "ok"
+}
