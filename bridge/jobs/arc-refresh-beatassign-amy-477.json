@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-beatassign-amy-477",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE CHAPTER SOURCE UNITS:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the chapter is Amy fighting attacking zombies.\n5. The larger zombie conflict remains unresolved when the chapter ends.\n\nBEAT BUDGET: exactly 6.\n\nAssign each beat to source-unit IDs only.\nEvery source unit must be represented.\nSource unit 4 may occupy multiple beats because it is the majority of the chapter.\nDo not write beat prose.\n\nReturn JSON with key beats; each beat object has beat and source_unit_ids only."
+    }
+  ]
+}
