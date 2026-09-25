@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-hardreset-tech3-549",
+  "kind": "llama_chat",
+  "started_at": 1790303556.0021915,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nAn alarm interrupts; the technician secures the work area.\n\nTARGET UNIT:\nThe technician retrieves required tools.\n\nA HARD RESET means a discontinuity between narrative phases. Immediate continuation of the same event sequence is NOT a hard reset.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-wwb92icy3go27wg606v6yg",
+    "object": "chat.completion",
+    "created": 1790303556,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The target unit continues the same event sequence immediately after securing the work area—there is no narrative phase break indicating a hard reset.\"}",
+          "reasoning": "We need to decide if target unit begins after a hard reset from previous unit. The rule: A hard reset means discontinuity between narrative phases; immediate continuation of same event sequence is NOT a hard reset.\n\nPrevious unit: \"An alarm interrupts; the technician secures the work area.\" Target unit: \"The technician retrieves required tools.\"\n\nWe need to see if there's a hard reset between them. Are they part of same event sequence? The previous unit describes an alarm interrupting and securing area. Then target is retrieving tools. That seems like continuation of same event (the technician after securing area retrieves tools). So it's immediate continuation, not a hard reset.\n\nThus decision: NO. Reason: It's the same event sequence; no discontinuity.\n\nReturn JSON with keys \"decision\" and \"reason\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 165,
+      "completion_tokens": 203,
+      "total_tokens": 368,
+      "completion_tokens_details": {
+        "reasoning_tokens": 159
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790303559.3105261,
+  "status": "ok"
+}
