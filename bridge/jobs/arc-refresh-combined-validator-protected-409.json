@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-combined-validator-protected-409",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only the requested chapter-beat contract. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE CHAPTER SOURCE:\nA caregiver gets two people into a secured room and locks the barrier.\nThe caregiver then handles outside threats while the two people remain protected inside.\n\nCANDIDATE BEATS:\n1. The caregiver locks the two people inside the secured room.\n2. The caregiver handles the threats inside that same secured room beside them.\n\nValidate with this procedure:\n1. Every concrete source action assigned to this chapter must happen explicitly.\n2. Harmless presentation detail is allowed, but material changes to events, plot-relevant objects, relationships, protected state, location significance, or outcome are not.\n3. Do not perform responsibility belonging outside this chapter.\n\nChoose validity from: VALID, INVALID.\nIf invalid, choose issue_type from: MISSING_ACTION, MATERIAL_DEVIATION, CHAPTER_SCOPE.\nReturn JSON with keys \"validity\", \"issue_type\", and \"issue\"."
+    }
+  ]
+}
