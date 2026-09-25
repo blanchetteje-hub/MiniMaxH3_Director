@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-finite-fit-twoeight2-665",
+  "kind": "llama_chat",
+  "started_at": 1790354695.7603805,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge only whether a fixed number of 8-second video beats is enough for the supplied finite source material. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FINITE SOURCE MATERIAL:\nA technician performs an eight-second pressure check. The technician then performs a separate eight-second electrical check.\n\nAVAILABLE BEATS: 2\nEach beat is 8 seconds.\nEvery concrete visible action/state must be represented in source order.\nActions may share a beat when they fit naturally, and a long finite chain may continue into the next beat at a natural handoff.\nDo not omit, imply away, or materially compress required actions.\nIgnore any pacing outside this finite material.\nReturn exactly {\"decision\":\"ENOUGH|TOO_SMALL\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 750,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5m3muocivejzl7kj9tefhf",
+    "object": "chat.completion",
+    "created": 1790354695,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"ENOUGH\"}",
+          "reasoning": "We need to judge if 2 beats of 8 seconds each are enough for the source material. Source: \"A technician performs an eight-second pressure check. The technician then performs a separate eight-second electrical check.\" So two actions, each 8 sec long. Each beat is 8 sec. We have 2 beats total = 16 sec.\n\nWe need to represent every concrete visible action/state in source order. Actions may share a beat when they fit naturally, and a long finite chain may continue into the next beat at natural handoff. Do not omit or compress required actions.\n\nSo we have two separate checks each eight seconds. They are distinct: pressure check then electrical check. Each is 8 sec. So we need to represent them in beats. We could put one per beat, but can they share? Pressure check and electrical check are separate; maybe they don't fit naturally into same beat because they're different actions. But the rule says \"Actions may share a beat when they fit naturally\". They might not fit naturally: pressure check then electrical check is sequential. So each needs its own beat.\n\nWe have 2 beats, each 8 sec. That matches exactly two checks of eight seconds each. So it's enough.\n\nThus decision: ENOUGH. Return JSON {\"decision\":\"ENOUGH\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 210,
+      "completion_tokens": 278,
+      "total_tokens": 488,
+      "completion_tokens_details": {
+        "reasoning_tokens": 262
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354700.0786722,
+  "status": "ok"
+}
