@@ -173,31 +173,59 @@ A minimal conceptual shape is:
 }
 ```
 
-### Step 4: allocate beat counts after chapter spans are fixed
+### Step 4: group visible responsibilities, then allocate beat counts
 
-Do not rely on a free-form semantic allocator to interpret words such as "majority" by itself.
+Raw sentence count is **not** the beat minimum.
 
-Probe evidence showed that a generic majority-only allocator can return 5/3 for the Amy-shaped 8-beat case, which is structurally legal but wrong for the locked gold target.
+After chapter spans are fixed:
 
-The current preferred allocator is deterministic Python using authoritative source-unit ownership:
+1. classify each source unit independently as **visible responsibility YES/NO**;
+   premise/genre/summary framing and purely internal thought do not consume a
+   mandatory video beat;
+2. isolate every explicitly long/repeated source unit such as `majority`,
+   `most of`, or `repeatedly`;
+3. for adjacent finite visible units only, classify the local relationship:
+   `SAME_ACTION`, `IMMEDIATE_REACTION`, `DIRECT_COMPLETION`, or
+   `NEW_TASK`;
+4. Python groups the first three relationship types and splits on
+   `NEW_TASK`;
+5. every repeatable unit remains its own group;
+6. the grouped visible responsibilities form the deterministic minimum beat
+   count;
+7. any remaining beats are assigned to chapters that contain explicit
+   repeatable/emphasized source, then repeated only on those source-authorized
+   groups.
 
-1. give each authoritative source unit enough beat capacity to be explicitly represented;
-2. every chapter must receive at least one beat;
-3. when total beats exceed the source-unit minimum, distribute remaining beats toward chapters with explicit source duration/emphasis such as `majority` or `most`;
-4. preserve fixed chapter boundaries and never move source material.
+Do not ask the local model whether an arbitrary collection of actions "fits in
+N seconds." Pairwise 8-second fit probes overthought simple cases and even
+accepted an intentionally overfull chain. Likewise, a holistic "are N beats
+enough?" call exhausted its reasoning budget on Amy-shaped material.
 
-For the Amy acceptance shape:
+The narrower local-relationship classifier was substantially more stable:
+- calm baseline -> inciting change = `NEW_TASK`;
+- inciting danger -> immediate protective reaction = `IMMEDIATE_REACTION`;
+- completed protection -> retrieve gear = `NEW_TASK`;
+- retrieve gear -> equip that gear = `DIRECT_COMPLETION`;
+- completed local task -> unrelated next tool/task = `NEW_TASK`.
 
-- Chapter 1 owns 4 authoritative source units and contains the source-emphasized majority process;
-- Chapter 2 owns 2 authoritative source units and contains terminal resolution/closure;
-- total beats = 8;
-- minimum coverage consumes 6 beats;
-- the 2 remaining beats go to the majority chapter;
-- result = **6/2**.
+For the exact Amy acceptance story, this produces:
 
-A probe using this exact rule returned 6/2, accepted 6/2, and rejected 5/3 as underweighting the majority chapter.
+- Chapter 1 finite groups:
+  1. breakfast;
+  2. breach + immediate child-protection/escape;
+  3. retrieve + equip weapons;
+- Chapter 1 repeated group:
+  4. the explicit majority zombie-fighting process;
+- Chapter 2 groups:
+  1. last-zombie resolution + blood aftermath;
+  2. release the children.
 
-Use an LLM only if a future source contains ambiguous duration/emphasis that Python cannot deterministically resolve.
+The grouped minimum is therefore 6 beats total. The two surplus beats both go
+to Chapter 1's explicit majority process, producing **6/2** chapter allocation
+and Chapter 1 ownership of three repeated fighting beats.
+
+Python owns all counting, grouping assembly, repetition placement, and chapter
+allocation. The LLM supplies only the narrow semantic classifications above.
 
 ### Step 5: create beats one chapter at a time from exact source
 
@@ -277,18 +305,26 @@ The design target remains:
 
 The current evidence-supported decomposition is:
 
-1. Python: `story.txt -> authoritative source units`
-2. each source unit -> internal `SPLIT | KEEP_TOGETHER`
+1. Python: `story.txt -> authoritative sentence-sized source units`
+2. each splittable source unit -> internal `SPLIT | KEEP_TOGETHER`
 3. only for `SPLIT` units: exact candidate cut points -> choose cut
 4. refined source units -> TERMINAL and HARD_RESET binary flags; Python derives chapter boundaries
-5. fixed chapter spans + total segment budget -> beat-count allocation
-6. current exact chapter source + opening context + beat budget -> BEATS CREATE
-7. authoritative chapter source + candidate beats -> BEATS VALIDATE
-8. authoritative chapter source + candidate beats + issue -> BEATS REPAIR
-9. Python canonical state + next chapter -> per-fact NEEDED / NOT_NEEDED checks / refresh-context composition
-10. accepted beats -> downstream H3 scene/prompt work
+5. each refined source unit -> visible responsibility `YES | NO`
+6. Python isolates explicit repeatable/emphasized units
+7. adjacent finite visible units -> one local relationship:
+   `SAME_ACTION | IMMEDIATE_REACTION | DIRECT_COMPLETION | NEW_TASK`
+8. Python groups visible responsibilities, computes chapter minimums, allocates
+   surplus beats only to source-authorized repeatable groups, and creates exact
+   beat/source ownership
+9. current exact chapter source + grouped beat jobs + opening context -> BEATS CREATE
+10. authoritative assigned source + candidate beat -> BEATS VALIDATE
+11. authoritative assigned source + candidate beat + issue -> BEATS REPAIR
+12. Python canonical CURRENT state -> deterministic refresh-context composition
+13. accepted beats -> downstream H3 scene/prompt work
 
-Each LLM call should remain narrow. Do not combine these responsibilities merely to reduce call count.
+Each LLM call remains narrow. In particular, do not combine local semantic
+classification with beat arithmetic, duration fitting, or final artistic
+judgment.
 
 ## Beat budgets and the Amy acceptance chapter boundary
 
@@ -299,10 +335,14 @@ Probe 313 demonstrated that when beat count was left open, the local model expan
 Therefore:
 
 - the total video/segment budget is deterministic runtime input;
+- raw sentence/source-unit count is not the beat minimum;
+- visible finite source units are grouped by narrow local relationship before
+  allocation;
+- explicit repeated/emphasized source units stay isolated and may receive
+  surplus beats;
 - each chapter receives an explicit `beat_count`;
 - chapter beat counts must sum to the total segment budget;
-- Beat CREATE must return exactly that many beats;
-- the mechanism for allocating beat counts across chapters is still under test and is not yet locked.
+- Beat CREATE must return exactly that many beats.
 
 ### Amy benchmark consequence
 
@@ -315,9 +355,10 @@ Because this branch defines every later chapter's first beat as a refresh, the g
 
 This is an acceptance constraint derived from the locked gold, not a production special case. Production chaptering must reach an equivalent major-story boundary from `story.txt` without being told the gold beat answers.
 
-Probe 314 produced three chapters with beat counts 2/2/4. That is structurally valid as a rough story division but wrong for the Amy gold mode pattern because it would create two refreshes. The chapter splitter therefore needs a stronger generic concept of a chapter as a **large refresh unit**, not merely a cluster of nearby story events.
-
-A promising generic boundary is the transition from the main body/repeated process into an explicit terminal/final-resolution sequence. Test this before encoding it.
+The chaptering work is now locked around large refresh units rather than
+event-by-event clusters: TERMINAL and HARD_RESET semantics produce the exact Amy
+two-chapter boundary, and grouped visible-responsibility allocation produces the
+required **6/2** beat split without teaching the planner the gold beat answers.
 
 ## Chapter opening context
 
