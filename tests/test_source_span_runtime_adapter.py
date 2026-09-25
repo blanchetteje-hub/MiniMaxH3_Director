@@ -197,6 +197,52 @@ def test_source_unit_state_parser_accepts_explicit_containment_release():
 
 
 
+
+def test_source_unit_state_parser_allows_punctuation_only_clothing_difference():
+    effects = minimax.parse_source_unit_state_effects(
+        {
+            "state_effects": [
+                {
+                    "op": "set_clothing",
+                    "entity": "Amy",
+                    "slot": "upper",
+                    "item": "tight black tank top",
+                    "damage": "none",
+                }
+            ]
+        },
+        "Amy is wearing a tight, black tank top and denim jeans.",
+    )
+
+    assert effects == [
+        {
+            "op": "set_clothing",
+            "entity": "Amy",
+            "slot": "upper",
+            "item": "tight black tank top",
+            "damage": "none",
+        }
+    ]
+
+
+def test_source_unit_state_parser_still_rejects_invented_clothing_wording():
+    with pytest.raises(ValueError, match="not explicitly grounded"):
+        minimax.parse_source_unit_state_effects(
+            {
+                "state_effects": [
+                    {
+                        "op": "set_clothing",
+                        "entity": "Amy",
+                        "slot": "upper",
+                        "item": "black leather tank top",
+                        "damage": "none",
+                    }
+                ]
+            },
+            "Amy is wearing a tight, black tank top and denim jeans.",
+        )
+
+
 def test_chapter_refresh_replays_source_authorized_current_state():
     plan = _amy_plan()
     arc = minimax.source_span_story_plan_to_macro_arc(
