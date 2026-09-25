@@ -371,8 +371,8 @@ def test_local_relation_prompt_distinguishes_mechanical_completion_from_later_us
     )
     prompt = build_local_relation_messages(units[0], units[1])[-1]["content"]
 
-    assert "immediate next mechanical step" in prompt
-    assert "Merely using equipment later" in prompt
+    assert "one local beat job" in prompt
+    assert "Merely carrying or wearing something" in prompt
     assert "Starting a fresh item/test" in prompt
 
 
@@ -390,9 +390,9 @@ def test_local_relation_parser_and_grouping_keep_repeatables_isolated():
     units = enumerate_source_units(story)
     chapter = build_chapter_spans(story, units)[0]
     relations = iter([
-        {"relation": "IMMEDIATE_REACTION"},
+        {"relation": "MERGE"},
         {"relation": "NEW_TASK"},
-        {"relation": "DIRECT_COMPLETION"},
+        {"relation": "MERGE"},
     ])
 
     def fake_llm(messages, **kwargs):
@@ -429,9 +429,9 @@ def test_real_amy_story_groups_to_three_finite_beats_plus_repeated_process():
 
     relation_by_pair = {
         (2, 3): "NEW_TASK",
-        (3, 4): "IMMEDIATE_REACTION",
+        (3, 4): "MERGE",
         (4, 5): "NEW_TASK",
-        (5, 6): "DIRECT_COMPLETION",
+        (5, 6): "MERGE",
         (8, 9): "NEW_TASK",
     }
 
