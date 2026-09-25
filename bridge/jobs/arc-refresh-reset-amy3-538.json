@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-reset-amy3-538",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only the requested binary semantic question. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FULL STORY:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nTARGET UNIT:\n3. Amy retrieves her hidden pistol and katana and equips them.\n\nQuestion: Does TARGET UNIT begin a new phase because of a major time, location, or state reset, rather than simply continuing preparation in the same immediate conflict?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
