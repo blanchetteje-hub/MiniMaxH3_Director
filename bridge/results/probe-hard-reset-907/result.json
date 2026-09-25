@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-907",
+  "kind": "llama_chat",
+  "started_at": 1790371945.254972,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nNora falls asleep in her apartment.\n\nTARGET UNIT:\nAt dawn the next day, Nora wakes in a hospital room.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Do NOT infer a cut, time passage, relocation, montage break, or new phase from what a film would typically do, from preparation changing into action, from a summary/duration statement, or from a change in activity alone. If the discontinuity is not stated or directly entailed by the two source units, answer NO. A genre/premise/summary sentence is NOT an actual completed phase, so moving from framing into the story's first concrete scene is NO. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-48p15iapkw4e447ctahnza",
+    "object": "chat.completion",
+    "created": 1790371945,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The target unit begins with an explicit time jump—\\\"At dawn the next day\\\"—and a relocation from Nora’s apartment to a hospital room, establishing a new narrative phase after the previous one where she falls asleep in her apartment.\"}",
+          "reasoning": "We need to determine if there's a hard reset between the two units:\n\nPREVIOUS UNIT: \"Nora falls asleep in her apartment.\"\n\nTARGET UNIT: \"At dawn the next day, Nora wakes in a hospital room.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. Not inferred.\n\nWe have previous unit ends with Nora falling asleep in her apartment. The target unit says at dawn the next day, Nora wakes in a hospital room. Is there an explicit time jump? \"At dawn the next day\" indicates time jump of one day. Also relocation: from apartment to hospital room. But is that explicitly stated as after a completed phase? The previous unit ends with her falling asleep; no explicit mention of waking up or being moved. The target says she wakes in hospital at dawn next day. That implies a time jump and relocation, but is it explicitly stated? \"At dawn the next day\" indicates time jump. So yes, it's a hard reset.\n\nThus decision: YES. Reason: explicit time jump (\"at dawn the next day\") and relocation to hospital room after previous phase of falling asleep in apartment. No need for inference beyond that. Return JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 305,
+      "completion_tokens": 330,
+      "total_tokens": 635,
+      "completion_tokens_details": {
+        "reasoning_tokens": 265
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790371949.7760217,
+  "status": "ok"
+}
