@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-combined-validator-scope-412",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only the requested chapter-beat contract. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE CHAPTER SOURCE:\nA technician receives an alert, secures the room, equips the required tools, and handles repeated faults.\nThe incident remains unresolved when this chapter ends.\n\nLATER CHAPTER RESPONSIBILITY:\nResolve the final fault and release the waiting team.\n\nCANDIDATE BEATS:\n1. Technician receives the alert and secures the room.\n2. Technician equips the required tools.\n3. Technician handles repeated faults.\n4. Technician resolves the final fault and releases the waiting team.\n\nCheck in order:\n1. Every assigned source action must happen explicitly.\n2. Harmless presentation detail is allowed; material changes are not.\n3. No later-chapter responsibility may happen here.\n\nChoose validity from: VALID, INVALID.\nIf invalid, choose issue_type from: MISSING_ACTION, MATERIAL_DEVIATION, CHAPTER_SCOPE.\nReturn JSON with keys validity, issue_type, issue."
+    }
+  ]
+}
