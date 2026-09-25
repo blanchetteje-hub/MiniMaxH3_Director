@@ -184,12 +184,12 @@ After chapter spans are fixed:
    mandatory video beat;
 2. isolate every explicitly long/repeated source unit such as `majority`,
    `most of`, or `repeatedly`;
-3. for adjacent finite visible units only, use narrow binary semantic checks
-   rather than one overloaded relationship taxonomy:
-   - does RIGHT continue/directly complete LEFT's same local action/object?
-   - is RIGHT an immediate response caused by the event in LEFT itself?
-4. Python merges when either narrow check is YES; otherwise it starts a new
-   responsibility;
+3. for adjacent finite visible units only, use the current single binary local
+   classifier: `MERGE | NEW_TASK`;
+4. `MERGE` only when RIGHT is the same uninterrupted local action, a direct
+   immediate response caused by LEFT itself, or immediate mechanical completion
+   of the exact object/action LEFT obtained/opened/started; otherwise use
+   `NEW_TASK`;
 5. every repeatable unit remains its own group;
 6. the grouped visible responsibilities form the deterministic minimum beat
    count;
@@ -202,12 +202,17 @@ N seconds." Pairwise 8-second fit probes overthought simple cases and even
 accepted an intentionally overfull chain. Likewise, a holistic "are N beats
 enough?" call exhausted its reasoning budget on Amy-shaped material.
 
-The narrower local-relationship classifier was substantially more stable:
+The current binary local-relationship classifier is locked for the production
+path after the exact Amy pairs passed:
 - calm baseline -> inciting change = `NEW_TASK`;
-- inciting danger -> immediate protective reaction = `IMMEDIATE_REACTION`;
+- inciting danger -> immediate protective reaction = `MERGE`;
 - completed protection -> retrieve gear = `NEW_TASK`;
-- retrieve gear -> equip that gear = `DIRECT_COMPLETION`;
+- retrieve gear -> equip that gear = `MERGE`;
 - completed local task -> unrelated next tool/task = `NEW_TASK`.
+
+Earlier synthetic experiments with multi-label classifiers and two-call semantic
+decomposition were not stable enough for the 20B model and are not the active
+architecture.
 
 For the exact Amy acceptance story, this produces:
 
@@ -312,9 +317,8 @@ The current evidence-supported decomposition is:
 4. refined source units -> TERMINAL and HARD_RESET binary flags; Python derives chapter boundaries
 5. each refined source unit -> visible responsibility `YES | NO`
 6. Python isolates explicit repeatable/emphasized units
-7. adjacent finite visible units -> narrow continuation/completion and
-   direct-reaction YES/NO checks
-8. Python merges when either check is YES, then groups visible responsibilities,
+7. adjacent finite visible units -> one binary `MERGE | NEW_TASK` local-relation call
+8. Python applies that decision, then groups visible responsibilities,
    computes chapter minimums, allocates
    surplus beats only to source-authorized repeatable groups, and creates exact
    beat/source ownership
@@ -555,7 +559,9 @@ No inbound port or public tunnel is required.
 
 The running bridge does not hot-reload changes to its own Python code. If the bridge implementation changes, the user's local checkout must be updated and the bridge restarted.
 
-The current bridge's allowlisted executable test/acceptance worktree still defaults to `gpt-test-branch`. Until that bridge plumbing is updated, use direct `llama_chat` jobs for `gpt-arc-refresh` architecture probes rather than accidentally executing old-branch acceptance code.
+Bridge test/acceptance jobs default to the active `gpt-arc-refresh` code branch,
+and acceptance jobs may also specify `code_branch` explicitly. The local bridge
+process must be restarted after bridge-code changes.
 
 ## Active development branch
 
