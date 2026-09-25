@@ -855,3 +855,37 @@ fixture.
 
 Next target: a broader non-LLM test sweep to catch regressions outside the
 source-span/beat path already verified.
+
+
+### Baseline consistency / guardrail pass
+
+A consistency audit was performed after an acceptance job was accidentally queued
+with the old Mistral selector.
+
+Locked baseline:
+- active code branch: `gpt-arc-refresh`
+- acceptance model: `gpt`
+- acceptance bridge jobs now reject any other branch or model
+- `minimax.py`, acceptance runner, bridge, desktop defaults, and web defaults
+  all use GPT as the baseline
+- acceptance no longer derives or injects the gold refresh cadence; numeric
+  `--refresh` is disabled for acceptance with a large compatibility fallback,
+  so source-span chapter boundaries must independently produce the refresh
+  schedule
+- PROJECT_NOTES now reflects the production binary `MERGE | NEW_TASK`
+  grouping contract; the earlier two-call decomposition remains historical only
+
+Relevant commits:
+- f1fe1e02 bridge GPT acceptance default
+- fd82b43a stop acceptance from injecting gold refresh cadence
+- f2a6811b align acceptance test with GPT
+- f2e9a6d7 / 4368283b desktop/web GPT defaults
+- 3855a578 project notes grouping/bridge cleanup
+- baf342a6 / 94a87f54 finish UI baseline alignment
+- 8940055c / 7b61e8c5 remove obsolete gold-refresh inference
+- 98da8708 hard-lock bridge acceptance to GPT + gpt-arc-refresh
+- a972887e test the acceptance baseline guardrails
+- 50dd83b3 document the hard guardrails
+
+Do not evaluate pre-guardrail acceptance captures as the final baseline. After the
+local bridge is updated/restarted, run a fresh planning-only Amy acceptance job.
