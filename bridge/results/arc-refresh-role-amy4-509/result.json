@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-role-amy4-509",
+  "kind": "llama_chat",
+  "started_at": 1790302250.965725,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Perform only the requested narrow classification or deterministic rule application. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY CONTEXT:\n1. Amy cooks breakfast for Will and Amber.\n2. A zombie breaks the kitchen door window; Amy gets Will and Amber into the basement and locks the door.\n3. Amy retrieves her hidden pistol and katana and equips them.\n4. The majority of the story is Amy fighting attacking zombies.\n5. Amy kills the last zombie and the house is soaked in blood.\n6. Amy lets Will and Amber out of the basement.\n\nTARGET UNIT:\n4. The majority of the story is Amy fighting attacking zombies.\n\nClassify TARGET UNIT by its role in the whole story.\nAllowed roles: MAIN_BODY, TERMINAL_RESOLUTION, IMMEDIATE_CLOSURE, RESET_START.\nReturn JSON with keys role and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-v4twvrf30hlqmmjta6x4",
+    "object": "chat.completion",
+    "created": 1790302250,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"role\":\"MAIN_BODY\",\"reason\":\"Unit 4 covers the bulk of the narrative, detailing Amy’s combat against the zombies, which is the central conflict driving the story.\"}",
+          "reasoning": "We need to classify target unit (4) \"The majority of the story is Amy fighting attacking zombies.\" Role among allowed: MAIN_BODY, TERMINAL_RESOLUTION, IMMEDIATE_CLOSURE, RESET_START.\n\nGiven context: Story units 1-6. Unit 4 is major part where Amy fights zombies; it's main body. So role = MAIN_BODY. Reason: It contains majority of action and central conflict. Provide JSON with keys \"role\" and \"reason\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 238,
+      "completion_tokens": 141,
+      "total_tokens": 379,
+      "completion_tokens_details": {
+        "reasoning_tokens": 95
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790302253.5098097,
+  "status": "ok"
+}
