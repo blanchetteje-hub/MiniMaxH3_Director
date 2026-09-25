@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-state-terminal-607",
+  "kind": "llama_chat",
+  "started_at": 1790350716.3594546,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only explicit persistent post-unit state. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nAmy kills the last zombie and the house is soaked in blood.\n\nExtract only persistent facts that are explicitly true AFTER this source unit finishes.\nDo not infer unstated facts. Do not record temporary activity, emotion, intention, or ordinary action.\n\nAllowed operations and exact fields:\n- set_location: op, entity, value\n- set_item_state: op, entity, owner, value where value is stored|held|equipped|dropped|lost\n- set_barrier_state: op, entity, value where value is open|closed|locked|unlocked|blocked|broken|destroyed\n- set_threat_state: op, entity, value where value is active|incapacitated|dead|removed|cleared\n- set_object_state: op, entity, value where value is intact|damaged|destroyed|active|inactive|used\n- set_containment: op, entity, container, value where value is contained|free\n- set_condition: op, entity, value; value must use words explicitly present in SOURCE UNIT\n- set_clothing: op, entity, slot, item, damage where slot is upper|lower and damage is none|damaged|destroyed\n\nUse [] when no allowed persistent fact is explicitly established.\nReturn JSON only with exactly one key: state_effects."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-f80825tki9sf5xh8ypvlxt",
+    "object": "chat.completion",
+    "created": 1790350716,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"state_effects\": [\n    {\n      \"op\": \"set_threat_state\",\n      \"entity\": \"last zombie\",\n      \"value\": \"dead\"\n    },\n    {\n      \"op\": \"set_condition\",\n      \"entity\": \"house\",\n      \"value\": \"soaked in blood\"\n    }\n  ]\n}\n```",
+          "reasoning": "We need to parse the source unit: \"Amy kills the last zombie and the house is soaked in blood.\"\n\nExplicit facts after this event:\n\n- Amy kills the last zombie => The last zombie is dead (threat_state). So set_threat_state op, entity=last zombie? But we don't have an explicit name. Could be \"zombie\" or \"the last zombie\". Use entity: zombie? Might use \"zombie\" as entity.\n\n- House soaked in blood => house condition maybe \"blood-soaked\"? The allowed field is set_condition with value words explicitly present in source unit. Words: \"soaked\", \"in\", \"blood\". So we can set_condition for house, value \"soaked in blood\".\n\nAlso the last zombie being dead: threat_state active|incapacitated|dead|removed|cleared. It's dead.\n\nSo state_effects array with two objects:\n\n1) {op:\"set_threat_state\", entity:\"zombie\", value:\"dead\"}\n\n2) {op:\"set_condition\", entity:\"house\", value:\"soaked in blood\"} (value must use words explicitly present: \"soaked\" and \"blood\". Could be \"soaked in blood\").\n\nCheck allowed fields: set_condition: op, entity, value; value must use words explicitly present. So we can use \"soaked in blood\".\n\nReturn JSON with key state_effects.\n\nNo other facts like location or item states etc.\n\nThus output:\n\n{\n  \"state_effects\": [\n    {\"op\":\"set_threat_state\",\"entity\":\"zombie\",\"value\":\"dead\"},\n    {\"op\":\"set_condition\",\"entity\":\"house\",\"value\":\"soaked in blood\"}\n  ]\n}\n\nCheck if entity names: maybe \"last zombie\" but we can use \"zombie\". The source unit says \"the last zombie\". So entity could be \"last zombie\". Use that.\n\nThus:\n\n{\"state_effects\":[{\"op\":\"set_threat_state\",\"entity\":\"last zombie\",\"value\":\"dead\"},{\"op\":\"set_condition\",\"entity\":\"house\",\"value\":\"soaked in blood\"}]}\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 358,
+      "completion_tokens": 509,
+      "total_tokens": 867,
+      "completion_tokens_details": {
+        "reasoning_tokens": 426
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350724.2561269,
+  "status": "ok"
+}
