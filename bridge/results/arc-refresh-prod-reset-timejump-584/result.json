@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod-reset-timejump-584",
+  "kind": "llama_chat",
+  "started_at": 1790349792.5687013,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nA team completes field work at a remote site.\n\nTARGET UNIT:\nThree months later the team begins analysis in a city laboratory.\n\nA HARD RESET means a discontinuity between narrative phases: an explicit time jump, scene break, relocation after a completed phase, or equivalent restart. Immediate cause-and-effect action in the same continuous sequence is NOT a hard reset, even if danger, equipment, or physical location changes.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-rir3lv2wiqap44s0gd3xi9",
+    "object": "chat.completion",
+    "created": 1790349792,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"YES\",\"reason\":\"The target unit starts three months later in a different location (city laboratory) following the completion of field work at a remote site, indicating an explicit time jump and relocation—both criteria for a hard reset.\"}",
+          "reasoning": "We need to determine whether target unit begins after a hard reset relative to previous unit. The rule: A hard reset means discontinuity between narrative phases: explicit time jump, scene break, relocation after completed phase, etc.\n\nPrevious unit: \"A team completes field work at a remote site.\" So they finish fieldwork at remote site. That is one phase.\n\nTarget unit: \"Three months later the team begins analysis in a city laboratory.\"\n\nWe have an explicit time jump of three months and relocation from remote site to city lab. That's a discontinuity between narrative phases, so it's a hard reset. Therefore decision YES. Reason: explicit time jump + relocation after completed fieldwork phase.\n\nReturn JSON with keys decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 200,
+      "completion_tokens": 204,
+      "total_tokens": 404,
+      "completion_tokens_details": {
+        "reasoning_tokens": 145
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790349795.806485,
+  "status": "ok"
+}
