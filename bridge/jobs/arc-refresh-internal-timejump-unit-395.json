@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-internal-timejump-unit-395",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1400,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide whether one authoritative source unit should be split across two large H3 chapters. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nA geologist finishes a week of desert field work, then three months later begins laboratory analysis in another city.\n\nA split is appropriate only if this one source unit contains a major time/location/state reset or crosses into a distinct terminal phase.\n\nChoose one decision from: SPLIT, KEEP_TOGETHER.\nReturn a JSON object with keys \"decision\" and \"reason\"."
+    }
+  ]
+}
