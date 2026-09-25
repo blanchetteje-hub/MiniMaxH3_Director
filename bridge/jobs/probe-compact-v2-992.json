@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-compact-v2-992",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS FINAL BEAT\nNone; this is the first beat.\n\nCURRENT STATE\n{}\n\nCURRENT JOB\nRen repeatedly repairs damaged relay units.\n\nNEXT JOB\nRen repairs the final relay and restores the entire system.\n\nSTATE EFFECTS IF VALID\n[]\n\nCANDIDATE BEAT\nRen repairs every remaining relay and announces the entire system is restored.\n\nCHECKS\n1. Read actions literally in order and carry each stated result forward. Reject\nrepeating a completed removal on the same target or part unless it was restored.\nDifferent targets and failed attempts are different cases. Do not excuse a\ncontradiction as emphasis or invent an intervening action.\n2. Use only established facts from PREVIOUS FINAL BEAT and CURRENT STATE.\nAn injury does not establish death. An earlier target is not automatically the\nlast target. Reject unavailable objects and unresolved barriers; unknown facts\nalone are not errors.\n3. CURRENT JOB must happen now, including every required action, result, and\nnamed participant. Already-completed-state wording cannot replace an assigned\naction. Allow neutral staging, but reject material changes to tools, participants,\nlocations, or outcomes. Ordinary impacts cannot transform an entire solid body\ninto liquid or another material without an explicitly established capability.\nHonor unusual capabilities established by CURRENT JOB or CURRENT STATE.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Check only the listed STATE EFFECTS: each must follow from visible candidate\nactions. An empty effects list imposes no additional requirements. Do not demand\nnew effect records for unlisted details.\n\nReturn one JSON object: valid is a boolean; issue is a short concrete error or\nan empty string when valid. Any clear error makes valid false."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 2048,
+  "timeout_seconds": 600
+}
