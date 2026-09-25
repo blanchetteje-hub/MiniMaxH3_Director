@@ -1,0 +1,7 @@
+{
+  "job_id": "arc-refresh-run-planner-tests-566",
+  "status": "error",
+  "error_type": "CalledProcessError",
+  "error": "Command '['git', 'worktree', 'add', '--detach', 'C:\\\\Users\\\\J\\\\Source\\\\Repos\\\\MiniMaxH3_Director\\\\.chatgpt_bridge_worktree\\\\.chatgpt_test_gpt-arc-refresh', 'origin/gpt-arc-refresh']' returned non-zero exit status 128.",
+  "finished_at": 1790347561.2887568
+}
