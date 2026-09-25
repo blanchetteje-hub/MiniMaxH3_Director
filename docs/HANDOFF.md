@@ -318,3 +318,36 @@ Promising simplification under test:
 - ask the LLM only for chapter-boundary indices;
 - Python builds chapter source spans directly from exact `story.txt` material;
 - this may eliminate generated chapter-outline drift entirely.
+
+
+### Clean boundary evidence 356-367
+
+Unbiased replacement probes removed expected-answer leakage from the JSON examples.
+
+Results:
+- 356 chef setup/failure -> repeated adaptation: MERGE.
+- 357 repeated adaptation -> final repair/closing: KEEP.
+- 358 researcher setup/alarm -> repeated diagnostics: MERGE.
+- 359 repeated diagnostics -> final resolution/shutdown/reunion: KEEP.
+- 360 three-month + location reset: KEEP.
+- 361 continuous engine diagnosis/repair/testing: MERGE.
+- 362 Amy boundary indices: `[4]`.
+- 363 chef boundary indices: `[3]`.
+- 364 researcher boundary indices: `[3]`.
+- 365 time-jump boundary indices: `[1]`.
+- 366 multi-reset story boundary indices: `[1,4]`.
+- 367 fully continuous story boundary indices: `[]`.
+
+Current leading simplification:
+1. deterministically enumerate authoritative source statements/spans from `story.txt`;
+2. LLM returns only chapter-boundary indices;
+3. Python builds each chapter directly from exact contiguous source spans;
+4. no LLM-generated chapter outline is required unless later evidence shows one adds value;
+5. beat-count allocation happens only after chapter spans are fixed.
+
+This removes a demonstrated source-drift surface: generated rough outlines can invent material, while boundary-index output cannot add narrative facts.
+
+Still to test:
+- whether statement-level granularity is sufficient when the natural refresh boundary falls inside one long sentence;
+- Beat CREATE directly from exact chapter source spans;
+- whether concrete action coverage remains reliable when the chapter input is raw source text rather than a generated outline.
