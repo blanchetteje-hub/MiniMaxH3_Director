@@ -385,7 +385,7 @@ def test_visible_source_responsibility_prompt_keeps_repeated_action_visible():
     )[0]
     prompt = build_visible_responsibility_messages(unit)[-1]["content"]
 
-    assert "on-screen action or visible state" in prompt
+    assert "concrete on-screen event or visible state" in prompt
     assert "genre/premise/summary framing" in prompt
 
 
