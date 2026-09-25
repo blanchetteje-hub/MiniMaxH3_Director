@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-context-extra-ids-422",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Select additional semantic context facts by ID only. Python already injects listed visible-state IDs. Do not duplicate them, rewrite facts, or include history. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nThe parent completes the final confrontation, then opens the secured room and lets the two children out.\n\nESTABLISHED FACTS:\n1. Parent is in the kitchen facing the still-active final threat.\n2. Parent holds the current tool ready.\n3. Parent's clothing is established.\n4. Parent has a visible substance on the front of the clothing.\n5. Two earlier resolved threats remain visible on the floor.\n6. The two children are safe behind the closed secured-room door down the hallway.\n7. A different tool was discarded earlier.\n8. A window broke earlier.\n9. Breakfast happened earlier.\n\nPYTHON_VISIBLE_STATE_IDS:\n[2,3,4,5]\n\nSelect only additional fact IDs needed semantically for the whole chapter.\nReturn a JSON object with key \"selected_fact_ids\"."
+    }
+  ]
+}
