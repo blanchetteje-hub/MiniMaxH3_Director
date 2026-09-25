@@ -33,7 +33,7 @@ DEFAULT_BRANCH = "gpt-runtime"
 DEFAULT_ENDPOINT = "http://127.0.0.1:1234"
 DEFAULT_POLL_SECONDS = 2.0
 DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
-DEFAULT_CODE_BRANCH = "gpt-test-branch"
+DEFAULT_CODE_BRANCH = "gpt-arc-refresh"
 DEFAULT_EXEC_WORKTREE_NAME = ".chatgpt_exec_worktree"
 
 _ACTIVE_LOCAL_PROCESS = None
@@ -667,9 +667,10 @@ def stop_lmstudio_developer_log(capture: dict, result_dir: Path) -> dict:
 
 
 def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
-    """Run the fixed prompt-generation acceptance suite on latest gpt-test-branch."""
+    """Run the fixed prompt-generation acceptance suite on one code branch."""
 
-    exec_root = ensure_exec_worktree(source_root)
+    code_branch = str(job.get("code_branch") or DEFAULT_CODE_BRANCH).strip()
+    exec_root = ensure_exec_worktree(source_root, code_branch)
     python = local_python(source_root)
     image1_raw = str(job.get("image1") or "amy.jpg").strip()
     image1 = safe_source_path(source_root, image1_raw)
