@@ -302,3 +302,176 @@ def assign_source_units_to_beats(
         assignments.append((unit_id,))
         assignments.extend((unit_id,) for _ in range(repeats_by_id[unit_id]))
     return assignments
+
+
+_BINARY_DECISION_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "story_unit_binary_decision",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "decision": {"type": "string", "enum": ["YES", "NO"]},
+                "reason": {"type": "string", "minLength": 1},
+            },
+            "required": ["decision", "reason"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
+def build_binary_decision_response_format() -> dict:
+    """Return the strict JSON schema used by narrow source-unit classifiers."""
+
+    return _BINARY_DECISION_RESPONSE_FORMAT
+
+
+def build_terminal_messages(story: str, unit: SourceUnit) -> list[dict[str, str]]:
+    """Ask only whether one unit itself ends the central story process."""
+
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Answer only the requested binary semantic question. "
+                "Return valid JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "FULL STORY:\n"
+                f"{str(story or '').strip()}\n\n"
+                "TARGET UNIT:\n"
+                f"{unit.id}. {unit.text}\n\n"
+                "Question: Does TARGET UNIT itself decisively end the story's "
+                "central conflict/process, rather than merely preparing for it "
+                "or closing the story after it was already resolved?\n"
+                "Choose one: YES or NO.\n"
+                "Return JSON with keys decision and reason."
+            ),
+        },
+    ]
+
+
+def build_hard_reset_messages(
+    previous_unit: SourceUnit,
+    unit: SourceUnit,
+) -> list[dict[str, str]]:
+    """Ask only whether a unit begins after a real narrative discontinuity."""
+
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Answer only the requested binary semantic question. "
+                "Return valid JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "PREVIOUS UNIT:\n"
+                f"{previous_unit.text}\n\n"
+                "TARGET UNIT:\n"
+                f"{unit.text}\n\n"
+                "A HARD RESET means a discontinuity between narrative phases: "
+                "an explicit time jump, scene break, relocation after a completed "
+                "phase, or equivalent restart. Immediate cause-and-effect action "
+                "in the same continuous sequence is NOT a hard reset, even if "
+                "danger, equipment, or physical location changes.\n\n"
+                "Does TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\n"
+                "Choose one: YES or NO.\n"
+                "Return JSON with keys decision and reason."
+            ),
+        },
+    ]
+
+
+def parse_binary_decision(raw_result: object) -> bool:
+    """Parse one strict YES/NO classifier result into a boolean."""
+
+    candidate = raw_result
+    if isinstance(candidate, str):
+        import json
+
+        try:
+            candidate = json.loads(candidate)
+        except json.JSONDecodeError as error:
+            raise ValueError("Binary decision response must be valid JSON.") from error
+
+    if not isinstance(candidate, dict):
+        raise ValueError("Binary decision response must be a JSON object.")
+    if set(candidate) != {"decision", "reason"}:
+        raise ValueError(
+            "Binary decision response must contain only decision and reason."
+        )
+    decision = candidate.get("decision")
+    reason = candidate.get("reason")
+    if decision not in {"YES", "NO"}:
+        raise ValueError("Binary decision must be YES or NO.")
+    if not isinstance(reason, str) or not reason.strip():
+        raise ValueError("Binary decision reason must be a non-empty string.")
+    return decision == "YES"
+
+
+def classify_source_units(
+    story: str,
+    units: Sequence[SourceUnit],
+    llm_request,
+    *,
+    history_metadata: dict | None = None,
+    sampling_parameters: dict | None = None,
+) -> list[SourceUnit]:
+    """Classify terminal/hard-reset flags with two narrow LLM calls per unit.
+
+    Unit 1 can never be a hard reset because no earlier source phase exists.
+    All structural chapter decisions remain Python-owned.
+    """
+
+    units = list(units)
+    if not units:
+        return []
+    _validate_ordered_units(units)
+
+    sampling = dict(sampling_parameters or {})
+    history = dict(history_metadata or {})
+    classified: list[SourceUnit] = []
+
+    for index, unit in enumerate(units):
+        terminal_raw = llm_request(
+            build_terminal_messages(story, unit),
+            response_format=build_binary_decision_response_format(),
+            history_metadata={
+                **history,
+                "purpose": "source_unit_terminal",
+                "source_unit_id": unit.id,
+            },
+            **sampling,
+        )
+        terminal = parse_binary_decision(terminal_raw)
+
+        hard_reset = False
+        if index > 0:
+            reset_raw = llm_request(
+                build_hard_reset_messages(units[index - 1], unit),
+                response_format=build_binary_decision_response_format(),
+                history_metadata={
+                    **history,
+                    "purpose": "source_unit_hard_reset",
+                    "source_unit_id": unit.id,
+                },
+                **sampling,
+            )
+            hard_reset = parse_binary_decision(reset_raw)
+
+        classified.append(
+            unit.with_flags(
+                terminal=terminal,
+                hard_reset=hard_reset,
+            )
+        )
+
+    return classified
