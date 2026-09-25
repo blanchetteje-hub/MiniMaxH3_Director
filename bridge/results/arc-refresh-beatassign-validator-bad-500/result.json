@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-beatassign-validator-bad-500",
+  "kind": "llama_chat",
+  "started_at": 1790301773.4151645,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Follow the production contract exactly. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNITS:\n1. Setup.\n2. Protection action.\n3. Tool preparation.\n4. Main repeated process.\n5. Unresolved ending.\n\nREPEATABLE UNIT:\n4\n\nCANDIDATE ASSIGNMENT:\nBeat 1 -> [1]\nBeat 2 -> [2,4]\nBeat 3 -> [4]\nBeat 4 -> [3,4]\nBeat 5 -> [4,5]\nBeat 6 -> [4]\n\nValidate only structural assignment rules:\n- source-unit order never moves backward;\n- non-repeatable units appear exactly once;\n- only repeatable unit 4 may repeat;\n- a beat may contain only adjacent source-unit IDs;\n- unit 4 may not be combined with another unit.\n\nChoose: VALID or INVALID.\nReturn JSON with keys decision and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-pgzhmkl06zew3m5e89grd",
+    "object": "chat.completion",
+    "created": 1790301773,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"INVALID\",\"issue\":[\"Beat 2 contains non‑adjacent source‑unit IDs [2,4].\",\"Unit 4 is combined with other units on beats 2, 4 and 5.\",\"Source‑unit order moves backward at beat 4 (3 after 4).\",\"Source‑unit order moves backward at beat 6 (4 after 5).\"]}",
+          "reasoning": "We need to validate structural assignment rules for beats mapping to source units. Source Units list:\n\n1. Setup\n2. Protection action\n3. Tool preparation\n4. Main repeated process (repeatable)\n5. Unresolved ending\n\nRepeatable unit: 4.\n\nCandidate Assignment:\nBeat 1 -> [1]\nBeat 2 -> [2,4]\nBeat 3 -> [4]\nBeat 4 -> [3,4]\nBeat 5 -> [4,5]\nBeat 6 -> [4]\n\nRules:\n\n- source-unit order never moves backward; meaning the sequence of units across beats should be non-decreasing in ID? For each beat's unit IDs, they must maintain original order. Also overall assignment: The first occurrence of a unit should not appear after later units? Let's interpret.\n\n- Non-repeatable units (1,2,3,5) appear exactly once. Check:\n\nUnit 1 appears only on Beat 1 -> OK.\nUnit 2 appears only on Beat 2 -> OK.\nUnit 3 appears only on Beat 4 -> OK.\nUnit 5 appears only on Beat 5 -> OK.\n\n- Repeatable unit 4 may repeat; it appears on beats 2,3,4,5,6. Good.\n\n- a beat may contain only adjacent source-unit IDs: Means the list of units in each beat must be consecutive numbers? For example [2,4] has gap (3 missing). So invalid. Also [3,4] is adjacent; [4,5] adjacent; [1] fine; [4] fine.\n\nThus Beat 2 violates adjacency rule because contains 2 and 4 not adjacent. Also beat may contain only adjacent source-unit IDs: maybe means each beat's units must be consecutive in the original order (like 3,4 or 4,5). So [2,4] invalid; also [4,5] is fine.\n\n- unit 4 may not be combined with another unit: Means any beat containing unit 4 cannot have other units. But beats 2 and 4 contain 4 plus others (2,3). Beat 5 contains 4+5. So those are violations.\n\nThus multiple issues: adjacency violation on beat 2; combination of 4 with others on beats 2,4,5.\n\nAlso check source-unit order never moves backward: The sequence across beats should maintain original ordering? Let's list the first unit per beat:\n\nBeat1 [1] -> 1\nBeat2 [2,4] -> 2 then 4\nBeat3 [4]\nBeat4 [3,4] -> 3 then 4\nBeat5 [4,5] -> 4 then 5\nBeat6 [4]\n\nSequence of first units: 1,2,4,3,4,4. Here we see 4 after 3? Actually beat4 starts with 3 which is less than previous 4 (beat3). So order moves backward from 4 to 3 -> violation.\n\nAlso beat5 has 4 then 5; fine. Beat6 4 again after 5? Wait beat5 had 5 as second unit, but first unit of beat6 is 4 <5 so backward.\n\nThus multiple violations: source-unit order moving backward (beat4 and beat6). Also adjacency rule for beats with multiple units. And unit 4 combined with others.\n\nWe need to output decision INVALID and issue list maybe? The JSON keys: decision and issue. Issue could be a string describing problems or array of issues. Let's produce an array of strings listing each violation.\n\nPossible issues:\n- Beat 2 contains non-adjacent source-unit IDs [2,4].\n- Unit 4 combined with other units on beats 2,4,5.\n- Source-unit order moves backward at beat 4 (unit 3 after unit 4).\n- Source-unit order moves backward at beat 6 (unit 4 after unit 5).\n\nReturn JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 248,
+      "completion_tokens": 904,
+      "total_tokens": 1152,
+      "completion_tokens_details": {
+        "reasoning_tokens": 815
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790301786.9862847,
+  "status": "ok"
+}
