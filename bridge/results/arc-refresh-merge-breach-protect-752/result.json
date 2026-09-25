@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-merge-breach-protect-752",
+  "kind": "llama_chat",
+  "started_at": 1790359342.3729315,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nA window breaks and a hostile figure begins climbing inside.\n\nRIGHT:\nMara immediately rushes the children into the safe room and locks the door.\n\nChoose one:\nMERGE = RIGHT is an immediate reaction to LEFT, continues the same uninterrupted local action, or is the immediate mechanical completion of what LEFT just obtained/opened/started.\nNEW_TASK = LEFT reaches a usable stopping point and RIGHT begins a distinct local action/objective. Starting a fresh item/test after LEFT completed one is NEW_TASK. Merely carrying or wearing something from LEFT while doing a different task is NEW_TASK.\nJudge only the concrete local actions.\nReturn exactly {\"relation\":\"MERGE|NEW_TASK\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-k2kw4oi347j8o1ba5jsb94",
+    "object": "chat.completion",
+    "created": 1790359342,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if RIGHT belongs to same job as LEFT (MERGE) or new task.\n\nLEFT: \"A window breaks and a hostile figure begins climbing inside.\" So action: window breaking, hostile climbs in. That's the event.\n\nRIGHT: \"Mara immediately rushes the children into the safe room and locks the door.\"\n\nIs this an immediate reaction to left? The window broke, hostile climbed in; Mara reacts by rushing kids into safe room and locking door. That seems like a continuation of same local action (reaction). So MERGE.\n\nCheck criteria: RIGHT is immediate reaction to LEFT, continues same uninterrupted local action, or mechanical completion of what LEFT just obtained/opened/started. The window breaking opened the path for hostile; Mara's action locks door - closing that opening. It's immediate reaction. So MERGE.\n\nReturn JSON exactly {\"relation\":\"MERGE\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 229,
+      "completion_tokens": 193,
+      "total_tokens": 422,
+      "completion_tokens_details": {
+        "reasoning_tokens": 177
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790359345.6073186,
+  "status": "ok"
+}
