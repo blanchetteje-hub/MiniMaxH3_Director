@@ -494,3 +494,19 @@ Current direction:
 - Batch 506-525 replaces direct boundary judgment with one-source-unit-at-a-time role classification:
   MAIN_BODY, TERMINAL_RESOLUTION, IMMEDIATE_CLOSURE, RESET_START.
 - If role classification is stable, Python will derive chapter boundaries deterministically before TERMINAL_RESOLUTION and RESET_START units, while keeping IMMEDIATE_CLOSURE with its terminal-resolution unit.
+
+
+### Batch 506-525 summary
+
+The four-way role classifier was still inconsistent:
+- setup/preparation was sometimes mislabeled as a reset;
+- post-resolution closure was sometimes mislabeled as the resolution itself;
+- a real time/location reset was sometimes treated as ordinary main-body material.
+
+The preferred chaptering test is now two independent binary flags per source unit:
+- terminal: this unit itself decisively completes the central process;
+- reset: this unit begins a new phase after a prior phase because of a major time/location/state reset.
+
+Python derives chapter boundaries from those flags.
+
+Batch 526-545 tests the binary flags across Amy, technician, time-jump, and continuous-process controls.
