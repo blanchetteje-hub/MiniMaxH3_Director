@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod-split-amy-closure-572",
+  "kind": "llama_chat",
+  "started_at": 1790349812.81353,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY:\nAmy lets Will and Amber out of the basement.\n\nSOURCE UNIT:\nAmy lets Will and Amber out of the basement.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only when this one source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase, or crosses a major time/location/state discontinuity. Keep terminal resolution plus its immediate closure together. Keep continuous work in the same phase together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-k6piknhgtd8m9ff4jlc1i",
+    "object": "chat.completion",
+    "created": 1790349812,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to decide whether this source unit \"Amy lets Will and Amber out of the basement.\" crosses an internal LARGE H3 chapter phase boundary.\n\nThe instruction says: A chapter is a LARGE H3 refresh unit. Choose SPLIT only when this one source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase, or crosses a major time/location/state discontinuity. Keep terminal resolution plus its immediate closure together. Keep continuous work in the same phase together.\n\nWe need to decide if \"Amy lets Will and Amber out of the basement.\" is crossing a chapter boundary. The source unit: Amy lets Will and Amber out of the basement. This seems like an action that might be part of a larger scene, but does it cross a major time/location/state discontinuity? It says \"lets ... out of the basement\" - maybe it's moving from basement to outside. That could be a location change.\n\nBut is this crossing a chapter boundary? The instruction: choose SPLIT only when source unit itself crosses from an ongoing/source-emphasized main process into distinct terminal-resolution phase, or crosses major time/location/state discontinuity. So if the action moves them out of basement (location change), that might be a major location state discontinuity.\n\nBut is it crossing chapter boundary? The phrase \"Amy lets Will and Amber out of the basement.\" could be part of same scene: maybe they were in basement, then Amy opens door to let them out. That may not cross a chapter boundary; it's continuous action within same process (they are still in the story). But location change might be considered major.\n\nBut we need context: \"FULL STORY:\" only that sentence? The full story is just one line: \"Amy lets Will and Amber out of the basement.\" So maybe this source unit itself is a single event. There's no preceding or following units to compare. If it's the entire story, then it might be considered as crossing from basement to outside; but since there's no other context, we can't say if it's continuous.\n\nGiven that the instruction says choose SPLIT only when crosses major time/location/state discontinuity. Here there is a location change: out of basement. That could be considered a major state change. So maybe split? But \"terminal resolution phase\" - does this action resolve something? It might be part of a larger process, but we don't know.\n\nGiven the minimal context, I'd lean that it's continuous within same chapter; no need to split.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 207,
+      "completion_tokens": 500,
+      "total_tokens": 707,
+      "completion_tokens_details": {
+        "reasoning_tokens": 497
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790349820.4673505,
+  "status": "ok"
+}
