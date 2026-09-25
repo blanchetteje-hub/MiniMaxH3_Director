@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-safety-relation-control-394",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only whether the candidate preserves safety, separation, and exposure relationships established by STORY. Harmless scene placement is allowed when protected subjects remain protected. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "STORY:\nAmy gets Will and Amber into the basement and locks the door so they are separated from the attacking zombies. Amy then fights the zombies.\n\nCANDIDATE:\nWill and Amber remain behind the locked basement door while Amy fights attacking zombies in the kitchen.\n\nChoose one validity value from: VALID, INVALID.\nReturn a JSON object with keys \"validity\" and \"issue\"."
+    }
+  ]
+}
