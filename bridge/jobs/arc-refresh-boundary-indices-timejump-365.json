@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-indices-timejump-365",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Choose chapter boundaries only. Do not rewrite or summarize story content. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "Each numbered statement is authoritative source material in story order.\n\n1. A survey team completes a week of field work at a remote site.\n2. Three months later, the team reunites at a city laboratory and begins analyzing the collected material.\n\nA chapter is a LARGE H3 refresh unit. Use as few chapter boundaries as the narrative permits. Major time/location/state resets can justify a boundary.\n\nReturn JSON with one key: \"new_chapter_after\".\nIts value must be an array of statement numbers after which a new chapter should begin. Do not include the final statement number."
+    }
+  ]
+}
