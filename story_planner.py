@@ -532,8 +532,6 @@ def build_source_unit_split_messages(
         {
             "role": "user",
             "content": (
-                "FULL STORY:\n"
-                f"{str(story or '').strip()}\n\n"
                 "SOURCE UNIT:\n"
                 f"{unit.text}\n\n"
                 "A chapter is a LARGE H3 refresh unit.\n"
@@ -735,6 +733,14 @@ def refine_source_units(
     refined_spans: list[tuple[int, int]] = []
 
     for unit in units:
+        # If Python cannot enumerate a legal exact cut point, the unit cannot
+        # be split without rewriting story.txt. Keep it without spending an LLM
+        # call or inviting the model to invent a boundary.
+        candidates = enumerate_cut_candidates(unit)
+        if not candidates:
+            refined_spans.append((unit.start, unit.end))
+            continue
+
         split_raw = llm_request(
             build_source_unit_split_messages(story, unit),
             response_format=build_split_decision_response_format(),
@@ -746,11 +752,6 @@ def refine_source_units(
             **sampling,
         )
         if not parse_split_decision(split_raw):
-            refined_spans.append((unit.start, unit.end))
-            continue
-
-        candidates = enumerate_cut_candidates(unit)
-        if not candidates:
             refined_spans.append((unit.start, unit.end))
             continue
 
