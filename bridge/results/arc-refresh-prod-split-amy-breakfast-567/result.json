@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-prod-split-amy-breakfast-567",
+  "kind": "llama_chat",
+  "started_at": 1790349805.655375,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "FULL STORY:\nAmy cooks breakfast for Will and Amber.\n\nSOURCE UNIT:\nAmy cooks breakfast for Will and Amber.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only when this one source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase, or crosses a major time/location/state discontinuity. Keep terminal resolution plus its immediate closure together. Keep continuous work in the same phase together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-9leano8n3yc5x82rtc5ie",
+    "object": "chat.completion",
+    "created": 1790349805,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"KEEP_TOGETHER\",\"reason\":\"The sentence \\\"Amy cooks breakfast for Will and Amber.\\\" represents a single continuous action within the cooking process; it does not cross any major time/location/state discontinuity nor transition into a distinct terminal‑resolution phase, so it stays together with its surrounding context.\"}",
+          "reasoning": "We need to decide whether this source unit \"Amy cooks breakfast for Will and Amber.\" crosses an internal LARGE H3 chapter phase boundary.\n\nThe instruction says: A chapter is a LARGE H3 refresh unit. Choose SPLIT only when this one source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase, or crosses a major time/location/state discontinuity. Keep terminal resolution plus its immediate closure together. Keep continuous work in the same phase together.\n\nWe have just one sentence: \"Amy cooks breakfast for Will and Amber.\" This is likely part of a larger chapter about cooking breakfast. It doesn't cross any boundary; it's within the same process (cooking). So we should KEEP_TOGETHER.\n\nReturn JSON with keys decision and reason.\n\nDecision: KEEP_TOGETHER\n\nReason: The source unit describes continuous work in the same phase, no major discontinuity or terminal resolution.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 203,
+      "completion_tokens": 254,
+      "total_tokens": 457,
+      "completion_tokens_details": {
+        "reasoning_tokens": 182
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790349809.665718,
+  "status": "ok"
+}
