@@ -1,0 +1,55 @@
+{
+  "job_id": "probe-hard-reset-917",
+  "kind": "llama_chat",
+  "started_at": 1790377792.7539458,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Answer only the requested binary semantic question. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS UNIT:\nNora opens the ledger.\n\nTARGET UNIT:\nThroughout the afternoon, Nora audits invoices.\n\nA HARD RESET means a discontinuity explicitly established by the source text between actual narrative phases: an explicit time jump, explicit scene break, explicitly stated relocation after a completed phase, or equivalent textual restart. A duration phrase such as 'for most of the night', 'for hours', 'throughout the day', or 'repeatedly' describes how long an activity lasts; it is NOT by itself a jump from PREVIOUS UNIT. Likewise, ordinary movement into a new place (entering a room/building, crossing a doorway, walking to another area) is NOT a hard reset unless the source explicitly marks a narrative restart around that relocation. If the discontinuity is not stated or directly entailed by the two source units, answer NO.\n\nDoes TARGET UNIT begin after a HARD RESET from PREVIOUS UNIT?\nChoose one: YES or NO.\nReturn JSON with keys decision and reason."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 500,
+    "repeat_penalty": 1.1
+  },
+  "response": {
+    "id": "chatcmpl-ifmc55uz6p60018kjvkmd",
+    "object": "chat.completion",
+    "created": 1790377792,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NO\",\"reason\":\"The target unit contains the duration phrase \\\"Throughout the afternoon,\\\" which describes how long an activity lasts but does not indicate an explicit time jump, scene break, or relocation that would constitute a hard reset from the previous unit.\"}",
+          "reasoning": "We need to determine if \"Throughout the afternoon, Nora audits invoices.\" begins after a hard reset from \"Nora opens the ledger.\"\n\nThe previous unit: \"Nora opens the ledger.\" The target unit: \"Throughout the afternoon, Nora audits invoices.\"\n\nHard reset defined as discontinuity explicitly established by source text between actual narrative phases: explicit time jump, scene break, relocation after completed phase, or equivalent textual restart. Duration phrase like 'throughout the day' is not a jump.\n\nWe need to see if there's an explicit time jump or scene break between opening ledger and auditing invoices. The target unit says \"Throughout the afternoon\". That indicates a time period but not necessarily a hard reset. It could be continuous: she opens ledger, then later audits invoices throughout afternoon. But is that a hard reset? There's no explicit mention of a time jump like \"Later that afternoon\" or \"The next day\". Just \"Throughout the afternoon\". The phrase 'throughout the afternoon' indicates duration but not necessarily a reset.\n\nThus likely NO. Reason: No explicit time jump, scene break, relocation. Duration phrase only.\n\nReturn JSON with decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 285,
+      "completion_tokens": 293,
+      "total_tokens": 578,
+      "completion_tokens_details": {
+        "reasoning_tokens": 231
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790377797.0454519,
+  "status": "ok"
+}
