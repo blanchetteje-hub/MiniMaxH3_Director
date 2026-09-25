@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-rule-tech-557",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1300,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow binary decision or deterministic rule. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT FLAGS:\n1. terminal=NO, hard_reset=NO\n2. terminal=NO, hard_reset=NO\n3. terminal=NO, hard_reset=NO\n4. terminal=NO, hard_reset=NO\n5. terminal=YES, hard_reset=NO\n6. terminal=NO, hard_reset=NO\n\nPYTHON RULE:\n- Start Chapter 1 at unit 1.\n- Start a new chapter BEFORE every unit with hard_reset=YES.\n- For terminal=YES: start a new chapter before it ONLY when a later unit exists and the immediately following unit is NOT a hard reset.\n- If terminal=YES is the final unit, keep it in the current chapter.\n- If the immediately following unit is a hard reset, keep the terminal unit in the current chapter and split at the reset.\n\nApply mechanically.\nReturn JSON with key new_chapter_after."
+    }
+  ]
+}
