@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-chain-door-inspect-691",
+  "kind": "llama_chat",
+  "started_at": 1790354949.4084435,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one adjacent beat-scale action-chain boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nMara unlocks and opens the office door.\n\nRIGHT:\nMara enters the office and begins inspecting the damaged computer.\n\nDoes RIGHT continue the same immediate beat-scale action chain as LEFT, or begin a new beat-scale responsibility?\nCONTINUE = RIGHT is the immediate reaction, completion, or direct use of what LEFT just established; there is no meaningful completed handoff between them.\nNEW_CHAIN = LEFT establishes a calm baseline before a disruption, LEFT completes one local objective before a distinct task begins, or RIGHT starts a new local phase/objective.\nIgnore exact seconds and overall pacing. Judge only the local action relationship.\nReturn exactly {\"decision\":\"CONTINUE|NEW_CHAIN\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-uminrou8zwizyvnle1ko7",
+    "object": "chat.completion",
+    "created": 1790354949,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"CONTINUE\"}",
+          "reasoning": "We need to judge if RIGHT continues same beat-scale chain as LEFT.\n\nLEFT: \"Mara unlocks and opens the office door.\" That is an action establishing entry into office. RIGHT: \"Mara enters the office and begins inspecting the damaged computer.\"\n\nSo after unlocking/opening, she enters. That's immediate reaction/completion of opening? She unlocked and opened; then she enters. The next action is entering and inspecting. Is that continuation or new chain?\n\nBeat-scale chain: a sequence of actions that are part of same local objective. Unlocking door leads to entry into office. Inspect damaged computer is the next task after entering. But does it belong to same beat? She unlocked, opened, enters, then inspects. The unlocking and opening is one action; entering could be considered continuation or immediate reaction. Then inspecting might be new.\n\nBut question: \"Does RIGHT continue the same immediate beat-scale action chain as LEFT, or begin a new beat-scale responsibility?\" So we need to decide if RIGHT continues same chain (i.e., it's immediate reaction/completion of what left established). Or is it new chain? The unlocking and opening door leads to entry. Entering office could be considered continuation: she enters immediately after unlocking. But inspecting the damaged computer might be a distinct task.\n\nBut the sentence \"Mara enters the office and begins inspecting the damaged computer.\" That includes two actions: entering, then inspecting. So does that entire RIGHT continue same chain? The first part (enter) is immediate reaction; second part (inspect) could start new objective. But we judge only local action relationship between LEFT and RIGHT.\n\nLEFT ends with unlocking/opening door. Right begins with enters office and inspects computer. The entering is direct use of left's result: she opens the door, then enters. So that seems CONTINUE. Inspect might be a new task but still part of same beat? But it's within same sentence; likely considered continuation.\n\nThus decision = CONTINUE.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 223,
+      "completion_tokens": 412,
+      "total_tokens": 635,
+      "completion_tokens_details": {
+        "reasoning_tokens": 396
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354955.7807217,
+  "status": "ok"
+}
