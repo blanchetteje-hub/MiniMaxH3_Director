@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-clause-boundary-resolution-376",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Perform only the requested narrow semantic task. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "Choose chapter boundaries only from numbered authoritative source units.\n\n1. A scientist begins a normal shift and prepares the experiment.\n2. She spends most of the story repeating measurements.\n3. One final measurement resolves the problem and she immediately closes the lab.\n4. She meets her waiting colleague.\n\nA chapter is a LARGE H3 refresh unit. Use as few boundaries as the narrative permits. Entry into explicit terminal resolution may justify a new chapter.\n\nReturn a JSON object with key \"new_chapter_after\", an array of source-unit numbers. Do not include the final unit number."
+    }
+  ]
+}
