@@ -1,0 +1,7 @@
+{
+  "job_id": "arc-refresh-prod-unitgate-continuous-447",
+  "status": "error",
+  "error_type": "HTTPError",
+  "error": "HTTP Error 400: Bad Request",
+  "finished_at": 1790300242.7993886
+}
