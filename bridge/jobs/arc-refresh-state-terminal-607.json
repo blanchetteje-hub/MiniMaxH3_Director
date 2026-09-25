@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 900,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-state-terminal-607",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Extract only explicit persistent post-unit state. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nAmy kills the last zombie and the house is soaked in blood.\n\nExtract only persistent facts that are explicitly true AFTER this source unit finishes.\nDo not infer unstated facts. Do not record temporary activity, emotion, intention, or ordinary action.\n\nAllowed operations and exact fields:\n- set_location: op, entity, value\n- set_item_state: op, entity, owner, value where value is stored|held|equipped|dropped|lost\n- set_barrier_state: op, entity, value where value is open|closed|locked|unlocked|blocked|broken|destroyed\n- set_threat_state: op, entity, value where value is active|incapacitated|dead|removed|cleared\n- set_object_state: op, entity, value where value is intact|damaged|destroyed|active|inactive|used\n- set_containment: op, entity, container, value where value is contained|free\n- set_condition: op, entity, value; value must use words explicitly present in SOURCE UNIT\n- set_clothing: op, entity, slot, item, damage where slot is upper|lower and damage is none|damaged|destroyed\n\nUse [] when no allowed persistent fact is explicitly established.\nReturn JSON only with exactly one key: state_effects."
+    }
+  ]
+}
