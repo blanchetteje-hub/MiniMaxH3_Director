@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-outline-rule0-345",
+  "kind": "llama_chat",
+  "started_at": 1790295849.6701624,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Revise one chapter outline using only facts from the source. Remove unsupported additions. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nA worker completes the final task and meets the waiting team. The source ends there.\n\nDRAFT:\nThe worker completes the final task, meets the waiting team, and then starts a new project.\n\nACCEPTED BEATS:\n1. Worker completes the final task.\n2. Worker meets the waiting team.\n\nReturn:\n{\"chapter_outline\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1400,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-rz9cd7ectxdg6s0chuts4",
+    "object": "chat.completion",
+    "created": 1790295849,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"chapter_outline\":\"The worker completes the final task and meets the waiting team.\"}",
+          "reasoning": "We need to revise one chapter outline using only facts from source. Source: \"A worker completes the final task and meets the waiting team. The source ends there.\" Draft had extra beat about starting new project, but that's not in source. Accept beats are 1) Worker completes final task; 2) Worker meets waiting team.\n\nWe need to return JSON with chapter_outline field containing something like: \"Worker completes the final task and meets the waiting team.\"\n\nJust that. Ensure no unsupported additions. Return only JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 165,
+      "completion_tokens": 131,
+      "total_tokens": 296,
+      "completion_tokens_details": {
+        "reasoning_tokens": 104
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790295852.2001338,
+  "status": "ok"
+}
