@@ -12,7 +12,7 @@ const INITIAL_SETTINGS = {
   vision_continuity: '0',
   retention: false,
   repair: '',
-  model: 'mistral',
+  model: 'gpt',
   first_frame: false,
   loras: [],
   beat_count: '',
@@ -313,7 +313,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
                 onChange={(event) => setField('model', event.target.value)}
                 disabled={disabled}
               >
-                <option value="mistral">Mistral</option>
+                <option value="gpt">GPT</option>\n                <option value="mistral">Mistral</option>
                 <option value="qwen">Qwen</option>
               </select>
             </label>
