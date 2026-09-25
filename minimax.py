@@ -9952,6 +9952,15 @@ partial action when the assigned effect requires a complete result. Do not requi
 state effects for temporary detail that is not assigned. Any new persistent change
 created by the candidate must be represented by an assigned typed effect.
 
+E. MATERIAL FIDELITY: Harmless local staging is allowed, but reject invented
+details that materially change the assigned action, participant treatment, object
+use, location/result, or story meaning. Named tools and weapons must be used in a
+physically coherent way unless CURRENT JOB explicitly establishes an unusual use;
+for example a firearm may shoot/strike but does not slash or decapitate as a blade.
+Do not invent consequential aggression, injury, forced movement, humiliation, or
+other harmful treatment of a protected/non-hostile participant merely to dramatize
+an otherwise simple assigned action. Do not reject ordinary neutral staging.
+
 OUTPUT CONTRACT
 If valid:
 {{"valid": true, "issue": ""}}
