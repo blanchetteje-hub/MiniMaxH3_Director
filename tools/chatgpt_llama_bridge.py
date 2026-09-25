@@ -208,8 +208,18 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
 
     timeout = int(job.get("timeout_seconds") or 900)
     timeout = max(1, min(timeout, 1800))
+
+    explicit_python = os.environ.get("MINIMAX_TEST_PYTHON", "").strip()
+    pytest_executable = shutil.which("pytest")
+    if explicit_python:
+        command = [explicit_python, "-m", "pytest", "-q", *normalized]
+    elif pytest_executable:
+        command = [pytest_executable, "-q", *normalized]
+    else:
+        command = [sys.executable, "-m", "pytest", "-q", *normalized]
+
     completed = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", *normalized],
+        command,
         cwd=worktree,
         text=True,
         capture_output=True,
@@ -219,6 +229,7 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
     return {
         "code_branch": code_branch,
         "tests": normalized,
+        "runner": command[:3],
         "returncode": completed.returncode,
         "passed": completed.returncode == 0,
         "stdout": completed.stdout,
