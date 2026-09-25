@@ -430,6 +430,7 @@ def parse_args(argv=None):
 
 
 def main(argv=None):
+    loaded_script_bytes = Path(__file__).resolve().read_bytes()
     args = parse_args(argv)
     source_root = repo_root()
     worktree = (
@@ -459,6 +460,11 @@ def main(argv=None):
             )
             if handled:
                 print(f"Processed {handled} bridge job(s).")
+
+            current_script = Path(__file__).resolve()
+            if current_script.read_bytes() != loaded_script_bytes:
+                print("Bridge code changed during mailbox sync; restarting automatically.")
+                os.execv(sys.executable, [sys.executable, *sys.argv])
         except urllib.error.URLError as error:
             print(f"llama.cpp connection error: {error}", file=sys.stderr)
         except subprocess.CalledProcessError as error:
