@@ -61,6 +61,20 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("Reject even when the completed state", prompt)
         self.assertIn("narrates the causative action itself", prompt)
 
+
+    def test_validator_prompt_rejects_materially_incoherent_staging(self):
+        messages = minimax.build_beat_validation_messages(
+            "Amy is holding a pistol and katana.",
+            minimax.new_beat_canonical_state(),
+            "Amy kills the last zombie, leaving the house soaked in blood.",
+            "Amy lets the kids out of the basement.",
+            "Amy slashes the final zombie's neck with her pistol.",
+        )
+        prompt = messages[1]["content"]
+        self.assertIn("E. MATERIAL FIDELITY", prompt)
+        self.assertIn("firearm may shoot/strike but does not slash", prompt)
+        self.assertIn("protected/non-hostile participant", prompt)
+
     def test_compact_validator_state_removes_noise_but_preserves_facts(self):
         state = {
             "version": 1,
