@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 250,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-narrow-react-mask-inspect-797",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Answer only the narrow binary semantic question. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nThe technician puts on and secures the respirator.\n\nRIGHT:\nThe technician crosses the room and begins inspecting the leaking valve.\n\nQuestion: Is RIGHT an immediate response directly caused by the new event/change in LEFT itself?\nYES only when LEFT itself creates the condition that RIGHT immediately responds to. If LEFT is merely another completed step responding to an earlier shared cause, answer NO. If RIGHT begins a separate task that is not caused by LEFT itself, answer NO.\nReturn exactly {\"decision\":\"YES|NO\"}."
+    }
+  ]
+}
