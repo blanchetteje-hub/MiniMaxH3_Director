@@ -15170,30 +15170,76 @@ def generate_beats_from_story(
             if active_macro_arc is None:
                 if not saved_arc_checked and cached_macro_arc is not None:
                     saved_arc_checked = True
-                    cached_validation, cached_validation_success = (
-                        request_macro_arc_validation(
-                            cached_macro_arc,
-                            combined_attempt=0,
-                            max_attempts=BEAT_RETRY_ATTEMPTS,
-                        )
-                    )
-                    if cached_validation_success and cached_validation.get("valid"):
+                    if macro_arc_uses_source_span_planner(cached_macro_arc):
                         active_macro_arc = cached_macro_arc
-                        save_story_arc(
-                            active_macro_arc,
-                            story_arc_source,
-                            story_arc_path,
-                        )
                         print(
-                            f"Using validated story arc from {story_arc_path}.",
+                            f"Using cached source-span story plan from "
+                            f"{story_arc_path}.",
                             flush=True,
                         )
+                    else:
+                        cached_validation, cached_validation_success = (
+                            request_macro_arc_validation(
+                                cached_macro_arc,
+                                combined_attempt=0,
+                                max_attempts=BEAT_RETRY_ATTEMPTS,
+                            )
+                        )
+                        if (
+                            cached_validation_success
+                            and cached_validation.get("valid")
+                        ):
+                            active_macro_arc = cached_macro_arc
+                            save_story_arc(
+                                active_macro_arc,
+                                story_arc_source,
+                                story_arc_path,
+                            )
+                            print(
+                                f"Using validated legacy story arc from "
+                                f"{story_arc_path}.",
+                                flush=True,
+                            )
 
                 if active_macro_arc is None:
                     process_attempt += 1
                     print(
-                        f"\n=== Macro arc generation attempt {process_attempt}/"
+                        f"\n=== Source-span planning attempt {process_attempt}/"
                         f"{BEAT_PROCESS_ATTEMPTS} ===",
+                        flush=True,
+                    )
+                    try:
+                        source_plan, active_macro_arc = (
+                            build_source_span_macro_arc_from_story(
+                                story,
+                                total_segments,
+                                llm_request,
+                                history_metadata=history_metadata,
+                            )
+                        )
+                        print(
+                            "Source-span planner produced "
+                            f"{len(source_plan.chapters)} chapter(s): "
+                            + ", ".join(
+                                f"chapter {chapter.chapter}="
+                                f"{chapter.beat_count} beats"
+                                for chapter in source_plan.chapters
+                            ),
+                            flush=True,
+                        )
+                    except Exception as source_plan_error:
+                        active_macro_arc = None
+                        print(
+                            "Source-span planner could not produce a fully "
+                            "deterministic beat/source plan; falling back to the "
+                            f"legacy ARC loop: {source_plan_error}",
+                            flush=True,
+                        )
+
+                if active_macro_arc is None:
+                    print(
+                        f"\n=== Legacy macro arc generation attempt "
+                        f"{process_attempt}/{BEAT_PROCESS_ATTEMPTS} ===",
                         flush=True,
                     )
                     active_macro_arc, validation_success = request_kiss_macro_arc(
@@ -15207,15 +15253,16 @@ def generate_beats_from_story(
                             "arc as best effort.",
                             flush=True,
                         )
-                    save_story_arc(
-                        active_macro_arc,
-                        story_arc_source,
-                        story_arc_path,
-                    )
-                    print(
-                        f"Saved validated story arc to {story_arc_path}.",
-                        flush=True,
-                    )
+
+                save_story_arc(
+                    active_macro_arc,
+                    story_arc_source,
+                    story_arc_path,
+                )
+                print(
+                    f"Saved story arc to {story_arc_path}.",
+                    flush=True,
+                )
                 process_attempt = max(1, process_attempt)
                 phase_retry_counts = {}
 
