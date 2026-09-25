@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-prod-split-amy-majority-570",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether this one authoritative source unit crosses an internal LARGE H3 chapter phase boundary. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "FULL STORY:\nThe majority of the film is Amy killing zombies as they attack.\n\nSOURCE UNIT:\nThe majority of the film is Amy killing zombies as they attack.\n\nA chapter is a LARGE H3 refresh unit.\nChoose SPLIT only when this one source unit itself crosses from an ongoing/source-emphasized main process into a distinct terminal-resolution phase, or crosses a major time/location/state discontinuity. Keep terminal resolution plus its immediate closure together. Keep continuous work in the same phase together.\nChoose one: SPLIT or KEEP_TOGETHER.\nReturn JSON with keys decision and reason."
+    }
+  ]
+}
