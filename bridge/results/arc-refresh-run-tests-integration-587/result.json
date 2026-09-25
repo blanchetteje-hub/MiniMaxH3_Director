@@ -1,0 +1,7 @@
+{
+  "job_id": "arc-refresh-run-tests-integration-587",
+  "status": "error",
+  "error_type": "RuntimeError",
+  "error": "No local Python environment with pytest was found. Checked: C:\\Program Files (x86)\\Python311\\python.EXE, C:\\Users\\J\\AppData\\Local\\Microsoft\\WindowsApps\\python3.EXE, C:\\Windows\\py.EXE, C:\\Program Files (x86)\\Python311\\python.exe. Set MINIMAX_TEST_PYTHON to a Python executable that has pytest.",
+  "finished_at": 1790350214.1744595
+}
