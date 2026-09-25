@@ -122,7 +122,7 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
       ['total_length', 'Total duration'],
       ['megapixels', 'Megapixels'],
       ['steps', 'Steps'],
-      ['refresh', 'Refresh interval'],
+      ['refresh', 'Legacy refresh fallback'],
     ]
     const invalid = positiveFields.find(([key]) => !(Number(settings[key]) > 0))
     if (invalid) {
@@ -282,8 +282,8 @@ export default function GenerationForm({ disabled, onGenerate, onGenerateStory }
               disabled={disabled}
             />
             <NumberField
-              label="Refresh interval"
-              help="Every Nth segment; engine default: 4"
+              label="Legacy refresh fallback"
+              help="Compatibility only when no source-span chapter plan is available"
               value={settings.refresh}
               onChange={(event) => setField('refresh', event.target.value)}
               min="1"
