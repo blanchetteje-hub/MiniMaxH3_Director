@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-state2-basement-616",
+  "kind": "llama_chat",
+  "started_at": 1790350837.6177967,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nAmy gets Will and Amber into the basement and locks the basement door.\n\nExtract only persistent post-unit facts explicitly established by SOURCE UNIT.\nActivity alone never creates state. Do not infer results from testing, using, handling, replacing, attacking, moving through, or other ordinary actions unless SOURCE UNIT explicitly states the post-state.\nDo not invent synonyms, destinations, entity names, conditions, or object quality.\n\nApply these rules in order:\n1. set_location only when SOURCE UNIT explicitly puts an entity at/in/to a named destination. Do not use it for \"out of X\" when no destination is named.\n2. set_item_state only for explicit possession/equipment results: stored, held, equipped, dropped, or lost.\n3. set_barrier_state only for an explicitly named barrier explicitly opened, closed, locked, unlocked, blocked, broken, or destroyed.\n4. set_threat_state only for an explicit lifecycle result: incapacitated, dead, removed, or cleared. Ongoing attacking/fighting is not a state effect.\n5. set_object_state only when SOURCE UNIT explicitly states the object's resulting state as intact, damaged, destroyed, active, inactive, or used. Merely testing/using/replacing an object is not enough.\n6. set_containment when SOURCE UNIT explicitly puts an entity into/inside a named container or enclosed place (contained), or explicitly lets/removes it out of that named container/place (free).\n7. set_condition only for an explicit persistent visible condition stated after the action; copy the condition wording from SOURCE UNIT.\n8. set_clothing only for explicitly worn clothing.\n\nAllowed JSON operation shapes:\n- {\"op\":\"set_location\",\"entity\":\"...\",\"value\":\"...\"}\n- {\"op\":\"set_item_state\",\"entity\":\"...\",\"owner\":\"...\",\"value\":\"stored|held|equipped|dropped|lost\"}\n- {\"op\":\"set_barrier_state\",\"entity\":\"...\",\"value\":\"open|closed|locked|unlocked|blocked|broken|destroyed\"}\n- {\"op\":\"set_threat_state\",\"entity\":\"...\",\"value\":\"incapacitated|dead|removed|cleared\"}\n- {\"op\":\"set_object_state\",\"entity\":\"...\",\"value\":\"intact|damaged|destroyed|active|inactive|used\"}\n- {\"op\":\"set_containment\",\"entity\":\"...\",\"container\":\"...\",\"value\":\"contained|free\"}\n- {\"op\":\"set_condition\",\"entity\":\"...\",\"value\":\"...\"}\n- {\"op\":\"set_clothing\",\"entity\":\"...\",\"slot\":\"upper|lower\",\"item\":\"...\",\"damage\":\"none|damaged|destroyed\"}\n\nReturn {\"state_effects\":[]} when no rule applies. Return JSON only."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-f2by368mjadswv44wrgx59",
+    "object": "chat.completion",
+    "created": 1790350837,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"state_effects\":[{\"op\":\"set_location\",\"entity\":\"Will\",\"value\":\"basement\"},{\"op\":\"set_location\",\"entity\":\"Amber\",\"value\":\"basement\"},{\"op\":\"set_barrier_state\",\"entity\":\"basement door\",\"value\":\"locked\"}]}",
+          "reasoning": "We need to extract explicit persistent post-unit facts from the source unit: \"Amy gets Will and Amber into the basement and locks the basement door.\"\n\nSo we have entities: Amy, Will, Amber, basement door.\n\nFacts:\n\n- Amy gets Will and Amber into the basement => set_location for Will and Amber? The rule 1 says set_location only when SOURCE UNIT explicitly puts an entity at/in/to a named destination. \"into the basement\" is a location. So set_location for Will: value \"basement\". For Amber: same.\n\nAlso maybe Amy gets them into basement, but not her own location; she might be in basement too? The phrase \"gets Will and Amber into the basement\" implies they are moved to basement, but doesn't say Amy's location changed. She could already be there or moving with them. But we only set for those explicitly put at/in/to a named destination: Will and Amber.\n\n- locks the basement door => barrier state locked. So set_barrier_state for \"basement door\" value \"locked\".\n\nAnything else? No item states, no threat states, etc.\n\nThus output JSON array of operations:\n\n[\n {\"op\":\"set_location\",\"entity\":\"Will\",\"value\":\"basement\"},\n {\"op\":\"set_location\",\"entity\":\"Amber\",\"value\":\"basement\"},\n {\"op\":\"set_barrier_state\",\"entity\":\"basement door\",\"value\":\"locked\"}\n]\n\nWrap in {\"state_effects\":[...]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 640,
+      "completion_tokens": 351,
+      "total_tokens": 991,
+      "completion_tokens_details": {
+        "reasoning_tokens": 289
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790350843.2212412,
+  "status": "ok"
+}
