@@ -47,31 +47,42 @@ Completed batch **936–955** (`gpt-runtime` queue commit `716c003`):
 - no proposed production change was adopted;
 - manifests and scored verdicts are in `tests/LLM/probes/`.
 
-Follow-up batch **956–975** queued (`gpt-runtime` commit `4d0e006`):
-- same 10 cases, comparing a compact single validator against an isolated action
-  coherence diagnostic;
-- both explicitly distinguish completed removal from attempts, restored objects,
-  different targets, and source-authorized magic;
-- the diagnostic tests whether broader validation responsibilities distract the
-  model; it is not an added production pipeline or architecture decision;
-- expected labels remain outside model requests;
-- sampling held fixed: temperature 0, seed 42, repeat_penalty 1.15,
-  max_tokens 2048. The first batch used only 193–736 completion tokens.
+Completed batch **956–975** (`gpt-runtime` queue commit `4d0e006`):
+- compact single validator: **7/10** reference matches;
+- isolated coherence diagnostic: **7/10** reference matches;
+- all 20 completed normally;
+- compact validator caught the actual double decapitation, repeated crystal
+  removal, and locked-door crossing; the isolated diagnostic still missed the
+  actual double decapitation;
+- both accepted the unsupported body transformation and incorrectly inferred
+  that a previous neck injury had already killed the last target;
+- compact also rejected different-target decapitations by demanding unassigned
+  state effects, despite an empty effects list;
+- no production change adopted. This does not support adding a separate
+  coherence subsystem.
+
+Batch **976–995** queued (`gpt-runtime` commit `84cd6c5`):
+- one revised compact single-validator candidate, 20 cases;
+- 10 existing coherence controls plus 10 coverage, current-action ownership,
+  named-participant, next-job leakage, and typed-effect controls;
+- explicitly avoids inferring death from injury or treating an earlier target
+  as the last; checks only assigned state effects; distinguishes an unsupported
+  material transformation from an explicitly established unusual capability;
+- expected labels remain outside requests;
+- sampling unchanged: temperature 0, seed 42, repeat_penalty 1.15,
+  max_tokens 2048;
+- fixture and completed 956–975 verdicts are in `tests/LLM/probes/`.
 
 Next steps:
-1. Inspect 956–975 against `tests/LLM/probes/coherence_956_975.json`, including
-   concrete issue explanations, not only valid/invalid labels.
-2. Prefer a shorter existing validator if it catches the real errors and preserves
-   good controls. Do not adopt a narrow diagnostic as a new subsystem merely
-   because it performs better on this small sample.
-3. Recheck coverage, next-job leakage, and typed effects before adopting a compact
-   full-validator replacement; this batch tests coherence, not all responsibilities.
-4. Run fresh planning acceptance after a verified production change, then advance
-   to full H3 prompts only when accepted beats are coherent.
-5. Keep production behavior generic across genres and entirely local.
+1. Inspect 976–995 against `tests/LLM/probes/compact_v2_976_995.json`, including
+   concrete explanations, not only labels.
+2. Adopt a shorter existing validator only after it preserves coverage,
+   next-job ownership, assigned state-effect support, and valid controls while
+   catching the actual coherence failure. No extra production subsystem.
+3. After a verified production change, run fresh planning acceptance before
+   full H3 generation. Keep production entirely local and genre-generic.
 
-The worker processed the first batch during this turn and is receiving the next.
-No bridge update/restart or local code pull is required for these direct probes.
+No local pull or bridge restart is needed for the queued direct probes.
 
 
 ## Ultimate goal

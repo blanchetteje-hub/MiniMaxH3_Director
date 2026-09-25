@@ -1,0 +1,244 @@
+{
+  "results": [
+    {
+      "job": "probe-coherence-956-compact",
+      "case": "captured_double_decapitation",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "The head is severed by the pistol first, so it cannot be decapitated a second time with the katana unless restored; this double removal contradicts the state rules."
+      },
+      "matches_reference": true,
+      "completion_tokens": 384
+    },
+    {
+      "job": "probe-coherence-957-diagnostic",
+      "case": "captured_double_decapitation",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": false,
+      "completion_tokens": 615
+    },
+    {
+      "job": "probe-coherence-958-compact",
+      "case": "wound_then_decapitate",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 739
+    },
+    {
+      "job": "probe-coherence-959-diagnostic",
+      "case": "wound_then_decapitate",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 226
+    },
+    {
+      "job": "probe-coherence-960-compact",
+      "case": "captured_shattering_body",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": false,
+      "completion_tokens": 410
+    },
+    {
+      "job": "probe-coherence-961-diagnostic",
+      "case": "captured_shattering_body",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": false,
+      "completion_tokens": 322
+    },
+    {
+      "job": "probe-coherence-962-compact",
+      "case": "ordinary_final_kill",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "The \"last\" zombie was already killed in the previous final beat, so it cannot be slain again here."
+      },
+      "matches_reference": false,
+      "completion_tokens": 883
+    },
+    {
+      "job": "probe-coherence-963-diagnostic",
+      "case": "ordinary_final_kill",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Amy slashes a zombie\u2019s neck again after she had already killed the last one in the prior beat."
+      },
+      "matches_reference": false,
+      "completion_tokens": 245
+    },
+    {
+      "job": "probe-coherence-964-compact",
+      "case": "fantasy_same_crystal_twice",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Crystal removed twice without being restored to its socket"
+      },
+      "matches_reference": true,
+      "completion_tokens": 177
+    },
+    {
+      "job": "probe-coherence-965-diagnostic",
+      "case": "fantasy_same_crystal_twice",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "The crystal was pulled out of the socket once; pulling the same crystal again from that socket is impossible because it's no longer there."
+      },
+      "matches_reference": true,
+      "completion_tokens": 178
+    },
+    {
+      "job": "probe-coherence-966-compact",
+      "case": "fantasy_crystal_reinserted",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 414
+    },
+    {
+      "job": "probe-coherence-967-diagnostic",
+      "case": "fantasy_crystal_reinserted",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 144
+    },
+    {
+      "job": "probe-coherence-968-compact",
+      "case": "locked_door_ignored",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Mara walks through the laboratory door immediately after closing (and locking) it, implying she can pass through a closed door\u2014contradicting typical door behavior."
+      },
+      "matches_reference": true,
+      "completion_tokens": 841
+    },
+    {
+      "job": "probe-coherence-969-diagnostic",
+      "case": "locked_door_ignored",
+      "expected_valid": false,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Mara cannot walk through a closed (locked) laboratory door."
+      },
+      "matches_reference": true,
+      "completion_tokens": 423
+    },
+    {
+      "job": "probe-coherence-970-compact",
+      "case": "locked_door_resolved",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 868
+    },
+    {
+      "job": "probe-coherence-971-diagnostic",
+      "case": "locked_door_resolved",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 196
+    },
+    {
+      "job": "probe-coherence-972-compact",
+      "case": "explicit_magic_exception",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 385
+    },
+    {
+      "job": "probe-coherence-973-diagnostic",
+      "case": "explicit_magic_exception",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 197
+    },
+    {
+      "job": "probe-coherence-974-compact",
+      "case": "different_targets",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Missing state effects for the removed heads of the two skeletons"
+      },
+      "matches_reference": false,
+      "completion_tokens": 537
+    },
+    {
+      "job": "probe-coherence-975-diagnostic",
+      "case": "different_targets",
+      "expected_valid": true,
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 168
+    }
+  ]
+}

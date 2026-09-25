@@ -709,8 +709,14 @@ Test fixes inside the existing validator before advancing to H3 generation.
 Batch 936–955 completed with 6/10 reference-label matches for both the full
 current validator and its shorter sequential-possibility variant. Neither caught
 the actual double-removal error; the proposed replacement is not adopted.
-Batch 956–975 tests a compact single validator versus an isolated coherence
-diagnostic to distinguish prompt overload from semantic difficulty. Neither is
-an adopted production contract or an added production subsystem. Preserve explicitly source-authorized
-fantastical capabilities and distinguish different targets from repeated actions
-on the same target.
+Batch 956–975 completed at 7/10 for both compact full validation and isolated
+coherence diagnosis. Only the compact full validator caught the actual double
+removal. Both invented a previous death and accepted an unsupported physical
+transformation; compact validation also demanded unassigned state effects.
+No variant is adopted and no new subsystem is justified.
+
+Batch 976–995 tests a revised compact single validator against the original
+coherence cases plus coverage, action ownership, named participants, next-job
+leakage, and typed-effect support. Preserve source-authorized unusual capabilities;
+do not infer death from injury or require effect records beyond assigned effects.
+These remain probe hypotheses until the results support a production change.
