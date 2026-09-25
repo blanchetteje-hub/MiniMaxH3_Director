@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-context-extractor-strict-342",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1800,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Build minimal opening context for the whole enclosed chapter. Include a fact only if it is needed for the opening state, persistent visual continuity, or a later action in this chapter. Exclude mere history. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT CHAPTER:\nA researcher finishes the current diagnostic at the workstation, then walks to a sealed side room and reunites with the colleague waiting there.\n\nESTABLISHED FACTS:\n- Researcher is at the workstation with the final diagnostic active.\n- Researcher holds the current instrument.\n- Current clothing and visible condition are established.\n- Several earlier samples remain on the bench.\n- The colleague is waiting behind the sealed side-room door at the end of the corridor.\n- An alarm sounded earlier.\n- Breakfast occurred earlier.\n- A different instrument was put away earlier.\n\nReturn exactly:\n{\"opening_context\":[\"fact\"]}"
+    }
+  ]
+}
