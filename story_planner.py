@@ -891,6 +891,282 @@ def classify_visible_source_unit_ids(
     return visible_ids
 
 
+_LOCAL_RELATION_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "story_unit_local_relation",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "relation": {
+                    "type": "string",
+                    "enum": [
+                        "SAME_ACTION",
+                        "IMMEDIATE_REACTION",
+                        "DIRECT_COMPLETION",
+                        "NEW_TASK",
+                    ],
+                },
+            },
+            "required": ["relation"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+_MERGE_LOCAL_RELATIONS = {
+    "SAME_ACTION",
+    "IMMEDIATE_REACTION",
+    "DIRECT_COMPLETION",
+}
+
+
+def build_local_relation_messages(
+    left_unit: SourceUnit,
+    right_unit: SourceUnit,
+) -> list[dict[str, str]]:
+    """Classify one adjacent finite visible source-unit relationship."""
+
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Classify only the concrete local relationship between two "
+                "adjacent source responsibilities. Return valid JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "LEFT:\n"
+                f"{left_unit.text}\n\n"
+                "RIGHT:\n"
+                f"{right_unit.text}\n\n"
+                "Choose the single best relationship of RIGHT to LEFT:\n"
+                "SAME_ACTION = RIGHT continues the same concrete action/process "
+                "on the same local task.\n"
+                "IMMEDIATE_REACTION = LEFT introduces a new event/change and "
+                "RIGHT is the immediate response to that new event.\n"
+                "DIRECT_COMPLETION = RIGHT directly uses, finishes, or equips "
+                "what LEFT just obtained/opened/started as one small local sequence.\n"
+                "NEW_TASK = LEFT reaches a usable stopping point and RIGHT begins "
+                "a distinct local action/objective.\n"
+                "Judge the local actions, not the characters' overall goal or "
+                "story goal.\n"
+                "Return JSON with the single key relation."
+            ),
+        },
+    ]
+
+
+def parse_local_relation(raw_result: object) -> str:
+    """Parse one strict local source-unit relationship result."""
+
+    candidate = raw_result
+    if isinstance(candidate, str):
+        import json
+
+        try:
+            candidate = json.loads(candidate)
+        except json.JSONDecodeError as error:
+            raise ValueError("Local relation response must be valid JSON.") from error
+    if not isinstance(candidate, dict) or set(candidate) != {"relation"}:
+        raise ValueError("Local relation response must contain only relation.")
+    relation = candidate.get("relation")
+    allowed = _MERGE_LOCAL_RELATIONS | {"NEW_TASK"}
+    if relation not in allowed:
+        raise ValueError(
+            "Local relation must be SAME_ACTION, IMMEDIATE_REACTION, "
+            "DIRECT_COMPLETION, or NEW_TASK."
+        )
+    return str(relation)
+
+
+def group_chapter_source_responsibilities(
+    units: Sequence[SourceUnit],
+    chapter: ChapterSpan,
+    visible_source_unit_ids: Iterable[int],
+    repeatable_source_unit_ids: Iterable[int],
+    llm_request,
+    *,
+    history_metadata: dict | None = None,
+    sampling_parameters: dict | None = None,
+) -> tuple[tuple[int, ...], ...]:
+    """Group visible finite units into local beat responsibilities.
+
+    Explicitly repeatable units always remain isolated so Python can allocate
+    surplus beats to them without asking the LLM to perform counting or pacing.
+    Non-visible source units never consume beat capacity. A gap caused by a
+    non-visible source unit is a conservative group boundary.
+    """
+
+    units = list(units)
+    _validate_ordered_units(units)
+    units_by_id = {unit.id: unit for unit in units}
+    visible = {int(value) for value in visible_source_unit_ids}
+    repeatable = {int(value) for value in repeatable_source_unit_ids}
+    sampling = dict(sampling_parameters or {})
+    history = dict(history_metadata or {})
+
+    ordered_ids = [
+        unit_id
+        for unit_id in chapter.source_unit_ids
+        if unit_id in visible
+    ]
+    if not ordered_ids:
+        raise ValueError(
+            f"Chapter {chapter.chapter} has no concrete visible source responsibility."
+        )
+
+    groups: list[tuple[int, ...]] = []
+    current: list[int] = []
+
+    def flush_current() -> None:
+        nonlocal current
+        if current:
+            groups.append(tuple(current))
+            current = []
+
+    for unit_id in ordered_ids:
+        if unit_id in repeatable:
+            flush_current()
+            groups.append((unit_id,))
+            continue
+
+        if not current:
+            current = [unit_id]
+            continue
+
+        left_id = current[-1]
+        if unit_id != left_id + 1:
+            flush_current()
+            current = [unit_id]
+            continue
+
+        raw_relation = llm_request(
+            build_local_relation_messages(
+                units_by_id[left_id],
+                units_by_id[unit_id],
+            ),
+            response_format=_LOCAL_RELATION_RESPONSE_FORMAT,
+            history_metadata={
+                **history,
+                "purpose": "source_unit_local_relation",
+                "left_source_unit_id": left_id,
+                "right_source_unit_id": unit_id,
+            },
+            **sampling,
+        )
+        relation_value = parse_local_relation(raw_relation)
+        if relation_value in _MERGE_LOCAL_RELATIONS:
+            current.append(unit_id)
+        else:
+            flush_current()
+            current = [unit_id]
+
+    flush_current()
+    return tuple(groups)
+
+
+def allocate_grouped_chapter_beats(
+    chapter_groups: Sequence[Sequence[Sequence[int]]],
+    total_beats: int,
+    *,
+    emphasized_source_unit_ids: Iterable[int] = (),
+) -> list[int]:
+    """Allocate beats from grouped visible responsibilities, not raw sentences."""
+
+    groups = [tuple(tuple(item) for item in chapter) for chapter in chapter_groups]
+    if not groups:
+        if int(total_beats) == 0:
+            return []
+        raise ValueError("Cannot allocate beats without chapters.")
+    if isinstance(total_beats, bool):
+        raise ValueError("total_beats must be a positive integer.")
+    total_beats = int(total_beats)
+    if total_beats <= 0:
+        raise ValueError("total_beats must be a positive integer.")
+
+    counts = [len(chapter) for chapter in groups]
+    if any(count <= 0 for count in counts):
+        raise ValueError("Every chapter must own at least one visible responsibility.")
+    minimum = sum(counts)
+    if total_beats < minimum:
+        raise ValueError(
+            f"{total_beats} beats cannot represent {minimum} grouped visible "
+            "source responsibilities."
+        )
+
+    remaining = total_beats - minimum
+    if remaining == 0:
+        return counts
+
+    emphasized = {int(value) for value in emphasized_source_unit_ids}
+    target_indices = []
+    for index, chapter in enumerate(groups):
+        owned_ids = {
+            int(unit_id)
+            for group in chapter
+            for unit_id in group
+        }
+        if owned_ids.intersection(emphasized):
+            target_indices.append(index)
+
+    if not target_indices:
+        largest = max(counts)
+        target_indices = [counts.index(largest)]
+
+    cursor = 0
+    while remaining:
+        counts[target_indices[cursor % len(target_indices)]] += 1
+        cursor += 1
+        remaining -= 1
+    return counts
+
+
+def expand_grouped_responsibilities_to_beats(
+    groups: Sequence[Sequence[int]],
+    beat_count: int,
+    *,
+    repeatable_source_unit_ids: Iterable[int] = (),
+) -> tuple[tuple[int, ...], ...]:
+    """Expand grouped responsibilities by repeating only explicit repeatables."""
+
+    normalized = [tuple(int(value) for value in group) for group in groups]
+    if not normalized:
+        raise ValueError("Cannot assign beats without grouped responsibilities.")
+    beat_count = int(beat_count)
+    if beat_count < len(normalized):
+        raise ValueError(
+            f"{beat_count} beats cannot represent {len(normalized)} grouped "
+            "source responsibilities."
+        )
+
+    extra = beat_count - len(normalized)
+    repeatable = {int(value) for value in repeatable_source_unit_ids}
+    repeatable_indices = [
+        index
+        for index, group in enumerate(normalized)
+        if len(group) == 1 and group[0] in repeatable
+    ]
+    if extra and not repeatable_indices:
+        raise ValueError(
+            "Extra grouped beats require an explicitly repeatable source unit."
+        )
+
+    repeats_by_index = [0] * len(normalized)
+    for offset in range(extra):
+        index = repeatable_indices[offset % len(repeatable_indices)]
+        repeats_by_index[index] += 1
+
+    result: list[tuple[int, ...]] = []
+    for index, group in enumerate(normalized):
+        result.append(group)
+        result.extend(group for _ in range(repeats_by_index[index]))
+    return tuple(result)
+
+
 _EXPLICIT_REPEATABLE_PATTERNS = (
     re.compile(r"\bmajority\b", re.IGNORECASE),
     re.compile(r"\bmost\s+of\b", re.IGNORECASE),
@@ -943,13 +1219,11 @@ def build_story_plan(
     history_metadata: dict | None = None,
     sampling_parameters: dict | None = None,
 ) -> StoryPlan:
-    """Build the full deterministic source/chapter/beat-budget plan.
+    """Build a source-authoritative chapter plan with grouped beat ownership.
 
-    Beat/source ownership is made explicit when Python can prove it from
-    one-beat-per-unit coverage plus source-authorized repeatability. If a
-    chapter has surplus beats but no explicit repeatable source unit, its
-    ownership is left unset for the later chapter Beat CREATE step rather than
-    inventing a repetition rule.
+    The LLM makes only narrow semantic decisions: source-unit visibility and
+    local finite-unit relationships. Python owns grouping, beat arithmetic,
+    repeat allocation, chapter boundaries, and final source ownership.
     """
 
     units, chapter_spans = plan_story_chapters(
@@ -959,28 +1233,51 @@ def build_story_plan(
         sampling_parameters=sampling_parameters,
     )
     repeatable = explicit_repeatable_source_unit_ids(units)
-    beat_counts = allocate_chapter_beats(
-        chapter_spans,
+    visible = classify_visible_source_unit_ids(
+        units,
+        llm_request,
+        history_metadata=history_metadata,
+        sampling_parameters=sampling_parameters,
+    )
+
+    chapter_groups = [
+        group_chapter_source_responsibilities(
+            units,
+            chapter,
+            visible,
+            repeatable,
+            llm_request,
+            history_metadata=history_metadata,
+            sampling_parameters=sampling_parameters,
+        )
+        for chapter in chapter_spans
+    ]
+    beat_counts = allocate_grouped_chapter_beats(
+        chapter_groups,
         total_beats,
         emphasized_source_unit_ids=repeatable,
     )
 
     planned = []
     repeatable_set = set(repeatable)
-    for chapter, beat_count in zip(chapter_spans, beat_counts):
+    for chapter, groups, beat_count in zip(
+        chapter_spans,
+        chapter_groups,
+        beat_counts,
+    ):
         chapter_repeatable = [
             unit_id
             for unit_id in chapter.source_unit_ids
             if unit_id in repeatable_set
         ]
         assignments = None
-        if beat_count == len(chapter.source_unit_ids) or chapter_repeatable:
-            assignments = tuple(
-                assign_source_units_to_beats(
-                    chapter.source_unit_ids,
-                    beat_count,
-                    repeatable_source_unit_ids=chapter_repeatable,
-                )
+        if beat_count == len(groups):
+            assignments = tuple(groups)
+        elif chapter_repeatable:
+            assignments = expand_grouped_responsibilities_to_beats(
+                groups,
+                beat_count,
+                repeatable_source_unit_ids=chapter_repeatable,
             )
 
         planned.append(
