@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-chef-allocation-354",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Allocate a fixed beat budget across fixed chapters. Preserve chapter boundaries. Source-emphasized duration controls allocation. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "TOTAL BEATS: 8\n\nCHAPTER 1:\nNormal service, failure, securing ingredients, and the repeated adaptation process explicitly described as MOST of the story.\n\nCHAPTER 2:\nFinal repair, last order, and closing.\n\nReturn exactly:\n{\"chapter1\":0,\"chapter2\":0}"
+    }
+  ]
+}
