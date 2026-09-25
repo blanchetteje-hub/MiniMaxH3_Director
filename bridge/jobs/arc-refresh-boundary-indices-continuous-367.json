@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-boundary-indices-continuous-367",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1600,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Choose chapter boundaries only. Do not rewrite story content. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "Each numbered statement is authoritative source material in story order.\n\n1. A mechanic begins diagnosing one engine.\n2. She tests the electrical system.\n3. She replaces one failed sensor.\n4. She continues testing the same engine.\n5. She confirms the engine is operating correctly and ends the repair.\n\nA chapter is a LARGE H3 refresh unit. Use as few boundaries as the narrative permits. Continuous action in the same place and task should remain together unless a meaningful reset occurs.\n\nReturn a JSON object with key \"new_chapter_after\". Its value is an array of statement numbers after which a new chapter should begin. Do not include the final statement number."
+    }
+  ]
+}
