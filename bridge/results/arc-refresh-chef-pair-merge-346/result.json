@@ -1,0 +1,56 @@
+{
+  "job_id": "arc-refresh-chef-pair-merge-346",
+  "kind": "llama_chat",
+  "started_at": 1790296555.6391778,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent rough chapters should be one H3 refresh unit. Prefer MERGE unless a major narrative reset makes a fresh generation boundary useful. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "STORY CONTEXT:\nA chef starts normal dinner service. Refrigeration fails. The chef secures ingredients and then spends most of the story repeatedly adapting dishes around the equipment failure.\n\nLEFT CHAPTER:\nNormal dinner service begins; refrigeration fails.\n\nRIGHT CHAPTER:\nChef secures ingredients and repeatedly adapts dishes around the failure.\n\nReturn exactly:\n{\"decision\":\"MERGE\",\"reason\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "min_p": 0.05,
+    "max_tokens": 1600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-4od6f6eizo70y005y802at",
+    "object": "chat.completion",
+    "created": 1790296555,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"MERGE\",\"reason\":\"Both chapters describe consecutive events in a single dinner service—initial normal service, refrigeration failure, securing ingredients, and adapting dishes—forming one continuous narrative arc.\"}",
+          "reasoning": "We need to decide whether two adjacent rough chapters should be one H3 refresh unit. The left chapter: \"Normal dinner service begins; refrigeration fails.\" Right chapter: \"Chef secures ingredients and repeatedly adapts dishes around the failure.\"\n\nThey are adjacent, likely part of same narrative arc: start of service, refrigeration fails, chef secures ingredients, then adapt dishes. So MERGE.\n\nReturn JSON only with decision and reason.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 187,
+      "completion_tokens": 136,
+      "total_tokens": 323,
+      "completion_tokens_details": {
+        "reasoning_tokens": 86
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790296558.2580793,
+  "status": "ok"
+}
