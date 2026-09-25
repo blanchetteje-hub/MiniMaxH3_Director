@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-beatassign-neutral-476",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Follow the production contract exactly. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "AUTHORITATIVE CHAPTER SOURCE UNITS:\n1. Worker prepares breakfast for two children.\n2. A threat breaks a window; worker gets both children into a secured room and locks it.\n3. Worker retrieves Tool-A and Tool-B and equips them.\n4. The majority of the chapter is worker handling threats elsewhere.\n5. The larger situation remains unresolved when the chapter ends.\n\nBEAT BUDGET: exactly 6.\n\nAssign each beat to source-unit IDs only.\nEvery source unit must be represented.\nSource unit 4 may occupy multiple beats because it is the majority of the chapter.\nDo not write beat prose.\n\nReturn JSON with key beats; each beat object has beat and source_unit_ids only."
+    }
+  ]
+}
