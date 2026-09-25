@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 700,
+  "timeout_seconds": 600,
+  "job_id": "arc-refresh-chain-warning-evacuate-692",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge one adjacent beat-scale action-chain boundary. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nA warning siren sounds and smoke begins entering the room.\n\nRIGHT:\nMara immediately leads the two children toward the emergency exit.\n\nDoes RIGHT continue the same immediate beat-scale action chain as LEFT, or begin a new beat-scale responsibility?\nCONTINUE = RIGHT is the immediate reaction, completion, or direct use of what LEFT just established; there is no meaningful completed handoff between them.\nNEW_CHAIN = LEFT establishes a calm baseline before a disruption, LEFT completes one local objective before a distinct task begins, or RIGHT starts a new local phase/objective.\nIgnore exact seconds and overall pacing. Judge only the local action relationship.\nReturn exactly {\"decision\":\"CONTINUE|NEW_CHAIN\"}."
+    }
+  ]
+}
