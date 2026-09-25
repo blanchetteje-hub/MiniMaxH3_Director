@@ -1,0 +1,21 @@
+{
+  "job_id": "arc-refresh-allocation-single-423",
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "min_p": 0.05,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 1200,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Allocate a fixed beat budget across fixed chapters. Do not change chapter boundaries. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "TOTAL BEATS: 8\n\nFIXED CHAPTERS:\nChapter 1 contains the entire story.\n\nEvery chapter must receive at least one beat. Counts must sum to 8.\n\nReturn a JSON object with key \"beat_counts\", an array of integers in chapter order."
+    }
+  ]
+}
