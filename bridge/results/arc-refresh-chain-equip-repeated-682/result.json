@@ -1,0 +1,57 @@
+{
+  "job_id": "arc-refresh-chain-equip-repeated-682",
+  "kind": "llama_chat",
+  "started_at": 1790354906.1776502,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one adjacent beat-scale action-chain boundary. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nAmy equips the emergency gear.\n\nRIGHT:\nFor most of the night, Amy repeatedly confronts incoming hazards.\n\nDoes RIGHT continue the same immediate beat-scale action chain as LEFT, or begin a new beat-scale responsibility?\nCONTINUE = RIGHT is the immediate reaction, completion, or direct use of what LEFT just established; there is no meaningful completed handoff between them.\nNEW_CHAIN = LEFT establishes a calm baseline before a disruption, LEFT completes one local objective before a distinct task begins, or RIGHT starts a new local phase/objective.\nIgnore exact seconds and overall pacing. Judge only the local action relationship.\nReturn exactly {\"decision\":\"CONTINUE|NEW_CHAIN\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1g0yog3vaklh5flurkvam97",
+    "object": "chat.completion",
+    "created": 1790354906,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"decision\":\"NEW_CHAIN\"}",
+          "reasoning": "We need to judge if RIGHT continues same beat-scale chain as LEFT.\n\nLEFT: \"Amy equips the emergency gear.\" That's an action establishing readiness, a local objective of equipping gear.\n\nRIGHT: \"For most of the night, Amy repeatedly confronts incoming hazards.\"\n\nThis is a new activity that repeats over time. Does it continue from equipping? The equip sets up for confronting hazards; but it's not immediate reaction or completion of same chain. It's a distinct task (confronting hazards). So likely NEW_CHAIN.\n\nThus decision: \"NEW_CHAIN\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 220,
+      "completion_tokens": 127,
+      "total_tokens": 347,
+      "completion_tokens_details": {
+        "reasoning_tokens": 111
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790354908.4167132,
+  "status": "ok"
+}
