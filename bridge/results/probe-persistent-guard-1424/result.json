@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1424",
+  "kind": "llama_chat",
+  "started_at": 1790452591.598763,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: The window is closed. SOURCE: Rae opens the window. RAW: Rae opens the window fully.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-w3l3q4zb2ssbz9irov8wo",
+    "object": "chat.completion",
+    "created": 1790452591,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them.\n\nOPENING: The window is closed.\nSOURCE: Rae opens the window.\nRAW: Rae opens the window fully.\n\nSo we have a persistent fact that \"The window is closed.\" That is an opening state. Source says Rae opens the window (so presumably changes it to open). RAW says Rae opens the window fully, which also indicates opening. Does this preserve persistent facts? The OPENING fact was that the window is closed; after source it's opened. So SOURCE changed that persistent fact: from closed to open. That change is authorized by SOURCE. RAW further specifies \"fully\" but still consistent with being open. It doesn't drop or lose any other persistent state like held items, etc. No mention of dropping anything else.\n\nThus RAW completes SOURCE and preserves persistent OPENING facts (the window was opened). So valid: true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 211,
+      "completion_tokens": 208,
+      "total_tokens": 419,
+      "completion_tokens_details": {
+        "reasoning_tokens": 190
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452594.7438924,
+  "status": "ok"
+}
