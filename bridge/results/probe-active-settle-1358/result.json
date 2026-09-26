@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1358",
+  "kind": "llama_chat",
+  "started_at": 1790449092.8925424,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A worker finishes drilling a hole.\nRAW: The worker completes the hole but keeps the drill motor spinning against empty air at the end.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-92e9zuredjfmx1n7r0vrm9",
+    "object": "chat.completion",
+    "created": 1790449092,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The drill motor keeps spinning against empty air after the hole is finished, so the tool used for drilling hasn’t been visibly stopped at the natural endpoint.\"}",
+          "reasoning": "We need to judge if RAW matches SOURCE: \"A worker finishes drilling a hole.\" The raw states: \"The worker completes the hole but keeps the drill motor spinning against empty air at the end.\"\n\nCheck completion only. Finite activity must visibly reach its result. Here, the finite activity is drilling a hole; it reaches its result (hole completed). Additionally, if RAW introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped by the end when natural stable endpoint.\n\nThe drill motor spinning against empty air: The drill motor was active during drilling. After finishing, it's still spinning; that's a process used for drilling. It should stop at the end of hole completion. So RAW fails because the drill motor is still spinning. Thus invalid. Issue explanation: \"Drill motor remains spinning after hole completed.\" Return JSON.\n\nThus {\"valid\":false,\"issue\":\"The drill motor continues to spin after the hole is finished, so the tool used for drilling hasn't been stopped as expected.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 246,
+      "completion_tokens": 257,
+      "total_tokens": 503,
+      "completion_tokens_details": {
+        "reasoning_tokens": 209
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449096.982952,
+  "status": "ok"
+}
