@@ -926,3 +926,8 @@ Current rule:
 - do not infer mandatory physical handoff merely because work is described as being "for" an owner/client/beneficiary. Preserve beneficiary semantics, but distinguish task completion from transfer/delivery.
 
 This rule belongs in the existing Beat validator before broader checks; do not create a new semantic stage unless the combined validator still misses it after the priority change. Generic probes 1456-1475 produced 18/19 intended parsed judgments plus one 512-token truncation, with the only semantic miss caused by over-strict beneficiary transfer. Therefore only finite-endpoint priority is adopted.
+
+
+## Beneficiary completion distinction — 2026-09-26
+
+Finite-task completion is verified end-to-end. For a finite consumable or explicit immediate hand-off to a named person, the result must visibly reach/be served to that recipient. Merely labeling it for them or leaving it elsewhere is insufficient. By contrast, fabrication, repair, customization, or creative work merely made FOR someone is complete when the work itself is complete unless source explicitly requires delivery. Explicit later pickup/storage may make storage sufficient. Keep this distinction inside the existing Beat validator and source-aware Director completion gate; do not add a separate beneficiary subsystem.
