@@ -685,9 +685,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_source="The cook serves breakfast to Mira and Jon.",
         )
         prompt = messages[1]["content"]
-        self.assertIn("every named beneficiary", prompt)
-        self.assertIn("required result must already be true", prompt)
-        self.assertIn("still in progress", prompt)
+        self.assertIn("explicit hand-off to named people", prompt)
         self.assertIn("merely labeling it for them", prompt)
         self.assertIn("work merely made FOR someone", prompt)
 
