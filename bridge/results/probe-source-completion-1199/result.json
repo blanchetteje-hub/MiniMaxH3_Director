@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1199",
+  "kind": "llama_chat",
+  "started_at": 1790440689.3228846,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe engineer fits an oxygen mask while Nia and Sol stand nearby.\n\nRAW SCENE\nThe engineer fastens a mask on Nia and checks its seal. Sol watches without a mask.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin\n  or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly\n  receive/participate when physically possible.\n- Judge the final frame: the required result must already be true, not merely\n  attempted, approaching, starting up, partly complete, or still in progress.\n- Do not judge style, pacing, camera, continuity, future events, or harmless\n  extra detail.\nReturn valid=true only when CURRENT BEAT is complete in RAW SCENE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-bhnfj02ry5btb3qz3n1wgc",
+    "object": "chat.completion",
+    "created": 1790440689,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to check if the raw scene completes current beat.\n\nCurrent Beat: \"The engineer fits an oxygen mask while Nia and Sol stand nearby.\"\n\nSo actions: Engineer fits an oxygen mask (fits onto someone). Who? The mask presumably on Nia? It says \"while Nia and Sol stand nearby.\" So the mask is fitted to someone, likely Nia. But current beat doesn't specify who gets mask; just that engineer fits a mask while Nia and Sol are standing.\n\nRaw Scene: \"The engineer fastens a mask on Nia and checks its seal. Sol watches without a mask.\"\n\nSo raw scene shows engineer fastening mask on Nia (fits). Checks seal. Sol watches, no mask. So the current beat's actions: Engineer fits an oxygen mask; Nia and Sol stand nearby.\n\nIn raw scene, Nia is standing? It says \"fastens a mask on Nia\" - implies she stands or at least present. Sol watches without mask. They are near. The engineer fits mask onto Nia. So the beat's requirement: Engineer fits an oxygen mask while Nia and Sol stand nearby.\n\nThe raw scene shows that indeed, engineer fastens mask on Nia (fits). Sol watches; presumably standing. It doesn't explicitly say they \"stand\" but \"Sol watches without a mask.\" That implies he's near. The current beat says \"Nia and Sol stand nearby.\" In the raw scene, we don't see them standing? But it's implied that they're there.\n\nBut rule: Every explicit action/result in CURRENT BEAT must visibly happen. So engineer fits mask -> yes. Nia stands -> not explicitly shown but likely she is present. Sol stands -> also not explicitly stated but \"Sol watches\" implies he's near and presumably standing. The beat says they stand nearby; the raw scene shows them there.\n\nAlso rule: A finite activity must reach its natural observable result, not merely begin or remain underway. So mask fitting should be complete. Raw scene: fastens a mask on Nia and checks seal -> yes it's finished.\n\nThus current beat is completed in raw scene. The only potential issue: It says \"Nia and Sol stand nearby.\" In raw scene we don't see them standing, but they are present. But the rule: If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible. Nia receives mask; yes. Sol stands? He watches without a mask. So he participates by watching.\n\nThus valid=true. No issue string needed or empty? The JSON requires \"issue\" field as string. If no issues, maybe \"\".\n\nReturn: {\"valid\": true, \"issue\": \"\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 277,
+      "completion_tokens": 562,
+      "total_tokens": 839,
+      "completion_tokens_details": {
+        "reasoning_tokens": 542
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440697.0616546,
+  "status": "ok"
+}
