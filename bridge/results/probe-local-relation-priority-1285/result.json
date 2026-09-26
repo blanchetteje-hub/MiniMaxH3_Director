@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-priority-1285",
+  "kind": "llama_chat",
+  "started_at": 1790446110.871368,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe mage retrieves a healing potion from her satchel.\n\nRIGHT:\nShe drinks that potion.\n\nChoose MERGE or NEW_TASK. Use this order:\n1. STOPPING POINT: If LEFT explicitly completes/finishes a protection, victory, repair, shutdown, assembly, delivery, or other objective, choose NEW_TASK for a later distinct action. Testing, calibrating, inspecting, transporting, fetching new gear, releasing people, or starting another operation after that completion is NEW_TASK.\n2. SAME OBJECT EXCEPTION: MERGE only if RIGHT immediately continues handling the exact object/container LEFT just obtained, opened, unlocked, or started (retrieve -> equip/use/consume; open -> remove). This exception does NOT apply to an object LEFT finished building/assembling/repairing.\n3. NEW PROBLEM RESPONSE: MERGE if LEFT itself introduces a new problem, danger, alarm, or request and RIGHT immediately addresses that trigger.\n4. SAME ACTION: MERGE if RIGHT continues the same uninterrupted local action as LEFT.\nOtherwise choose NEW_TASK. Shared earlier danger, purpose, opportunity, access, or readiness is not enough to MERGE.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-01vf45usal2yu67eri1snih",
+    "object": "chat.completion",
+    "created": 1790446110,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need decide whether two adjacent source responsibilities belong to one local beat job: left: \"The mage retrieves a healing potion from her satchel.\" Right: \"She drinks that potion.\"\n\nCheck rules:\n\n1. STOPPING POINT: If LEFT explicitly completes/finishes an objective, choose NEW_TASK for later distinct action. Retrieving is not completing? It's obtaining the object; it's not finishing a protection etc. So maybe not.\n\n2. SAME OBJECT EXCEPTION: MERGE only if RIGHT immediately continues handling the exact object/container LEFT just obtained, opened, unlocked, or started (retrieve -> equip/use/consume). Yes retrieving potion then drinking it uses same object. This fits exception. So MERGE.\n\nAlso rule 4 says shared earlier danger etc not enough; but here it's same object usage.\n\nThus relation: \"MERGE\".\n\nReturn JSON with single key relation. Probably {\"relation\":\"MERGE\"}? The instruction: Return JSON with the single key relation. Likely just {\"relation\": \"MERGE\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 330,
+      "completion_tokens": 220,
+      "total_tokens": 550,
+      "completion_tokens_details": {
+        "reasoning_tokens": 204
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446114.5413218,
+  "status": "ok"
+}
