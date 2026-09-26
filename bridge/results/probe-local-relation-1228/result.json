@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1228",
+  "kind": "llama_chat",
+  "started_at": 1790442724.0071387,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe knight slays the last ogre in the courtyard.\n\nRIGHT:\nThe knight unlocks the captives' cells.\n\nChoose MERGE or NEW_TASK.\nMERGE only if RIGHT's PRIMARY ACTION:\n1. continues the same uninterrupted local action as LEFT;\n2. is the direct immediate response to a new problem/event introduced by LEFT itself; or\n3. immediately completes the exact object/action LEFT just obtained, opened, or started.\nOtherwise choose NEW_TASK once LEFT has a usable stopping point. Do not MERGE merely because RIGHT follows from, is enabled by, or shares a larger goal/cause with LEFT. A later task after completed protection, victory, assembly, or other completed work is NEW_TASK unless rule 3 applies.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5qdvu96v6d76gwj09dp6nm",
+    "object": "chat.completion",
+    "created": 1790442724,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to decide if RIGHT's primary action continues same uninterrupted local action as LEFT; or direct immediate response to new problem/event introduced by LEFT itself; or immediately completes exact object/action left just obtained, opened, started.\n\nLEFT: \"The knight slays the last ogre in the courtyard.\" So main action is slaying an ogre. That ends with killing the last ogre. The event: last ogre slain. RIGHT: \"The knight unlocks the captives' cells.\" This is unlocking cells of captives. Is that a direct immediate response to new problem/event introduced by LEFT? After slaying the last ogre, maybe the captives are freed; but the action is unlocking cells. Does it continue same local action? No, it's different: from killing an ogre to unlocking cells. It's not continuing same action. It might be immediate response to event of ogre slain? The new problem/event introduced by LEFT itself: \"last ogre in courtyard\" - after slaying the last ogre, maybe captives are freed; but unlocking cells is a direct response to that event? Possibly yes: the ogre was guarding them or something. But rule says RIGHT's primary action must be direct immediate response to new problem/event introduced by LEFT itself. The event introduced by LEFT: \"last ogre in courtyard\" - after slaying, maybe captives are freed; unlocking cells is a response to that? It could be considered immediate response because the last ogre was guarding them or blocking their escape. So unlocking cells immediately follows.\n\nBut rule 3: completes exact object/action left just obtained, opened, started. Left didn't open anything. So not rule 3.\n\nThus we choose MERGE",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 258,
+      "completion_tokens": 350,
+      "total_tokens": 608,
+      "completion_tokens_details": {
+        "reasoning_tokens": 347
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442729.449677,
+  "status": "ok"
+}
