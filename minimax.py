@@ -520,10 +520,11 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
                 "activity_tools_settled": {
                     "type": "boolean",
                     "description": (
-                        "True only when tools/appliances used only for a completed "
-                        "finite activity are visibly stopped, set down, closed, "
-                        "or otherwise settled when physically reasonable. True "
-                        "when no such tool/appliance applies."
+                        "True only when activity-only tools/appliances reach a stable visible "
+                        "state when physically reasonable. Do not set down, unequip, "
+                        "or discard a held/equipped readiness item merely because one "
+                        "action finished; preserve it unless CURRENT BEAT authorizes "
+                        "that state change. True when no such tool/appliance applies."
                     ),
                 },
                 "beat_complete": {
@@ -879,7 +880,7 @@ LOCAL STAGING
 - State materially important physical actions explicitly: who acts, what object is used, how it moves/changes hands/changes state, and the visible result when relevant. Avoid vague compression when the physical steps matter to H3.
 - A finite action in CURRENT BEAT is NOT complete merely because RAW SCENE shows the subject performing it. Unless CURRENT BEAT says it remains unfinished/interrupted, show its natural observable result or stable endpoint.
 - When an activity is for named people, show those people receiving or participating in the completed result when practical. `beat_complete=true` requires each named beneficiary to visibly receive or participate in the completed result when physically possible.
-- When completion ends use of a tool/appliance used only for that activity, visibly stop, set down, close, or otherwise settle it before the handoff when physically reasonable.
+- When completion ends use of an activity-only tool/appliance, leave it in a stable visible state when physically reasonable. Do NOT set down, unequip, holster, discard, or otherwise change a held/equipped readiness item merely because one action finished. Preserve held/equipped state unless ASSIGNED SOURCE/CURRENT BEAT explicitly changes it.
 - If CURRENT BEAT has multiple explicit actions, execute all of them.
 - Local staging may not invent consequential persistent changes beyond CURRENT BEAT.
 - When CURRENT BEAT introduces an unnamed but visually significant individual likely to persist, act, speak, fight, or matter to continuity, assign it a simple functional stable label formed from its role/type plus a number, such as Guard1 or Creature1, and reuse it consistently.
@@ -912,7 +913,7 @@ OUTPUT CONTRACT
 - raw_scene contains the complete timed scene plus one trailing "End continuity state:" sentence.
 - Set finite_activity_complete true only when every finite activity reaches its natural result/stable endpoint unless explicitly unfinished/interrupted.
 - Set named_beneficiaries_complete true only when named beneficiaries visibly receive/participate when physically possible.
-- Set activity_tools_settled true only when activity-only tools/appliances are visibly settled when physically reasonable.
+- Set activity_tools_settled true only when activity-only tools/appliances are in a stable visible state when physically reasonable; held/equipped readiness items must remain held/equipped unless CURRENT BEAT explicitly changes that state.
 - Set `beat_complete` true only when all three completion checks above are true and every explicit CURRENT BEAT action/object/outcome is visible.
 - Compress timing if needed. Never omit an explicit CURRENT BEAT requirement and never advance into NEXT BEAT.
 """
@@ -24795,7 +24796,8 @@ Check only completion and persistent-state compatibility:
 3. Preserve participant scope. Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it. Everyone else must stay on their original side unless SOURCE explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other people through does NOT authorize the mover/helper to follow. RAW is invalid if any unlisted participant crosses.
 4. Preserve persistent facts already true in AUTHORITATIVE OPENING STATE unless SOURCE/CURRENT BEAT explicitly changes them. This includes held/equipped items, containment, barrier state, clothing, injuries, and other durable conditions. Reject dropping, losing, freeing, unlocking, removing, or otherwise changing such state as harmless staging.
 5. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.
-6. Ignore style, camera, future events, and harmless non-persistent staging. Do not invent extra source requirements.
+6. End continuity must agree with the last visible state in RAW SCENE. If RAW sets down, drops, removes, closes, opens, equips, unequips, enters, exits, or otherwise materially changes something, the End continuity state cannot claim the opposite unless RAW visibly changes it back.
+7. Ignore style, camera, future events, and harmless non-persistent staging. Do not invent extra source requirements.
 Return valid (boolean) and issue (short explanation if invalid, empty string otherwise)."""},
         ]
     return [
