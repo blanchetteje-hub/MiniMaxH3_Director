@@ -983,8 +983,13 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             normalized,
         )
         self.assertIn(
-            "When an activity is for named people, show those people receiving or "
-            "participating in the completed result when reasonable",
+            "If an activity or result is for a person or group, keep them as "
+            "beneficiaries rather than spectators",
+            normalized,
+        )
+        self.assertIn(
+            "Merely watching the work is not enough unless watching/listening is "
+            "itself the intended result",
             normalized,
         )
         self.assertIn(
