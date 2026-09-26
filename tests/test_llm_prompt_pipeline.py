@@ -616,6 +616,25 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("held/equipped items", prompt)
         self.assertIn("Reject dropping, losing, freeing, unlocking, removing", prompt)
 
+    def test_director_prompt_locks_h3_visual_writing_discipline(self):
+        rules = minimax.build_director_rules(
+            64,
+            8,
+            8,
+            "",
+            3,
+            conditioning_mode="continuation",
+            is_final_story_segment=False,
+        )
+        normalized = " ".join(rules.split())
+        self.assertIn("No literary fluff", normalized)
+        self.assertIn("externally depictable video/audio information", normalized)
+        self.assertIn("internal thoughts", normalized)
+        self.assertIn("State materially important physical actions explicitly", normalized)
+        self.assertIn("Use continuous camera movement liberally", normalized)
+        self.assertIn("Cuts are rare", normalized)
+        self.assertIn("use a pronoun only when exactly one person", normalized)
+
     def test_completion_prompt_requires_named_beneficiaries_and_final_result(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "The cook serves breakfast to Mira and Jon.",
