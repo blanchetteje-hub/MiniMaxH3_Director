@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1222",
+  "kind": "llama_chat",
+  "started_at": 1790442684.7980103,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nShe retrieves her hidden arsenal consisting of a pistol and a katana.\n\nRIGHT:\nShe equips the weapons.\n\nChoose MERGE or NEW_TASK.\nMERGE only if RIGHT's PRIMARY ACTION:\n1. continues the same uninterrupted local action as LEFT;\n2. is the direct immediate response to a new problem/event introduced by LEFT itself; or\n3. immediately completes the exact object/action LEFT just obtained, opened, or started.\nOtherwise choose NEW_TASK once LEFT has a usable stopping point. Do not MERGE merely because RIGHT follows from, is enabled by, or shares a larger goal/cause with LEFT. A later task after completed protection, victory, assembly, or other completed work is NEW_TASK unless rule 3 applies.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-u1rilfxqyipyuwvu0vosa",
+    "object": "chat.completion",
+    "created": 1790442684,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if RIGHT's action \"She equips the weapons.\" should merge with LEFT: \"She retrieves her hidden arsenal consisting of a pistol and a katana.\"\n\nCheck rules:\n\n1. continues same uninterrupted local action as LEFT? The retrieval is retrieving; equipping is next step, but not continuation of retrieval.\n\n2. direct immediate response to new problem/event introduced by LEFT itself? Retrieval introduces the weapons; equipping responds to that event: yes.\n\n3. immediately completes exact object/action left just obtained, opened, or started. She obtains arsenal; equipping uses them. That could be considered completing usage of retrieved objects.\n\nWhich rule applies? Rule 2 says direct immediate response to new problem/event introduced by LEFT itself. Retrieval introduces weapons as a new event: she now has them. Equipping is the next action responding to that event. So MERGE qualifies.\n\nRule 3 also qualifies because equipping completes exact object obtained (the arsenal). But rule 3 says \"immediately completes the exact object/action left just obtained, opened, or started.\" She obtains arsenal; equipping uses it but not necessarily completing retrieval? The retrieval is obtaining; equipping doesn't complete that action. So maybe rule 2.\n\nThus MERGE.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 255,
+      "completion_tokens": 266,
+      "total_tokens": 521,
+      "completion_tokens_details": {
+        "reasoning_tokens": 250
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442689.1789722,
+  "status": "ok"
+}
