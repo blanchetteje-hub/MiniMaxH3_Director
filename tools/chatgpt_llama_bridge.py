@@ -461,7 +461,9 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
     for raw_path in test_paths:
         if not isinstance(raw_path, str) or not raw_path.strip():
             raise ValueError("run_tests test paths must be non-empty strings.")
-        path = safe_source_path(worktree, raw_path.strip())
+        selector = raw_path.strip()
+        file_part, sep, node_part = selector.partition("::")
+        path = safe_source_path(worktree, file_part)
         try:
             path.relative_to(tests_root)
         except ValueError as error:
@@ -469,8 +471,11 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
                 f"run_tests may only execute paths under tests/: {raw_path!r}"
             ) from error
         if not path.exists():
-            raise ValueError(f"Requested test path does not exist: {raw_path!r}")
-        normalized.append(str(path.relative_to(worktree)))
+            raise ValueError(f"Requested test path does not exist: {file_part!r}")
+        normalized_selector = str(path.relative_to(worktree))
+        if sep:
+            normalized_selector += "::" + node_part
+        normalized.append(normalized_selector)
 
     timeout = int(job.get("timeout_seconds") or 900)
     timeout = max(1, min(timeout, 1800))
