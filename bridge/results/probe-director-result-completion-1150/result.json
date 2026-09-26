@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-result-completion-1150",
+  "kind": "llama_chat",
+  "started_at": 1790392960.7688603,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe operator opens the blast door.\n\nRAW SCENE\nThe operator enters the code; the lock disengages and the door begins sliding upward.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- If CURRENT BEAT names an achieved result (activate, start, open, close, lock, repair, heal, stabilize, seal, fill, land, finish, equip, or equivalent), RAW SCENE must visibly reach that result.\n- Beginning, attempting, approaching, startup/progress indicators, or partial movement do NOT satisfy the achieved result unless the result itself is visibly established.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or harmless extra detail.\nReturn {\"valid\":true,\"issue\":\"\"} only when CURRENT BEAT is complete; otherwise false with a short concrete issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-dig138aw3n5p7h7z9cn0me",
+    "object": "chat.completion",
+    "created": 1790392960,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The door has only begun to slide upward; it hasn’t fully opened as required by the beat.\"}",
+          "reasoning": "We need to check if RAW SCENE visibly completes the current beat: \"The operator opens the blast door.\" The raw scene says: \"The operator enters the code; the lock disengages and the door begins sliding upward.\"\n\nDoes that show the door opening? It shows the lock disengaging, door beginning to slide upward. Does that count as opened? Opening is achieved when door fully open. Here it's just starting to slide up. The rule: Beginning, attempting, approaching, startup/progress indicators do NOT satisfy the result unless the result itself is visibly established. So \"door begins sliding upward\" indicates progress but not full opening. Thus beat incomplete.\n\nThus valid false with issue: \"Door hasn't fully opened yet.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 298,
+      "completion_tokens": 182,
+      "total_tokens": 480,
+      "completion_tokens_details": {
+        "reasoning_tokens": 144
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392963.4605026,
+  "status": "ok"
+}
