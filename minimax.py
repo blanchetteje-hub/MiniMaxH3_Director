@@ -865,6 +865,7 @@ AUTHORITY RULES
 - Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
 - If CURRENT BEAT terminally removes/destroys/kills an entity or process, do not carry it forward as active unless CURRENT BEAT restores/restarts it.
 - If a subject is inside/behind a locked or sealed barrier, keep that containment true until CURRENT BEAT explicitly releases or moves them.
+- When only some subjects cross a doorway, hatch, gate, or other barrier and it then closes or locks, make the blocking explicit for H3: show exactly who crosses, keep non-crossing subjects on the original side, close the barrier between the groups, and state the final side of each group. After closure, do not keep the far-side group visibly beside the near-side group unless CURRENT BEAT explicitly reopens the barrier.
 - Do not invent wardrobe changes. Any clothing specified in the beat must be part of the response.
 
 LOCAL STAGING
