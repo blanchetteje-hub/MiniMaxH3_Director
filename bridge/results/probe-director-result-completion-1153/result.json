@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-result-completion-1153",
+  "kind": "llama_chat",
+  "started_at": 1790392974.5193348,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe medic stabilizes the patient.\n\nRAW SCENE\nAfter treatment, the patient's blood pressure and pulse settle into a stable range.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- If CURRENT BEAT names an achieved result (activate, start, open, close, lock, repair, heal, stabilize, seal, fill, land, finish, equip, or equivalent), RAW SCENE must visibly reach that result.\n- Beginning, attempting, approaching, startup/progress indicators, or partial movement do NOT satisfy the achieved result unless the result itself is visibly established.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or harmless extra detail.\nReturn {\"valid\":true,\"issue\":\"\"} only when CURRENT BEAT is complete; otherwise false with a short concrete issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-fhua2hdfhrwkjzfadyptu",
+    "object": "chat.completion",
+    "created": 1790392974,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to check if RAW SCENE visibly completes the current beat: \"The medic stabilizes the patient.\" The beat says that the medic stabilizes the patient. Does raw scene show that? Raw scene: \"After treatment, the patient's blood pressure and pulse settle into a stable range.\" That indicates stabilization of vital signs after treatment. But does it explicitly say the medic stabilized the patient? It says after treatment, vitals stabilize. The beat is about the action of stabilizing; the result is achieved: patient stabilized. Raw scene shows that the patient has stable blood pressure and pulse. So yes, the result \"stabilize\" is visible. Does it mention the medic? Not explicitly but it's implied by \"After treatment\". But rule says if CURRENT BEAT names an achieved result (activate, start... stabilize...), RAW SCENE must visibly reach that result. It does: vitals stable. Also \"after treatment\" implies the medic performed treatment. So valid.\n\nThus output {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 296,
+      "completion_tokens": 225,
+      "total_tokens": 521,
+      "completion_tokens_details": {
+        "reasoning_tokens": 206
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392977.7873292,
+  "status": "ok"
+}
