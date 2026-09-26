@@ -9877,8 +9877,8 @@ Use CURRENT JOB as the only source of required work for this beat. The RESERVED
 FOR LATER section is never required now; it exists only to detect early leakage.
 
 FIRST CHECK — FINITE ENDPOINT: When CURRENT JOB assigns a finite activity or
-task to this beat, CANDIDATE BEAT must show that activity reach its natural
-observable completion endpoint in this beat. Merely showing the activity
+task to this beat, CANDIDATE BEAT must show a natural observable completion endpoint
+for that activity in this beat. Merely showing the activity
 underway, continuing, approaching completion, or partly complete is INVALID,
 even when CURRENT JOB itself uses progressive wording such as "is cooking" or
 "is repairing". Do not force a terminal endpoint when CURRENT JOB explicitly
