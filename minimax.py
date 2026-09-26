@@ -25496,6 +25496,19 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             subject_definitions=bundle.get("subject_definitions", ""),
         )
 
+    llm_result["detailed_description"] = _canonicalize_director_timestamps(
+        llm_result.get("detailed_description", "")
+    )
+    final_timestamp_issues = _validate_director_timestamp_correspondence(
+        raw_scene,
+        llm_result.get("detailed_description", ""),
+    )
+    if final_timestamp_issues:
+        raise BeatGenerationError(
+            "Director Request 2 final timestamp validation failed: "
+            + " ".join(final_timestamp_issues)
+        )
+
     payload = dict(bundle)
     payload["raw_scene"] = raw_scene
     payload["request1_result"] = copy.deepcopy(request1_result)
