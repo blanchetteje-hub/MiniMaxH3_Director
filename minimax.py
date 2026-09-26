@@ -520,10 +520,13 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
                 "activity_tools_settled": {
                     "type": "boolean",
                     "description": (
-                        "True only when tools/appliances used only for a completed "
-                        "finite activity are visibly stopped, set down, closed, "
-                        "or otherwise settled when physically reasonable. True "
-                        "when no such tool/appliance applies."
+                        "True only when an active process/tool used only to perform a "
+                        "completed finite activity reaches its natural inactive or "
+                        "stable endpoint when physically reasonable. Do not require "
+                        "passive tools to be put away, readiness tools to be lowered, "
+                        "or intended ON/open result states to be reversed. Explicitly "
+                        "ongoing/interrupted source activity may remain active. True "
+                        "when no such active process applies."
                     ),
                 },
                 "beat_complete": {
@@ -871,7 +874,7 @@ LOCAL STAGING
 - Add only the minimum mundane micro-actions, ordinary props, incidental reactions, and short natural dialogue needed to make CURRENT BEAT visibly legible and complete.
 - A finite action in CURRENT BEAT is NOT complete merely because RAW SCENE shows the subject performing it. Unless CURRENT BEAT says it remains unfinished/interrupted, show its natural observable result or stable endpoint.
 - When an activity is for named people, show those people receiving or participating in the completed result when practical. `beat_complete=true` requires each named beneficiary to visibly receive or participate in the completed result when physically possible.
-- When completion ends use of a tool/appliance used only for that activity, visibly stop, set down, close, or otherwise settle it before the handoff when physically reasonable.
+- When a completed finite activity used an active process/tool only to perform that activity, end that active process at its natural inactive/stable endpoint when physically reasonable. Do not require passive tools to be put away, readiness tools to be lowered, or intended ON/open result states to be reversed. If SOURCE/CURRENT BEAT explicitly leaves the activity ongoing or interrupted, preserve that state instead of forcing shutdown.
 - If CURRENT BEAT has multiple explicit actions, execute all of them.
 - Local staging may not invent consequential persistent changes beyond CURRENT BEAT.
 - When CURRENT BEAT introduces an unnamed but visually significant individual likely to persist, act, speak, fight, or matter to continuity, assign it a simple functional stable label formed from its role/type plus a number, such as Guard1 or Creature1, and reuse it consistently.
@@ -24758,8 +24761,9 @@ RAW SCENE
 Check only completion:
 1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.
 2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.
-3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.
-4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.
+3. If RAW visibly uses an active process/tool only to perform a now-completed finite activity, require that active process to reach its natural inactive/stable endpoint when physically reasonable. Do not require passive tools to be put away, readiness tools to be lowered, or intended ON/open result states to be reversed.
+4. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish or shut down merely because the process remains active.
+5. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.
 Return valid (boolean) and issue (short explanation if invalid, empty string otherwise)."""},
         ]
     return [
@@ -24783,6 +24787,11 @@ RULES
 - Every explicit action/result in CURRENT BEAT must visibly happen.
 - A finite activity must reach its natural observable result, not merely begin
   or remain underway.
+- If a completed finite activity visibly uses an active process/tool only to
+  perform that activity, that active process must reach its natural inactive or
+  stable endpoint when physically reasonable. Do not require passive tools to
+  be put away, readiness tools to be lowered, or intended ON/open result states
+  to be reversed. Explicitly ongoing/interrupted work may remain active.
 - If CURRENT BEAT is for named people, every named beneficiary must visibly
   receive/participate when physically possible.
 - Judge the final frame: the required result must already be true, not merely
