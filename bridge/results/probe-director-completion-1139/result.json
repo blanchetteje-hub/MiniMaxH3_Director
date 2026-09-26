@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-completion-1139",
+  "kind": "llama_chat",
+  "started_at": 1790392671.5573444,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe baker bakes a loaf of bread.\n\nRAW SCENE\nThe baker removes a fully baked loaf from the oven and sets it on the cooling rack.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or extra harmless detail.\n- valid=true only if CURRENT BEAT is complete in RAW SCENE.\nReturn {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1tr767hhbzf085qkwf74mf4",
+    "object": "chat.completion",
+    "created": 1790392671,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to check whether the raw scene completes current beat. Current Beat: \"The baker bakes a loaf of bread.\" Raw Scene: \"The baker removes a fully baked loaf from the oven and sets it on the cooling rack.\"\n\nDoes that complete? The action is baking a loaf; raw shows removing a fully baked loaf, which implies it's been baked. So yes, current beat completed. It's visible. No named beneficiary issues. So valid=true.\n\nReturn JSON: {\"valid\":true,\"issue\":\"\".}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 254,
+      "completion_tokens": 122,
+      "total_tokens": 376,
+      "completion_tokens_details": {
+        "reasoning_tokens": 103
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392673.5022552,
+  "status": "ok"
+}
