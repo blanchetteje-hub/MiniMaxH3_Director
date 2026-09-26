@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1417",
+  "kind": "llama_chat",
+  "started_at": 1790452550.1910307,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Nia wears a red coat. SOURCE: Nia reads a map. RAW: Nia reads the map while wearing the red coat.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-smu27ov0uxhw18ey16zkr",
+    "object": "chat.completion",
+    "created": 1790452550,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them.\n\nOPENING: Nia wears a red coat.\nSOURCE: Nia reads a map.\nRAW: Nia reads the map while wearing the red coat.\n\nCheck: Does RAW complete SOURCE? Source says \"Nia reads a map.\" That is an action. RAW adds that she does it while wearing the red coat, which doesn't change the fact of reading the map; it's consistent and completes by adding context. It preserves persistent OPENING facts: Nia wears a red coat remains true. No changes to clothing or other state. So valid.\n\nReturn JSON {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 219,
+      "completion_tokens": 158,
+      "total_tokens": 377,
+      "completion_tokens_details": {
+        "reasoning_tokens": 140
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452552.8681455,
+  "status": "ok"
+}
