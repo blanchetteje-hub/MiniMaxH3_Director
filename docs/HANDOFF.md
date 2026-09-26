@@ -1137,3 +1137,18 @@ transformation. Only then move on toward H3 prompt generation.
 - Of the fully parsed probes, all but one matched the expected label. The lone apparent miss (1086) was an ambiguous/bad control: CURRENT JOB said "defeats the two gate guards" while the candidate merely disarmed one and knocked out the other, so the model's rejection was defensible rather than an ownership failure.
 - No demonstrated CURRENT-vs-RESERVED-FOR-LATER confusion remained in the batch.
 - Fresh planning-only Amy acceptance `amy-planning-ownership-refined-1098` is queued on `gpt-runtime` to verify the refined prompts end-to-end. Acceptance must still produce 2 chapters / 6+2 beats and must not consume E2/E3 in Beat 1 or E7 in Beat 6.
+
+
+### 2026-09-25 — beat integrity and final-state validation
+
+- Acceptance 1098 preserved the correct 2-chapter / 6+2 structure and fixed CURRENT-vs-LATER ownership end-to-end.
+- It exposed two new concrete defects:
+  - malformed model JSON punctuation leaked raw `{` / `}` fragments into finalized beat prose;
+  - typed item-state effects could be accepted from an earlier action even when a later action undid the final state.
+- Commit `74fce339d04e122ffb86f4a7571bf06df7751b89`:
+  - deterministically rejects finalized beat text containing raw JSON delimiters;
+  - tells the validator to judge typed item effects from the candidate's FINAL state after all actions in order.
+- Commit `43060527d52d4c19e6aef1d17cce10b667da07ee` refreshes stale prompt assertions.
+- Generic final-item-state probes 1100–1118 completed at 19/19 intended semantic labels.
+- Refreshed unit job `beat-integrity-tests-1120` is queued.
+- Fresh planning acceptance `planning-integrity-refined-1121` is queued. It must preserve 6+2 ownership and additionally reject JSON delimiter leakage plus any beat whose final held/equipped state is contradicted by later actions.
