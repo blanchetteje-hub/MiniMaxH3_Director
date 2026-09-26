@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-1277",
+  "kind": "llama_chat",
+  "started_at": 1790445976.6504018,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe cook prepares dinner for Mira and Jon.\n\nCANDIDATE BEAT\nThe cook finishes dinner, serves Mira a plate, while Jon watches from the table.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result when the job has multiple parts. Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result. Reject a solo rewrite that drops named beneficiaries or participants. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-s5mvjkyz0ligu6cj34avf",
+    "object": "chat.completion",
+    "created": 1790445976,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to validate candidate beat against current job. Current Job: \"The cook prepares dinner for Mira and Jon.\" So the cook must prepare dinner for both Mira and Jon.\n\nCandidate Beat: \"The cook finishes dinner, serves Mira a plate, while Jon watches from the table.\"\n\nDoes it accomplish meaning? The cook finishes dinner (prepares). Serves Mira a plate. But what about serving Jon? It says Jon watches from the table; not served. So does that fulfill preparing dinner for both? He prepared dinner but only served to Mira. Does \"preparing dinner for Mira and Jon\" imply he serves them or just prepares it for them? The current job: \"The cook prepares dinner for Mira and Jon.\" That means the cook is making dinner intended for both, not necessarily serving them. But candidate beat says he finishes dinner (makes). Serves Mira a plate; but doesn't mention serving to Jon. However, preparing dinner for both could be satisfied by finishing dinner that will serve both. The fact that only one served might still satisfy \"prepares dinner\" part. But the job includes \"for Mira and Jon.\" That implies the cook is making it for them. He does finish dinner; that's preparation. So yes.\n\nBut check: Does candidate beat drop named beneficiaries? It mentions Mira, but not Jon as beneficiary of serving. However current job only requires preparing dinner for both; doesn't require serving to both. The candidate includes that he serves Mira a plate (Mira is served). For Jon, the cook didn't serve him, but maybe it's implied he's watching from table and will get his plate later? But does \"prepares dinner for Mira and Jon\" mean the cook prepares it for them specifically; not necessarily serving them at same time. The candidate beat says he finishes dinner (makes) which is preparing. So that part satisfied.\n\nBut check: Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result. Here \"prepares dinner for Mira and Jon.\" The cook prepares dinner for both; so the result is that dinner prepared for them. Candidate beat shows cooking finished (makes). It doesn't explicitly mention that it's for both? But finishing dinner implies preparing it, but does not specify recipients. However the phrase \"for Mira and Jon\" indicates the dinner is intended for them. In candidate beat, we see he serves Mira a plate; that's explicit. For Jon, no serving. But maybe he's watching from table, implying he'll get his plate soon? The job only requires preparing dinner for both; not necessarily serving to both at that moment.\n\nBut check rule: \"Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result.\" So we need to preserve Mira and Jon as beneficiaries. The candidate beat preserves Mira (served). For Jon, he watches from table; not served but still present. But does that count as his benefit? He is watching dinner prepared for him. Might be okay.\n\nBut maybe the requirement: \"prepares dinner for Mira and Jon\" means the cook prepares it specifically for them. The candidate beat shows cooking finished (makes). That implies it's ready for both, though only served to one yet. So I think valid.\n\nThus return {\"valid\": true, \"issue\": \"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 254,
+      "completion_tokens": 700,
+      "total_tokens": 954,
+      "completion_tokens_details": {
+        "reasoning_tokens": 697
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790445987.4191034,
+  "status": "ok"
+}
