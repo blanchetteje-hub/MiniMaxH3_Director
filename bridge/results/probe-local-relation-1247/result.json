@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1247",
+  "kind": "llama_chat",
+  "started_at": 1790443013.6362321,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe technician opens the instrument case.\n\nRIGHT:\nThe technician immediately removes the meter from that case.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself CREATES a problem, danger, or request, and RIGHT is the immediate response that addresses it.\n3. RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it is only a tool for another target, this rule does not apply.\nImportant: rule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. A different objective after completed work is NEW_TASK even when both serve the same larger goal.\nOtherwise choose NEW_TASK.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-94duwfwgrrezhb5eynri9",
+    "object": "chat.completion",
+    "created": 1790443013,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if two adjacent source responsibilities belong to one local beat job: LEFT and RIGHT.\n\nLEFT: \"The technician opens the instrument case.\"\n\nRIGHT: \"The technician immediately removes the meter from that case.\"\n\nCheck rules:\n\n1. RIGHT continues same uninterrupted action as LEFT? The left is opening a case; right is removing meter from that case. Opening case then removing meter are consecutive actions but not exactly same action. So rule 1 doesn't apply.\n\n2. LEFT creates problem/danger/request, and RIGHT immediate response addresses it. Left opens instrument case: no problem created. It's just an action to access the meter. Not a problem or danger. So rule 2 doesn't apply.\n\n3. RIGHT immediately completes handling of exact object/container/action left just obtained, opened, unlocked, started. LEFT object is \"instrument case\". Right acts on that same container? It removes meter from that case: yes it handles the instrument case by removing meter. The object itself must be what RIGHT acts on; if it's only a tool for another target, this rule does not apply. Here the meter is inside the case; right action is to remove meter from case. So right completes handling of the exact container opened? It removes an item from it. That seems like completing handling of that object/container: yes.\n\nThus rule 3 applies => MERGE.\n\nReturn JSON with key relation: \"MERGE\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 273,
+      "completion_tokens": 297,
+      "total_tokens": 570,
+      "completion_tokens_details": {
+        "reasoning_tokens": 281
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790443018.3229542,
+  "status": "ok"
+}
