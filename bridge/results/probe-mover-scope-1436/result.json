@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-mover-scope-1436",
+  "kind": "llama_chat",
+  "started_at": 1790454751.29696,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one participant-scope case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Dev opens the hatch and lets the children out. RAW: Dev opens the hatch; the children climb out while Dev remains below.\n\nPreserve participant scope. If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-cvhjj8o1anvv6rd7w3fwq",
+    "object": "chat.completion",
+    "created": 1790454751,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge participant-scope case: The source says \"Dev opens the hatch and lets the children out.\" RAW says \"Dev opens the hatch; the children climb out while Dev remains below.\"\n\nThe rule: If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters.\n\nSo source: \"Dev opens the hatch and lets the children out.\" That implies dev opens hatch (action) and lets children out. Does it say Dev moves? It doesn't say he goes through hatch; just opens and lets them out. So movement applies to children only, not dev. RAW says dev remains below. That's consistent.\n\nThus valid: true. No issue. Return JSON {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 182,
+      "completion_tokens": 189,
+      "total_tokens": 371,
+      "completion_tokens_details": {
+        "reasoning_tokens": 170
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790454754.4013705,
+  "status": "ok"
+}
