@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-persistent-guard-1428",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge persistent-state compatibility. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "OPENING: Lio is inside a locked storage room.\nSOURCE: Mara repairs a console outside.\nRAW: Mara repairs the console and Lio walks out through the door.\n\nRule: preserve persistent opening facts unless SOURCE explicitly changes them. Containment and locked barriers are persistent. If RAW frees someone or crosses a locked barrier without SOURCE authorization, return invalid.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+    }
+  ]
+}
