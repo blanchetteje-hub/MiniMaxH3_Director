@@ -89,6 +89,29 @@ Active development branch:
   it must restore 2 chapters / 6+2 beats and then expose the earliest remaining
   story.txt -> gold-prompt mismatch.
 
+### 2026-09-26 — acceptance 1276 restores 6+2; beneficiary-role gap is next
+
+- Full acceptance 1276 restored the intended source-span structure: **2 chapters,
+  6+2 beats**, with the refresh at Segment 7. The grouping-priority change is
+  therefore validated on the real story path.
+- The run stopped at Director Segment 1 after three Request-1 retries. Two failures
+  were legitimate source misses: breakfast was not delivered to both children,
+  and Amy's source-assigned clothing was omitted. One completion verdict also
+  hallucinated a plate-holding requirement, so the completion gate remains
+  imperfect and should not absorb more responsibilities.
+- The upstream accepted Beat 1 is the cleaner demonstrated cause: it rewrote
+  "cooking breakfast for her young kids" into "Will drinks milk / Amber watches".
+  The beat validator currently requires named relational participants to remain,
+  but does not reliably preserve their beneficiary/recipient role.
+- Queued paired probes **1277-1296** comparing the current named-participant rule
+  with one narrow beneficiary-role sentence. Controls include food/products for
+  people, performances and lessons where watching is valid, repair, treatment,
+  shelter, and delivery. Do not patch until results are reviewed.
+- Next decision: if the beneficiary wording materially improves the paired set
+  without false-rejecting performance/instruction controls, add it to the existing
+  single beat validator, run focused forward-validation tests, then rerun full
+  prompt acceptance.
+
 The entries below are historical; this snapshot supersedes old stop/go decisions.
 
 ## Historical snapshot — 2026-09-25
