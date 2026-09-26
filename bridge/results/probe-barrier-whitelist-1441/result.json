@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-whitelist-1441",
+  "kind": "llama_chat",
+  "started_at": 1790454936.5740168,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one barrier-participant case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Mara guides Eli and Noor into the shelter and locks the door. RAW: Eli and Noor enter. Mara follows them inside and locks the door.\n\nBarrier rule: only subjects explicitly named by SOURCE as crossing/entering/exiting may cross. Everyone else stays on the side where they started. Moving, pushing, guiding, releasing, or letting others through does not authorize the helper to follow. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-y7m6qg9wl34x9ydwgutg5",
+    "object": "chat.completion",
+    "created": 1790454936,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Mara guides Eli and Noor into the shelter but is not explicitly named by SOURCE as crossing/entering, so she should stay on her starting side according to the barrier rule.\"}",
+          "reasoning": "We need to judge if the barrier rule is satisfied: only subjects explicitly named by SOURCE as crossing/entering/exiting may cross; everyone else stays on side where they started. Moving, pushing, guiding, releasing, letting others through does not authorize helper to follow.\n\nIn scenario: Source says \"Mara guides Eli and Noor into the shelter and locks the door.\" So source names Mara (guide), Eli, Noor as crossing/entering? The rule: only subjects explicitly named by SOURCE as crossing/entering/exiting may cross. Here Eli and Noor are explicitly named as entering; Mara is guiding them but not necessarily crossing? She guides them into the shelter and locks the door. Does she cross? The source says \"Mara guides ... into the shelter\" implies that Mara also enters, because she goes inside to guide them. But does the rule require explicit naming of her as crossing/entering? Source didn't explicitly say \"Mara crosses\" or \"Mara enters\". It just says she guides them and locks door. So is she considered crossing? The rule: only subjects explicitly named by SOURCE as crossing/entering/exiting may cross. Everyone else stays on side where they started. Moving, pushing, guiding, releasing, letting others through does not authorize helper to follow.\n\nThus Mara is a helper; she guides them but not explicitly named as entering. So according to barrier rule, she should stay on the side where she started (outside). But source says she locks door inside? That implies she entered. Since she's not explicitly named crossing/entering in source, it's invalid. Therefore valid: false.\n\nIssue explanation: Mara is a helper who crosses without being explicitly named as entering by SOURCE; thus barrier rule violated.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 188,
+      "completion_tokens": 405,
+      "total_tokens": 593,
+      "completion_tokens_details": {
+        "reasoning_tokens": 351
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790454942.9012933,
+  "status": "ok"
+}
