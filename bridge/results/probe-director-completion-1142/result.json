@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-completion-1142",
+  "kind": "llama_chat",
+  "started_at": 1790392684.8624287,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe medic gives water to Kai and Lio.\n\nRAW SCENE\nThe medic hands a cup of water to Kai; Lio stands nearby.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or extra harmless detail.\n- valid=true only if CURRENT BEAT is complete in RAW SCENE.\nReturn {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-4u6dcs77q743lw4w0z16sd",
+    "object": "chat.completion",
+    "created": 1790392684,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Lio does not visibly receive water\"}",
+          "reasoning": "We need to check whether the raw scene visibly completes current beat. Current Beat: \"The medic gives water to Kai and Lio.\" Raw Scene: \"The medic hands a cup of water to Kai; Lio stands nearby.\"\n\nDoes it show that the medic gave water to both? It shows giving to Kai, but not to Lio. Lio is just standing nearby. So it's incomplete. Thus valid=false. Issue: \"Lio does not receive water.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 252,
+      "completion_tokens": 119,
+      "total_tokens": 371,
+      "completion_tokens_details": {
+        "reasoning_tokens": 94
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392686.8592026,
+  "status": "ok"
+}
