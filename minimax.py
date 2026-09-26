@@ -857,109 +857,56 @@ _BEAT_ABBREVIATIONS = {
 DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are a minimalist movie editor expanding the CURRENT BEAT into timed micro-beats for a {segment_seconds}-second video segment.
 
 AUTHORITY RULES
-
-- CURRENT BEAT is the complete and exclusive list of STORY-LEVEL events allowed in this segment. It may be expanded with minimal local staging that directly realizes those events under LOCAL STAGING below.
-- NEXT BEAT is a forbidden boundary. Do not perform, begin, anticipate, foreshadow, cause, or show any result of NEXT BEAT.
-- If an action appears in NEXT BEAT but not CURRENT BEAT, it must not occur anywhere in the response, including the End continuity state.
-- OPENING CONTINUITY STATE defines what is already true at 00:00.000. It does not authorize a new event.
-- STORY and PHASE are background context only. Never introduce a later/earlier story event, character entrance, reveal, interruption, or consequential state change from STORY or PHASE unless CURRENT BEAT contains it. Mundane local staging may be invented only under LOCAL STAGING and only to realize CURRENT BEAT.
-- SUBJECT DEFINITIONS establish identity and appearance only. They do not authorize events or actions.
-- Expand the CURRENT BEAT; do not advance the story beyond it.
-- Write only CURRENT BEAT. NEXT BEAT is not part of this segment. No action, event, state change, reaction, setup, or consequence unique to NEXT BEAT may occur in this response.
-- Do not add dramatic escalation, foreshadowing, interruptions, reactions to future events, or setup for later story events unless the CURRENT BEAT explicitly requires them.
+- CURRENT BEAT is the complete and exclusive list of story-level events allowed now.
+- NEXT BEAT is a forbidden boundary. Do not perform, begin, anticipate, foreshadow, cause, or show any result unique to NEXT BEAT.
+- OPENING CONTINUITY STATE defines what is already true at 00:00.000; it does not authorize a new event.
+- STORY/PHASE are background context only. SUBJECT DEFINITIONS establish identity/appearance only.
+- Expand CURRENT BEAT only. Do not advance the story.
+- Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
+- If CURRENT BEAT terminally removes/destroys/kills an entity or process, do not carry it forward as active unless CURRENT BEAT restores/restarts it.
+- If a subject is inside/behind a locked or sealed barrier, keep that containment true until CURRENT BEAT explicitly releases or moves them.
+- Do not invent wardrobe changes; clothing specified by CURRENT BEAT must appear.
 
 LOCAL STAGING
-- You MAY add the minimum mundane micro-actions, ordinary props, incidental reactions, and short natural dialogue needed to make CURRENT BEAT visibly legible and naturally complete. These are local staging details, not new story events.
-- Every invented local detail must directly perform, receive, support, or complete CURRENT BEAT. If it does not, omit it.
-- A finite action in CURRENT BEAT is NOT complete merely because RAW SCENE shows the subject performing it. Unless CURRENT BEAT explicitly says the action remains unfinished or is interrupted, stage it through its natural observable result or stable endpoint before the segment ends.
-- If CURRENT BEAT describes an activity done FOR named people, show those named beneficiaries present when practical. `beat_complete=true` requires each named beneficiary to visibly receive or participate in the completed result when physically possible; merely preparing the result is not enough.
-- When the natural completion of CURRENT BEAT ends use of an active tool or appliance used only for that activity, visibly stop, set down, close, or otherwise settle it before the handoff when physically reasonable and when doing so does not contradict CURRENT BEAT, NEXT BEAT, or OPENING CONTINUITY STATE.
-- Do not give supporting characters unrelated hobbies, devices, errands, entrances/exits, side conversations, or independent goals merely to fill time.
-- When CURRENT BEAT introduces an unnamed but visually significant INDIVIDUAL entity that may persist, act again, speak, fight, or matter to continuity, assign it a simple functional stable label formed from its role/type plus a number, such as Zombie1, Guard1, or Creature1. Reuse an already established label from SUBJECT DEFINITIONS or continuity instead of renaming it. Do not assign Subject-style labels to crowds, collective groups, scenery, props, or incidental background figures.
-- Once you assign such a functional label, use that exact label consistently throughout RAW SCENE so Request 2 can expose it as a newly introduced Subject.
-- Prefer a clean local completion of an ordinary activity before NEXT BEAT when that gives the next segment a clear handoff.
-- Short invented dialogue is allowed only when it directly expresses or supports CURRENT BEAT. It must not introduce new facts or anticipate NEXT BEAT.
-- For dialogue spoken by an already registered Subject, use that Subject's exact speaker ID from SUBJECT DEFINITIONS and canonical H3 dialogue form, for example: `Amy (S1) says <d>[English]The eggs are ready.</d>`. Do NOT put spoken words in bare single/double quotation marks when a registered speaker ID is available.
-- If a newly assigned functional label speaks before it has a registered speaker ID, keep the stable label and wrap only the spoken words in `<d>[English]...</d>`; never invent an `(S#)` that is not established by SUBJECT DEFINITIONS.
-- Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
-- If CURRENT BEAT has multiple explicit story-level actions, execute all of them; local staging must never replace or crowd out an assigned action.
-- Be short and succint. Only write what would be necessary for visual and audio input, no taste or smell.
-- Any clothing either defined in the beat or clothing changes must be specified in a micro-beat. Any clothing specified in the beat must be part of the response.
-- Do not invent any changes to the scene, including wardrobe changes, unless the beat explicitly states it.
-- Only the authoritative assigned beat/user input may authorize a wardrobe identity change. Generated Director or formatter prose can modify condition only when consistent with canonical clothing; it cannot introduce replacement garments.
-- Do not editorialize, IE - if the beat says a werewolf bursts through the trees, describe a werewolf bursting through the trees, not a \"dark silhouette\" or some other nonsense.
-- Focus on actions, camera movement, and audio. Avoid camera cuts, favor using camera movement.
-- Keep it minimal, EX: \"At 00:03.000 seconds, the operator runs through Location X, the camera follows behind them as they run.\"
-- For perpetuity for the next segment, if possible, describe the end-segment clothing of each subject/character in detail.
-- Keep the camera movement smooth - remember, this is only a {segment_seconds} second segment.
-- Keep spatial awareness accurate for each micro-beat.
-- DO NOT invent anything new when writing the END CONTINUITY STATE.  Make it nearly identical to the last micro-beat.
-- If CURRENT BEAT terminally removes, destroys, kills, or otherwise ends an entity/process, do not carry that ended entity/process into later micro-beats or the END CONTINUITY STATE as still active, moving, speaking, sounding, or otherwise continuing unless CURRENT BEAT explicitly restores/restarts it.
-- CONTAINMENT HANDOFF: If CURRENT BEAT places a subject inside a room/container and then locks, seals, or closes the barrier around that subject, preserve that subject as remaining inside/behind that barrier in all later micro-beats and in the END CONTINUITY STATE unless CURRENT BEAT explicitly releases or moves them again. Do not re-co-locate a contained subject beside another character merely because they were together earlier in the beat.
-- If OPENING CONTINUITY STATE already places a subject behind a locked/sealed barrier, that subject must not appear beside an outside character, receive unrelated props, or participate in later staging unless CURRENT BEAT explicitly opens/releases the barrier and moves that subject.
-- Keep the END CONTINUITY STATE limited to one sentence.
+- Add only the minimum mundane micro-actions, ordinary props, incidental reactions, and short natural dialogue needed to make CURRENT BEAT visibly legible and complete.
+- A finite action in CURRENT BEAT is NOT complete merely because RAW SCENE shows the subject performing it. Unless CURRENT BEAT says it remains unfinished/interrupted, show its natural observable result or stable endpoint.
+- When an activity is for named people, show those people receiving or participating in the completed result when practical. `beat_complete=true` requires each named beneficiary to visibly receive or participate in the completed result when physically possible.
+- When completion ends use of a tool/appliance used only for that activity, visibly stop, set down, close, or otherwise settle it before the handoff when physically reasonable.
+- If CURRENT BEAT has multiple explicit actions, execute all of them.
+- Local staging may not invent consequential persistent changes beyond CURRENT BEAT.
+- When CURRENT BEAT introduces an unnamed but visually significant individual likely to persist, act, speak, fight, or matter to continuity, assign it a simple functional stable label formed from its role/type plus a number, such as Guard1 or Creature1, and reuse it consistently.
+- Do not assign Subject-style labels to crowds, collective groups, scenery, props, or incidental background figures.
+- Short dialogue may directly support CURRENT BEAT but may not introduce new facts or NEXT BEAT.
+- Registered speakers use their exact speaker ID and H3 dialogue form. Never invent an (S#).
 
 MICRO-BEATS
-
-- Every beat is broken down into timed micro-beats.
-- Timestamps are relative to this segment. The first timed micro-beat MUST start at 00:00.000. Previous-segment timing ends before 00:00.000.
-- Use the canonical timestamp syntax exactly: "At 00:ss.mmm," with NO word "seconds" after the timestamp.
-- Put each timestamp on a new line and spread actions across the available {segment_seconds}-second segment.
-- Use one discrete action/event per timestamp. A camera movement may accompany that action when needed to show it, but do not pack several separate story actions into one timestamp.
-- Use as many timestamps as CURRENT BEAT needs to be fully and clearly staged. There is NO arbitrary maximum timestamp count; a dense beat may require more timestamps than the number of seconds in the segment.
-- Be short and succinct.
-- no past tense explanations: do not write \"her jeans torn from branches\", write \"her jeans tore on a branch as she ran.\"
-- do not create a change in clothing or any other type of state change unless there was a preceding reason for the change.
-- Conserve story state. The micro-beat may not introduce a new story event or change the required hand-off into the next micro-beat or segment.
-- Be explicit on where important elements are, EX: "The companion stands on the operator's left". Write spatial awareness for anything of importance.
-- Be specific for everything important, EX: instead of "object on a table", write "the named object is on the table in front of the operator".
-- Keep the final timestamp before the exact {segment_seconds}-second endpoint, but it may occur late in the segment when needed (for example 00:07.750 in an 8-second clip).
-- For append/continuation segments, avoid making the final timed action spoken dialogue when a visual handoff can follow it.
-- When an effect such as decapitation or another difficult body disconnection needs multiple visible stages, use separate timestamps rather than collapsing the entire effect into one overloaded line.
+- First timestamp MUST be 00:00.000.
+- Use the canonical timestamp syntax exactly: "At 00:ss.mmm," with NO word "seconds".
+- Put each timestamp on a new line.
+- Use one discrete action/event per timestamp; camera movement may accompany it when needed.
+- Use as many timestamps as CURRENT BEAT needs; there is NO arbitrary maximum timestamp count.
+- Keep the final timestamp before the exact {segment_seconds}-second endpoint.
+- Prefer smooth camera movement over cuts.
+- Keep spatial relationships explicit when important.
+- For difficult disconnections (for example decapitation), use separate timestamps when multiple visible stages are needed.
+- For continuation segments, avoid ending the final timed action on spoken dialogue when a visual handoff can follow.
+- Keep the END CONTINUITY STATE to one sentence, untimed, and nearly identical to the last visible state. Do not invent anything new there.
+- Be short and succinct; describe only visual/audio information.
 
 {story_segment_ending_rules}
 
 OUTPUT CONTRACT
-
-- Return only one valid JSON object with exactly these properties:
+- Return one JSON object only:
   {{"raw_scene": "...", "finite_activity_complete": true,
   "named_beneficiaries_complete": true, "activity_tools_settled": true,
   "beat_complete": true}}
-- `raw_scene` must contain the complete timed scene and the one-sentence END
-  CONTINUITY STATE.
-- Set `finite_activity_complete` true only when every finite activity in
-  CURRENT BEAT visibly reaches its natural result/stable endpoint, unless the
-  beat explicitly says it remains unfinished or interrupted.
-- Set `named_beneficiaries_complete` true only when each named person the
-  activity is FOR visibly receives or participates in the completed result
-  when physically possible.
-- Set `activity_tools_settled` true only when any tool/appliance used only for
-  that completed finite activity is visibly stopped, set down, closed, or
-  otherwise settled when physically reasonable.
-- Set `beat_complete` true only when all three completion checks above are true
-  and RAW SCENE visibly executes every explicit CURRENT BEAT action, object,
-  and outcome.
-- Compress timing when necessary to fit the segment. Never omit an explicit
-  CURRENT BEAT requirement and never advance into NEXT BEAT.
-
-EXAMPLE:
-
-CURRENT BEAT:
-A woman crosses the garage and opens a storage cabinet.
-
-Correct:
-At 00:00.000, the woman walks across the garage toward the storage cabinet as the camera tracks beside her.
-
-At 00:02.500, she reaches the cabinet and pulls its door open.
-
-End continuity state: The woman stands in front of the open storage cabinet.
-
-Incorrect:
-Do not add something from the STORY that happens later, such as another person entering, an alarm sounding, or the woman removing an object from the cabinet.
-
-End continuity state: Alice is standing in a room with a table to her right, holding a vial of black liquid that she is drinking.
+- raw_scene contains the complete timed scene plus one trailing "End continuity state:" sentence.
+- Set finite_activity_complete true only when every finite activity reaches its natural result/stable endpoint unless explicitly unfinished/interrupted.
+- Set named_beneficiaries_complete true only when named beneficiaries visibly receive/participate when physically possible.
+- Set activity_tools_settled true only when activity-only tools/appliances are visibly settled when physically reasonable.
+- Set `beat_complete` true only when all three completion checks above are true and every explicit CURRENT BEAT action/object/outcome is visible.
+- Compress timing if needed. Never omit an explicit CURRENT BEAT requirement and never advance into NEXT BEAT.
 """
-
 
 # Request 2 is a formatter/translator. Request 1 owns creative direction.
 H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a strict formatter/translator for the final MiniMax H3 prompt.
