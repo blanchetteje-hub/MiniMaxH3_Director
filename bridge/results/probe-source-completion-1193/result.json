@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1193",
+  "kind": "llama_chat",
+  "started_at": 1790440625.5889733,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nAmy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\n\nRAW SCENE\nAmy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin\n  or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly\n  receive/participate when physically possible.\n- Judge the final frame: the required result must already be true, not merely\n  attempted, approaching, starting up, partly complete, or still in progress.\n- Do not judge style, pacing, camera, continuity, future events, or harmless\n  extra detail.\nReturn valid=true only when CURRENT BEAT is complete in RAW SCENE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-h46wmxg99c0v7kzh80tmpc",
+    "object": "chat.completion",
+    "created": 1790440625,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Missing Amy’s tight black tank top and denim jeans, and the children are eating rather than watching as described in the beat.\"}",
+          "reasoning": "We need to check if the raw scene completes current beat.\n\nCurrent Beat: \"Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\"\n\nSo we must see that Amy cooks breakfast (i.e., cooking action). She is wearing a tight black tank top and denim jeans. Her children Will and Amber are watching.\n\nRaw Scene: \"Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.\"\n\nCheck:\n\n- Amy cooks breakfast? Raw says she finishes cooking breakfast. That is indeed cooking finished. So yes.\n- She wears tight black tank top and denim jeans: Not mentioned in raw scene. The current beat mentions her wearing that outfit; raw scene doesn't mention it. But rule: Every explicit action/result must visibly happen. Wearing a tight black tank top and denim jeans is an explicit result? It's part of the description, but it's not an action or result. It might be considered a state. Does RAW SCENE need to show she wears them? The beat says \"wearing a tight black tank top and denim jeans\". That is a descriptive detail; if raw scene doesn't mention it, does that mean incomplete? The rule: Every explicit action/result in CURRENT BEAT must visibly happen. Wearing is not an action but it's part of the description. But maybe considered as state. It's explicitly stated. So we need to see her wearing them. Raw scene didn't show that.\n\n- Children Will and Amber watch: In raw, they eat at table after she serves plates. They are eating, not watching. Did they watch? The beat says while children watch; but raw shows they eat. That is a different activity. Watching vs eating. So the current beat's requirement of them watching isn't satisfied.\n\nThus RAW SCENE does not complete current beat: missing wearing detail and children watching. So valid=false. Issue string: \"Missing Amy's attire description and children's watching action.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 301,
+      "completion_tokens": 453,
+      "total_tokens": 754,
+      "completion_tokens_details": {
+        "reasoning_tokens": 410
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440631.8177385,
+  "status": "ok"
+}
