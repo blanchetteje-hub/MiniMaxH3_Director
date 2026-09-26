@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1219",
+  "kind": "llama_chat",
+  "started_at": 1790442664.2687962,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nShe rushes her kids to the basement, gets them inside, and then locks the door.\n\nRIGHT:\nShe retrieves her hidden arsenal consisting of a pistol and a katana.\n\nChoose one:\nMERGE only when RIGHT's PRIMARY ACTION is one of these:\n- the same uninterrupted local action as LEFT;\n- a direct immediate response caused by the event in LEFT itself (for example alarm -> shut down/call for help); or\n- the immediate mechanical completion of the exact object/action LEFT just obtained/opened/started (retrieve -> equip, open -> remove).\nNEW_TASK when RIGHT's PRIMARY ACTION is a distinct objective after LEFT reaches a usable stopping point. A shared larger goal is not enough to MERGE. Carrying, wearing, or using an item from LEFT while performing a different primary task is NEW_TASK. Starting a fresh item/test after LEFT completed one is NEW_TASK.\nFor causality, distinguish LEFT itself from a shared earlier cause: danger -> immediate protection may MERGE, but protection -> fetch gear is NEW_TASK because the gear retrieval responds to the danger, not to the completed protection action.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-xw0epg9keubq4dsxt6aig",
+    "object": "chat.completion",
+    "created": 1790442664,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need decide if LEFT and RIGHT belong to one local beat job or new task.\n\nLEFT: \"She rushes her kids to the basement, gets them inside, and then locks the door.\" Primary action? She rushes kids to basement (move), gets them inside (action of moving them in?), locks the door. The primary action could be locking the door? Or rushing kids? But likely the main local action is \"locks the door\" as final.\n\nRIGHT: \"She retrieves her hidden arsenal consisting of a pistol and a katana.\" Primary action: retrieve.\n\nWe need to see if RIGHT's primary action is one of merge criteria:\n\n- same uninterrupted local action as LEFT. No, retrieving vs locking.\n- direct immediate response caused by event in LEFT itself (for example alarm -> shut down/call for help). The event in LEFT: kids inside basement and door locked. That could cause her to retrieve arsenal? If the door lock is a protective measure; after locking door she might want to get weapons. Is that an immediate response to the event of locking door? Possibly yes, because locking door triggers need for arsenal.\n\n- immediate mechanical completion of exact object/action LEFT just obtained/opened/started (retrieve -> equip, open -> remove). Not relevant: lock is not retrieving something.\n\nThus likely MERGE if we consider retrieval as direct immediate response to locking. But the rule says \"direct immediate response caused by event in LEFT itself\". Locking door could cause her to retrieve arsenal. So merge.\n\nBut also check distinct objective after left reaches usable stopping point? The kids inside basement and door locked is a stopping point; retrieving arsenal is new objective but maybe still part of same beat job because it's immediate response to the",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 332,
+      "completion_tokens": 350,
+      "total_tokens": 682,
+      "completion_tokens_details": {
+        "reasoning_tokens": 347
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442669.6090186,
+  "status": "ok"
+}
