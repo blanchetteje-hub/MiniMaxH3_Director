@@ -264,7 +264,7 @@ def ensure_exec_worktree(source_root: Path, branch: str = DEFAULT_CODE_BRANCH) -
 
 
 def run_local_process(command, cwd: Path, timeout: int) -> dict:
-    """Run one allowlisted local process and capture its complete text output."""
+    """Run one allowlisted local process, stream output live, and capture it."""
 
     global _ACTIVE_LOCAL_PROCESS
     started = time.time()
@@ -273,34 +273,55 @@ def run_local_process(command, cwd: Path, timeout: int) -> dict:
         cwd=cwd,
         text=True,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         env=os.environ.copy(),
+        bufsize=1,
     )
     _ACTIVE_LOCAL_PROCESS = process
+    output_lines = []
     timed_out = False
+    deadline = started + timeout
     try:
-        stdout, stderr = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        if os.name == "nt":
-            subprocess.run(
-                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                check=False,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=5,
-            )
-        else:
-            process.kill()
-        stdout, stderr = process.communicate()
+        assert process.stdout is not None
+        while True:
+            if time.time() >= deadline:
+                timed_out = True
+                break
+            line = process.stdout.readline()
+            if line:
+                output_lines.append(line)
+                print(line, end="", flush=True)
+                continue
+            if process.poll() is not None:
+                break
+            time.sleep(0.1)
+
+        if timed_out and process.poll() is None:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                )
+            else:
+                process.kill()
+
+        if process.stdout is not None:
+            remainder = process.stdout.read()
+            if remainder:
+                output_lines.append(remainder)
+                print(remainder, end="", flush=True)
+        process.wait(timeout=10)
     finally:
         _ACTIVE_LOCAL_PROCESS = None
 
     return {
         "command": [str(part) for part in command],
         "returncode": process.returncode,
-        "stdout": stdout,
-        "stderr": stderr,
+        "stdout": "".join(output_lines),
+        "stderr": "",
         "timed_out": timed_out,
         "timeout_seconds": int(timeout) if timed_out else None,
         "started_at": started,
