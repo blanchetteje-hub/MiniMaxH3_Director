@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-role-layout-1015",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "BEFORE THIS BEAT — ESTABLISHED CONTEXT\nPrevious final beat:\nNone; this is the first beat.\n\nCurrent state:\n{}\n\nNOW — JOB THIS CANDIDATE MUST PERFORM\nPavel strikes the steel pipe with an ordinary wrench.\n\nLATER — JOB RESERVED FOR A FUTURE BEAT\nNone; this is the final beat.\n\nAFTER THIS BEAT — STATE EFFECTS EXPECTED IF VALID\n[]\n\nCANDIDATE BEAT TO JUDGE\nPavel taps the steel pipe once with the wrench, and the entire pipe instantly becomes glass.\n\nCHECKS\n1. Read actions literally in order and carry each stated result forward. Reject repeating a completed removal on the same target unless it was restored.\n2. Use only established BEFORE facts. Do not infer a terminal result from a lesser earlier action. An earlier target is not automatically the current target.\n3. Reject unresolved barriers and unavailable objects. Unknown facts alone are not errors.\n4. NOW must happen in this beat. Do not complete a distinct LATER job early.\n5. Every listed AFTER typed effect must follow from visible candidate actions. Empty effects impose no extra requirement.\n\nReturn one JSON object: valid is a boolean; issue is a short concrete error or an empty string when valid."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 2048,
+  "timeout_seconds": 600
+}
