@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "beneficiary-role-1486",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge only whether the candidate visibly completes the source event and preserves its recipient/beneficiary role. Return JSON only with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE EVENT:\nA medic gives Mara a dose of medicine.\n\nCANDIDATE:\nThe medic hands Mara the dose and Mara takes it.\n\nRULES\n1. Finite work must reach its ordinary visible completion.\n2. For consumables, medicine, service, or an explicit delivery/hand-off TO a person, the recipient must visibly receive/be served the result when the source expects immediate receipt. Merely labeling or leaving it elsewhere is not enough.\n3. For fabrication, repair, customization, or creative work FOR someone, completing the work is enough unless the source explicitly requires delivery/receipt.\n4. If the source explicitly says later pickup/absence/storage, correct storage for that recipient can complete the current event.\n5. Do not invent extra handoff requirements.\nReturn {\"valid\":boolean,\"issue\":string}."
+    }
+  ],
+  "temperature": 0,
+  "max_tokens": 512,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "timeout_seconds": 600
+}
