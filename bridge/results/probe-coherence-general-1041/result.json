@@ -1,0 +1,7 @@
+{
+  "job_id": "probe-coherence-general-1041",
+  "status": "error",
+  "error_type": "HTTPError",
+  "error": "HTTP Error 400: Bad Request",
+  "finished_at": 1790383569.4331226
+}
