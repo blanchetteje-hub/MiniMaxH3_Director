@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1413",
+  "kind": "llama_chat",
+  "started_at": 1790452526.3744,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Lio is inside a locked storage room. SOURCE: Mara unlocks the door and lets Lio out. RAW: Mara unlocks the door and Lio walks out.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1ptxhjnsh5o9znmvlzxakl",
+    "object": "chat.completion",
+    "created": 1790452526,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW completes the source and preserves persistent opening facts unless source explicitly changes them.\n\nOpening: Lio is inside a locked storage room.\nSource: Mara unlocks the door and lets Lio out. So source says that after action, Lio is outside? It implies door unlocked, Lio leaves. The door was locked; now unlocked. That is a persistent change to barrier state (door). Also Lio moves from inside to outside.\n\nRAW: \"Mara unlocks the door and Lio walks out.\" This matches source: unlocking door, letting Lio out. Does RAW preserve opening facts? Opening had Lio inside locked storage room. After action, Lio is no longer inside; but that was changed by source (let Lio out). So that's fine.\n\nPersistent state changes: Door unlocked - yes. Lio moved from inside to outside - change of containment. Source says \"lets Lio out\" which implies door unlock and Lio leaves. That matches RAW. No other persistent facts changed: items held? Not mentioned. Clothing unchanged. Durable object states unchanged except door unlocking.\n\nThus RAW completes source, preserves opening facts unless source changes them. So valid true.\n\nReturn JSON {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 226,
+      "completion_tokens": 273,
+      "total_tokens": 499,
+      "completion_tokens_details": {
+        "reasoning_tokens": 254
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452530.7137816,
+  "status": "ok"
+}
