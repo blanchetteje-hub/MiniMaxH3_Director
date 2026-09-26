@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-result-completion-1146",
+  "kind": "llama_chat",
+  "started_at": 1790392936.7007656,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe scientist activates the reactor.\n\nRAW SCENE\nThe scientist presses START; amber lights blink and the reactor begins its startup sequence.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- If CURRENT BEAT names an achieved result (activate, start, open, close, lock, repair, heal, stabilize, seal, fill, land, finish, equip, or equivalent), RAW SCENE must visibly reach that result.\n- Beginning, attempting, approaching, startup/progress indicators, or partial movement do NOT satisfy the achieved result unless the result itself is visibly established.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or harmless extra detail.\nReturn {\"valid\":true,\"issue\":\"\"} only when CURRENT BEAT is complete; otherwise false with a short concrete issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5fksxz56xr4czwqz16pmme",
+    "object": "chat.completion",
+    "created": 1790392936,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to check if RAW SCENE visibly completes the current beat: \"The scientist activates the reactor.\" The beat says the scientist activates the reactor. Does raw scene show that? Raw scene: \"The scientist presses START; amber lights blink and the reactor begins its startup sequence.\"\n\nActivates vs starts. Is pressing start enough to activate? It says \"reactor begins its startup sequence\". That indicates activation. But does it visibly reach the result of activating? The beat is \"activates\" meaning the reactor is activated. The raw scene shows that the scientist presses START and amber lights blink, reactor begins startup sequence. That's a visible indication of activation. So yes.\n\nCheck rule: If CURRENT BEAT names an achieved result (activate), RAW SCENE must visibly reach that result. It does: \"reactor begins its startup sequence\" indicates it's activated. The start button press is the action; but we need to see the reactor being activated, not just starting. But \"begins its startup sequence\" implies activation.\n\nThus valid true. No issue.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 296,
+      "completion_tokens": 231,
+      "total_tokens": 527,
+      "completion_tokens_details": {
+        "reasoning_tokens": 212
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392939.9922519,
+  "status": "ok"
+}
