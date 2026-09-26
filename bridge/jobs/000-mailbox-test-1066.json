@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "000-mailbox-test-1066",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Return exactly one JSON object and nothing else."
+    },
+    {
+      "role": "user",
+      "content": "Mailbox connectivity test. Return exactly: {\"ok\":true,\"message\":\"000-mailbox-test-1066 received\"}"
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 64,
+  "timeout_seconds": 120
+}
