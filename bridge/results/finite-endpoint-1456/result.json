@@ -1,0 +1,54 @@
+{
+  "job_id": "finite-endpoint-1456",
+  "kind": "llama_chat",
+  "started_at": 1790459990.089659,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one candidate beat against one authoritative source event. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE EVENT:\nA cook is preparing breakfast for two children.\n\nCANDIDATE BEAT:\nThe cook stirs eggs while both children sit at the table watching.\n\nRULES\n1. The candidate must depict the source event itself.\n2. If the source event is a finite activity or task, the candidate must reach its natural observable completion endpoint. Merely showing the task underway, approaching completion, or partly complete is INVALID.\n3. When the source assigns a result directly to a named recipient/beneficiary, preserve that role. Mere watching is not enough when the ordinary visible endpoint is receiving or participating in the result.\n4. Do not invent extra requirements beyond the source event's ordinary visible completion.\nReturn {\"valid\":boolean,\"issue\":string}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1tdzw3m6kr7592scvtelhb",
+    "object": "chat.completion",
+    "created": 1790459990,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The candidate beat shows the cook stirring eggs while the children watch, but it does not depict the natural observable completion endpoint of preparing breakfast for the two children or their receiving/participating in the result.\"}",
+          "reasoning": "We need judge if candidate beat matches source event.\n\nSource: \"A cook preparing breakfast for two children.\" So activity: cook prepares breakfast for 2 kids. The result is breakfast ready, presumably served to the children. Must depict that. Candidate: \"The cook stirs eggs while both children sit at the table watching.\"\n\nThis shows cooking underway but not finished; children just watch. Not showing completion or serving. So invalid.\n\nIssue: \"Doesn't show completion of breakfast preparation for two children.\" Also missing result delivered to kids. So issue string accordingly.\n\nReturn JSON with valid false and issue description.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 245,
+      "completion_tokens": 179,
+      "total_tokens": 424,
+      "completion_tokens_details": {
+        "reasoning_tokens": 121
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790459992.8417704,
+  "status": "ok"
+}
