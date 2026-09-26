@@ -1007,3 +1007,32 @@ Relevant commits:
 
 Do not evaluate pre-guardrail acceptance captures as the final baseline. After the
 local bridge is updated/restarted, run a fresh planning-only Amy acceptance job.
+
+## Validator role-layout experiment complete — 2026-09-25
+
+Bridge probes 996–1015 tested explicit BEFORE/NOW/LATER/AFTER input roles while
+keeping the production-style validator responsibilities intact. Reviewed outcome:
+15/20 label matches, 14/20 supported by the reasoning. The layout is **not**
+adopted.
+
+Observed remaining failures:
+- 1002 and 1006 accepted traversal through unresolved locked barriers;
+- 1010 accepted hand-held carry as an exact `equipped` state effect even with
+  the production event-record wrapper;
+- 1013 accepted use of an explicitly unavailable discarded object;
+- 1015 accepted an ordinary tool changing a steel object into another material;
+- 998 rejected the unsupported-transformation case for the wrong reason by
+  inventing a prior terminal state.
+
+Positive controls for resolved barriers, explicit equipment, distinct targets,
+restored removals, repeated-work continuation, and explicit fantasy capability
+passed. Production validator remains unchanged.
+
+Next: probe two narrow contracts, roughly 10 cases each:
+1. CURRENT STATE vs candidate precondition compatibility (barriers, availability,
+   explicit capabilities);
+2. candidate vs exact typed state effect support.
+Only integrate a change if those narrow calls materially outperform the combined
+validator on reviewed explanations, not merely labels.
+
+Evidence: `tests/LLM/probes/role_layout_996_1015_results.json`.
