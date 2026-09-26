@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-completion-1137",
+  "kind": "llama_chat",
+  "started_at": 1790392661.4246185,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe pilot lands the shuttle.\n\nRAW SCENE\nThe shuttle touches down, rolls to a stop, and the pilot cuts the engines.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or extra harmless detail.\n- valid=true only if CURRENT BEAT is complete in RAW SCENE.\nReturn {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2n0pwhzd4cdtyx1jw6gk5k",
+    "object": "chat.completion",
+    "created": 1790392661,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to check whether the raw scene completes current beat. Current Beat: \"The pilot lands the shuttle.\" Raw Scene: \"The shuttle touches down, rolls to a stop, and the pilot cuts the engines.\"\n\nDoes that complete landing? Landing includes touchdown; rolling to stop is part of landing. Cutting engines after stopping indicates landed. So yes.\n\nCheck rules: Every explicit action/result in current beat must visibly happen. The beat says lands the shuttle. Raw shows touches down (landing). Rolls to a stop, pilot cuts engines. That completes landing. Finite activity reaches natural observable result: touchdown and roll to stop is complete. Named beneficiary? Pilot is named; he participates by cutting engines after landing. So valid.\n\nThus return {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 250,
+      "completion_tokens": 174,
+      "total_tokens": 424,
+      "completion_tokens_details": {
+        "reasoning_tokens": 156
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392663.9837413,
+  "status": "ok"
+}
