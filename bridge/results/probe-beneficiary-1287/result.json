@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-1287",
+  "kind": "llama_chat",
+  "started_at": 1790446044.9901185,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe technician repairs Mira's laptop for her.\n\nCANDIDATE BEAT\nThe technician replaces the failed part and the laptop boots normally in front of Mira.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result when the job has multiple parts. Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result. Reject a solo rewrite that drops named beneficiaries or participants. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nur33arzppci3ptzkz9w3p",
+    "object": "chat.completion",
+    "created": 1790446044,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to validate candidate beat against current job. Current Job: \"The technician repairs Mira's laptop for her.\" So the action is repair of Mira's laptop by technician. The candidate beat says: \"The technician replaces the failed part and the laptop boots normally in front of Mira.\"\n\nDoes that accomplish meaning? Yes, it includes replacement of part (repair) and booting normal. It mentions Mira as present when boots. Does it preserve named participants? Technician is there; Mira is present. The current job said repairs for her: implies technician does repair for Mira. Candidate beat says \"in front of Mira\" but doesn't explicitly say it's for her, but the context indicates that because Mira is watching. But maybe need to mention \"for Mira\"? It says \"the laptop boots normally in front of Mira.\" That implies she sees it booting. The current job: repairs Mira's laptop for her. So the repair action is done for her; the candidate beat includes replacement part and normal boot, but does not explicitly say it's for her? But the presence of Mira indicates that. However requirement: \"Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result.\" The current job has technician repairs Mira's laptop for her. So participant Mira is beneficiary. Candidate beat includes Mira present but not explicitly that it's for her? But \"in front of Mira\" indicates she sees it; still implies repair for her. Might be acceptable.\n\nAlso the candidate beat says replaces failed part and boots normally, which accomplishes repair. It doesn't drop named participants: technician remains, Mira is there. So valid.\n\nThus return {\"valid\": true, \"issue\": \"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 253,
+      "completion_tokens": 376,
+      "total_tokens": 629,
+      "completion_tokens_details": {
+        "reasoning_tokens": 356
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446050.9120657,
+  "status": "ok"
+}
