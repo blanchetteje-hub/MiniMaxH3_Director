@@ -682,6 +682,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         messages = minimax.build_director_raw_scene_completion_messages(
             "The cook serves breakfast to Mira and Jon.",
             "The cook hands breakfast to Mira while Jon waits.",
+            assigned_source="The cook serves breakfast to Mira and Jon.",
         )
         prompt = messages[1]["content"]
         self.assertIn("every named beneficiary", prompt)
