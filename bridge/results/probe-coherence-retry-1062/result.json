@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-retry-1062",
+  "kind": "llama_chat",
+  "started_at": 1790383716.733549,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only physical/causal coherence inside one candidate beat. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY.\nRead actions literally in order and carry stated results forward.\n- Reject repeating an irreversible removal or destruction on the same specific target, part, or object unless restoration/regeneration/reinstallation happens first.\n- A non-terminal injury is not a removal. Different targets or parts are different cases.\n- Reject an ordinary action that makes an entire body/object become a materially different substance or vanish without an established capability or physically plausible cause.\n- Accept explicit magic/technology, restoration, regeneration, and ordinary physical causes that support the result.\nDo not judge story coverage, future ownership, or state-effect records.\n\nESTABLISHED CONTEXT\nThe troll visibly regenerates severed body parts within seconds.\n\nCANDIDATE\nNia severs the troll's hand. The troll regenerates a complete hand, and Nia severs the regenerated hand again."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-75eehh63lcz428qmmws5",
+    "object": "chat.completion",
+    "created": 1790383716,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"Nia severs the troll's hand, it regenerates a complete hand, then she severs that regenerated hand again—each removal is followed by regeneration before the next cut, so the beat remains physically coherent.\"}",
+          "reasoning": "We need to check physical/causal coherence within one beat: actions literally in order, carry results forward. We have context that troll visibly regenerates severed body parts within seconds.\n\nCandidate: \"Nia severs the troll's hand. The troll regenerates a complete hand, and Nia severs the regenerated hand again.\"\n\nWe need to check if any rule violation:\n\n- Repeating an irreversible removal or destruction on same specific target unless restoration/regeneration/reinstallation happens first. Here we sever the hand (first removal). Then regeneration occurs: \"The troll regenerates a complete hand\". That is restoration. Then Nia severs the regenerated hand again. So it's allowed because restoration happened before second removal.\n\n- Non-terminal injury not a removal; different targets or parts are different cases. Hand vs regenerated hand same part but after regeneration considered new? It's still same target, but since it was restored, we can sever again.\n\n- Reject ordinary action that makes entire body/object become materially different substance or vanish without established capability. Here hand is removed and then regenerated: that's fine because troll has regenerative ability.\n\nThus within beat it's coherent. So valid = true, issue empty string? Provide JSON with boolean valid and string issue (maybe \"\" if no issue).",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 289,
+      "completion_tokens": 313,
+      "total_tokens": 602,
+      "completion_tokens_details": {
+        "reasoning_tokens": 252
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383720.9702175,
+  "status": "ok"
+}
