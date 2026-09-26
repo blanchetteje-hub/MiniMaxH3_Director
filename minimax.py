@@ -16311,7 +16311,7 @@ def _canonicalize_director_timestamps(value):
         fraction = (match.group("fraction") or "0").ljust(3, "0")[:3]
         out.append(f"At {minutes:02d}:{seconds:02d}.{fraction},")
         cursor = match.end()
-        while cursor < len(text_value) and text_value[cursor] in " \t,-":
+        while cursor < len(text_value) and text_value[cursor] in " \t,-\u2013\u2014":
             cursor += 1
         if cursor < len(text_value) and not text_value[cursor].isspace():
             out.append(" ")
