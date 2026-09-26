@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1235",
+  "kind": "llama_chat",
+  "started_at": 1790442902.529617,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nA parent finishes setting breakfast on the table.\n\nRIGHT:\nA stranger suddenly smashes the front window and climbs inside.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself CREATES a problem, danger, or request, and RIGHT is the immediate response that addresses it.\n3. RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it is only a tool for another target, this rule does not apply.\nImportant: rule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. A different objective after completed work is NEW_TASK even when both serve the same larger goal.\nOtherwise choose NEW_TASK.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-x6hc5z3v99md6cfffcuthr",
+    "object": "chat.completion",
+    "created": 1790442902,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need to decide if two adjacent source responsibilities belong to one local beat job: LEFT and RIGHT.\n\nLEFT: \"A parent finishes setting breakfast on the table.\"\n\nRIGHT: \"A stranger suddenly smashes the front window and climbs inside.\"\n\nCheck rules:\n\n1. RIGHT continues same uninterrupted action as LEFT? No, different actions.\n\n2. LEFT creates a problem/danger/request; RIGHT is immediate response that addresses it. Does LEFT create a danger? Setting breakfast doesn't create danger. So rule 2 not apply.\n\n3. RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object must be what RIGHT acts on. LEFT: parent finishes setting breakfast on table. That is an action; but does it involve a specific object? Breakfast set on table includes plates, utensils etc. But RIGHT smashes front window and climbs inside. Not handling the same object.\n\nThus rule 3 not apply.\n\nSo choose NEW_TASK.\n\nReturn JSON with single key relation: {\"relation\":\"NEW_TASK\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 277,
+      "completion_tokens": 224,
+      "total_tokens": 501,
+      "completion_tokens_details": {
+        "reasoning_tokens": 208
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442905.9619238,
+  "status": "ok"
+}
