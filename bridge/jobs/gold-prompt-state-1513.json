@@ -1,0 +1,7 @@
+{
+  "kind": "run_acceptance",
+  "job_id": "gold-prompt-state-1513",
+  "code_branch": "gpt-arc-refresh",
+  "model": "gpt",
+  "timeout_seconds": 3600
+}
