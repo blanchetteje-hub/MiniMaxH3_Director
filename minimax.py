@@ -1340,6 +1340,23 @@ DIRECTOR_CONTINUITY_ISSUE_TYPES = (
     "next_beat_scope_creep",
 )
 
+DIRECTOR_RAW_SCENE_COMPLETION_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_raw_scene_completion",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "valid": {"type": "boolean"},
+                "issue": {"type": "string"},
+            },
+            "required": ["valid", "issue"],
+            "additionalProperties": False,
+        },
+    },
+}
+
 DIRECTOR_CONTINUITY_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
@@ -24694,6 +24711,67 @@ def repair_existing_segment(
     }
 
 
+# Build the independent Request-1 CURRENT-BEAT completion check.
+def build_director_raw_scene_completion_messages(current_beat, raw_scene):
+    """Check only whether Request 1 visibly completes CURRENT BEAT."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Check only whether RAW SCENE visibly completes CURRENT BEAT. "
+                "Judge meaning, not wording. Return exactly one JSON object "
+                "with boolean valid and string issue."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""CURRENT BEAT
+{current_beat or 'N/A'}
+
+RAW SCENE
+{raw_scene or 'N/A'}
+
+RULES
+- Every explicit action/result in CURRENT BEAT must visibly happen.
+- A finite activity must reach its natural observable result, not merely begin
+  or remain underway.
+- If CURRENT BEAT is for named people, every named beneficiary must visibly
+  receive/participate when physically possible.
+- Judge the final frame: the required result must already be true, not merely
+  attempted, approaching, starting up, partly complete, or still in progress.
+- Do not judge style, pacing, camera, continuity, future events, or harmless
+  extra detail.
+Return valid=true only when CURRENT BEAT is complete in RAW SCENE."""
+            .strip(),
+        },
+    ]
+
+
+def parse_director_raw_scene_completion(raw_result):
+    """Parse the independent Request-1 completion verdict."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"valid", "issue"}:
+        raise ValueError(
+            "Director raw-scene completion response must contain only valid and issue."
+        )
+    valid = candidate["valid"]
+    issue = candidate["issue"]
+    if not isinstance(valid, bool) or not isinstance(issue, str):
+        raise ValueError(
+            "Director raw-scene completion valid must be boolean and issue string."
+        )
+    issue = " ".join(issue.split())
+    if valid:
+        issue = ""
+    elif not issue:
+        raise ValueError(
+            "Director raw-scene completion invalid verdict requires an issue."
+        )
+    return {"valid": valid, "issue": issue}
+
+
 # Return the concise Phase 2 opening or legacy structured validation state.
 def _director_continuity_validation_state(opening_state):
     """Return the concise Phase 2 opening or legacy structured validation state."""
@@ -25010,13 +25088,46 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 "beat_complete",
             )
         )
+        independent_completion = None
         if (
             completion_checks_pass
             and raw_scene.strip()
             and raw_scene != "N/A"
             and not structure_errors
         ):
-            break
+            completion_metadata = {
+                "run_id": run_id,
+                "source_sha256": (run_config or {}).get("source_sha256"),
+                "purpose": "director_raw_scene_completion",
+                "segment": segment_number,
+                "attempt": request1_attempt,
+                "conditioning_mode": conditioning_mode,
+                "opening_state_sha256": bundle.get("opening_state_sha256"),
+            }
+            try:
+                independent_completion = parse_director_raw_scene_completion(
+                    ask_llm(
+                        build_director_raw_scene_completion_messages(
+                            bundle.get("current_beat_text", ""),
+                            raw_scene,
+                        ),
+                        response_format=DIRECTOR_RAW_SCENE_COMPLETION_RESPONSE_FORMAT,
+                        history_metadata=completion_metadata,
+                        **_active_beat_validation_settings(),
+                    )
+                )
+            except (TypeError, ValueError, json.JSONDecodeError) as error:
+                independent_completion = {
+                    "valid": False,
+                    "issue": "completion verifier returned unusable output: " + str(error),
+                }
+            if independent_completion["valid"]:
+                break
+            print(
+                "Director Request 1 independent completion check failed: "
+                + independent_completion["issue"],
+                flush=True,
+            )
 
         completion_failures = [
             label
@@ -25040,6 +25151,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             )
             if not request1_result[key]
         ]
+        if (
+            independent_completion is not None
+            and not independent_completion["valid"]
+        ):
+            completion_failures.append(
+                "independent completion check: " + independent_completion["issue"]
+            )
         request1_feedback = (
             "RAW SCENE STRUCTURE ERROR: "
             + " ".join(structure_errors)

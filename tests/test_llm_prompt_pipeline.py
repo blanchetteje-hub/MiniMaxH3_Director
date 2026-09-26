@@ -541,6 +541,35 @@ class LLMSamplingRoutingTests(unittest.TestCase):
                 "qwen" if isinstance(original, minimax.QwenFormatter) else "mistral"
             )
 
+class DirectorRawSceneCompletionTests(unittest.TestCase):
+    def test_completion_prompt_requires_named_beneficiaries_and_final_result(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "The cook serves breakfast to Mira and Jon.",
+            "The cook hands breakfast to Mira while Jon waits.",
+        )
+        prompt = messages[1]["content"]
+        self.assertIn("every named beneficiary", prompt)
+        self.assertIn("required result must already be true", prompt)
+        self.assertIn("still in progress", prompt)
+
+    def test_completion_parser_normalizes_valid_issue(self):
+        self.assertEqual(
+            minimax.parse_director_raw_scene_completion(
+                {"valid": True, "issue": "ignored"}
+            ),
+            {"valid": True, "issue": ""},
+        )
+        self.assertEqual(
+            minimax.parse_director_raw_scene_completion(
+                {"valid": False, "issue": "  Amber never receives breakfast.  "}
+            ),
+            {
+                "valid": False,
+                "issue": "Amber never receives breakfast.",
+            },
+        )
+
+
 class DirectorPromptCallContractTests(unittest.TestCase):
     def test_director_allows_only_controlled_local_staging(self):
         rules = minimax.build_director_rules(
