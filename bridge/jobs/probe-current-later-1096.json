@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-current-later-1096",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT JOB\nThe technician repairs the damaged drone.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nThe technician launches the drone.\n\nCANDIDATE BEAT\nThe technician reconnects the broken rotor lead and restores the drone to working order.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 256,
+  "timeout_seconds": 180
+}
