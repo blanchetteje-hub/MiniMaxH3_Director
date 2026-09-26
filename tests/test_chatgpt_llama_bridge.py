@@ -108,5 +108,50 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
 
 
 
+class ChatGPTLlamaBridgePytestTests(unittest.TestCase):
+    @mock.patch.object(bridge, "run_local_process")
+    @mock.patch.object(bridge, "_select_pytest_runner")
+    @mock.patch.object(bridge, "ensure_code_test_worktree")
+    def test_run_tests_streams_through_managed_process(
+        self, ensure_worktree, select_runner, run_process
+    ):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            tests_dir = root / "tests"
+            tests_dir.mkdir()
+            (tests_dir / "test_example.py").write_text(
+                "def test_example():\n    assert True\n",
+                encoding="utf-8",
+            )
+            ensure_worktree.return_value = root
+            select_runner.return_value = ["python", "-m", "pytest"]
+            run_process.return_value = {
+                "command": ["python", "-m", "pytest"],
+                "returncode": 0,
+                "stdout": "passed",
+                "stderr": "",
+                "timed_out": False,
+                "timeout_seconds": None,
+                "started_at": 1.0,
+                "finished_at": 2.0,
+            }
+
+            result = bridge.run_pytest_job(
+                root,
+                {
+                    "code_branch": "gpt-arc-refresh",
+                    "tests": ["tests/test_example.py"],
+                    "timeout_seconds": 120,
+                },
+            )
+
+        command, cwd, timeout = run_process.call_args.args
+        self.assertEqual(command[:4], ["python", "-m", "pytest", "-vv"])
+        self.assertEqual(cwd, root)
+        self.assertEqual(timeout, 120)
+        self.assertTrue(result["passed"])
+        self.assertFalse(result["timed_out"])
+
+
 if __name__ == "__main__":
     unittest.main()
