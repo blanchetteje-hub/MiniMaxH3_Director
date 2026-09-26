@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1372",
+  "kind": "llama_chat",
+  "started_at": 1790449336.7765265,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A cook leaves stew simmering as an explicitly ongoing process.\nRAW: The cook stirs the stew and leaves it simmering on the burner.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-694jgwtl019fvqv62yj03u",
+    "object": "chat.completion",
+    "created": 1790449336,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW reaches SOURCE-assigned endpoint.\n\nSOURCE: \"A cook leaves stew simmering as an explicitly ongoing process.\"\n\nSo the source says that the activity is leaving stew simmering, and it's explicitly ongoing. So the endpoint is that the stew remains simmering (ongoing). The cook leaves it on burner presumably. So we need to check RAW: \"The cook stirs the stew and leaves it simmering on the burner.\" Does this reach the source assigned endpoint? Yes, because the stew is left simmering on the burner; it's ongoing. There's no completion or shutdown. So valid.\n\nReturn JSON {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 289,
+      "completion_tokens": 153,
+      "total_tokens": 442,
+      "completion_tokens_details": {
+        "reasoning_tokens": 134
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449339.2950835,
+  "status": "ok"
+}
