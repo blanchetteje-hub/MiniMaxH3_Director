@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-beneficiary-1285",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 700,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT JOB\nThe artisan makes a carved box for Mira.\n\nCANDIDATE BEAT\nThe artisan finishes the carved box and hands it to Jon while Mira watches.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result when the job has multiple parts. Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result. Reject a solo rewrite that drops named beneficiaries or participants. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+    }
+  ]
+}
