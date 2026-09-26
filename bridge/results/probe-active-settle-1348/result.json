@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1348",
+  "kind": "llama_chat",
+  "started_at": 1790449027.0642433,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A guard shoots one attacker and remains ready.\nRAW: The guard shoots the attacker, who falls, then keeps the pistol in hand while scanning for danger.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-3zh92719ywarwgzm9w4eb",
+    "object": "chat.completion",
+    "created": 1790449027,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to judge if RAW completes a finite activity and ends with tool inactive unless it's still needed for readiness.\n\nSOURCE: \"A guard shoots one attacker and remains ready.\" So the guard shoots an attacker, then remains ready. The guard's action is shooting; after that he remains ready (i.e., keeps pistol in hand). That matches SOURCE: guard shoots one attacker and remains ready.\n\nRAW: \"The guard shoots the attacker, who falls, then keeps the pistol in hand while scanning for danger.\" So RAW says guard shoots attacker, attacker falls. Then guard keeps pistol in hand while scanning for danger. The finite activity is shooting? Shooting is a finite action that ends when he fires. After that, he's scanning for danger; that's another activity but not necessarily finite? Scanning could be ongoing. But the question: \"A finite activity must visibly reach its result.\" Shooting is finite and visible result (attacker falls). That occurs. Then \"if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint.\" The active tool for shooting: pistol. After shooting, does he need to keep pistol in hand? He keeps it while scanning. But the pistol was used only to shoot; after shooting it's no longer needed for that activity. So if RAW introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity (pistol), it must be visibly stopped or released by end when natural stable endpoint. Here, he keeps pistol in hand while scanning. That means the pistol remains active? But is it still considered \"active\" for shooting? The pistol is a weapon; after firing it's ready to shoot again. It's an active tool used only for that activity (shooting). He hasn't released or switched off the pistol. So does that violate rule? It says if RAW introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped by end when natural stable endpoint. The guard keeps pistol in hand while scanning; that's still active (ready to shoot). But is that considered \"used only for shooting\"? He might use it again later. But the rule: if tool was introduced for that activity and used only for that activity, then at the end of that activity it must be visibly stopped or released. The pistol remains in hand, so not released. So it's still active. That seems to violate.\n\nBut maybe scanning is a new finite activity? Scanning might be ongoing; but the rule about tool: \"used only to perform that now-completed finite activity\" means if the tool was used exclusively for shooting and no longer needed after finishing shooting, it should be released or switched off. But he keeps pistol in hand while scanning, so it's still active. So RAW is invalid.\n\nThus output {\"valid\":false",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 250,
+      "completion_tokens": 600,
+      "total_tokens": 850,
+      "completion_tokens_details": {
+        "reasoning_tokens": 597
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449036.0813882,
+  "status": "ok"
+}
