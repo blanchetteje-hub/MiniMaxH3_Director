@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-strict-1298",
+  "kind": "llama_chat",
+  "started_at": 1790446266.1913846,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe cook prepares dinner for Mira and Jon.\n\nCANDIDATE BEAT\nThe cook finishes dinner, serves Mira a plate, while Jon watches from the table.\n\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result. Named relational participants are material. If CURRENT JOB assigns a finite activity for named people, those named people must visibly receive or participate in the completed result when physically possible; watching alone is insufficient unless watching/listening is itself the assigned benefit, such as a performance, lesson, or demonstration. Preserve recipient/beneficiary roles rather than merely keeping the people present. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-06cjzsuymuhky5mvbj8lkpg",
+    "object": "chat.completion",
+    "created": 1790446266,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\":\"Jon is not served dinner\"}",
+          "reasoning": "We need to validate candidate beat against current job. Current job: The cook prepares dinner for Mira and Jon. So the cook must prepare dinner for both Mira and Jon. That means the cook should finish cooking dinner that is intended for Mira and Jon, presumably serving them.\n\nCandidate beat: \"The cook finishes dinner, serves Mira a plate, while Jon watches from the table.\" Does this accomplish meaning? The cook prepares dinner for Mira and Jon. In candidate, cook finishes dinner (prepares). Serves Mira a plate (Mira receives). Jon watches from the table (Jon is present but not served). Is that acceptable? According to rule: If CURRENT JOB assigns finite activity for named people, those named people must visibly receive or participate in completed result when physically possible; watching alone insufficient unless watching/listening is itself assigned benefit. Here, cook prepares dinner for Mira and Jon. So both should get the dinner. The candidate only serves Mira a plate; Jon watches but doesn't get served. That seems incomplete: Jon didn't receive dinner.\n\nThus invalid. Issue: \"Jon not served dinner.\" Return JSON false with issue.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 268,
+      "completion_tokens": 249,
+      "total_tokens": 517,
+      "completion_tokens_details": {
+        "reasoning_tokens": 225
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446270.0264575,
+  "status": "ok"
+}
