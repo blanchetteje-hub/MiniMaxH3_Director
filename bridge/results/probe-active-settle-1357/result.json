@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1357",
+  "kind": "llama_chat",
+  "started_at": 1790449087.8949227,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A worker finishes drilling a hole.\nRAW: The worker completes the hole, releases the trigger, and holds the now-idle drill at their side.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-s8n719e5bljzryq802f0ue",
+    "object": "chat.completion",
+    "created": 1790449087,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW completes the finite activity described in SOURCE: \"A worker finishes drilling a hole.\" The finite activity is drilling a hole. In RAW, it says: \"The worker completes the hole, releases the trigger, and holds the now-idle drill at their side.\"\n\nSo does this finish? Finite activity must visibly reach its result. Drilling a hole results in a hole being drilled. That seems achieved. Also if tool used only to perform that now-completed finite activity must be visibly stopped: The drill is idle (trigger released). So it's visible stop.\n\nThus valid. No issue. Return JSON with valid true, empty issue string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 249,
+      "completion_tokens": 152,
+      "total_tokens": 401,
+      "completion_tokens_details": {
+        "reasoning_tokens": 134
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449090.5118306,
+  "status": "ok"
+}
