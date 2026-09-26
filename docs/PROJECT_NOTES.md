@@ -218,6 +218,15 @@ another semantic stage. The classifier prompt now applies STOPPING POINT before
 same-object/new-problem merge exceptions, while keeping the same single binary
 LLM call.
 
+Acceptance 1276 confirmed the grouping-priority fix end-to-end: the source-span
+planner again produced exactly **2 chapters / 6+2 beats**, with refresh at
+Segment 7. The next earliest failure moved downstream to source/beat fidelity:
+Beat 1 rewrote "cooking breakfast for her young kids" into staging where Will
+drinks milk and Amber watches. The existing validator preserves named participant
+presence but can still accept a beneficiary becoming a spectator. Treat this as
+the current beat-validation target; do not reopen chapter allocation unless a
+fresh acceptance regresses it.
+
 The intended relations remain:
 - calm baseline -> inciting change = `NEW_TASK`;
 - inciting danger -> immediate protective reaction = `MERGE`;
