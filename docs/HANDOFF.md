@@ -129,6 +129,25 @@ Active development branch:
 - Local worker must pull/restart with this code before another `run_tests` job
   can verify whether any individual test itself also hangs.
 
+### 2026-09-26 — full 8-prompt acceptance reached
+
+- Acceptance `gold-prompt-acceptance-1339` completed all 8 H3 prompts.
+- Source-span planning remained at the locked target: 2 chapters, 6+2 beats,
+  automatic clean refresh at segment 7.
+- Beat 1 beneficiary preservation is fixed in the real pipeline: the generated
+  beat keeps breakfast for Will and Amber, Director Request 1 serves both
+  children, and Segment 1 now emits an H3 prompt successfully.
+- The earliest remaining gold-quality mismatch is now inside H3/Director output,
+  not planning: Segment 1 completes and serves breakfast, but ends with the
+  cooking process insufficiently settled (the stove/cooking appliance remains
+  active and continuity carries a temporary plate).
+- Request 1 already has an `activity_tools_settled` claim, but 1339 showed the
+  20B model can incorrectly mark it true after settling only one tool.
+- Jobs `probe-active-settle-1340` through `probe-active-settle-1359` test a
+  generic active-tool/process shutdown rule across cooking, machinery, washing,
+  welding, weapons/readiness, performances, ongoing/interrupted work, doors,
+  lamps, delivery carts, drills, and vehicle arrival.
+
 The entries below are historical; this snapshot supersedes old stop/go decisions.
 
 ## Historical snapshot — 2026-09-25
