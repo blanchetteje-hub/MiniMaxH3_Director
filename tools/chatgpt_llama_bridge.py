@@ -279,24 +279,26 @@ def run_local_process(command, cwd: Path, timeout: int) -> dict:
     )
     _ACTIVE_LOCAL_PROCESS = process
     output_lines = []
-    timed_out = False
-    deadline = started + timeout
-    try:
-        assert process.stdout is not None
-        while True:
-            if time.time() >= deadline:
-                timed_out = True
-                break
-            line = process.stdout.readline()
-            if line:
-                output_lines.append(line)
-                print(line, end="", flush=True)
-                continue
-            if process.poll() is not None:
-                break
-            time.sleep(0.1)
 
-        if timed_out and process.poll() is None:
+    def pump_output():
+        assert process.stdout is not None
+        for line in process.stdout:
+            output_lines.append(line)
+            print(line, end="", flush=True)
+
+    pump = threading.Thread(
+        target=pump_output,
+        name="bridge-local-process-output",
+        daemon=True,
+    )
+    pump.start()
+
+    timed_out = False
+    try:
+        try:
+            process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            timed_out = True
             if os.name == "nt":
                 subprocess.run(
                     ["taskkill", "/PID", str(process.pid), "/T", "/F"],
@@ -307,13 +309,11 @@ def run_local_process(command, cwd: Path, timeout: int) -> dict:
                 )
             else:
                 process.kill()
-
-        if process.stdout is not None:
-            remainder = process.stdout.read()
-            if remainder:
-                output_lines.append(remainder)
-                print(remainder, end="", flush=True)
-        process.wait(timeout=10)
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                pass
+        pump.join(timeout=5)
     finally:
         _ACTIVE_LOCAL_PROCESS = None
 
