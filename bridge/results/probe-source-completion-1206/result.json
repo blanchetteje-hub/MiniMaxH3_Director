@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1206",
+  "kind": "llama_chat",
+  "started_at": 1790440741.2871323,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE — authoritative work for this segment\nThe medic starts treating Rae, but the alarm interrupts treatment before it is finished.\n\nDERIVED BEAT — staging suggestion; cannot remove source requirements\nThe medic starts treatment until an alarm interrupts her.\n\nRAW SCENE\nThe medic begins cleaning Rae's wound. An alarm sounds; she stops before finishing.\n\nCheck only completion:\n1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\nReturn valid (boolean) and issue (short explanation if invalid, empty string otherwise)."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-w80t4h3fvdargcarady66",
+    "object": "chat.completion",
+    "created": 1790440741,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to check RAW SCENE against assigned source: \"The medic starts treating Rae, but the alarm interrupts treatment before it is finished.\" Derived beat: \"The medic starts treatment until an alarm interrupts her.\"\n\nRAW SCENE: \"The medic begins cleaning Rae's wound. An alarm sounds; she stops before finishing.\"\n\nCheck completion: The action: medic cleans wound (treatment). She stops before finishing due to alarm. That matches source: treatment started, interrupted by alarm before finished.\n\nWe need to ensure actions, results, participant roles assigned by SOURCE are present. Source says \"The medic starts treating Rae\" => participants: medic and Rae. Result: treatment of Rae's wound. The RAW SCENE has the medic cleaning Rae's wound (treatment). It mentions Rae? Actually it says \"Rae's wound\". So yes.\n\nResult visible: cleaning wound is a result; but she stops before finishing, so not finished. But source says interrupted before finish. That's fine.\n\nSpectators? None mentioned in source. RAW SCENE has no spectators.\n\nThus valid. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 301,
+      "completion_tokens": 240,
+      "total_tokens": 541,
+      "completion_tokens_details": {
+        "reasoning_tokens": 220
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440744.8347752,
+  "status": "ok"
+}
