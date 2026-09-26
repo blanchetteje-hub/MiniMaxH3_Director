@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1346",
+  "kind": "llama_chat",
+  "started_at": 1790449014.6655204,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A welder completes the final seam.\nRAW: The welder completes the seam, lifts the torch away, but the torch remains actively firing at the end.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-x4zyasb0dn3f3n4xii27d",
+    "object": "chat.completion",
+    "created": 1790449014,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The torch remains actively firing after the welder lifts it away, so the tool used for the finite activity (seam welding) is not visibly stopped at its natural endpoint.\"}",
+          "reasoning": "We need to judge if RAW indicates completion of finite activity: welder completes seam, lifts torch away but torch remains actively firing at end. Finite activity is the seam welding. It is completed when seam done and torch lifted? The torch still active means tool used for that activity remains on. According to rule: If RAW introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped by end if natural stable endpoint. Here torch was actively firing at the end of seam; it's still active after lifting? The torch is still firing but maybe that's part of finishing? But seam welding finished when torch lifted away. Torch remains firing means tool still active beyond seam completion. Is that natural stable endpoint? If torch continues to fire, it might be considered still performing activity (maybe heat). But the finite activity was seam; after lifting torch it's done. The torch being active is not part of seam but maybe finishing? However rule says if RAW introduces an ACTIVE tool used only for that now-completed activity must be visibly stopped by end when natural stable endpoint. Torch remains firing, so not stopped. So invalid.\n\nThus {\"valid\":false,\"issue\":\"Torch still actively firing after seam completion\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 251,
+      "completion_tokens": 301,
+      "total_tokens": 552,
+      "completion_tokens_details": {
+        "reasoning_tokens": 248
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449019.4596531,
+  "status": "ok"
+}
