@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1192",
+  "kind": "llama_chat",
+  "started_at": 1790440616.5380635,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE — authoritative work for this segment\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\n\nDERIVED BEAT — staging suggestion; cannot remove source requirements\nAmy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\n\nRAW SCENE\nAt 00:00.000 Amy flips a pancake in a skillet on the stove, her tight black tank top and denim jeans visible.\nAt 00:01.000 She pours milk into a bowl placed on the counter.\nAt 00:02.000 A toaster pops up toast on the counter beside the bowl.\nAt 00:03.000 Amy places a plate with pancakes on the counter.\nAt 00:04.000 Will watches her, eyes on the skillet.\nAt 00:05.000 Amber watches too, peering at the sizzling pancake.\nAt 00:06.000 She lifts the spatula to flip another pancake.\nAt 00:07.000 Amy sets the spatula down, turns off the stove, and smiles.\nEnd continuity state: Amy stands in the kitchen wearing a tight black tank top and denim jeans, having cooked breakfast while Will and Amber watch.\n\nCheck only completion:\n1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\nReturn valid (boolean) and issue (short explanation if invalid, empty string otherwise)."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hx164q1qiy6oiz1rc19s2",
+    "object": "chat.completion",
+    "created": 1790440616,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The kids only watch Amy cook; no visible receipt of the prepared breakfast is shown, so the activity benefiting them isn’t completed as required by the source.\"}",
+          "reasoning": "We need to check RAW SCENE against assigned source: \"Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\" Derived beat: Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\n\nSo source requires: Amy cooking breakfast. She wears tight black tank top and denim jeans. Kids are watching? The derived beat says they watch. Source didn't specify that kids watch; but it's implied maybe. But we need to check actions, results, participant roles assigned by SOURCE. Use derived beat only where consistent with SOURCE.\n\nWe must ensure finite activity needs its visible result: For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. So breakfast cooking should produce pancakes for kids? The raw scene shows Amy flips pancake, pours milk into bowl, toaster pops toast, places plate of pancakes on counter. Kids watch but do they get the food? Not shown. They just watch. According to rule 2: For an activity benefiting people (cooking breakfast), those people must receive or participate in that result; watching alone is insufficient. So kids should be receiving breakfast. The raw scene doesn't show them eating or getting plate. So it's incomplete.\n\nAlso source says \"Amy cooking breakfast for her young kids.\" That implies she cooks breakfast to feed the kids, not just watch. Kids are recipients of breakfast. Raw scene shows Amy cooking but no result delivered to kids. They only watch. So invalid.\n\nThus valid: false. Issue: \"Kids do not receive or participate in the cooked breakfast; they merely watch.\"\n\nCheck if any other issues? Also source says she is at home on a normal day, wearing tight black tank top and denim jeans. That matches. She cooks breakfast. The raw scene shows cooking actions. But result missing for kids.\n\nThus answer: {\"valid\": false, \"issue\":\"Kids do not receive or participate in the cooked breakfast; they merely watch.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 492,
+      "completion_tokens": 461,
+      "total_tokens": 953,
+      "completion_tokens_details": {
+        "reasoning_tokens": 412
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440623.0909684,
+  "status": "ok"
+}
