@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-role-layout-1014",
+  "kind": "llama_chat",
+  "started_at": 1790383089.3966556,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "BEFORE THIS BEAT — ESTABLISHED CONTEXT\nPrevious final beat:\nNone; this is the first beat.\n\nCurrent state:\n{}\n\nNOW — JOB THIS CANDIDATE MUST PERFORM\nAri opens the supply case.\n\nLATER — JOB RESERVED FOR A FUTURE BEAT\nAri takes the sensor.\n\nAFTER THIS BEAT — STATE EFFECTS EXPECTED IF VALID\n[]\n\nCANDIDATE BEAT TO JUDGE\nAri kneels beside the case, flips its latch, and opens the lid.\n\nCHECKS\n1. Read actions literally in order and carry each stated result forward. Reject repeating a completed removal on the same target unless it was restored.\n2. Use only established BEFORE facts. Do not infer a terminal result from a lesser earlier action. An earlier target is not automatically the current target.\n3. Reject unresolved barriers and unavailable objects. Unknown facts alone are not errors.\n4. NOW must happen in this beat. Do not complete a distinct LATER job early.\n5. Every listed AFTER typed effect must follow from visible candidate actions. Empty effects impose no extra requirement.\n\nReturn one JSON object: valid is a boolean; issue is a short concrete error or an empty string when valid."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-7wqdwcade123b5998xuog6",
+    "object": "chat.completion",
+    "created": 1790383089,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge the beat \"Ari kneels beside the case, flips its latch, and opens the lid.\" The BEFORE context says: Previous final beat none; current state {}. So no established facts.\n\nThe job this candidate must perform is: Ari opens the supply case. That matches flipping latch and opening lid. LATER reserved for future: Ari takes sensor. After this beat expected effects [] (none). We need to check if the actions are in order, result forward, etc.\n\nCheck 1: Read actions literally in order and carry each stated result forward. Reject repeating a completed removal on same target unless restored. Here we have \"kneels beside case\" then flips latch then opens lid. No repeated removal. Good.\n\nCheck 2: Use only established BEFORE facts. Do not infer terminal from lesser earlier action. An earlier target is not automatically current target. There are no before facts, so fine.\n\nCheck 3: Reject unresolved barriers and unavailable objects. Unknown facts alone are not errors. The case exists? Not known but we can assume it's there; unknown is okay.\n\nCheck 4: NOW must happen in this beat. Do not complete a distinct LATER job early. We didn't take sensor yet, so fine.\n\nCheck 5: Every listed AFTER typed effect must follow from visible candidate actions. Empty effects impose no extra requirement. So after effects [] means none expected; we can have new state but it's okay.\n\nThus valid true, issue \"\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 360,
+      "completion_tokens": 315,
+      "total_tokens": 675,
+      "completion_tokens_details": {
+        "reasoning_tokens": 297
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383093.9005494,
+  "status": "ok"
+}
