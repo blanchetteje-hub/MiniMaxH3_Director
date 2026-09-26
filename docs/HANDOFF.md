@@ -1399,3 +1399,13 @@ transformation. Only then move on toward H3 prompt generation.
 - Commits: 254a94aa9d07c2115b157e1a3eb63966b15d085d (Beat validator), 1aa819b5df6c1dad9d0b3ff8db69d5cbe96741bd (Director completion gate), 5734d7a51032d501c3232ec00d94e26d597efb20 and 10f3d700e70b870904cbccc323aed37b5fbb28e7 (tests), c8ec81722e4ad1b9e9eb0c1c923ce4a6f4e299aa (source-aware test branch).
 - Regression 1499 exposed only stale test expectations; corrected rerun is tests-1501.
 - Fresh full acceptance gold-prompt-beneficiary-1500 is queued. Do not act on later Segment 2/7 issues until Segment 1 is confirmed fixed.
+
+
+### 2026-09-26 — beneficiary fix verified; assigned persistent end-state is next boundary
+
+- Acceptance 1500 verified Segment 1 beneficiary completion: Amy now visibly serves breakfast plates to both Will and Amber, and both children take them.
+- The next earliest mismatch is Segment 2. The accepted beat/Director output moves Amy into the basement with Will and Amber even though the authoritative typed state effects relocate/contain only Will and Amber.
+- Prose-only barrier-scope probing was unreliable: GPT-OSS 20B interpreted “Mara gets Eli and Noor into the shelter” as allowing Mara to enter too. Therefore participant grammar is not the authority.
+- The stronger generic authority is Python-owned typed state effects. Commit f06023968ba6f02d012f89818d331dd73b0b7599 promotes an early ASSIGNED PERSISTENT END STATE check: an already-known named subject/barrier/item cannot end with a new persistent location/containment/barrier/item-state change unless a matching typed effect authorizes it. Temporary motion and incidental new threats remain exempt.
+- Regression coverage commit 82a1e236ed398bf98dd8372cfa27f9f5ef96f431. Focused regression job tests-1512 passed 74/74.
+- Full acceptance gold-prompt-state-1513 is currently queued/running and is the next semantic checkpoint.
