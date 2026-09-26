@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-role-1317",
+  "kind": "llama_chat",
+  "started_at": 1790446795.095555,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe cook prepares dinner for Mira and Jon.\n\nCANDIDATE BEAT\nThe cook finishes dinner, serves Mira a plate, while Jon watches from the table.\n\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB and preserve material relationships.\nIf CURRENT JOB says an action/result is FOR a named person or group, CANDIDATE BEAT must preserve that beneficiary/recipient role. Do not replace \"for them\" with spectator-only behavior such as merely watching the work.\n- For a consumable, gift, hand-off, or prepared item, show it delivered/served/used by the intended beneficiary, or explicitly place/identify it as theirs.\n- For a repair, shelter, installation, delivery location, or other fixed/service result, an explicitly completed result belonging to or designated for the beneficiary is sufficient; they do not need to physically hold or enter it.\n- Watching/listening is sufficient when that is itself the intended benefit, such as a performance, lesson, or demonstration.\nReject a candidate that changes the beneficiary, drops one beneficiary, or leaves the only visible relationship as watching an unrelated result.\nDo not reject harmless staging.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-3v8bhdhmvnk0pzarmwyuddh",
+    "object": "chat.completion",
+    "created": 1790446795,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\":\"Jon’s dinner isn’t served; only Mira receives a plate.\"}",
+          "reasoning": "We need to validate candidate beat against current job. Current Job: \"The cook prepares dinner for Mira and Jon.\" So the cook is preparing dinner for both Mira and Jon.\n\nCandidate Beat: \"The cook finishes dinner, serves Mira a plate, while Jon watches from the table.\"\n\nDoes this preserve meaning? The cook prepared dinner for Mira and Jon; candidate beat shows that the cook finished dinner (makes sense) and served Mira a plate. But what about Jon? He is watching from the table. Does he get his dinner? Not explicitly stated. The current job says \"prepares dinner for Mira and Jon.\" That implies both should receive dinner. Candidate beat only serves Mira, not Jon. It says Jon watches from the table; maybe he's waiting to be served or will eat later. But does that preserve beneficiary role? For a consumable, gift, hand-off: show it delivered/served by intended beneficiary. Here, for Jon, it's not shown he receives dinner. So we drop one beneficiary.\n\nThus candidate beat is invalid because it drops the benefit for Jon. The issue: \"Jon's dinner not served.\" Provide short explanation.\n\nReturn JSON: {\"valid\": false, \"issue\":\"Jon does not receive his dinner\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 358,
+      "completion_tokens": 279,
+      "total_tokens": 637,
+      "completion_tokens_details": {
+        "reasoning_tokens": 247
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446799.569803,
+  "status": "ok"
+}
