@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1428",
+  "kind": "llama_chat",
+  "started_at": 1790452746.9858875,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge persistent-state compatibility. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Lio is inside a locked storage room.\nSOURCE: Mara repairs a console outside.\nRAW: Mara repairs the console and Lio walks out through the door.\n\nRule: preserve persistent opening facts unless SOURCE explicitly changes them. Containment and locked barriers are persistent. If RAW frees someone or crosses a locked barrier without SOURCE authorization, return invalid.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-90w1446m5opestp5w07b",
+    "object": "chat.completion",
+    "created": 1790452746,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Lio exits the locked storage room without the source indicating that the lock was opened.\"}",
+          "reasoning": "We need to judge if the raw event is valid given opening facts: Lio inside locked storage room. Source says Mara repairs console outside. Raw: Mara repairs console and Lio walks out through door.\n\nDoor presumably leads from storage room to outside? The rule: preserve persistent opening facts unless SOURCE explicitly changes them. Containment and locked barriers are persistent. If RAW frees someone or crosses a locked barrier without SOURCE authorization, return invalid.\n\nSo initial fact: Lio inside locked storage room. Door is locked? It says \"locked storage room\". So door is locked. Source repairs console outside; does that unlock the door? Not explicitly. The source didn't mention unlocking door. Raw shows Lio walks out through door. That means crossing a locked barrier without SOURCE authorization, so invalid.\n\nThus output: {\"valid\":false,\"issue\":\"Lio exits locked storage room without source unlocking it\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 177,
+      "completion_tokens": 213,
+      "total_tokens": 390,
+      "completion_tokens_details": {
+        "reasoning_tokens": 178
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452750.5908072,
+  "status": "ok"
+}
