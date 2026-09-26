@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1356",
+  "kind": "llama_chat",
+  "started_at": 1790449081.9213607,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A courier delivers supplies.\nRAW: The courier rolls a cart to the destination, unloads the supplies, and leaves the empty cart parked nearby.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-sf3z5wa7c9vi7k9ezzel",
+    "object": "chat.completion",
+    "created": 1790449081,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW completes a finite activity and any active tool used only for that is stopped.\n\nSOURCE: \"A courier delivers supplies.\" So action: deliver supplies. The courier rolls cart, unloads supplies, leaves empty cart parked nearby. Finite activity: delivering supplies (unloading). That ends when supplies are delivered. After unloading, the cart is left parked; no mention of stopping any tool. Cart is a passive object? It's an active tool used to transport supplies. It was rolled and then left parked. Is it considered \"active\" after delivery? The cart itself might be considered a tool/appliance/process that was used only for delivering supplies. After unloading, the cart remains parked; it's not being moved or used further. Does it need to be stopped? It's just an object. There's no mention of turning off any engine etc. So no active tool left.\n\nThus RAW completes finite activity and no active tools remain needing stopping. So valid: true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 248,
+      "completion_tokens": 218,
+      "total_tokens": 466,
+      "completion_tokens_details": {
+        "reasoning_tokens": 200
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449085.4606943,
+  "status": "ok"
+}
