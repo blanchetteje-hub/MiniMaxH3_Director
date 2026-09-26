@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-active-settle-v2-1371",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge one scene endpoint. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE: A mechanic begins a machine test, but an alarm interrupts the test before completion.\nRAW: The alarm sounds; the mechanic stops the machine and turns toward the alarm.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+    }
+  ]
+}
