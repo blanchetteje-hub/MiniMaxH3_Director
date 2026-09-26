@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1416",
+  "kind": "llama_chat",
+  "started_at": 1790452544.9145362,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Nia wears a red coat. SOURCE: Nia reads a map. RAW: Nia reads the map, now wearing a blue jacket.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-dj6zmzaq6iqfmpic10sw",
+    "object": "chat.completion",
+    "created": 1790452544,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"clothing changed from red coat to blue jacket without source authorization\"}",
+          "reasoning": "We need to judge if RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them.\n\nOPENING: Nia wears a red coat.\nSOURCE: Nia reads a map. So at the end of SOURCE, we have that Nia is reading a map; no mention of clothing change. The red coat remains wearing.\n\nRAW: \"Nia reads the map, now wearing a blue jacket.\" That indicates she changed from red coat to blue jacket while reading the map. Did SOURCE authorize changing clothing? No. So it's a persistent state change not authorized. Thus RAW invalid.\n\nReturn {\"valid\":false,\"issue\":\"clothing changed from red coat to blue jacket without source authorization\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 220,
+      "completion_tokens": 169,
+      "total_tokens": 389,
+      "completion_tokens_details": {
+        "reasoning_tokens": 139
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452547.7224598,
+  "status": "ok"
+}
