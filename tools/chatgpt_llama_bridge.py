@@ -477,6 +477,11 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
     runner = _select_pytest_runner(source_root)
     command = [*runner, "-q", *normalized]
 
+    print(
+        f"Running pytest job on {code_branch}: "
+        + " ".join(normalized),
+        flush=True,
+    )
     completed = subprocess.run(
         command,
         cwd=worktree,
@@ -907,6 +912,8 @@ def process_once(source_root: Path, worktree: Path, branch: str, endpoint: str,
         if job_id in completed:
             continue
         result_dir = results_root / job_id
+        kind = str(job.get("kind") or "llama_chat").strip()
+        print(f"Processing bridge job: {job_id} ({kind})", flush=True)
         try:
             payload = execute_job(
                 job,
