@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-priority-1275",
+  "kind": "llama_chat",
+  "started_at": 1790444689.0679975,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nA baker finishes arranging pastries in the display case.\n\nRIGHT:\nA fire alarm suddenly sounds and smoke appears under the back door.\n\nChoose MERGE or NEW_TASK. Use this order:\n1. STOPPING POINT: If LEFT explicitly completes/finishes a protection, victory, repair, shutdown, assembly, delivery, or other objective, choose NEW_TASK for a later distinct action. Testing, calibrating, inspecting, transporting, fetching new gear, releasing people, or starting another operation after that completion is NEW_TASK.\n2. SAME OBJECT EXCEPTION: MERGE only if RIGHT immediately continues handling the exact object/container LEFT just obtained, opened, unlocked, or started (retrieve -> equip/use/consume; open -> remove). This exception does NOT apply to an object LEFT finished building/assembling/repairing.\n3. NEW PROBLEM RESPONSE: MERGE if LEFT itself introduces a new problem, danger, alarm, or request and RIGHT immediately addresses that trigger.\n4. SAME ACTION: MERGE if RIGHT continues the same uninterrupted local action as LEFT.\nOtherwise choose NEW_TASK. Shared earlier danger, purpose, opportunity, access, or readiness is not enough to MERGE.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-j8tndde3cdmbem3m2ajo44",
+    "object": "chat.completion",
+    "created": 1790444689,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need decide whether two adjacent source responsibilities belong to one local beat job: left and right.\n\nLEFT: \"A baker finishes arranging pastries in the display case.\"\n\nRIGHT: \"A fire alarm suddenly sounds and smoke appears under the back door.\"\n\nCheck rules:\n\n1. STOPPING POINT: If LEFT explicitly completes/finishes a protection, victory, repair, shutdown, assembly, delivery, or other objective, choose NEW_TASK for a later distinct action. Testing, calibrating, inspecting, transporting, fetching new gear, releasing people, or starting another operation after that completion is NEW_TASK.\n\nLEFT finishes arranging pastries: that's an assembly? It's assembling display case arrangement. So it's finishing an objective (arranging). That qualifies as \"finishes ... assembly\". According to rule 1, choose NEW_TASK for a later distinct action. The right is fire alarm and smoke under back door - new problem. But rule 3 says MERGE if LEFT itself introduces a new problem, danger, alarm, or request and RIGHT immediately addresses that trigger.\n\nDoes LEFT introduce a new problem? No, it finishes arrangement; no problem introduced. So rule 1 applies: NEW_TASK.\n\nBut check rule 2: SAME OBJECT EXCEPTION: MERGE only if RIGHT continues handling the exact object/container LEFT just obtained, opened, unlocked, or started (retrieve -> equip/use/consume; open -> remove). This exception does NOT apply to an object LEFT finished building/assembling/repairing. So not applicable.\n\nRule 3: NEW PROBLEM RESPONSE: MERGE if LEFT itself introduces a new problem... no.\n\nRule 4: SAME ACTION: MERGE if RIGHT continues the same uninterrupted local action as LEFT. Not same action.\n\nThus choose NEW_TASK.\n\nReturn JSON with key relation maybe \"relation\": \"NEW_TASK\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 337,
+      "completion_tokens": 378,
+      "total_tokens": 715,
+      "completion_tokens_details": {
+        "reasoning_tokens": 362
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790444694.8570452,
+  "status": "ok"
+}
