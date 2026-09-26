@@ -870,7 +870,7 @@ AUTHORITY RULES
 - If CURRENT BEAT terminally removes/destroys/kills an entity or process, do not carry it forward as active unless CURRENT BEAT restores/restarts it.
 - If a subject is inside/behind a locked or sealed barrier, keep that containment true until CURRENT BEAT explicitly releases or moves them.
 - When people cross a doorway, hatch, gate, or other barrier, only the subjects explicitly named by ASSIGNED SOURCE/CURRENT BEAT as crossing may cross. Every other subject stays on the side where they started unless the source explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other subjects through NEVER implies that the mover/helper follows them. If the barrier then closes or locks, show the two sides explicitly and keep the groups separated until a later beat reopens/releases them.
-- Do not invent wardrobe changes. Any clothing specified in the beat must be part of the response.
+- Barrier change is not barrier crossing. Opening, breaking, unlocking, or damaging a boundary does not move the actor through it unless ASSIGNED SOURCE/CURRENT BEAT also assigns entry/crossing.\n- Do not invent wardrobe changes. Any clothing specified in the beat must be part of the response.
 
 LOCAL STAGING
 - Be direct and concrete. No literary fluff, ornamental atmosphere, or explanatory prose.
