@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-v3-1252",
+  "kind": "llama_chat",
+  "started_at": 1790443560.9270103,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nA coolant pipe ruptures and scalding vapor jets toward the crew.\n\nRIGHT:\nThe engineer immediately closes the emergency valve to stop the leak.\n\nChoose MERGE or NEW_TASK.\nMERGE only when RIGHT's PRIMARY ACTION:\n- continues the same uninterrupted local action as LEFT;\n- is the direct immediate response to a NEW problem/event introduced by LEFT itself; or\n- is immediate follow-through on the exact object/action LEFT just obtained, opened, or started (for example retrieve -> equip/use/consume, open -> remove).\nOtherwise choose NEW_TASK after LEFT reaches a usable stopping point.\nA completed protection/safety action, completed victory/resolution, or completed assembly is a stopping point; it does NOT itself create a new problem just because another task follows. Shared earlier danger/goal is not enough to MERGE.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ik9rzub0fmqbfiv9bmh7p9",
+    "object": "chat.completion",
+    "created": 1790443560,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need decide if RIGHT belongs to same beat job as LEFT.\n\nLEFT: \"A coolant pipe ruptures and scalding vapor jets toward the crew.\" This describes an event: a rupture, vapor jets towards crew. The action is that the pipe ruptures; it's a problem/event introduced by left itself? Yes, the rupture introduces new danger (scalding vapor). RIGHT: \"The engineer immediately closes the emergency valve to stop the leak.\"\n\nWe check MERGE criteria:\n\n- continues same uninterrupted local action as LEFT: Not exactly; Left describes event. Right is response.\n\n- direct immediate response to a NEW problem/event introduced by LEFT itself: Yes, the rupture introduces new problem (leak). The engineer closing valve stops leak. So it's immediate response.\n\n- immediate follow-through on exact object/action left just obtained, opened, or started: Not exactly; but still qualifies as response.\n\nThus MERGE seems appropriate.\n\nBut check if there's a stopping point? Left's action is the rupture event; not completed protection/safety action. The valve closing stops leak - that's new task after left reaches usable stopping point? Actually left ends with \"scalding vapor jets toward crew.\" That's an ongoing danger, but it's still part of same local beat: the engineer responds to that.\n\nThus MERGE. Return JSON {\"relation\":\"MERGE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 274,
+      "completion_tokens": 285,
+      "total_tokens": 559,
+      "completion_tokens_details": {
+        "reasoning_tokens": 269
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790443565.2991552,
+  "status": "ok"
+}
