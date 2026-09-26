@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1212",
+  "kind": "llama_chat",
+  "started_at": 1790441900.7478516,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe pilot presses the reactor start button.\n\nRAW SCENE\nThe pilot presses START. The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin\n  or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly\n  receive/participate when physically possible.\n- Judge the final frame: the required result must already be true, not merely\n  attempted, approaching, starting up, partly complete, or still in progress.\n- Do not judge style, pacing, camera, continuity, future events, or harmless\n  extra detail.\nReturn valid=true only when CURRENT BEAT is complete in RAW SCENE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-q1e1s70gddkpcmvtf4uq",
+    "object": "chat.completion",
+    "created": 1790441900,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to check if the raw scene visibly completes current beat: \"The pilot presses the reactor start button.\" The raw scene says: \"The pilot presses START. The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.\"\n\nDoes that show the pilot pressing the reactor start button? It shows he presses START (maybe a button). But does it show the result of pressing the reactor start button? The current beat is just the action: press the reactor start button. That should be visible. In raw scene, \"The pilot presses START.\" That's presumably the same as pressing the reactor start button. So yes.\n\nBut check rule: Every explicit action/result in CURRENT BEAT must visibly happen. The action is pressing the reactor start button. It happens. No result needed? It's just an action. But maybe they want to see that he pressed it, not just started pressing. He presses START (the button). That seems fine.\n\nAlso \"The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.\" That's a result of the press. So it's visible. The beat is complete: pilot pressed reactor start button and we see the screen update. So valid=true.\n\nReturn JSON with issue empty string? Probably \"\" or null. They want exactly one JSON object with boolean valid and string issue. If no issue, maybe issue=\"\" or \"none\". I'll set issue=\"\".\n\nThus output:\n\n{\"valid\":true,\"issue\":\"\"\n\n}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 271,
+      "completion_tokens": 311,
+      "total_tokens": 582,
+      "completion_tokens_details": {
+        "reasoning_tokens": 291
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790441905.125539,
+  "status": "ok"
+}
