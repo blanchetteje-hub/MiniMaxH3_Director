@@ -494,9 +494,8 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
                         "the natural visible endpoint of any finite activity. "
                         "When the activity is for named people, show each named "
                         "beneficiary receiving or participating in the completed "
-                        "result when physically possible. When completion ends "
-                        "use of a tool or appliance used only for that activity, "
-                        "visibly settle it before the handoff when reasonable."
+                        "result when physically possible. Preserve held/equipped "
+                        "readiness items unless CURRENT BEAT explicitly changes them."
                     ),
                 },
                 "finite_activity_complete": {
@@ -865,7 +864,7 @@ AUTHORITY RULES
 - ASSIGNED SOURCE, when present, defines the work allowed now. CURRENT BEAT supplies staging but cannot remove source actions, results, or participant roles. Without ASSIGNED SOURCE, CURRENT BEAT defines the work.
 - NEXT BEAT is a forbidden boundary. Do not perform, begin, anticipate, foreshadow, cause, or show any result unique to NEXT BEAT.
 - OPENING CONTINUITY STATE defines what is already true at 00:00.000; it does not authorize a new event.
-- STORY/PHASE are background context only. SUBJECT DEFINITIONS establish identity/appearance only.
+- SUBJECT DEFINITIONS establish identity/appearance only.
 - Expand the current assignment only. Preserve source beneficiaries as beneficiaries, not spectators. Do not advance the story.
 - Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
 - If CURRENT BEAT terminally removes/destroys/kills an entity or process, do not carry it forward as active unless CURRENT BEAT restores/restarts it.
@@ -19955,11 +19954,7 @@ def build_generation_messages(
     del completed_beat_ids, recent_results, total_segments, total_length
     del conditioning_mode
 
-    phase_text = (
-        json.dumps(current_phase, ensure_ascii=False, indent=2)
-        if isinstance(current_phase, dict) and current_phase
-        else "N/A"
-    )
+    del story
     current_beat_text, next_beat_text = _phase_beats_text(
         beats,
         current_phase,
@@ -19995,20 +19990,16 @@ def build_generation_messages(
         + assigned_source + "\n\n"
         if assigned_source else ""
     )
-    user_content = f"""STORY: {story} 
-
-SUBJECT DEFINITIONS:
+    user_content = f"""SUBJECT DEFINITIONS:
 {subject_text}
- 
-PHASE: {phase_text}
- 
+
 {source_block}CURRENT BEAT — EXECUTE ONLY THIS:
 {current_beat_text}
 
 NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:
 {next_beat_text}
- 
-CONTINUITY STATE: 
+
+CONTINUITY STATE:
 {continuity_text}
 {phrase_exclusion_block}
 {dialogue_block}"""
