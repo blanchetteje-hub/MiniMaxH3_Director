@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1240",
+  "kind": "llama_chat",
+  "started_at": 1790442962.9541447,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe ranger gets the villagers into the stone refuge and bars the door.\n\nRIGHT:\nThe ranger fetches a bow and quiver from the armory.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself CREATES a problem, danger, or request, and RIGHT is the immediate response that addresses it.\n3. RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it is only a tool for another target, this rule does not apply.\nImportant: rule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. A different objective after completed work is NEW_TASK even when both serve the same larger goal.\nOtherwise choose NEW_TASK.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-r1tbib1r4ffj7cw835gsk",
+    "object": "chat.completion",
+    "created": 1790442962,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need to decide if two adjacent source responsibilities belong to one local beat job: LEFT and RIGHT.\n\nLEFT: \"The ranger gets the villagers into the stone refuge and bars the door.\"\n\nRIGHT: \"The ranger fetches a bow and quiver from the armory.\"\n\nCheck rules:\n\n1. RIGHT continues same uninterrupted action as LEFT? No, different actions: left is moving villagers to refuge and bar door; right fetching bow.\n\n2. LEFT creates problem/danger/request, and RIGHT immediate response addressing it. Does LEFT create problem? It bars the door after getting villagers into stone refuge. That might be a protection measure. But does that create a request for a bow? Not necessarily. The left action is to get villagers in and bar door; right fetches bow from armory. Is there an implied need: maybe they want to defend? But rule 2 says LEFT itself creates problem/danger/request, RIGHT immediate response addresses it. Does LEFT create a danger or request? It bars the door - that might be protection against something. The ranger may anticipate needing weapons for defense; but is that explicit? Not necessarily.\n\n3. RIGHT immediately completes handling of exact object/container/action left just obtained, opened, unlocked, or started. Left got villagers into stone refuge and barred the door. Right fetches bow from armory: not same object. So rule 3 doesn't apply.\n\nThus likely NEW_TASK.\n\nCheck rule 2 nuance: \"LEFT itself CREATES a problem, danger, or request\" - The left action bars the door; that is protection against something? It might create a need for weapons to defend. But it's not explicit. Also rule says LEFT must be already completed solution etc. It's a completed task (got villagers in and barred). So rule 2 doesn't apply because LEFT is finished.\n\nThus choose NEW_TASK.\n\nReturn JSON: {\"relation\":\"NEW_TASK\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 284,
+      "completion_tokens": 394,
+      "total_tokens": 678,
+      "completion_tokens_details": {
+        "reasoning_tokens": 378
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442969.1254652,
+  "status": "ok"
+}
