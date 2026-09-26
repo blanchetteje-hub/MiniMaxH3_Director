@@ -595,10 +595,10 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             is_final_story_segment=False,
         )
         normalized = " ".join(rules.split())
-        self.assertIn("make the blocking explicit for H3", normalized)
-        self.assertIn("show exactly who crosses", normalized)
-        self.assertIn("state the final side of each group", normalized)
-        self.assertIn("do not keep the far-side group visibly beside the near-side group", normalized)
+        self.assertIn("only the subjects explicitly named", normalized)
+        self.assertIn("Every other subject stays on the side where they started", normalized)
+        self.assertIn("NEVER implies that the mover/helper follows them", normalized)
+        self.assertIn("keep the groups separated", normalized)
 
     def test_completion_prompt_protects_authoritative_persistent_state(self):
         messages = minimax.build_director_raw_scene_completion_messages(
