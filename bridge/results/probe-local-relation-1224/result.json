@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1224",
+  "kind": "llama_chat",
+  "started_at": 1790442697.1599202,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nAmy kills the last of the zombies, her house now soaked in blood.\n\nRIGHT:\nShe lets her kids out of the basement.\n\nChoose MERGE or NEW_TASK.\nMERGE only if RIGHT's PRIMARY ACTION:\n1. continues the same uninterrupted local action as LEFT;\n2. is the direct immediate response to a new problem/event introduced by LEFT itself; or\n3. immediately completes the exact object/action LEFT just obtained, opened, or started.\nOtherwise choose NEW_TASK once LEFT has a usable stopping point. Do not MERGE merely because RIGHT follows from, is enabled by, or shares a larger goal/cause with LEFT. A later task after completed protection, victory, assembly, or other completed work is NEW_TASK unless rule 3 applies.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-c1gdneotrwt4034b4b8jva",
+    "object": "chat.completion",
+    "created": 1790442697,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need to decide if RIGHT's primary action merges with LEFT.\n\nLEFT: \"Amy kills the last of the zombies, her house now soaked in blood.\" Primary action: Amy kills the last zombie. The result is house soaked in blood (but that's a state). So left ends after killing last zombie; maybe she has finished that local beat job? She killed all zombies. That seems like completion.\n\nRIGHT: \"She lets her kids out of the basement.\"\n\nPrimary action: She lets her kids out of the basement. Is this continuing same uninterrupted local action as LEFT? No, it's a new action (letting kids out). Does it directly respond to a problem/event introduced by LEFT itself? The event is that house soaked in blood; maybe she needs to let kids out because zombies are gone? But that's not immediate response: the zombie threat ended. She might be letting them out after killing zombies, but it's not direct immediate response to new problem from left. Does it immediately complete exact object/action left just obtained, opened, or started? Left action was \"killing last zombie\" - no object to complete.\n\nThus rule 1 fails (not same uninterrupted local action). Rule 2: is the direct immediate response to a new problem/event introduced by LEFT itself? The event: house soaked in blood. That might be a result of killing zombies, but not a new problem; it's just state. She could let kids out because they were trapped? But that was before.\n\nRule 3: immediately completes exact object/action left just obtained, opened, or started. No.\n\nThus choose NEW_TASK.\n\nReturn JSON with key relation: \"NEW_TASK\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 260,
+      "completion_tokens": 348,
+      "total_tokens": 608,
+      "completion_tokens_details": {
+        "reasoning_tokens": 332
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442702.5269473,
+  "status": "ok"
+}
