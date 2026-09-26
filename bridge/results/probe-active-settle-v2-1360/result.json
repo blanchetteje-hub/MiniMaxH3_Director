@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1360",
+  "kind": "llama_chat",
+  "started_at": 1790449257.9643474,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A parent cooks and serves breakfast for the children.\nRAW: The parent serves both children, sets down the spatula, and ends while the stove burner used for cooking remains visibly on.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-pe3xk7u1huetk2diwdmqk",
+    "object": "chat.completion",
+    "created": 1790449257,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The stove burner stays visibly on after the parent serves breakfast, indicating the cooking process hasn't naturally ended as required by the endpoint.\"}",
+          "reasoning": "We need to judge if RAW reaches SOURCE-assigned endpoint.\n\nSOURCE: \"A parent cooks and serves breakfast for the children.\"\n\nSo activity is cooking and serving breakfast. The endpoint presumably when both are done? It says \"cooks and serves breakfast\". So finishing cooking and serving. Does that include turning off burner? According to rule 1, any active process used only to perform completed activity must end in natural inactive state: e.g., burner off.\n\nSo RAW: \"The parent serves both children, sets down the spatula, and ends while the stove burner used for cooking remains visibly on.\"\n\nThus after serving, the burner is still on. That means the cooking process hasn't ended? The cooking was completed when breakfast served; but burner still on indicates active process not finished.\n\nSo RAW does NOT reach endpoint because burner should be off. So valid false with issue: \"Stove burner remains on after serving, so cooking activity not fully concluded.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 297,
+      "completion_tokens": 233,
+      "total_tokens": 530,
+      "completion_tokens_details": {
+        "reasoning_tokens": 190
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449261.6142302,
+  "status": "ok"
+}
