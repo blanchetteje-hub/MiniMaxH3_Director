@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-role-layout-1002",
+  "kind": "llama_chat",
+  "started_at": 1790382858.896816,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "BEFORE THIS BEAT — ESTABLISHED CONTEXT\nPrevious final beat:\nMara stands inside the laboratory.\n\nCurrent state:\n{}\n\nNOW — JOB THIS CANDIDATE MUST PERFORM\nMara closes the laboratory door, then enters the corridor.\n\nLATER — JOB RESERVED FOR A FUTURE BEAT\nNone; this is the final beat.\n\nAFTER THIS BEAT — STATE EFFECTS EXPECTED IF VALID\n[]\n\nCANDIDATE BEAT TO JUDGE\nMara closes and locks the laboratory door, then walks through that closed door into the corridor.\n\nCHECKS\n1. Read actions literally in order and carry each stated result forward. Reject\nrepeating a completed removal on the same target or part unless it was restored.\nDifferent targets and failed attempts are different cases. Do not excuse a\ncontradiction as emphasis or invent an intervening action.\n2. Use only established facts from PREVIOUS FINAL BEAT and CURRENT STATE.\nAn injury does not establish death. An earlier target is not automatically the\nlast target. Reject unavailable objects and unresolved barriers; unknown facts\nalone are not errors.\n3. CURRENT JOB must happen now, including every required action, result, and\nnamed participant. Already-completed-state wording cannot replace an assigned\naction. Allow neutral staging, but reject material changes to tools, participants,\nlocations, or outcomes. Ordinary impacts cannot transform an entire solid body\ninto liquid or another material without an explicitly established capability.\nHonor unusual capabilities established by CURRENT JOB or CURRENT STATE.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Check only the listed STATE EFFECTS: each must follow from visible candidate\nactions. An empty effects list imposes no additional requirements. Do not demand\nnew effect records for unlisted details.\n\nReturn one JSON object: valid is a boolean; issue is a short concrete error or\nan empty string when valid. Any clear error makes valid false."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1vh4w4qzod886sozz3tg4e",
+    "object": "chat.completion",
+    "created": 1790382858,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to judge candidate beat: \"Mara closes and locks the laboratory door, then walks through that closed door into the corridor.\"\n\nPrevious final beat: Mara stands inside the laboratory.\n\nCurrent state: {} (empty). So we have no other facts except previous final beat says she is standing inside lab. The current job must happen now: close and lock door, walk through it into corridor. We need to check if any contradictions or missing info.\n\nWe need to consider that \"walks through that closed door\" implies the door was closed but still passable? Usually a closed door can be walked through (like a normal door). But we also have \"locks\" - locked door might require key, but she could walk through it anyway. The candidate beat says she closes and locks then walks through that closed door into corridor.\n\nWe need to check if any state effects: [] means no expected state changes? Actually after this beat — STATE EFFECTS EXPECTED IF VALID is []. So we don't have to produce new state entries, but the beat itself should be consistent with previous final beat. She was inside lab; she closes and locks door (door presumably in front of her). Then walks through that closed door into corridor: so she moves from inside lab to corridor.\n\nWe need to check if any contradictions: The door is closed and locked, but she can walk through it? That might be okay unless we consider a locked door cannot be walked through. But the beat says \"walks through that closed door\" implying it's passable. So maybe acceptable.\n\nAlso \"closes and locks the laboratory door\": She closes the lab door (makes it closed). Then locks it. The door is presumably in front of her, so she can lock it. No contradictions.\n\nWe need to check if any missing facts: The corridor exists? We don't know but it's implied by previous beat that there is a corridor outside lab. So okay.\n\nAlso \"walks through that closed door into the corridor\" implies she moves from inside lab to corridor; no mention of being in corridor after, but that's fine.\n\nCheck state effects list empty means we don't need to record any new facts like \"door locked\", \"Mara in corridor\". But maybe they expect those? The effect list is empty so not required. So it's valid.\n\nThus output: {\"valid\": true, \"issue\": \"\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 509,
+      "completion_tokens": 497,
+      "total_tokens": 1006,
+      "completion_tokens_details": {
+        "reasoning_tokens": 477
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790382865.7372844,
+  "status": "ok"
+}
