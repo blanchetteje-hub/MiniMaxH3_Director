@@ -1086,3 +1086,29 @@ a fresh planning-only Amy acceptance capture. Do not advance to H3 rendering
 unless the new capture removes the accepted double-removal / unsupported-physics
 failure without introducing a new rejection loop.
 
+
+
+## Current execution status — coherence gate verification
+
+Production coherence gate is implemented at commit `0f554b0` and retained.
+Generalization evidence is 19/19 correct semantic completions across probes
+1041–1063; the remaining case repeatedly returned local HTTP 400 with no model
+verdict.
+
+Focused regression job `coherence-gate-tests-1064` is queued on `gpt-runtime`
+(commit `2d7f67b`) for:
+- forward beat validation;
+- beat repair orchestration;
+- beat retry hierarchy;
+- beat plan localization;
+- source-span generation path;
+- source-span runtime adapter.
+
+At the last check the mailbox worker had not processed 1064; `gpt-runtime`
+still pointed at the queue commit. Do not record those tests as passing until a
+result exists.
+
+After 1064 passes, run a fresh planning-only Amy acceptance on the current
+`gpt-arc-refresh` head. The acceptance must still derive 2 chapters / 6+2 beats
+and must no longer accept the job-935 double-removal or unsupported material
+transformation. Only then move on toward H3 prompt generation.
