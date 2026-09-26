@@ -62,6 +62,8 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("natural observable completion endpoint", messages[1]["content"])
         self.assertIn("progressive wording", messages[1]["content"])
         self.assertIn("ongoing/repeated process", messages[1]["content"])
+        self.assertIn("merely labeling it for them", messages[1]["content"])
+        self.assertIn("work merely made FOR someone", messages[1]["content"])
 
     def test_validator_rejects_completed_state_grammar_for_assigned_action(self):
         messages = minimax.build_beat_validation_messages(
