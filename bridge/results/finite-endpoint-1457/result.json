@@ -1,0 +1,54 @@
+{
+  "job_id": "finite-endpoint-1457",
+  "kind": "llama_chat",
+  "started_at": 1790460000.9165401,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one candidate beat against one authoritative source event. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE EVENT:\nA cook is preparing breakfast for two children.\n\nCANDIDATE BEAT:\nThe cook finishes the eggs, plates two portions, and places one plate in front of each child.\n\nRULES\n1. The candidate must depict the source event itself.\n2. If the source event is a finite activity or task, the candidate must reach its natural observable completion endpoint. Merely showing the task underway, approaching completion, or partly complete is INVALID.\n3. When the source assigns a result directly to a named recipient/beneficiary, preserve that role. Mere watching is not enough when the ordinary visible endpoint is receiving or participating in the result.\n4. Do not invent extra requirements beyond the source event's ordinary visible completion.\nReturn {\"valid\":boolean,\"issue\":string}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-q0jzaw4zqropaozmg94j5",
+    "object": "chat.completion",
+    "created": 1790460000,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need judge if candidate beat matches source event.\n\nSource: \"A cook prepares breakfast for two children.\" So action: cook preparing breakfast for 2 kids. The result is breakfast prepared, presumably served to the kids? Source says \"preparing breakfast\" not necessarily serving. But likely includes cooking and plating. The source event itself: cook preparing breakfast for two children. That implies that at completion, breakfast ready for them.\n\nCandidate beat: \"The cook finishes the eggs, plates two portions, and places one plate in front of each child.\" This shows finishing eggs, plating portions, placing plates before kids. That's a natural observable endpoint: eggs finished, plated, placed before kids. Does it depict source event? Yes. Finite activity: cooking breakfast for 2 children. Candidate reaches completion: eggs done, plates ready and placed. That seems fine.\n\nRule 3: When the source assigns result directly to named recipient/beneficiary, preserve that role. Source says \"for two children\" meaning benefit is kids. The candidate places plate in front of each child - preserves role. Good.\n\nNo extra requirements beyond ordinary visible completion? Finishing eggs and plating might be part of breakfast preparation; placing plates before kids could be considered serving but still within preparing breakfast for them. It's fine.\n\nThus valid: true, issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 251,
+      "completion_tokens": 286,
+      "total_tokens": 537,
+      "completion_tokens_details": {
+        "reasoning_tokens": 268
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790460005.0046597,
+  "status": "ok"
+}
