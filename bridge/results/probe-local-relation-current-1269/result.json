@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-current-1269",
+  "kind": "llama_chat",
+  "started_at": 1790444537.7199528,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe technician finishes assembling the sensor rig.\n\nRIGHT:\nThe technician runs a calibration test on it.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself explicitly introduces a problem, danger, alarm, or request, and RIGHT is the immediate response that addresses that trigger. Mere opportunity, access, or readiness is not a trigger.\n3. RIGHT immediately completes handling of the exact object, container, or action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; a tool used on another target does not qualify.\nRule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. If LEFT explicitly finishes/completes an object-level task, a later test, inspection, transport, repair, or other operation is NEW_TASK.\nOtherwise choose NEW_TASK. Judge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-lms0pbs3njlf8ac40jgbmi",
+    "object": "chat.completion",
+    "created": 1790444537,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if two adjacent source responsibilities belong to one local beat job: LEFT: \"The technician finishes assembling the sensor rig.\" RIGHT: \"The technician runs a calibration test on it.\"\n\nCheck rules:\n\n1. RIGHT continues same uninterrupted action as LEFT? Assembling vs running calibration test are different actions, but maybe it's continuation of building rig? But rule 1 says if RIGHT continues same uninterrupted action as LEFT. Not here.\n\n2. LEFT introduces problem/danger/alarm/request and RIGHT is immediate response addressing that trigger. No problem introduced; just finishes assembling.\n\n3. RIGHT immediately completes handling of the exact object, container, or action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on. Here LEFT: \"finishes assembling sensor rig.\" So the object is sensor rig. RIGHT: runs calibration test on it. That is immediate completion of handling that object? It uses the same object (sensor rig). Does rule 3 apply? Yes, RIGHT immediately completes handling of exact object left just obtained/assembled. The rig was assembled; now calibrating it. That's a direct action on the same object.\n\nBut check: \"LEFT itself explicitly introduces a problem, danger, alarm, or request\" not needed for rule 3. Rule 3 says if RIGHT immediately completes handling of the exact object that LEFT just obtained/opened/unlocked/started. The rig was assembled; now calibrating it. So it's immediate completion of handling? Yes.\n\nThus MERGE applies by rule 3. Also check rule 2: not needed. So answer is MERGE.\n\nReturn JSON with single key relation. Probably {\"relation\":\"MERGE\"} or similar.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 301,
+      "completion_tokens": 359,
+      "total_tokens": 660,
+      "completion_tokens_details": {
+        "reasoning_tokens": 343
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790444543.2291784,
+  "status": "ok"
+}
