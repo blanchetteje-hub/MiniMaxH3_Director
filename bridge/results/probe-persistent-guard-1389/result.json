@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1389",
+  "kind": "llama_chat",
+  "started_at": 1790452377.3723814,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Taro is equipped with shield and spear. SOURCE: Taro blocks one strike. RAW: Taro blocks the strike, then leaves the shield on the ground.\n\nJudge whether RAW both completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held/equipped items, containment, barrier state, clothing, injuries, and durable object/state conditions. Reject dropping, losing, freeing, unlocking, removing, healing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yjhk89w25vbirv82cokhpo",
+    "object": "chat.completion",
+    "created": 1790452377,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Taro’s shield is no longer equipped, which changes a persistent fact from the opening; the source did not state he dropped or lost it.\"}",
+          "reasoning": "We need to judge if RAW completes the source and preserves persistent opening facts unless source explicitly changes them.\n\nOpening: Taro is equipped with shield and spear. So he has both items in his hands? Equipped means holding? Usually \"equipped\" means wearing or carrying, but here it's a shield and spear; likely he's holding them. The source says: Taro blocks one strike. That implies he uses the shield to block. RAW: Taro blocks the strike, then leaves the shield on the ground.\n\nWe need to see if this completes SOURCE (blocks one strike). Yes, blocking is done. Does it preserve persistent opening facts? Opening had him equipped with shield and spear. After action, he left the shield on the ground. That means he's no longer holding/equipped with the shield. So that changes a persistent fact: shield not held/equipped. The source didn't explicitly say he lost or dropped the shield; it just says he blocks one strike. Does blocking imply dropping? Not necessarily. He could block and keep the shield. But RAW says he leaves the shield on ground, which is a change to his equipment state.\n\nThus does RAW preserve opening facts unless SOURCE explicitly changes them? No: Opening had him equipped with shield; after action he's not equipped. So it's changed without source specifying that. Therefore invalid.\n\nReturn {\"valid\":false,\"issue\":\"Shield no longer equipped but source didn't specify dropping.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 233,
+      "completion_tokens": 334,
+      "total_tokens": 567,
+      "completion_tokens_details": {
+        "reasoning_tokens": 287
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452382.586123,
+  "status": "ok"
+}
