@@ -13987,7 +13987,11 @@ def build_beat_generation_messages(
             continue
         beat_number = event.get("beat_number")
         event_text = " ".join(str(event.get("event", "")).split()).strip()
-        if beat_number is not None and event_text:
+        if (
+            beat_number is not None
+            and batch_start <= int(beat_number) <= batch_end
+            and event_text
+        ):
             event_lines.append(f"{int(beat_number)}. {event_text}")
     required_events_text = (
         "\n".join(event_lines)
@@ -14053,7 +14057,7 @@ SOURCE STORY:
 DEFINED SUBJECTS:
 {subject_text}
 
-REQUIRED EVENTS FOR THIS PHASE:
+REQUIRED EVENTS FOR REQUESTED BEATS {batch_start}-{batch_end}:
 {required_events_text}
 
 Write exactly {batch_size} video beats, one per required event.

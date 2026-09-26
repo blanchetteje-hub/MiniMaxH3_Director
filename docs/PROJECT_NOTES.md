@@ -579,7 +579,7 @@ Use the current branch head as authoritative; do not rely on stale SHA values in
 ## Current development loop
 
 1. Read `docs/PROJECT_NOTES.md` and the current branch head.
-2. Use small direct bridge probes to test the chapter-first contracts.
+2. Use small direct local-endpoint probes to test the chapter-first contracts.
 3. Implement only the minimum architecture needed by the demonstrated behavior.
 4. Commit focused changes to `gpt-arc-refresh`.
 5. Run targeted tests/probes.
@@ -728,5 +728,17 @@ production subsystem. Distinguish wrong-reason rejections from genuine fixes;
 small probe-set scores do not establish overall acceptance. Future typed-effect
 experiments should use the production event-record wrapper.
 
-Testing is paused at the user's explicit request after batch 976–995. No new
-probes or acceptance jobs should be queued until the user authorizes resumption.
+The user resumed autonomous iteration on 2026-09-25. Direct local access at
+`http://127.0.0.1:1234` replaces the mailbox bridge for current development.
+Use `MINIMAX_LM_STUDIO_URL` for local production runs and explicitly select the
+advertised GPT 20B model for probes. Historical bridge results remain evidence.
+The first resumed experiment holds compact-v2 rules constant while testing
+explicit input roles; both arms use production event-record wrappers for effects.
+No production validator change is adopted without reviewed evidence and fresh
+planning acceptance.
+
+Repair assignment scope: when a rejected beat or subrange is regenerated, only
+that requested range belongs in the required-event assignment list. Full chapter
+source may remain context, but other numbered chapter jobs must not be presented
+as additional required outputs for a one-beat repair. The former unfiltered list
+was an observed contradictory prompt contract; it is now filtered in Python.

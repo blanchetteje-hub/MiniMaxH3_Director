@@ -59,7 +59,7 @@ class ContinuationFrameAnchorTests(unittest.TestCase):
         self.assertEqual(
             minimax.continuation_frame_path(1, "/tmp/video-output"),
             os.path.join(
-                "/tmp/video-output", "segment_0001_final.png"
+                os.path.abspath("/tmp/video-output"), "segment_0001_final.png"
             ),
         )
 

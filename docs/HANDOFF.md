@@ -93,17 +93,42 @@ Do not add a coherence subsystem or stack another untested prompt rule.
 Reviewed verdicts and limitations:
 `tests/LLM/probes/compact_v2_976_995_results.json`.
 
-## Probe queue paused — explicit user instruction
+## Direct local iteration resumed — 2026-09-25
 
-The user requested analysis and repository updates only, with **no new probes**.
-No new bridge jobs, acceptance jobs, or bridge changes were created in this turn.
-Do not resume automated testing until the user authorizes it.
+The user authorized autonomous iteration again and supplied direct local access
+at `http://127.0.0.1:1234`. This supersedes the previous probe pause. No mailbox
+worker is needed for new local probes or acceptance runs. Set
+`MINIMAX_LM_STUDIO_URL=http://127.0.0.1:1234` for production CLI runs; the checked-in
+default still points to the former LAN host.
 
-When testing is resumed, use the above observed failures to choose the next
-experiment. In particular, distinguish current-job/next-job input-role confusion
-from missing rule knowledge, and verify any effect experiment with the production
-record shape. Any candidate still needs a fresh planning acceptance before full
-H3 prompt generation. No local action is required now.
+GitHub `gpt-arc-refresh` was fetched and fast-forwarded to `2bec02d` before work;
+a subsequent explicit pull confirmed it was current. The endpoint advertises
+`gpt-oss-20b-uncensored-hauhaucs-balanced`; requests select that model explicitly.
+
+The current development experiment replays the 20 compact-v2 controls with an
+unchanged rubric, comparing flat input with explicit before/now/later/after
+roles. Both variants wrap the two old bare-operation effect controls in
+production event records. `tools/probe_validator_roles.py` saves complete local
+requests/responses without putting reference labels into requests. This is an
+experiment, not an adopted production prompt. Any candidate still needs fresh
+planning acceptance before full H3 prompt generation.
+
+Local verification: 53 tests passed across story planner, source-span generation,
+runtime adapter, forward beat validation, and acceptance runner.
+
+Observed repair-input defect fixed: `build_beat_generation_messages` previously
+listed every chapter event as required even when regenerating just one beat.
+The assignment list now includes only `batch_start..batch_end`, with global
+numbers preserved; the exact chapter source remains available as context.
+A neutral relay-maintenance regression failed for single-beat and partial-range
+requests before the fix and passes afterward. The related generation, repair,
+validation, and prompt-pipeline batch passes: 73 tests / 5 subtests.
+
+Two stale continuity fixtures now provide required timed action/end-state text,
+and a final-frame path expectation is normalized for Windows: 11 tests pass.
+A broader sweep still stops on older `test_continuity_summary.py` expectations
+about `retention_analysis`, opening wording, and irrelevant subject retention;
+the full suite is not green. Production behavior was not changed for those tests.
 
 
 ## Ultimate goal

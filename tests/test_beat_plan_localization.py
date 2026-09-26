@@ -6,6 +6,35 @@ import minimax
 class BeatPlanLocalizationTests(unittest.TestCase):
     BEATS = [f"Beat text {number}." for number in range(1, 31)]
 
+    def test_single_beat_repair_assigns_only_requested_source_job(self):
+        jobs = [
+            "Ren opens the cabinet.",
+            "Ren replaces the damaged relay.",
+            "Ren closes the cabinet.",
+        ]
+        phase = {
+            "required_events": [
+                {"id": f"E{i}", "beat_number": i, "event": job}
+                for i, job in enumerate(jobs, 1)
+            ],
+        }
+        for start, end in ((2, 2), (2, 3), (1, 3)):
+            with self.subTest(start=start, end=end):
+                messages = minimax.build_beat_generation_messages(
+                    " ".join(jobs), 3, batch_start=start, batch_end=end,
+                    current_phase=phase,
+                )
+                prompt = messages[1]["content"]
+                assignment = prompt.split("REQUIRED EVENTS", 1)[1].split(
+                    "\n\nWrite exactly", 1
+                )[0]
+                for number, job in enumerate(jobs, 1):
+                    if start <= number <= end:
+                        self.assertIn(f"{number}. {job}", assignment)
+                    else:
+                        self.assertNotIn(job, assignment)
+                self.assertIn("SOURCE STORY:\n" + " ".join(jobs), prompt)
+
     def test_localizer_prompt_contains_only_reported_range_beats(self):
         issue = {
             "beat_start": 1,
