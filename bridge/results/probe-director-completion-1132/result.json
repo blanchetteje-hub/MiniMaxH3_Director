@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-completion-1132",
+  "kind": "llama_chat",
+  "started_at": 1790392638.4603755,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe mage heals Nera's wounded arm.\n\nRAW SCENE\nThe mage begins a healing spell over Nera's bleeding arm as light gathers.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or extra harmless detail.\n- valid=true only if CURRENT BEAT is complete in RAW SCENE.\nReturn {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5m0y6zhuyy7q4ftxfy942",
+    "object": "chat.completion",
+    "created": 1790392638,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The mage merely begins the healing spell; his arm is still bleeding and no visible cure occurs in the raw scene.\"}",
+          "reasoning": "We need to check whether the raw scene visibly completes current beat. Current Beat: \"The mage heals Nera's wounded arm.\" So we must see that the mage actually heals Nera's wounded arm, not just begins healing.\n\nRaw Scene: \"The mage begins a healing spell over Nera's bleeding arm as light gathers.\"\n\nThis indicates the mage is beginning to heal; it hasn't finished. The beat says he heals (completed). Raw scene shows only beginning. So it's incomplete. Thus valid=false. Issue explanation: \"Mage has not completed healing, just begun.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 252,
+      "completion_tokens": 155,
+      "total_tokens": 407,
+      "completion_tokens_details": {
+        "reasoning_tokens": 114
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392640.9210515,
+  "status": "ok"
+}
