@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-role-layout-1004",
+  "kind": "llama_chat",
+  "started_at": 1790382874.5537097,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "BEFORE THIS BEAT — ESTABLISHED CONTEXT\nPrevious final beat:\nNone; this is the first beat.\n\nCurrent state:\n{}\n\nNOW — JOB THIS CANDIDATE MUST PERFORM\nThe blood mage destroys the attacking golem with a spell that turns the golem into liquid blood.\n\nLATER — JOB RESERVED FOR A FUTURE BEAT\nNone; this is the final beat.\n\nAFTER THIS BEAT — STATE EFFECTS EXPECTED IF VALID\n[]\n\nCANDIDATE BEAT TO JUDGE\nThe blood mage casts the spell; the golem bursts into liquid blood and collapses into a pool.\n\nCHECKS\n1. Read actions literally in order and carry each stated result forward. Reject\nrepeating a completed removal on the same target or part unless it was restored.\nDifferent targets and failed attempts are different cases. Do not excuse a\ncontradiction as emphasis or invent an intervening action.\n2. Use only established facts from PREVIOUS FINAL BEAT and CURRENT STATE.\nAn injury does not establish death. An earlier target is not automatically the\nlast target. Reject unavailable objects and unresolved barriers; unknown facts\nalone are not errors.\n3. CURRENT JOB must happen now, including every required action, result, and\nnamed participant. Already-completed-state wording cannot replace an assigned\naction. Allow neutral staging, but reject material changes to tools, participants,\nlocations, or outcomes. Ordinary impacts cannot transform an entire solid body\ninto liquid or another material without an explicitly established capability.\nHonor unusual capabilities established by CURRENT JOB or CURRENT STATE.\n4. Do not complete a distinct NEXT JOB early. Identical repeated jobs may continue.\n5. Check only the listed STATE EFFECTS: each must follow from visible candidate\nactions. An empty effects list imposes no additional requirements. Do not demand\nnew effect records for unlisted details.\n\nReturn one JSON object: valid is a boolean; issue is a short concrete error or\nan empty string when valid. Any clear error makes valid false."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-xyboouhts437601d2c79w",
+    "object": "chat.completion",
+    "created": 1790382874,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge candidate beat: \"The blood mage casts the spell; the golem bursts into liquid blood and collapses into a pool.\"\n\nGiven previous final beat none, current state {}.\n\nJob: The blood mage destroys attacking golem with spell that turns it into liquid blood.\n\nCandidate says: blood mage casts spell; golem bursts into liquid blood and collapses into a pool. That matches job: destroy golem by turning to liquid blood. It includes casting the spell (action), result: golem bursts into liquid blood, collapses into a pool. That's consistent with job. No contradictions.\n\nCheck state effects expected if valid: [] meaning no specific effect list given; so any visible effect is fine.\n\nThus candidate beat seems valid. Return {\"valid\": true, \"issue\": \"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 520,
+      "completion_tokens": 179,
+      "total_tokens": 699,
+      "completion_tokens_details": {
+        "reasoning_tokens": 161
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790382877.323826,
+  "status": "ok"
+}
