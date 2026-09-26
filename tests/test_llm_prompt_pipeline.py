@@ -653,6 +653,22 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertTrue(issues)
         self.assertIn("canonical syntax", " ".join(issues))
 
+    def test_formatter_canonicalizes_dash_timestamp_syntax(self):
+        raw = (
+            "At 00:00.000, Amy opens the door.\n"
+            "At 00:01.500, Amy steps back."
+        )
+        formatted = minimax._canonicalize_director_timestamps(
+            "At 00:00.000 - Amy opens the door. "
+            "At 00:01.500 - Amy steps back."
+        )
+        self.assertEqual(
+            minimax._validate_director_timestamp_correspondence(raw, formatted),
+            [],
+        )
+        self.assertIn("At 00:00.000, Amy", formatted)
+        self.assertIn("At 00:01.500, Amy", formatted)
+
     def test_completion_prompt_preserves_equipped_readiness_items(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Mara uses the staff to block one strike.",
