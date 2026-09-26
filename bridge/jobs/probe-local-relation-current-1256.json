@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "job_id": "probe-local-relation-current-1256",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nA baker finishes arranging pastries in the display case.\n\nRIGHT:\nA fire alarm suddenly sounds and smoke appears under the back door.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself explicitly introduces a problem, danger, alarm, or request, and RIGHT is the immediate response that addresses that trigger. Mere opportunity, access, or readiness is not a trigger.\n3. RIGHT immediately completes handling of the exact object, container, or action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; a tool used on another target does not qualify.\nRule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. If LEFT explicitly finishes/completes an object-level task, a later test, inspection, transport, repair, or other operation is NEW_TASK.\nOtherwise choose NEW_TASK. Judge only the concrete local actions.\nReturn JSON with the single key relation."
+    }
+  ]
+}
