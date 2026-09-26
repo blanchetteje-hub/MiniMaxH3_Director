@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-1278",
+  "kind": "llama_chat",
+  "started_at": 1790445990.069118,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe cook prepares dinner for Mira and Jon.\n\nCANDIDATE BEAT\nThe cook finishes dinner, serves Mira a plate, while Jon watches from the table.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result when the job has multiple parts. Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result. Reject a solo rewrite that drops named beneficiaries or participants. When CURRENT JOB's finite activity produces something or a result for named people, preserve their beneficiary/recipient role: the result must visibly reach them, be made available to them, or otherwise benefit them as assigned. Merely watching the actor perform the activity is not enough unless watching/listening is itself the assigned benefit, such as a performance, lesson, or demonstration. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hpoorktt1d259wqsseazt",
+    "object": "chat.completion",
+    "created": 1790445990,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\":\"Jon does not receive his portion of the prepared dinner; only Mira is served.\"}",
+          "reasoning": "We need to validate candidate beat against current job. Current Job: \"The cook prepares dinner for Mira and Jon.\" So the cook must prepare dinner for both Mira and Jon. The candidate beat says: \"The cook finishes dinner, serves Mira a plate, while Jon watches from the table.\"\n\nDoes this accomplish meaning? It says cook finishes dinner (prepares). Serves Mira a plate (Mira gets dinner). But what about Jon? He is watching from the table; he doesn't get served. The current job requires that the cook prepares dinner for both Mira and Jon. Does \"serves Mira a plate\" imply that dinner prepared for Jon as well? It says only serves Mira, not Jon. So does it satisfy? The requirement: named beneficiaries or participants must be preserved. If current job says action is done for Mira and Jon, candidate must preserve those named participants or their direct visible participation/result. Here we have Mira served; Jon watches but doesn't get dinner. That might drop the beneficiary role of Jon. The cook prepared dinner for both, but only serves one. Does that count? It says \"prepares dinner for Mira and Jon.\" So the result is dinner ready for them. But serving is part of preparing? Actually preparing includes cooking and plating. Serving to each person ensures they get it. If only Mira gets plate, Jon hasn't received his portion. The cook prepared dinner but didn't serve Jon; maybe he still has a plate at table? He watches from table, not necessarily receiving food.\n\nThus likely invalid because missing serving for Jon. So valid false with issue: \"Jon is not served or given the dinner as required.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 327,
+      "completion_tokens": 365,
+      "total_tokens": 692,
+      "completion_tokens_details": {
+        "reasoning_tokens": 330
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790445995.717313,
+  "status": "ok"
+}
