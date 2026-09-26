@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-v3-1253",
+  "kind": "llama_chat",
+  "started_at": 1790443567.8038373,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe medic finishes sealing the patient inside the sterile chamber.\n\nRIGHT:\nThe medic retrieves a tablet from the desk to review tomorrow's schedule.\n\nChoose MERGE or NEW_TASK.\nMERGE only when RIGHT's PRIMARY ACTION:\n- continues the same uninterrupted local action as LEFT;\n- is the direct immediate response to a NEW problem/event introduced by LEFT itself; or\n- is immediate follow-through on the exact object/action LEFT just obtained, opened, or started (for example retrieve -> equip/use/consume, open -> remove).\nOtherwise choose NEW_TASK after LEFT reaches a usable stopping point.\nA completed protection/safety action, completed victory/resolution, or completed assembly is a stopping point; it does NOT itself create a new problem just because another task follows. Shared earlier danger/goal is not enough to MERGE.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-kw7ekl58w1kz5sawutb2m",
+    "object": "chat.completion",
+    "created": 1790443567,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need decide if RIGHT's action merges with LEFT or starts NEW_TASK.\n\nLEFT: \"The medic finishes sealing the patient inside the sterile chamber.\" So action: finish sealing, i.e., closing/locking? The patient is sealed inside. That completes a local action of sealing. After that, what happens?\n\nRIGHT: \"The medic retrieves a tablet from the desk to review tomorrow's schedule.\"\n\nIs this continuing same uninterrupted local action as LEFT? No, it's different object (tablet). Is it direct immediate response to new problem/event introduced by LEFT itself? The event is patient sealed inside sterile chamber; maybe need to check schedule for next steps. But not necessarily immediate response.\n\nImmediate follow-through on exact object/action left just obtained: Left didn't obtain a tablet. So no.\n\nThus it's NEW_TASK after LEFT reaches usable stopping point (sealing). So relation = \"NEW_TASK\".\n\nReturn JSON with single key relation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 272,
+      "completion_tokens": 199,
+      "total_tokens": 471,
+      "completion_tokens_details": {
+        "reasoning_tokens": 183
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790443571.065857,
+  "status": "ok"
+}
