@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1353",
+  "kind": "llama_chat",
+  "started_at": 1790449063.7603607,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A mechanic begins a test but an alarm interrupts it before completion.\nRAW: The mechanic starts the test; an alarm sounds and the mechanic turns toward it while the machine is still running.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-64f3hk4fzkj1hnghibv5mw",
+    "object": "chat.completion",
+    "created": 1790449063,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The mechanic’s test is interrupted by the alarm before it reaches a result; the machine remains running, so the finite activity hasn’t visibly completed.\"}",
+          "reasoning": "We need to judge completion of a scene-completion case: The mechanic begins a test but an alarm interrupts it before completion.\n\nSOURCE: \"A mechanic begins a test but an alarm interrupts it before completion.\"\n\nRAW: \"The mechanic starts the test; an alarm sounds and the mechanic turns toward it while the machine is still running.\"\n\nWe need to check if the finite activity (the test) has visibly reached its result. The test hasn't completed because it's interrupted by alarm, so not finished. Also, any active tool/appliance/process used only for that now-completed finite activity must be stopped etc. But here the machine is still running; it was started but not finished. So the test didn't finish. Thus invalid.\n\nWe need to output JSON: {\"valid\":false,\"issue\":\"...\"} Provide short explanation: The test hasn't reached its result, it's interrupted before completion. Also machine remains active. So final visible state shows incomplete activity and machine still running. Therefore invalid.\n\nReturn exactly that JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 256,
+      "completion_tokens": 247,
+      "total_tokens": 503,
+      "completion_tokens_details": {
+        "reasoning_tokens": 200
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449067.7079923,
+  "status": "ok"
+}
