@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-result-completion-1157",
+  "kind": "llama_chat",
+  "started_at": 1790392996.8265538,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe operator seals the pressure hatch.\n\nRAW SCENE\nThe operator turns the wheel until the hatch seats flush and the seal indicator turns green.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- If CURRENT BEAT names an achieved result (activate, start, open, close, lock, repair, heal, stabilize, seal, fill, land, finish, equip, or equivalent), RAW SCENE must visibly reach that result.\n- Beginning, attempting, approaching, startup/progress indicators, or partial movement do NOT satisfy the achieved result unless the result itself is visibly established.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or harmless extra detail.\nReturn {\"valid\":true,\"issue\":\"\"} only when CURRENT BEAT is complete; otherwise false with a short concrete issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-sjlc2knoa88go8y34q777",
+    "object": "chat.completion",
+    "created": 1790392996,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to check if RAW SCENE visibly completes the beat: \"The operator seals the pressure hatch.\" The raw scene says: \"The operator turns the wheel until the hatch seats flush and the seal indicator turns green.\"\n\nDoes that show sealing? It shows turning wheel, seat flush, indicator green. Does it indicate sealed? The result is \"seals\". The raw scene indicates the hatch seats flush (hatch seated) and indicator turns green. That seems to be a visible completion of sealing: the hatch is seated flush and seal indicator green implies it's sealed.\n\nThus beat completed. So valid true. No issue.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 298,
+      "completion_tokens": 143,
+      "total_tokens": 441,
+      "completion_tokens_details": {
+        "reasoning_tokens": 124
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392999.1168973,
+  "status": "ok"
+}
