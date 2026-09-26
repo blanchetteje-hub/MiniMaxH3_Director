@@ -1,0 +1,9 @@
+{
+  "kind": "run_tests",
+  "job_id": "coherence-gate-tests-1072",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_forward_beat_validation.py"
+  ],
+  "timeout_seconds": 60
+}
