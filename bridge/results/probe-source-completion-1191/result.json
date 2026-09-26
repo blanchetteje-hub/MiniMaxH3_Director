@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1191",
+  "kind": "llama_chat",
+  "started_at": 1790440608.5838149,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nAmy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\n\nRAW SCENE\nAt 00:00.000 Amy flips a pancake in a skillet on the stove, her tight black tank top and denim jeans visible.\nAt 00:01.000 She pours milk into a bowl placed on the counter.\nAt 00:02.000 A toaster pops up toast on the counter beside the bowl.\nAt 00:03.000 Amy places a plate with pancakes on the counter.\nAt 00:04.000 Will watches her, eyes on the skillet.\nAt 00:05.000 Amber watches too, peering at the sizzling pancake.\nAt 00:06.000 She lifts the spatula to flip another pancake.\nAt 00:07.000 Amy sets the spatula down, turns off the stove, and smiles.\nEnd continuity state: Amy stands in the kitchen wearing a tight black tank top and denim jeans, having cooked breakfast while Will and Amber watch.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin\n  or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly\n  receive/participate when physically possible.\n- Judge the final frame: the required result must already be true, not merely\n  attempted, approaching, starting up, partly complete, or still in progress.\n- Do not judge style, pacing, camera, continuity, future events, or harmless\n  extra detail.\nReturn valid=true only when CURRENT BEAT is complete in RAW SCENE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ifzb8bv2juhn4bg6ui9e9k",
+    "object": "chat.completion",
+    "created": 1790440608,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"None\"}",
+          "reasoning": "We need to check if the raw scene visibly completes current beat: \"Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\"\n\nSo we must see Amy cooking breakfast (i.e., she flips pancakes etc). She is wearing that outfit. Her kids are watching.\n\nCheck each explicit action/result:\n\n- Amy cooks breakfast: The raw scene shows flipping pancake at 00:00, pouring milk, toaster pops up toast, plate with pancakes placed, Will watches her, Amber watches too, lifts spatula to flip another pancake, sets spatula down, turns off stove and smiles. So she cooked breakfast.\n\n- She is wearing tight black tank top and denim jeans: At 00:00 it says \"her tight black tank top and denim jeans visible.\" Good.\n\n- Her children Will and Amber watch: At 00:04 Will watches her; at 00:05 Amber watches too. They are watching.\n\nAll named beneficiaries (Will, Amber) visibly receive/participate when physically possible: they watch.\n\nThe final frame: \"Amy stands in the kitchen wearing a tight black tank top and denim jeans, having cooked breakfast while Will and Amber watch.\" That matches current beat.\n\nThus valid=true. No issues.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 450,
+      "completion_tokens": 275,
+      "total_tokens": 725,
+      "completion_tokens_details": {
+        "reasoning_tokens": 256
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440613.8366823,
+  "status": "ok"
+}
