@@ -1,0 +1,8 @@
+{
+  "kind": "run_acceptance",
+  "job_id": "gold-prompt-acceptance-1276",
+  "code_branch": "gpt-arc-refresh",
+  "model": "gpt",
+  "image1": "amy.jpg",
+  "timeout_seconds": 3600
+}
