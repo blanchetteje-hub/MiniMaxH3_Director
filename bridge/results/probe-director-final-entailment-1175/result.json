@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-final-entailment-1175",
+  "kind": "llama_chat",
+  "started_at": 1790393076.9785948,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe clerk locks the archive cabinet.\n\nRAW SCENE\nThe clerk closes the doors, turns the key, and verifies the cabinet is locked.\n\nRULES\n- Judge the FINAL FRAME only for completion.\n- Ask: can the required result from CURRENT BEAT truthfully be stated as already true at the end, using only visible facts from RAW SCENE?\n- A button press, attempt, approach, startup sequence, progress indicator, partial movement, or action still underway is NOT enough unless the required result itself is visibly true.\n- Every explicit action/result and every named beneficiary in CURRENT BEAT must be complete.\n- Do not judge style, pacing, camera, continuity, future events, or harmless extra detail.\nReturn {\"valid\":true,\"issue\":\"\"} only when the required result is already true at the end; otherwise false with a short concrete issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-o2dlpzy18n2brwztl26y",
+    "object": "chat.completion",
+    "created": 1790393076,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to check if RAW SCENE completes CURRENT BEAT: \"The clerk locks the archive cabinet.\" The raw scene says: \"The clerk closes the doors, turns the key, and verifies the cabinet is locked.\"\n\nDoes that satisfy? Yes, closing doors, turning key, verifying lock. That means it's locked. So result true at end.\n\nThus valid:true issue:\"\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 280,
+      "completion_tokens": 95,
+      "total_tokens": 375,
+      "completion_tokens_details": {
+        "reasoning_tokens": 76
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790393078.5894895,
+  "status": "ok"
+}
