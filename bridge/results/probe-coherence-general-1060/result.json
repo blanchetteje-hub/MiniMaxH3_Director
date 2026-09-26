@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-general-1060",
+  "kind": "llama_chat",
+  "started_at": 1790383664.7189531,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only physical/causal coherence inside one candidate beat. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY.\nRead actions literally in order and carry stated results forward.\n- Reject repeating an irreversible removal or destruction on the same specific target, part, or object unless restoration/regeneration/reinstallation happens first.\n- A non-terminal injury is not a removal. Different targets or parts are different cases.\n- Reject an ordinary action that makes an entire body/object become a materially different substance or vanish without an established capability or physically plausible cause.\n- Accept explicit magic/technology, restoration, regeneration, and ordinary physical causes that support the result.\nDo not judge story coverage, future ownership, or state-effect records.\n\nESTABLISHED CONTEXT\nThe ice block is exposed to sustained high heat from an industrial heater.\n\nCANDIDATE\nThe heater melts the ice block into liquid water."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zql7gxzwmji8d400ds6gb",
+    "object": "chat.completion",
+    "created": 1790383664,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to check within-beat physical/causal coherence only. The candidate: \"The heater melts the ice block into liquid water.\" Is that physically coherent? Yes, heating ice causes melting into water. No removal or destruction repeated. It's a non-terminal injury (ice changes state). So valid.\n\nReturn JSON with valid:true and issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 274,
+      "completion_tokens": 91,
+      "total_tokens": 365,
+      "completion_tokens_details": {
+        "reasoning_tokens": 71
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383666.1733952,
+  "status": "ok"
+}
