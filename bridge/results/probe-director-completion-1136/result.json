@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-completion-1136",
+  "kind": "llama_chat",
+  "started_at": 1790392657.0473185,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe pilot lands the shuttle.\n\nRAW SCENE\nThe shuttle descends toward the runway with landing gear down.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or extra harmless detail.\n- valid=true only if CURRENT BEAT is complete in RAW SCENE.\nReturn {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-j68mjpw79kg6n6mj6z4f",
+    "object": "chat.completion",
+    "created": 1790392657,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The shuttle has only descended with its gear down—no actual touchdown or landing is shown.\"}",
+          "reasoning": "We need to check whether the raw scene visibly completes current beat. Current Beat: \"The pilot lands the shuttle.\" Raw Scene: \"The shuttle descends toward the runway with landing gear down.\"\n\nDoes that complete? Landing means touchdown, not just descending. The raw shows descent and gear down but no touchdown or landing. So it's incomplete. Thus valid=false. Issue explanation: \"Shuttle hasn't landed yet; only descended.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 245,
+      "completion_tokens": 121,
+      "total_tokens": 366,
+      "completion_tokens_details": {
+        "reasoning_tokens": 85
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392658.8996363,
+  "status": "ok"
+}
