@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-general-1042",
+  "kind": "llama_chat",
+  "started_at": 1790383571.892595,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only physical/causal coherence inside one candidate beat. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY.\nRead actions literally in order and carry stated results forward.\n- Reject repeating an irreversible removal or destruction on the same specific target, part, or object unless restoration/regeneration/reinstallation happens first.\n- A non-terminal injury is not a removal. Different targets or parts are different cases.\n- Reject an ordinary action that makes an entire body/object become a materially different substance or vanish without an established capability or physically plausible cause.\n- Accept explicit magic/technology, restoration, regeneration, and ordinary physical causes that support the result.\nDo not judge story coverage, future ownership, or state-effect records.\n\nESTABLISHED CONTEXT\nNo unusual abilities are established.\n\nCANDIDATE\nNia fires a shot that wounds a raider's shoulder, then swings her sword and decapitates the raider."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-tgqstt3v7hbfs4udzbrz7k",
+    "object": "chat.completion",
+    "created": 1790383571,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"No inconsistency detected\"}",
+          "reasoning": "We need to check within-beat physical/causal coherence only. The candidate: \"Nia fires a shot that wound a raider's shoulder, then swings her sword and decapitates the raider.\" We read actions literally in order and carry stated results forward.\n\nFirst action: Nia fires a shot that wounds a raider's shoulder. So she shoots at the raider; the bullet hits shoulder causing injury (wound). Shoulder is wounded but not removed or destroyed. Good.\n\nSecond action: swings her sword and decapitates the raider. Decapitation means removal of head from body. The shoulder was already wounded, but that doesn't affect ability to decapitate. No issue with removing same target twice? She didn't remove shoulder again; she just decapitated. Shoulder remains part of body after wound.\n\nNo repeated irreversible removal on same specific target: no. Shoulder not removed. Head removed once. So fine.\n\nCheck if entire body/object becomes materially different substance or vanish without cause: Decapitating removes head, but that's a normal physical action. No issue.\n\nThus candidate is physically coherent within beat. Return valid true and empty issue? Provide string issue maybe \"\".\n\nReturn JSON object with boolean valid and string issue.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 281,
+      "completion_tokens": 273,
+      "total_tokens": 554,
+      "completion_tokens_details": {
+        "reasoning_tokens": 251
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383575.712708,
+  "status": "ok"
+}
