@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1081",
+  "kind": "llama_chat",
+  "started_at": 1790388076.7621799,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nA zombie breaks the window; Amy rushes the kids to the basement and locks the door.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nAmy retrieves and equips a pistol and katana.\n\nCANDIDATE BEAT\nAmy locks the kids in the basement, then retrieves her pistol and katana and equips them.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5er2689tz3roljbxgubmbq",
+    "object": "chat.completion",
+    "created": 1790388076,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to judge the candidate beat: \"Amy locks the kids in the basement, then retrieves her pistol and katana and equips them.\"\n\nCurrent job: A zombie breaks window; Amy rushes kids to basement and locks door. So current job includes locking kids in basement? The description says she rushes kids to basement and locks door. That implies she locked the kids inside (basement). So \"Amy locks the kids in the basement\" is part of current job.\n\nReserved for later: retrieving pistol, katana, equipping them. That's reserved for later; not required now. Candidate beat includes that as well. The check says if CURRENT JOB and RESERVED FOR LATER intentionally repeat same ongoing process, allow one non-terminal current instance but reject final/exhaustive wording that consumes later work.\n\nHere the candidate beat: \"Amy locks the kids in the basement, then retrieves her pistol and katana and equips them.\" That includes both current job (locking) and reserved for later. The check says if they repeat same ongoing process? Not exactly; locking is part of current job. Retrieving pistol/katana is reserved.\n\nWe need to see if it's acceptable: \"Amy locks the kids in the basement\" matches current job. Then retrieving pistol etc is",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 286,
+      "completion_tokens": 256,
+      "total_tokens": 542,
+      "completion_tokens_details": {
+        "reasoning_tokens": 253
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388080.3591945,
+  "status": "ok"
+}
