@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1242",
+  "kind": "llama_chat",
+  "started_at": 1790442977.1199605,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe knight slays the demon and ends the attack.\n\nRIGHT:\nThe knight kneels beside an injured ally and applies a healing salve.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself CREATES a problem, danger, or request, and RIGHT is the immediate response that addresses it.\n3. RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it is only a tool for another target, this rule does not apply.\nImportant: rule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. A different objective after completed work is NEW_TASK even when both serve the same larger goal.\nOtherwise choose NEW_TASK.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nqj4k3ht3pib6zfk9g1zrf",
+    "object": "chat.completion",
+    "created": 1790442977,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need to decide if two adjacent source responsibilities belong to one local beat job: LEFT and RIGHT.\n\nLEFT: \"The knight slays the demon and ends the attack.\"\n\nRIGHT: \"The knight kneels beside an injured ally and applies a healing salve.\"\n\nCheck rules:\n\n1. RIGHT continues same uninterrupted action as LEFT? No, left is slaying demon; right is healing ally. Not same action.\n\n2. LEFT creates problem/danger/request, and RIGHT immediate response that addresses it. Left: slays demon ends attack. Does that create a problem? The demon was attacking; after slay, the attack ended. But does it create new problem? Maybe injured allies from attack? Right heals an ally. That could be addressing injuries caused by the attack. So LEFT created danger (attack) and solved it; but also left might have created injury to ally as part of attack. The rule says: LEFT itself CREATES a problem, danger, or request, and RIGHT is immediate response that addresses it. Left slays demon ends attack - that's solving the threat. But did it create new problem? It ended attack, so no more attack; but injuries remain. So left created injury to ally as part of attack. Right heals them. That seems like a response.\n\nBut rule 2: \"LEFT itself CREATES a problem, danger, or request\" - The demon was attacking (danger). Left slays the demon and ends attack. Does that create new problem? It solves it. But maybe left created an injured ally as result of attack; but that's not directly from left's action.\n\nBut rule 2 says LEFT itself creates a problem/danger/request, and RIGHT is immediate response addressing it. The left action: slays demon and ends attack. That resolves the danger (demon). It doesn't create new problem. So maybe rule 2 does not apply because left already solved the threat; no new request.\n\nRule 3: RIGHT immediately completes handling of exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object must be what RIGHT acts on. Left slays demon and ends attack. Right kneels beside injured ally applies healing salve. Not same object. So rule 3 not apply.\n\nThus MERGE only if one rule applies; none do. So NEW_TASK.\n\nReturn JSON: {\"relation\":\"NEW_TASK\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 282,
+      "completion_tokens": 494,
+      "total_tokens": 776,
+      "completion_tokens_details": {
+        "reasoning_tokens": 478
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442984.7293036,
+  "status": "ok"
+}
