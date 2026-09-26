@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1097",
+  "kind": "llama_chat",
+  "started_at": 1790388162.6969426,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe technician repairs the damaged drone.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nThe technician launches the drone.\n\nCANDIDATE BEAT\nThe technician repairs the drone and launches it into the air.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ebiuplaxtta7llm5nblefq",
+    "object": "chat.completion",
+    "created": 1790388162,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Launch occurs before the repair, completing a later job prematurely.\"}",
+          "reasoning": "We need to judge the candidate beat: \"The technician repairs the drone and launches it into the air.\"\n\nCurrent job: The technician repairs the damaged drone. Reserved later: launch the drone. Candidate includes both repair and launch. Check: Current job only required work for this beat. So if we include launch, that's reserved later but not needed now. But rule says \"RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\" Launching is a distinct later job; it's material completion of launching. So candidate should be invalid.\n\nBut also check: If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work. Here repair and launch are different processes. So we must reject because launch is reserved for later. So valid false with issue \"Launch occurs too early\". Provide JSON.\n\nReturn exactly: {\"valid\":false,\"issue\":\"Launch occurs before the drone is repaired\"} or similar short concrete explanation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 263,
+      "completion_tokens": 240,
+      "total_tokens": 503,
+      "completion_tokens_details": {
+        "reasoning_tokens": 210
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388166.0742922,
+  "status": "ok"
+}
