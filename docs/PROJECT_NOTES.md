@@ -203,13 +203,20 @@ N seconds." Pairwise 8-second fit probes overthought simple cases and even
 accepted an intentionally overfull chain. Likewise, a holistic "are N beats
 enough?" call exhausted its reasoning budget on Amy-shaped material.
 
-The current binary local-relationship classifier remains the production path,
-but it is **not locked**. Acceptance 1211 demonstrated fresh-run instability:
-completed protection -> retrieve gear was falsely merged, producing a 7+1 beat
-allocation. A paired 20-probe comparison (1215-1234) showed the shorter replacement
-wording was worse overall (about 6/10 semantic controls versus about 8/10 for the
-current production wording), so that replacement was rejected. Continue refining
-the single binary classifier rather than adding grouping stages.
+The current binary local-relationship classifier remains the production path.
+Acceptance 1211 demonstrated fresh-run instability: completed protection ->
+retrieve gear was falsely merged, producing a 7+1 beat allocation. A paired
+20-probe comparison (1215-1234) showed the shorter replacement wording was worse
+overall (about 6/10 semantic controls versus about 8/10 for the then-current
+wording), so that replacement was rejected.
+
+A later 20-probe duplicated matrix (1255-1274) against the actual current prompt
+scored 18/20 parsed semantic decisions. The only misses were one of two duplicate
+protection->equipment cases and one of two duplicate finished-assembly->calibration
+cases. This indicates residual instruction-order instability, not a need for
+another semantic stage. The classifier prompt now applies STOPPING POINT before
+same-object/new-problem merge exceptions, while keeping the same single binary
+LLM call.
 
 The intended relations remain:
 - calm baseline -> inciting change = `NEW_TASK`;
