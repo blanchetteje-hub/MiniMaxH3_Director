@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1371",
+  "kind": "llama_chat",
+  "started_at": 1790449329.5483568,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A mechanic begins a machine test, but an alarm interrupts the test before completion.\nRAW: The alarm sounds; the mechanic stops the machine and turns toward the alarm.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-o9um2ic9rdhcnx0hp9ijt",
+    "object": "chat.completion",
+    "created": 1790449329,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW (The alarm sounds; the mechanic stops the machine and turns toward the alarm.) reaches the SOURCE-assigned endpoint. The source: \"A mechanic begins a machine test, but an alarm interrupts the test before completion.\" So the activity is starting a machine test, but it's interrupted before completion by an alarm. The endpoint assigned by SOURCE: The test hasn't completed; it was interrupted. So we need to see if RAW reaches that state.\n\nRAW says: The alarm sounds; the mechanic stops the machine and turns toward the alarm. That indicates the machine stopped (so test didn't complete). It also shows the mechanic turning towards the alarm, presumably ready for next action. Does this match the endpoint? Yes, it matches: test interrupted before completion. So RAW reaches that state.\n\nCheck rule 1: If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable. But here it's not completed; it's interrupted. Rule 2 about tools remains held if readiness or future use. The mechanic stops the machine (so motor stopped). That is fine.\n\nRule 3: If SOURCE explicitly says activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because process still active. Judge whether RAW faithfully reaches that ongoing/interrupted state. Yes, it does: test was interrupted; machine stopped.\n\nThus valid true. No issue. Return JSON accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 293,
+      "completion_tokens": 313,
+      "total_tokens": 606,
+      "completion_tokens_details": {
+        "reasoning_tokens": 295
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449334.4037206,
+  "status": "ok"
+}
