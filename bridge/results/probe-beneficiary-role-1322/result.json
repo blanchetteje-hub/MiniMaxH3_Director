@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-role-1322",
+  "kind": "llama_chat",
+  "started_at": 1790446833.9851112,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe parent cooks breakfast for the children.\n\nCANDIDATE BEAT\nThe parent finishes breakfast and sets the food on the counter while the children only watch from across the room.\n\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB and preserve material relationships.\nIf CURRENT JOB says an action/result is FOR a named person or group, CANDIDATE BEAT must preserve that beneficiary/recipient role. Do not replace \"for them\" with spectator-only behavior such as merely watching the work.\n- For a consumable, gift, hand-off, or prepared item, show it delivered/served/used by the intended beneficiary, or explicitly place/identify it as theirs.\n- For a repair, shelter, installation, delivery location, or other fixed/service result, an explicitly completed result belonging to or designated for the beneficiary is sufficient; they do not need to physically hold or enter it.\n- Watching/listening is sufficient when that is itself the intended benefit, such as a performance, lesson, or demonstration.\nReject a candidate that changes the beneficiary, drops one beneficiary, or leaves the only visible relationship as watching an unrelated result.\nDo not reject harmless staging.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yr6p616h8c9lp0lg68cai",
+    "object": "chat.completion",
+    "created": 1790446834,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"",
+          "reasoning": "We need to validate candidate beat against current job. Current job: \"The parent cooks breakfast for the children.\" So action: parent cooks breakfast; beneficiary: children.\n\nCandidate beat: \"The parent finishes breakfast and sets the food on the counter while the children only watch from across the room.\"\n\nDoes it preserve meaning? Parent finished cooking, set food on counter. Children watching from across the room. The benefit is that they get breakfast (food). But are they receiving it? They just watch; not necessarily served or placed for them. It says \"sets the food on the counter\" - presumably where children can access? If it's on counter in front of them, maybe they can take. But phrase \"only watch from across the room\" implies they don't get to eat yet. The benefit is that breakfast prepared for them; but not delivered or served.\n\nThe rule: For a consumable, gift, hand-off, or prepared item, show it delivered/served/used by intended beneficiary, or explicitly place/identify as theirs. Here it's set on counter - maybe the children can take? But \"only watch from across the room\" suggests they don't get to eat yet; but breakfast is ready for them.\n\nIs that acceptable? The rule: If current job says action/result is FOR a named person/group, candidate must preserve beneficiary role. For consumable, show delivered/served/used by intended beneficiary or explicitly place/identify as theirs. Here it's set on counter - not necessarily identified as theirs but presumably breakfast for children. But \"only watch from across the room\" might imply they are just watching; maybe they haven't taken it yet.\n\nBut is that acceptable? The benefit: They get breakfast ready, but hasn't been served to them. Is that enough? It says \"for the children\". So the parent cooks breakfast for the children. That means the breakfast is intended for them. Setting on counter could be considered serving or delivering; it's placed where they can access. But if they're just watching from across room, maybe not yet taken.\n\nBut rule: For a consumable, gift, hand-off, prepared item, show it delivered/served/used by beneficiary, or explicitly place/identify as theirs. Here \"sets the food on the counter\" - could be considered serving? Not explicit that it's for them; but likely breakfast is for children. But maybe not clear.\n\nBetter to say: sets the food on their plates or on a table in front of them. The current beat says only watch from across room, so they might not have it yet. So beneficiary role may drop because they are just watching.\n\nThus candidate beat might be invalid? Let's analyze: \"The parent finishes breakfast and sets the food on the counter while the children only watch from across the room.\" Means parent finished cooking; set food on counter (maybe in front of them). Children watch from across room. They haven't eaten yet, but they are beneficiaries because breakfast is for them. But does it show delivered? The food is placed on counter - presumably accessible to them. So it's served.\n\nBut \"only watch\" might imply children not interacting with the food; but still benefit: ready breakfast. It's okay that they just watch until later. The beneficiary role remains: children are intended recipients of breakfast, and food set for them. So valid? I think yes.\n\nThus output: {\"valid\": true, \"issue\": \"\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 361,
+      "completion_tokens": 700,
+      "total_tokens": 1061,
+      "completion_tokens_details": {
+        "reasoning_tokens": 685
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446844.3518503,
+  "status": "ok"
+}
