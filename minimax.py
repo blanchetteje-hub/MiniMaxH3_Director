@@ -9980,6 +9980,65 @@ string. Do not output category names, issue codes, lists, or arrays.
     ]
 
 
+def build_beat_coherence_validation_messages(
+    current_state,
+    beat_job,
+    candidate_beat,
+    settings=None,
+):
+    """Build the narrow post-validation physical/coherence prompt."""
+    settings = settings or _active_beat_validation_settings()
+    state = compact_beat_validation_state(current_state)
+    system = (
+        "Validate only physical/causal coherence inside one candidate beat. "
+        "Judge meaning, not exact wording. Return one JSON object with boolean "
+        "valid and string issue."
+    )
+    user = f"""
+CURRENT STATE
+{json.dumps(state, ensure_ascii=False, separators=(",", ":"))}
+
+CURRENT JOB
+{beat_job}
+
+CANDIDATE BEAT
+{candidate_beat}
+
+CHECK: WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY.
+Read CANDIDATE BEAT literally in order and carry each stated result forward.
+- Reject repeating an irreversible removal or destruction on the same specific
+  target, part, or object unless restoration, regeneration, or reinstallation
+  happens first.
+- A non-terminal injury is not a removal. Different targets or parts are
+  different cases.
+- Reject an ordinary action that makes an entire body/object become a materially
+  different substance or vanish without an established capability or physically
+  plausible cause.
+- Accept explicit magic/technology, restoration, regeneration, and ordinary
+  physical causes that support the result.
+- CURRENT STATE and CURRENT JOB may establish an unusual capability. Do not
+  invent one.
+- Judge only coherence inside this candidate beat. Do not judge source coverage,
+  NEXT JOB ownership, or typed state-effect records.
+
+OUTPUT CONTRACT
+If valid:
+{{"valid": true, "issue": ""}}
+
+If invalid:
+{{"valid": false, "issue": "short concrete explanation"}}
+
+Return exactly one JSON object and no markdown.
+""".strip()
+    if settings.get("user_prompt_only"):
+        user = f"{system}\n\n{user}"
+        system = ""
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ]
+
+
 def parse_beat_validation_result(raw_result):
     """Parse one strict validity-only response without invoking another LLM."""
     result = raw_result
@@ -10895,6 +10954,70 @@ def _run_forward_beat_validation(
                 flush=True,
             )
             if validation["valid"]:
+                coherence_messages = build_beat_coherence_validation_messages(
+                    current_state=state_before,
+                    beat_job=current_job,
+                    candidate_beat=candidate,
+                    settings=_active_beat_validation_settings(),
+                )
+                print(
+                    f"Checking Beat {beat_number} within-beat physical coherence "
+                    f"(attempt {validation_attempt}/{BEAT_RETRY_ATTEMPTS}).",
+                    flush=True,
+                )
+                try:
+                    raw_coherence = llm_request(
+                        coherence_messages,
+                        response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+                        parse_json_response=False,
+                        history_metadata={
+                            **(history_metadata or {}),
+                            "purpose": "beat_coherence_validation",
+                            "use_beat_validation_settings": True,
+                            "beat_number": beat_number,
+                            "validation_attempt": validation_attempt,
+                            "total_segments": int(total_segments),
+                        },
+                    )
+                    coherence = parse_beat_validation_result(raw_coherence)
+                except (
+                    LLMConnectionError,
+                    requests.RequestException,
+                    OSError,
+                    ValueError,
+                    TypeError,
+                ) as error:
+                    last_issue = f"Beat coherence validator failed: {error}"
+                    retry_feedback = last_issue
+                    regenerate_candidate = False
+                    print(
+                        f"Beat {beat_number} coherence attempt "
+                        f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
+                        f"{last_issue}",
+                        flush=True,
+                    )
+                    continue
+
+                if not coherence["valid"]:
+                    last_issue = (
+                        coherence["issue"]
+                        or "The beat failed within-beat physical coherence."
+                    )
+                    retry_feedback = last_issue
+                    regenerate_candidate = True
+                    print(
+                        f"Beat {beat_number} coherence attempt "
+                        f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: INVALID; "
+                        f"issue: {last_issue}",
+                        flush=True,
+                    )
+                    continue
+
+                print(
+                    f"Beat {beat_number} coherence attempt "
+                    f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: VALID.",
+                    flush=True,
+                )
                 accepted = True
                 break
             retry_feedback = last_issue

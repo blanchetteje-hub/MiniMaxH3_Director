@@ -1036,3 +1036,53 @@ Only integrate a change if those narrow calls materially outperform the combined
 validator on reviewed explanations, not merely labels.
 
 Evidence: `tests/LLM/probes/role_layout_996_1015_results.json`.
+
+## Validator coherence follow-up — probes 996–1063
+
+Astra's repair-scope commit `c192bd3` was retained. It correctly limits beat
+repair assignments to the requested beat range and does not change the
+chapter-first architecture.
+
+Explicit BEFORE/NOW/LATER/AFTER relabeling of compact-v2 was tested on the 20
+existing controls (996–1015):
+- 15/20 reference-label matches;
+- the legitimate final-kill false rejection was fixed;
+- the unsupported body transformation was still rejected for the wrong invented
+  prior-death reason;
+- locked-door traversal, missing lock coverage, omitted named participants,
+  next-job leakage, and held-vs-equipped still failed;
+- the typed-effect control used the production event-record wrapper.
+Decision: do not adopt the role-layout variant.
+
+A follow-up decomposition batch (1016–1040) showed why the whole validator should
+not simply be split into tiny calls:
+- NOW coverage became over-literal on a valid paraphrase;
+- LATER ownership falsely rejected an identical repeated job;
+- barrier continuity completed 4/4 correctly;
+- typed-effect support completed 4/4 correctly;
+- within-beat coherence completed 3/3 correctly;
+- several requests hit repeat HTTP 400 transport errors from the local endpoint.
+Decision: do not split the full validator.
+
+The one narrow check directly matching job 935's demonstrated acceptance failure
+was then broadened across 20 generic coherence/physics controls (1041–1060),
+with transport retries 1061–1063. Every request that reached the model returned
+the intended verdict: **19/19 semantic controls correct**; one ordinary-human
+liquefaction control still hit HTTP 400 after retry. Passed controls covered
+same-target double removal, non-terminal injury, different targets, regeneration,
+component removal/reinstallation, crystals/batteries, unsupported material
+transformations, explicit magic/technology, explosions, solvents, and ordinary
+melting.
+
+Decision: add one narrow within-beat physical/causal coherence gate *after* the
+existing production validator returns VALID. It does not own source coverage,
+NEXT-job ownership, or typed effects and therefore does not replace or duplicate
+those responsibilities. A coherence transport failure consumes the existing
+validation retry budget without regenerating the candidate; a semantic coherence
+failure regenerates the current beat.
+
+Next required step: run the focused forward-validation/orchestration tests, then
+a fresh planning-only Amy acceptance capture. Do not advance to H3 rendering
+unless the new capture removes the accepted double-removal / unsupported-physics
+failure without introducing a new rejection loop.
+

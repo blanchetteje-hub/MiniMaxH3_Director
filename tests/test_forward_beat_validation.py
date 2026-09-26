@@ -27,6 +27,19 @@ ARC = {"phases": [{
 
 
 class ForwardBeatValidationTests(unittest.TestCase):
+    def test_coherence_validator_is_narrow_and_generic(self):
+        messages = minimax.build_beat_coherence_validation_messages(
+            {"characters": {"Tala": {"status": "alive"}}},
+            "Tala defeats the statue.",
+            "Tala hits the statue once and it turns into water.",
+        )
+        prompt = messages[1]["content"]
+        self.assertIn("WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY", prompt)
+        self.assertIn("restoration, regeneration, or reinstallation", prompt)
+        self.assertIn("materially", prompt)
+        self.assertNotIn("NEXT JOB", prompt)
+        self.assertNotIn("STATE EFFECTS IF VALID", prompt)
+
     def test_validator_contract_is_immutable_and_minimal(self):
         messages = minimax.build_beat_validation_messages(
             "",
@@ -151,6 +164,8 @@ class ForwardBeatValidationTests(unittest.TestCase):
 
         def validator(messages, **kwargs):
             content = messages[1]["content"]
+            if "WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY" in content:
+                return {"valid": True, "issue": ""}
             marker = "CURRENT STATE\n"
             state_text = content.split(marker, 1)[1].split("\n\nCURRENT JOB", 1)[0]
             validation_states.append(json.loads(state_text))
