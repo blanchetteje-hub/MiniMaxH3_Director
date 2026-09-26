@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1194",
+  "kind": "llama_chat",
+  "started_at": 1790440634.1921506,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE — authoritative work for this segment\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\n\nDERIVED BEAT — staging suggestion; cannot remove source requirements\nAmy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\n\nRAW SCENE\nAmy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.\n\nCheck only completion:\n1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\nReturn valid (boolean) and issue (short explanation if invalid, empty string otherwise)."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-dr5ale3o9g89epgbrant2u",
+    "object": "chat.completion",
+    "created": 1790440634,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to check RAW SCENE against assigned source: \"Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\"\n\nDerived beat: \"Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\" So derived says she watches? Actually it says while her children watch. That means children are spectators.\n\nRAW SCENE: \"Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.\"\n\nCheck completion:\n\n1. Require actions, results, participant roles assigned by SOURCE. Source says Amy is cooking breakfast for her young kids. So she must be cooking; result: breakfast cooked. She serves them plates? That is part of cooking breakfast for kids. The source didn't specify serving or turning off stove but it's implied.\n\nDerived beat says children watch while she cooks. In RAW SCENE, children eat at table after served. They are not just watching; they participate in eating. But the derived beat said \"while her children Will and Amber watch.\" That implies that during cooking, kids were spectators. The raw scene: She finishes cooking breakfast, serves them plates, sets down skillet, turns off stove. Both children eat at table. So after she finished cooking, they ate. Did they watch while she cooked? Not explicitly stated; but \"both children eat at the table\" indicates they are participants in eating, not just watching.\n\nBut does that violate derived beat? Derived says kids watch during cooking. The raw scene doesn't mention them watching during cooking. But it also doesn't say they didn't watch. It could be implied they watched while she cooked and then ate after. However, \"both children eat at the table\" is a result of serving plates; but we need to check if that satisfies source: Amy cooks breakfast for her kids. She finishes cooking, serves them plates, sets down skillet, turns off stove. That completes cooking activity? The source says she is cooking breakfast for her young kids. Does finishing cooking and serving count as completion? Yes.\n\nBut the derived beat said children watch while she cooks; but raw scene doesn't mention watching during cooking. But it's not required to mention that they watched; it just says after she finished, they eat at table. They could have been watching earlier. The requirement: \"Use the derived beat only where consistent with SOURCE.\" Derived beat is consistent if kids are spectators while Amy cooks. Raw scene didn't specify but doesn't contradict either.\n\nCheck rule 2: A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source assigned spectators remain spectators. Here the activity \"cooking breakfast\" benefits kids. They must receive or participate in that result. Raw scene shows they eat at table (participate). So that's fine.\n\nRule 3: Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish. The raw scene says she finishes cooking, so it's finished. Good.\n\nThus RAW SCENE completes the assigned source work? Yes. It includes Amy wearing tight black tank top and denim jeans (source requirement). She cooks breakfast for kids. She serves them plates. Kids eat at table. That satisfies.\n\nCheck if any missing: Source didn't specify that she sets down skillet or turns off stove, but that's fine extra actions. Derived beat says children watch while cooking; raw scene doesn't mention watching during cooking, but they ate after. But it's not required to mention watching; derived beat only suggests a staging suggestion. It's consistent because kids could have watched earlier.\n\nThus valid: true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 343,
+      "completion_tokens": 783,
+      "total_tokens": 1126,
+      "completion_tokens_details": {
+        "reasoning_tokens": 765
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440644.6350121,
+  "status": "ok"
+}
