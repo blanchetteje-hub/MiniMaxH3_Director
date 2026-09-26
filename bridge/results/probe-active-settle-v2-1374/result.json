@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1374",
+  "kind": "llama_chat",
+  "started_at": 1790449346.7074544,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A worker opens a gate for arriving trucks.\nRAW: The worker opens the gate fully and leaves it open.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-lnf5tj9epakh537zo433ib",
+    "object": "chat.completion",
+    "created": 1790449346,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW (The worker opens the gate fully and leaves it open) reaches the SOURCE-assigned endpoint. Source: \"A worker opens a gate for arriving trucks.\" That is an activity: opening a gate. The source says that the worker opens a gate for arriving trucks. Does that imply the gate remains open? Likely yes, because it's to allow trucks through. So the intended result is gate open. RAW states he fully opens and leaves it open. That's consistent with SOURCE. No ongoing or interrupted activity beyond opening; the gate stays open. So valid.\n\nReturn JSON: {\"valid\":true,\"issue\":\"\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 282,
+      "completion_tokens": 148,
+      "total_tokens": 430,
+      "completion_tokens_details": {
+        "reasoning_tokens": 129
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449349.2174022,
+  "status": "ok"
+}
