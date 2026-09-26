@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1423",
+  "kind": "llama_chat",
+  "started_at": 1790452585.814522,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: The window is closed. SOURCE: Rae checks the weather. RAW: Rae checks the weather and opens the window.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-w6aqeirjl1kv6nfyezcfll",
+    "object": "chat.completion",
+    "created": 1790452585,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The window was opened, changing its persistent state from closed to open, which is not specified or implied in the SOURCE.\"}",
+          "reasoning": "We need to judge if RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them.\n\nOPENING: The window is closed.\nSOURCE: Rae checks the weather.\nRAW: Rae checks the weather and opens the window.\n\nSo does RAW complete SOURCE? Source says \"Rae checks the weather.\" Raw adds that she also opens the window. That completes source (adds extra action). Does it preserve persistent OPENING facts unless SOURCE explicitly changes them? Opening fact is \"The window is closed\". In RAW, window is opened. So opening changed from closed to open. Did SOURCE explicitly change that? No. Source didn't mention window state. So it's a change not authorized by source. Thus invalid.\n\nThus {\"valid\":false,\"issue\":\"Window state changed without being in the source.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 214,
+      "completion_tokens": 201,
+      "total_tokens": 415,
+      "completion_tokens_details": {
+        "reasoning_tokens": 159
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452589.0660734,
+  "status": "ok"
+}
