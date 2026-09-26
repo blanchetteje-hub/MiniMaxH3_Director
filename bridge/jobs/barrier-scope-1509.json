@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "barrier-scope-1509",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge participant/barrier scope only. Return JSON only with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT JOB:\nThe ranger escorts Nia across the bridge.\n\nCANDIDATE:\nThe ranger and Nia cross the bridge together.\n\nRULES\n1. Preserve exactly who CURRENT JOB says crosses/enters/exits a barrier.\n2. A helper who gets/pushes/sends/lets other people through does not also cross unless CURRENT JOB says or clearly implies the helper crosses.\n3. Escort/guide ACROSS or THROUGH normally includes the escort/guide crossing together.\n4. Reject only a clear participant-scope change.\nReturn {\"valid\":boolean,\"issue\":string}."
+    }
+  ],
+  "temperature": 0,
+  "max_tokens": 384,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "timeout_seconds": 600
+}
