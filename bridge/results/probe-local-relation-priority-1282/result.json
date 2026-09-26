@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-priority-1282",
+  "kind": "llama_chat",
+  "started_at": 1790444741.497316,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe knight slays the last ogre in the courtyard.\n\nRIGHT:\nThe knight unlocks the captives' cells.\n\nChoose MERGE or NEW_TASK. Use this order:\n1. STOPPING POINT: If LEFT explicitly completes/finishes a protection, victory, repair, shutdown, assembly, delivery, or other objective, choose NEW_TASK for a later distinct action. Testing, calibrating, inspecting, transporting, fetching new gear, releasing people, or starting another operation after that completion is NEW_TASK.\n2. SAME OBJECT EXCEPTION: MERGE only if RIGHT immediately continues handling the exact object/container LEFT just obtained, opened, unlocked, or started (retrieve -> equip/use/consume; open -> remove). This exception does NOT apply to an object LEFT finished building/assembling/repairing.\n3. NEW PROBLEM RESPONSE: MERGE if LEFT itself introduces a new problem, danger, alarm, or request and RIGHT immediately addresses that trigger.\n4. SAME ACTION: MERGE if RIGHT continues the same uninterrupted local action as LEFT.\nOtherwise choose NEW_TASK. Shared earlier danger, purpose, opportunity, access, or readiness is not enough to MERGE.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-wltkpp8v7jtp8jj7iarz",
+    "object": "chat.completion",
+    "created": 1790444741,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We have two adjacent source responsibilities:\n\nLEFT: \"The knight slays the last ogre in the courtyard.\"\n\nRIGHT: \"The knight unlocks the captives' cells.\"\n\nWe need decide if they belong to one local beat job or separate tasks.\n\nCheck rule 1 STOPPING POINT: If LEFT explicitly completes/finishes a protection, victory, repair, shutdown, assembly, delivery, or other objective. Slays last ogre = victory? Yes it's a victory. So that is completion of an objective. Then testing, calibrating, inspecting, transporting, fetching new gear, releasing people, starting another operation after that completion is NEW_TASK.\n\nSo RIGHT: unlocks captives' cells -> releasing people. That is a new action after the victory. According to rule 1, it's a NEW_TASK.\n\nCheck other rules: SAME OBJECT EXCEPTION? LEFT finished ogre; right unlocking cells not same object. So no merge.\n\nNEW PROBLEM RESPONSE: If left introduces new problem/danger/alarm and right addresses it immediately. Left slays last ogre - maybe that ends danger but also might create new problem like captives locked? But rule 1 covers victory completion, so it's NEW_TASK.\n\nThus relation = \"NEW_TASK\".\n\nReturn JSON with single key relation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 336,
+      "completion_tokens": 273,
+      "total_tokens": 609,
+      "completion_tokens_details": {
+        "reasoning_tokens": 257
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790444745.6733289,
+  "status": "ok"
+}
