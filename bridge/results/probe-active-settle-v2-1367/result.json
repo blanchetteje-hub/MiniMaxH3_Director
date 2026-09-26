@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1367",
+  "kind": "llama_chat",
+  "started_at": 1790449302.2327442,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A guard completes target practice and leaves the range.\nRAW: The final target is hit; the guard walks away while the pistol continues firing automatically.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-x3tafa3y7sbv22qbsnis7",
+    "object": "chat.completion",
+    "created": 1790449302,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The guard’s target practice is complete when the last target is hit, but the pistol keeps firing automatically afterward—an active process that should stop for a completed activity—so RAW does not reach the endpoint of a finished range session.\"}",
+          "reasoning": "We need to judge if RAW (The final target is hit; the guard walks away while the pistol continues firing automatically.) reaches the SOURCE-assigned endpoint: \"A guard completes target practice and leaves the range.\"\n\nSo source says guard completes target practice and leaves. That means activity completed, guard left. The gun presumably stops? But RAW says pistol continues firing automatically after final target is hit; guard walks away.\n\nDoes that reach the endpoint? Endpoint: guard completes target practice (final target hit) and leaves the range. Does the pistol continuing to fire automatically matter? According to rule 1: any active process used only to perform completed activity must end in natural inactive state when physically reasonable. The gun firing is part of target practice; after final target, it should stop. But RAW says continues firing automatically. That means gun still firing, so not ended naturally. So it's not reaching the endpoint? However rule 2: If object ON/open state itself intended result stays that way. Pistol firing isn't a state like lamp on. It's an active process. So must end.\n\nThus RAW does NOT reach SOURCE assigned endpoint because pistol continues firing automatically after final target, so activity hasn't ended naturally. Therefore valid false with issue explanation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 289,
+      "completion_tokens": 310,
+      "total_tokens": 599,
+      "completion_tokens_details": {
+        "reasoning_tokens": 246
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449307.1319795,
+  "status": "ok"
+}
