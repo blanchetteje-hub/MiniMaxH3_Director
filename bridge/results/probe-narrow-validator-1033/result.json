@@ -1,0 +1,7 @@
+{
+  "job_id": "probe-narrow-validator-1033",
+  "status": "error",
+  "error_type": "HTTPError",
+  "error": "HTTP Error 400: Bad Request",
+  "finished_at": 1790383344.3024824
+}
