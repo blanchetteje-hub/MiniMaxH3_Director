@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-narrow-retry-1036",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only the single check described. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue. Reject only when the described check clearly fails."
+    },
+    {
+      "role": "user",
+      "content": "CHECK: NOW COVERAGE ONLY.\nEvery explicit action, result, and named participant in NOW must happen in CANDIDATE. A state merely described as already complete does not count as performing the assigned action.\n\nNOW\nMara serves breakfast to Eli and Jo.\n\nCANDIDATE\nMara places a finished breakfast in front of Eli."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 1024,
+  "timeout_seconds": 600
+}
