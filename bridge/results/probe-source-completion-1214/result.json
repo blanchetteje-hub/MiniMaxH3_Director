@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1214",
+  "kind": "llama_chat",
+  "started_at": 1790441914.2112894,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE — authoritative work for this segment\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\n\nDERIVED BEAT — staging suggestion; cannot remove source requirements\nAmy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\n\nRAW SCENE\nIn her home kitchen, Amy wears a tight black tank top and denim jeans. Will and Amber watch as Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.\n\nCheck only completion:\n1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\nReturn valid (boolean) and issue (short explanation if invalid, empty string otherwise)."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-4ils74kabrljvy0x2uvh6e",
+    "object": "chat.completion",
+    "created": 1790441914,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to check RAW SCENE against assigned source.\n\nAssigned Source: \"Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\"\n\nSo requirements:\n\n- Amy at home (home kitchen)\n- Wearing tight black tank top and denim jeans\n- Cooking breakfast for her young kids\n\nAlso the kids are Will and Amber? The source says \"young kids\" but derived beat names them. But we need to check if they are included.\n\nDerived Beat: \"Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\" So that includes watching.\n\nBut Source requires cooking breakfast for her young kids. That implies she is cooking breakfast for them; result should be that kids receive or participate in that result (eating). Watching alone insufficient.\n\nRAW SCENE: \"In her home kitchen, Amy wears a tight black tank top and denim jeans. Will and Amber watch as Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.\"\n\nCheck:\n\n- Amy wearing correct clothing? Yes.\n- In home kitchen? Yes.\n- Cooking breakfast: She \"finishes cooking breakfast\" - yes she cooked it.\n- For her young kids: She serves them plates each; they eat at table. So result achieved.\n\nAlso watchers: Will and Amber watch as she finishes cooking, then eats. They are participants in the result (eating). Good.\n\nAny missing? Source didn't specify that Amy sets down skillet/spatula or turns off stove but that's fine extra staging.\n\nSource says \"cooking breakfast for her young kids\" - She does serve them plates; they eat at table. So yes.\n\nThus RAW SCENE completes source work.\n\nReturn valid true, issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 364,
+      "completion_tokens": 400,
+      "total_tokens": 764,
+      "completion_tokens_details": {
+        "reasoning_tokens": 381
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790441919.7623446,
+  "status": "ok"
+}
