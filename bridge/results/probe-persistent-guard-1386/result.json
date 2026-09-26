@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1386",
+  "kind": "llama_chat",
+  "started_at": 1790452362.2408798,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Mira holds a lantern and rope. SOURCE: Mira crosses the room. RAW: Mira crosses the room, then drops the lantern.\n\nJudge whether RAW both completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held/equipped items, containment, barrier state, clothing, injuries, and durable object/state conditions. Reject dropping, losing, freeing, unlocking, removing, healing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ozwxifwnmjmdf646bjdr7",
+    "object": "chat.completion",
+    "created": 1790452362,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"drops lantern, which wasn’t in the SOURCE\"}",
+          "reasoning": "We need to judge if RAW (Mira crosses the room, then drops the lantern) both completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them.\n\nOPENING: Mira holds a lantern and rope. So she has lantern in hand(s). Also rope? She holds rope too. The source says \"Mira crosses the room.\" That implies movement across the room but no mention of dropping or releasing items. So persistent state should remain that she still holds lantern and rope after crossing.\n\nRAW: Mira crosses the room, then drops the lantern. This includes crossing (so completes SOURCE) and also adds drop lantern action. Does it preserve persistent facts? It changes lantern from held to dropped. That is a change of persistent state not authorized by source. Source didn't mention dropping lantern. So RAW fails because it changed persistent fact.\n\nThus invalid: {\"valid\":false,\"issue\":\"drops lantern, which wasn't in SOURCE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 226,
+      "completion_tokens": 212,
+      "total_tokens": 438,
+      "completion_tokens_details": {
+        "reasoning_tokens": 185
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452365.5102522,
+  "status": "ok"
+}
