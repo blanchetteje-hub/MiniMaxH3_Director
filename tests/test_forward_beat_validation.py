@@ -37,7 +37,8 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY", prompt)
         self.assertIn("restoration, regeneration, or reinstallation", prompt)
         self.assertIn("materially", prompt)
-        self.assertNotIn("NEXT JOB", prompt)
+        self.assertIn("Do not judge source coverage", prompt)
+        self.assertIn("NEXT JOB ownership", prompt)
         self.assertNotIn("STATE EFFECTS IF VALID", prompt)
 
     def test_validator_contract_is_immutable_and_minimal(self):
