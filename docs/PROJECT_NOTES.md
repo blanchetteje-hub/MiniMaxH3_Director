@@ -699,7 +699,7 @@ contract is the single binary `MERGE | NEW_TASK` classifier documented above;
 exact production pairs 838–842 passed. Do not reintroduce the abandoned
 multi-call grouping experiment from historical notes.
 
-## Current acceptance gate — job 935 review
+## Historical acceptance gate — job 935 review
 
 A structurally complete planning capture is not semantic acceptance. Job 935
 produced the correct 6/2 allocation but accepted a beat that performed the same
@@ -810,3 +810,23 @@ and a fresh planning-only Amy capture removes job 935's accepted double-removal
 and unsupported-physics failures without introducing a rejection loop. Do not
 advance to H3 rendering before that check.
 
+
+## Current acceptance target — 2026-09-26
+
+Planning captures have passed the 2-chapter / 6+2 structure and the earlier
+coherence/ownership checks sufficiently to resume full H3 prompt generation.
+Captures 1125 and 1190 generated all eight prompts; neither establishes gold
+quality. Earlier instructions to stop before H3 generation describe historical
+checkpoints, not the current next action.
+
+Capture 1190 demonstrates a source-authority loss: a source activity **for**
+beneficiaries became an activity they merely **watch** in the derived beat.
+The Director completion checker sees only that derived beat. Presence is not
+preservation of a source-assigned participant role.
+
+The next experiment compares the existing completion check with one receiving
+exact current assigned source plus derived beat and raw scene. This is a proposed
+input correction to the existing gate, not an additional semantic stage. Do not
+supply future source work or demand a result from source-designated spectators,
+explicitly unfinished activities, or interrupted work. No semantic prompt change
+is adopted until paired generic probes 1191–1210 are reviewed.

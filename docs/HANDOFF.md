@@ -1,6 +1,6 @@
 # MiniMax H3 — Development Handoff
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 
 Read `docs/PROJECT_NOTES.md` first. It is the architectural source of truth.
 
@@ -14,7 +14,40 @@ Active development branch:
 
 `gpt-arc-refresh`
 
-## Current status snapshot — 2026-09-25
+## Current status snapshot — 2026-09-26
+
+- Latest reviewed capture: `gold-prompt-acceptance-1190`, code `86f684e`.
+  All 8 H3 prompts were generated, with 2 chapters / 6+2 beats. This is
+  capture completeness, not gold-quality acceptance.
+- Earliest mismatch remains Segment 1: children watch cooking but receive no
+  breakfast. The source says cooking **for her kids**; the derived beat says
+  cooking **while her children watch**. The independent Director gate receives
+  only the derived beat and accepts its explicit spectator roles. Tightening
+  the checker without retaining source authority would target the wrong input.
+- Later visible problems include inconsistent barrier/location staging,
+  overloaded held props, stale prompt-derived continuity, and noncanonical
+  timestamps. These remain follow-up concerns; do not claim full gold acceptance.
+- Bridge regression 1189: 46 passed, 4 failed. Two failures expose a missing
+  success exit for legacy callers without current_beat_text; two are stale call
+  counts after adding the independent verifier.
+- Fixed the no-beat-text success exit while preserving structure and completion
+  checks. Updated the two call counts and added a semantic-rejection retry test.
+  Local focused suite: **51/51 passed** (`tests/test_llm_prompt_pipeline.py`).
+- Prepared probes **1191–1210**: 10 paired current/source-aware completion
+  checks, including exact captured Segment 1, repaired positives, fantasy,
+  sci-fi, spectator-only, interrupted work, and reactor activation controls.
+  Manifest: `tests/LLM/probes/source_completion_1191_1210.json`.
+  1536 completion tokens per probe avoids the earlier tiny-budget confound.
+- Source-aware completion remains an experiment, not production behavior.
+  The expected labels live only in the development manifest, never the requests.
+  Review labels and reasoning before integrating a source-authority handoff.
+- Next: process these 20 bridge results. If supported, preserve the exact current
+  assignment through Director creation and completion checking, without supplying
+  other chapters or future responsibilities. Then rerun prompt acceptance.
+
+The entries below are historical; this snapshot supersedes old stop/go decisions.
+
+## Historical snapshot — 2026-09-25
 
 Latest planning capture inspected: **job 935** (`amy-planning-hard-reset-stable-935`),
 code revision `82ffecba376244f1781cc0daade4d49e4d513a53`.

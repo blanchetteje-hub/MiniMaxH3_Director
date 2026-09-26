@@ -1,0 +1,205 @@
+{
+  "basis": "1190 captured source-to-beat beneficiary loss; compare current completion gate with source-aware candidate. Candidate is experimental, not production.",
+  "cases": [
+    {
+      "job_id": "probe-source-completion-1191",
+      "case": "captured_breakfast",
+      "variant": "current",
+      "source": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+      "beat": "Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.",
+      "raw_scene": "At 00:00.000 Amy flips a pancake in a skillet on the stove, her tight black tank top and denim jeans visible.\nAt 00:01.000 She pours milk into a bowl placed on the counter.\nAt 00:02.000 A toaster pops up toast on the counter beside the bowl.\nAt 00:03.000 Amy places a plate with pancakes on the counter.\nAt 00:04.000 Will watches her, eyes on the skillet.\nAt 00:05.000 Amber watches too, peering at the sizzling pancake.\nAt 00:06.000 She lifts the spatula to flip another pancake.\nAt 00:07.000 Amy sets the spatula down, turns off the stove, and smiles.\nEnd continuity state: Amy stands in the kitchen wearing a tight black tank top and denim jeans, having cooked breakfast while Will and Amber watch.",
+      "source_completion_expected": false,
+      "rationale": "Named children merely watch; no completed result reaches them."
+    },
+    {
+      "job_id": "probe-source-completion-1192",
+      "case": "captured_breakfast",
+      "variant": "source_aware",
+      "source": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+      "beat": "Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.",
+      "raw_scene": "At 00:00.000 Amy flips a pancake in a skillet on the stove, her tight black tank top and denim jeans visible.\nAt 00:01.000 She pours milk into a bowl placed on the counter.\nAt 00:02.000 A toaster pops up toast on the counter beside the bowl.\nAt 00:03.000 Amy places a plate with pancakes on the counter.\nAt 00:04.000 Will watches her, eyes on the skillet.\nAt 00:05.000 Amber watches too, peering at the sizzling pancake.\nAt 00:06.000 She lifts the spatula to flip another pancake.\nAt 00:07.000 Amy sets the spatula down, turns off the stove, and smiles.\nEnd continuity state: Amy stands in the kitchen wearing a tight black tank top and denim jeans, having cooked breakfast while Will and Amber watch.",
+      "source_completion_expected": false,
+      "rationale": "Named children merely watch; no completed result reaches them."
+    },
+    {
+      "job_id": "probe-source-completion-1193",
+      "case": "breakfast_repaired",
+      "variant": "current",
+      "source": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+      "beat": "Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.",
+      "raw_scene": "Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.",
+      "source_completion_expected": true,
+      "rationale": "Both beneficiaries receive the completed result."
+    },
+    {
+      "job_id": "probe-source-completion-1194",
+      "case": "breakfast_repaired",
+      "variant": "source_aware",
+      "source": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+      "beat": "Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.",
+      "raw_scene": "Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.",
+      "source_completion_expected": true,
+      "rationale": "Both beneficiaries receive the completed result."
+    },
+    {
+      "job_id": "probe-source-completion-1195",
+      "case": "fantasy_missing_recipient",
+      "variant": "current",
+      "source": "The healer treats Ilya and Rook with healing magic.",
+      "beat": "The healer performs healing magic as Ilya and Rook watch.",
+      "raw_scene": "The healer heals Ilya. Rook watches from the doorway. The healer lowers her staff.",
+      "source_completion_expected": false,
+      "rationale": "Rook is a treatment recipient in source, not merely a spectator."
+    },
+    {
+      "job_id": "probe-source-completion-1196",
+      "case": "fantasy_missing_recipient",
+      "variant": "source_aware",
+      "source": "The healer treats Ilya and Rook with healing magic.",
+      "beat": "The healer performs healing magic as Ilya and Rook watch.",
+      "raw_scene": "The healer heals Ilya. Rook watches from the doorway. The healer lowers her staff.",
+      "source_completion_expected": false,
+      "rationale": "Rook is a treatment recipient in source, not merely a spectator."
+    },
+    {
+      "job_id": "probe-source-completion-1197",
+      "case": "fantasy_all_recipients",
+      "variant": "current",
+      "source": "The healer treats Ilya and Rook with healing magic.",
+      "beat": "The healer performs healing magic as Ilya and Rook watch.",
+      "raw_scene": "The healer touches her staff to Ilya and then Rook; both wounds close. She puts the staff down.",
+      "source_completion_expected": true,
+      "rationale": "Both assigned treatments visibly complete."
+    },
+    {
+      "job_id": "probe-source-completion-1198",
+      "case": "fantasy_all_recipients",
+      "variant": "source_aware",
+      "source": "The healer treats Ilya and Rook with healing magic.",
+      "beat": "The healer performs healing magic as Ilya and Rook watch.",
+      "raw_scene": "The healer touches her staff to Ilya and then Rook; both wounds close. She puts the staff down.",
+      "source_completion_expected": true,
+      "rationale": "Both assigned treatments visibly complete."
+    },
+    {
+      "job_id": "probe-source-completion-1199",
+      "case": "scifi_missing_recipient",
+      "variant": "current",
+      "source": "The engineer fits oxygen masks on Nia and Sol.",
+      "beat": "The engineer fits an oxygen mask while Nia and Sol stand nearby.",
+      "raw_scene": "The engineer fastens a mask on Nia and checks its seal. Sol watches without a mask.",
+      "source_completion_expected": false,
+      "rationale": "Source-assigned recipient omitted by derived beat."
+    },
+    {
+      "job_id": "probe-source-completion-1200",
+      "case": "scifi_missing_recipient",
+      "variant": "source_aware",
+      "source": "The engineer fits oxygen masks on Nia and Sol.",
+      "beat": "The engineer fits an oxygen mask while Nia and Sol stand nearby.",
+      "raw_scene": "The engineer fastens a mask on Nia and checks its seal. Sol watches without a mask.",
+      "source_completion_expected": false,
+      "rationale": "Source-assigned recipient omitted by derived beat."
+    },
+    {
+      "job_id": "probe-source-completion-1201",
+      "case": "scifi_all_recipients",
+      "variant": "current",
+      "source": "The engineer fits oxygen masks on Nia and Sol.",
+      "beat": "The engineer fits an oxygen mask while Nia and Sol stand nearby.",
+      "raw_scene": "The engineer fastens masks on Nia and Sol and checks both seals. Both breathe through their masks.",
+      "source_completion_expected": true,
+      "rationale": "Both source-assigned recipients completed."
+    },
+    {
+      "job_id": "probe-source-completion-1202",
+      "case": "scifi_all_recipients",
+      "variant": "source_aware",
+      "source": "The engineer fits oxygen masks on Nia and Sol.",
+      "beat": "The engineer fits an oxygen mask while Nia and Sol stand nearby.",
+      "raw_scene": "The engineer fastens masks on Nia and Sol and checks both seals. Both breathe through their masks.",
+      "source_completion_expected": true,
+      "rationale": "Both source-assigned recipients completed."
+    },
+    {
+      "job_id": "probe-source-completion-1203",
+      "case": "spectators_only",
+      "variant": "current",
+      "source": "The chef demonstrates pastry folding while Ana and Bo observe; the demonstration ends.",
+      "beat": "The chef folds pastry for a demonstration as Ana and Bo watch.",
+      "raw_scene": "The chef completes the fold, sets down the pastry and tools, and ends the demonstration. Ana and Bo watch throughout.",
+      "source_completion_expected": true,
+      "rationale": "Observers do not need food handed to them."
+    },
+    {
+      "job_id": "probe-source-completion-1204",
+      "case": "spectators_only",
+      "variant": "source_aware",
+      "source": "The chef demonstrates pastry folding while Ana and Bo observe; the demonstration ends.",
+      "beat": "The chef folds pastry for a demonstration as Ana and Bo watch.",
+      "raw_scene": "The chef completes the fold, sets down the pastry and tools, and ends the demonstration. Ana and Bo watch throughout.",
+      "source_completion_expected": true,
+      "rationale": "Observers do not need food handed to them."
+    },
+    {
+      "job_id": "probe-source-completion-1205",
+      "case": "explicit_interruption",
+      "variant": "current",
+      "source": "The medic starts treating Rae, but the alarm interrupts treatment before it is finished.",
+      "beat": "The medic starts treatment until an alarm interrupts her.",
+      "raw_scene": "The medic begins cleaning Rae's wound. An alarm sounds; she stops before finishing.",
+      "source_completion_expected": true,
+      "rationale": "Explicit interruption must not require completion."
+    },
+    {
+      "job_id": "probe-source-completion-1206",
+      "case": "explicit_interruption",
+      "variant": "source_aware",
+      "source": "The medic starts treating Rae, but the alarm interrupts treatment before it is finished.",
+      "beat": "The medic starts treatment until an alarm interrupts her.",
+      "raw_scene": "The medic begins cleaning Rae's wound. An alarm sounds; she stops before finishing.",
+      "source_completion_expected": true,
+      "rationale": "Explicit interruption must not require completion."
+    },
+    {
+      "job_id": "probe-source-completion-1207",
+      "case": "activation_progress",
+      "variant": "current",
+      "source": "The pilot activates the reactor.",
+      "beat": "The pilot presses the reactor start button.",
+      "raw_scene": "The pilot presses START. The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.",
+      "source_completion_expected": false,
+      "rationale": "Derived prerequisite cannot replace source result."
+    },
+    {
+      "job_id": "probe-source-completion-1208",
+      "case": "activation_progress",
+      "variant": "source_aware",
+      "source": "The pilot activates the reactor.",
+      "beat": "The pilot presses the reactor start button.",
+      "raw_scene": "The pilot presses START. The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.",
+      "source_completion_expected": false,
+      "rationale": "Derived prerequisite cannot replace source result."
+    },
+    {
+      "job_id": "probe-source-completion-1209",
+      "case": "activation_complete",
+      "variant": "current",
+      "source": "The pilot activates the reactor.",
+      "beat": "The pilot presses the reactor start button.",
+      "raw_scene": "The pilot presses START. The reactor reaches stable output; the screen shows REACTOR ONLINE.",
+      "source_completion_expected": true,
+      "rationale": "Visible final result completes the source."
+    },
+    {
+      "job_id": "probe-source-completion-1210",
+      "case": "activation_complete",
+      "variant": "source_aware",
+      "source": "The pilot activates the reactor.",
+      "beat": "The pilot presses the reactor start button.",
+      "raw_scene": "The pilot presses START. The reactor reaches stable output; the screen shows REACTOR ONLINE.",
+      "source_completion_expected": true,
+      "rationale": "Visible final result completes the source."
+    }
+  ]
+}

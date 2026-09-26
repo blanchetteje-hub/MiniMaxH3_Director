@@ -1282,7 +1282,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
                 {"source_sha256": "source-1"},
             )
 
-        self.assertEqual(request.call_count, 3)
+        self.assertEqual(request.call_count, 4)
         retry_user = request.call_args_list[1].args[0][-1]["content"]
         self.assertIn("REQUEST 1 COMPLETION ERROR", retry_user)
         self.assertIn("named beneficiary requirement", retry_user)
@@ -1291,6 +1291,36 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertTrue(payload["request1_result"]["named_beneficiaries_complete"])
         self.assertTrue(payload["request1_result"]["activity_tools_settled"])
         self.assertTrue(payload["request1_result"]["beat_complete"])
+
+    def test_independent_completion_rejection_retries_before_formatting(self):
+        scene = "At 00:00.000, Mira serves tea.\nEnd continuity state: Tea is served."
+        request = Mock(side_effect=[
+            {"raw_scene": scene, "beat_complete": True},
+            {"valid": False, "issue": "Oren has not received tea."},
+            {"raw_scene": scene, "beat_complete": True},
+            {"valid": True, "issue": ""},
+            {"detailed_description": "[Shot 1] At 00:00.000, Mira serves tea.",
+             "overall_soundscape": "Cups clink.", "non_diegetic_music": "N/A"},
+        ])
+        bundle = {
+            "segment": 1, "active_beat_id": 1, "current_duration": 4,
+            "current_beat_text": "Mira serves tea to Oren.",
+            "conditioning_mode": "initial", "opening_state": "",
+            "messages": [{"role": "user", "content": "Direct the current beat."}],
+        }
+        with patch("minimax.ask_llm", request):
+            minimax.request_segment_llm(bundle, [], "test", {})
+        purposes = [c.kwargs["history_metadata"]["purpose"]
+                    for c in request.call_args_list]
+        self.assertEqual(purposes, [
+            "director_raw_scene", "director_raw_scene_completion",
+            "director_raw_scene", "director_raw_scene_completion",
+            "director_h3_formatter",
+        ])
+        self.assertIn("Oren has not received tea.",
+                      request.call_args_list[2].args[0][-1]["content"])
+        self.assertTrue(request.call_args_list[1].kwargs[
+            "history_metadata"]["use_beat_validation_settings"])
 
     def test_request_segment_llm_retries_when_named_subjects_are_dropped(self):
         subjects = (
@@ -1347,7 +1377,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
                 {"source_sha256": "source-8"},
             )
 
-        self.assertEqual(request.call_count, 3)
+        self.assertEqual(request.call_count, 4)
         retry_user = request.call_args_list[1].args[0][-1]["content"]
         self.assertIn("RAW SCENE dropped named Subject(s)", retry_user)
         self.assertIn("Will", retry_user)
