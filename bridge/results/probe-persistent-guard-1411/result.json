@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1411",
+  "kind": "llama_chat",
+  "started_at": 1790452509.3785403,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Lio is inside a locked storage room. SOURCE: Mara repairs a console outside. RAW: Mara repairs the console; Lio remains inside the locked room.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-htprlst6ujkbvrmzg1gvh",
+    "object": "chat.completion",
+    "created": 1790452509,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them.\n\nOPENING: Lio is inside a locked storage room.\nSOURCE: Mara repairs a console outside.\nRAW: Mara repairs the console; Lio remains inside the locked room.\n\nCheck: Does RAW complete SOURCE? Source says \"Mara repairs a console outside.\" That implies that after source, we have Mara repairing console. The RAW states \"Mara repairs the console\" (no location specified). But since source said outside, does RAW specify outside? It doesn't mention location; but maybe it's implied same as source: outside. So it completes.\n\nPersistent OPENING facts: Lio inside locked storage room. Does RAW change that? No. Lio remains inside locked room. Good.\n\nAny other persistent state changes? None mentioned. The console is repaired, presumably durable object state changed from broken to fixed. That is a persistent change but source didn't mention; it's okay because source says she repairs it. So that's consistent.\n\nThus valid: true. Issue empty.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 223,
+      "completion_tokens": 230,
+      "total_tokens": 453,
+      "completion_tokens_details": {
+        "reasoning_tokens": 212
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452513.2747414,
+  "status": "ok"
+}
