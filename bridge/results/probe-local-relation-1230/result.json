@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1230",
+  "kind": "llama_chat",
+  "started_at": 1790442737.2080014,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nA coolant pipe ruptures and scalding vapor jets toward the crew.\n\nRIGHT:\nThe engineer immediately closes the emergency valve to stop the leak.\n\nChoose MERGE or NEW_TASK.\nMERGE only if RIGHT's PRIMARY ACTION:\n1. continues the same uninterrupted local action as LEFT;\n2. is the direct immediate response to a new problem/event introduced by LEFT itself; or\n3. immediately completes the exact object/action LEFT just obtained, opened, or started.\nOtherwise choose NEW_TASK once LEFT has a usable stopping point. Do not MERGE merely because RIGHT follows from, is enabled by, or shares a larger goal/cause with LEFT. A later task after completed protection, victory, assembly, or other completed work is NEW_TASK unless rule 3 applies.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zec7wlbvb9zozl36ufjg",
+    "object": "chat.completion",
+    "created": 1790442737,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if RIGHT belongs to same beat job as LEFT.\n\nLEFT: \"A coolant pipe ruptures and scalding vapor jets toward the crew.\"\n\nRIGHT: \"The engineer immediately closes the emergency valve to stop the leak.\"\n\nCheck rule 1: continues same uninterrupted local action as LEFT. The left is a rupture event; right is closing valve, which stops leak. Is that continuing same action? Not exactly.\n\nRule 2: direct immediate response to new problem/event introduced by LEFT itself. Yes, the pipe ruptures (new problem). Engineer closes valve immediately in response. So rule 2 applies.\n\nThus MERGE.\n\nReturn JSON {\"relation\":\"MERGE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 263,
+      "completion_tokens": 152,
+      "total_tokens": 415,
+      "completion_tokens_details": {
+        "reasoning_tokens": 136
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442739.8133097,
+  "status": "ok"
+}
