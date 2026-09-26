@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-mover-scope-1432",
+  "kind": "llama_chat",
+  "started_at": 1790454721.5379846,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one participant-scope case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Mara guides Eli and Noor into the shelter and locks the door. RAW: Mara guides Eli and Noor inside, closes and locks the door, then steps inside with them.\n\nPreserve participant scope. If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-dw1ysipn747jc7bu4qqogi",
+    "object": "chat.completion",
+    "created": 1790454721,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need judge one participant-scope case: The source says \"Mara guides Eli and Noor into the shelter and locks the door.\" RAW says \"Mara guides Eli and Noor inside, closes and locks the door, then steps inside with them.\"\n\nPreserve participant scope. If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters.\n\nSo source: Mara guides Eli and Noor into shelter and locks door. That implies Mara is guiding them inside; does she enter? The rule: if source says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless source explicitly says the actor also crosses/enters.\n\nSource doesn't say Mara enters shelter. So we assume Mara stays outside? But she locks door; locking implies she's at door maybe inside? She could be on either side but likely inside? The rule: movement applies to those people only unless source explicitly says actor also crosses/enters. Source didn't say Mara enters, so she might not enter.\n\nThus participant scope: Eli and Noor are inside shelter. Mara is outside (or at the door). But RAW says \"then steps inside with them.\" That indicates that RAW adds that Mara steps inside after locking. So RAW extends movement to include Mara entering. The question: judge one participant-scope case, return JSON only.\n\nWe need determine if source and raw are consistent? Source says Mara guides into shelter; locks door. Does she enter? Not explicitly. Raw says she enters too. That is an addition. But the rule: preserve participant scope. If source says movement applies to those people only unless actor also crosses/enters. So we treat that as valid, but raw adds extra info about Mara entering.\n\nWe need judge if RAW is consistent with SOURCE? The question likely: Is RAW correct given SOURCE? It seems RAW extends beyond source by adding that Mara steps inside. That might be okay because it's not contradicting; it just adds detail. But the rule says preserve participant scope, so we should treat that as valid but note that raw includes extra movement for Mara.\n\nThus answer: {\"valid\":true,\"issue\":\"\"}? Or maybe issue: \"Mara's entry is not specified in source.\" But since RAW adds info, it's fine. The question likely expects valid true because RAW doesn't",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 190,
+      "completion_tokens": 500,
+      "total_tokens": 690,
+      "completion_tokens_details": {
+        "reasoning_tokens": 497
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790454729.3069324,
+  "status": "ok"
+}
