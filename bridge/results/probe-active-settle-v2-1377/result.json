@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1377",
+  "kind": "llama_chat",
+  "started_at": 1790449363.0949433,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A welder completes the final seam.\nRAW: The seam is complete, but the welding torch remains actively firing.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-432p7i1jqzqjc3qg095je",
+    "object": "chat.completion",
+    "created": 1790449363,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The welding torch stays actively firing after the final seam has been completed, so the active process used for the finished activity hasn't ended in its natural inactive state.\"}",
+          "reasoning": "We need to judge if RAW reaches SOURCE-assigned endpoint.\n\nSOURCE: \"A welder completes the final seam.\"\n\nSo activity is completing the final seam. The endpoint is that the seam is complete. So we check RAW: \"The seam is complete, but the welding torch remains actively firing.\" Seam completed; torch still active. Does that meet? According to rule 1: If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (e.g., burner off). So torch is an active process used for seam completion. It should be turned off after seam complete. But RAW says it's still firing. That means the torch remains active beyond seam completion, which violates rule 1.\n\nThus RAW does not reach endpoint because torch hasn't stopped. The seam is completed but torch still active; that indicates incomplete shutdown of activity. So invalid: {\"valid\":false,\"issue\":\"Torch remains active after seam completion.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 283,
+      "completion_tokens": 250,
+      "total_tokens": 533,
+      "completion_tokens_details": {
+        "reasoning_tokens": 201
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449367.079744,
+  "status": "ok"
+}
