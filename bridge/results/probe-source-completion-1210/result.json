@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1210",
+  "kind": "llama_chat",
+  "started_at": 1790440766.580571,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE — authoritative work for this segment\nThe pilot activates the reactor.\n\nDERIVED BEAT — staging suggestion; cannot remove source requirements\nThe pilot presses the reactor start button.\n\nRAW SCENE\nThe pilot presses START. The reactor reaches stable output; the screen shows REACTOR ONLINE.\n\nCheck only completion:\n1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\nReturn valid (boolean) and issue (short explanation if invalid, empty string otherwise)."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8az9xi2mknghyruyucaz2v",
+    "object": "chat.completion",
+    "created": 1790440766,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to check RAW SCENE against assigned source: \"The pilot activates the reactor.\" Derived beat: \"The pilot presses the reactor start button.\"\n\nRAW scene: \"The pilot presses START. The reactor reaches stable output; the screen shows REACTOR ONLINE.\"\n\nCheck completion:\n\n1. Require actions, results, participant roles from SOURCE. Source says pilot activates reactor. That implies action: pilot activates (presses?) reactor. Derived beat says press start button. RAW has pilot pressing START. So action matches.\n\nResult: \"The reactor reaches stable output; the screen shows REACTOR ONLINE.\" That's a result of activation. Good.\n\nParticipant roles: pilot is participant, yes.\n\n2. Finite activity needs visible result. The reactor reaching stable output and showing online qualifies as result. People? Not specified but it's fine.\n\n3. Attempts/progress not enough. Here we have completion (stable output). So good.\n\n4. No extra source requirements.\n\nThus valid true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 291,
+      "completion_tokens": 219,
+      "total_tokens": 510,
+      "completion_tokens_details": {
+        "reasoning_tokens": 200
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440769.804039,
+  "status": "ok"
+}
