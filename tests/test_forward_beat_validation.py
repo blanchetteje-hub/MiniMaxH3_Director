@@ -278,7 +278,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("person or group", prompt)
         self.assertIn("beneficiary", prompt)
         normalized = " ".join(prompt.split())
-        self.assertIn("merely watching the work is insufficient", normalized)
+        self.assertIn("merely labeling it for them or leaving it elsewhere is insufficient", normalized)
         self.assertIn("performance, lesson, or demonstration", normalized)
 
     def test_beat_generation_preserves_group_beneficiary_roles(self):
