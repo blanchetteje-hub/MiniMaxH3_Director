@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-mover-scope-1435",
+  "kind": "llama_chat",
+  "started_at": 1790454744.57125,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one participant-scope case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Inez pushes two workers through the gate and locks it. RAW: Inez pushes them through, follows them across, and locks the gate.\n\nPreserve participant scope. If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-u3k57g9u9vfpwfb98u2teb",
+    "object": "chat.completion",
+    "created": 1790454744,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need judge one participant-scope case: \"Inez pushes two workers through the gate and locks it.\" RAW: Inez pushes them through, follows them across, and locks the gate.\n\nPreserve participant scope. If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters.\n\nSo source: \"Inez pushes two workers through the gate and locks it.\" That indicates Inez pushes them through. Does she cross? The phrase \"through\" could mean she pushes them through the gate; but does she go through as well? Usually if you push someone through a gate, you might be on one side pushing them to other side. But not necessarily crossing yourself.\n\nThe rule: movement applies to those people only unless SOURCE explicitly says actor also crosses/enters. The source doesn't say Inez crosses the gate; it just says she pushes two workers through and locks it. So we apply participant scope: Inez does not cross, only pushes them across. She remains on original side.\n\nThus valid? Yes, because no conflict with rule. Return {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 185,
+      "completion_tokens": 267,
+      "total_tokens": 452,
+      "completion_tokens_details": {
+        "reasoning_tokens": 248
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790454748.7706578,
+  "status": "ok"
+}
