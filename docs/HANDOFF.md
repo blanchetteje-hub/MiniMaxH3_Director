@@ -47,6 +47,28 @@ Active development branch:
 - Evidence: `tests/LLM/probes/acceptance_1211_review.json` and
   `tests/LLM/probes/local_relation_1215_1234.json`.
 
+### 2026-09-26 — grouping A/B review and next probe batch
+
+- Completed paired grouping probes 1215-1234 after the documented queue had not
+  actually landed on `gpt-runtime`; the missing batch was reconstructed exactly
+  from the checked-in manifest without embedding expected labels in prompts.
+- Current production wording performed better than the shorter Astra candidate:
+  about **8/10 semantic controls** versus **6/10**. The shorter wording regressed
+  calm baseline -> new danger, protection -> gear, victory -> release, and
+  completed assembly -> calibration. It is rejected.
+- Production still has two generic weaknesses: it can treat completed protection
+  as causing the next gear task, and it can split retrieve -> immediate consume
+  of the exact retrieved item. The first directly explains acceptance 1211's
+  7+1 allocation.
+- No production code change yet. Queued probes 1235-1254 for one tighter single
+  binary wording that says completed protection/victory/assembly is a stopping
+  point and explicitly allows immediate follow-through on the exact obtained/
+  opened/started object, including use/consume.
+- The 20 new controls are generic (domestic fire, fantasy, sci-fi, diving,
+  technical work) and each semantic pair is duplicated to expose instability.
+- Next: grade 1235-1254. Adopt only if it fixes the two demonstrated ambiguities
+  without regressing the stable controls, then rerun planning/full acceptance.
+
 The entries below are historical; this snapshot supersedes old stop/go decisions.
 
 ## Historical snapshot — 2026-09-25
