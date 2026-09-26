@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-priority-1278",
+  "kind": "llama_chat",
+  "started_at": 1790444713.339652,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nA fire alarm suddenly sounds and smoke appears under the back door.\n\nRIGHT:\nThe baker immediately ushers the customers outside and shuts the door behind them.\n\nChoose MERGE or NEW_TASK. Use this order:\n1. STOPPING POINT: If LEFT explicitly completes/finishes a protection, victory, repair, shutdown, assembly, delivery, or other objective, choose NEW_TASK for a later distinct action. Testing, calibrating, inspecting, transporting, fetching new gear, releasing people, or starting another operation after that completion is NEW_TASK.\n2. SAME OBJECT EXCEPTION: MERGE only if RIGHT immediately continues handling the exact object/container LEFT just obtained, opened, unlocked, or started (retrieve -> equip/use/consume; open -> remove). This exception does NOT apply to an object LEFT finished building/assembling/repairing.\n3. NEW PROBLEM RESPONSE: MERGE if LEFT itself introduces a new problem, danger, alarm, or request and RIGHT immediately addresses that trigger.\n4. SAME ACTION: MERGE if RIGHT continues the same uninterrupted local action as LEFT.\nOtherwise choose NEW_TASK. Shared earlier danger, purpose, opportunity, access, or readiness is not enough to MERGE.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-81nrl9n8013eepapis6ent",
+    "object": "chat.completion",
+    "created": 1790444713,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need decide whether two adjacent source responsibilities belong to one local beat job.\n\nLEFT: \"A fire alarm suddenly sounds and smoke appears under the back door.\"\n\nRIGHT: \"The baker immediately ushers the customers outside and shuts the door behind them.\"\n\nSo LEFT describes a new problem response: fire alarm, smoke. RIGHT addresses that trigger by ushering customers out and shutting door. According to rule 3: NEW PROBLEM RESPONSE: MERGE if LEFT itself introduces a new problem, danger, alarm, or request and RIGHT immediately addresses that trigger.\n\nThus relation is MERGE. Return JSON with key \"relation\": \"MERGE\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 342,
+      "completion_tokens": 142,
+      "total_tokens": 484,
+      "completion_tokens_details": {
+        "reasoning_tokens": 126
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790444715.6163225,
+  "status": "ok"
+}
