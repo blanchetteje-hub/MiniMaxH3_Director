@@ -767,3 +767,46 @@ those narrow contracts demonstrate materially better reliability across neutral,
 science-fiction, fantasy, and action-shaped controls.
 
 Reviewed results: `tests/LLM/probes/role_layout_996_1015_results.json`.
+
+## Narrow post-validation coherence gate
+
+The combined forward validator remains the production semantic authority for
+CURRENT JOB coverage, continuity/preconditions, NEXT-job ownership, typed state
+effects, and material fidelity. Do not replace it with the failed role-layout
+variant or split all of its responsibilities into tiny calls.
+
+One demonstrated failure class is now handled by one additional narrow call
+*only after* the main validator returns VALID: within-beat physical/causal
+coherence.
+
+Evidence:
+- decomposition probes showed coverage and LATER ownership can become
+  over-literal or unstable when isolated;
+- barrier and typed-effect isolation looked promising, but they are not adopted
+  as separate production validators;
+- the within-beat coherence contract generalized across neutral action,
+  machinery, fantasy restoration/regeneration, explicit technology/magic, and
+  ordinary-physics controls;
+- across probes 1041–1063, every request that reached the model returned the
+  intended verdict: **19/19 semantic controls correct**; the remaining control
+  repeatedly failed at the local HTTP transport layer rather than producing a
+  semantic verdict.
+
+The coherence gate owns only:
+- repeated irreversible removal/destruction of the same specific target/part
+  without restoration/regeneration/reinstallation; and
+- unsupported whole-object/body material transformation or disappearance when
+  no capability or plausible physical cause is established.
+
+It must not judge source coverage, NEXT-job ownership, or typed state effects.
+A semantic coherence failure regenerates the current beat. A transport/parser
+failure consumes the existing validation retry budget without changing the
+candidate.
+
+Implementation commit: `0f554b0`.
+
+Acceptance requirement: keep the gate only if focused orchestration tests pass
+and a fresh planning-only Amy capture removes job 935's accepted double-removal
+and unsupported-physics failures without introducing a rejection loop. Do not
+advance to H3 rendering before that check.
+
