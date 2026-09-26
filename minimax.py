@@ -865,7 +865,7 @@ AUTHORITY RULES
 - Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
 - If CURRENT BEAT terminally removes/destroys/kills an entity or process, do not carry it forward as active unless CURRENT BEAT restores/restarts it.
 - If a subject is inside/behind a locked or sealed barrier, keep that containment true until CURRENT BEAT explicitly releases or moves them.
-- Do not invent wardrobe changes; clothing specified by CURRENT BEAT must appear.
+- Do not invent wardrobe changes. Any clothing specified in the beat must be part of the response.
 
 LOCAL STAGING
 - Add only the minimum mundane micro-actions, ordinary props, incidental reactions, and short natural dialogue needed to make CURRENT BEAT visibly legible and complete.
@@ -877,7 +877,7 @@ LOCAL STAGING
 - When CURRENT BEAT introduces an unnamed but visually significant individual likely to persist, act, speak, fight, or matter to continuity, assign it a simple functional stable label formed from its role/type plus a number, such as Guard1 or Creature1, and reuse it consistently.
 - Do not assign Subject-style labels to crowds, collective groups, scenery, props, or incidental background figures.
 - Short dialogue may directly support CURRENT BEAT but may not introduce new facts or NEXT BEAT.
-- Registered speakers use their exact speaker ID and H3 dialogue form. Never invent an (S#).
+- Registered speakers use their exact speaker ID and H3 dialogue form, for example: Amy (S1) says <d>[English]The eggs are ready.</d>. Never invent an (S#).
 
 MICRO-BEATS
 - First timestamp MUST be 00:00.000.
