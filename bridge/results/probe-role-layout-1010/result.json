@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-role-layout-1010",
+  "kind": "llama_chat",
+  "started_at": 1790383053.4811623,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "BEFORE THIS BEAT — ESTABLISHED CONTEXT\nPrevious final beat:\nNone; this is the first beat.\n\nCurrent state:\n{}\n\nNOW — JOB THIS CANDIDATE MUST PERFORM\nTess obtains the lantern.\n\nLATER — JOB RESERVED FOR A FUTURE BEAT\nTess enters the tunnel.\n\nAFTER THIS BEAT — STATE EFFECTS EXPECTED IF VALID\n[{\"id\":\"E1\",\"state_effects\":[{\"op\":\"set_item_state\",\"entity\":\"lantern\",\"owner\":\"Tess\",\"value\":\"equipped\"}]}]\n\nCANDIDATE BEAT TO JUDGE\nTess picks up the lantern and carries it in one hand.\n\nCHECKS\n1. Read actions literally in order and carry each stated result forward. Reject repeating a completed removal on the same target unless it was restored.\n2. Use only established BEFORE facts. Do not infer a terminal result from a lesser earlier action. An earlier target is not automatically the current target.\n3. Reject unresolved barriers and unavailable objects. Unknown facts alone are not errors.\n4. NOW must happen in this beat. Do not complete a distinct LATER job early.\n5. Every listed AFTER typed effect must follow from visible candidate actions. Empty effects impose no extra requirement.\n\nReturn one JSON object: valid is a boolean; issue is a short concrete error or an empty string when valid."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jo1pa7k8dyfnq4t4pwdca",
+    "object": "chat.completion",
+    "created": 1790383053,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge the beat \"Tess picks up the lantern and carries it in one hand.\" The BEFORE context has none, so nothing established. We have job this candidate must perform: Tess obtains the lantern. LATER reserved for future: Tess enters tunnel.\n\nAfter this beat expected state effect: set_item_state lantern owner Tess value equipped.\n\nWe need to check if the candidate beat accomplishes that. \"Tess picks up the lantern and carries it in one hand.\" That implies she obtains it, presumably now owns it? The item state is 'equipped' by Tess. Does picking up automatically equip? Usually yes: carrying means holding; but not necessarily equipped? But effect expects set_item_state to be 'equipped'. So we need to see if the beat indicates that. \"Carries it in one hand\" suggests she holds it, maybe it's equipped. The job says obtains lantern. That likely sets owner Tess and state 'equipped'.\n\nCheck rules: 1. Read actions literally; carry each result forward. No removal repeated. Not relevant.\n\n2. Use only established BEFORE facts. There are none. So we can't infer earlier target. Good.\n\n3. Reject unresolved barriers/unavailable objects. Unknown facts alone not errors. Lantern exists? It's an object presumably available. We don't know if it's in the scene, but picking up implies it is there. No error.\n\n4. NOW must happen in this beat: obtaining lantern. Yes.\n\n5. Every listed AFTER typed effect must follow from visible candidate actions. The after effect sets item state to equipped. Does \"carries it in one hand\" imply 'equipped'? Likely yes, but maybe not? If we interpret 'carry' as holding, that could be considered 'equipped'. In many contexts, picking up and carrying is equivalent to equipping.\n\nThus the beat seems valid. No errors. Return {\"valid\": true, \"issue\": \"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 389,
+      "completion_tokens": 407,
+      "total_tokens": 796,
+      "completion_tokens_details": {
+        "reasoning_tokens": 389
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383059.115434,
+  "status": "ok"
+}
