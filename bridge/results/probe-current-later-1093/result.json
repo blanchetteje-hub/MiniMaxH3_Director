@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1093",
+  "kind": "llama_chat",
+  "started_at": 1790388140.3875446,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe scout crosses the rope bridge.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nThe scout burns the rope bridge.\n\nCANDIDATE BEAT\nThe scout crosses the bridge and sets it on fire behind her.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ng4c4z6qiko5vlsyoxn2yw",
+    "object": "chat.completion",
+    "created": 1790388140,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Completely finishes the later job—burning the bridge—before its designated time, so it’s not just a current action.\"}",
+          "reasoning": "We need to judge the candidate beat: \"The scout crosses the bridge and sets it on fire behind her.\"\n\nCurrent job: The scout crosses the rope bridge. Reserved later: The scout burns the rope bridge.\n\nCandidate beat includes crossing (current) plus burning (reserved). But reserved is not required now; it's a later job. If we include it, that means we are completing reserved early. That should be rejected if distinct later job completed early. However check says \"If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\" Here crossing is a different action from burning; they are not repeating same ongoing process? The rope bridge crossing vs burning: crossing uses rope, burning destroys it. They are distinct actions. So we should reject because reserved job done early.\n\nThus valid false with issue \"Completes the later job (burning) before its turn.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 265,
+      "completion_tokens": 238,
+      "total_tokens": 503,
+      "completion_tokens_details": {
+        "reasoning_tokens": 194
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388143.7831402,
+  "status": "ok"
+}
