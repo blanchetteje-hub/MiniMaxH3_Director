@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-final-item-state-1101",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only whether the listed final item state is supported after all candidate actions happen in order. Return exactly one JSON object with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "ASSIGNED FINAL STATE\nset_item_state scanner equipped\n\nCANDIDATE BEAT\nThe engineer picks up the scanner, inspects it, then sets it on the bench.\n\nRULES\n- Judge the FINAL state after all actions in order.\n- A later action can undo an earlier one.\n- picked up then set down is not held.\n- gripped/readied then leaned, placed aside, mounted elsewhere, dropped, or handed away is not held/equipped.\n- equipped requires the item to remain worn/strapped/readied for use at the end.\n- Return {\"valid\":true,\"issue\":\"\"} when supported; otherwise false with a short issue."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 512,
+  "timeout_seconds": 180
+}
