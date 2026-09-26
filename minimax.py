@@ -9876,6 +9876,16 @@ CHECKS
 Use CURRENT JOB as the only source of required work for this beat. The RESERVED
 FOR LATER section is never required now; it exists only to detect early leakage.
 
+FIRST CHECK — FINITE ENDPOINT: When CURRENT JOB assigns a finite activity or
+task to this beat, CANDIDATE BEAT must show that activity reach its natural
+observable completion endpoint in this beat. Merely showing the activity
+underway, continuing, approaching completion, or partly complete is INVALID,
+even when CURRENT JOB itself uses progressive wording such as "is cooking" or
+"is repairing". Do not force a terminal endpoint when CURRENT JOB explicitly
+describes an ongoing/repeated process such as majority, most, repeatedly,
+throughout, continuing, or an equivalent non-terminal assignment; one valid
+non-terminal instance may satisfy that repeated job.
+
 A. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept
 paraphrases and clear implications, but require every materially required action
 or result when the job has multiple parts. PREVIOUS FINAL BEAT is history only:
