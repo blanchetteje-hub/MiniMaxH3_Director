@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-role-v1-1002",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "INPUT ROLES\nBEFORE = facts available before this beat; do not invent additional facts.\nNOW = the job that must happen in this beat.\nLATER = a distinct next job reserved for a later beat.\nAFTER = listed typed effects that must follow from visible actions in this beat.\n\nBEFORE — PREVIOUS FINAL BEAT\nSera closes the archive door and locks it with the brass key.\n\nBEFORE — CURRENT STATE\n{\"environment\":{\"barriers\":{\"archive door\":{\"status\":\"locked\"}}}}\n\nNOW — CURRENT JOB\nSera enters the archive.\n\nLATER — NEXT JOB\nSera reads the ledger.\n\nAFTER — STATE EFFECTS IF VALID\n[]\n\nCANDIDATE — THIS BEAT\nSera unlocks the archive door with the brass key, opens it, and steps inside.\n\nCHECKS\n1. Carry stated actions/results forward. Do not repeat a completed removal on the same target unless it was restored.\n2. Use BEFORE facts only. Reject unavailable objects and unresolved barriers. Unknown facts alone are not errors.\n3. NOW must happen, with its required action/result/participants. A completed-state phrase cannot replace the assigned action.\n4. Do not complete a distinct LATER job early. Identical repeated work may continue.\n5. Every listed AFTER typed effect must follow from visible candidate actions. Do not demand unlisted effects.\n\nReturn one JSON object: {\"valid\": boolean, \"issue\": string}."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 2048,
+  "timeout_seconds": 600
+}
