@@ -1,0 +1,54 @@
+{
+  "job_id": "000-mailbox-test-1066",
+  "kind": "llama_chat",
+  "started_at": 1790385286.5988796,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Return exactly one JSON object and nothing else."
+      },
+      {
+        "role": "user",
+        "content": "Mailbox connectivity test. Return exactly: {\"ok\":true,\"message\":\"000-mailbox-test-1066 received\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 64,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-3vxpgvj78l89mazqkq23z",
+    "object": "chat.completion",
+    "created": 1790385286,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "The user says \"Mailbox connectivity test. Return exactly: {\"ok\":true,\"message\":\"000-mailbox-test-1066 received\"}\". They want that JSON object returned, no other text. So output the exact JSON string.\n\nWe must ensure it's a valid JSON with double quotes around keys and values.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 106,
+      "completion_tokens": 64,
+      "total_tokens": 170,
+      "completion_tokens_details": {
+        "reasoning_tokens": 61
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790385287.8475976,
+  "status": "ok"
+}
