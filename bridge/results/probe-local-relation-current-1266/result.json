@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-current-1266",
+  "kind": "llama_chat",
+  "started_at": 1790444516.6432729,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe mage retrieves a healing potion from her satchel.\n\nRIGHT:\nShe drinks that potion.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself explicitly introduces a problem, danger, alarm, or request, and RIGHT is the immediate response that addresses that trigger. Mere opportunity, access, or readiness is not a trigger.\n3. RIGHT immediately completes handling of the exact object, container, or action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; a tool used on another target does not qualify.\nRule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. If LEFT explicitly finishes/completes an object-level task, a later test, inspection, transport, repair, or other operation is NEW_TASK.\nOtherwise choose NEW_TASK. Judge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-9njy7ccafttcg6t8zbs62c",
+    "object": "chat.completion",
+    "created": 1790444516,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if two adjacent source responsibilities belong to one local beat job: LEFT and RIGHT.\n\nLEFT: \"The mage retrieves a healing potion from her satchel.\"\n\nRIGHT: \"She drinks that potion.\"\n\nCheck rules:\n\n1. RIGHT continues same uninterrupted action as LEFT? The action is retrieving vs drinking; not the same action, but maybe it's part of same sequence? But rule 1 says if RIGHT continues the same uninterrupted action as LEFT. Retrieving and drinking are different actions.\n\n2. LEFT introduces a problem/danger/alarm/request, and RIGHT immediate response that addresses trigger. No problem introduced: just retrieving potion.\n\n3. RIGHT immediately completes handling of exact object left obtained/opened/unlocked/started. The LEFT object is the healing potion; RIGHT drinks it. That qualifies: RIGHT immediately handles the same object (potion) that was retrieved. So rule 3 applies, so MERGE.\n\nThus relation = \"MERGE\". Return JSON with single key relation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 300,
+      "completion_tokens": 213,
+      "total_tokens": 513,
+      "completion_tokens_details": {
+        "reasoning_tokens": 197
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790444519.8831384,
+  "status": "ok"
+}
