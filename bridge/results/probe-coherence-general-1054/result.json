@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-general-1054",
+  "kind": "llama_chat",
+  "started_at": 1790383636.782491,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only physical/causal coherence inside one candidate beat. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY.\nRead actions literally in order and carry stated results forward.\n- Reject repeating an irreversible removal or destruction on the same specific target, part, or object unless restoration/regeneration/reinstallation happens first.\n- A non-terminal injury is not a removal. Different targets or parts are different cases.\n- Reject an ordinary action that makes an entire body/object become a materially different substance or vanish without an established capability or physically plausible cause.\n- Accept explicit magic/technology, restoration, regeneration, and ordinary physical causes that support the result.\nDo not judge story coverage, future ownership, or state-effect records.\n\nESTABLISHED CONTEXT\nMara carries an established disintegration projector that converts struck solid matter into ash.\n\nCANDIDATE\nMara fires the disintegration projector at the steel drone, and the struck drone collapses into ash."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-vejcq95h3o67g969vfjsd",
+    "object": "chat.completion",
+    "created": 1790383636,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to check within-beat physical/causal coherence only. The candidate: \"Mara fires the disintegration projector at the steel drone, and the struck drone collapses into ash.\" We have established context that Mara carries a disintegration projector converting solid matter into ash. So firing it at a steel drone should cause collapse into ash. That seems coherent. No repeated removal of same target? Only one action. The drone is collapsed to ash; that's removal. It's fine. There's no other part removed earlier. So valid.\n\nReturn JSON: {\"valid\": true, \"issue\": \"\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 287,
+      "completion_tokens": 140,
+      "total_tokens": 427,
+      "completion_tokens_details": {
+        "reasoning_tokens": 120
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383638.8853526,
+  "status": "ok"
+}
