@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-current-1259",
+  "kind": "llama_chat",
+  "started_at": 1790444469.1910372,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe ranger gets the villagers into the refuge and bars the door.\n\nRIGHT:\nThe ranger fetches a bow and quiver from a weapons rack.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself explicitly introduces a problem, danger, alarm, or request, and RIGHT is the immediate response that addresses that trigger. Mere opportunity, access, or readiness is not a trigger.\n3. RIGHT immediately completes handling of the exact object, container, or action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; a tool used on another target does not qualify.\nRule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. If LEFT explicitly finishes/completes an object-level task, a later test, inspection, transport, repair, or other operation is NEW_TASK.\nOtherwise choose NEW_TASK. Judge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-qts7h93ujrjbxp5b7zqg6k",
+    "object": "chat.completion",
+    "created": 1790444469,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if two adjacent source responsibilities belong to one local beat job: LEFT and RIGHT.\n\nLEFT: \"The ranger gets the villagers into the refuge and bars the door.\"\n\nRIGHT: \"The ranger fetches a bow and quiver from a weapons rack.\"\n\nCheck rules:\n\n1. RIGHT continues same uninterrupted action as LEFT? No, different actions: left is moving villagers into refuge and bar door; right fetching bow.\n\n2. LEFT introduces problem/danger/alarm/request, and RIGHT immediate response addressing trigger. Left: \"bars the door\" maybe to protect from danger. Right fetches a bow - could be for defense. But does it address that? Bars door protects against intruders; fetching bow is preparing weapon. Is that immediate response? Possibly.\n\nBut rule 2 requires LEFT explicitly introduces problem/danger/alarm/request, and RIGHT is immediate response addressing trigger. Left: \"bars the door\" maybe to protect from danger (intruder). Right fetches a bow - could be for defense against intruders. So yes, it's an immediate response to potential threat? But left didn't mention any specific threat; just bars door.\n\nRule 3: RIGHT immediately completes handling of exact object LEFT obtained/opened/unlocked/started. Left's action is \"bars the door\" (object: door). Right fetches bow from rack - not same object.\n\nThus rule 2 applies maybe. Does left explicitly introduce a problem/danger/alarm/request? Bars the door could be protection, but it's an action to secure. It might be response to danger of villagers leaving or intruders entering. But is that explicit? \"bars the door\" implies protecting from something. So yes.\n\nBut rule 2: LEFT itself introduces a problem, danger, alarm, or request, and RIGHT is immediate response addressing trigger. The left's action bars the door - that's protection against threat; right fetches bow to defend. That seems like an immediate response.\n\nThus MERGE likely.\n\nCheck rule 1: same uninterrupted action? No.\n\nRule 3: not same object.\n\nSo choose MERGE due to rule 2.\n\nReturn JSON with key relation: \"MERGE\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 311,
+      "completion_tokens": 452,
+      "total_tokens": 763,
+      "completion_tokens_details": {
+        "reasoning_tokens": 436
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790444475.9387784,
+  "status": "ok"
+}
