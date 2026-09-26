@@ -1,0 +1,9 @@
+{
+  "kind": "run_tests",
+  "job_id": "coherence-gate-tests-1075",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_beat_retry_hierarchy.py::BeatRetryHierarchyTests::test_failed_beat_is_repaired_before_commit"
+  ],
+  "timeout_seconds": 60
+}
