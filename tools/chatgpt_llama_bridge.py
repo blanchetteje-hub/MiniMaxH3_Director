@@ -501,29 +501,26 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
     timeout = int(job.get("timeout_seconds") or 900)
     timeout = max(1, min(timeout, 1800))
     runner = _select_pytest_runner(source_root)
-    command = [*runner, "-q", *normalized]
+    command = [*runner, "-vv", *normalized]
 
     print(
         f"Running pytest job on {code_branch}: "
         + " ".join(normalized),
         flush=True,
     )
-    completed = subprocess.run(
-        command,
-        cwd=worktree,
-        text=True,
-        capture_output=True,
-        timeout=timeout,
-        check=False,
-    )
+    completed = run_local_process(command, worktree, timeout)
     return {
         "code_branch": code_branch,
         "tests": normalized,
         "runner": runner,
-        "returncode": completed.returncode,
-        "passed": completed.returncode == 0,
-        "stdout": completed.stdout,
-        "stderr": completed.stderr,
+        "returncode": completed["returncode"],
+        "passed": completed["returncode"] == 0 and not completed["timed_out"],
+        "stdout": completed["stdout"],
+        "stderr": completed["stderr"],
+        "timed_out": completed["timed_out"],
+        "timeout_seconds": completed["timeout_seconds"],
+        "started_at": completed["started_at"],
+        "finished_at": completed["finished_at"],
     }
 
 
