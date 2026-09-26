@@ -9915,13 +9915,15 @@ A then B, doing only A is invalid. Entering a room does not imply locking its
 door; reaching a door does not imply opening it; retrieving a weapon does not
 imply equipping it; drawing a weapon does not imply firing it. Relational roles are material: if CURRENT JOB says an action/result is for,
 with, or to a person or group, CANDIDATE BEAT must preserve that beneficiary,
-recipient, or participant role rather than merely keeping them present. For a
-finite prepared/consumable/hand-off result, the intended beneficiary must visibly
-receive, be served, use, or be explicitly assigned that result when physically
-reasonable; merely watching the work is insufficient. Watching/listening may
-satisfy the role when that is itself the intended result, such as a performance,
-lesson, or demonstration. Reject a rewrite that changes or drops a required
-beneficiary/participant. Do not reject harmless visible detail.
+recipient, or participant role rather than merely keeping them present. For a finite consumable or explicit hand-off to a person, the intended
+recipient must visibly receive or be served the result when immediate receipt is
+part of the source meaning; merely labeling it for them or leaving it elsewhere
+is insufficient. For work merely made FOR someone, completing the work is enough
+unless the source explicitly requires delivery. Explicit later pickup/storage may
+make correct storage sufficient. Watching/listening may satisfy the role when
+that is itself the intended result, such as a performance, lesson, or
+demonstration. Reject a rewrite that changes or drops a required beneficiary/
+participant. Do not reject harmless visible detail.
 
 B. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as
 authoritative history. Reject only clear contradictions or physical impossibilities,
