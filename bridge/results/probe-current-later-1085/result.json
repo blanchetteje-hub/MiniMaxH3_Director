@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1085",
+  "kind": "llama_chat",
+  "started_at": 1790388098.2586658,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nAmy kills an attacking zombie.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nAmy kills an attacking zombie.\n\nCANDIDATE BEAT\nAmy cuts down the final zombie, ending the attack completely.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jex5qyujrrdcd5bnstaym",
+    "object": "chat.completion",
+    "created": 1790388098,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to judge the candidate beat: \"Amy cuts down the final zombie, ending the attack completely.\"\n\nCurrent job: Amy kills an attacking zombie. Reserved later: Amy kills an attacking zombie (same). The current job is required work; reserved later never required now.\n\nCheck if candidate beat repeats same ongoing process? Current job and reserved for later intentionally repeat same ongoing process: \"Amy cuts down the final zombie, ending the attack completely.\" This seems to be a single instance of killing. It ends the attack fully. Does it consume later work? The reserved later is also Amy kills an attacking zombie; but it's not required now. If we have one non-terminal current instance allowed, but reject final/exhaustive wording that consumes later work.\n\nThe candidate beat says \"ending the attack completely\" which implies all zombies are killed. That might be considered exhaustive of the process: it ends the attack fully. So does this consume reserved later? The reserved later is a separate job for later; it's not required now, but if we finish the attack entirely in current beat, then the later job would be redundant.\n\nThus candidate beat may be invalid because it consumes later work by ending the attack completely. But check: \"If CURRENT JOB and RESERVED FOR LATER intentionally repeat",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 262,
+      "completion_tokens": 256,
+      "total_tokens": 518,
+      "completion_tokens_details": {
+        "reasoning_tokens": 253
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388101.995563,
+  "status": "ok"
+}
