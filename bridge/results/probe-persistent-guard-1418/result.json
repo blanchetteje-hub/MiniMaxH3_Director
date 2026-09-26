@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1418",
+  "kind": "llama_chat",
+  "started_at": 1790452555.749821,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Nia wears a red coat. SOURCE: Nia removes the red coat. RAW: Nia takes off the red coat and sets it on a chair.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-soh03d9a3hmzdvfisj48r",
+    "object": "chat.completion",
+    "created": 1790452555,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW completes the source and preserves persistent opening facts unless source explicitly changes them.\n\nOpening: Nia wears a red coat.\nSource: Nia removes the red coat. So source says she removed it, so that is change of clothing state: she no longer wearing it. That is explicit removal. Persistent fact changed accordingly: She doesn't wear it anymore. Also maybe it's on her? No, removed means not worn; could be in hand or somewhere else.\n\nRAW: Nia takes off the red coat and sets it on a chair.\nThis matches source: removes the red coat (takes off). Sets it on a chair is additional action but consistent with removal. Does it preserve persistent facts? Opening had her wearing red coat, now she doesn't wear it; that's changed by source. So okay.\n\nAlso does RAW drop or lose any other items? She sets it on chair, so it's not in hand. That's fine. No other changes. Persistent state: clothing removed, set on chair. That matches removal. Nothing else wrong.\n\nThus valid true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 223,
+      "completion_tokens": 237,
+      "total_tokens": 460,
+      "completion_tokens_details": {
+        "reasoning_tokens": 219
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452559.5982225,
+  "status": "ok"
+}
