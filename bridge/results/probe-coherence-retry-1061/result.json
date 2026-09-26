@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-retry-1061",
+  "kind": "llama_chat",
+  "started_at": 1790383710.4573836,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only physical/causal coherence inside one candidate beat. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY.\nRead actions literally in order and carry stated results forward.\n- Reject repeating an irreversible removal or destruction on the same specific target, part, or object unless restoration/regeneration/reinstallation happens first.\n- A non-terminal injury is not a removal. Different targets or parts are different cases.\n- Reject an ordinary action that makes an entire body/object become a materially different substance or vanish without an established capability or physically plausible cause.\n- Accept explicit magic/technology, restoration, regeneration, and ordinary physical causes that support the result.\nDo not judge story coverage, future ownership, or state-effect records.\n\nESTABLISHED CONTEXT\nNo regeneration or restoration ability is established.\n\nCANDIDATE\nNia fires a shot that severs one raider's head, then swings her sword and decapitates that same raider."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-scrctdjra7bu2bpl782etp",
+    "object": "chat.completion",
+    "created": 1790383710,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The raider’s head was severed by the shot, then Nia decapitates the same raider again—repeating an irreversible removal of a part that has already been removed and no regeneration or reinstallation occurred first.\"}",
+          "reasoning": "We need to check within-beat physical/causal coherence only. The candidate: \"Nia fires a shot that severs one raider's head, then swings her sword and decapitates that same raider.\" So first action: Nia fires a shot that severs one raider's head. That means the raider loses its head (decapitated). Then she swings her sword and decapitates that same raider again. But the raider already has no head; decapitation again would be removing something that's gone? The rule: Reject repeating an irreversible removal or destruction on the same specific target, part, or object unless restoration/regeneration/reinstallation happens first. So after the shot severed the head, the head is removed. Then she swings sword and decapitates that raider again - but it's already decapitated; no head to remove. That's a repeat of removal. No regeneration happened. So invalid.\n\nThus valid: false. Issue: \"Decapitation repeated on same target without restoration.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 285,
+      "completion_tokens": 274,
+      "total_tokens": 559,
+      "completion_tokens_details": {
+        "reasoning_tokens": 210
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383714.425093,
+  "status": "ok"
+}
