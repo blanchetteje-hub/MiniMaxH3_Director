@@ -957,7 +957,8 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertGreater(estimated, 0)
         self.assertEqual(recent_count, 0)
         user_content = messages[1]["content"]
-        self.assertIn(json.dumps(phase, ensure_ascii=False, indent=2), user_content)
+        self.assertNotIn("PHASE:", user_content)
+        self.assertNotIn("STORY:", user_content)
         self.assertIn(
             "CURRENT BEAT — EXECUTE ONLY THIS:\n2. Door opens",
             user_content,
