@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1197",
+  "kind": "llama_chat",
+  "started_at": 1790440662.6635559,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe healer performs healing magic as Ilya and Rook watch.\n\nRAW SCENE\nThe healer touches her staff to Ilya and then Rook; both wounds close. She puts the staff down.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin\n  or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly\n  receive/participate when physically possible.\n- Judge the final frame: the required result must already be true, not merely\n  attempted, approaching, starting up, partly complete, or still in progress.\n- Do not judge style, pacing, camera, continuity, future events, or harmless\n  extra detail.\nReturn valid=true only when CURRENT BEAT is complete in RAW SCENE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8kru5fa2d3o1v7nf5f2sb",
+    "object": "chat.completion",
+    "created": 1790440662,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Ilya and Rook are not shown visibly watching the healer’s magic in the RAW SCENE.\"}",
+          "reasoning": "We need to check if the raw scene completes current beat: \"The healer performs healing magic as Ilya and Rook watch.\" The raw scene says: \"The healer touches her staff to Ilya and then Rook; both wounds close. She puts the staff down.\"\n\nSo does it complete? Current beat: Healer performs healing magic while Ilya and Rook watch. Raw scene shows she touches staff to Ilya, then Rook; both wounds close. That is a result of healing magic. It also says \"She puts the staff down.\" The current beat didn't mention putting staff down but that's extra detail.\n\nWe need to check if every explicit action/result in CURRENT BEAT must visibly happen: Healer performs healing magic as Ilya and Rook watch. So we need healer performing healing magic, Ilya watching, Rook watching. In raw scene, the healer touches her staff to Ilya then Rook; both wounds close. That shows healing magic performed. It also says \"She puts the staff down.\" But does it show that Ilya and Rook are watching? The beat didn't specify them watching explicitly in raw scene but it's implied they watch while she heals. Does the raw scene mention them watching? No, just touches staff to Ilya then Rook; both wounds close. It doesn't say \"Ilya watches\" or \"Rook watches\". But maybe it's assumed that as she performs healing magic, they are watching. The beat says \"as Ilya and Rook watch.\" So the raw scene must show them watching? The rule: If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible. Here beneficiaries: Ilya and Rook. They both receive healing (wounds close). That happens. But do they \"watch\"? It says as Ilya and Rook watch. So the raw scene should show them watching? The rule doesn't explicitly say that watchers need to be shown, but it's part of beat description. We must judge if RAW SCENE visibly completes CURRENT BEAT: Healer performs healing magic while Ilya and Rook watch.\n\nThe raw scene shows healer performing healing (touch staff). It also shows wounds close for both. But does it show them watching? Not explicitly. However the beat says \"as Ilya and Rook watch.\" The watchers are named, so they must be visible participants when physically possible. They could be watching while she heals; but raw scene doesn't mention that. So maybe it's incomplete: It didn't show them watching.\n\nBut rule: Every explicit action/result in CURRENT BEAT must visibly happen. \"Healer performs healing magic\" is an action. That happens. \"Ilya and Rook watch\" is a result? It's not explicitly stated as a result, but part of beat description. The watchers are named beneficiaries; they must receive/participate when physically possible. They do receive (wounds close). But watching is participation. Did raw scene show them watching? No.\n\nThus maybe it's incomplete: It didn't show Ilya and Rook watching. So valid=false with issue \"Ilya and Rook not shown watching\".\n\nAlternatively, the beat might be considered complete because healing magic performed and wounds closed; watchers implied. The rule says judge final frame: required result must already be true. Wounds close is true. Healer performing healing magic? She touches staff to Ilya then Rook; that shows she performs healing magic. So it's done.\n\nBut the beat also includes \"as Ilya and Rook watch.\" That implies watchers are present, but not necessarily shown. But if they were watching, they'd be physically possible participants. The raw scene didn't show them watching. So maybe incomplete.\n\nLet's interpret: The current beat is a single line describing an action with watchers. Raw scene shows the healer touches staff to Ilya and Rook; both wounds close. She puts staff down. That covers healing magic performed on both, resulting in wound closure. It doesn't mention watchers but implies they watch while she heals. But does that satisfy \"as Ilya and Rook watch\"? The beat says as they watch, the healer performs healing magic. So watchers are part of context; raw scene didn't show them watching but it's implied.\n\nThe rule: If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible. Beneficiaries: Ilya and Rook. They both receive (wounds close). They also participate by being watched? But they are beneficiaries of healing; watchers might be participants but not necessarily beneficiaries.\n\nThus the raw scene shows them receiving healing. So it's complete. The watchers part is implied, but maybe okay.\n\nBut rule says \"Every explicit action/result in CURRENT BEAT must visibly happen.\" Explicit actions/results: Healer performs healing magic (visible). Ilya and Rook watch (watching visible?). Not explicitly shown. But maybe the beat didn't require them to be seen; it's just context. The watchers are named, so they should be physically present? They could be watching but not necessarily shown.\n\nGiven typical screenwriting, if you say \"as X watches\", you'd show them watching. So raw scene missing that might be incomplete.\n\nThus I'd set valid=false with issue: Ilya and Rook not visibly watching.\n\nLet's produce JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 279,
+      "completion_tokens": 1111,
+      "total_tokens": 1390,
+      "completion_tokens_details": {
+        "reasoning_tokens": 1073
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440677.5553155,
+  "status": "ok"
+}
