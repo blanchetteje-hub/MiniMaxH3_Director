@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1208",
+  "kind": "llama_chat",
+  "started_at": 1790440753.0918171,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE — authoritative work for this segment\nThe pilot activates the reactor.\n\nDERIVED BEAT — staging suggestion; cannot remove source requirements\nThe pilot presses the reactor start button.\n\nRAW SCENE\nThe pilot presses START. The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.\n\nCheck only completion:\n1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\nReturn valid (boolean) and issue (short explanation if invalid, empty string otherwise)."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-03gzv1iiwmwtupc9lgjagz",
+    "object": "chat.completion",
+    "created": 1790440753,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The screen shows \\\"REACTOR OFFLINE\\\" after the pilot presses START, indicating the reactor has not yet been activated as required by the source.\"}",
+          "reasoning": "We need to check RAW SCENE against assigned source: \"The pilot activates the reactor.\" Derived beat: \"The pilot presses the reactor start button.\"\n\nRAW scene: \"The pilot presses START. The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.\"\n\nCheck completion:\n\n1. Require actions, results, participant roles from SOURCE. Source action: activate reactor. That implies starting it? Activation likely means turning on. Derived beat: pressing the reactor start button.\n\nRAW scene has pilot pressing START (button). So action matches derived beat and source. Result: screen says \"STARTUP IN PROGRESS, REACTOR OFFLINE.\" Does that indicate activation? The result shows startup in progress but reactor offline. That seems like not yet activated; it's starting up but still offline. Source requires the reactor to be activated. Is it considered activated? Might need to show reactor online or active. The screen says \"REACTOR OFFLINE\" indicates not activated. So maybe incomplete.\n\nBut check rule: A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source assigned spectators remain spectators. Not relevant.\n\nAttempts and progress do not prove completion. Honor explicitly ongoing or interrupted source activity; do not force it to finish. So if reactor startup is still in progress, it's ongoing. The source says \"activates the reactor.\" That could be considered an action that starts the process of activation. But does it require the result? It might need to show reactor online.\n\nThus RAW scene shows pilot pressing start and screen indicates startup in progress but offline. So maybe incomplete because not yet activated. However, is \"STARTUP IN PROGRESS\" enough for activation? The source says activates the reactor; that could be interpreted as starting the process of activation. But if it's still offline, then hasn't fully activated.\n\nThus likely invalid: missing result that reactor is online or active. Issue: Reactor remains offline after pressing start.\n\nReturn JSON with valid false and issue explanation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 292,
+      "completion_tokens": 458,
+      "total_tokens": 750,
+      "completion_tokens_details": {
+        "reasoning_tokens": 410
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440759.4513247,
+  "status": "ok"
+}
