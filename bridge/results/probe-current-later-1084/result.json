@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1084",
+  "kind": "llama_chat",
+  "started_at": 1790388093.4383743,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nAmy kills an attacking zombie.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nAmy kills an attacking zombie.\n\nCANDIDATE BEAT\nAmy shoots one charging zombie through the head.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-4tbtvbj0p4x8kez410esnq",
+    "object": "chat.completion",
+    "created": 1790388093,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge the candidate beat: \"Amy shoots one charging zombie through the head.\" Current job: Amy kills an attacking zombie. Reserved later: Amy kills an attacking zombie (same). The current job is required work; reserved later never required now.\n\nCheck if candidate beat matches current job? It says she shoots a charging zombie through the head, which results in killing it. That seems to be same ongoing process: kill an attacking zombie. It's not final/exhaustive wording that consumes later work. So it's acceptable. The reserved for later is identical; but we don't need to do it now.\n\nThus valid true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 259,
+      "completion_tokens": 147,
+      "total_tokens": 406,
+      "completion_tokens_details": {
+        "reasoning_tokens": 129
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388095.7925646,
+  "status": "ok"
+}
