@@ -635,6 +635,16 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("Cuts are rare", normalized)
         self.assertIn("use a pronoun only when exactly one person", normalized)
 
+    def test_completion_prompt_disallows_implicit_mover_barrier_crossing(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "Mara guides Eli and Noor into the shelter and locks the door.",
+            "Mara guides Eli and Noor into the shelter, locks the door, then steps inside with them.",
+            assigned_source="Mara guides Eli and Noor into the shelter and locks the door.",
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("movement applies to those people only", prompt)
+        self.assertIn("invalid if it also moves the actor across/inside", prompt)
+
     def test_completion_prompt_requires_named_beneficiaries_and_final_result(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "The cook serves breakfast to Mira and Jon.",
