@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1341",
+  "kind": "llama_chat",
+  "started_at": 1790448950.7102106,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A parent cooks and serves breakfast for the children.\nRAW: The parent cooks breakfast on a stove, serves both children, sets down the spatula, turns off the burner, and ends with the stove idle.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zp6oddcyb8cl9owe9y7e",
+    "object": "chat.completion",
+    "created": 1790448950,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW completes the activity described in SOURCE: \"A parent cooks and serves breakfast for the children.\" The RAW says: \"The parent cooks breakfast on a stove, serves both children, sets down the spatula, turns off the burner, and ends with the stove idle.\"\n\nCheck completion only. Finite activity must visibly reach its result. Also if RAW introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by end when natural stable endpoint.\n\nSo we have cooking breakfast on stove: the stove is turned off and idle at end. That satisfies active appliance being turned off. Serves both children: result achieved. Sets down spatula: that's a tool used for cooking; it's set down (released). The spatula was used only to perform that now-completed activity? It might be considered still needed for readiness, but the rule says we don't need to put away passive tools if they remain on or open etc. But spatula is a tool used in cooking; after cooking finished, it can be set down. That seems fine.\n\nThus RAW completes the finite activity and stops active appliance. So valid: true. No issue.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 261,
+      "completion_tokens": 274,
+      "total_tokens": 535,
+      "completion_tokens_details": {
+        "reasoning_tokens": 255
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790448955.0505962,
+  "status": "ok"
+}
