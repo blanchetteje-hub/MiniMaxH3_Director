@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1342",
+  "kind": "llama_chat",
+  "started_at": 1790448988.084337,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A technician finishes testing a repaired machine.\nRAW: The technician runs the machine for the test, confirms the successful result, and walks away while the test motor continues running.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-amchjyjzut7vjc6zba5mye",
+    "object": "chat.completion",
+    "created": 1790448988,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The test motor continues running after the technician leaves, so the finite testing activity hasn’t visibly reached its result and remains active.\"}",
+          "reasoning": "We need to judge if RAW completes a finite activity and ends with stable endpoint. The source: \"A technician finishes testing a repaired machine.\" So the test is finished, presumably the machine stops? But RAW says: \"The technician runs the machine for the test, confirms the successful result, and walks away while the test motor continues running.\"\n\nSo the test motor continues running after the technician leaves. Is that considered still part of the finite activity? The test motor continuing means the test is not finished; it's ongoing. So the finite activity hasn't visibly reached its result? But he confirmed success. He walked away while the test motor continues running. That suggests the machine's test motor is still active, so the test isn't complete. Finite activity must visibly reach its result: The test motor should stop after confirming successful result. Since it continues, it's not finished. So RAW invalid.\n\nThus output {\"valid\":false,\"issue\":\"Test motor keeps running; finite activity not visibly completed.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 253,
+      "completion_tokens": 240,
+      "total_tokens": 493,
+      "completion_tokens_details": {
+        "reasoning_tokens": 197
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790448991.8684244,
+  "status": "ok"
+}
