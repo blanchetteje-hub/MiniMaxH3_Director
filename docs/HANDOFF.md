@@ -1192,3 +1192,15 @@ transformation. Only then move on toward H3 prompt generation.
 - Decision: integrate one narrow independent Request-1 completion check because it directly catches the demonstrated gold failure, but do not treat it as a universal semantic oracle.
 - Commit `e40cd31d44526d8bcbc20218da63d0e2b4c5befe` adds a strict `{valid, issue}` completion check after Request 1's own structural/self-completion checks pass. It receives only CURRENT BEAT + RAW SCENE, checks explicit actions/results, finite endpoint, named beneficiaries, and final-frame completion, and feeds an INVALID issue back into the existing Request-1 retry loop. It does not judge style, continuity, future beats, or H3 formatting.
 - Queued `director-completion-tests-1187` and full prompt acceptance `gold-prompt-acceptance-1188`.
+
+
+### 2026-09-25 — Director completion gate integration routing fix
+
+- Acceptance `gold-prompt-acceptance-1188` did not exercise the new semantic gate because of an integration bug: the raw beat-validator settings dictionary was unpacked into `ask_llm`, including unsupported internal keys such as `context`.
+- Focused tests `director-completion-tests-1187` also exposed compatibility mocks that did not account for the new independent completion call plus one exact locked dialogue phrase removed during prior compaction.
+- Commit `59d7db7a230567ed4e0b91d84e16f3c0a7a9ae6` fixes routing:
+  - the completion gate now sets `history_metadata.use_beat_validation_settings=true`, allowing `ask_llm` to apply the frozen validation profile through its supported path;
+  - legacy/mock bundles with no `current_beat_text` skip the independent semantic gate;
+  - affected mocks now include the extra completion-verifier response;
+  - the exact canonical dialogue warning phrase is restored.
+- Queued `director-completion-tests-1189` and `gold-prompt-acceptance-1190`.
