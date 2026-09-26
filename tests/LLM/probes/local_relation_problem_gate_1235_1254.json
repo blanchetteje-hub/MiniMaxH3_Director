@@ -1,0 +1,145 @@
+{
+  "basis": "Follow-up to acceptance 1211 and probes 1215-1234. Test one shorter causal gate: immediate-response MERGE is allowed only when LEFT itself introduces the problem/request, not when LEFT is already the completed solution. Mechanical/object completion remains a separate rule.",
+  "cases": [
+    {
+      "job_id": "probe-local-relation-1235",
+      "case": "baseline_to_danger",
+      "left": "A parent finishes setting breakfast on the table.",
+      "right": "A stranger suddenly smashes the front window and climbs inside.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1236",
+      "case": "danger_to_protection",
+      "left": "A stranger suddenly smashes the front window and climbs inside.",
+      "right": "The parent immediately ushers the children into a locked safe room.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1237",
+      "case": "protection_to_gear",
+      "left": "The parent gets the children inside the safe room and locks its door.",
+      "right": "The parent retrieves a pistol and a sword from a hidden cabinet.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1238",
+      "case": "retrieve_to_equip",
+      "left": "The parent retrieves a pistol and a sword from a hidden cabinet.",
+      "right": "The parent holsters the pistol and straps on the sword.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1239",
+      "case": "victory_to_release",
+      "left": "The defender defeats the final attacker and the immediate threat is over.",
+      "right": "The defender unlocks the safe room and releases the people inside.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1240",
+      "case": "fantasy_shelter_to_gear",
+      "left": "The ranger gets the villagers into the stone refuge and bars the door.",
+      "right": "The ranger fetches a bow and quiver from the armory.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1241",
+      "case": "fantasy_attack_to_shield",
+      "left": "The dragon exhales a sheet of fire toward the party.",
+      "right": "The mage immediately raises a ward to block the flames.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1242",
+      "case": "fantasy_victory_to_heal",
+      "left": "The knight slays the demon and ends the attack.",
+      "right": "The knight kneels beside an injured ally and applies a healing salve.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1243",
+      "case": "scifi_rupture_to_valve",
+      "left": "A coolant pipe ruptures and scalding vapor sprays across the bay.",
+      "right": "The engineer immediately closes the emergency valve to stop the leak.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1244",
+      "case": "scifi_shutdown_to_repairkit",
+      "left": "The engineer completes the emergency reactor shutdown and the warning lights go dark.",
+      "right": "The engineer fetches a repair kit from the locker.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1245",
+      "case": "retrieve_potion_to_drink",
+      "left": "The mage retrieves a healing potion from her satchel.",
+      "right": "She immediately drinks that potion.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1246",
+      "case": "retrieve_wrench_to_bolt",
+      "left": "The mechanic retrieves a wrench from the toolbox.",
+      "right": "The mechanic uses the wrench to tighten a loose pump bolt.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1247",
+      "case": "open_case_to_remove_meter",
+      "left": "The technician opens the instrument case.",
+      "right": "The technician immediately removes the meter from that case.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1248",
+      "case": "assembly_to_test",
+      "left": "The technician finishes assembling the sensor rig.",
+      "right": "The technician runs a calibration test on the completed rig.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1249",
+      "case": "alarm_to_call_help",
+      "left": "A fire alarm starts blaring in the laboratory.",
+      "right": "The researcher immediately calls emergency services.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1250",
+      "case": "finish_pack_to_move",
+      "left": "The courier finishes sealing the package.",
+      "right": "The courier carries the package to the loading dock.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1251",
+      "case": "same_action_continuation",
+      "left": "The painter rolls blue paint across the left half of the wall.",
+      "right": "Without stopping, the painter continues rolling the same blue paint across the right half.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1252",
+      "case": "unlock_to_open",
+      "left": "The guard unlocks the cell door with the key.",
+      "right": "The guard immediately opens that same cell door.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1253",
+      "case": "open_to_inspect",
+      "left": "The investigator opens the sealed storage room door.",
+      "right": "The investigator enters and begins inspecting the room for evidence.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1254",
+      "case": "resolved_leak_to_filter",
+      "left": "The technician closes the valve and fully stops the leaking coolant.",
+      "right": "The technician replaces a clogged filter in the same system.",
+      "expected": "NEW_TASK"
+    }
+  ]
+}
