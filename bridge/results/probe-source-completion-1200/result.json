@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1200",
+  "kind": "llama_chat",
+  "started_at": 1790440699.6086795,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE — authoritative work for this segment\nThe engineer fits oxygen masks on Nia and Sol.\n\nDERIVED BEAT — staging suggestion; cannot remove source requirements\nThe engineer fits an oxygen mask while Nia and Sol stand nearby.\n\nRAW SCENE\nThe engineer fastens a mask on Nia and checks its seal. Sol watches without a mask.\n\nCheck only completion:\n1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\nReturn valid (boolean) and issue (short explanation if invalid, empty string otherwise)."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-om4b3pca8olqplxrhtlznm",
+    "object": "chat.completion",
+    "created": 1790440699,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Sol does not receive an oxygen mask, so the engineer’s action on Sol is missing from the scene.\"}",
+          "reasoning": "We need to check RAW SCENE against assigned source: \"The engineer fits oxygen masks on Nia and Sol.\" Derived beat: \"The engineer fits an oxygen mask while Nia and Sol stand nearby.\"\n\nRAW SCENE: \"The engineer fastens a mask on Nia and checks its seal. Sol watches without a mask.\"\n\nWe need to see if RAW SCENE completes the assigned source work.\n\nSource requires actions, results, participant roles: The engineer fits oxygen masks on Nia and Sol. So engineer must fit masks on both Nia and Sol. In raw scene, engineer fastens a mask on Nia but not mention Sol getting a mask. Sol watches without a mask. That means the action of fitting mask to Sol is missing. Thus source requirement incomplete.\n\nAlso result: The mask fitted should be sealed? For Nia yes check seal. But for Sol no mask at all. So incomplete.\n\nThus invalid. Issue explanation: \"Sol does not receive an oxygen mask as required.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 303,
+      "completion_tokens": 239,
+      "total_tokens": 542,
+      "completion_tokens_details": {
+        "reasoning_tokens": 200
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440703.0827782,
+  "status": "ok"
+}
