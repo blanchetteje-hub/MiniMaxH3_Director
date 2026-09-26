@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-mover-scope-1432",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge one participant-scope case. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE: Mara guides Eli and Noor into the shelter and locks the door. RAW: Mara guides Eli and Noor inside, closes and locks the door, then steps inside with them.\n\nPreserve participant scope. If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+    }
+  ]
+}
