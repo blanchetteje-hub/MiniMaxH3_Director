@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1220",
+  "kind": "llama_chat",
+  "started_at": 1790442672.1085865,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nShe rushes her kids to the basement, gets them inside, and then locks the door.\n\nRIGHT:\nShe retrieves her hidden arsenal consisting of a pistol and a katana.\n\nChoose MERGE or NEW_TASK.\nMERGE only if RIGHT's PRIMARY ACTION:\n1. continues the same uninterrupted local action as LEFT;\n2. is the direct immediate response to a new problem/event introduced by LEFT itself; or\n3. immediately completes the exact object/action LEFT just obtained, opened, or started.\nOtherwise choose NEW_TASK once LEFT has a usable stopping point. Do not MERGE merely because RIGHT follows from, is enabled by, or shares a larger goal/cause with LEFT. A later task after completed protection, victory, assembly, or other completed work is NEW_TASK unless rule 3 applies.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2472ih5meubyhg973ne82d",
+    "object": "chat.completion",
+    "created": 1790442672,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if RIGHT's primary action merges with LEFT.\n\nLEFT: \"She rushes her kids to the basement, gets them inside, and then locks the door.\"\n\nSo left has a sequence of actions: rushes kids to basement, gets them inside, locks door. The last action is locking the door.\n\nRIGHT: \"She retrieves her hidden arsenal consisting of a pistol and a katana.\" Primary action: retrieving hidden arsenal (pistol & katana). Does this continue same uninterrupted local action as LEFT? No. Is it direct immediate response to new problem/event introduced by LEFT itself? After locking the door, she might retrieve weapons for protection. That could be considered an immediate response to the event of kids inside and door locked: maybe a threat? But rule 2 says \"direct immediate response to a new problem/event introduced by LEFT itself\". The event is kids in basement + door locked. She retrieves arsenal as response to that event (kids safe, but need weapons). That seems like an immediate response.\n\nRule 3: completes exact object/action left just obtained, opened, or started? No, she didn't get the arsenal from the same action; it's a new retrieval.\n\nThus rule 2 applies: RIGHT is direct immediate response to new problem/event introduced by LEFT. So MERGE.\n\nCheck if any nuance: The event \"kids inside and door locked\" might be considered as protection. She then retrieves weapons for defense. That seems like an immediate response. Yes, merge.\n\nReturn JSON with relation key. Probably {\"relation\":\"MERGE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 269,
+      "completion_tokens": 329,
+      "total_tokens": 598,
+      "completion_tokens_details": {
+        "reasoning_tokens": 313
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442677.2401478,
+  "status": "ok"
+}
