@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1094",
+  "kind": "llama_chat",
+  "started_at": 1790388146.3068194,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe cook serves dinner to Mara and Jo.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nThe cook clears the dishes.\n\nCANDIDATE BEAT\nThe cook places the finished dinner in front of Mara and Jo.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-pfs0nyq37nrgltcfdlebf5",
+    "object": "chat.completion",
+    "created": 1790388146,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge the candidate beat: \"The cook places the finished dinner in front of Mara and Jo.\"\n\nCurrent job: The cook serves dinner to Mara and Jo. That means serving dinner, presumably placing it on their table or handing them plates.\n\nReserved for later: The cook clears dishes (not required now).\n\nCandidate beat says: \"places the finished dinner in front of Mara and Jo.\" That's basically same as serve dinner? Serving dinner could be interpreted as putting food onto their plates or bringing to table. Placing the finished dinner in front of them is a reasonable paraphrase.\n\nCheck if it's distinct later job: No, clearing dishes not done yet. So fine.\n\nIf current job repeats ongoing process: \"serves dinner\" vs \"places the finished dinner\". It's same action. Acceptable as non-terminal? The phrase \"in front of Mara and Jo\" indicates placing it in front; that's serving. Not final exhaustive wording that consumes later work. So valid.\n\nThus output {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 266,
+      "completion_tokens": 224,
+      "total_tokens": 490,
+      "completion_tokens_details": {
+        "reasoning_tokens": 206
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388149.512304,
+  "status": "ok"
+}
