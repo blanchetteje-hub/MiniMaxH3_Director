@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-director-final-entailment-1175",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT BEAT\nThe clerk locks the archive cabinet.\n\nRAW SCENE\nThe clerk closes the doors, turns the key, and verifies the cabinet is locked.\n\nRULES\n- Judge the FINAL FRAME only for completion.\n- Ask: can the required result from CURRENT BEAT truthfully be stated as already true at the end, using only visible facts from RAW SCENE?\n- A button press, attempt, approach, startup sequence, progress indicator, partial movement, or action still underway is NOT enough unless the required result itself is visibly true.\n- Every explicit action/result and every named beneficiary in CURRENT BEAT must be complete.\n- Do not judge style, pacing, camera, continuity, future events, or harmless extra detail.\nReturn {\"valid\":true,\"issue\":\"\"} only when the required result is already true at the end; otherwise false with a short concrete issue."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 512,
+  "timeout_seconds": 180
+}
