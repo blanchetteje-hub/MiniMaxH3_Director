@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-1285",
+  "kind": "llama_chat",
+  "started_at": 1790446032.6160781,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe artisan makes a carved box for Mira.\n\nCANDIDATE BEAT\nThe artisan finishes the carved box and hands it to Jon while Mira watches.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result when the job has multiple parts. Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result. Reject a solo rewrite that drops named beneficiaries or participants. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zyp17uicdjuo84fyav4d8",
+    "object": "chat.completion",
+    "created": 1790446032,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\":\"The box is given to Jon instead of Mira, so the artisan does not make it for Mira as required.\"}",
+          "reasoning": "We need to validate candidate beat against current job. Current Job: \"The artisan makes a carved box for Mira.\" So the artisan must make a carved box and it's for Mira.\n\nCandidate Beat: \"The artisan finishes the carved box and hands it to Jon while Mira watches.\"\n\nDoes this accomplish meaning? The artisan made a carved box, but is it for Mira? He finished the carved box (makes sense). But he hands it to Jon. That means the box goes to Jon, not Mira. So it's not for Mira. Also mention of Mira watching: she sees him finish and hand over.\n\nThus candidate beat fails because the box is given to Jon instead of Mira. The current job says \"for Mira\". So must preserve that beneficiary. So invalid.\n\nReturn JSON with valid false and issue explanation short concrete: e.g., \"Box handed to wrong person; not for Mira.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 252,
+      "completion_tokens": 218,
+      "total_tokens": 470,
+      "completion_tokens_details": {
+        "reasoning_tokens": 177
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446036.210452,
+  "status": "ok"
+}
