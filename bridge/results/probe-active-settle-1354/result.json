@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1354",
+  "kind": "llama_chat",
+  "started_at": 1790449070.1859412,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A worker opens a gate for arriving trucks.\nRAW: The worker opens the gate fully and leaves it open for the trucks.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-f7e577a1y0af27dkeso07",
+    "object": "chat.completion",
+    "created": 1790449070,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW completes a finite activity and ends with stable endpoint.\n\nSOURCE: \"A worker opens a gate for arriving trucks.\" So action: open gate. Finite activity: opening gate. The result is the gate being opened (fully). After that, maybe it's left open? But the source says \"opens a gate\" not necessarily leaves it open or closes after trucks pass. RAW: \"The worker opens the gate fully and leaves it open for the trucks.\" So RAW describes finishing the activity of opening gate fully, then leaving it open. The finite activity is opening gate; result achieved. After that, no further action needed to complete that activity. It says he leaves it open for trucks. That means the gate remains open after completion. That's fine: stable endpoint? Gate being open is a stable state. No tool used only for that activity needs to be stopped. The worker didn't use any active tool like a latch or something; just opened gate fully. So no need to stop anything.\n\nThus RAW completes finite activity and ends with stable endpoint (gate open). It's valid. Return {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 244,
+      "completion_tokens": 249,
+      "total_tokens": 493,
+      "completion_tokens_details": {
+        "reasoning_tokens": 230
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449074.143803,
+  "status": "ok"
+}
