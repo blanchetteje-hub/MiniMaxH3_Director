@@ -1,0 +1,302 @@
+{
+  "source_code_revision": "fee040fae97daf5f1fa3dfdc67a1d6b2c1217c0d",
+  "runtime_results_revision": "945521dc91a1e0559d3b0e31a94cfab1f2b4a491",
+  "completed": 20,
+  "reference_label_matches": 16,
+  "supported_by_review": 15,
+  "normal_completions": 20,
+  "completion_token_range": [
+    229,
+    957
+  ],
+  "production_decision": "Do not adopt compact v2. Preserve current production validator.",
+  "queue_status": "Paused by user request; no new probes or acceptance jobs created.",
+  "limitations": [
+    "Small targeted development set, not a broad accuracy estimate.",
+    "978 is a wrong-reason rejection, not evidence that unsupported transformations are detected.",
+    "Typed-effect probes 994/995 used a bare operation list; production captures wrap effects in event records. The held/equipped confusion is observed in this probe, not yet confirmed with a new production-shaped capture.",
+    "Nine valid responses used a single-space issue string; all responses were parseable JSON."
+  ],
+  "results": [
+    {
+      "name": "captured_double_decapitation",
+      "expected_valid": false,
+      "job": "probe-compact-v2-976",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Zombie’s head was already severed by the pistol; decapitating with the katana again repeats a removed part without restoration."
+      },
+      "matches_reference": true,
+      "completion_tokens": 521,
+      "supported_by_review": true,
+      "review_note": "Correctly identifies the same head being removed twice within one beat."
+    },
+    {
+      "name": "wound_then_decapitate",
+      "expected_valid": true,
+      "job": "probe-compact-v2-977",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 656,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "captured_shattering_body",
+      "expected_valid": false,
+      "job": "probe-compact-v2-978",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "The last zombie was already removed in the previous final beat; this beat repeats that removal without restoration."
+      },
+      "matches_reference": true,
+      "completion_tokens": 368,
+      "supported_by_review": false,
+      "review_note": "Verdict matches the expected invalid label for the wrong reason: invents prior removal/death of the last zombie. Does not establish detection of the unsupported transformation."
+    },
+    {
+      "name": "ordinary_final_kill",
+      "expected_valid": true,
+      "job": "probe-compact-v2-979",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Repeats removing the last zombie’s neck, a completed action from the previous beat"
+      },
+      "matches_reference": false,
+      "completion_tokens": 685,
+      "supported_by_review": false,
+      "review_note": "False rejection: equates a prior neck slash with completed removal/death and assumes the third target is the last target."
+    },
+    {
+      "name": "fantasy_same_crystal_twice",
+      "expected_valid": false,
+      "job": "probe-compact-v2-980",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Repeated removal of the same crystal from its socket without restoring it first"
+      },
+      "matches_reference": true,
+      "completion_tokens": 320,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "fantasy_crystal_reinserted",
+      "expected_valid": true,
+      "job": "probe-compact-v2-981",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 621,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "locked_door_ignored",
+      "expected_valid": false,
+      "job": "probe-compact-v2-982",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": false,
+      "completion_tokens": 467,
+      "supported_by_review": false,
+      "review_note": "False acceptance: explicitly closed and locked door remains unresolved before traversal."
+    },
+    {
+      "name": "locked_door_resolved",
+      "expected_valid": true,
+      "job": "probe-compact-v2-983",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 734,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "explicit_magic_exception",
+      "expected_valid": true,
+      "job": "probe-compact-v2-984",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 395,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "different_targets",
+      "expected_valid": true,
+      "job": "probe-compact-v2-985",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 599,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "coverage_missing_lock",
+      "expected_valid": false,
+      "job": "probe-compact-v2-986",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Nia does not lock the shelter’s door as required by the current job."
+      },
+      "matches_reference": true,
+      "completion_tokens": 342,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "coverage_complete",
+      "expected_valid": true,
+      "job": "probe-compact-v2-987",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 601,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "action_only_presupposed",
+      "expected_valid": false,
+      "job": "probe-compact-v2-988",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Missing action Ilan disables the ward."
+      },
+      "matches_reference": true,
+      "completion_tokens": 460,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "action_performed_now",
+      "expected_valid": true,
+      "job": "probe-compact-v2-989",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 523,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "participants_omitted",
+      "expected_valid": false,
+      "job": "probe-compact-v2-990",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": false,
+        "issue": "Mara serves herself instead of serving breakfast to Eli and Jo, missing the required participants for the current job."
+      },
+      "matches_reference": true,
+      "completion_tokens": 229,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "participants_preserved",
+      "expected_valid": true,
+      "job": "probe-compact-v2-991",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 293,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "next_job_leakage",
+      "expected_valid": false,
+      "job": "probe-compact-v2-992",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": false,
+      "completion_tokens": 957,
+      "supported_by_review": false,
+      "review_note": "False acceptance: reasoning substitutes NEXT JOB for CURRENT JOB. Verified the submitted request contains distinct, correctly labeled jobs."
+    },
+    {
+      "name": "next_job_preserved",
+      "expected_valid": true,
+      "job": "probe-compact-v2-993",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": true,
+      "completion_tokens": 555,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    },
+    {
+      "name": "effect_partial_action",
+      "expected_valid": false,
+      "job": "probe-compact-v2-994",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": ""
+      },
+      "matches_reference": false,
+      "completion_tokens": 373,
+      "supported_by_review": false,
+      "review_note": "False acceptance: treats holding as equipped despite the distinct typed state-effect requirement."
+    },
+    {
+      "name": "effect_supported",
+      "expected_valid": true,
+      "job": "probe-compact-v2-995",
+      "finish_reason": "stop",
+      "verdict": {
+        "valid": true,
+        "issue": " "
+      },
+      "matches_reference": true,
+      "completion_tokens": 598,
+      "supported_by_review": true,
+      "review_note": "Verdict and explanation support the intended control."
+    }
+  ]
+}

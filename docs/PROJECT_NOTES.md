@@ -715,8 +715,18 @@ removal. Both invented a previous death and accepted an unsupported physical
 transformation; compact validation also demanded unassigned state effects.
 No variant is adopted and no new subsystem is justified.
 
-Batch 976–995 tests a revised compact single validator against the original
-coherence cases plus coverage, action ownership, named participants, next-job
-leakage, and typed-effect support. Preserve source-authorized unusual capabilities;
-do not infer death from injury or require effect records beyond assigned effects.
-These remain probe hypotheses until the results support a production change.
+Batch 976–995 completed with 16/20 reference-label matches, but only 15/20
+supported by reviewed explanations. One invalid verdict relied on invented prior
+death rather than the intended physical-transformation error. The prompt caught
+the actual double removal but still invented a prior terminal state, regressed
+locked-door traversal, confused NEXT JOB with CURRENT JOB, and conflated held with
+equipped in the bare-operation effect control. All calls completed normally.
+
+Do not adopt compact v2. Keep the current production validator while these
+observed failures remain unresolved. These findings do not justify another
+production subsystem. Distinguish wrong-reason rejections from genuine fixes;
+small probe-set scores do not establish overall acceptance. Future typed-effect
+experiments should use the production event-record wrapper.
+
+Testing is paused at the user's explicit request after batch 976–995. No new
+probes or acceptance jobs should be queued until the user authorizes resumption.

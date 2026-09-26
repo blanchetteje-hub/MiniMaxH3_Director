@@ -61,28 +61,49 @@ Completed batch **956–975** (`gpt-runtime` queue commit `4d0e006`):
 - no production change adopted. This does not support adding a separate
   coherence subsystem.
 
-Batch **976–995** queued (`gpt-runtime` commit `84cd6c5`):
-- one revised compact single-validator candidate, 20 cases;
-- 10 existing coherence controls plus 10 coverage, current-action ownership,
-  named-participant, next-job leakage, and typed-effect controls;
-- explicitly avoids inferring death from injury or treating an earlier target
-  as the last; checks only assigned state effects; distinguishes an unsupported
-  material transformation from an explicitly established unusual capability;
-- expected labels remain outside requests;
-- sampling unchanged: temperature 0, seed 42, repeat_penalty 1.15,
-  max_tokens 2048;
-- fixture and completed 956–975 verdicts are in `tests/LLM/probes/`.
+Completed batch **976–995** (`gpt-runtime` queue commit `84cd6c5`):
+- **16/20 reference-label matches; 15/20 supported by reviewed explanations**.
+  This is a small targeted development set, not broad validator accuracy.
+- All 20 returned parseable JSON and completed normally, using 229–957 completion
+  tokens. These are semantic failures, not truncation failures.
+- 976 correctly catches the actual double decapitation; crystal removal,
+  restoration, different targets, explicit magic, coverage, named participants,
+  and current-action-versus-aftermath controls also behave as intended.
+- 978 rejects the unsupported body transformation for the wrong reason: it
+  invents an earlier completed removal/death of the last zombie. Do not count
+  this as evidence that the transformation rule works.
+- 979 falsely rejects the corrected final kill using the same invented death and
+  target-identity assumption.
+- 982 accepts traversal through the explicitly closed, locked door; this
+  regresses compact v1's correct rejection in 968.
+- 992 accepts next-job completion early. Its reasoning copies NEXT JOB into
+  CURRENT JOB. The stored request was checked: both jobs were correctly labeled
+  and distinct, so this is a model input-role confusion, not a job-builder bug.
+- 994 accepts holding as equipped. This control uses bare effect operations;
+  production captures wrap operations in event records. Preserve that limitation
+  when interpreting the finding or designing any later test.
+- Nine valid responses have a single-space issue string. This is secondary to
+  the semantic errors; no parser change was made.
 
-Next steps:
-1. Inspect 976–995 against `tests/LLM/probes/compact_v2_976_995.json`, including
-   concrete explanations, not only labels.
-2. Adopt a shorter existing validator only after it preserves coverage,
-   next-job ownership, assigned state-effect support, and valid controls while
-   catching the actual coherence failure. No extra production subsystem.
-3. After a verified production change, run fresh planning acceptance before
-   full H3 generation. Keep production entirely local and genre-generic.
+**Decision: do not adopt compact v2. Production validation remains unchanged.**
+Shortening helped the demonstrated double-removal case but has not preserved
+continuity, next-job ownership, and typed-effect semantics reliably enough.
+Do not add a coherence subsystem or stack another untested prompt rule.
 
-No local pull or bridge restart is needed for the queued direct probes.
+Reviewed verdicts and limitations:
+`tests/LLM/probes/compact_v2_976_995_results.json`.
+
+## Probe queue paused — explicit user instruction
+
+The user requested analysis and repository updates only, with **no new probes**.
+No new bridge jobs, acceptance jobs, or bridge changes were created in this turn.
+Do not resume automated testing until the user authorizes it.
+
+When testing is resumed, use the above observed failures to choose the next
+experiment. In particular, distinguish current-job/next-job input-role confusion
+from missing rule knowledge, and verify any effect experiment with the production
+record shape. Any candidate still needs a fresh planning acceptance before full
+H3 prompt generation. No local action is required now.
 
 
 ## Ultimate goal
