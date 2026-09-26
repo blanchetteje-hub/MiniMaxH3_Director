@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1355",
+  "kind": "llama_chat",
+  "started_at": 1790449076.6355743,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A caretaker turns on a lamp for the night.\nRAW: The caretaker switches on the lamp and leaves it illuminated.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-dkvy3nov85wxq46vxd87g",
+    "object": "chat.completion",
+    "created": 1790449076,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW completes the finite activity described in SOURCE: \"A caretaker turns on a lamp for the night.\" Finite activity: turning on lamp. The result is lamp illuminated. In RAW, \"The caretaker switches on the lamp and leaves it illuminated.\" That matches. Also check that any active tool/appliance used only to perform that now-completed finite activity must be visibly stopped by end if natural stable endpoint. Lamp was switched on; it's still lit at end. Is lamp considered an appliance? Yes. But is its being lit a result of the action, not just intermediate? The caretaker turned it on and leaves it illuminated: that's the result. So no need to turn off. It's natural stable endpoint that lamp remains on for night. So valid.\n\nReturn JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 242,
+      "completion_tokens": 177,
+      "total_tokens": 419,
+      "completion_tokens_details": {
+        "reasoning_tokens": 158
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449079.5033765,
+  "status": "ok"
+}
