@@ -259,5 +259,42 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("not held at the end", prompt)
         self.assertIn("placed aside is not equipped", prompt)
 
+
+    def test_validator_preserves_group_beneficiary_roles(self):
+        messages = minimax.build_beat_validation_messages(
+            "",
+            minimax.new_beat_canonical_state(),
+            "The parent cooks breakfast for the children.",
+            None,
+            "The parent finishes breakfast while the children only watch.",
+        )
+        prompt = messages[1]["content"]
+        self.assertIn("person or group", prompt)
+        self.assertIn("beneficiary", prompt)
+        self.assertIn("merely watching the work is insufficient", prompt)
+        self.assertIn("performance, lesson, or demonstration", prompt)
+
+    def test_beat_generation_preserves_group_beneficiary_roles(self):
+        phase = {
+            "required_events": [
+                {
+                    "id": "E1",
+                    "beat_number": 1,
+                    "event": "The parent cooks breakfast for the children.",
+                }
+            ]
+        }
+        messages = minimax.build_beat_generation_messages(
+            "The parent cooks breakfast for the children.",
+            1,
+            batch_start=1,
+            batch_end=1,
+            current_phase=phase,
+        )
+        prompt = messages[1]["content"]
+        self.assertIn("person or group", prompt)
+        self.assertIn("beneficiaries rather than spectators", prompt)
+        self.assertIn("Merely watching the work is not enough", prompt)
+
 if __name__ == "__main__":
     unittest.main()
