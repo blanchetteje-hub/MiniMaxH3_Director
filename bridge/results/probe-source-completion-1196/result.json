@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1196",
+  "kind": "llama_chat",
+  "started_at": 1790440655.3052888,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE — authoritative work for this segment\nThe healer treats Ilya and Rook with healing magic.\n\nDERIVED BEAT — staging suggestion; cannot remove source requirements\nThe healer performs healing magic as Ilya and Rook watch.\n\nRAW SCENE\nThe healer heals Ilya. Rook watches from the doorway. The healer lowers her staff.\n\nCheck only completion:\n1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\nReturn valid (boolean) and issue (short explanation if invalid, empty string otherwise)."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-bgx28q5dngrei909iexj44",
+    "object": "chat.completion",
+    "created": 1790440655,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Rook is not healed – the healer treats only Ilya, leaving out the source‑assigned action for Rook.\"}",
+          "reasoning": "We need to check RAW SCENE against assigned source: \"The healer treats Ilya and Rook with healing magic.\" So the source says healer treats both Ilya and Rook. The derived beat: \"The healer performs healing magic as Ilya and Rook watch.\" Wait, that seems contradictory? Derived beat says they watch, but source says treat them (i.e., heal). But derived beat is a staging suggestion; cannot remove source requirements. So the derived beat may be inconsistent with source if it changes roles.\n\nRAW SCENE: \"The healer heals Ilya. Rook watches from the doorway. The healer lowers her staff.\"\n\nCheck only completion:\n1. Require actions, results, participant roles assigned by SOURCE. Use derived beat only where consistent.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n\nSo source says healer treats Ilya and Rook with healing magic. That implies both Ilya and Rook are recipients of healing. The RAW SCENE only has the healer heal Ilya (explicit). It doesn't mention healing Rook. So missing that action for Rook. Also Rook watches from doorway, but if he is being healed, watching alone insufficient; must receive or participate in result.\n\nThus RAW SCENE invalid: missing healing of Rook. Issue: \"Rook not healed as required by source.\" Return JSON with valid false and issue string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 302,
+      "completion_tokens": 347,
+      "total_tokens": 649,
+      "completion_tokens_details": {
+        "reasoning_tokens": 305
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440660.239986,
+  "status": "ok"
+}
