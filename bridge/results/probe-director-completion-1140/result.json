@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-completion-1140",
+  "kind": "llama_chat",
+  "started_at": 1790392675.93022,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe guard locks the vault door.\n\nRAW SCENE\nThe guard swings the vault door shut.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or extra harmless detail.\n- valid=true only if CURRENT BEAT is complete in RAW SCENE.\nReturn {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8bf4b9s81eq05yjyhustxp6",
+    "object": "chat.completion",
+    "created": 1790392675,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The guard swings the vault door shut, but that action only closes the door; it does not show the door being locked as required by the beat.\"}",
+          "reasoning": "We need to check whether the raw scene completes current beat. Current beat: \"The guard locks the vault door.\" Raw scene: \"The guard swings the vault door shut.\"\n\nDoes swinging the vault door shut equal locking? The beat says lock, which implies secure closure with a latch or bolt. Swinging it shut could be just closing but not necessarily locked. So it's incomplete. Thus valid=false. Issue explanation: \"Vault door is closed but not locked.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 242,
+      "completion_tokens": 140,
+      "total_tokens": 382,
+      "completion_tokens_details": {
+        "reasoning_tokens": 92
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392678.141961,
+  "status": "ok"
+}
