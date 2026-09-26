@@ -1166,3 +1166,17 @@ transformation. Only then move on toward H3 prompt generation.
 - Planning-integrity work is now sufficient to resume the primary project goal: story.txt -> gold H3 prompts.
 - Queued `beat-integrity-tests-1122` as the final focused regression check.
 - Queued `gold-prompt-acceptance-1123` in full prompt-generation mode. This uses `--test-prompt-generation`, so it captures H3 prompts without rendering video. Review generated segments fuzzily against the locked Amy gold target; fix the earliest demonstrated prompt-quality failure and keep changes generic.
+
+
+### 2026-09-25 — first full H3 prompt acceptance reached Director Request 1 budget gate
+
+- Focused beat-integrity regression `beat-integrity-tests-1122` passed 11/11.
+- Full prompt-generation acceptance `gold-prompt-acceptance-1123` preserved the correct chapter/beat planning path but produced no H3 prompts because Director Request 1 exceeded the configured input budget before segment 1:
+  - estimated input: 5173 tokens
+  - configured input budget: 4500 tokens
+  - all 8 prompt segments were therefore missing.
+- This is the earliest demonstrated full-pipeline failure; it is not an H3 semantic-quality result yet.
+- Do not raise the token budget as the first response. The local ~20B target benefits from shorter prompts, and the Director system template contained substantial duplicated authority/continuity language plus a worked example.
+- Commit `6e2acf24a1d50d560657f3d2bd074df162d0ed38` compacts Director Request 1 while preserving the locked behavior contracts: CURRENT-only authority, NEXT exclusion, controlled local staging, finite-activity completion, named beneficiaries, tool settling, persistent-state limits, functional labels, timestamp syntax, spatial/continuity handoff, and structured output.
+- Queued `director-prompt-tests-1124` for the focused Director/integration regression set.
+- Queued `gold-prompt-acceptance-1125` as the next full prompt-generation acceptance. The first gate is simply whether Request 1 now fits under 4500 tokens and all 8 H3 prompt segments are captured. Only after that should generated prompts be fuzzily compared to gold.
