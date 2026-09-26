@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-role-v1-1000",
+  "kind": "llama_chat",
+  "started_at": 1790382926.0065265,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "INPUT ROLES\nBEFORE = facts available before this beat; do not invent additional facts.\nNOW = the job that must happen in this beat.\nLATER = a distinct next job reserved for a later beat.\nAFTER = listed typed effects that must follow from visible actions in this beat.\n\nBEFORE — PREVIOUS FINAL BEAT\nNone; this is the first beat.\n\nBEFORE — CURRENT STATE\n{\"capabilities\":{\"hammer\":\"Objects struck by this transmutation hammer become liquid.\"}}\n\nNOW — CURRENT JOB\nTov strikes the stone model with the transmutation hammer.\n\nLATER — NEXT JOB\nNone; this is the final beat.\n\nAFTER — STATE EFFECTS IF VALID\n[]\n\nCANDIDATE — THIS BEAT\nTov strikes the model once; the stone becomes liquid across the workbench.\n\nCHECKS\n1. Carry stated actions/results forward. Do not repeat a completed removal on the same target unless it was restored.\n2. Use BEFORE facts only. Reject unavailable objects and unresolved barriers. Unknown facts alone are not errors.\n3. NOW must happen, with its required action/result/participants. A completed-state phrase cannot replace the assigned action.\n4. Do not complete a distinct LATER job early. Identical repeated work may continue.\n5. Every listed AFTER typed effect must follow from visible candidate actions. Do not demand unlisted effects.\n\nReturn one JSON object: {\"valid\": boolean, \"issue\": string}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6jmck3xmhqa297lbws7soi",
+    "object": "chat.completion",
+    "created": 1790382926,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to validate the beat. BEFORE facts: capabilities hammer transmutation: Objects struck become liquid. NOW job: Tov strikes stone model with hammer. Candidate says: \"Tov strikes the model once; the stone becomes liquid across the workbench.\" That matches action and result. The effect is that stone becomes liquid, which is consistent. No other effects listed. So valid.\n\nCheck 1: carry stated actions/results forward. He struck once, stone became liquid. Good.\n\nCheck 2: Use BEFORE facts only. Stone model exists? Not explicitly in before but \"model\" likely refers to stone model on workbench. It's fine.\n\nCheck 3: NOW must happen with required action/result/participants. Yes.\n\nCheck 4: No LATER job.\n\nCheck 5: AFTER typed effect list empty, so no requirement.\n\nThus valid. Return JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 404,
+      "completion_tokens": 195,
+      "total_tokens": 599,
+      "completion_tokens_details": {
+        "reasoning_tokens": 175
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790382928.8865907,
+  "status": "ok"
+}
