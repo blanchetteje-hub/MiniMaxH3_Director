@@ -557,6 +557,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             "phase_number": 1,
             "beat_start": 1,
             "beat_end": 2,
+            "narrative_purpose": minimax.SOURCE_SPAN_PHASE_PURPOSE,
             "required_events": [
                 {
                     "id": "E1",
@@ -582,6 +583,22 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("Will", state_text)
         self.assertIn("Amber", state_text)
         self.assertIn("basement", state_text)
+
+    def test_director_prompt_requires_explicit_barrier_blocking(self):
+        rules = minimax.build_director_rules(
+            64,
+            8,
+            8,
+            "",
+            2,
+            conditioning_mode="continuation",
+            is_final_story_segment=False,
+        )
+        normalized = " ".join(rules.split())
+        self.assertIn("make the blocking explicit for H3", normalized)
+        self.assertIn("show exactly who crosses", normalized)
+        self.assertIn("state the final side of each group", normalized)
+        self.assertIn("do not keep the far-side group visibly beside the near-side group", normalized)
 
     def test_completion_prompt_requires_named_beneficiaries_and_final_result(self):
         messages = minimax.build_director_raw_scene_completion_messages(
