@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1343",
+  "kind": "llama_chat",
+  "started_at": 1790448997.0497496,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A technician finishes testing a repaired machine.\nRAW: The technician runs the machine, confirms the successful result, switches the test motor off, and steps back.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-u4hrbzp0ebfn82zuaudu6j",
+    "object": "chat.completion",
+    "created": 1790448997,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW completes a finite activity and stops any active tool used only for that activity.\n\nSOURCE: \"A technician finishes testing a repaired machine.\"\n\nRAW: \"The technician runs the machine, confirms the successful result, switches the test motor off, and steps back.\"\n\nFinite activity: running the machine to confirm result. The test motor is an ACTIVE tool/appliance/process used only to perform that now-completed finite activity. It must be visibly stopped by end. RAW says he switches it off. So it's good.\n\nAlso \"steps back\" indicates he's done. No other active tools mentioned. So valid.\n\nReturn JSON: {\"valid\":true,\"issue\":\"\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 250,
+      "completion_tokens": 155,
+      "total_tokens": 405,
+      "completion_tokens_details": {
+        "reasoning_tokens": 136
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790448999.6897469,
+  "status": "ok"
+}
