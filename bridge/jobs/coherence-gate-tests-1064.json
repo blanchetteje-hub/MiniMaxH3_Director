@@ -1,0 +1,13 @@
+{
+  "kind": "run_tests",
+  "job_id": "coherence-gate-tests-1064",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_forward_beat_validation.py",
+    "tests/test_beat_retry_hierarchy.py",
+    "tests/test_beat_plan_repair_orchestration.py",
+    "tests/test_source_span_generation_path.py",
+    "tests/test_source_span_runtime_adapter.py"
+  ],
+  "timeout_seconds": 1800
+}
