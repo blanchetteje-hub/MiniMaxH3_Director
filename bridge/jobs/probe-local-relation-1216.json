@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 350,
+  "timeout_seconds": 600,
+  "job_id": "probe-local-relation-1216",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\n\nRIGHT:\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger.\n\nChoose MERGE or NEW_TASK.\nMERGE only if RIGHT's PRIMARY ACTION:\n1. continues the same uninterrupted local action as LEFT;\n2. is the direct immediate response to a new problem/event introduced by LEFT itself; or\n3. immediately completes the exact object/action LEFT just obtained, opened, or started.\nOtherwise choose NEW_TASK once LEFT has a usable stopping point. Do not MERGE merely because RIGHT follows from, is enabled by, or shares a larger goal/cause with LEFT. A later task after completed protection, victory, assembly, or other completed work is NEW_TASK unless rule 3 applies.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+    }
+  ]
+}
