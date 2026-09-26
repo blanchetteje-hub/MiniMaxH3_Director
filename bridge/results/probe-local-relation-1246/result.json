@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1246",
+  "kind": "llama_chat",
+  "started_at": 1790443006.1005573,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe mechanic retrieves a wrench from the toolbox.\n\nRIGHT:\nThe mechanic uses the wrench to tighten a loose pump bolt.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself CREATES a problem, danger, or request, and RIGHT is the immediate response that addresses it.\n3. RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it is only a tool for another target, this rule does not apply.\nImportant: rule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. A different objective after completed work is NEW_TASK even when both serve the same larger goal.\nOtherwise choose NEW_TASK.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zuslfl74nvjsjuz12e3lr9",
+    "object": "chat.completion",
+    "created": 1790443006,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need to decide if two adjacent source responsibilities belong to one local beat job: LEFT and RIGHT.\n\nLEFT: \"The mechanic retrieves a wrench from the toolbox.\"\n\nRIGHT: \"The mechanic uses the wrench to tighten a loose pump bolt.\"\n\nCheck rules:\n\n1. RIGHT continues same uninterrupted action as LEFT? LEFT is retrieving a wrench; RIGHT uses it. Not continuous action of retrieving, but using after retrieval. So rule 1 not.\n\n2. LEFT creates problem/danger/request and RIGHT immediate response that addresses it. LEFT: retrieves a wrench from toolbox. Does this create a problem? No. It's just obtaining tool. So no.\n\n3. RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it's only a tool for another target, rule does not apply. Here LEFT obtains wrench (tool). RIGHT uses that same wrench to tighten bolt. So RIGHT is using the exact object retrieved by LEFT. But rule says: \"RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started.\" The left action was obtaining a tool; right action uses it on another target. Does this count? It says if it's only a tool for another target, rule does not apply. So because wrench is used to tighten bolt (another target), rule 3 doesn't apply.\n\nThus none of the rules apply => NEW_TASK.\n\nReturn JSON: {\"relation\":\"NEW_TASK\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 277,
+      "completion_tokens": 317,
+      "total_tokens": 594,
+      "completion_tokens_details": {
+        "reasoning_tokens": 301
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790443011.0988863,
+  "status": "ok"
+}
