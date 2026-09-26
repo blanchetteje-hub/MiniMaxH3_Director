@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1225",
+  "kind": "llama_chat",
+  "started_at": 1790442705.0442767,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe ranger escorts the villagers into a stone refuge and bars its door.\n\nRIGHT:\nThe ranger fetches a bow and quiver from a weapons rack.\n\nChoose one:\nMERGE only when RIGHT's PRIMARY ACTION is one of these:\n- the same uninterrupted local action as LEFT;\n- a direct immediate response caused by the event in LEFT itself (for example alarm -> shut down/call for help); or\n- the immediate mechanical completion of the exact object/action LEFT just obtained/opened/started (retrieve -> equip, open -> remove).\nNEW_TASK when RIGHT's PRIMARY ACTION is a distinct objective after LEFT reaches a usable stopping point. A shared larger goal is not enough to MERGE. Carrying, wearing, or using an item from LEFT while performing a different primary task is NEW_TASK. Starting a fresh item/test after LEFT completed one is NEW_TASK.\nFor causality, distinguish LEFT itself from a shared earlier cause: danger -> immediate protection may MERGE, but protection -> fetch gear is NEW_TASK because the gear retrieval responds to the danger, not to the completed protection action.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-msp681yo7samq8fr4tbbt",
+    "object": "chat.completion",
+    "created": 1790442705,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need decide if LEFT and RIGHT belong to one local beat job or new task.\n\nLEFT: \"The ranger escorts the villagers into a stone refuge and bars its door.\" Primary action: escort, bar door? The main is escorting then bar door. So left's primary action likely escort (moving) and bar door (closing). Right: \"The ranger fetches a bow and quiver from a weapons rack.\" Primary action: fetch.\n\nIs fetching a bow a direct immediate response caused by the event in LEFT itself? Left ends with bars its door, so villagers inside refuge. The ranger might need gear after escorting to protect them. But is that an immediate mechanical completion of exact object/action left just obtained/opened/started? No, left didn't open or retrieve any weapon rack; it opened a stone refuge and barred the door. So fetch bow is distinct objective after LEFT reaches usable stopping point (the villagers inside). It's not same action nor direct response to event in left itself. So it's NEW_TASK.\n\nThus relation: \"NEW_TASK\". Return JSON with single key relation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 327,
+      "completion_tokens": 234,
+      "total_tokens": 561,
+      "completion_tokens_details": {
+        "reasoning_tokens": 218
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442708.8737252,
+  "status": "ok"
+}
