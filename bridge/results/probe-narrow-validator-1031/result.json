@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-narrow-validator-1031",
+  "kind": "llama_chat",
+  "started_at": 1790383330.2448695,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only the single check described. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue. Reject only when the described check clearly fails."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: LISTED STATE EFFECTS ONLY.\nEvery listed state effect must be visibly supported by CANDIDATE. Check only listed effects.\n\nSTATE EFFECTS IF VALID\n[{\"id\":\"E1\",\"state_effects\":[{\"op\":\"set_item_state\",\"entity\":\"lantern\",\"owner\":\"Tess\",\"value\":\"held\"}]}]\n\nCANDIDATE\nTess notices the lantern hanging on a wall hook but leaves it there."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-wlwg6l1cjssa1jq8kv1owi",
+    "object": "chat.completion",
+    "created": 1790383330,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The listed state effect E1 indicates that Tess should be holding the lantern, but the candidate text shows her only noticing it hanging on a wall hook and leaving it there—no evidence of her holding the lantern.\"}",
+          "reasoning": "We need to validate only the single check described: \"LISTED STATE EFFECTS ONLY.\" Means we must verify that every listed state effect is visibly supported by candidate. Check only listed effects.\n\nThe list of state effects: [{\"id\":\"E1\",\"state_effects\":[{\"op\":\"set_item_state\",\"entity\":\"lantern\",\"owner\":\"Tess\",\"value\":\"held\"}]}]\n\nSo the effect says set_item_state lantern, owner Tess, value held. That means that in the candidate text, we should see evidence that Tess holds the lantern.\n\nCandidate: \"Tess notices the lantern hanging on a wall hook but leaves it there.\"\n\nShe notices it and leaves it there; she does not hold it. So state effect is not supported. Therefore invalid.\n\nReturn JSON with valid false and issue string describing mismatch.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 196,
+      "completion_tokens": 223,
+      "total_tokens": 419,
+      "completion_tokens_details": {
+        "reasoning_tokens": 163
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383333.441095,
+  "status": "ok"
+}
