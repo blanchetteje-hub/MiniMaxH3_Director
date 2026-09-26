@@ -687,6 +687,8 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("every named beneficiary", prompt)
         self.assertIn("required result must already be true", prompt)
         self.assertIn("still in progress", prompt)
+        self.assertIn("merely labeling it for them", prompt)
+        self.assertIn("work merely made FOR someone", prompt)
 
     def test_completion_parser_normalizes_valid_issue(self):
         self.assertEqual(
