@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-mover-scope-1438",
+  "kind": "llama_chat",
+  "started_at": 1790454774.5291257,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one participant-scope case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Kira escorts the group into the courtyard and enters with them. RAW: Kira and the group enter the courtyard together.\n\nPreserve participant scope. If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ka2zshyt1kdcctd07w10b6",
+    "object": "chat.completion",
+    "created": 1790454774,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if participant scope is preserved. The source: \"Kira escorts the group into the courtyard and enters with them.\" That says Kira escorts the group into the courtyard and enters with them. So Kira moves the group, and also she herself enters. RAW: \"Kira and the group enter the courtyard together.\"\n\nThe rule: If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters.\n\nIn source, Kira escorts the group into the courtyard AND enters with them. So it explicitly says she also enters. Thus participant scope preserved: both Kira and group enter. RAW matches. So valid true. Return JSON {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 181,
+      "completion_tokens": 184,
+      "total_tokens": 365,
+      "completion_tokens_details": {
+        "reasoning_tokens": 166
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790454777.5762503,
+  "status": "ok"
+}
