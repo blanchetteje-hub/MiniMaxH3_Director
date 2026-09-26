@@ -1,0 +1,7 @@
+{
+  "job_id": "probe-narrow-retry-1037",
+  "status": "error",
+  "error_type": "HTTPError",
+  "error": "HTTP Error 400: Bad Request",
+  "finished_at": 1790383398.5457566
+}
