@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-persistent-guard-1410",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge one source/state compatibility case. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "OPENING: Taro wears a badge and carries a folder. SOURCE: Taro checks the schedule. RAW: Taro checks the schedule, then leaves the badge on a desk.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+    }
+  ]
+}
