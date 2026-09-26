@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1087",
+  "kind": "llama_chat",
+  "started_at": 1790388109.9429343,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe ranger defeats the two gate guards.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nThe ranger opens the vault.\n\nCANDIDATE BEAT\nThe ranger defeats both guards and opens the vault door.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-65tkbat323o3wn5kqhvcgs",
+    "object": "chat.completion",
+    "created": 1790388109,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Completes the later job (opening the vault) too early\"}",
+          "reasoning": "We need to judge the candidate beat: \"The ranger defeats both guards and opens the vault door.\"\n\nCurrent job: The ranger defeats the two gate guards.\nReserved later: The ranger opens the vault.\n\nCandidate beat includes defeating both guards (current) AND opening the vault door (reserved). That is a distinct later job completed early. According to checks, reserved for later never required now; reject if a distinct later job is materially completed early. So it's invalid because it completes reserved work too soon. Also note that \"both\" vs \"two\" same meaning. But still includes opening the vault door.\n\nThus valid: false. Issue: \"Includes opening the vault before its turn.\" Provide short concrete explanation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 263,
+      "completion_tokens": 171,
+      "total_tokens": 434,
+      "completion_tokens_details": {
+        "reasoning_tokens": 141
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388112.4200327,
+  "status": "ok"
+}
