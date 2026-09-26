@@ -1180,3 +1180,15 @@ transformation. Only then move on toward H3 prompt generation.
 - Commit `6e2acf24a1d50d560657f3d2bd074df162d0ed38` compacts Director Request 1 while preserving the locked behavior contracts: CURRENT-only authority, NEXT exclusion, controlled local staging, finite-activity completion, named beneficiaries, tool settling, persistent-state limits, functional labels, timestamp syntax, spatial/continuity handoff, and structured output.
 - Queued `director-prompt-tests-1124` for the focused Director/integration regression set.
 - Queued `gold-prompt-acceptance-1125` as the next full prompt-generation acceptance. The first gate is simply whether Request 1 now fits under 4500 tokens and all 8 H3 prompt segments are captured. Only after that should generated prompts be fuzzily compared to gold.
+
+
+### 2026-09-25 — independent Director CURRENT-BEAT completion gate
+
+- Full prompt acceptance 1125 was the first complete 8-segment H3 prompt capture. The earliest gold mismatch was Segment 1: Request 1 claimed completion after serving breakfast only to Will; Amber never visibly received breakfast and the finite domestic activity did not visibly settle.
+- Root cause: Request 1 was trusted to self-report `finite_activity_complete`, `named_beneficiaries_complete`, `activity_tools_settled`, and `beat_complete`; there was no independent semantic check of those claims.
+- Generic completion probes 1126–1145 returned 18/20 labels; one miss was an ambiguous "lead through" control, and the real miss treated reactor startup/progress as activation.
+- Final-frame entailment probes 1166–1185 also returned 18/20; the activation/startup case improved, one false negative demanded the actor's opening motion despite a visibly open final state, and one real miss treated a battery at 42% and charging as satisfying "charges the battery."
+- Exact Amy Segment-1 probe 1186 semantically identified the real defect ("Amber does not visibly receive breakfast") but exhausted the deliberately small 512-token probe budget before emitting final JSON.
+- Decision: integrate one narrow independent Request-1 completion check because it directly catches the demonstrated gold failure, but do not treat it as a universal semantic oracle.
+- Commit `e40cd31d44526d8bcbc20218da63d0e2b4c5befe` adds a strict `{valid, issue}` completion check after Request 1's own structural/self-completion checks pass. It receives only CURRENT BEAT + RAW SCENE, checks explicit actions/results, finite endpoint, named beneficiaries, and final-frame completion, and feeds an INVALID issue back into the existing Request-1 retry loop. It does not judge style, continuity, future beats, or H3 formatting.
+- Queued `director-completion-tests-1187` and full prompt acceptance `gold-prompt-acceptance-1188`.
