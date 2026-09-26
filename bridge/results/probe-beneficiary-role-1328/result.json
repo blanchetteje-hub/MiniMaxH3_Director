@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-role-1328",
+  "kind": "llama_chat",
+  "started_at": 1790446872.496438,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe teacher demonstrates the procedure for Mira and Jon.\n\nCANDIDATE BEAT\nThe teacher performs the full demonstration while Mira and Jon watch closely.\n\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB and preserve material relationships.\nIf CURRENT JOB says an action/result is FOR a named person or group, CANDIDATE BEAT must preserve that beneficiary/recipient role. Do not replace \"for them\" with spectator-only behavior such as merely watching the work.\n- For a consumable, gift, hand-off, or prepared item, show it delivered/served/used by the intended beneficiary, or explicitly place/identify it as theirs.\n- For a repair, shelter, installation, delivery location, or other fixed/service result, an explicitly completed result belonging to or designated for the beneficiary is sufficient; they do not need to physically hold or enter it.\n- Watching/listening is sufficient when that is itself the intended benefit, such as a performance, lesson, or demonstration.\nReject a candidate that changes the beneficiary, drops one beneficiary, or leaves the only visible relationship as watching an unrelated result.\nDo not reject harmless staging.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-foe3efilsoaoixumd7kuiq",
+    "object": "chat.completion",
+    "created": 1790446872,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to validate candidate beat against current job. Current Job: \"The teacher demonstrates the procedure for Mira and Jon.\" So teacher demonstrates procedure for both Mira and Jon. The demonstration is for them; they are beneficiaries.\n\nCandidate Beat: \"The teacher performs the full demonstration while Mira and Jon watch closely.\"\n\nDoes this preserve beneficiary? It says teacher performs full demonstration while Mira and Jon watch closely. They watch, but do they benefit from demonstration? Watching a demonstration gives them knowledge. So yes, watching is sufficient when that is intended benefit. The current job: \"demonstrates the procedure for Mira and Jon.\" That implies demonstration benefits them by teaching them procedure. Candidate beat says teacher performs full demonstration while Mira and Jon watch closely. They are watching; they get benefit of seeing demonstration. So it's valid.\n\nCheck if any beneficiary dropped? No, both present. The demonstration is performed fully. Good.\n\nThus valid: true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 355,
+      "completion_tokens": 210,
+      "total_tokens": 565,
+      "completion_tokens_details": {
+        "reasoning_tokens": 190
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446875.7424247,
+  "status": "ok"
+}
