@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-narrow-validator-1032",
+  "kind": "llama_chat",
+  "started_at": 1790383335.725385,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only the single check described. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue. Reject only when the described check clearly fails."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: WITHIN-BEAT COHERENCE ONLY.\nRead CANDIDATE actions literally in order and carry each stated result forward. Reject repeating an irreversible removal on the same target or part unless it is restored. Different targets and non-terminal injuries are different cases.\n\nCANDIDATE\nAs a raider lunges at her, Nia fires a shot that severs the raider's head, then swings her sword and decapitates that same raider."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-j6q1x7t66i0mwe15sfwnyp",
+    "object": "chat.completion",
+    "created": 1790383335,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The raider’s head is severed by a shot, then Nia decapitates the same raider again—removing the already‑severed head twice without restoring it in between.\"}",
+          "reasoning": "We need to check within-beat coherence: read candidate actions literally in order and carry each stated result forward. Reject repeating an irreversible removal on the same target or part unless it is restored.\n\nCandidate: \"As a raider lunges at her, Nia fires a shot that severs the raider's head, then swings her sword and decapitates that same raider.\"\n\nSequence:\n\n1. Raider lunge.\n2. Nia fires a shot that severs the raider's head. So raider loses head (head removed).\n3. Then she swings sword and decapitates that same raider.\n\nDecapitation is removal of head again? The head already severed, so it's repeating an irreversible removal on same target part unless restored. Head was removed; not restored before second removal. So this violates within-beat coherence: can't remove the same part twice without restoration in between. Thus candidate fails check.\n\nReturn JSON with valid false and issue description.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 203,
+      "completion_tokens": 254,
+      "total_tokens": 457,
+      "completion_tokens_details": {
+        "reasoning_tokens": 196
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383339.2693377,
+  "status": "ok"
+}
