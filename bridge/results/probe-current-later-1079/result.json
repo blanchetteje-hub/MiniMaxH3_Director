@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1079",
+  "kind": "llama_chat",
+  "started_at": 1790388065.2504823,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nAmy cooks breakfast for Will and Amber.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nA zombie breaks the window and Amy rushes the kids to the basement.\n\nCANDIDATE BEAT\nAmy cooks breakfast, then a zombie breaks the window and she rushes Will and Amber to the basement.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1vbba5rmut9roycw59xya",
+    "object": "chat.completion",
+    "created": 1790388065,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to judge the candidate beat: \"Amy cooks breakfast, then a zombie breaks the window and she rushes Will and Amber to the basement.\"\n\nCurrent job: Amy cooks breakfast for Will and Amber. Reserved later: A zombie breaks the window and Amy rushes kids to basement.\n\nCheck: Current job is only required work. The reserved later not required now. Reject if distinct later job materially completed early. Here, \"Amy cooks breakfast\" is current job. Then a zombie breaks window (reserved) and she rushes kids to basement (also reserved). So the candidate beat includes both current and reserved jobs in one beat: Amy cooks breakfast, then zombie breaks window and she rushes kids.\n\nIs that acceptable? The rule says: If CURRENT JOB and RESERVED FOR LATER intentionally repeat same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work. Here they are distinct tasks: cooking vs rushing to basement. So reserved later is not repeated; it's a new job. Since reserved later isn't required now, we can include it early? The rule says \"Reject if a distinct later job is materially completed early.\" That means if the beat completes the reserved later job before its time, that's wrong. Here she rush",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 282,
+      "completion_tokens": 256,
+      "total_tokens": 538,
+      "completion_tokens_details": {
+        "reasoning_tokens": 253
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388068.9299786,
+  "status": "ok"
+}
