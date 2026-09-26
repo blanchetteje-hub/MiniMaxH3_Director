@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1080",
+  "kind": "llama_chat",
+  "started_at": 1790388071.3614178,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nA zombie breaks the window; Amy rushes the kids to the basement and locks the door.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nAmy retrieves and equips a pistol and katana.\n\nCANDIDATE BEAT\nA zombie breaks the window; Amy gets the kids into the basement and locks the door.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-9fegf5x7adh3wkreneblii",
+    "object": "chat.completion",
+    "created": 1790388071,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge the candidate beat against current job and reserved later. Current job: \"A zombie breaks the window; Amy rushes the kids to the basement and locks the door.\" Reserved later: \"Amy retrieves and equips a pistol and katana.\"\n\nCandidate beat: \"A zombie breaks the window; Amy gets the kids into the basement and locks the door.\"\n\nCheck: current job is only required work. Candidate beat includes that. It says \"gets\" instead of \"rushes\". That's fine paraphrase. Also \"into the basement\" vs \"to the basement\"? The original: \"Amy rushes the kids to the basement.\" Candidate: \"gets the kids into the basement.\" That seems same meaning.\n\nReserved for later is not required now; candidate beat doesn't mention pistol or katana, so that's okay.\n\nAlso check if current job and reserved repeat same ongoing process. They don't. So valid.\n\nThus output {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 285,
+      "completion_tokens": 211,
+      "total_tokens": 496,
+      "completion_tokens_details": {
+        "reasoning_tokens": 193
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388074.3912067,
+  "status": "ok"
+}
