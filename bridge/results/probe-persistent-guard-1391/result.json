@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1391",
+  "kind": "llama_chat",
+  "started_at": 1790452389.266683,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Lio is contained behind a locked gate. SOURCE: Mara repairs a console outside. RAW: Mara repairs the console and Lio walks out through the gate.\n\nJudge whether RAW both completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held/equipped items, containment, barrier state, clothing, injuries, and durable object/state conditions. Reject dropping, losing, freeing, unlocking, removing, healing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-x7zjcgmwdqj64z9wuv2vgd",
+    "object": "chat.completion",
+    "created": 1790452389,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Lio walks out through a locked gate, implying the gate was unlocked or opened—an unchanged persistent fact in the opening. The source does not authorise this change.\"}",
+          "reasoning": "We need to judge whether RAW (Mara repairs the console and Lio walks out through the gate) both completes SOURCE (Mara repairs a console outside) and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held/equipped items, containment, barrier state, clothing, injuries, durable object/state conditions.\n\nWe have an opening: \"Lio is contained behind a locked gate.\" So Lio is inside the gate; the gate is locked. The source says: \"Mara repairs a console outside.\" That implies that before this action, Mara was repairing a console outside. After the source, we know that she repaired it. Does the source change any persistent facts? It doesn't mention unlocking or opening the gate. So Lio remains behind a locked gate.\n\nThe RAW is: \"Mara repairs the console and Lio walks out through the gate.\" That means after the action, Lio has walked out through the gate. But that implies the gate was unlocked/opened for him to walk out? Or maybe he can walk out if it's open or unlocked. The opening says locked gate; so unless the source explicitly changes it (like unlocking), we must preserve persistent state: the gate remains locked. So Lio cannot walk out through a locked gate, unless he's able to break it? But RAW says \"walks out through the gate.\" That implies he walked out of the gate's containment. If the gate is still locked, that would be inconsistent.\n\nThus RAW does not preserve persistent OPENING facts: The gate was locked; Lio walks out through the gate means the gate must have been unlocked or opened. So it's a change to barrier state (gate). Since source didn't mention unlocking it, this changes persistent fact incorrectly. Therefore RAW is invalid.\n\nWe need to output {\"valid\":false,\"issue\":\"...\"} with short explanation: \"Lio walking out implies the locked gate was opened/unlocked, which SOURCE did not authorize.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 232,
+      "completion_tokens": 448,
+      "total_tokens": 680,
+      "completion_tokens_details": {
+        "reasoning_tokens": 396
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452396.2699583,
+  "status": "ok"
+}
