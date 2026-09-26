@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-whitelist-1443",
+  "kind": "llama_chat",
+  "started_at": 1790454951.6496391,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one barrier-participant case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Inez pushes two workers through the gate and locks it. RAW: The workers cross. Inez follows them across and locks the gate.\n\nBarrier rule: only subjects explicitly named by SOURCE as crossing/entering/exiting may cross. Everyone else stays on the side where they started. Moving, pushing, guiding, releasing, or letting others through does not authorize the helper to follow. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hwl0h52xq8okp47cj3eha",
+    "object": "chat.completion",
+    "created": 1790454951,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Inez crosses the gate, but she isn’t explicitly named by SOURCE as a subject crossing; only the two workers are. Pushing them through doesn’t authorize Inez to cross.\"}",
+          "reasoning": "We need to judge if Inez's action is valid under barrier rule: only subjects explicitly named by SOURCE as crossing/entering/exiting may cross. Everyone else stays on the side where they started. Moving, pushing, guiding, releasing, or letting others through does not authorize helper to follow.\n\nIn source: \"Inez pushes two workers through the gate and locks it.\" So Inez is pushing them; she also locks it. The rule says only subjects explicitly named by SOURCE as crossing/entering/exiting may cross. In this sentence, the two workers are crossing (explicitly). Inez is not explicitly named as crossing. She just pushes them. So she should stay on side where started? But she pushed them through gate and locked it; that means she moved across too? The rule: \"Moving, pushing, guiding, releasing, or letting others through does not authorize the helper to follow.\" So Inez is a helper (pushing). She didn't cross explicitly. So she should stay on side where started. But she did push them through gate and locked it; that implies she crossed too? Actually if you push someone through a gate, you might be on same side as them after pushing? The rule says moving/pushing doesn't authorize following. So Inez is not allowed to cross. She stays on starting side.\n\nBut the source: \"Inez pushes two workers through the gate and locks it.\" That implies she crosses because she locked it (maybe from other side). But lock could be done from either side? Usually you lock a gate after crossing, but maybe she can lock from same side as them. The rule says only subjects explicitly named may cross; Inez is not named. So her crossing is invalid.\n\nThus answer: {\"valid\":false,\"issue\":\"Inez crosses the gate without being explicitly named in SOURCE as crossing.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 187,
+      "completion_tokens": 431,
+      "total_tokens": 618,
+      "completion_tokens_details": {
+        "reasoning_tokens": 376
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790454958.230934,
+  "status": "ok"
+}
