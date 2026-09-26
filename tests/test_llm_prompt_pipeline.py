@@ -542,17 +542,46 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             )
 
 class DirectorRawSceneCompletionTests(unittest.TestCase):
-    def test_completion_prompt_requires_completed_active_process_endpoint(self):
+    def test_source_completion_preserves_participant_scope(self):
         messages = minimax.build_director_raw_scene_completion_messages(
-            "A parent cooks breakfast for the children.",
-            "The parent serves breakfast while the stove burner remains visibly on.",
-            assigned_source="A parent cooks breakfast for the children.",
+            "Amy gets Will and Amber into the basement and locks the door.",
+            "Will and Amber step inside; Amy follows them in and locks the door behind all three.",
+            assigned_source="Amy gets Will and Amber into the basement and locks the door.",
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("active process/tool", prompt)
-        self.assertIn("natural inactive/stable endpoint", prompt)
-        self.assertIn("readiness tools", prompt)
-        self.assertIn("ongoing or interrupted source activity", prompt)
+        self.assertIn("Preserve participant scope", prompt)
+        self.assertIn("must not also put the actor there", prompt)
+
+    def test_append_bundle_includes_source_authorized_state(self):
+        phase = {
+            "phase_number": 1,
+            "beat_start": 1,
+            "beat_end": 2,
+            "required_events": [
+                {
+                    "id": "E1",
+                    "event": "Will and Amber enter the basement and are contained there.",
+                    "beat_number": 1,
+                    "state_effects": [
+                        {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+                        {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
+                    ],
+                },
+                {
+                    "id": "E2",
+                    "event": "Amy prepares for the next task.",
+                    "beat_number": 2,
+                    "state_effects": [],
+                },
+            ],
+            "source_text": "Will and Amber enter the basement. Amy prepares for the next task.",
+        }
+        arc = {"phases": [phase], "planner": {"type": "source_span"}}
+        state_text = minimax.format_source_authorized_opening_state(arc, 2)
+        self.assertIn("SOURCE-AUTHORIZED CURRENT STATE", state_text)
+        self.assertIn("Will", state_text)
+        self.assertIn("Amber", state_text)
+        self.assertIn("basement", state_text)
 
     def test_completion_prompt_requires_named_beneficiaries_and_final_result(self):
         messages = minimax.build_director_raw_scene_completion_messages(
