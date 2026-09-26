@@ -505,6 +505,15 @@ GPT-5.6 Sol is the fuzzy final evaluator of generated output against the gold ta
 
 ## Global H3 prompt rules
 
+The locked gold prompts are exemplars of **H3 prompt-writing discipline**, not scripts that production must reconstruct. Four hard rules define that discipline:
+
+1. **To the point.** Use short, concrete visual/action wording. No literary fluff, atmosphere prose, ornamental description, or unnecessary explanation.
+2. **Depictable information only.** Describe only things a video can show or audio can present. Do not write feelings, internal thoughts, intentions that are not externally visible, smell/taste/touch as subjective sensation, or other non-portrayable information. Visible physical reactions are allowed when explicitly described as actions/expressions rather than inferred emotions.
+3. **Actions are explicit.** State each materially important physical action directly: who acts, what object is used, how the object moves/changes hands/changes state, and the visible result when relevant. Avoid vague compression such as "gets ready," "handles the weapon," or "deals with the door" when the physical steps matter to H3.
+4. **Use camera movement liberally; cuts rarely.** Pan, orbit, track, tilt, push/pull, follow, reframe, and similar continuous camera movement are encouraged when they improve spatial clarity or reveal the next action. Prefer these over cuts. Cuts should be rare and used only when continuous movement would be impractical or confusing.
+
+These rules are stricter than fuzzy comparison against the exact gold choreography. Timestamp count, exact wording, and harmless staging may differ from gold while these rules and all continuity/source constraints remain satisfied.
+
 ### Timestamp/action rule
 
 Canonical timestamp syntax:
@@ -517,11 +526,11 @@ Use one timestamp per discrete action. Do not bundle unrelated sequential action
 
 Dialogue is its own timed action when spoken.
 
-Camera movement may share a timestamp only when inseparable from the action; otherwise give it its own timestamp.
+Camera movement may share a timestamp only when inseparable from the action; otherwise give it its own timestamp. Use camera movement freely when it makes spatial progression clearer; do not add cuts merely for variety.
 
 ### Names and dialogue IDs
 
-Prefer names over ambiguous pronouns.
+Prefer names over pronouns. Within one timestamp, use a pronoun only when exactly one person could reasonably be its referent. If two or more people are present or mentioned and the pronoun could be ambiguous, repeat the person's name.
 
 Use `(S1)`, `(S2)`, etc. only when a subject is speaking.
 
