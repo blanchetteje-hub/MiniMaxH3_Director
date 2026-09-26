@@ -869,7 +869,10 @@ AUTHORITY RULES
 - Do not invent wardrobe changes. Any clothing specified in the beat must be part of the response.
 
 LOCAL STAGING
+- Be direct and concrete. No literary fluff, ornamental atmosphere, or explanatory prose.
+- Describe only externally depictable video/audio information. Do not write internal thoughts, inferred feelings, motivations, smell/taste/touch as subjective sensation, or other information H3 cannot portray. If emotion matters, show only an explicit visible action or expression supported by the beat/source.
 - Add only the minimum mundane micro-actions, ordinary props, incidental reactions, and short natural dialogue needed to make CURRENT BEAT visibly legible and complete.
+- State materially important physical actions explicitly: who acts, what object is used, how it moves/changes hands/changes state, and the visible result when relevant. Avoid vague compression when the physical steps matter to H3.
 - A finite action in CURRENT BEAT is NOT complete merely because RAW SCENE shows the subject performing it. Unless CURRENT BEAT says it remains unfinished/interrupted, show its natural observable result or stable endpoint.
 - When an activity is for named people, show those people receiving or participating in the completed result when practical. `beat_complete=true` requires each named beneficiary to visibly receive or participate in the completed result when physically possible.
 - When completion ends use of a tool/appliance used only for that activity, visibly stop, set down, close, or otherwise settle it before the handoff when physically reasonable.
@@ -887,8 +890,9 @@ MICRO-BEATS
 - Use one discrete action/event per timestamp; camera movement may accompany it when needed.
 - Use as many timestamps as CURRENT BEAT needs; there is NO arbitrary maximum timestamp count.
 - Keep the final timestamp before the exact {segment_seconds}-second endpoint.
-- Prefer smooth camera movement over cuts.
+- Use continuous camera movement liberally when it improves spatial clarity or reveals the next action: pan, orbit, track, tilt, push/pull, follow, or reframe. Prefer movement over cuts. Cuts are rare and should be used only when continuous movement would be impractical or confusing.
 - Keep spatial relationships explicit when important.
+- Prefer names over pronouns. Within one timestamp, use a pronoun only when exactly one person could reasonably be its referent; otherwise repeat the person's name.
 - For difficult disconnections (for example decapitation), use separate timestamps when multiple visible stages are needed.
 - For continuation segments, avoid ending the final timed action on spoken dialogue when a visual handoff can follow.
 - Keep the END CONTINUITY STATE to one sentence, untimed, and nearly identical to the last visible state. Do not invent anything new there.
