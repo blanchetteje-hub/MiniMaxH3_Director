@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1379",
+  "kind": "llama_chat",
+  "started_at": 1790449374.2672243,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A driver completes a trip and parks at the destination.\nRAW: The car is parked, but the engine remains idling even though the trip is over.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6kk8col647l1vi0529ls7r",
+    "object": "chat.completion",
+    "created": 1790449374,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW reaches SOURCE-assigned endpoint.\n\nSOURCE: \"A driver completes a trip and parks at the destination.\"\n\nSo activity is completing a trip and parking. The endpoint: driver has parked at destination, presumably car parked. Does engine idling matter? Engine remains idling even though trip over. Is that part of completed activity? Completing trip includes arriving and parking; engine idle might be considered still active process used to perform the activity (engine running). But is it required to stop engine for endpoint? The rule: If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable. Engine idling remains after trip; but was engine idling part of performing the activity? It might be considered still running as part of parking? But parking is just placing car at destination; engine idle could be considered extra process not required for parking. So should it end? The rule says any active process used only to perform that completed activity must end in natural inactive state when physically reasonable. Engine idling was used during trip, but after arrival it's still running. Is that \"used only to perform the completed activity\"? It might be considered part of driving; once trip is over, engine idle remains. But if driver parked and engine idles, that's not necessary for parking. So RAW should have engine off? The source didn't specify engine status. So does RAW reach endpoint? Endpoint: driver completes trip and parks at destination. That is achieved. Engine idling doesn't affect that. So valid.\n\nThus {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 291,
+      "completion_tokens": 347,
+      "total_tokens": 638,
+      "completion_tokens_details": {
+        "reasoning_tokens": 328
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449379.6737535,
+  "status": "ok"
+}
