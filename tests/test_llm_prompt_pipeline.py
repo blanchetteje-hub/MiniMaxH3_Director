@@ -763,6 +763,34 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertNotIn(clothing_requirement, formatter_messages[0]["content"])
         self.assertIn("Mark enters wearing a red coat.", formatter_messages[1]["content"])
 
+    def test_director_source_is_only_current_assignment(self):
+        phase = {
+            "narrative_purpose": minimax.SOURCE_SPAN_PHASE_PURPOSE,
+            "phase_number": 1, "beat_start": 1, "beat_end": 2,
+            "required_events": [
+                {"beat_number": 1, "event": "Mira serves tea to Oren."},
+                {"beat_number": 2, "event": "Oren leaves the tower."},
+            ],
+        }
+        source = minimax.director_assigned_source(phase, 1)
+        self.assertEqual(source, "Mira serves tea to Oren.")
+        self.assertEqual(minimax.director_assigned_source(phase, 3), "")
+        self.assertEqual(minimax.director_assigned_source({}, 1), "")
+        messages, _, _ = minimax.build_generation_messages(
+            "Director rules.", "Story context.",
+            ["Mira makes tea while Oren watches.", "Oren departs."],
+            set(), [], 1, 2, 8, 16, current_phase=phase,
+        )
+        assignment = messages[1]["content"].split(
+            "ASSIGNED SOURCE — authoritative work for this segment:\n", 1
+        )[1].split("\n\n", 1)[0]
+        self.assertEqual(assignment, source)
+        check = minimax.build_director_raw_scene_completion_messages(
+            "Mira makes tea while Oren watches.", "Mira serves Oren tea.", source
+        )
+        self.assertIn(source, check[1]["content"])
+        self.assertNotIn("leaves the tower", check[1]["content"])
+
     def test_generation_messages_scope_beats_to_current_phase_and_carry_summary(self):
         phase = {"phase_number": 2, "beat_start": 2, "beat_end": 3}
         rules = minimax.build_director_rules(12, 6, 2, SUBJECTS, 2)
@@ -1305,6 +1333,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         bundle = {
             "segment": 1, "active_beat_id": 1, "current_duration": 4,
             "current_beat_text": "Mira serves tea to Oren.",
+            "assigned_source": "Mira makes tea for Oren.",
             "conditioning_mode": "initial", "opening_state": "",
             "messages": [{"role": "user", "content": "Direct the current beat."}],
         }
@@ -1321,6 +1350,9 @@ class DirectorPromptCallContractTests(unittest.TestCase):
                       request.call_args_list[2].args[0][-1]["content"])
         self.assertTrue(request.call_args_list[1].kwargs[
             "history_metadata"]["use_beat_validation_settings"])
+        self.assertIn("Mira makes tea for Oren.",
+                      request.call_args_list[1].args[0][1]["content"])
+
 
     def test_request_segment_llm_retries_when_named_subjects_are_dropped(self):
         subjects = (

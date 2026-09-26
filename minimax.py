@@ -857,11 +857,11 @@ _BEAT_ABBREVIATIONS = {
 DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are a minimalist movie editor expanding the CURRENT BEAT into timed micro-beats for a {segment_seconds}-second video segment.
 
 AUTHORITY RULES
-- CURRENT BEAT is the complete and exclusive list of story-level events allowed now.
+- ASSIGNED SOURCE, when present, defines the work allowed now. CURRENT BEAT supplies staging but cannot remove source actions, results, or participant roles. Without ASSIGNED SOURCE, CURRENT BEAT defines the work.
 - NEXT BEAT is a forbidden boundary. Do not perform, begin, anticipate, foreshadow, cause, or show any result unique to NEXT BEAT.
 - OPENING CONTINUITY STATE defines what is already true at 00:00.000; it does not authorize a new event.
 - STORY/PHASE are background context only. SUBJECT DEFINITIONS establish identity/appearance only.
-- Expand CURRENT BEAT only. Do not advance the story.
+- Expand the current assignment only. Preserve source beneficiaries as beneficiaries, not spectators. Do not advance the story.
 - Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
 - If CURRENT BEAT terminally removes/destroys/kills an entity or process, do not carry it forward as active unless CURRENT BEAT restores/restarts it.
 - If a subject is inside/behind a locked or sealed barrier, keep that containment true until CURRENT BEAT explicitly releases or moves them.
@@ -14715,6 +14715,20 @@ def source_span_story_plan_to_macro_arc(
 
 
 
+def director_assigned_source(phase, beat_number):
+    """Expose only exact source text assigned to this source-span beat."""
+    if not isinstance(phase, dict) or phase.get("narrative_purpose") != SOURCE_SPAN_PHASE_PURPOSE:
+        return ""
+    return " ".join(
+        event["event"].strip()
+        for event in phase.get("required_events", [])
+        if isinstance(event, dict)
+        and event.get("beat_number") == beat_number
+        and isinstance(event.get("event"), str)
+        and event["event"].strip()
+    )
+
+
 def phase_authoritative_source(phase, fallback_story):
     """Return exact chapter source for source-span phases, else legacy story."""
     if (
@@ -19940,6 +19954,12 @@ def build_generation_messages(
         else ""
     )
 
+    assigned_source = director_assigned_source(current_phase, current_segment)
+    source_block = (
+        "ASSIGNED SOURCE — authoritative work for this segment:\n"
+        + assigned_source + "\n\n"
+        if assigned_source else ""
+    )
     user_content = f"""STORY: {story} 
 
 SUBJECT DEFINITIONS:
@@ -19947,7 +19967,7 @@ SUBJECT DEFINITIONS:
  
 PHASE: {phase_text}
  
-CURRENT BEAT — EXECUTE ONLY THIS:
+{source_block}CURRENT BEAT — EXECUTE ONLY THIS:
 {current_beat_text}
 
 NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:
@@ -24563,6 +24583,7 @@ def repair_existing_segment(
         "segment": segment_number,
         "current_duration": duration,
         "active_beat_id": segment_number,
+        "assigned_source": director_assigned_source(current_phase, segment_number),
         "current_beat_text": (
             str(beats[segment_number - 1])
             if beats and 1 <= int(segment_number) <= len(beats)
@@ -24712,8 +24733,27 @@ def repair_existing_segment(
 
 
 # Build the independent Request-1 CURRENT-BEAT completion check.
-def build_director_raw_scene_completion_messages(current_beat, raw_scene):
-    """Check only whether Request 1 visibly completes CURRENT BEAT."""
+def build_director_raw_scene_completion_messages(current_beat, raw_scene, assigned_source=""):
+    """Check completion against exact assigned source when available."""
+    if str(assigned_source or "").strip():
+        return [
+            {"role": "system", "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."},
+            {"role": "user", "content": f"""ASSIGNED SOURCE — authoritative work for this segment
+{assigned_source}
+
+DERIVED BEAT — staging suggestion; cannot remove source requirements
+{current_beat}
+
+RAW SCENE
+{raw_scene}
+
+Check only completion:
+1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.
+2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.
+3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.
+4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.
+Return valid (boolean) and issue (short explanation if invalid, empty string otherwise)."""},
+        ]
     return [
         {
             "role": "system",
@@ -25125,6 +25165,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         build_director_raw_scene_completion_messages(
                             current_beat_for_completion,
                             raw_scene,
+                            bundle.get("assigned_source", ""),
                         ),
                         response_format=DIRECTOR_RAW_SCENE_COMPLETION_RESPONSE_FORMAT,
                         history_metadata=completion_metadata,
@@ -25895,6 +25936,7 @@ def _run_main(
             "segment": segment_number,
             "current_duration": current_duration,
             "active_beat_id": active_beat_id,
+            "assigned_source": director_assigned_source(current_phase, active_beat_id),
             "current_beat_text": (
                 str(beats[active_beat_id - 1])
                 if beats and active_beat_id is not None

@@ -1,0 +1,339 @@
+[
+  {
+    "job_id": "probe-source-completion-1191",
+    "case": "captured_breakfast",
+    "variant": "current",
+    "source": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+    "beat": "Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.",
+    "raw_scene": "At 00:00.000 Amy flips a pancake in a skillet on the stove, her tight black tank top and denim jeans visible.\nAt 00:01.000 She pours milk into a bowl placed on the counter.\nAt 00:02.000 A toaster pops up toast on the counter beside the bowl.\nAt 00:03.000 Amy places a plate with pancakes on the counter.\nAt 00:04.000 Will watches her, eyes on the skillet.\nAt 00:05.000 Amber watches too, peering at the sizzling pancake.\nAt 00:06.000 She lifts the spatula to flip another pancake.\nAt 00:07.000 Amy sets the spatula down, turns off the stove, and smiles.\nEnd continuity state: Amy stands in the kitchen wearing a tight black tank top and denim jeans, having cooked breakfast while Will and Amber watch.",
+    "source_completion_expected": false,
+    "rationale": "Named children merely watch; no completed result reaches them.",
+    "verdict": {
+      "valid": true,
+      "issue": "None"
+    },
+    "reasoning": "We need to check if the raw scene visibly completes current beat: \"Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\"\n\nSo we must see Amy cooking breakfast (i.e., she flips pancakes etc). She is wearing that outfit. Her kids are watching.\n\nCheck each explicit action/result:\n\n- Amy cooks breakfast: The raw scene shows flipping pancake at 00:00, pouring milk, toaster pops up toast, plate with pancakes placed, Will watches her, Amber watches too, lifts spatula to flip another pancake, sets spatula down, turns off stove and smiles. So she cooked breakfast.\n\n- She is wearing tight black tank top and denim jeans: At 00:00 it says \"her tight black tank top and denim jeans visible.\" Good.\n\n- Her children Will and Amber watch: At 00:04 Will watches her; at 00:05 Amber watches too. They are watching.\n\nAll named beneficiaries (Will, Amber) visibly receive/participate when physically possible: they watch.\n\nThe final frame: \"Amy stands in the kitchen wearing a tight black tank top and denim jeans, having cooked breakfast while Will and Amber watch.\" That matches current beat.\n\nThus valid=true. No issues.",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1192",
+    "case": "captured_breakfast",
+    "variant": "source_aware",
+    "source": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+    "beat": "Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.",
+    "raw_scene": "At 00:00.000 Amy flips a pancake in a skillet on the stove, her tight black tank top and denim jeans visible.\nAt 00:01.000 She pours milk into a bowl placed on the counter.\nAt 00:02.000 A toaster pops up toast on the counter beside the bowl.\nAt 00:03.000 Amy places a plate with pancakes on the counter.\nAt 00:04.000 Will watches her, eyes on the skillet.\nAt 00:05.000 Amber watches too, peering at the sizzling pancake.\nAt 00:06.000 She lifts the spatula to flip another pancake.\nAt 00:07.000 Amy sets the spatula down, turns off the stove, and smiles.\nEnd continuity state: Amy stands in the kitchen wearing a tight black tank top and denim jeans, having cooked breakfast while Will and Amber watch.",
+    "source_completion_expected": false,
+    "rationale": "Named children merely watch; no completed result reaches them.",
+    "verdict": {
+      "valid": false,
+      "issue": "The kids only watch Amy cook; no visible receipt of the prepared breakfast is shown, so the activity benefiting them isn\u2019t completed as required by the source."
+    },
+    "reasoning": "We need to check RAW SCENE against assigned source: \"Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\" Derived beat: Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\n\nSo source requires: Amy cooking breakfast. She wears tight black tank top and denim jeans. Kids are watching? The derived beat says they watch. Source didn't specify that kids watch; but it's implied maybe. But we need to check actions, results, participant roles assigned by SOURCE. Use derived beat only where consistent with SOURCE.\n\nWe must ensure finite activity needs its visible result: For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. So breakfast cooking should produce pancakes for kids? The raw scene shows Amy flips pancake, pours milk into bowl, toaster pops toast, places plate of pancakes on counter. Kids watch but do they get the food? Not shown. They just watch. According to rule 2: For an activity benefiting people (cooking breakfast), those people must receive or participate in that result; watching alone is insufficient. So kids should be receiving breakfast. The raw scene doesn't show them eating or getting plate. So it's incomplete.\n\nAlso source says \"Amy cooking breakfast for her young kids.\" That implies she cooks breakfast to feed the kids, not just watch. Kids are recipients of breakfast. Raw scene shows Amy cooking but no result delivered to kids. They only watch. So invalid.\n\nThus valid: false. Issue: \"Kids do not receive or participate in the cooked breakfast; they merely watch.\"\n\nCheck if any other issues? Also source says she is at home on a normal day, wearing tight black tank top and denim jeans. That matches. She cooks breakfast. The raw scene shows cooking actions. But result missing for kids.\n\nThus answer: {\"valid\": false, \"issue\":\"Kids do not receive or participate in the cooked breakfast; they merely watch.\"}",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1193",
+    "case": "breakfast_repaired",
+    "variant": "current",
+    "source": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+    "beat": "Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.",
+    "raw_scene": "Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.",
+    "source_completion_expected": true,
+    "rationale": "Both beneficiaries receive the completed result.",
+    "verdict": {
+      "valid": false,
+      "issue": "Missing Amy\u2019s tight black tank top and denim jeans, and the children are eating rather than watching as described in the beat."
+    },
+    "reasoning": "We need to check if the raw scene completes current beat.\n\nCurrent Beat: \"Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\"\n\nSo we must see that Amy cooks breakfast (i.e., cooking action). She is wearing a tight black tank top and denim jeans. Her children Will and Amber are watching.\n\nRaw Scene: \"Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.\"\n\nCheck:\n\n- Amy cooks breakfast? Raw says she finishes cooking breakfast. That is indeed cooking finished. So yes.\n- She wears tight black tank top and denim jeans: Not mentioned in raw scene. The current beat mentions her wearing that outfit; raw scene doesn't mention it. But rule: Every explicit action/result must visibly happen. Wearing a tight black tank top and denim jeans is an explicit result? It's part of the description, but it's not an action or result. It might be considered a state. Does RAW SCENE need to show she wears them? The beat says \"wearing a tight black tank top and denim jeans\". That is a descriptive detail; if raw scene doesn't mention it, does that mean incomplete? The rule: Every explicit action/result in CURRENT BEAT must visibly happen. Wearing is not an action but it's part of the description. But maybe considered as state. It's explicitly stated. So we need to see her wearing them. Raw scene didn't show that.\n\n- Children Will and Amber watch: In raw, they eat at table after she serves plates. They are eating, not watching. Did they watch? The beat says while children watch; but raw shows they eat. That is a different activity. Watching vs eating. So the current beat's requirement of them watching isn't satisfied.\n\nThus RAW SCENE does not complete current beat: missing wearing detail and children watching. So valid=false. Issue string: \"Missing Amy's attire description and children's watching action.\"",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1194",
+    "case": "breakfast_repaired",
+    "variant": "source_aware",
+    "source": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+    "beat": "Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.",
+    "raw_scene": "Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.",
+    "source_completion_expected": true,
+    "rationale": "Both beneficiaries receive the completed result.",
+    "verdict": {
+      "valid": true,
+      "issue": " "
+    },
+    "reasoning": "We need to check RAW SCENE against assigned source: \"Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\"\n\nDerived beat: \"Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\" So derived says she watches? Actually it says while her children watch. That means children are spectators.\n\nRAW SCENE: \"Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.\"\n\nCheck completion:\n\n1. Require actions, results, participant roles assigned by SOURCE. Source says Amy is cooking breakfast for her young kids. So she must be cooking; result: breakfast cooked. She serves them plates? That is part of cooking breakfast for kids. The source didn't specify serving or turning off stove but it's implied.\n\nDerived beat says children watch while she cooks. In RAW SCENE, children eat at table after served. They are not just watching; they participate in eating. But the derived beat said \"while her children Will and Amber watch.\" That implies that during cooking, kids were spectators. The raw scene: She finishes cooking breakfast, serves them plates, sets down skillet, turns off stove. Both children eat at table. So after she finished cooking, they ate. Did they watch while she cooked? Not explicitly stated; but \"both children eat at the table\" indicates they are participants in eating, not just watching.\n\nBut does that violate derived beat? Derived says kids watch during cooking. The raw scene doesn't mention them watching during cooking. But it also doesn't say they didn't watch. It could be implied they watched while she cooked and then ate after. However, \"both children eat at the table\" is a result of serving plates; but we need to check if that satisfies source: Amy cooks breakfast for her kids. She finishes cooking, serves them plates, sets down skillet, turns off stove. That completes cooking activity? The source says she is cooking breakfast for her young kids. Does finishing cooking and serving count as completion? Yes.\n\nBut the derived beat said children watch while she cooks; but raw scene doesn't mention watching during cooking. But it's not required to mention that they watched; it just says after she finished, they eat at table. They could have been watching earlier. The requirement: \"Use the derived beat only where consistent with SOURCE.\" Derived beat is consistent if kids are spectators while Amy cooks. Raw scene didn't specify but doesn't contradict either.\n\nCheck rule 2: A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source assigned spectators remain spectators. Here the activity \"cooking breakfast\" benefits kids. They must receive or participate in that result. Raw scene shows they eat at table (participate). So that's fine.\n\nRule 3: Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish. The raw scene says she finishes cooking, so it's finished. Good.\n\nThus RAW SCENE completes the assigned source work? Yes. It includes Amy wearing tight black tank top and denim jeans (source requirement). She cooks breakfast for kids. She serves them plates. Kids eat at table. That satisfies.\n\nCheck if any missing: Source didn't specify that she sets down skillet or turns off stove, but that's fine extra actions. Derived beat says children watch while cooking; raw scene doesn't mention watching during cooking, but they ate after. But it's not required to mention watching; derived beat only suggests a staging suggestion. It's consistent because kids could have watched earlier.\n\nThus valid: true. Issue empty string.",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1195",
+    "case": "fantasy_missing_recipient",
+    "variant": "current",
+    "source": "The healer treats Ilya and Rook with healing magic.",
+    "beat": "The healer performs healing magic as Ilya and Rook watch.",
+    "raw_scene": "The healer heals Ilya. Rook watches from the doorway. The healer lowers her staff.",
+    "source_completion_expected": false,
+    "rationale": "Rook is a treatment recipient in source, not merely a spectator.",
+    "verdict": {
+      "valid": false,
+      "issue": "Ilya\u2019s watching action is not shown in the raw scene"
+    },
+    "reasoning": "We need to check if the raw scene visibly completes current beat.\n\nCurrent Beat: \"The healer performs healing magic as Ilya and Rook watch.\"\n\nSo actions: Healer performs healing magic; Ilya watches; Rook watches.\n\nRaw Scene: \"The healer heals Ilya. Rook watches from the doorway. The healer lowers her staff.\"\n\nCheck each:\n\nHealer performs healing magic: Raw says \"healer heals Ilya.\" That implies performing healing magic? It could be considered a result of healing, but does it show she is performing magic? He heals Ilya; that likely involves magic. But rule: Every explicit action/result in current beat must visibly happen. The healer performs healing magic as Ilya and Rook watch.\n\nRaw: \"The healer heals Ilya.\" That shows the healer's action (healing). Does it include magic? It says heal, but not explicitly mention magic. However, it's implied that healing is magical. But maybe we need explicit mention of performing magic? The beat says performs healing magic; raw just says heals Ilya. Might be okay.\n\nIlya watches: Raw doesn't mention Ilya watching. Healer heals Ilya (so Ilya receives). Does he watch? Not explicitly. So missing Ilya's watching action.\n\nRook watches from doorway: Raw has Rook watches from the doorway. That matches.\n\nAlso healer lowers staff: extra detail, fine.\n\nThus current beat incomplete because Ilya's watching not shown. Also maybe healing magic not explicit but implied. But rule says every named beneficiary must visibly receive/participate when physically possible. Beneficiary is Ilya; he receives heal. He does participate? He watches? The beat says watch. So missing that.\n\nTherefore valid=false, issue: \"Ilya's watching action is missing.\"",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1196",
+    "case": "fantasy_missing_recipient",
+    "variant": "source_aware",
+    "source": "The healer treats Ilya and Rook with healing magic.",
+    "beat": "The healer performs healing magic as Ilya and Rook watch.",
+    "raw_scene": "The healer heals Ilya. Rook watches from the doorway. The healer lowers her staff.",
+    "source_completion_expected": false,
+    "rationale": "Rook is a treatment recipient in source, not merely a spectator.",
+    "verdict": {
+      "valid": false,
+      "issue": "Rook is not healed \u2013 the healer treats only Ilya, leaving out the source\u2011assigned action for Rook."
+    },
+    "reasoning": "We need to check RAW SCENE against assigned source: \"The healer treats Ilya and Rook with healing magic.\" So the source says healer treats both Ilya and Rook. The derived beat: \"The healer performs healing magic as Ilya and Rook watch.\" Wait, that seems contradictory? Derived beat says they watch, but source says treat them (i.e., heal). But derived beat is a staging suggestion; cannot remove source requirements. So the derived beat may be inconsistent with source if it changes roles.\n\nRAW SCENE: \"The healer heals Ilya. Rook watches from the doorway. The healer lowers her staff.\"\n\nCheck only completion:\n1. Require actions, results, participant roles assigned by SOURCE. Use derived beat only where consistent.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n\nSo source says healer treats Ilya and Rook with healing magic. That implies both Ilya and Rook are recipients of healing. The RAW SCENE only has the healer heal Ilya (explicit). It doesn't mention healing Rook. So missing that action for Rook. Also Rook watches from doorway, but if he is being healed, watching alone insufficient; must receive or participate in result.\n\nThus RAW SCENE invalid: missing healing of Rook. Issue: \"Rook not healed as required by source.\" Return JSON with valid false and issue string.",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1197",
+    "case": "fantasy_all_recipients",
+    "variant": "current",
+    "source": "The healer treats Ilya and Rook with healing magic.",
+    "beat": "The healer performs healing magic as Ilya and Rook watch.",
+    "raw_scene": "The healer touches her staff to Ilya and then Rook; both wounds close. She puts the staff down.",
+    "source_completion_expected": true,
+    "rationale": "Both assigned treatments visibly complete.",
+    "verdict": {
+      "valid": false,
+      "issue": "Ilya and Rook are not shown visibly watching the healer\u2019s magic in the RAW SCENE."
+    },
+    "reasoning": "We need to check if the raw scene completes current beat: \"The healer performs healing magic as Ilya and Rook watch.\" The raw scene says: \"The healer touches her staff to Ilya and then Rook; both wounds close. She puts the staff down.\"\n\nSo does it complete? Current beat: Healer performs healing magic while Ilya and Rook watch. Raw scene shows she touches staff to Ilya, then Rook; both wounds close. That is a result of healing magic. It also says \"She puts the staff down.\" The current beat didn't mention putting staff down but that's extra detail.\n\nWe need to check if every explicit action/result in CURRENT BEAT must visibly happen: Healer performs healing magic as Ilya and Rook watch. So we need healer performing healing magic, Ilya watching, Rook watching. In raw scene, the healer touches her staff to Ilya then Rook; both wounds close. That shows healing magic performed. It also says \"She puts the staff down.\" But does it show that Ilya and Rook are watching? The beat didn't specify them watching explicitly in raw scene but it's implied they watch while she heals. Does the raw scene mention them watching? No, just touches staff to Ilya then Rook; both wounds close. It doesn't say \"Ilya watches\" or \"Rook watches\". But maybe it's assumed that as she performs healing magic, they are watching. The beat says \"as Ilya and Rook watch.\" So the raw scene must show them watching? The rule: If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible. Here beneficiaries: Ilya and Rook. They both receive healing (wounds close). That happens. But do they \"watch\"? It says as Ilya and Rook watch. So the raw scene should show them watching? The rule doesn't explicitly say that watchers need to be shown, but it's part of beat description. We must judge if RAW SCENE visibly completes CURRENT BEAT: Healer performs healing magic while Ilya and Rook watch.\n\nThe raw scene shows healer performing healing (touch staff). It also shows wounds close for both. But does it show them watching? Not explicitly. However the beat says \"as Ilya and Rook watch.\" The watchers are named, so they must be visible participants when physically possible. They could be watching while she heals; but raw scene doesn't mention that. So maybe it's incomplete: It didn't show them watching.\n\nBut rule: Every explicit action/result in CURRENT BEAT must visibly happen. \"Healer performs healing magic\" is an action. That happens. \"Ilya and Rook watch\" is a result? It's not explicitly stated as a result, but part of beat description. The watchers are named beneficiaries; they must receive/participate when physically possible. They do receive (wounds close). But watching is participation. Did raw scene show them watching? No.\n\nThus maybe it's incomplete: It didn't show Ilya and Rook watching. So valid=false with issue \"Ilya and Rook not shown watching\".\n\nAlternatively, the beat might be considered complete because healing magic performed and wounds closed; watchers implied. The rule says judge final frame: required result must already be true. Wounds close is true. Healer performing healing magic? She touches staff to Ilya then Rook; that shows she performs healing magic. So it's done.\n\nBut the beat also includes \"as Ilya and Rook watch.\" That implies watchers are present, but not necessarily shown. But if they were watching, they'd be physically possible participants. The raw scene didn't show them watching. So maybe incomplete.\n\nLet's interpret: The current beat is a single line describing an action with watchers. Raw scene shows the healer touches staff to Ilya and Rook; both wounds close. She puts staff down. That covers healing magic performed on both, resulting in wound closure. It doesn't mention watchers but implies they watch while she heals. But does that satisfy \"as Ilya and Rook watch\"? The beat says as they watch, the healer performs healing magic. So watchers are part of context; raw scene didn't show them watching but it's implied.\n\nThe rule: If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible. Beneficiaries: Ilya and Rook. They both receive (wounds close). They also participate by being watched? But they are beneficiaries of healing; watchers might be participants but not necessarily beneficiaries.\n\nThus the raw scene shows them receiving healing. So it's complete. The watchers part is implied, but maybe okay.\n\nBut rule says \"Every explicit action/result in CURRENT BEAT must visibly happen.\" Explicit actions/results: Healer performs healing magic (visible). Ilya and Rook watch (watching visible?). Not explicitly shown. But maybe the beat didn't require them to be seen; it's just context. The watchers are named, so they should be physically present? They could be watching but not necessarily shown.\n\nGiven typical screenwriting, if you say \"as X watches\", you'd show them watching. So raw scene missing that might be incomplete.\n\nThus I'd set valid=false with issue: Ilya and Rook not visibly watching.\n\nLet's produce JSON.",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1198",
+    "case": "fantasy_all_recipients",
+    "variant": "source_aware",
+    "source": "The healer treats Ilya and Rook with healing magic.",
+    "beat": "The healer performs healing magic as Ilya and Rook watch.",
+    "raw_scene": "The healer touches her staff to Ilya and then Rook; both wounds close. She puts the staff down.",
+    "source_completion_expected": true,
+    "rationale": "Both assigned treatments visibly complete.",
+    "verdict": {
+      "valid": true,
+      "issue": ""
+    },
+    "reasoning": "We need to check RAW SCENE against assigned source: \"The healer treats Ilya and Rook with healing magic.\" Derived beat: \"The healer performs healing magic as Ilya and Rook watch.\"\n\nRAW SCENE: \"The healer touches her staff to Ilya and then Rook; both wounds close. She puts the staff down.\"\n\nCheck completion:\n\n1. Require actions, results, participant roles assigned by SOURCE. Source says healer treats Ilya and Rook with healing magic. So healer must perform healing magic on them. RAW SCENE: healer touches staff to Ilya and then Rook; both wounds close. That seems like she performed healing magic on each? She touched staff to Ilya and then Rook, presumably applying healing magic. The result: both wounds close. That's the effect.\n\nBut does it mention that they watch? Derived beat says \"as Ilya and Rook watch.\" RAW SCENE doesn't mention watching; but derived beat is optional if consistent with source. Source didn't specify spectators. So it's okay to not include watchers. But we need to check if any spectator roles are required by source: no.\n\n2. Finite activity needs visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone insufficient. Here the healer touches staff to Ilya and Rook; both wounds close. So they benefit (wounds close). They \"receive\" the healing? The wound closing is a result for them. But do we need to show them receiving it? It says \"both wounds close.\" That indicates their wounds closed, so yes.\n\n3. Attempts and progress not prove completion. Source activity: healer treats Ilya and Rook with healing magic. Is that ongoing or interrupted? Not specified as ongoing; it's a treatment. The RAW SCENE shows the wound closing after touching staff to each. So it seems completed.\n\n4. Ignore style, camera, future events, harmless staging. No extra source requirements invented.\n\nThus RAW SCENE completes assigned source: healer treats Ilya and Rook with healing magic. It includes action (touch staff), result (wounds close). Participants: healer, Ilya, Rook. So valid true.\n\nAny issue? None. Return JSON {valid:true,issue:\"\"}",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1199",
+    "case": "scifi_missing_recipient",
+    "variant": "current",
+    "source": "The engineer fits oxygen masks on Nia and Sol.",
+    "beat": "The engineer fits an oxygen mask while Nia and Sol stand nearby.",
+    "raw_scene": "The engineer fastens a mask on Nia and checks its seal. Sol watches without a mask.",
+    "source_completion_expected": false,
+    "rationale": "Source-assigned recipient omitted by derived beat.",
+    "verdict": {
+      "valid": true,
+      "issue": ""
+    },
+    "reasoning": "We need to check if the raw scene completes current beat.\n\nCurrent Beat: \"The engineer fits an oxygen mask while Nia and Sol stand nearby.\"\n\nSo actions: Engineer fits an oxygen mask (fits onto someone). Who? The mask presumably on Nia? It says \"while Nia and Sol stand nearby.\" So the mask is fitted to someone, likely Nia. But current beat doesn't specify who gets mask; just that engineer fits a mask while Nia and Sol are standing.\n\nRaw Scene: \"The engineer fastens a mask on Nia and checks its seal. Sol watches without a mask.\"\n\nSo raw scene shows engineer fastening mask on Nia (fits). Checks seal. Sol watches, no mask. So the current beat's actions: Engineer fits an oxygen mask; Nia and Sol stand nearby.\n\nIn raw scene, Nia is standing? It says \"fastens a mask on Nia\" - implies she stands or at least present. Sol watches without mask. They are near. The engineer fits mask onto Nia. So the beat's requirement: Engineer fits an oxygen mask while Nia and Sol stand nearby.\n\nThe raw scene shows that indeed, engineer fastens mask on Nia (fits). Sol watches; presumably standing. It doesn't explicitly say they \"stand\" but \"Sol watches without a mask.\" That implies he's near. The current beat says \"Nia and Sol stand nearby.\" In the raw scene, we don't see them standing? But it's implied that they're there.\n\nBut rule: Every explicit action/result in CURRENT BEAT must visibly happen. So engineer fits mask -> yes. Nia stands -> not explicitly shown but likely she is present. Sol stands -> also not explicitly stated but \"Sol watches\" implies he's near and presumably standing. The beat says they stand nearby; the raw scene shows them there.\n\nAlso rule: A finite activity must reach its natural observable result, not merely begin or remain underway. So mask fitting should be complete. Raw scene: fastens a mask on Nia and checks seal -> yes it's finished.\n\nThus current beat is completed in raw scene. The only potential issue: It says \"Nia and Sol stand nearby.\" In raw scene we don't see them standing, but they are present. But the rule: If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible. Nia receives mask; yes. Sol stands? He watches without a mask. So he participates by watching.\n\nThus valid=true. No issue string needed or empty? The JSON requires \"issue\" field as string. If no issues, maybe \"\".\n\nReturn: {\"valid\": true, \"issue\": \"\"}",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1200",
+    "case": "scifi_missing_recipient",
+    "variant": "source_aware",
+    "source": "The engineer fits oxygen masks on Nia and Sol.",
+    "beat": "The engineer fits an oxygen mask while Nia and Sol stand nearby.",
+    "raw_scene": "The engineer fastens a mask on Nia and checks its seal. Sol watches without a mask.",
+    "source_completion_expected": false,
+    "rationale": "Source-assigned recipient omitted by derived beat.",
+    "verdict": {
+      "valid": false,
+      "issue": "Sol does not receive an oxygen mask, so the engineer\u2019s action on Sol is missing from the scene."
+    },
+    "reasoning": "We need to check RAW SCENE against assigned source: \"The engineer fits oxygen masks on Nia and Sol.\" Derived beat: \"The engineer fits an oxygen mask while Nia and Sol stand nearby.\"\n\nRAW SCENE: \"The engineer fastens a mask on Nia and checks its seal. Sol watches without a mask.\"\n\nWe need to see if RAW SCENE completes the assigned source work.\n\nSource requires actions, results, participant roles: The engineer fits oxygen masks on Nia and Sol. So engineer must fit masks on both Nia and Sol. In raw scene, engineer fastens a mask on Nia but not mention Sol getting a mask. Sol watches without a mask. That means the action of fitting mask to Sol is missing. Thus source requirement incomplete.\n\nAlso result: The mask fitted should be sealed? For Nia yes check seal. But for Sol no mask at all. So incomplete.\n\nThus invalid. Issue explanation: \"Sol does not receive an oxygen mask as required.\"",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1201",
+    "case": "scifi_all_recipients",
+    "variant": "current",
+    "source": "The engineer fits oxygen masks on Nia and Sol.",
+    "beat": "The engineer fits an oxygen mask while Nia and Sol stand nearby.",
+    "raw_scene": "The engineer fastens masks on Nia and Sol and checks both seals. Both breathe through their masks.",
+    "source_completion_expected": true,
+    "rationale": "Both source-assigned recipients completed.",
+    "verdict": {
+      "valid": true,
+      "issue": "N/A"
+    },
+    "reasoning": "We need to check if the raw scene completes current beat.\n\nCurrent Beat: \"The engineer fits an oxygen mask while Nia and Sol stand nearby.\"\n\nSo actions: The engineer fits an oxygen mask (presumably onto someone). While Nia and Sol stand nearby. So we must see that the engineer is fitting a mask, presumably on one of them? It says \"fits an oxygen mask\" but not specifying who gets it. But current beat implies he fits a mask while Nia and Sol are standing near.\n\nRaw scene: \"The engineer fastens masks on Nia and Sol and checks both seals. Both breathe through their masks.\"\n\nSo raw scene shows the engineer fastening masks on Nia and Sol, checking seals, they breathe. That completes the action of fitting oxygen mask for them. The current beat says he fits an oxygen mask while Nia and Sol stand nearby. In raw scene, Nia and Sol are indeed standing? It doesn't explicitly say \"stand\" but presumably they're there. He fastens masks on both. So that is more than just one mask; it's two. But the beat didn't specify number of masks or who gets it. The current beat says he fits an oxygen mask (singular) while Nia and Sol stand nearby. That could be interpreted as him fitting a mask onto someone, maybe either Nia or Sol. In raw scene, he's fastening masks on both. So that includes the action: he fits at least one mask; indeed two. And Nia and Sol are present.\n\nThus current beat is completed. The result of fitting mask is visible (they breathe through their masks). Also seals checked. So yes valid=true. No issue.",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1202",
+    "case": "scifi_all_recipients",
+    "variant": "source_aware",
+    "source": "The engineer fits oxygen masks on Nia and Sol.",
+    "beat": "The engineer fits an oxygen mask while Nia and Sol stand nearby.",
+    "raw_scene": "The engineer fastens masks on Nia and Sol and checks both seals. Both breathe through their masks.",
+    "source_completion_expected": true,
+    "rationale": "Both source-assigned recipients completed.",
+    "verdict": {
+      "valid": true,
+      "issue": ""
+    },
+    "reasoning": "We need to check RAW SCENE against ASSIGNED SOURCE: \"The engineer fits oxygen masks on Nia and Sol.\" Derived beat: \"The engineer fits an oxygen mask while Nia and Sol stand nearby.\"\n\nRAW SCENE: \"The engineer fastens masks on Nia and Sol and checks both seals. Both breathe through their masks.\"\n\nCheck completion:\n\n1. Require actions, results, participant roles assigned by SOURCE. Use derived beat only where consistent with SOURCE.\n\nSource says engineer fits oxygen masks on Nia and Sol. That means action: engineer fitting masks onto Nia and Sol. The RAW SCENE has \"fastens masks on Nia and Sol\" which is same as fit? Yes. It also checks both seals, but that might be extra. But it's okay because derived beat only where consistent.\n\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n\nThe source didn't assign spectators. The action: engineer fits masks on Nia and Sol. Result: they have masks fitted. In RAW SCENE, both breathe through their masks. That shows the result of mask fitting? Yes, breathing indicates mask in place. So result visible.\n\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n\nThe action is finite: fit masks. The RAW SCENE says \"fastens masks on Nia and Sol\" which implies completed fitting. It also checks seals, but that's part of finishing? It's fine.\n\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\n\nNo extra required. So valid.\n\nThus output: {\"valid\": true, \"issue\": \"\"}",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1203",
+    "case": "spectators_only",
+    "variant": "current",
+    "source": "The chef demonstrates pastry folding while Ana and Bo observe; the demonstration ends.",
+    "beat": "The chef folds pastry for a demonstration as Ana and Bo watch.",
+    "raw_scene": "The chef completes the fold, sets down the pastry and tools, and ends the demonstration. Ana and Bo watch throughout.",
+    "source_completion_expected": true,
+    "rationale": "Observers do not need food handed to them.",
+    "verdict": {
+      "valid": true,
+      "issue": " "
+    },
+    "reasoning": "We need to check if the raw scene completes current beat: \"The chef folds pastry for a demonstration as Ana and Bo watch.\" The raw scene says: \"The chef completes the fold, sets down the pastry and tools, and ends the demonstration. Ana and Bo watch throughout.\"\n\nDoes that complete? Current beat requires chef folds pastry for demonstration while Ana and Bo watch. Raw shows chef completes fold (folding finished), sets down pastry/tools, ends demo. That is beyond folding; but it includes finishing fold. It also says Ana and Bo watch throughout. So yes, the current beat's action \"chef folds pastry\" is completed. The raw scene has that plus more. So valid=true.\n\nReturn JSON: {\"valid\": true, \"issue\": \"\"}",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1204",
+    "case": "spectators_only",
+    "variant": "source_aware",
+    "source": "The chef demonstrates pastry folding while Ana and Bo observe; the demonstration ends.",
+    "beat": "The chef folds pastry for a demonstration as Ana and Bo watch.",
+    "raw_scene": "The chef completes the fold, sets down the pastry and tools, and ends the demonstration. Ana and Bo watch throughout.",
+    "source_completion_expected": true,
+    "rationale": "Observers do not need food handed to them.",
+    "verdict": {
+      "valid": true,
+      "issue": " "
+    },
+    "reasoning": "We need to check RAW SCENE against ASSIGNED SOURCE.\n\nASSIGNED SOURCE: \"The chef demonstrates pastry folding while Ana and Bo observe; the demonstration ends.\"\n\nSo source says: Chef demonstrates pastry folding. While Ana and Bo observe. The demonstration ends.\n\nThus required actions: Chef demonstrates pastry folding (folding). Demonstration ends. Participants: Chef, Ana, Bo. They are spectators.\n\nDerived beat: \"The chef folds pastry for a demonstration as Ana and Bo watch.\" So derived beat says chef folds pastry for demonstration; Ana and Bo watch.\n\nRAW SCENE: \"The chef completes the fold, sets down the pastry and tools, and ends the demonstration. Ana and Bo watch throughout.\"\n\nCheck completion:\n\n1. Require actions, results, participant roles assigned by SOURCE. Use derived beat only where consistent with SOURCE.\nSo source requires Chef demonstrates pastry folding while Ana and Bo observe; demonstration ends.\n\nRAW SCENE: Chef completes fold (folding). Sets down pastry and tools. Ends the demonstration. Ana and Bo watch throughout. So yes chef folds pastry? It says \"completes the fold\" - that is a result of folding, but does it demonstrate? He demonstrates by completing fold. That seems fine.\n\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators. So the demonstration ends and Ana & Bo watch throughout. They are spectators. That's okay.\n\n3. Attempts and progress do not prove completion. Honor explicitly ongoing or interrupted source activity; don't force it to finish. The source says demonstration ends, so it's finished. RAW SCENE shows end of demonstration. Good.\n\n4. Ignore style etc. No extra requirements.\n\nThus RAW SCENE seems valid. But check if \"sets down the pastry and tools\" is required? Not in source. It's fine.\n\nAlso does chef demonstrate folding? He completes fold; that demonstrates. So yes.\n\nTherefore valid: true, issue empty string.",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1205",
+    "case": "explicit_interruption",
+    "variant": "current",
+    "source": "The medic starts treating Rae, but the alarm interrupts treatment before it is finished.",
+    "beat": "The medic starts treatment until an alarm interrupts her.",
+    "raw_scene": "The medic begins cleaning Rae's wound. An alarm sounds; she stops before finishing.",
+    "source_completion_expected": true,
+    "rationale": "Explicit interruption must not require completion.",
+    "verdict": {
+      "valid": true,
+      "issue": ""
+    },
+    "reasoning": "We need to check if the raw scene visibly completes current beat: \"The medic starts treatment until an alarm interrupts her.\" The raw scene says: \"The medic begins cleaning Rae's wound. An alarm sounds; she stops before finishing.\"\n\nSo does it show that the medic started treatment? Yes, she begins cleaning. Does it show that the alarm interrupts her? Yes, alarm sounds and she stops before finishing. So current beat is completed: starts treatment until interrupted by alarm. The raw scene shows start of treatment (cleaning wound) and interruption by alarm. It also mentions stopping before finishing. That matches \"until an alarm interrupts her.\" So valid = true.\n\nCheck rules: Every explicit action/result in CURRENT BEAT must visibly happen. The beat says medic starts treatment; that is visible. Alarm interrupts her; that's visible. Finite activity reaches natural observable result? She stops before finishing, but the beat didn't require completion of wound cleaning. It just said she started until alarm interrupted. So it's fine.\n\nNamed beneficiary: Rae's wound being cleaned. That happens. The final frame: required result must already be true. The required result is that medic starts treatment and gets interrupted by alarm. Both are visible. So valid=true, issue empty string or maybe null? Return JSON with boolean valid and string issue. If no issues, issue can be \"\".\n\nThus output:\n\n{\"valid\":true,\"issue\":\" \"} but better to put empty string: \"\".",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1206",
+    "case": "explicit_interruption",
+    "variant": "source_aware",
+    "source": "The medic starts treating Rae, but the alarm interrupts treatment before it is finished.",
+    "beat": "The medic starts treatment until an alarm interrupts her.",
+    "raw_scene": "The medic begins cleaning Rae's wound. An alarm sounds; she stops before finishing.",
+    "source_completion_expected": true,
+    "rationale": "Explicit interruption must not require completion.",
+    "verdict": {
+      "valid": true,
+      "issue": ""
+    },
+    "reasoning": "We need to check RAW SCENE against assigned source: \"The medic starts treating Rae, but the alarm interrupts treatment before it is finished.\" Derived beat: \"The medic starts treatment until an alarm interrupts her.\"\n\nRAW SCENE: \"The medic begins cleaning Rae's wound. An alarm sounds; she stops before finishing.\"\n\nCheck completion: The action: medic cleans wound (treatment). She stops before finishing due to alarm. That matches source: treatment started, interrupted by alarm before finished.\n\nWe need to ensure actions, results, participant roles assigned by SOURCE are present. Source says \"The medic starts treating Rae\" => participants: medic and Rae. Result: treatment of Rae's wound. The RAW SCENE has the medic cleaning Rae's wound (treatment). It mentions Rae? Actually it says \"Rae's wound\". So yes.\n\nResult visible: cleaning wound is a result; but she stops before finishing, so not finished. But source says interrupted before finish. That's fine.\n\nSpectators? None mentioned in source. RAW SCENE has no spectators.\n\nThus valid. Issue empty string.",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1207",
+    "case": "activation_progress",
+    "variant": "current",
+    "source": "The pilot activates the reactor.",
+    "beat": "The pilot presses the reactor start button.",
+    "raw_scene": "The pilot presses START. The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.",
+    "source_completion_expected": false,
+    "rationale": "Derived prerequisite cannot replace source result.",
+    "verdict": null,
+    "reasoning": "",
+    "finish_reason": null,
+    "error": "HTTP Error 400: Bad Request"
+  },
+  {
+    "job_id": "probe-source-completion-1208",
+    "case": "activation_progress",
+    "variant": "source_aware",
+    "source": "The pilot activates the reactor.",
+    "beat": "The pilot presses the reactor start button.",
+    "raw_scene": "The pilot presses START. The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.",
+    "source_completion_expected": false,
+    "rationale": "Derived prerequisite cannot replace source result.",
+    "verdict": {
+      "valid": false,
+      "issue": "The screen shows \"REACTOR OFFLINE\" after the pilot presses START, indicating the reactor has not yet been activated as required by the source."
+    },
+    "reasoning": "We need to check RAW SCENE against assigned source: \"The pilot activates the reactor.\" Derived beat: \"The pilot presses the reactor start button.\"\n\nRAW scene: \"The pilot presses START. The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.\"\n\nCheck completion:\n\n1. Require actions, results, participant roles from SOURCE. Source action: activate reactor. That implies starting it? Activation likely means turning on. Derived beat: pressing the reactor start button.\n\nRAW scene has pilot pressing START (button). So action matches derived beat and source. Result: screen says \"STARTUP IN PROGRESS, REACTOR OFFLINE.\" Does that indicate activation? The result shows startup in progress but reactor offline. That seems like not yet activated; it's starting up but still offline. Source requires the reactor to be activated. Is it considered activated? Might need to show reactor online or active. The screen says \"REACTOR OFFLINE\" indicates not activated. So maybe incomplete.\n\nBut check rule: A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source assigned spectators remain spectators. Not relevant.\n\nAttempts and progress do not prove completion. Honor explicitly ongoing or interrupted source activity; do not force it to finish. So if reactor startup is still in progress, it's ongoing. The source says \"activates the reactor.\" That could be considered an action that starts the process of activation. But does it require the result? It might need to show reactor online.\n\nThus RAW scene shows pilot pressing start and screen indicates startup in progress but offline. So maybe incomplete because not yet activated. However, is \"STARTUP IN PROGRESS\" enough for activation? The source says activates the reactor; that could be interpreted as starting the process of activation. But if it's still offline, then hasn't fully activated.\n\nThus likely invalid: missing result that reactor is online or active. Issue: Reactor remains offline after pressing start.\n\nReturn JSON with valid false and issue explanation.",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1209",
+    "case": "activation_complete",
+    "variant": "current",
+    "source": "The pilot activates the reactor.",
+    "beat": "The pilot presses the reactor start button.",
+    "raw_scene": "The pilot presses START. The reactor reaches stable output; the screen shows REACTOR ONLINE.",
+    "source_completion_expected": true,
+    "rationale": "Visible final result completes the source.",
+    "verdict": {
+      "valid": true,
+      "issue": "No issues"
+    },
+    "reasoning": "We need to check if the raw scene visibly completes current beat: \"The pilot presses the reactor start button.\" The raw scene says: \"The pilot presses START. The reactor reaches stable output; the screen shows REACTOR ONLINE.\"\n\nSo does it show that the pilot pressed the reactor start button? Yes, he presses START (presumably the button). Does the result of pressing happen? It says reactor reaches stable output and screen shows online. That is a natural observable result. So beat complete.\n\nThus valid=true. No issue.",
+    "finish_reason": "stop",
+    "error": null
+  },
+  {
+    "job_id": "probe-source-completion-1210",
+    "case": "activation_complete",
+    "variant": "source_aware",
+    "source": "The pilot activates the reactor.",
+    "beat": "The pilot presses the reactor start button.",
+    "raw_scene": "The pilot presses START. The reactor reaches stable output; the screen shows REACTOR ONLINE.",
+    "source_completion_expected": true,
+    "rationale": "Visible final result completes the source.",
+    "verdict": {
+      "valid": true,
+      "issue": ""
+    },
+    "reasoning": "We need to check RAW SCENE against assigned source: \"The pilot activates the reactor.\" Derived beat: \"The pilot presses the reactor start button.\"\n\nRAW scene: \"The pilot presses START. The reactor reaches stable output; the screen shows REACTOR ONLINE.\"\n\nCheck completion:\n\n1. Require actions, results, participant roles from SOURCE. Source says pilot activates reactor. That implies action: pilot activates (presses?) reactor. Derived beat says press start button. RAW has pilot pressing START. So action matches.\n\nResult: \"The reactor reaches stable output; the screen shows REACTOR ONLINE.\" That's a result of activation. Good.\n\nParticipant roles: pilot is participant, yes.\n\n2. Finite activity needs visible result. The reactor reaching stable output and showing online qualifies as result. People? Not specified but it's fine.\n\n3. Attempts/progress not enough. Here we have completion (stable output). So good.\n\n4. No extra source requirements.\n\nThus valid true. Issue empty string.",
+    "finish_reason": "stop",
+    "error": null
+  }
+]

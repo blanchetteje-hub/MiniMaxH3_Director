@@ -14,36 +14,35 @@ Active development branch:
 
 `gpt-arc-refresh`
 
-## Current status snapshot — 2026-09-26
+## Current status snapshot — 2026-09-26, source-aware Director
 
-- Latest reviewed capture: `gold-prompt-acceptance-1190`, code `86f684e`.
-  All 8 H3 prompts were generated, with 2 chapters / 6+2 beats. This is
-  capture completeness, not gold-quality acceptance.
-- Earliest mismatch remains Segment 1: children watch cooking but receive no
-  breakfast. The source says cooking **for her kids**; the derived beat says
-  cooking **while her children watch**. The independent Director gate receives
-  only the derived beat and accepts its explicit spectator roles. Tightening
-  the checker without retaining source authority would target the wrong input.
-- Later visible problems include inconsistent barrier/location staging,
-  overloaded held props, stale prompt-derived continuity, and noncanonical
-  timestamps. These remain follow-up concerns; do not claim full gold acceptance.
-- Bridge regression 1189: 46 passed, 4 failed. Two failures expose a missing
-  success exit for legacy callers without current_beat_text; two are stale call
-  counts after adding the independent verifier.
-- Fixed the no-beat-text success exit while preserving structure and completion
-  checks. Updated the two call counts and added a semantic-rejection retry test.
-  Local focused suite: **51/51 passed** (`tests/test_llm_prompt_pipeline.py`).
-- Prepared probes **1191–1210**: 10 paired current/source-aware completion
-  checks, including exact captured Segment 1, repaired positives, fantasy,
-  sci-fi, spectator-only, interrupted work, and reactor activation controls.
-  Manifest: `tests/LLM/probes/source_completion_1191_1210.json`.
-  1536 completion tokens per probe avoids the earlier tiny-budget confound.
-- Source-aware completion remains an experiment, not production behavior.
-  The expected labels live only in the development manifest, never the requests.
-  Review labels and reasoning before integrating a source-authority handoff.
-- Next: process these 20 bridge results. If supported, preserve the exact current
-  assignment through Director creation and completion checking, without supplying
-  other chapters or future responsibilities. Then rerun prompt acceptance.
+- Reviewed all probes 1191–1210. Source-aware completion matched 10/10 intended
+  completion labels, including the exact captured breakfast failure, missing
+  fantasy/sci-fi recipients, spectators, explicit interruption, and reactor
+  startup versus completed activation. Baseline: 5/9 label matches, with the
+  fantasy negative rejected for missing *watching*, not the missing treatment.
+  Probe 1207 returned HTTP 400; this is not a semantic verdict.
+- Qualification: repaired-breakfast control 1194 omitted clothing from raw scene;
+  its reasoning incorrectly claimed clothing was present. The completion outcome
+  is useful, but do not count this as appearance-fidelity evidence. Corrected
+  positive controls retain the clothing and location explicitly.
+- Adopted the demonstrated input correction in the existing Director path:
+  source-span required_events assigned to the current beat are carried verbatim
+  into Request 1 and the existing completion check. The derived beat supplies
+  staging and cannot erase source actions/results/participant roles. No extra
+  semantic call or source rewrite was added. Legacy non-source-span behavior is
+  preserved. Normal and repair bundles both carry the assignment.
+- Source-aware checker wording matches the tested candidate. Regression checks
+  cover exact assignment scoping and forwarding through the retry loop.
+  Local tests: **65 passed**, prompt pipeline + source-span runtime adapter.
+- Evidence: `tests/LLM/probes/source_completion_1191_1210_results.json`.
+- Next bridge work: full prompt acceptance **1211**, transport retry **1212**,
+  and corrected breakfast positive controls **1213–1214**. A fresh 20-case
+  semantic batch is not needed before this end-to-end check.
+- Acceptance review: verify all 8 segments, 2 chapters / 6+2 beats, source roles
+  retained through Request 1, both breakfast recipients served, tools settled,
+  input budget respected, and no completion retry loop. Then address the earliest
+  remaining H3 mismatch. No gold-quality acceptance is claimed yet.
 
 The entries below are historical; this snapshot supersedes old stop/go decisions.
 

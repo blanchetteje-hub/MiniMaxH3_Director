@@ -824,9 +824,16 @@ beneficiaries became an activity they merely **watch** in the derived beat.
 The Director completion checker sees only that derived beat. Presence is not
 preservation of a source-assigned participant role.
 
-The next experiment compares the existing completion check with one receiving
-exact current assigned source plus derived beat and raw scene. This is a proposed
-input correction to the existing gate, not an additional semantic stage. Do not
-supply future source work or demand a result from source-designated spectators,
-explicitly unfinished activities, or interrupted work. No semantic prompt change
-is adopted until paired generic probes 1191–1210 are reviewed.
+The existing Director creation and completion calls now receive the exact
+source-span required event text assigned to the current beat, alongside the
+derived beat. Python selects by explicit beat_number; it does not rewrite text
+or infer semantic requirements. The source governs actions, results, and
+participant roles; the derived beat supplies compatible staging. This changes
+inputs to the existing calls, not the number of semantic stages. Non-source-span
+legacy callers retain their prior contract.
+
+Paired probes 1191–1210 support this correction: the source-aware variant matched
+10/10 intended completion outcomes, including spectators and interrupted work.
+One repaired positive omitted appearance details, limiting appearance-fidelity
+claims; one baseline request failed with HTTP 400. Full H3 acceptance 1211 must
+confirm the fix end to end before advancing past the breakfast mismatch.
