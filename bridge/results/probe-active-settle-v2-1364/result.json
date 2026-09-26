@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1364",
+  "kind": "llama_chat",
+  "started_at": 1790449282.5035694,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A worker finishes washing the equipment.\nRAW: The equipment is clean, the brush is down, but the faucet used for washing continues running.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-mk5u1wdu0cp9x8dzn0eia",
+    "object": "chat.completion",
+    "created": 1790449282,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The faucet used for washing remains running, so the active process of washing has not naturally stopped as required by the completed activity.\"}",
+          "reasoning": "We need to judge if RAW reaches SOURCE-assigned endpoint.\n\nSOURCE: \"A worker finishes washing the equipment.\"\n\nSo activity is washing equipment. The endpoint: finishing washing equipment. That implies that after washing, equipment should be clean and brush down? Let's parse:\n\nRAW: \"The equipment is clean, the brush is down, but the faucet used for washing continues running.\"\n\nEquipment clean => washing finished. Brush down => presumably brush was used then lowered. Faucet still running => water still flowing.\n\nDoes finishing washing require faucet to stop? The activity of washing ends when equipment cleaned and brush down; faucet running might be part of process or not. But does \"finishes washing the equipment\" imply that all associated processes (like faucet) should stop? According to rule 1: If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable.\n\nThe faucet was used for washing. After finishing washing, it should be turned off. So the faucet running is an active process still performing washing? It's water flowing but equipment already clean; maybe it's just leftover water. But rule says any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable.\n\nSo faucet continues running: not ended, so RAW does NOT reach endpoint. So valid false with issue \"faucet still running after washing finished\".\n\nReturn JSON accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 288,
+      "completion_tokens": 332,
+      "total_tokens": 620,
+      "completion_tokens_details": {
+        "reasoning_tokens": 289
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449287.7031798,
+  "status": "ok"
+}
