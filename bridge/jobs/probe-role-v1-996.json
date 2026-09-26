@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-role-v1-996",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Return one JSON object with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "BEFORE: The brass seal was removed from the socket. NOW: Check the open mechanism. LATER: None. CANDIDATE: The same seal is removed from the same socket again, then the mechanism is checked. Reject repeated completed removal unless restored. Return valid false for a clear contradiction and valid true otherwise."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 512,
+  "timeout_seconds": 600
+}
