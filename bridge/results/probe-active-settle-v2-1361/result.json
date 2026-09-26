@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1361",
+  "kind": "llama_chat",
+  "started_at": 1790449264.0048523,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A parent cooks and serves breakfast for the children.\nRAW: The parent serves both children, sets down the spatula, turns off the stove burner, and ends with the stove idle.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-liolz5z6o4d6mi8b5lw2ix",
+    "object": "chat.completion",
+    "created": 1790449264,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW reaches SOURCE-assigned endpoint.\n\nSOURCE: \"A parent cooks and serves breakfast for the children.\"\n\nSo activity is cooking and serving breakfast. The endpoint presumably after serving? It says \"cooks and serves breakfast\". So finishing cooking, serving. Does that mean the stove should be off? Likely yes. The source doesn't say ongoing or interrupted. So we need to check RAW: \"The parent serves both children, sets down the spatula, turns off the stove burner, and ends with the stove idle.\"\n\nSo they serve breakfast (both children), set down spatula, turn off stove burner, end with stove idle. That matches cooking finished, serving done. The spatula is set down; that's fine. Stove turned off. So RAW reaches endpoint.\n\nThus valid true. No issue.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 297,
+      "completion_tokens": 183,
+      "total_tokens": 480,
+      "completion_tokens_details": {
+        "reasoning_tokens": 165
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449267.0470421,
+  "status": "ok"
+}
