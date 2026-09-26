@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-strict-1304",
+  "kind": "llama_chat",
+  "started_at": 1790446302.5823581,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe teacher demonstrates the procedure for Mira and Jon.\n\nCANDIDATE BEAT\nThe teacher performs the full demonstration while Mira and Jon watch closely.\n\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result. Named relational participants are material. If CURRENT JOB assigns a finite activity for named people, those named people must visibly receive or participate in the completed result when physically possible; watching alone is insufficient unless watching/listening is itself the assigned benefit, such as a performance, lesson, or demonstration. Preserve recipient/beneficiary roles rather than merely keeping the people present. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-pfuqtujowmw2wqi4j6stm",
+    "object": "chat.completion",
+    "created": 1790446302,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to validate candidate beat against current job meaning. Current Job: \"The teacher demonstrates the procedure for Mira and Jon.\" So teacher demonstrates procedure for them. The demonstration is presumably a full demonstration? It says \"demonstrates the procedure\". That implies teacher shows how to do it, maybe step-by-step.\n\nCandidate Beat: \"The teacher performs the full demonstration while Mira and Jon watch closely.\"\n\nDoes that accomplish meaning? Teacher performs full demonstration (so demonstration). For Mira and Jon. They watch closely. The current job requires teacher demonstrates procedure for them; they must receive or participate in completed result when physically possible. Watching alone is insufficient unless watching/listening is itself assigned benefit, such as a performance, lesson, or demonstration.\n\nHere the teacher performing full demonstration while Mira and Jon watch closely: That seems to satisfy that teacher demonstrates procedure (full demonstration). The participants are present; they watch closely. Does \"watching\" count? Yes, it's a demonstration for them. So it meets requirement. No missing action. It's fine.\n\nThus valid true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 265,
+      "completion_tokens": 236,
+      "total_tokens": 501,
+      "completion_tokens_details": {
+        "reasoning_tokens": 216
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446306.2202356,
+  "status": "ok"
+}
