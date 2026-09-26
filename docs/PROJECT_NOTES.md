@@ -36,6 +36,7 @@ When an intermediate artifact disagrees with `story.txt`, change the artifact, n
 8. The new chapter-first design starts from a clean sheet. The old ARC/BEATS call structure is **not** a constraint.
 
 ### Probe hygiene
+THE BIGGEST HURDLE YOU HAVE TO OVERCOME IS REFINING THE LOCAL LLM MODEL PROMPTS TO WORK PROPERLY.
 
 When testing the local model, never embed the expected semantic answer in the required output example.
 
