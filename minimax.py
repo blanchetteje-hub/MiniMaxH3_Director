@@ -595,6 +595,10 @@ _DIRECTOR_TIMESTAMP_RE = re.compile(
     r"(?i)\b(?:at\s+)?(?P<minutes>\d{1,2}):"
     r"(?P<seconds>\d{2})(?:[.:](?P<fraction>\d{1,3}))?\b"
 )
+_DIRECTOR_CANONICAL_TIMESTAMP_RE = re.compile(
+    r"(?i)\bAt\s+(?P<minutes>\d{2}):(?P<seconds>\d{2})\."
+    r"(?P<fraction>\d{3}),"
+)
 
 _STRUCTURAL_EVIDENCE_STOPWORDS = frozenset({
     "about", "after", "again", "against", "already", "around", "because",
@@ -16274,20 +16278,37 @@ def _director_timestamps(value):
     return timestamps
 
 
-# Require Request 2 to preserve every Request 1 timestamp, including 00:00.000.
+# Require Request 2 to preserve every Request 1 timestamp and canonical syntax.
 def _validate_director_timestamp_correspondence(raw_scene, detailed_description):
-    """Require Request 2 to preserve Request 1's complete timestamp sequence."""
+    """Require Request 2 timestamps to preserve sequence and canonical H3 syntax."""
     raw_timestamps = _director_timestamps(raw_scene)
     formatted_timestamps = _director_timestamps(detailed_description)
-    if raw_timestamps == formatted_timestamps:
-        return []
-
-    return [
-        "RAW SCENE timestamps and detailed_description timestamps do not "
-        "correspond: "
-        f"RAW SCENE={raw_timestamps or 'none'}, "
-        f"detailed_description={formatted_timestamps or 'none'}."
+    canonical_matches = list(
+        _DIRECTOR_CANONICAL_TIMESTAMP_RE.finditer(str(detailed_description or ""))
+    )
+    canonical_timestamps = [
+        (
+            int(match.group("minutes")) * 60 + int(match.group("seconds")),
+            int(match.group("fraction")),
+        )
+        for match in canonical_matches
     ]
+
+    issues = []
+    if raw_timestamps != formatted_timestamps:
+        issues.append(
+            "RAW SCENE timestamps and detailed_description timestamps do not "
+            "correspond: "
+            f"RAW SCENE={raw_timestamps or 'none'}, "
+            f"detailed_description={formatted_timestamps or 'none'}."
+        )
+    if formatted_timestamps != canonical_timestamps:
+        issues.append(
+            "Every detailed_description timestamp must use canonical syntax "
+            "'At mm:ss.nnn,'; bracketed, bare, shortened, colon-fraction, or "
+            "otherwise reformatted timestamps are invalid."
+        )
+    return issues
 
 
 # Check the Request 2 state handoff without blocking generation.
