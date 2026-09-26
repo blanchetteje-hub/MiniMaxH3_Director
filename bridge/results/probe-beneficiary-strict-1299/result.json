@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-strict-1299",
+  "kind": "llama_chat",
+  "started_at": 1790446272.6666,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe cook prepares dinner for Mira and Jon.\n\nCANDIDATE BEAT\nThe cook finishes dinner and serves a plate to Mira and a plate to Jon.\n\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result. Named relational participants are material. If CURRENT JOB assigns a finite activity for named people, those named people must visibly receive or participate in the completed result when physically possible; watching alone is insufficient unless watching/listening is itself the assigned benefit, such as a performance, lesson, or demonstration. Preserve recipient/beneficiary roles rather than merely keeping the people present. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-wtyhq0no7g4dfuql8kpuw",
+    "object": "chat.completion",
+    "created": 1790446272,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to validate candidate beat against current job meaning. Current job: The cook prepares dinner for Mira and Jon. So the cook must prepare dinner (i.e., finish cooking) for both Mira and Jon. The candidate beat says: The cook finishes dinner and serves a plate to Mira and a plate to Jon.\n\nDoes that accomplish? Yes, finishing dinner is preparing; serving plates to each person ensures they receive it. That matches requirement. So valid true. No issue.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 267,
+      "completion_tokens": 115,
+      "total_tokens": 382,
+      "completion_tokens_details": {
+        "reasoning_tokens": 95
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446274.766716,
+  "status": "ok"
+}
