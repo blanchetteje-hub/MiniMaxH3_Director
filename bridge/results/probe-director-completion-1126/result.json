@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-completion-1126",
+  "kind": "llama_chat",
+  "started_at": 1790392581.990128,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nA cook prepares and serves breakfast to Mira and Jon.\n\nRAW SCENE\nThe cook fries eggs, plates one serving, and hands it to Mira while Jon waits.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or extra harmless detail.\n- valid=true only if CURRENT BEAT is complete in RAW SCENE.\nReturn {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-32gzzexilsfigm7afbmzn",
+    "object": "chat.completion",
+    "created": 1790392581,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Jon does not receive breakfast\"}",
+          "reasoning": "We need to check whether the raw scene visibly completes current beat. Current Beat: \"A cook prepares and serves breakfast to Mira and Jon.\" Raw Scene: \"The cook fries eggs, plates one serving, and hands it to Mira while Jon waits.\"\n\nDoes this complete? The beat says serve breakfast to both Mira and Jon. In raw scene, only Mira receives the plate; Jon is waiting but not served. So it's incomplete. Also the cook prepares (fries eggs) and serves to Mira. But not to Jon. So invalid.\n\nReturn JSON: {\"valid\":false,\"issue\":\"Jon does not receive breakfast\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 256,
+      "completion_tokens": 147,
+      "total_tokens": 403,
+      "completion_tokens_details": {
+        "reasoning_tokens": 124
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392584.072045,
+  "status": "ok"
+}
