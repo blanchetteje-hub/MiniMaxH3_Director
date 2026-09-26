@@ -148,6 +148,17 @@ Active development branch:
   welding, weapons/readiness, performances, ongoing/interrupted work, doors,
   lamps, delivery carts, drills, and vehicle arrival.
 
+### 2026-09-26 — H3 barrier blocking fixed; persistent-state guard is next
+
+- Focused barrier-blocking tests 1384 passed 68/68.
+- Acceptance 1385 retained the locked 2-chapter / 6+2 plan and generated all 8 H3 prompts.
+- The earlier H3-specific basement ambiguity is materially fixed: Segment 2 now explicitly shows Will and Amber crossing into the basement, Amy remaining outside, the door closing/locking between them, and source-authorized continuity keeps the children inside/out of Segments 3-7 until release in Segment 8.
+- The next earliest real H3 validity defect is unsupported persistent-state loss during combat-shaped staging: Segment 4 set Amy's katana on the floor even though source-authorized state had her holding/equipping it and the current source did not authorize dropping it.
+- The existing post-Director continuity validator is defined but is not part of the active Request 1 -> Request 2 acceptance path. Do not add a new semantic stage solely for this.
+- Request 1's existing independent completion check now also receives AUTHORITATIVE OPENING STATE and must preserve persistent facts unless CURRENT SOURCE/BEAT explicitly changes them. This covers held/equipped items, containment, barrier state, clothing, and other durable facts while allowing source-authorized changes and harmless transient staging.
+- Implementation commits: `b83e2763f47e9bee8660286e9fda23b370d85b67`, `1688fc8a2c129d4ac7784fe6dc6acd8a13dbd4a0`.
+- Probes 1407-1426 exercise that persistent-state contract on neutral controls; focused tests are queued as 1427. Review those before the next full acceptance.
+
 The entries below are historical; this snapshot supersedes old stop/go decisions.
 
 ## Historical snapshot — 2026-09-25
