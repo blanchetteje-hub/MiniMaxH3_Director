@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-1283",
+  "kind": "llama_chat",
+  "started_at": 1790446020.9017935,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe teacher demonstrates the procedure for Mira and Jon.\n\nCANDIDATE BEAT\nThe teacher performs the full demonstration while Mira and Jon watch closely.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result when the job has multiple parts. Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result. Reject a solo rewrite that drops named beneficiaries or participants. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yo8x2ayxlwk8bkp7kzqwm",
+    "object": "chat.completion",
+    "created": 1790446020,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to validate candidate beat against current job. Current Job: \"The teacher demonstrates the procedure for Mira and Jon.\" So teacher demonstrates procedure for Mira and Jon. That implies demonstration is done for them; they watch? The phrase \"for Mira and Jon\" indicates that the demonstration is intended for those two, maybe they are watching.\n\nCandidate Beat: \"The teacher performs the full demonstration while Mira and Jon watch closely.\"\n\nDoes it accomplish meaning of current job? Teacher demonstrates procedure for Mira and Jon. Candidate says teacher performs full demonstration while Mira and Jon watch closely. That implies demonstration is performed; Mira and Jon watch closely. It preserves named participants (Mira, Jon). The action: teacher performs demonstration. Does \"full\" add extra detail but not drop any required part. So valid.\n\nThus output JSON with valid true.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 251,
+      "completion_tokens": 186,
+      "total_tokens": 437,
+      "completion_tokens_details": {
+        "reasoning_tokens": 166
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446024.0814073,
+  "status": "ok"
+}
