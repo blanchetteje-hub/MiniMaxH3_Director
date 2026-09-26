@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "finite-endpoint-1460",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge one candidate beat against one authoritative source event. Return JSON only with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE EVENT:\nA mechanic repairs Dana's rover.\n\nCANDIDATE BEAT:\nThe mechanic tightens bolts while the rover remains disabled on the lift.\n\nRULES\n1. The candidate must depict the source event itself.\n2. If the source event is a finite activity or task, the candidate must reach its natural observable completion endpoint. Merely showing the task underway, approaching completion, or partly complete is INVALID.\n3. When the source assigns a result directly to a named recipient/beneficiary, preserve that role. Mere watching is not enough when the ordinary visible endpoint is receiving or participating in the result.\n4. Do not invent extra requirements beyond the source event's ordinary visible completion.\nReturn {\"valid\":boolean,\"issue\":string}."
+    }
+  ],
+  "temperature": 0,
+  "max_tokens": 512,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "timeout_seconds": 600
+}
