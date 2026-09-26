@@ -1,0 +1,7 @@
+{
+  "job_id": "coherence-gate-tests-1075",
+  "status": "error",
+  "error_type": "ValueError",
+  "error": "Requested test path does not exist: 'tests/test_beat_retry_hierarchy.py::BeatRetryHierarchyTests::test_failed_beat_is_repaired_before_commit'",
+  "finished_at": 1790386675.913167
+}
