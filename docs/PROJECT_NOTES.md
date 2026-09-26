@@ -203,13 +203,21 @@ N seconds." Pairwise 8-second fit probes overthought simple cases and even
 accepted an intentionally overfull chain. Likewise, a holistic "are N beats
 enough?" call exhausted its reasoning budget on Amy-shaped material.
 
-The current binary local-relationship classifier is locked for the production
-path after the exact Amy pairs passed:
+The current binary local-relationship classifier remains the production path,
+but it is **not locked**. Acceptance 1211 demonstrated fresh-run instability:
+completed protection -> retrieve gear was falsely merged, producing a 7+1 beat
+allocation. A paired 20-probe comparison (1215-1234) showed the shorter replacement
+wording was worse overall (about 6/10 semantic controls versus about 8/10 for the
+current production wording), so that replacement was rejected. Continue refining
+the single binary classifier rather than adding grouping stages.
+
+The intended relations remain:
 - calm baseline -> inciting change = `NEW_TASK`;
 - inciting danger -> immediate protective reaction = `MERGE`;
 - completed protection -> retrieve gear = `NEW_TASK`;
-- retrieve gear -> equip that gear = `MERGE`;
-- completed local task -> unrelated next tool/task = `NEW_TASK`.
+- retrieve gear -> immediate use/equip/consume of that exact obtained item may `MERGE`;
+- completed victory/resolution -> release/aftermath task = `NEW_TASK`;
+- completed local task -> unrelated next tool/test/task = `NEW_TASK`.
 
 Earlier synthetic experiments with multi-label classifiers and two-call semantic
 decomposition were not stable enough for the 20B model and are not the active
