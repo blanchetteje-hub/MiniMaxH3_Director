@@ -550,7 +550,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         )
         prompt = " ".join(messages[1]["content"].split())
         self.assertIn("Preserve participant scope", prompt)
-        self.assertIn("must not also put the actor there", prompt)
+        self.assertIn("Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it", prompt)
 
     def test_append_bundle_includes_source_authorized_state(self):
         phase = {
@@ -642,8 +642,8 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_source="Mara guides Eli and Noor into the shelter and locks the door.",
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("movement applies to those people only", prompt)
-        self.assertIn("invalid if it also moves the actor across/inside", prompt)
+        self.assertIn("Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it", prompt)
+        self.assertIn("does NOT authorize the mover/helper to follow", prompt)
 
     def test_completion_prompt_requires_named_beneficiaries_and_final_result(self):
         messages = minimax.build_director_raw_scene_completion_messages(
