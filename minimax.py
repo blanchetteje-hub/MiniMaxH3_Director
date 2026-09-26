@@ -877,7 +877,7 @@ LOCAL STAGING
 - When CURRENT BEAT introduces an unnamed but visually significant individual likely to persist, act, speak, fight, or matter to continuity, assign it a simple functional stable label formed from its role/type plus a number, such as Guard1 or Creature1, and reuse it consistently.
 - Do not assign Subject-style labels to crowds, collective groups, scenery, props, or incidental background figures.
 - Short dialogue may directly support CURRENT BEAT but may not introduce new facts or NEXT BEAT.
-- Registered speakers use their exact speaker ID and H3 dialogue form, for example: Amy (S1) says <d>[English]The eggs are ready.</d>. Never invent an (S#).
+- Registered speakers use their exact speaker ID and H3 dialogue form, for example: Amy (S1) says <d>[English]The eggs are ready.</d>. Do NOT put spoken words in bare single/double quotation marks. Never invent an (S#).
 
 MICRO-BEATS
 - First timestamp MUST be 00:00.000.
@@ -25089,8 +25089,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             )
         )
         independent_completion = None
+        current_beat_for_completion = str(
+            bundle.get("current_beat_text") or ""
+        ).strip()
         if (
             completion_checks_pass
+            and current_beat_for_completion
             and raw_scene.strip()
             and raw_scene != "N/A"
             and not structure_errors
@@ -25099,6 +25103,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 "run_id": run_id,
                 "source_sha256": (run_config or {}).get("source_sha256"),
                 "purpose": "director_raw_scene_completion",
+                "use_beat_validation_settings": True,
                 "segment": segment_number,
                 "attempt": request1_attempt,
                 "conditioning_mode": conditioning_mode,
@@ -25108,12 +25113,11 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 independent_completion = parse_director_raw_scene_completion(
                     ask_llm(
                         build_director_raw_scene_completion_messages(
-                            bundle.get("current_beat_text", ""),
+                            current_beat_for_completion,
                             raw_scene,
                         ),
                         response_format=DIRECTOR_RAW_SCENE_COMPLETION_RESPONSE_FORMAT,
                         history_metadata=completion_metadata,
-                        **_active_beat_validation_settings(),
                     )
                 )
             except (TypeError, ValueError, json.JSONDecodeError) as error:

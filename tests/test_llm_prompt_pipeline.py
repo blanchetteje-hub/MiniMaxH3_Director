@@ -1244,6 +1244,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
                 "activity_tools_settled": True,
                 "beat_complete": True,
             },
+            {"valid": True, "issue": ""},
             {
                 "subject_genders": {},
                 "detailed_description": (
@@ -1313,6 +1314,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
                 ),
                 "beat_complete": True,
             },
+            {"valid": True, "issue": ""},
             {
                 "subject_genders": {},
                 "detailed_description": (
