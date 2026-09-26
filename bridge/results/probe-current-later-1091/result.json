@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1091",
+  "kind": "llama_chat",
+  "started_at": 1790388129.7201235,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe engineer installs the power crystal.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nThe engineer activates the portal.\n\nCANDIDATE BEAT\nThe engineer installs the crystal, then powers up the portal.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zsijlbcyrfnp808bl4w1rj",
+    "object": "chat.completion",
+    "created": 1790388129,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Includes reserved",
+          "reasoning": "We need to validate candidate beat: \"The engineer installs the crystal, then powers up the portal.\"\n\nCurrent job: The engineer installs the power crystal.\nReserved later: The engineer activates the portal.\n\nCandidate beat includes installing crystal (current) and powering up portal (reserved). It says \"then powers up the portal.\" That is reserved for later. Is that allowed? Check: Reserved for later never required now; reject if a distinct later job is materially completed early. Here, the portal activation is a distinct later job. It's done after installing crystal in same beat. So it's completing reserved work early. Should we accept or reject? The rule says \"Reserved for later — never required in this beat.\" So it should not be included. But there's nuance: If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n\nHere they are distinct jobs: install crystal vs activate portal. They don't repeat same process. So it's a distinct later job completed early => reject.\n\nThus valid false with issue explanation: \"Includes reserved-for-later action 'powers up the portal' in this beat.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 263,
+      "completion_tokens": 256,
+      "total_tokens": 519,
+      "completion_tokens_details": {
+        "reasoning_tokens": 238
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388133.2920141,
+  "status": "ok"
+}
