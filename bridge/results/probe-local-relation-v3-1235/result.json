@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-v3-1235",
+  "kind": "llama_chat",
+  "started_at": 1790443465.6228917,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nA baker finishes arranging pastries in the display case.\n\nRIGHT:\nA fire alarm suddenly sounds and smoke appears under the back door.\n\nChoose MERGE or NEW_TASK.\nMERGE only when RIGHT's PRIMARY ACTION:\n- continues the same uninterrupted local action as LEFT;\n- is the direct immediate response to a NEW problem/event introduced by LEFT itself; or\n- is immediate follow-through on the exact object/action LEFT just obtained, opened, or started (for example retrieve -> equip/use/consume, open -> remove).\nOtherwise choose NEW_TASK after LEFT reaches a usable stopping point.\nA completed protection/safety action, completed victory/resolution, or completed assembly is a stopping point; it does NOT itself create a new problem just because another task follows. Shared earlier danger/goal is not enough to MERGE.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-0l7fcjb48b2i8y4k879dn",
+    "object": "chat.completion",
+    "created": 1790443465,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need decide if RIGHT's primary action continues same uninterrupted local action as LEFT, or direct immediate response to new problem/event introduced by LEFT itself, etc.\n\nLEFT: \"A baker finishes arranging pastries in the display case.\" So action: finishing arrangement of pastries. That is a completed assembly? It's an assembly of pastries into display case. Completed. Stopping point. RIGHT: \"A fire alarm suddenly sounds and smoke appears under the back door.\" This introduces new problem/event (fire alarm, smoke). Is it direct immediate response to LEFT's action? The baker finished arranging pastries; maybe that triggered something? But no mention of pastry causing fire. So it's not a continuation or immediate follow-through on same object/action. It's a new event unrelated. So choose NEW_TASK.\n\nReturn JSON: {\"relation\":\"NEW_TASK\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 270,
+      "completion_tokens": 179,
+      "total_tokens": 449,
+      "completion_tokens_details": {
+        "reasoning_tokens": 163
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790443468.4494689,
+  "status": "ok"
+}
