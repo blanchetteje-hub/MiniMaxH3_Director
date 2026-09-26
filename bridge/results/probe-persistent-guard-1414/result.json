@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1414",
+  "kind": "llama_chat",
+  "started_at": 1790452533.3501046,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: The office door is locked. SOURCE: Inez checks the control panel. RAW: Inez checks the panel and unlocks the office door.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-4mtwjmr3n7vvnilywpnmye",
+    "object": "chat.completion",
+    "created": 1790452533,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Unlocking office door not authorized by source\"}",
+          "reasoning": "We need to judge if RAW completes the source and preserves persistent OPENING facts unless SOURCE explicitly changes them.\n\nOPENING: \"The office door is locked.\"\n\nSOURCE: \"Inez checks the control panel.\"\n\nRAW: \"Inez checks the panel and unlocks the office door.\"\n\nSo does RAW complete SOURCE? Source says Inez checks the control panel. Raw adds that she also unlocks the office door. That completes source (adds action). Does it preserve persistent OPENING facts unless source explicitly changes them? Opening fact is that office door is locked. In raw, she unlocks the office door. So opening fact changed: from locked to unlocked. But does SOURCE authorize that change? Source didn't mention unlocking; only checking control panel. Checking control panel could imply unlocking but not necessarily. The rule says \"Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change.\" So source did not authorize unlocking the door. Therefore RAW changes persistent state (door unlocked) without authorization => invalid.\n\nThus output: {\"valid\":false,\"issue\":\"Unlocking office door not authorized by source\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 220,
+      "completion_tokens": 257,
+      "total_tokens": 477,
+      "completion_tokens_details": {
+        "reasoning_tokens": 231
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452537.4768932,
+  "status": "ok"
+}
