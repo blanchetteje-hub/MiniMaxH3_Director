@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1092",
+  "kind": "llama_chat",
+  "started_at": 1790388135.851513,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe scout crosses the rope bridge.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nThe scout burns the rope bridge.\n\nCANDIDATE BEAT\nThe scout reaches the far side of the rope bridge.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8h3kgl74jt9so23fxhuhgn",
+    "object": "chat.completion",
+    "created": 1790388135,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge the candidate beat: \"The scout reaches the far side of the rope bridge.\"\n\nCurrent job: The scout crosses the rope bridge.\nReserved later: The scout burns the rope bridge (not required now).\n\nCheck if current job only required work for this beat. Candidate says he reaches far side, which implies crossing is completed. That matches crossing. It's a reasonable paraphrase? \"Crosses\" vs \"reaches far side\". Yes.\n\nAlso check reserved later not needed: He hasn't burned the rope bridge yet; that's fine.\n\nThus valid. Return JSON with true and empty issue.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 263,
+      "completion_tokens": 138,
+      "total_tokens": 401,
+      "completion_tokens_details": {
+        "reasoning_tokens": 120
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388137.9930315,
+  "status": "ok"
+}
