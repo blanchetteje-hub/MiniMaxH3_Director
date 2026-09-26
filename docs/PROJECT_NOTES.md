@@ -900,3 +900,16 @@ Source-aware Director completion remains implemented but is not gold-accepted:
 stove. Later capture failures remain documented in HANDOFF; the earliest current
 semantic target is grouping. The missing Segment 5 report was a logging/parser
 artifact, now reproducibly repaired without rerunning generation.
+
+
+## Current Director context-budget checkpoint — 2026-09-26
+
+The current demonstrated H3-generation blocker is local context headroom, not chapter planning. A Segment-6 Request 1 entered at roughly 4395 / 4500 estimated input tokens. Under the local 6044-token total context with a 128-token reserve, that left only about 1521 completion tokens, and GPT-OSS 20B repeatedly truncated before completing its structured response.
+
+Current rule:
+- reduce redundant Request-1 input before increasing model/context limits;
+- Request 1 must remain scene-local and generic;
+- full `story.txt` and full chapter/phase JSON are not required once the current beat assignment has already been derived;
+- keep only authority needed to execute the current segment and stop before the reserved next beat.
+
+The active generation message now omits `STORY:` and `PHASE:`. Regression job `director-context-tests-1454` passed 61/61. The next acceptance is `gold-prompt-context-1455`; use its real per-segment token measurements to decide whether another context block should be removed or compacted. Do not optimize only for the zombie benchmark: the same contract must support arbitrary genres and action types.
