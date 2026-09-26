@@ -1128,3 +1128,12 @@ transformation. Only then move on toward H3 prompt generation.
   - Beat VALIDATE relabels NEXT as `RESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT`, states CURRENT JOB is the only required work, and explicitly handles identical repeated ongoing jobs as non-terminal instances.
 - Generic ownership probe batch `probe-current-later-1078` through `1097` is queued on `gpt-runtime`: 20 cases spanning action, fantasy, sci-fi, domestic activity, repeated processes, and terminal-vs-nonterminal leakage.
 - Do not rerun Amy acceptance until the 20 ownership probes are graded. If they are reliable, rerun planning acceptance on the refined prompt; if not, refine the local-LM wording based on the actual misses.
+
+
+### 2026-09-25 — CURRENT/LATER ownership probe batch 1078–1097
+
+- The 20-case generic ownership probe batch completed across action, fantasy, sci-fi, domestic tasks, repeated processes, and terminal/nonterminal leakage.
+- Six probes exhausted the intentionally tiny 256-token probe completion budget before finishing JSON, but their visible reasoning all reached the intended INVALID conclusion; production validator uses a much larger completion budget.
+- Of the fully parsed probes, all but one matched the expected label. The lone apparent miss (1086) was an ambiguous/bad control: CURRENT JOB said "defeats the two gate guards" while the candidate merely disarmed one and knocked out the other, so the model's rejection was defensible rather than an ownership failure.
+- No demonstrated CURRENT-vs-RESERVED-FOR-LATER confusion remained in the batch.
+- Fresh planning-only Amy acceptance `amy-planning-ownership-refined-1098` is queued on `gpt-runtime` to verify the refined prompts end-to-end. Acceptance must still produce 2 chapters / 6+2 beats and must not consume E2/E3 in Beat 1 or E7 in Beat 6.
