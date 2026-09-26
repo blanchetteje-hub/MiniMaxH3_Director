@@ -1,0 +1,22 @@
+{
+  "job_id": "coherence-gate-tests-1064",
+  "kind": "run_tests",
+  "started_at": 1790385979.3585851,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_forward_beat_validation.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "F........                                                                [100%]\n================================== FAILURES ===================================\n__ ForwardBeatValidationTests.test_coherence_validator_is_narrow_and_generic __\n\nself = <tests.test_forward_beat_validation.ForwardBeatValidationTests testMethod=test_coherence_validator_is_narrow_and_generic>\n\n    def test_coherence_validator_is_narrow_and_generic(self):\n        messages = minimax.build_beat_coherence_validation_messages(\n            {\"characters\": {\"Tala\": {\"status\": \"alive\"}}},\n            \"Tala defeats the statue.\",\n            \"Tala hits the statue once and it turns into water.\",\n        )\n        prompt = messages[1][\"content\"]\n        self.assertIn(\"WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY\", prompt)\n        self.assertIn(\"restoration, regeneration, or reinstallation\", prompt)\n        self.assertIn(\"materially\", prompt)\n>       self.assertNotIn(\"NEXT JOB\", prompt)\nE       AssertionError: 'NEXT JOB' unexpectedly found in 'CURRENT STATE\\n{\"characters\":{\"Tala\":{\"status\":\"alive\"}}}\\n\\nCURRENT JOB\\nTala defeats the statue.\\n\\nCANDIDATE BEAT\\nTala hits the statue once and it turns into water.\\n\\nCHECK: WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY.\\nRead CANDIDATE BEAT literally in order and carry each stated result forward.\\n- Reject repeating an irreversible removal or destruction on the same specific\\n  target, part, or object unless restoration, regeneration, or reinstallation\\n  happens first.\\n- A non-terminal injury is not a removal. Different targets or parts are\\n  different cases.\\n- Reject an ordinary action that makes an entire body/object become a materially\\n  different substance or vanish without an established capability or physically\\n  plausible cause.\\n- Accept explicit magic/technology, restoration, regeneration, and ordinary\\n  physical causes that support the result.\\n- CURRENT STATE and CURRENT JOB may establish an unusual capability. Do not\\n  invent one.\\n- Judge only coherence inside this candidate beat. Do not judge source coverage,\\n  NEXT JOB ownership, or typed state-effect records.\\n\\nOUTPUT CONTRACT\\nIf valid:\\n{\"valid\": true, \"issue\": \"\"}\\n\\nIf invalid:\\n{\"valid\": false, \"issue\": \"short concrete explanation\"}\\n\\nReturn exactly one JSON object and no markdown.'\n\ntests\\test_forward_beat_validation.py:40: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_coherence_validator_is_narrow_and_generic\n1 failed, 8 passed in 2.62s\n",
+    "stderr": ""
+  },
+  "finished_at": 1790385983.9686046,
+  "status": "ok"
+}
