@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1218",
+  "kind": "llama_chat",
+  "started_at": 1790442657.14958,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger.\n\nRIGHT:\nShe rushes her kids to the basement, gets them inside, and then locks the door.\n\nChoose MERGE or NEW_TASK.\nMERGE only if RIGHT's PRIMARY ACTION:\n1. continues the same uninterrupted local action as LEFT;\n2. is the direct immediate response to a new problem/event introduced by LEFT itself; or\n3. immediately completes the exact object/action LEFT just obtained, opened, or started.\nOtherwise choose NEW_TASK once LEFT has a usable stopping point. Do not MERGE merely because RIGHT follows from, is enabled by, or shares a larger goal/cause with LEFT. A later task after completed protection, victory, assembly, or other completed work is NEW_TASK unless rule 3 applies.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-cobdliwd3o99chjz7w4n78",
+    "object": "chat.completion",
+    "created": 1790442657,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if RIGHT belongs to same beat job as LEFT.\n\nLEFT: \"Suddenly, a zombie breaks the kitchen door window and Amy sees the danger.\"\n\nRIGHT: \"She rushes her kids to the basement, gets them inside, and then locks the door.\"\n\nCheck rule 1: continues same uninterrupted local action as LEFT. The left action is seeing danger? Actually left says \"Amy sees the danger\" after zombie breaks window. So left's primary action might be Amy sees the danger (or maybe the zombie breaking window). But it's a single event.\n\nRight: She rushes kids to basement, gets them inside, locks door. That's her response to danger. Is it continuing same local action? The left had \"Amy sees the danger\" - that's an observation. Right is moving kids and locking door. Not continuous; it's new action in response to danger. Rule 2: direct immediate response to a new problem/event introduced by LEFT itself. Yes, zombie breaks window introduces danger. Amy's action of rushing kids is immediate response.\n\nRule 3: immediately completes exact object/action left just obtained, opened, or started. Left didn't open anything; she saw danger. So rule 3 not apply.\n\nThus MERGE because it's direct immediate response to new problem/event introduced by LEFT itself (rule2). So relation = \"MERGE\".\n\nReturn JSON with single key relation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 271,
+      "completion_tokens": 295,
+      "total_tokens": 566,
+      "completion_tokens_details": {
+        "reasoning_tokens": 279
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442661.8131042,
+  "status": "ok"
+}
