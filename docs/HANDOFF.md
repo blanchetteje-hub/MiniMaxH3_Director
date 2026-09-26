@@ -1112,3 +1112,19 @@ After 1064 passes, run a fresh planning-only Amy acceptance on the current
 `gpt-arc-refresh` head. The acceptance must still derive 2 chapters / 6+2 beats
 and must no longer accept the job-935 double-removal or unsupported material
 transformation. Only then move on toward H3 prompt generation.
+
+
+### 2026-09-25 — fresh Amy planning acceptance 1077
+
+- Fresh planning-only acceptance `amy-planning-coherence-current-1077` completed on repository revision `9f0f027c33cb06fefeb0a06bd7dfb46dadddbfea`.
+- Structural target is correct: source-span planner produced exactly 2 chapters with 6 + 2 beats.
+- The narrow post-validation coherence gate ran on every finalized beat and the old job-935 same-target double-removal / unsupported whole-body transformation failures did not recur.
+- The next demonstrated blocker is beat ownership, not chapter allocation:
+  - Beat 1 (CURRENT E1) was accepted while also completing E2 and E3.
+  - During Beat 1 validation, one rejection explicitly complained that E2 actions were missing even though E2 was NEXT, proving the local validator confused NEXT with CURRENT required work.
+  - Beat 6 (CURRENT repeated zombie-killing E6) prematurely completed E7 by killing the final zombie and soaking the house in blood before chapter 2.
+- Commit `ed992a5c5a47926a24e211628d1fc62f193c2b85` makes a narrow generic prompt refinement:
+  - Beat CREATE says SOURCE STORY is context only and each beat may perform only its listed required event.
+  - Beat VALIDATE relabels NEXT as `RESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT`, states CURRENT JOB is the only required work, and explicitly handles identical repeated ongoing jobs as non-terminal instances.
+- Generic ownership probe batch `probe-current-later-1078` through `1097` is queued on `gpt-runtime`: 20 cases spanning action, fantasy, sci-fi, domestic activity, repeated processes, and terminal-vs-nonterminal leakage.
+- Do not rerun Amy acceptance until the 20 ownership probes are graded. If they are reliable, rerun planning acceptance on the refined prompt; if not, refine the local-LM wording based on the actual misses.
