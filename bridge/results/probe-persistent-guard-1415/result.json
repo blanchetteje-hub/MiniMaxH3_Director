@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1415",
+  "kind": "llama_chat",
+  "started_at": 1790452539.850614,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: The office door is locked. SOURCE: Inez unlocks the office door. RAW: Inez enters the code and the office door unlocks.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nlrbe9r87rox06rs35d0r",
+    "object": "chat.completion",
+    "created": 1790452539,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them.\n\nOPENING: The office door is locked.\nSOURCE: Inez unlocks the office door.\nRAW: Inez enters the code and the office door unlocks.\n\nCheck: Does RAW complete SOURCE? Source says \"Inez unlocks the office door.\" RAW describes that she does so by entering code, unlocking. Yes completes.\n\nPreserve persistent OPENING facts unless source explicitly changes them. Opening fact: The office door is locked. After unlocking, it's no longer locked. That change is explicit in source (unlock). So okay to drop lock state. No other persistent states changed? None mentioned. So valid.\n\nReturn JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 221,
+      "completion_tokens": 164,
+      "total_tokens": 385,
+      "completion_tokens_details": {
+        "reasoning_tokens": 146
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452542.5914953,
+  "status": "ok"
+}
