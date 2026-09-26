@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-role-layout-1007",
+  "kind": "llama_chat",
+  "started_at": 1790383029.8586705,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "BEFORE THIS BEAT — ESTABLISHED CONTEXT\nPrevious final beat:\nThe station airlock is sealed and locked.\n\nCurrent state:\n{\"environment\":{\"barriers\":{\"airlock\":{\"status\":\"locked\"}}}}\n\nNOW — JOB THIS CANDIDATE MUST PERFORM\nNia enters the docking bay.\n\nLATER — JOB RESERVED FOR A FUTURE BEAT\nNia inspects the shuttle.\n\nAFTER THIS BEAT — STATE EFFECTS EXPECTED IF VALID\n[]\n\nCANDIDATE BEAT TO JUDGE\nNia unlocks and opens the airlock, then enters the docking bay.\n\nCHECKS\n1. Read actions literally in order and carry each stated result forward. Reject repeating a completed removal on the same target unless it was restored.\n2. Use only established BEFORE facts. Do not infer a terminal result from a lesser earlier action. An earlier target is not automatically the current target.\n3. Reject unresolved barriers and unavailable objects. Unknown facts alone are not errors.\n4. NOW must happen in this beat. Do not complete a distinct LATER job early.\n5. Every listed AFTER typed effect must follow from visible candidate actions. Empty effects impose no extra requirement.\n\nReturn one JSON object: valid is a boolean; issue is a short concrete error or an empty string when valid."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6sw22dp0oaiaehk5lcn67",
+    "object": "chat.completion",
+    "created": 1790383029,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to judge the beat \"Nia unlocks and opens the airlock, then enters the docking bay.\" Given BEFORE context: station airlock sealed and locked. So Nia unlocking and opening it should change status from locked to unlocked? Actually open means barrier removed? The environment shows barriers.airlock.status=\"locked\". Unlocking changes status maybe to \"unlocked\" or \"open\"? Opening might remove barrier, making it \"open\" or \"unsealed\". But the state effect expected is [] meaning no specific effects listed. So we just need to check if beat is valid.\n\nCheck 1: Read actions literally in order and carry each result forward. Unlocks airlock -> status becomes unlocked? Then opens airlock -> barrier removed? The environment had airlock locked; unlocking changes status but still sealed? Opening removes the barrier, so maybe status \"open\" or \"unlocked\". But we don't have to specify exact state unless needed.\n\nCheck 2: Use only established BEFORE facts. Airlock is present and locked. So unlock action applies.\n\nCheck 3: Reject unresolved barriers and unavailable objects. The airlock exists; no issue.\n\nCheck 4: NOW must happen in this beat. Nia enters docking bay after unlocking/opening. That happens now, so okay.\n\nCheck 5: Every listed AFTER typed effect must follow from visible candidate actions. After effects list empty, so fine.\n\nThus valid. No errors. Return {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 374,
+      "completion_tokens": 320,
+      "total_tokens": 694,
+      "completion_tokens_details": {
+        "reasoning_tokens": 300
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383034.4167726,
+  "status": "ok"
+}
