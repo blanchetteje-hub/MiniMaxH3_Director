@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1362",
+  "kind": "llama_chat",
+  "started_at": 1790449269.528215,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A technician finishes testing a repaired machine.\nRAW: The technician confirms the successful test and walks away while the dedicated test motor continues running.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6sxgq4cczdrp49wxvenxl",
+    "object": "chat.completion",
+    "created": 1790449269,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The test motor remains running after the technician confirms a successful test, so an active process used solely to perform the finished activity does not end in its natural inactive state as required.\"}",
+          "reasoning": "We need to judge if RAW reaches SOURCE-assigned endpoint.\n\nSOURCE: \"A technician finishes testing a repaired machine.\"\n\nSo the activity is finishing testing. The endpoint: finished test, presumably test complete. So we check RAW: \"The technician confirms the successful test and walks away while the dedicated test motor continues running.\" Does that reach the endpoint? The test motor continuing running might be part of test or after test? If test motor runs during test; if it continues running after test is done, maybe it's still active but not needed. But does RAW reach the endpoint: technician finishes testing and walks away while motor continues running. That means the test activity finished (technician confirms successful test). The motor continuing might be part of test or just remains on. According to rule 1: any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable. If the dedicated test motor is used for testing, it should stop after test completes. But RAW says it continues running. So it's not ended naturally; thus fails? However maybe the motor remains on as part of machine operation (like a test motor that stays on). The rule: \"any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable.\" If the motor is dedicated for testing, after finishing test it should stop. So RAW fails.\n\nThus valid false with issue explanation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 287,
+      "completion_tokens": 339,
+      "total_tokens": 626,
+      "completion_tokens_details": {
+        "reasoning_tokens": 286
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449274.8382308,
+  "status": "ok"
+}
