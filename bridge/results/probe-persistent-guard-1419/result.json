@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1419",
+  "kind": "llama_chat",
+  "started_at": 1790452562.0096242,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Sela carries a keycard. SOURCE: Sela enters a code. RAW: Sela enters the code and throws away the keycard.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-p4ca9s8t1yle6iqqf8tlxw",
+    "object": "chat.completion",
+    "created": 1790452562,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Sela throws away the keycard, changing a persistent fact (she no longer carries it) that SOURCE did not specify.\"}",
+          "reasoning": "We need to judge if RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them.\n\nOPENING: Sela carries a keycard.\nSOURCE: Sela enters a code. So source says she enters the code, presumably on keypad or lock. That action may involve using the keycard? But not necessarily; entering a code could be with fingers. The keycard is still held by her unless SOURCE indicates dropping it.\n\nRAW: \"Sela enters the code and throws away the keycard.\" This RAW includes two actions: she enters the code (matches source) and then throws away the keycard. Does that change persistent state? Yes, throwing away the keycard means she no longer holds it; it's lost/dropped. The opening fact was that Sela carries a keycard. That is changed by RAW unless SOURCE explicitly changes it. Source didn't mention dropping or losing the keycard. So this violates persistence.\n\nThus invalid: issue \"Keycard dropped but source did not authorize.\" Return JSON accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 220,
+      "completion_tokens": 248,
+      "total_tokens": 468,
+      "completion_tokens_details": {
+        "reasoning_tokens": 205
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452565.9680257,
+  "status": "ok"
+}
