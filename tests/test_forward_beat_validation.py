@@ -55,7 +55,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertNotIn("STORY", messages[1]["content"])
         self.assertNotIn("PHASE GOAL", messages[1]["content"])
         self.assertIn("CURRENT JOB", messages[1]["content"])
-        self.assertIn("NEXT JOB", messages[1]["content"])
+        self.assertIn("RESERVED FOR LATER", messages[1]["content"])
         self.assertIn("STATE EFFECTS IF VALID", messages[1]["content"])
         self.assertIn("C. NEXT JOB", messages[1]["content"])
 
@@ -255,7 +255,8 @@ class ForwardBeatValidationTests(unittest.TestCase):
         )
         prompt = messages[1]["content"]
         self.assertIn("candidate's FINAL state", prompt)
-        self.assertIn("picked up then set down is not held", prompt)
+        self.assertIn("picked up then set down is", prompt)
+        self.assertIn("not held at the end", prompt)
         self.assertIn("placed aside is not equipped", prompt)
 
 if __name__ == "__main__":
