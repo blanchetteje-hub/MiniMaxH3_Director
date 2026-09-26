@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1373",
+  "kind": "llama_chat",
+  "started_at": 1790449341.6621847,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A caretaker turns on a lamp for the night.\nRAW: The caretaker switches on the lamp and leaves it illuminated.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6smpgvj4ruh8qjanxwloa8",
+    "object": "chat.completion",
+    "created": 1790449341,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW (The caretaker switches on the lamp and leaves it illuminated.) reaches the SOURCE-assigned endpoint. Source: \"A caretaker turns on a lamp for the night.\" That is a completed finite activity? Turning on lamp for the night implies turning on lamp, presumably leaving it on until morning. The activity of turning on lamp is complete when lamp is lit. Lamp remains on as intended result. So RAW says switches on lamp and leaves illuminated. That's consistent: lamp turned on (completed) and stays on. No ongoing or interrupted state beyond that. So valid.\n\nReturn JSON {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 283,
+      "completion_tokens": 147,
+      "total_tokens": 430,
+      "completion_tokens_details": {
+        "reasoning_tokens": 128
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449344.176153,
+  "status": "ok"
+}
