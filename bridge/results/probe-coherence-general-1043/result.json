@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-general-1043",
+  "kind": "llama_chat",
+  "started_at": 1790383578.0800254,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only physical/causal coherence inside one candidate beat. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY.\nRead actions literally in order and carry stated results forward.\n- Reject repeating an irreversible removal or destruction on the same specific target, part, or object unless restoration/regeneration/reinstallation happens first.\n- A non-terminal injury is not a removal. Different targets or parts are different cases.\n- Reject an ordinary action that makes an entire body/object become a materially different substance or vanish without an established capability or physically plausible cause.\n- Accept explicit magic/technology, restoration, regeneration, and ordinary physical causes that support the result.\nDo not judge story coverage, future ownership, or state-effect records.\n\nESTABLISHED CONTEXT\nNo unusual abilities are established.\n\nCANDIDATE\nNia decapitates the first raider with her sword, then turns and decapitates a second raider."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-f0gpkjrhwy6ek5593eqh7f",
+    "object": "chat.completion",
+    "created": 1790383578,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to check within-beat physical/causal coherence only. The candidate: \"Nia decapitates the first raider with her sword, then turns and decapitates a second raider.\" We read actions literally in order and carry stated results forward.\n\nFirst action: Nia decapitates the first raider with her sword. That removes head from first raider. Second action: she turns and decapitates a second raider. That's another removal of head from second raider. No repeated removal on same target, so fine. The head removed is not restored or regenerated between actions? But it's different targets (first vs second). So no issue.\n\nCheck if any irreversible removal repeated on same specific target: first raider's head removed once; second raider's head removed once. Different targets. Good.\n\nNo mention of the heads being replaced, but that's fine because each is a separate event.\n\nThus within-beat physical/causal coherence holds. No violation. So valid = true, issue empty string or null? The JSON object requires boolean valid and string issue. If no issue, maybe \"\".\n\nReturn: {\"valid\":true,\"issue\":\"\".}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 280,
+      "completion_tokens": 258,
+      "total_tokens": 538,
+      "completion_tokens_details": {
+        "reasoning_tokens": 239
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383581.673841,
+  "status": "ok"
+}
