@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1253",
+  "kind": "llama_chat",
+  "started_at": 1790443052.9239202,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe investigator opens the sealed storage room door.\n\nRIGHT:\nThe investigator enters and begins inspecting the room for evidence.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself CREATES a problem, danger, or request, and RIGHT is the immediate response that addresses it.\n3. RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it is only a tool for another target, this rule does not apply.\nImportant: rule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. A different objective after completed work is NEW_TASK even when both serve the same larger goal.\nOtherwise choose NEW_TASK.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-kko039h1malw6ulagij7s9",
+    "object": "chat.completion",
+    "created": 1790443052,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if RIGHT continues the same action as LEFT (MERGE) or a new task.\n\nLEFT: \"The investigator opens the sealed storage room door.\"\n\nRIGHT: \"The investigator enters and begins inspecting the room for evidence.\"\n\nDoes RIGHT continue the same uninterrupted action? The action of opening the door is completed. Then entering is next step, but it's part of the same overall activity (investigating). But rule 1 says RIGHT continues the same uninterrupted action as LEFT. Opening a door is one action; entering and inspecting are separate actions. So not continuous.\n\nRule 2: LEFT creates a problem/danger/request, RIGHT immediate response addressing it. Opening sealed storage room door might create danger? Not necessarily. It opens a door that was sealed. Could be dangerous but not explicit. Also RIGHT addresses the problem of investigating evidence; it's an action after opening. But rule says if LEFT itself CREATES a problem, danger, or request, and RIGHT is immediate response addressing it. Opening a sealed storage room door creates a new space to inspect for evidence (request). So maybe.\n\nRule 3: RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it's only a tool for another target, this rule does not apply. Here LEFT opens door; RIGHT enters and inspects room. The object is the sealed storage room door? But RIGHT doesn't act on the door; it acts on the room contents. So rule 3 no.\n\nRule 2: Does opening the door create a problem/danger/request? It creates an opportunity to inspect evidence, which could be considered a request for action. Right responds by inspecting. That seems plausible.\n\nBut is that immediate response? Yes, after opening, he enters and inspects. That's immediate.\n\nThus MERGE per rule 2.\n\nCheck rule: \"LEFT itself CREATES a problem, danger, or request\". Opening the door creates a new space to inspect; that's a request for evidence inspection. So yes.\n\nTherefore relation = MERGE.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 276,
+      "completion_tokens": 439,
+      "total_tokens": 715,
+      "completion_tokens_details": {
+        "reasoning_tokens": 423
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790443059.7033658,
+  "status": "ok"
+}
