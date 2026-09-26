@@ -491,7 +491,7 @@ Generated prompts do **not** need string equality with the gold prompt, and they
 
 - the same overall H3 prompt structure/schema and mode-specific contract;
 - semantically valid execution of the assigned story beat/source responsibility;
-- valid timestamp syntax and a physically/coherently ordered sequence of visible actions;
+- valid timestamp syntax and a physically/coherently ordered sequence of visible actions; timestamp count does not need to match gold, and being modestly shorter or longer (for example by one or two timestamps) is acceptable when the beat remains complete and coherent;
 - required story events, exclusions, continuity constraints, subject identity, and material end-state facts preserved;
 - scene-appropriate sound/music behavior consistent with the prompt mode.
 
