@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1422",
+  "kind": "llama_chat",
+  "started_at": 1790452580.7147474,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Dev holds a wrench. SOURCE: Dev tightens one bolt. RAW: Dev tightens the bolt and keeps the wrench in hand.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1h8oil7viwwi1yrrgxed7e",
+    "object": "chat.completion",
+    "created": 1790452580,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them.\n\nOPENING: Dev holds a wrench.\nSOURCE: Dev tightens one bolt. So source action is tightening one bolt, presumably using the wrench? It doesn't say he releases it or anything. The bolt state changes from loose to tightened. Persistent facts include held items (wrench), containment, barrier state, clothing, durable object states.\n\nRAW: \"Dev tightens the bolt and keeps the wrench in hand.\" That matches SOURCE: tightening a bolt. Also says keeps wrench in hand, which preserves persistent fact that Dev holds a wrench. No other changes. So RAW completes SOURCE and preserves persistent facts. Valid true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 218,
+      "completion_tokens": 165,
+      "total_tokens": 383,
+      "completion_tokens_details": {
+        "reasoning_tokens": 147
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452583.416586,
+  "status": "ok"
+}
