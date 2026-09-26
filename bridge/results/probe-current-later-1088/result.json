@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1088",
+  "kind": "llama_chat",
+  "started_at": 1790388114.8567214,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe mage seals the shadow rift.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nThe mage climbs the obsidian tower.\n\nCANDIDATE BEAT\nThe mage completes the sealing spell and the shadow rift closes.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zklq1ymwzuwrm637ezgzp",
+    "object": "chat.completion",
+    "created": 1790388114,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to validate candidate beat: \"The mage completes the sealing spell and the shadow rift closes.\"\n\nCurrent job: The mage seals the shadow rift. Reserved later: The mage climbs the obsidian tower (never required now). So current job only.\n\nCandidate beat says mage completes sealing spell and rift closes. That is essentially same as current job, but adds \"completes\" and \"shadow rift closes\". It's a completion of the sealing spell; that matches current job. It doesn't mention climbing tower. No later work done early. Acceptable paraphrase? Yes.\n\nCheck: If CURRENT JOB and RESERVED FOR LATER intentionally repeat same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work. Here no repetition of reserved. So valid.\n\nReturn {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 267,
+      "completion_tokens": 190,
+      "total_tokens": 457,
+      "completion_tokens_details": {
+        "reasoning_tokens": 172
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388117.6420336,
+  "status": "ok"
+}
