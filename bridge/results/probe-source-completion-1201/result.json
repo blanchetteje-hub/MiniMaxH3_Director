@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1201",
+  "kind": "llama_chat",
+  "started_at": 1790440705.5038133,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe engineer fits an oxygen mask while Nia and Sol stand nearby.\n\nRAW SCENE\nThe engineer fastens masks on Nia and Sol and checks both seals. Both breathe through their masks.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin\n  or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly\n  receive/participate when physically possible.\n- Judge the final frame: the required result must already be true, not merely\n  attempted, approaching, starting up, partly complete, or still in progress.\n- Do not judge style, pacing, camera, continuity, future events, or harmless\n  extra detail.\nReturn valid=true only when CURRENT BEAT is complete in RAW SCENE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-04odnflqo0nmz9v9uynrtq",
+    "object": "chat.completion",
+    "created": 1790440705,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"N/A\"}",
+          "reasoning": "We need to check if the raw scene completes current beat.\n\nCurrent Beat: \"The engineer fits an oxygen mask while Nia and Sol stand nearby.\"\n\nSo actions: The engineer fits an oxygen mask (presumably onto someone). While Nia and Sol stand nearby. So we must see that the engineer is fitting a mask, presumably on one of them? It says \"fits an oxygen mask\" but not specifying who gets it. But current beat implies he fits a mask while Nia and Sol are standing near.\n\nRaw scene: \"The engineer fastens masks on Nia and Sol and checks both seals. Both breathe through their masks.\"\n\nSo raw scene shows the engineer fastening masks on Nia and Sol, checking seals, they breathe. That completes the action of fitting oxygen mask for them. The current beat says he fits an oxygen mask while Nia and Sol stand nearby. In raw scene, Nia and Sol are indeed standing? It doesn't explicitly say \"stand\" but presumably they're there. He fastens masks on both. So that is more than just one mask; it's two. But the beat didn't specify number of masks or who gets it. The current beat says he fits an oxygen mask (singular) while Nia and Sol stand nearby. That could be interpreted as him fitting a mask onto someone, maybe either Nia or Sol. In raw scene, he's fastening masks on both. So that includes the action: he fits at least one mask; indeed two. And Nia and Sol are present.\n\nThus current beat is completed. The result of fitting mask is visible (they breathe through their masks). Also seals checked. So yes valid=true. No issue.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 278,
+      "completion_tokens": 358,
+      "total_tokens": 636,
+      "completion_tokens_details": {
+        "reasoning_tokens": 338
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440710.5789204,
+  "status": "ok"
+}
