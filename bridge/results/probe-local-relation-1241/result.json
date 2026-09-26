@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1241",
+  "kind": "llama_chat",
+  "started_at": 1790442971.6590745,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe dragon exhales a sheet of fire toward the party.\n\nRIGHT:\nThe mage immediately raises a ward to block the flames.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself CREATES a problem, danger, or request, and RIGHT is the immediate response that addresses it.\n3. RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it is only a tool for another target, this rule does not apply.\nImportant: rule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. A different objective after completed work is NEW_TASK even when both serve the same larger goal.\nOtherwise choose NEW_TASK.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-lbfmjyuuuqfa3y78zlr8p",
+    "object": "chat.completion",
+    "created": 1790442971,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if two adjacent source responsibilities belong to one local beat job: LEFT and RIGHT.\n\nLEFT: \"The dragon exhales a sheet of fire toward the party.\"\n\nRIGHT: \"The mage immediately raises a ward to block the flames.\"\n\nCheck rules:\n\n1. RIGHT continues same uninterrupted action as LEFT? The dragon exhaling fire is an action; the mage raising a ward blocks it, but not continuing the same action.\n\n2. LEFT creates problem/danger/request and RIGHT immediate response addressing it. Yes: Dragon's fire creates danger; mage raises ward to block flames. That matches rule 2.\n\n3. RIGHT immediately completes handling of exact object/container/action left just obtained etc. Not relevant.\n\nRule 2 applies, so MERGE.\n\nReturn JSON with key relation: \"MERGE\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 279,
+      "completion_tokens": 176,
+      "total_tokens": 455,
+      "completion_tokens_details": {
+        "reasoning_tokens": 160
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442974.5712292,
+  "status": "ok"
+}
