@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-1289",
+  "kind": "llama_chat",
+  "started_at": 1790446059.8084211,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe medic treats Mira's injured arm.\n\nCANDIDATE BEAT\nThe medic bandages Jon's arm while Mira watches.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result when the job has multiple parts. Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result. Reject a solo rewrite that drops named beneficiaries or participants. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nau8ob6v4i04v3ux1zr33y",
+    "object": "chat.completion",
+    "created": 1790446059,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\":\"Treats Jon instead of Mira\"}",
+          "reasoning": "We need to check if candidate beat accomplishes meaning of current job. Current Job: \"The medic treats Mira's injured arm.\" So the action is treating Mira's injured arm. The medic does that for Mira.\n\nCandidate Beat: \"The medic bandages Jon's arm while Mira watches.\"\n\nThis says medic bandages Jon's arm, not Mira's. That fails to treat Mira's injured arm. Also mentions Mira watching but doesn't mention treatment of her arm. So it's invalid. Issue: \"Treats the wrong person.\" Provide short explanation.\n\nReturn JSON with valid false and issue string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 247,
+      "completion_tokens": 143,
+      "total_tokens": 390,
+      "completion_tokens_details": {
+        "reasoning_tokens": 118
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446062.2467186,
+  "status": "ok"
+}
