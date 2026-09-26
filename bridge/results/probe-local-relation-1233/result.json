@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1233",
+  "kind": "llama_chat",
+  "started_at": 1790442752.9225035,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe technician finishes assembling the sensor rig.\n\nRIGHT:\nThe technician runs a calibration test on it.\n\nChoose one:\nMERGE only when RIGHT's PRIMARY ACTION is one of these:\n- the same uninterrupted local action as LEFT;\n- a direct immediate response caused by the event in LEFT itself (for example alarm -> shut down/call for help); or\n- the immediate mechanical completion of the exact object/action LEFT just obtained/opened/started (retrieve -> equip, open -> remove).\nNEW_TASK when RIGHT's PRIMARY ACTION is a distinct objective after LEFT reaches a usable stopping point. A shared larger goal is not enough to MERGE. Carrying, wearing, or using an item from LEFT while performing a different primary task is NEW_TASK. Starting a fresh item/test after LEFT completed one is NEW_TASK.\nFor causality, distinguish LEFT itself from a shared earlier cause: danger -> immediate protection may MERGE, but protection -> fetch gear is NEW_TASK because the gear retrieval responds to the danger, not to the completed protection action.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-pr9e6v8nalwrh1sxuru",
+    "object": "chat.completion",
+    "created": 1790442752,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need decide if LEFT and RIGHT belong to one local beat job or separate.\n\nLEFT: \"The technician finishes assembling the sensor rig.\" Primary action: finishing assembly of sensor rig (object). Right: \"The technician runs a calibration test on it.\"\n\nRight's primary action is running a calibration test. Is that same uninterrupted local action as left? No, it's different objective after LEFT reaches usable stopping point. The sensor rig assembled; then calibrate. That seems distinct objective after finishing assembly. So NEW_TASK.\n\nThus relation: \"NEW_TASK\". Return JSON with single key relation. Probably {\"relation\":\"NEW_TASK\"} or just {\"relation\":\"NEW_TASK\"}. Let's output that.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 316,
+      "completion_tokens": 152,
+      "total_tokens": 468,
+      "completion_tokens_details": {
+        "reasoning_tokens": 136
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442755.4651577,
+  "status": "ok"
+}
