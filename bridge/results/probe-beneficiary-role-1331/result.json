@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-role-1331",
+  "kind": "llama_chat",
+  "started_at": 1790446890.206646,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe technician repairs Mira's laptop for her.\n\nCANDIDATE BEAT\nThe technician replaces the failed part and Mira's laptop boots normally.\n\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB and preserve material relationships.\nIf CURRENT JOB says an action/result is FOR a named person or group, CANDIDATE BEAT must preserve that beneficiary/recipient role. Do not replace \"for them\" with spectator-only behavior such as merely watching the work.\n- For a consumable, gift, hand-off, or prepared item, show it delivered/served/used by the intended beneficiary, or explicitly place/identify it as theirs.\n- For a repair, shelter, installation, delivery location, or other fixed/service result, an explicitly completed result belonging to or designated for the beneficiary is sufficient; they do not need to physically hold or enter it.\n- Watching/listening is sufficient when that is itself the intended benefit, such as a performance, lesson, or demonstration.\nReject a candidate that changes the beneficiary, drops one beneficiary, or leaves the only visible relationship as watching an unrelated result.\nDo not reject harmless staging.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zofsmkyelz9h5zkr1ynvq9",
+    "object": "chat.completion",
+    "created": 1790446890,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to validate candidate beat against current job. Current Job: The technician repairs Mira's laptop for her. So the action is repair of Mira's laptop for her. Candidate Beat: The technician replaces the failed part and Mira's laptop boots normally.\n\nDoes it preserve beneficiary? It says \"Mira's laptop\" boots normally, implying it's repaired. Beneficiary is Mira; the laptop belongs to her. Does candidate mention that it's for her? It mentions \"Mira's laptop\". That implies belonging to Mira. So yes. The repair action: replacing failed part and booting normally. That's a completed result. Good.\n\nCheck if any beneficiary dropped: Only one beneficiary, Mira. It's preserved. No change of beneficiary. So valid.\n\nReturn JSON with valid true.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 354,
+      "completion_tokens": 174,
+      "total_tokens": 528,
+      "completion_tokens_details": {
+        "reasoning_tokens": 154
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446893.2143626,
+  "status": "ok"
+}
