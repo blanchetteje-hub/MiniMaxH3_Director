@@ -485,9 +485,19 @@ The primary locked benchmark remains:
 
 `tests/acceptance/gold/amy_zombie_house.json`
 
-The benchmark is authoritative for the desired H3 behavior of that test story. Generated prompts do not need string equality; they must preserve the same events, timing discipline, scene intent, exclusions, continuity, audio/music progression, and expected end states.
+The benchmark is authoritative for the desired H3 **prompt contract and quality bar** of that test story.
 
-The new architecture must still reach the gold prompts from the benchmark's `story.txt` content. Do not teach the planner the gold answers.
+Generated prompts do **not** need string equality with the gold prompt, and they do not need to reproduce the gold prompt's exact timestamp-by-timestamp choreography. The required acceptance target is:
+
+- the same overall H3 prompt structure/schema and mode-specific contract;
+- semantically valid execution of the assigned story beat/source responsibility;
+- valid timestamp syntax and a physically/coherently ordered sequence of visible actions;
+- required story events, exclusions, continuity constraints, subject identity, and material end-state facts preserved;
+- scene-appropriate sound/music behavior consistent with the prompt mode.
+
+Different wording, different harmless staging, different concrete props inside unspecified story space, and a different valid sequence/timing of micro-actions are acceptable. Treat the gold prompt as an exemplar, not a screenplay that must be reconstructed.
+
+The new architecture must still produce gold-standard H3 prompts from the benchmark's `story.txt` content. Do not teach the planner the gold beat answers or timestamp choreography.
 
 The current Amy benchmark contains eight output beats/segments. The chapter planner may group those beats into chapters; chapter boundaries determine which segments are refresh versus append.
 
