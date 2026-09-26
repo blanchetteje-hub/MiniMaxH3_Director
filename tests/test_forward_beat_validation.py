@@ -57,7 +57,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("CURRENT JOB", messages[1]["content"])
         self.assertIn("RESERVED FOR LATER", messages[1]["content"])
         self.assertIn("STATE EFFECTS IF VALID", messages[1]["content"])
-        self.assertIn("C. NEXT JOB", messages[1]["content"])
+        self.assertIn("C. RESERVED FOR LATER", messages[1]["content"])
 
     def test_validator_rejects_completed_state_grammar_for_assigned_action(self):
         messages = minimax.build_beat_validation_messages(
