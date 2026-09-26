@@ -24742,7 +24742,12 @@ def repair_existing_segment(
 
 
 # Build the independent Request-1 CURRENT-BEAT completion check.
-def build_director_raw_scene_completion_messages(current_beat, raw_scene, assigned_source=""):
+def build_director_raw_scene_completion_messages(
+    current_beat,
+    raw_scene,
+    assigned_source="",
+    authoritative_opening_state="",
+):
     """Check completion against exact assigned source when available."""
     if str(assigned_source or "").strip():
         return [
@@ -24753,15 +24758,19 @@ def build_director_raw_scene_completion_messages(current_beat, raw_scene, assign
 DERIVED BEAT — staging suggestion; cannot remove source requirements
 {current_beat}
 
+AUTHORITATIVE OPENING STATE — already true before this segment
+{authoritative_opening_state or 'N/A'}
+
 RAW SCENE
 {raw_scene}
 
-Check only completion:
+Check only completion and persistent-state compatibility:
 1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.
 2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.
 3. Preserve participant scope. Do not apply a source-assigned movement, containment, release, possession, injury, or other material result to additional participants merely because they are present. If SOURCE says one actor puts other people into a place/container, RAW must not also put the actor there unless SOURCE supports that.
-4. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.
-5. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.
+4. Preserve persistent facts already true in AUTHORITATIVE OPENING STATE unless SOURCE/CURRENT BEAT explicitly changes them. This includes held/equipped items, containment, barrier state, clothing, injuries, and other durable conditions. Reject dropping, losing, freeing, unlocking, removing, or otherwise changing such state as harmless staging.
+5. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.
+6. Ignore style, camera, future events, and harmless non-persistent staging. Do not invent extra source requirements.
 Return valid (boolean) and issue (short explanation if invalid, empty string otherwise)."""},
         ]
     return [
@@ -25176,6 +25185,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                             current_beat_for_completion,
                             raw_scene,
                             bundle.get("assigned_source", ""),
+                            bundle.get("opening_state", ""),
                         ),
                         response_format=DIRECTOR_RAW_SCENE_COMPLETION_RESPONSE_FORMAT,
                         history_metadata=completion_metadata,
