@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1352",
+  "kind": "llama_chat",
+  "started_at": 1790449056.6119268,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A cook continues simmering stew; the activity is explicitly ongoing.\nRAW: The cook stirs the simmering stew and leaves it simmering on the burner as the beat ends.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8p531ic0fxmfk8mu5ufkmj",
+    "object": "chat.completion",
+    "created": 1790449056,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW completes a finite activity that must visibly reach its result. The source: \"A cook continues simmering stew; the activity is explicitly ongoing.\" So the stew is still simmering, not finished.\n\nRAW: \"The cook stirs the simmering stew and leaves it simmering on the burner as the beat ends.\"\n\nSo RAW says the cook stirs the stew (finite action) and leaves it simmering. The stew continues to be simmering; it's ongoing. Finite activity? Stir is finite, but the stew remains simmering. But the requirement: \"A finite activity must visibly reach its result.\" So stir should finish. It does. But also if RAW introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped by end when natural stable endpoint. The active process is the burner? The stew simmering on the burner: the burner is still active (heat). Is that a tool used for the finite activity of stirring? Stir uses pot and maybe burner. But the burner remains on to keep simmering; but stir finished, so no need to stop burner unless natural endpoint. Since stew continues simmering, burner stays on. So it's fine.\n\nThus RAW is valid: The cook stirs (finite) and leaves it simmering. No requirement to turn off burner because stew still needs heat. So valid true. Issue empty.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 255,
+      "completion_tokens": 305,
+      "total_tokens": 560,
+      "completion_tokens_details": {
+        "reasoning_tokens": 287
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449061.399295,
+  "status": "ok"
+}
