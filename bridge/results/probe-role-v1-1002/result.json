@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-role-v1-1002",
+  "kind": "llama_chat",
+  "started_at": 1790382939.646636,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "INPUT ROLES\nBEFORE = facts available before this beat; do not invent additional facts.\nNOW = the job that must happen in this beat.\nLATER = a distinct next job reserved for a later beat.\nAFTER = listed typed effects that must follow from visible actions in this beat.\n\nBEFORE — PREVIOUS FINAL BEAT\nSera closes the archive door and locks it with the brass key.\n\nBEFORE — CURRENT STATE\n{\"environment\":{\"barriers\":{\"archive door\":{\"status\":\"locked\"}}}}\n\nNOW — CURRENT JOB\nSera enters the archive.\n\nLATER — NEXT JOB\nSera reads the ledger.\n\nAFTER — STATE EFFECTS IF VALID\n[]\n\nCANDIDATE — THIS BEAT\nSera unlocks the archive door with the brass key, opens it, and steps inside.\n\nCHECKS\n1. Carry stated actions/results forward. Do not repeat a completed removal on the same target unless it was restored.\n2. Use BEFORE facts only. Reject unavailable objects and unresolved barriers. Unknown facts alone are not errors.\n3. NOW must happen, with its required action/result/participants. A completed-state phrase cannot replace the assigned action.\n4. Do not complete a distinct LATER job early. Identical repeated work may continue.\n5. Every listed AFTER typed effect must follow from visible candidate actions. Do not demand unlisted effects.\n\nReturn one JSON object: {\"valid\": boolean, \"issue\": string}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-94ik95rcg1idyg2fmi258e",
+    "object": "chat.completion",
+    "created": 1790382939,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to validate the beat. BEFORE facts: archive door locked with brass key. NOW job: Sera enters the archive. LATER: reads ledger. AFTER: [] no state effects required.\n\nCandidate beat: \"Sera unlocks the archive door with the brass key, opens it, and steps inside.\"\n\nCheck 1: Carry stated actions/results forward. The door was locked; unlocking removes lock. Opening is action. Steps inside is entering. Good.\n\nCheck 2: Use BEFORE facts only. We have door locked, brass key present? Not explicitly but implied from before \"Sera closes the archive door and locks it with the brass key.\" So Sera has key. OK.\n\nCheck 3: NOW must happen: Sera enters the archive. Candidate includes stepping inside which is entering. Good.\n\nCheck 4: Do not complete LATER early. Reading ledger not done, fine.\n\nCheck 5: AFTER effects none listed; candidate actions produce no required effect? But maybe unlocking door changes status to unlocked. That might be an effect but not listed. Since AFTER list empty, we don't need to mention it. It's okay if extra state change occurs beyond listed ones. So valid.\n\nAny issue? None. Return {\"valid\": true, \"issue\": \"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 402,
+      "completion_tokens": 278,
+      "total_tokens": 680,
+      "completion_tokens_details": {
+        "reasoning_tokens": 258
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790382943.5952885,
+  "status": "ok"
+}
