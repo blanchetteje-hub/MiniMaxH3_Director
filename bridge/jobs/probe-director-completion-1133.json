@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-director-completion-1133",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT BEAT\nThe mage heals Nera's wounded arm.\n\nRAW SCENE\nThe mage completes the spell; the wound closes and Nera moves the healed arm normally.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or extra harmless detail.\n- valid=true only if CURRENT BEAT is complete in RAW SCENE.\nReturn {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short concrete explanation\"}."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 512,
+  "timeout_seconds": 180
+}
