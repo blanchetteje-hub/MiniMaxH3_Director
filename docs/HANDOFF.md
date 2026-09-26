@@ -1351,3 +1351,14 @@ transformation. Only then move on toward H3 prompt generation.
   - affected mocks now include the extra completion-verifier response;
   - the exact canonical dialogue warning phrase is restored.
 - Queued `director-completion-tests-1189` and `gold-prompt-acceptance-1190`.
+
+
+### 2026-09-26 — Director Request 1 context-headroom fix
+
+- A full prompt-generation run reached Segment 6 with Request 1 estimated at about 4395 / 4500 input tokens. With the local 6044-token total context and 128-token safety reserve, only about 1521 completion tokens remained; GPT-OSS 20B repeatedly exhausted that completion allowance before returning a complete structured response.
+- Do **not** treat this as a reason to raise token limits first. The project target remains a local 20B-class model, so shorten the job before enlarging the window.
+- Inspection confirmed Request 1 no longer needs full-story or full-phase narrative context. The active generation message now omits both `STORY:` and `PHASE:`, retaining scene-local authority: current beat, reserved next-beat boundary, subjects, opening/current continuity, and the Director contract.
+- Regression commit `7b90f576ea661d87dacae6af52f0c04c3eec64cc` locks the omission of STORY/PHASE from Director generation messages. Mailbox job `director-context-tests-1454` passed `tests/test_llm_prompt_pipeline.py` at 61/61.
+- The live `gpt-runtime` bridge was stale and lacked the current allowlisted `run_acceptance` support. It was synchronized from `gpt-arc-refresh` in mailbox commit `8e7994ee6b88a7e3297216e7027e6389c71dcf5b`.
+- Full prompt-generation acceptance `gold-prompt-context-1455` is queued against `gpt-arc-refresh` + model `gpt`. Review the actual per-segment input/completion headroom before making another prompt-size change.
+- If 1455 still truncates, reduce the next largest duplicated Request-1 context block. Do not reintroduce story-wide context and do not special-case the Amy/zombie fixture; any reduction must remain valid for fantasy, science fiction, domestic, dialogue-heavy, and other story shapes.
