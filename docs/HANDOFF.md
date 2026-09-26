@@ -112,6 +112,23 @@ Active development branch:
   single beat validator, run focused forward-validation tests, then rerun full
   prompt acceptance.
 
+### 2026-09-26 — bridge pytest freeze diagnosis
+
+- The hung `grouping-priority-tests-1275` exposed a bridge execution bug:
+  `run_tests` used blocking `subprocess.run(..., capture_output=True)` instead
+  of the bridge's managed local-process runner.
+- Consequences on Windows: pytest emitted no live progress, the bridge did not
+  register pytest in `_ACTIVE_LOCAL_PROCESS`, Ctrl+C/Ctrl+Q could not reliably
+  terminate the pytest process tree, and a genuine hang was indistinguishable
+  from a merely quiet test run until the long timeout expired.
+- Commit `512b7f7e33cf24056845a2add9d56fa002b89a43` routes pytest through
+  `run_local_process`, streams `-vv` progress live, uses the existing timeout
+  path/tree kill, and reports timeout metadata.
+- Commit `d2b16f0cf91f9bda9d7b937c7c20c9fcce930878` adds a bridge regression test
+  proving `run_tests` uses the managed process runner.
+- Local worker must pull/restart with this code before another `run_tests` job
+  can verify whether any individual test itself also hangs.
+
 The entries below are historical; this snapshot supersedes old stop/go decisions.
 
 ## Historical snapshot — 2026-09-25
