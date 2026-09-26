@@ -9894,11 +9894,15 @@ A prerequisite, approach, or partial progress is NOT completion of a later requi
 CURRENT JOB requires
 A then B, doing only A is invalid. Entering a room does not imply locking its
 door; reaching a door does not imply opening it; retrieving a weapon does not
-imply equipping it; drawing a weapon does not imply firing it. Named relational
-participants are material: if CURRENT JOB says an action is done for, with, or
-to named people, the candidate must preserve those named participants or their
-direct visible participation/result. Reject a solo rewrite that drops named
-beneficiaries or participants. Do not reject harmless visible detail.
+imply equipping it; drawing a weapon does not imply firing it. Relational roles are material: if CURRENT JOB says an action/result is for,
+with, or to a person or group, CANDIDATE BEAT must preserve that beneficiary,
+recipient, or participant role rather than merely keeping them present. For a
+finite prepared/consumable/hand-off result, the intended beneficiary must visibly
+receive, be served, use, or be explicitly assigned that result when physically
+reasonable; merely watching the work is insufficient. Watching/listening may
+satisfy the role when that is itself the intended result, such as a performance,
+lesson, or demonstration. Reject a rewrite that changes or drops a required
+beneficiary/participant. Do not reject harmless visible detail.
 
 B. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as
 authoritative history. Reject only clear contradictions or physical impossibilities,
@@ -14166,8 +14170,12 @@ Rules:
 - For a finite activity, show a visible transition: include the assigned
   activity itself, then show it finishing. Do not output only the activity
   underway or only its after-state.
-- When an activity is for named people, show those people receiving or
-  participating in the completed result when reasonable.
+- Preserve relationship roles from REQUIRED EVENT. If an activity or result is
+  for a person or group, keep them as beneficiaries rather than spectators. For
+  a finite prepared/consumable/hand-off result, visibly serve, deliver, or give
+  that result to the intended beneficiary when practical. Merely watching the
+  work is not enough unless watching/listening is itself the intended result,
+  such as a performance, lesson, or demonstration.
 - Do not start the next required event early.
 - If PREVIOUS BEAT is present, continue from it without repeating it.
 - When ARC intentionally assigns the same repeated/ongoing process to adjacent
