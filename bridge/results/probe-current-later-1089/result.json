@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1089",
+  "kind": "llama_chat",
+  "started_at": 1790388120.0041332,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe mage seals the shadow rift.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nThe mage climbs the obsidian tower.\n\nCANDIDATE BEAT\nThe mage seals the shadow rift, then climbs the obsidian tower.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-lctzbr2ks4furxh0qomkt",
+    "object": "chat.completion",
+    "created": 1790388120,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Includes reserved‑for‑later action (climbing tower) before completing the required current job (sealing rift).\"}",
+          "reasoning": "We need to judge the candidate beat: \"The mage seals the shadow rift, then climbs the obsidian tower.\"\n\nCurrent job required: The mage seals the shadow rift. Reserved later: The mage climbs the obsidian tower (never required now). So we check if current job is only required work for this beat. Candidate includes both current and reserved. That means it completes a distinct later job early, which is not allowed unless it's same ongoing process repeated? They are different jobs. So reject.\n\nThus valid false with issue: \"Includes reserved-for-later action before completing the current job.\" Or similar.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 269,
+      "completion_tokens": 165,
+      "total_tokens": 434,
+      "completion_tokens_details": {
+        "reasoning_tokens": 123
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388122.5021613,
+  "status": "ok"
+}
