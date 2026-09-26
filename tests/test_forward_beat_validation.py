@@ -271,8 +271,9 @@ class ForwardBeatValidationTests(unittest.TestCase):
         prompt = messages[1]["content"]
         self.assertIn("person or group", prompt)
         self.assertIn("beneficiary", prompt)
-        self.assertIn("merely watching the work is insufficient", prompt)
-        self.assertIn("performance, lesson, or demonstration", prompt)
+        normalized = " ".join(prompt.split())
+        self.assertIn("merely watching the work is insufficient", normalized)
+        self.assertIn("performance, lesson, or demonstration", normalized)
 
     def test_beat_generation_preserves_group_beneficiary_roles(self):
         phase = {
@@ -294,7 +295,8 @@ class ForwardBeatValidationTests(unittest.TestCase):
         prompt = messages[1]["content"]
         self.assertIn("person or group", prompt)
         self.assertIn("beneficiaries rather than spectators", prompt)
-        self.assertIn("Merely watching the work is not enough", prompt)
+        normalized = " ".join(prompt.split())
+        self.assertIn("Merely watching the work is not enough", normalized)
 
 if __name__ == "__main__":
     unittest.main()
