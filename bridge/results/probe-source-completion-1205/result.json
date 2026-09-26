@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1205",
+  "kind": "llama_chat",
+  "started_at": 1790440734.3171418,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe medic starts treatment until an alarm interrupts her.\n\nRAW SCENE\nThe medic begins cleaning Rae's wound. An alarm sounds; she stops before finishing.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin\n  or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly\n  receive/participate when physically possible.\n- Judge the final frame: the required result must already be true, not merely\n  attempted, approaching, starting up, partly complete, or still in progress.\n- Do not judge style, pacing, camera, continuity, future events, or harmless\n  extra detail.\nReturn valid=true only when CURRENT BEAT is complete in RAW SCENE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ys8m3ew2l8lhjnwv05fsop",
+    "object": "chat.completion",
+    "created": 1790440734,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to check if the raw scene visibly completes current beat: \"The medic starts treatment until an alarm interrupts her.\" The raw scene says: \"The medic begins cleaning Rae's wound. An alarm sounds; she stops before finishing.\"\n\nSo does it show that the medic started treatment? Yes, she begins cleaning. Does it show that the alarm interrupts her? Yes, alarm sounds and she stops before finishing. So current beat is completed: starts treatment until interrupted by alarm. The raw scene shows start of treatment (cleaning wound) and interruption by alarm. It also mentions stopping before finishing. That matches \"until an alarm interrupts her.\" So valid = true.\n\nCheck rules: Every explicit action/result in CURRENT BEAT must visibly happen. The beat says medic starts treatment; that is visible. Alarm interrupts her; that's visible. Finite activity reaches natural observable result? She stops before finishing, but the beat didn't require completion of wound cleaning. It just said she started until alarm interrupted. So it's fine.\n\nNamed beneficiary: Rae's wound being cleaned. That happens. The final frame: required result must already be true. The required result is that medic starts treatment and gets interrupted by alarm. Both are visible. So valid=true, issue empty string or maybe null? Return JSON with boolean valid and string issue. If no issues, issue can be \"\".\n\nThus output:\n\n{\"valid\":true,\"issue\":\" \"} but better to put empty string: \"\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 270,
+      "completion_tokens": 311,
+      "total_tokens": 581,
+      "completion_tokens_details": {
+        "reasoning_tokens": 291
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440738.7371318,
+  "status": "ok"
+}
