@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1095",
+  "kind": "llama_chat",
+  "started_at": 1790388151.8845184,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe cook serves dinner to Mara and Jo.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nThe cook clears the dishes.\n\nCANDIDATE BEAT\nThe cook serves Mara and Jo, then gathers their plates and clears the table.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-7h1svdrjh9u9knz66lbq7",
+    "object": "chat.completion",
+    "created": 1790388151,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid",
+          "reasoning": "We need to judge the candidate beat: \"The cook serves Mara and Jo, then gathers their plates and clears the table.\"\n\nCurrent job: The cook serves dinner to Mara and Jo. That's required work. Reserved later: The cook clears dishes.\n\nCandidate beat includes serving (current) plus gathering plates and clearing table. Gathering plates is part of clearing? Clearing dishes means removing plates from table. So candidate beat does serve then gather plates and clear the table, which is essentially clearing dishes. That completes reserved job early. But check says: Reserved for later never required now; reject if a distinct later job is materially completed early. Here gathering plates and clears table = clearing dishes. That's reserved later. It's done after serving. So it's completing reserved later early. Should we accept? The rule: \"If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\" Here they are not repeating; they're adding a new job (clearing). It's distinct from serving. So it's reserved for later done early => invalid.\n\nThus valid: false. Issue: \"Clears dishes too soon\" or similar. Provide short concrete explanation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 269,
+      "completion_tokens": 256,
+      "total_tokens": 525,
+      "completion_tokens_details": {
+        "reasoning_tokens": 245
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388155.4871829,
+  "status": "ok"
+}
