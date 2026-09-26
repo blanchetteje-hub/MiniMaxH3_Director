@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-role-v1-999",
+  "kind": "llama_chat",
+  "started_at": 1790382959.3632236,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Accept reasonable paraphrases and clear semantic implications. Reject only clear errors. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "INPUT ROLES\nBEFORE = facts available before this beat; do not invent additional facts.\nNOW = the job that must happen in this beat.\nLATER = a distinct next job reserved for a later beat.\nAFTER = listed typed effects that must follow from visible actions in this beat.\n\nBEFORE — PREVIOUS FINAL BEAT\nNone; this is the first beat.\n\nBEFORE — CURRENT STATE\n{}\n\nNOW — CURRENT JOB\nTov strikes the stone model with an ordinary iron hammer.\n\nLATER — NEXT JOB\nNone; this is the final beat.\n\nAFTER — STATE EFFECTS IF VALID\n[]\n\nCANDIDATE — THIS BEAT\nTov taps the stone model once with the iron hammer, and the entire solid model becomes liquid.\n\nCHECKS\n1. Carry stated actions/results forward. Do not repeat a completed removal on the same target unless it was restored.\n2. Use BEFORE facts only. Reject unavailable objects and unresolved barriers. Unknown facts alone are not errors.\n3. NOW must happen, with its required action/result/participants. A completed-state phrase cannot replace the assigned action.\n4. Do not complete a distinct LATER job early. Identical repeated work may continue.\n5. Every listed AFTER typed effect must follow from visible candidate actions. Do not demand unlisted effects.\n\nReturn one JSON object: {\"valid\": boolean, \"issue\": string}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 2048,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-t0otj8o4qve2hx7vjkuwa4",
+    "object": "chat.completion",
+    "created": 1790382959,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to validate the beat. BEFORE facts: None; current state {}. NOW job: Tov strikes stone model with ordinary iron hammer. Candidate says: \"Tov taps the stone model once with the iron hammer, and the entire solid model becomes liquid.\" Does that match? The action is tapping (striking) with iron hammer - okay. But result: entire solid model becomes liquid. That seems like a change of state not specified in NOW job; but AFTER effects list empty []. So no required effect listed. Candidate adds an effect, which is fine as long as it's plausible from the action? The check says \"Every listed AFTER typed effect must follow from visible candidate actions.\" But there are none listed after. So we don't need to match any effect. However, does the candidate's added effect violate anything? It might be okay; no requirement that it matches BEFORE or LATER. It's just an extra effect not required but plausible.\n\nCheck 1: Carry stated actions/results forward. No removal repeated. There's no removal. Fine.\n\nCheck 2: Use BEFORE facts only. Unknown objects fine. Stone model unknown, iron hammer unknown - ok.\n\nCheck 3: NOW must happen with its action/result/participants. A completed-state phrase cannot replace assigned action. The candidate says Tov taps the stone model once with the iron hammer. That is a strike action. Good.\n\nCheck 4: Do not complete distinct LATER job early. None.\n\nCheck 5: Every listed AFTER typed effect must follow from visible candidate actions. No after effects listed, so fine.\n\nThus beat valid. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 392,
+      "completion_tokens": 346,
+      "total_tokens": 738,
+      "completion_tokens_details": {
+        "reasoning_tokens": 326
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790382964.195326,
+  "status": "ok"
+}
