@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-mover-scope-1433",
+  "kind": "llama_chat",
+  "started_at": 1790454732.2333207,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one participant-scope case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Mara guides Eli and Noor into the shelter, enters with them, and locks the door. RAW: All three enter the shelter and Mara locks the door.\n\nPreserve participant scope. If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-huywyo94gedf6xj6p29468",
+    "object": "chat.completion",
+    "created": 1790454732,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if participant scope is preserved. The source: \"Mara guides Eli and Noor into the shelter, enters with them, and locks the door.\" So Mara guides Eli and Noor into the shelter (movement applies to those people only unless actor also crosses/enters). Then says she enters with them - that indicates Mara also enters. And then locks the door.\n\nThe RAW: \"All three enter the shelter and Mara locks the door.\"\n\nWe need to check if participant scope is preserved in source relative to raw? The rule: If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters. Here, Mara guides Eli and Noor into shelter; that means Eli and Noor enter. Then source says \"Mara enters with them\" - so Mara also enters. So participant scope is preserved: all three are in shelter.\n\nThus valid true. No issue. Return {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 187,
+      "completion_tokens": 230,
+      "total_tokens": 417,
+      "completion_tokens_details": {
+        "reasoning_tokens": 212
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790454736.0361705,
+  "status": "ok"
+}
