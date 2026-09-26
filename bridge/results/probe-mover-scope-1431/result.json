@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-mover-scope-1431",
+  "kind": "llama_chat",
+  "started_at": 1790454709.140593,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one participant-scope case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Mara guides Eli and Noor into the shelter and locks the door. RAW: Mara guides Eli and Noor inside, closes and locks the door, and remains outside.\n\nPreserve participant scope. If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-c32h5yz7171hs26v773fj",
+    "object": "chat.completion",
+    "created": 1790454709,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need judge one participant-scope case: source vs raw.\n\nSource: \"Mara guides Eli and Noor into the shelter and locks the door.\" Raw: \"Mara guides Eli and Noor inside, closes and locks the door, and remains outside.\"\n\nParticipant scope: The movement of Mara? Source says Mara guides them into shelter. That implies Mara moves with them? Actually \"guides\" means she leads them; but does she enter? It doesn't explicitly say she enters. Raw says she remains outside. So source's statement about locking the door might imply she is inside or at least near door to lock it. But raw clarifies she remains outside.\n\nWe need check if participant scope consistent: Source says Mara guides Eli and Noor into shelter and locks the door. That implies that Mara also enters? Because to lock the door, she must be on the other side of door. Raw says she remains outside. So source incorrectly attributes movement to Mara (she didn't enter). But rule: If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters.\n\nSource does not say Mara enters; so her movement is just guiding them. So source's statement about locking door might be inconsistent: She locks door but remains outside? Could lock from outside? If she stays outside, can she lock door? Possibly if it's a latch that can be locked from outside. But typical shelter door maybe inside-out. The rule says participant scope: movement applies to those people only unless explicitly says actor also crosses/enters.\n\nThus source's statement about locking the door is fine because it doesn't say Mara enters; but does she lock door? She could lock from outside, so no issue. However raw says remains outside, consistent with that. So valid.\n\nCheck if any conflict: Source says \"locks the door\" - implies action by Mara. Raw also says locks the door. No conflict. The only difference is location of Mara: source didn't specify she enters; raw says remains outside. That's fine because not explicitly said to enter. So no issue.\n\nThus output {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 188,
+      "completion_tokens": 465,
+      "total_tokens": 653,
+      "completion_tokens_details": {
+        "reasoning_tokens": 446
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790454716.3173668,
+  "status": "ok"
+}
