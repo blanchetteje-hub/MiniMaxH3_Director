@@ -1,0 +1,141 @@
+{
+  "source_code_revision": "c192bd33d11b709aa659fc56b35428d07d8f0db8",
+  "runtime_results_revision": "e2a94e0c3e8b5ad8b272a219cea6da06f595e02d",
+  "batch": "probe-role-layout-996..1015",
+  "completed": 20,
+  "reference_label_matches": 15,
+  "supported_by_review": 14,
+  "production_decision": "Do not adopt explicit role layout as the production validator prompt.",
+  "findings": [
+    "Explicit BEFORE/NOW/LATER/AFTER layout preserved the double-removal and restoration controls.",
+    "The ordinary final-resolution control was accepted, avoiding one prior false rejection.",
+    "Unsupported transformation control 998 was rejected for the wrong reason by inventing prior terminal state.",
+    "Locked-barrier traversal was falsely accepted in 1002 and 1006.",
+    "Production-wrapped equipped effect falsely accepted hand-held carry in 1010.",
+    "Explicitly unavailable discarded key was falsely accepted in 1013.",
+    "Ordinary wrench causing a steel pipe to become glass was falsely accepted in 1015."
+  ],
+  "next_experiment": "Keep production unchanged. Test two narrow contracts: current-state precondition compatibility and exact typed-effect support, roughly 10 controls each, before considering architecture changes.",
+  "results": [
+    {
+      "id": 996,
+      "expected": false,
+      "verdict": false,
+      "review": "correct"
+    },
+    {
+      "id": 997,
+      "expected": true,
+      "verdict": true,
+      "review": "correct"
+    },
+    {
+      "id": 998,
+      "expected": false,
+      "verdict": false,
+      "review": "wrong reason: invented prior terminal state"
+    },
+    {
+      "id": 999,
+      "expected": true,
+      "verdict": true,
+      "review": "correct"
+    },
+    {
+      "id": 1000,
+      "expected": false,
+      "verdict": false,
+      "review": "correct"
+    },
+    {
+      "id": 1001,
+      "expected": true,
+      "verdict": true,
+      "review": "correct"
+    },
+    {
+      "id": 1002,
+      "expected": false,
+      "verdict": true,
+      "review": "miss: unresolved closed/locked barrier"
+    },
+    {
+      "id": 1003,
+      "expected": true,
+      "verdict": true,
+      "review": "correct"
+    },
+    {
+      "id": 1004,
+      "expected": true,
+      "verdict": true,
+      "review": "correct capability exception"
+    },
+    {
+      "id": 1005,
+      "expected": true,
+      "verdict": true,
+      "review": "correct different targets"
+    },
+    {
+      "id": 1006,
+      "expected": false,
+      "verdict": true,
+      "review": "miss: locked airlock traversal"
+    },
+    {
+      "id": 1007,
+      "expected": true,
+      "verdict": true,
+      "review": "correct resolved airlock"
+    },
+    {
+      "id": 1008,
+      "expected": false,
+      "verdict": false,
+      "review": "correct LATER leakage"
+    },
+    {
+      "id": 1009,
+      "expected": true,
+      "verdict": true,
+      "review": "correct repeated-work continuation"
+    },
+    {
+      "id": 1010,
+      "expected": false,
+      "verdict": true,
+      "review": "miss: held treated as equipped"
+    },
+    {
+      "id": 1011,
+      "expected": true,
+      "verdict": true,
+      "review": "correct equipped action"
+    },
+    {
+      "id": 1012,
+      "expected": true,
+      "verdict": true,
+      "review": "correct distinct prior/current target"
+    },
+    {
+      "id": 1013,
+      "expected": false,
+      "verdict": true,
+      "review": "miss: unavailable object used"
+    },
+    {
+      "id": 1014,
+      "expected": true,
+      "verdict": true,
+      "review": "correct unknown staging"
+    },
+    {
+      "id": 1015,
+      "expected": false,
+      "verdict": true,
+      "review": "miss: unsupported material transformation"
+    }
+  ]
+}
