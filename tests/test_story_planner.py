@@ -403,7 +403,7 @@ def test_visible_source_responsibility_prompt_keeps_repeated_action_visible():
     assert "genre/premise/summary framing" in prompt
 
 
-def test_local_relation_prompt_distinguishes_mechanical_completion_from_later_use():
+def test_local_relation_prompt_distinguishes_trigger_completion_from_followup_work():
     from story_planner import build_local_relation_messages
 
     units = enumerate_source_units(
@@ -411,10 +411,10 @@ def test_local_relation_prompt_distinguishes_mechanical_completion_from_later_us
     )
     prompt = build_local_relation_messages(units[0], units[1])[-1]["content"]
 
-    assert "RIGHT's PRIMARY ACTION" in prompt
-    assert "Carrying, wearing, or using an item from LEFT" in prompt
-    assert "Starting a fresh item/test" in prompt
-    assert "protection -> fetch gear is NEW_TASK" in prompt
+    assert "explicitly introduces a problem, danger, alarm, or request" in prompt
+    assert "Mere opportunity, access, or readiness is not a trigger" in prompt
+    assert "a tool used on another target does not qualify" in prompt
+    assert "later test, inspection, transport, repair" in prompt
 
 
 def test_local_relation_parser_and_grouping_keep_repeatables_isolated():
