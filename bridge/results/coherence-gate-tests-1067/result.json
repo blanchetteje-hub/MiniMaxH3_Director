@@ -1,0 +1,22 @@
+{
+  "job_id": "coherence-gate-tests-1067",
+  "kind": "run_tests",
+  "started_at": 1790385986.390665,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_beat_plan_repair_orchestration.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": ".......                                                                  [100%]\n7 passed in 2.48s\n",
+    "stderr": ""
+  },
+  "finished_at": 1790385990.7147217,
+  "status": "ok"
+}
