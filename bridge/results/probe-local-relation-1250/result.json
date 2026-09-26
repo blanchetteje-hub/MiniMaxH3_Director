@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1250",
+  "kind": "llama_chat",
+  "started_at": 1790443032.4077754,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe courier finishes sealing the package.\n\nRIGHT:\nThe courier carries the package to the loading dock.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself CREATES a problem, danger, or request, and RIGHT is the immediate response that addresses it.\n3. RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it is only a tool for another target, this rule does not apply.\nImportant: rule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. A different objective after completed work is NEW_TASK even when both serve the same larger goal.\nOtherwise choose NEW_TASK.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-87dr7g5939e0skz6dcapbh",
+    "object": "chat.completion",
+    "created": 1790443032,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need to decide if two adjacent source responsibilities belong to one local beat job: LEFT: \"The courier finishes sealing the package.\" RIGHT: \"The courier carries the package to the loading dock.\"\n\nCheck rules:\n\n1. RIGHT continues same uninterrupted action as LEFT? Sealing is finishing, carrying is next step; not same action.\n\n2. LEFT creates a problem/danger/request and RIGHT immediate response that addresses it. Left finished sealing - no problem created.\n\n3. RIGHT immediately completes handling of exact object/container/action left just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it's only a tool for another target, this rule does not apply. Here LEFT: package sealed. Right: carries the package to loading dock. That is immediate completion of handling of that object? Sealing was action on package; carrying is next step but still same object. Does it \"immediately completes handling\" of exact object? The left just obtained or started? It says \"just obtained, opened, unlocked, or started.\" Sealed is not exactly those actions. So rule 3 may not apply.\n\nThus likely NEW_TASK. Return JSON: {\"relation\":\"NEW_TASK\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 273,
+      "completion_tokens": 258,
+      "total_tokens": 531,
+      "completion_tokens_details": {
+        "reasoning_tokens": 242
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790443036.503724,
+  "status": "ok"
+}
