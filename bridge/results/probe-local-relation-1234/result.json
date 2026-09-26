@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1234",
+  "kind": "llama_chat",
+  "started_at": 1790442757.963186,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe technician finishes assembling the sensor rig.\n\nRIGHT:\nThe technician runs a calibration test on it.\n\nChoose MERGE or NEW_TASK.\nMERGE only if RIGHT's PRIMARY ACTION:\n1. continues the same uninterrupted local action as LEFT;\n2. is the direct immediate response to a new problem/event introduced by LEFT itself; or\n3. immediately completes the exact object/action LEFT just obtained, opened, or started.\nOtherwise choose NEW_TASK once LEFT has a usable stopping point. Do not MERGE merely because RIGHT follows from, is enabled by, or shares a larger goal/cause with LEFT. A later task after completed protection, victory, assembly, or other completed work is NEW_TASK unless rule 3 applies.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ewpv6fn46li0wepuon2p",
+    "object": "chat.completion",
+    "created": 1790442757,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if RIGHT belongs to same beat job as LEFT.\n\nLEFT: \"The technician finishes assembling the sensor rig.\"\n\nRIGHT: \"The technician runs a calibration test on it.\"\n\nCheck rules:\n\n1. continues the same uninterrupted local action as LEFT -> Assembling vs running calibration? Not same action, but maybe continuation of assembly? No.\n\n2. direct immediate response to new problem/event introduced by LEFT itself. Does finishing assembling introduce a new event that triggers calibration? Possibly yes: after assembly, you calibrate. But is it an immediate response to a new problem/event introduced by LEFT? The event \"finishing assembly\" leads to next step of calibration. That seems like direct immediate response.\n\n3. immediately completes the exact object/action LEFT just obtained, opened, or started. Assembling rig -> then runs test on it: that completes testing of assembled rig. But rule 3 says if RIGHT immediately completes the exact object/action LEFT just obtained, opened, or started. The action is \"assemble sensor rig\". The next action is calibration test; not completing assembly but performing a new task.\n\nThus rule 2 applies: direct immediate response to event introduced by LEFT itself (finishing assembly). So MERGE.\n\nReturn JSON {\"relation\":\"MERGE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 253,
+      "completion_tokens": 268,
+      "total_tokens": 521,
+      "completion_tokens_details": {
+        "reasoning_tokens": 252
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442762.180376,
+  "status": "ok"
+}
