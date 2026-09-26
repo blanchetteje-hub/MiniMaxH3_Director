@@ -542,6 +542,18 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             )
 
 class DirectorRawSceneCompletionTests(unittest.TestCase):
+    def test_completion_prompt_requires_completed_active_process_endpoint(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "A parent cooks breakfast for the children.",
+            "The parent serves breakfast while the stove burner remains visibly on.",
+            assigned_source="A parent cooks breakfast for the children.",
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("active process/tool", prompt)
+        self.assertIn("natural inactive/stable endpoint", prompt)
+        self.assertIn("readiness tools", prompt)
+        self.assertIn("ongoing or interrupted source activity", prompt)
+
     def test_completion_prompt_requires_named_beneficiaries_and_final_result(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "The cook serves breakfast to Mira and Jon.",
