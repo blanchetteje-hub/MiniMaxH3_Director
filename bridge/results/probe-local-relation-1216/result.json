@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1216",
+  "kind": "llama_chat",
+  "started_at": 1790442642.3808095,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\n\nRIGHT:\nSuddenly, a zombie breaks the kitchen door window and Amy sees the danger.\n\nChoose MERGE or NEW_TASK.\nMERGE only if RIGHT's PRIMARY ACTION:\n1. continues the same uninterrupted local action as LEFT;\n2. is the direct immediate response to a new problem/event introduced by LEFT itself; or\n3. immediately completes the exact object/action LEFT just obtained, opened, or started.\nOtherwise choose NEW_TASK once LEFT has a usable stopping point. Do not MERGE merely because RIGHT follows from, is enabled by, or shares a larger goal/cause with LEFT. A later task after completed protection, victory, assembly, or other completed work is NEW_TASK unless rule 3 applies.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jdwkutbzzuggrthqj7i3s",
+    "object": "chat.completion",
+    "created": 1790442642,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if RIGHT's primary action continues same uninterrupted local action as LEFT; or direct immediate response to new problem/event introduced by LEFT itself; or immediately completes exact object/action left just obtained, opened, started.\n\nLEFT: Amy is at home on a normal day, wearing tight black tank top and denim jeans, cooking breakfast for her young kids. So primary action: cooking breakfast (maybe chopping eggs? etc). RIGHT: Suddenly, a zombie breaks the kitchen door window and Amy sees the danger. Primary action: seeing the danger? Actually \"Suddenly, a zombie breaks the kitchen door window\" is an event; Amy sees the danger. The action of breaking window is new problem/event introduced by LEFT itself? It's not directly related to cooking breakfast but it's in same location (kitchen). Does it continue same uninterrupted local action as left? No, she was cooking, now zombie breaks window. Is it direct immediate response to a new problem event introduced by left itself? The new problem: zombie breaking kitchen door window is an event that interrupts her cooking; Amy sees danger. That seems like immediate response to the new problem. So rule 2 applies: it's direct immediate response to new problem/event introduced by LEFT itself. Thus MERGE.\n\nReturn JSON with key relation: \"MERGE\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 279,
+      "completion_tokens": 276,
+      "total_tokens": 555,
+      "completion_tokens_details": {
+        "reasoning_tokens": 260
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442646.7102232,
+  "status": "ok"
+}
