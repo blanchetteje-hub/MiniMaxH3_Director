@@ -1152,3 +1152,17 @@ transformation. Only then move on toward H3 prompt generation.
 - Generic final-item-state probes 1100–1118 completed at 19/19 intended semantic labels.
 - Refreshed unit job `beat-integrity-tests-1120` is queued.
 - Fresh planning acceptance `planning-integrity-refined-1121` is queued. It must preserve 6+2 ownership and additionally reject JSON delimiter leakage plus any beat whose final held/equipped state is contradicted by later actions.
+
+
+### 2026-09-25 — planning integrity accepted; advance to H3 prompt quality
+
+- Acceptance `planning-integrity-refined-1121` completed successfully on the current chapter-first path.
+- It preserved the intended 2-chapter / 6+2 allocation and correct CURRENT-vs-LATER ownership.
+- Raw JSON delimiter leakage did not recur.
+- Beat 3 now ends with the pistol/katana actually strapped/equipped, matching the typed final-state effects.
+- The coherence gate caught a real same-target double-removal candidate in Beat 4 and forced regeneration before acceptance.
+- Final accepted Beats 4-6 remained non-terminal; Beat 7 correctly owns the last-zombie resolution and Beat 8 the child release.
+- `beat-integrity-tests-1120` exposed one stale assertion that still expected `C. NEXT JOB`; commit `13119ec6a40e438f7c8d5c10ce960cb8a521febb` updates it to `C. RESERVED FOR LATER`.
+- Planning-integrity work is now sufficient to resume the primary project goal: story.txt -> gold H3 prompts.
+- Queued `beat-integrity-tests-1122` as the final focused regression check.
+- Queued `gold-prompt-acceptance-1123` in full prompt-generation mode. This uses `--test-prompt-generation`, so it captures H3 prompts without rendering video. Review generated segments fuzzily against the locked Amy gold target; fix the earliest demonstrated prompt-quality failure and keep changes generic.
