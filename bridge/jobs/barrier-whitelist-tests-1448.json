@@ -1,0 +1,9 @@
+{
+  "kind": "run_tests",
+  "job_id": "barrier-whitelist-tests-1448",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_llm_prompt_pipeline.py"
+  ],
+  "timeout_seconds": 900
+}
