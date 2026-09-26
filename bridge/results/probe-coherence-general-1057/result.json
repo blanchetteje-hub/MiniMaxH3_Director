@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-general-1057",
+  "kind": "llama_chat",
+  "started_at": 1790383650.664849,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only physical/causal coherence inside one candidate beat. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY.\nRead actions literally in order and carry stated results forward.\n- Reject repeating an irreversible removal or destruction on the same specific target, part, or object unless restoration/regeneration/reinstallation happens first.\n- A non-terminal injury is not a removal. Different targets or parts are different cases.\n- Reject an ordinary action that makes an entire body/object become a materially different substance or vanish without an established capability or physically plausible cause.\n- Accept explicit magic/technology, restoration, regeneration, and ordinary physical causes that support the result.\nDo not judge story coverage, future ownership, or state-effect records.\n\nESTABLISHED CONTEXT\nThe demolition charge is designed to destroy the concrete barrier.\n\nCANDIDATE\nThe charge detonates against the barrier, blasting the concrete into broken chunks and dust."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hy6y7cij46c4pv41aqh9s",
+    "object": "chat.completion",
+    "created": 1790383650,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to check within-beat physical/causal coherence only. The candidate: \"The charge detonates against the barrier, blasting the concrete into broken chunks and dust.\" This is a single beat. We must read actions literally in order and carry stated results forward.\n\nCheck for any issues:\n\n- Charge detonates against barrier -> explosion.\n- Blasting concrete into broken chunks and dust. That seems physically plausible: demolition charge can blast concrete into fragments/dust. No removal of entire body? The barrier is destroyed, but it's not a single object being removed; the barrier breaks into pieces. That's fine.\n\nNo irreversible removal repeated on same target without restoration. Not relevant.\n\nThus valid. Return JSON with valid true and issue empty string or null.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 278,
+      "completion_tokens": 168,
+      "total_tokens": 446,
+      "completion_tokens_details": {
+        "reasoning_tokens": 150
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383653.2381551,
+  "status": "ok"
+}
