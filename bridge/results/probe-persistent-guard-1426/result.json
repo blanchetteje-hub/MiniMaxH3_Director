@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1426",
+  "kind": "llama_chat",
+  "started_at": 1790452613.7898147,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: A sealed box sits on the table. SOURCE: Kira writes a note. RAW: Kira writes a note while the sealed box remains on the table.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6jc1xvzaxmfhz18732i6l",
+    "object": "chat.completion",
+    "created": 1790452613,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them.\n\nOPENING: \"A sealed box sits on the table.\"\n\nSOURCE: \"Kira writes a note.\"\n\nRAW: \"Kira writes a note while the sealed box remains on the table.\"\n\nCheck: Does RAW complete SOURCE? Source says Kira writes a note. RAW adds that she does so while the sealed box remains on the table. That is consistent with opening fact (sealed box sits). It doesn't change persistent state: The box remains on the table, still sealed. No other changes.\n\nThus valid true. Issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 223,
+      "completion_tokens": 145,
+      "total_tokens": 368,
+      "completion_tokens_details": {
+        "reasoning_tokens": 127
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452616.2752483,
+  "status": "ok"
+}
