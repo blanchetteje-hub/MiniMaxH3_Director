@@ -742,3 +742,27 @@ that requested range belongs in the required-event assignment list. Full chapter
 source may remain context, but other numbered chapter jobs must not be presented
 as additional required outputs for a one-beat repair. The former unfiltered list
 was an observed contradictory prompt contract; it is now filtered in Python.
+
+## Role-layout validator experiment — probes 996–1015
+
+The explicit BEFORE / NOW / LATER / AFTER input-role experiment is complete.
+Reviewed result: **15/20 reference-label matches, 14/20 supported by the actual
+reasoning**. Do **not** adopt this prompt layout as the production validator.
+
+Useful signal:
+- double-removal/restoration controls remained correct;
+- the ordinary final-resolution control was accepted, removing one prior false
+  rejection;
+- but the important failures remained: locked-barrier traversal, unavailable
+  object use, held-vs-equipped typed state, and unsupported ordinary material
+  transformation;
+- probe 998 still rejected the transformation case for the wrong reason by
+  inventing a prior terminal state.
+
+Production stays unchanged. The next evidence-gathering step is narrower rather
+than longer: test current-state precondition compatibility separately from exact
+typed-effect support (about 10 controls each). Do not add a new subsystem unless
+those narrow contracts demonstrate materially better reliability across neutral,
+science-fiction, fantasy, and action-shaped controls.
+
+Reviewed results: `tests/LLM/probes/role_layout_996_1015_results.json`.
