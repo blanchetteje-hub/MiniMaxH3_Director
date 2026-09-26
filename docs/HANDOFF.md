@@ -69,6 +69,26 @@ Active development branch:
 - Next: grade 1235-1254. Adopt only if it fixes the two demonstrated ambiguities
   without regressing the stable controls, then rerun planning/full acceptance.
 
+### 2026-09-26 — current production grouping prompt: 18/20; priority fix
+
+- Probes 1255-1274 exercised the **actual current** production local-relation
+  prompt on ten generic relations, each duplicated.
+- Result: **18/20 parsed decisions correct**. Duplicate pairs were stable except:
+  - completed protection -> fetch equipment: one NEW_TASK, one false MERGE;
+  - finished assembly -> calibration: one NEW_TASK, one false MERGE.
+- All retrieve->equip, retrieve->consume, open->remove, new-danger->immediate
+  protection, victory->release, and unrelated-after-protection controls passed.
+- This supports keeping one binary grouping call. The failures are instruction
+  precedence ambiguity, not evidence for another planner stage.
+- Commit `bb47dacc7081133c37d684c2404f654aa615ee52` changes only prompt order:
+  STOPPING POINT is evaluated first; same-object follow-through explicitly excludes
+  objects whose build/assembly/repair has already finished; new-problem response
+  cannot reinterpret a completed protection/solution as a trigger.
+- Queued focused regression `grouping-priority-tests-1275` and full
+  `gold-prompt-acceptance-1276`. Acceptance remains the deciding evidence:
+  it must restore 2 chapters / 6+2 beats and then expose the earliest remaining
+  story.txt -> gold-prompt mismatch.
+
 The entries below are historical; this snapshot supersedes old stop/go decisions.
 
 ## Historical snapshot — 2026-09-25
