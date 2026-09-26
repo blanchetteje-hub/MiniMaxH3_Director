@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-narrow-validator-1025",
+  "kind": "llama_chat",
+  "started_at": 1790383297.880826,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only the single check described. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue. Reject only when the described check clearly fails."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: PHYSICAL BARRIER CONTINUITY ONLY.\nUse BEFORE as established fact. Reject if CANDIDATE traverses a closed or locked physical barrier without first resolving it, unless BEFORE establishes a capability that bypasses that barrier. Unknown facts are not errors.\n\nBEFORE\nMara is inside the laboratory. The laboratory door is closed and locked.\n\nCANDIDATE\nMara unlocks the laboratory door, opens it, and walks into the corridor."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ii1cw1ywwtb5tscknovwjc",
+    "object": "chat.completion",
+    "created": 1790383297,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to validate only single check: PHYSICAL BARRIER CONTINUITY ONLY. Use BEFORE as established fact. Reject if CANDIDATE traverses a closed or locked physical barrier without first resolving it, unless BEFORE establishes a capability that bypasses that barrier. Unknown facts are not errors.\n\nCheck: In BEFORE, laboratory door is closed and locked. Mara inside lab. In CANDIDATE, Mara unlocks the door, opens it, walks into corridor. She traversed the door after unlocking/opening. That resolves the barrier before traversal. So it's fine. No rejection. Return JSON with valid true, issue empty string.\n\nThus: {\"valid\":true,\"issue\":\"\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 201,
+      "completion_tokens": 157,
+      "total_tokens": 358,
+      "completion_tokens_details": {
+        "reasoning_tokens": 139
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383300.198807,
+  "status": "ok"
+}
