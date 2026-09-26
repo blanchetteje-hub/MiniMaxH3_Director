@@ -913,3 +913,16 @@ Current rule:
 - keep only authority needed to execute the current segment and stop before the reserved next beat.
 
 The active generation message now omits `STORY:` and `PHASE:`. Regression job `director-context-tests-1454` passed 61/61. The next acceptance is `gold-prompt-context-1455`; use its real per-segment token measurements to decide whether another context block should be removed or compacted. Do not optimize only for the zombie benchmark: the same contract must support arbitrary genres and action types.
+
+
+## Finite beat endpoint checkpoint — 2026-09-26
+
+After Director context compaction, full acceptance 1455 captured all 8 segments. The current earliest gold mismatch is now upstream of Director: Beat CREATE/VALIDATE allowed a finite source activity to remain visibly underway at the end of its assigned beat.
+
+Current rule:
+- if one beat owns a finite activity/task, the finalized beat must include its natural observable completion endpoint;
+- progressive source grammar such as "is cooking" or "is repairing" does not by itself authorize ending the assigned beat mid-task when that whole finite activity belongs to the beat;
+- explicitly long/repeated/ongoing source processes remain non-terminal and must **not** be forced to end;
+- do not infer mandatory physical handoff merely because work is described as being "for" an owner/client/beneficiary. Preserve beneficiary semantics, but distinguish task completion from transfer/delivery.
+
+This rule belongs in the existing Beat validator before broader checks; do not create a new semantic stage unless the combined validator still misses it after the priority change. Generic probes 1456-1475 produced 18/19 intended parsed judgments plus one 512-token truncation, with the only semantic miss caused by over-strict beneficiary transfer. Therefore only finite-endpoint priority is adopted.
