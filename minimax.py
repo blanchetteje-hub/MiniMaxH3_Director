@@ -9888,7 +9888,7 @@ CURRENT STATE
 CURRENT JOB
 {beat_job}
 
-NEXT JOB
+RESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT
 {next_beat_job or "None; this is the final beat."}
 
 STATE EFFECTS IF VALID
@@ -9898,6 +9898,9 @@ CANDIDATE BEAT
 {candidate_beat}
 
 CHECKS
+Use CURRENT JOB as the only source of required work for this beat. The RESERVED
+FOR LATER section is never required now; it exists only to detect early leakage.
+
 A. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept
 paraphrases and clear implications, but require every materially required action
 or result when the job has multiple parts. PREVIOUS FINAL BEAT is history only:
@@ -9939,10 +9942,12 @@ release, contradicting a known location, or reviving a dead, destroyed, removed,
 or otherwise terminal entity. Unknown is not automatically contradictory. Apply
 explicit candidate actions in order when they change what becomes possible.
 
-C. NEXT JOB: Do not materially complete the distinct NEXT JOB early. Preparation
-and incidental overlap that naturally belongs to the current action are allowed.
-Reject only when the distinct work of the next beat has actually been completed,
-including semantic equivalents of terminal or exhaustive results.
+C. RESERVED FOR LATER: Never require this work in the current beat. Do not
+materially complete a distinct reserved-later job early. Preparation and incidental
+overlap that naturally belongs to CURRENT JOB are allowed. If the reserved job is
+identical to CURRENT JOB because the source intentionally repeats an ongoing
+process, allow another non-terminal instance; reject only terminal/exhaustive
+wording that consumes later work.
 
 D. TYPED STATE EFFECTS: Every listed typed effect must be supported by what
 visibly happens in the candidate. Judge meaning, not exact verbs. Possession is
@@ -14186,6 +14191,8 @@ REQUIRED EVENTS FOR REQUESTED BEATS {batch_start}-{batch_end}:
 Write exactly {batch_size} video beats, one per required event.
 
 Rules:
+- SOURCE STORY is context only. For each beat, perform ONLY that beat's listed
+  REQUIRED EVENT; do not pull later source-story events into the current beat.
 - Complete each required event visibly in its beat.
 - For a finite activity, show a visible transition: include the assigned
   activity itself, then show it finishing. Do not output only the activity
