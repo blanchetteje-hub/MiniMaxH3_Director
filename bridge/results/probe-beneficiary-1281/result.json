@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-1281",
+  "kind": "llama_chat",
+  "started_at": 1790446009.3379426,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe violinist performs a song for Mira and Jon.\n\nCANDIDATE BEAT\nThe violinist completes the song while Mira and Jon watch and listen.\n\nCHECKS\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result when the job has multiple parts. Named relational participants are material: if CURRENT JOB says an action is done for, with, or to named people, the candidate must preserve those named participants or their direct visible participation/result. Reject a solo rewrite that drops named beneficiaries or participants. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ghvogawl4n5to2ve4v5ty",
+    "object": "chat.completion",
+    "created": 1790446009,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": true, \"issue\": \"\"}",
+          "reasoning": "We need to validate candidate beat against current job. Current Job: \"The violinist performs a song for Mira and Jon.\" So the action is performed by violinist; it's for Mira and Jon (i.e., they are recipients). The candidate beat: \"The violinist completes the song while Mira and Jon watch and listen.\"\n\nDoes it accomplish meaning? It says violinist completes the song. That implies performing. They watch and listen, which indicates that Mira and Jon are watching/listening to the performance. Does it preserve named beneficiaries or participants? Yes, Mira and Jon present. The job said \"for\" them; candidate says they watch and listen - that's a direct visible participation/result. So it's valid.\n\nCheck if any material action missing: current job has violinist performs a song for Mira and Jon. Candidate: completes the song while Mira and Jon watch and listen. That covers performing (completes) and that it is for them, as they watch/listen. Good.\n\nThus valid. Return JSON with valid true.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 253,
+      "completion_tokens": 228,
+      "total_tokens": 481,
+      "completion_tokens_details": {
+        "reasoning_tokens": 208
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446013.104778,
+  "status": "ok"
+}
