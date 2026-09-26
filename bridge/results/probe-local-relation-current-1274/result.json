@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-current-1274",
+  "kind": "llama_chat",
+  "started_at": 1790444574.4567027,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe medic finishes sealing the patient inside the sterile chamber.\n\nRIGHT:\nThe medic retrieves a tablet from the desk to review tomorrow's schedule.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself explicitly introduces a problem, danger, alarm, or request, and RIGHT is the immediate response that addresses that trigger. Mere opportunity, access, or readiness is not a trigger.\n3. RIGHT immediately completes handling of the exact object, container, or action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; a tool used on another target does not qualify.\nRule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. If LEFT explicitly finishes/completes an object-level task, a later test, inspection, transport, repair, or other operation is NEW_TASK.\nOtherwise choose NEW_TASK. Judge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-qrd0v3ukpwoagr0rrgypy",
+    "object": "chat.completion",
+    "created": 1790444574,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need to decide if RIGHT belongs to same beat job as LEFT.\n\nLEFT: \"The medic finishes sealing the patient inside the sterile chamber.\"\n\nRIGHT: \"The medic retrieves a tablet from the desk to review tomorrow's schedule.\"\n\nCheck rules:\n\n1. Does RIGHT continue same uninterrupted action? No, different actions: sealing vs retrieving tablet.\n\n2. LEFT introduces problem/danger/alarm/request? It says \"finishes sealing the patient inside the sterile chamber.\" That is completion of an action; not a trigger. So rule 2 doesn't apply.\n\n3. RIGHT immediately completes handling of exact object that LEFT just obtained/opened/unlocked/started. LEFT didn't obtain any object, it sealed patient inside chamber. No object to handle.\n\nThus MERGE does not apply. NEW_TASK.\n\nReturn JSON: {\"relation\":\"NEW_TASK\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 309,
+      "completion_tokens": 181,
+      "total_tokens": 490,
+      "completion_tokens_details": {
+        "reasoning_tokens": 165
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790444577.254674,
+  "status": "ok"
+}
