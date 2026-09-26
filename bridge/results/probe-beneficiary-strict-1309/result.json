@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beneficiary-strict-1309",
+  "kind": "llama_chat",
+  "started_at": 1790446332.150622,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one candidate story beat. Judge meaning, not exact wording. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe medic treats Mira's injured arm.\n\nCANDIDATE BEAT\nThe medic bandages Jon's arm while Mira watches.\n\nA. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept paraphrases and clear implications, but require every materially required action or result. Named relational participants are material. If CURRENT JOB assigns a finite activity for named people, those named people must visibly receive or participate in the completed result when physically possible; watching alone is insufficient unless watching/listening is itself the assigned benefit, such as a performance, lesson, or demonstration. Preserve recipient/beneficiary roles rather than merely keeping the people present. Do not reject harmless visible detail.\n\nReturn exactly one JSON object: {\"valid\": true, \"issue\": \"\"} or {\"valid\": false, \"issue\": \"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 700,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-qctvhkxzsmc2ml67khk1v",
+    "object": "chat.completion",
+    "created": 1790446332,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\": false, \"issue\":\"Medic bandages Jon’s arm instead of treating Mira’s injured arm\"}",
+          "reasoning": "We need to validate candidate beat against current job. Current job: The medic treats Mira's injured arm. So the action is treating (bandaging) Mira's injured arm.\n\nCandidate beat: The medic bandages Jon's arm while Mira watches.\n\nSo the medic bandages Jon's arm, not Mira. That fails because it doesn't treat Mira's arm. Also mentions Mira watching but that's just observation. So it's invalid. Issue: \"Medic treats Jon instead of Mira.\" Provide short concrete explanation. Return JSON with valid false and issue string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 261,
+      "completion_tokens": 140,
+      "total_tokens": 401,
+      "completion_tokens_details": {
+        "reasoning_tokens": 108
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790446334.5109668,
+  "status": "ok"
+}
