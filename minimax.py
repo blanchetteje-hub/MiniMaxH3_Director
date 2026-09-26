@@ -25437,6 +25437,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 )
             continue
 
+        llm_result["detailed_description"] = _canonicalize_director_timestamps(
+            llm_result.get("detailed_description", "")
+        )
         timestamp_issues = _validate_director_timestamp_correspondence(
             raw_scene,
             llm_result.get("detailed_description", ""),
