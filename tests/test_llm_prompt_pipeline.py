@@ -728,7 +728,11 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             rules,
         )
         self.assertIn(
-            "visibly stop, set down, close, or otherwise settle it before the handoff",
+            "leave it in a stable visible state when physically reasonable",
+            rules,
+        )
+        self.assertIn(
+            "Do NOT set down, unequip, holster, discard",
             rules,
         )
         self.assertIn('"finite_activity_complete": true', rules)
@@ -778,7 +782,11 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             properties["named_beneficiaries_complete"]["description"],
         )
         self.assertIn(
-            "tools/appliances used only for a completed finite activity",
+            "activity-only tools/appliances",
+            properties["activity_tools_settled"]["description"],
+        )
+        self.assertIn(
+            "held/equipped readiness item",
             properties["activity_tools_settled"]["description"],
         )
         self.assertIn(
@@ -1266,14 +1274,14 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         request = Mock(side_effect=[
             {
                 "raw_scene": (
-                    "At 00:00.000 seconds, Mark crosses the room.\n"
+                    "At 00:00.000, Mark crosses the room.\n"
                     "End continuity state: Mark stands across the room."
                 ),
                 "beat_complete": True,
             },
             {
                 "detailed_description": (
-                    "[Shot 1] At 00:00.000 seconds, Mark crosses the room."
+                    "[Shot 1] At 00:00.000, Mark crosses the room."
                 ),
                 "overall_soundscape": "Footsteps.",
                 "non_diegetic_music": "N/A",
@@ -1340,19 +1348,19 @@ class DirectorPromptCallContractTests(unittest.TestCase):
     def test_request_segment_llm_retries_missing_end_continuity_state(self):
         request = Mock(side_effect=[
             {
-                "raw_scene": "At 00:00.000 seconds, Mark crosses the room.",
+                "raw_scene": "At 00:00.000, Mark crosses the room.",
                 "beat_complete": True,
             },
             {
                 "raw_scene": (
-                    "At 00:00.000 seconds, Mark crosses the room.\n"
+                    "At 00:00.000, Mark crosses the room.\n"
                     "End continuity state: Mark stands across the room."
                 ),
                 "beat_complete": True,
             },
             {
                 "detailed_description": (
-                    "[Shot 1] At 00:00.000 seconds, Mark crosses the room."
+                    "[Shot 1] At 00:00.000, Mark crosses the room."
                 ),
                 "overall_soundscape": "Footsteps.",
                 "non_diegetic_music": "N/A",
@@ -1560,18 +1568,18 @@ class DirectorPromptCallContractTests(unittest.TestCase):
     def test_director_raw_scene_structure_requires_trailing_end_state(self):
         self.assertTrue(
             minimax._director_raw_scene_structure_errors(
-                "At 00:00.000 seconds, Mark crosses the room."
+                "At 00:00.000, Mark crosses the room."
             )
         )
         self.assertTrue(
             minimax._director_raw_scene_structure_errors(
-                "At 00:00.000 seconds, Mark crosses the room.\n"
+                "At 00:00.000, Mark crosses the room.\n"
                 "End continuity state:"
             )
         )
         self.assertEqual(
             minimax._director_raw_scene_structure_errors(
-                "At 00:00.000 seconds, Mark crosses the room.\n"
+                "At 00:00.000, Mark crosses the room.\n"
                 "End continuity state: Mark stands across the room."
             ),
             [],
