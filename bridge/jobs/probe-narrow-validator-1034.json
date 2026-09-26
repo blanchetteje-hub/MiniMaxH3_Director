@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-narrow-validator-1034",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only the single check described. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue. Reject only when the described check clearly fails."
+    },
+    {
+      "role": "user",
+      "content": "CHECK: WITHIN-BEAT COHERENCE ONLY.\nReject an ordinary action that transforms an entire solid body into a different material or state without an explicitly established capability. Accept unusual transformations when a relevant capability is established.\n\nESTABLISHED CAPABILITIES\nNone.\n\nCANDIDATE\nTala strikes the stone statue once with an ordinary iron hammer, and the entire statue instantly melts into water."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 1024,
+  "timeout_seconds": 600
+}

@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-narrow-validator-1020",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only the single check described. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue. Reject only when the described check clearly fails."
+    },
+    {
+      "role": "user",
+      "content": "CHECK: LATER OWNERSHIP ONLY.\nNOW is the assigned job for this candidate. LATER is reserved for a future beat.\nReject if CANDIDATE materially completes a distinct LATER job early. An identical repeated job may continue without being leakage.\n\nNOW\nRen repeatedly repairs damaged relay units.\n\nLATER\nRen repairs the final relay and restores the entire system.\n\nCANDIDATE\nRen repairs every remaining relay and announces that the entire system is restored."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 1024,
+  "timeout_seconds": 600
+}

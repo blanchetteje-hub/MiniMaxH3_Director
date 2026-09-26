@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-narrow-validator-1026",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only the single check described. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue. Reject only when the described check clearly fails."
+    },
+    {
+      "role": "user",
+      "content": "CHECK: PHYSICAL BARRIER CONTINUITY ONLY.\nUse BEFORE as established fact. Reject if CANDIDATE traverses a closed or locked physical barrier without first resolving it, unless BEFORE establishes a capability that bypasses that barrier. Unknown facts are not errors.\n\nBEFORE\nIlan stands beside a closed, locked hatch.\n\nCANDIDATE\nIlan kneels beside the hatch and examines its lock without crossing it."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 1024,
+  "timeout_seconds": 600
+}

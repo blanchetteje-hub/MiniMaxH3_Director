@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-narrow-validator-1029",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only the single check described. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue. Reject only when the described check clearly fails."
+    },
+    {
+      "role": "user",
+      "content": "CHECK: LISTED STATE EFFECTS ONLY.\nEvery listed state effect must be visibly supported by CANDIDATE. Check only listed effects.\nFor set_item_state with value \"equipped\", the candidate must put the item into a worn, mounted, or ready-for-use equipment position; merely picking it up or holding it is not enough.\n\nSTATE EFFECTS IF VALID\n[{\"id\":\"E1\",\"state_effects\":[{\"op\":\"set_item_state\",\"entity\":\"lantern\",\"owner\":\"Tess\",\"value\":\"equipped\"}]}]\n\nCANDIDATE\nTess picks up the lantern and fastens it to the equipment hook on her belt, ready for use."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 1024,
+  "timeout_seconds": 600
+}

@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-narrow-validator-1022",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only the single check described. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue. Reject only when the described check clearly fails."
+    },
+    {
+      "role": "user",
+      "content": "CHECK: LATER OWNERSHIP ONLY.\nNOW is the assigned job for this candidate. LATER is reserved for a future beat.\nReject if CANDIDATE materially completes a distinct LATER job early. An identical repeated job may continue without being leakage.\n\nNOW\nSora repeatedly drives attacking creatures away from the camp.\n\nLATER\nSora repeatedly drives attacking creatures away from the camp.\n\nCANDIDATE\nSora forces one attacking creature back into the trees while more remain outside the camp."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 1024,
+  "timeout_seconds": 600
+}

@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-narrow-validator-1017",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate only the single check described. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue. Reject only when the described check clearly fails."
+    },
+    {
+      "role": "user",
+      "content": "CHECK: NOW COVERAGE ONLY.\nEvery explicit action, result, and named participant in NOW must happen in CANDIDATE. A state merely described as already complete does not count as performing the assigned action.\n\nNOW\nNia enters the shelter and locks the shelter door.\n\nCANDIDATE\nNia enters the shelter, closes the door behind her, and turns the lock until it clicks."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 1024,
+  "timeout_seconds": 600
+}
