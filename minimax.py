@@ -9308,6 +9308,8 @@ def validate_beat_planning_metadata(beat_text):
         issues.append("final beat contains state metadata")
     if re.fullmatch(r"\(?\s*[A-Z][A-Z0-9_-]*\s*\)?[.!?]*", cleaned):
         issues.append("final beat is only a planning identifier")
+    if "{" in cleaned or "}" in cleaned:
+        issues.append("final beat contains raw JSON delimiter")
     return issues
 
 
@@ -9949,13 +9951,16 @@ identical to CURRENT JOB because the source intentionally repeats an ongoing
 process, allow another non-terminal instance; reject only terminal/exhaustive
 wording that consumes later work.
 
-D. TYPED STATE EFFECTS: Every listed typed effect must be supported by what
-visibly happens in the candidate. Judge meaning, not exact verbs. Possession is
-not automatically equipped; breaking a barrier is not automatically entering
-through it; a wound is not automatically death. Reject explicit contradiction or
-partial action when the assigned effect requires a complete result. Do not require
-state effects for temporary detail that is not assigned. Any new persistent change
-created by the candidate must be represented by an assigned typed effect.
+D. TYPED STATE EFFECTS: Every listed typed effect must be supported by the
+candidate's FINAL state after all candidate actions happen in order. Judge meaning,
+not exact verbs. A later action can undo an earlier one: picked up then set down is
+not held at the end; gripped/readied then leaned or placed aside is not equipped at
+the end. Possession is not automatically equipped; breaking a barrier is not
+automatically entering through it; a wound is not automatically death. Reject
+explicit contradiction or partial action when the assigned effect requires a
+complete result. Do not require state effects for temporary detail that is not
+assigned. Any new persistent change created by the candidate must be represented
+by an assigned typed effect.
 
 E. MATERIAL FIDELITY: Harmless local staging is allowed, but reject invented
 details that materially change the assigned action, participant treatment, object

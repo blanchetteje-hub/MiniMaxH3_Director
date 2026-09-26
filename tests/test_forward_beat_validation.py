@@ -225,5 +225,38 @@ class ForwardBeatValidationTests(unittest.TestCase):
             minimax.parse_beat_arc_plan(invalid, 1)
 
 
+
+    def test_planning_metadata_rejects_raw_json_delimiters(self):
+        issues = minimax.validate_beat_planning_metadata(
+            "Amy closes the basement door.{"
+        )
+        self.assertIn("final beat contains raw JSON delimiter", issues)
+
+    def test_validator_checks_final_state_for_typed_effects(self):
+        messages = minimax.build_beat_validation_messages(
+            "None",
+            {},
+            "The engineer equips the scanner.",
+            None,
+            "The engineer picks up the scanner, then sets it on the bench.",
+            assigned_state_effects=[
+                {
+                    "id": "E1",
+                    "state_effects": [
+                        {
+                            "op": "set_item_state",
+                            "entity": "scanner",
+                            "owner": "Engineer",
+                            "value": "equipped",
+                        }
+                    ],
+                }
+            ],
+        )
+        prompt = messages[1]["content"]
+        self.assertIn("candidate's FINAL state", prompt)
+        self.assertIn("picked up then set down is not held", prompt)
+        self.assertIn("placed aside is not equipped", prompt)
+
 if __name__ == "__main__":
     unittest.main()
