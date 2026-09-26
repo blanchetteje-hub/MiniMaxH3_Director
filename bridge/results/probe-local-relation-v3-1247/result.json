@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-v3-1247",
+  "kind": "llama_chat",
+  "started_at": 1790443534.1867585,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nThe technician opens the access panel.\n\nRIGHT:\nThe technician removes the fuse from that panel.\n\nChoose MERGE or NEW_TASK.\nMERGE only when RIGHT's PRIMARY ACTION:\n- continues the same uninterrupted local action as LEFT;\n- is the direct immediate response to a NEW problem/event introduced by LEFT itself; or\n- is immediate follow-through on the exact object/action LEFT just obtained, opened, or started (for example retrieve -> equip/use/consume, open -> remove).\nOtherwise choose NEW_TASK after LEFT reaches a usable stopping point.\nA completed protection/safety action, completed victory/resolution, or completed assembly is a stopping point; it does NOT itself create a new problem just because another task follows. Shared earlier danger/goal is not enough to MERGE.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-fq2v740m7cahnjeem6ot6",
+    "object": "chat.completion",
+    "created": 1790443534,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need decide if RIGHT's action merges with LEFT or starts NEW_TASK.\n\nLEFT: \"The technician opens the access panel.\"\n\nRIGHT: \"The technician removes the fuse from that panel.\"\n\nIs removing fuse a direct immediate response to opening? Yes, after opening you remove fuse. It's same local action (panel). So MERGE. The rule says merge when RIGHT's primary action continues same uninterrupted local action as LEFT; or is direct immediate response to new problem/event introduced by LEFT itself; or immediate follow-through on exact object/action left just obtained/opened/started.\n\nHere, opening panel gives access to fuse inside. Removing fuse follows immediately. So MERGE.\n\nReturn JSON: {\"relation\":\"MERGE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 263,
+      "completion_tokens": 157,
+      "total_tokens": 420,
+      "completion_tokens_details": {
+        "reasoning_tokens": 141
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790443536.8625047,
+  "status": "ok"
+}
