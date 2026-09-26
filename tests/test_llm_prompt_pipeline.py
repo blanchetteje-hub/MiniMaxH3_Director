@@ -600,6 +600,22 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("state the final side of each group", normalized)
         self.assertIn("do not keep the far-side group visibly beside the near-side group", normalized)
 
+    def test_completion_prompt_protects_authoritative_persistent_state(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "Amy defeats one attacker with the katana.",
+            "Amy defeats the attacker, then sets the katana on the floor.",
+            assigned_source="Amy defeats one attacker with the katana.",
+            authoritative_opening_state=(
+                "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict) "
+                '{"characters":{"Amy":{"held_objects":["pistol","katana"]}}}'
+            ),
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("AUTHORITATIVE OPENING STATE", prompt)
+        self.assertIn("Preserve persistent facts already true", prompt)
+        self.assertIn("held/equipped items", prompt)
+        self.assertIn("Reject dropping, losing, freeing, unlocking, removing", prompt)
+
     def test_completion_prompt_requires_named_beneficiaries_and_final_result(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "The cook serves breakfast to Mira and Jon.",
