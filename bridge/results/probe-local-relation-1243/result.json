@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-1243",
+  "kind": "llama_chat",
+  "started_at": 1790442987.2326128,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nA coolant pipe ruptures and scalding vapor sprays across the bay.\n\nRIGHT:\nThe engineer immediately closes the emergency valve to stop the leak.\n\nChoose MERGE or NEW_TASK.\nMERGE only if one rule applies:\n1. RIGHT continues the same uninterrupted action as LEFT.\n2. LEFT itself CREATES a problem, danger, or request, and RIGHT is the immediate response that addresses it.\n3. RIGHT immediately completes handling of the exact object/container/action LEFT just obtained, opened, unlocked, or started. The LEFT object itself must be what RIGHT acts on; if it is only a tool for another target, this rule does not apply.\nImportant: rule 2 never applies when LEFT is already a completed solution, protection, victory, shutdown, repair, or finished task. A different objective after completed work is NEW_TASK even when both serve the same larger goal.\nOtherwise choose NEW_TASK.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1sbgllyet0d89jq123mi9v",
+    "object": "chat.completion",
+    "created": 1790442987,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"MERGE\"}",
+          "reasoning": "We need to decide if two adjacent source responsibilities belong to one local beat job: LEFT and RIGHT.\n\nLEFT: \"A coolant pipe ruptures and scalding vapor sprays across the bay.\"\n\nRIGHT: \"The engineer immediately closes the emergency valve to stop the leak.\"\n\nCheck rules:\n\n1. RIGHT continues same uninterrupted action as LEFT? LEFT is a rupture event, not an ongoing action; it's a problem occurrence. So rule 1 likely no.\n\n2. LEFT creates a problem/danger/request and RIGHT is immediate response that addresses it. Yes: coolant pipe ruptures -> danger (scalding vapor). Engineer closes valve to stop leak. That's the immediate response addressing the problem. Rule 2 applies.\n\n3. Not relevant.\n\nRule 2 says merge if left creates problem, right responds immediately. So MERGE.\n\nBut check rule about LEFT already a completed solution: not; it's a rupture event (problem).\n\nThus relation = \"MERGE\".\n\nReturn JSON with single key relation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 283,
+      "completion_tokens": 213,
+      "total_tokens": 496,
+      "completion_tokens_details": {
+        "reasoning_tokens": 197
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790442990.700587,
+  "status": "ok"
+}
