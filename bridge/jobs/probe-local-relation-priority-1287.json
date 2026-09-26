@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500,
+  "timeout_seconds": 600,
+  "job_id": "probe-local-relation-priority-1287",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+    },
+    {
+      "role": "user",
+      "content": "LEFT:\nThe technician opens the access panel.\n\nRIGHT:\nThe technician removes the fuse from that panel.\n\nChoose MERGE or NEW_TASK. Use this order:\n1. STOPPING POINT: If LEFT explicitly completes/finishes a protection, victory, repair, shutdown, assembly, delivery, or other objective, choose NEW_TASK for a later distinct action. Testing, calibrating, inspecting, transporting, fetching new gear, releasing people, or starting another operation after that completion is NEW_TASK.\n2. SAME OBJECT EXCEPTION: MERGE only if RIGHT immediately continues handling the exact object/container LEFT just obtained, opened, unlocked, or started (retrieve -> equip/use/consume; open -> remove). This exception does NOT apply to an object LEFT finished building/assembling/repairing.\n3. NEW PROBLEM RESPONSE: MERGE if LEFT itself introduces a new problem, danger, alarm, or request and RIGHT immediately addresses that trigger.\n4. SAME ACTION: MERGE if RIGHT continues the same uninterrupted local action as LEFT.\nOtherwise choose NEW_TASK. Shared earlier danger, purpose, opportunity, access, or readiness is not enough to MERGE.\nReturn JSON with the single key relation."
+    }
+  ]
+}
