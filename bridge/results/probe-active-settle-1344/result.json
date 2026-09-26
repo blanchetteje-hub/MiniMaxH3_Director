@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1344",
+  "kind": "llama_chat",
+  "started_at": 1790449002.3093681,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A worker washes the equipment and finishes the task.\nRAW: The worker rinses the equipment clean, puts down the brush, and leaves while the faucet keeps running.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-37zdm4x3vt3g6t89hchcmi",
+    "object": "chat.completion",
+    "created": 1790449002,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The faucet keeps running after the worker finishes rinsing, so a tool used for the completed activity is still active at the endpoint.\"}",
+          "reasoning": "We need to judge if RAW completes the finite activity described in SOURCE: \"A worker washes the equipment and finishes the task.\" The finite activity is washing equipment, finishing task.\n\nRAW says: \"The worker rinses the equipment clean, puts down the brush, and leaves while the faucet keeps running.\"\n\nCheck completion only. Finite activity must visibly reach its result. Washing equipment finished? Rinsing cleans; but does it finish washing? Possibly yes. The worker finishes task by leaving. But faucet still running: is that a tool/appliance/process used to perform that now-completed finite activity? Faucet was used for rinsing, part of washing. If the faucet keeps running after finishing, it's still active. Should be stopped or released by end if natural stable endpoint. Since washing finished, faucet should stop. So RAW fails because faucet remains running.\n\nThus invalid: issue \"Faucet continues to run after task completion.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 252,
+      "completion_tokens": 230,
+      "total_tokens": 482,
+      "completion_tokens_details": {
+        "reasoning_tokens": 186
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449006.1058435,
+  "status": "ok"
+}
