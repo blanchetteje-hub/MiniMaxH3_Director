@@ -58,6 +58,10 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("RESERVED FOR LATER", messages[1]["content"])
         self.assertIn("STATE EFFECTS IF VALID", messages[1]["content"])
         self.assertIn("C. RESERVED FOR LATER", messages[1]["content"])
+        self.assertIn("FIRST CHECK — FINITE ENDPOINT", messages[1]["content"])
+        self.assertIn("natural observable completion endpoint", messages[1]["content"])
+        self.assertIn("progressive wording", messages[1]["content"])
+        self.assertIn("ongoing/repeated process", messages[1]["content"])
 
     def test_validator_rejects_completed_state_grammar_for_assigned_action(self):
         messages = minimax.build_beat_validation_messages(
