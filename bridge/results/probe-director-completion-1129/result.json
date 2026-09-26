@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-completion-1129",
+  "kind": "llama_chat",
+  "started_at": 1790392599.9685555,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nA mechanic replaces the broken belt and restarts the machine.\n\nRAW SCENE\nThe mechanic fits the replacement belt, closes the guard, and restarts the machine successfully.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or extra harmless detail.\n- valid=true only if CURRENT BEAT is complete in RAW SCENE.\nReturn {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short concrete explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-x530rwknqxmfg1qxxdn0df",
+    "object": "chat.completion",
+    "created": 1790392599,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to check whether the raw scene visibly completes current beat. Current Beat: \"A mechanic replaces the broken belt and restarts the machine.\" Raw Scene: \"The mechanic fits the replacement belt, closes the guard, and restarts the machine successfully.\"\n\nCheck each action/result in current beat:\n\n- Replaces the broken belt -> The mechanic fits the replacement belt (fits = replace). Good.\n- Restarts the machine -> The mechanic restarts the machine. Yes.\n\nAlso mention closing guard? Not required but extra detail fine. So valid true. Return JSON with issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 257,
+      "completion_tokens": 135,
+      "total_tokens": 392,
+      "completion_tokens_details": {
+        "reasoning_tokens": 117
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392602.099637,
+  "status": "ok"
+}
