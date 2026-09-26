@@ -1,0 +1,9 @@
+{
+  "kind": "run_tests",
+  "job_id": "coherence-gate-tests-1076",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_source_span_generation_path.py::test_generate_beats_prefers_source_span_planner_and_scopes_chapter_source"
+  ],
+  "timeout_seconds": 60
+}
