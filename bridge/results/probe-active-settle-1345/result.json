@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1345",
+  "kind": "llama_chat",
+  "started_at": 1790449008.6882467,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A worker washes the equipment and finishes the task.\nRAW: The worker rinses the equipment clean, turns off the faucet, puts down the brush, and steps away.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-omdflfhy0vo179rf01zjeq",
+    "object": "chat.completion",
+    "created": 1790449008,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW completes the finite activity described in SOURCE: \"A worker washes the equipment and finishes the task.\" The finite activity is washing equipment, finishing task.\n\nRAW says: \"The worker rinses the equipment clean, turns off the faucet, puts down the brush, and steps away.\"\n\nCheck completion only. Finite activity must visibly reach its result. Washing equipment -> rinse clean. That seems fine. Also if RAW introduces an active tool/appliance/process used to perform that now-completed finite activity, it must be visibly stopped etc by end when natural stable endpoint.\n\nActive tools: faucet (turned off), brush (put down). So both are visible stops. The worker steps away. Does the task finish? Yes. Finite activity washing equipment is done; result visible: rinsed clean. Also faucet turned off and brush put down. That matches requirement. No other active tool remains.\n\nThus valid true, issue empty.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 253,
+      "completion_tokens": 208,
+      "total_tokens": 461,
+      "completion_tokens_details": {
+        "reasoning_tokens": 189
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449012.1026335,
+  "status": "ok"
+}
