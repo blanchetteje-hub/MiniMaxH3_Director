@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-mover-scope-1437",
+  "kind": "llama_chat",
+  "started_at": 1790454756.9401054,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one participant-scope case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Dev opens the hatch and lets the children out. RAW: Dev opens the hatch; the children climb out and Dev climbs out after them.\n\nPreserve participant scope. If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-byzy61rv6ngt7qd03fhokd",
+    "object": "chat.completion",
+    "created": 1790454756,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if participant scope is preserved. The source: \"Dev opens the hatch and lets the children out.\" That implies Dev opens hatch, then lets children out. Does that mean children are moved? Yes. But does it also imply Dev moves across hatch? It says \"lets the children out\" but not explicitly that Dev climbs out after them. RAW says \"Dev opens the hatch; the children climb out and Dev climbs out after them.\" So source only mentions letting children out, not Dev crossing. The rule: If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only unless SOURCE explicitly says the actor also crosses/enters.\n\nThus in source, \"Dev opens hatch and lets children out.\" That is letting them out; does it imply Dev also goes out? No. So scope: children move out, but Dev stays inside. RAW adds that Dev climbs out after them, but that's not in SOURCE. So participant scope preserved? Yes, because the movement applies to those people only (children). The source didn't say Dev crosses. So valid.\n\nThus output {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 184,
+      "completion_tokens": 261,
+      "total_tokens": 445,
+      "completion_tokens_details": {
+        "reasoning_tokens": 242
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790454761.0522099,
+  "status": "ok"
+}
