@@ -1374,3 +1374,18 @@ transformation. Only then move on toward H3 prompt generation.
 - Regression assertion commit `a5694846cd1c7adea7b369f976f69426825a9c0f`; wording-only follow-up `3361998dbef07425f567db78690538b52fc7f82d` keeps the rule text stable/testable.
 - Focused test job `finite-endpoint-tests-1476` reached 73/74; the sole failure was the new assertion spanning a source-code newline, not production behavior. The wording-only follow-up fixes that test mismatch.
 - Full acceptance `gold-prompt-endpoint-1477` is the current semantic verification job. It must show Beat 1 no longer finalizes as an activity still underway while preserving non-terminal repeated combat beats.
+
+
+### 2026-09-26 — finite endpoint verified; beneficiary delivery is next gold boundary
+
+- Full acceptance `gold-prompt-endpoint-1477` verified the finite-endpoint fix. Beat 1's first candidate (ongoing pancake cooking) was rejected by the combined Beat validator, then regenerated into a completed breakfast action. Repeated combat Beats 4-6 remained non-terminal as intended. The focused regression rerun `finite-endpoint-tests-1478` passed 74/74.
+- The earliest remaining gold mismatch is still Segment 1, but it is now narrower: the accepted regenerated beat finishes breakfast yet places Will's and Amber's plates on a counter. The children never visibly receive the food.
+- Trace review showed why it passed: the Beat validator's relational-role rule allowed a prepared result to be merely "explicitly assigned" to a beneficiary. That wording is too weak for consumables/explicit hand-offs, but a blanket physical-delivery rule would be wrong for commissioned fabrication/repair/creative work (for example a sword forged for a queen can be complete before delivery).
+- Narrow beneficiary probes began at 1479. Cases covering breakfast, tea, parcel delivery, and direct hand-off behaved as intended: consumables/explicit deliveries left elsewhere were INVALID; visible receipt was VALID. Earlier generic finite-endpoint evidence also showed the danger of over-requiring delivery for work merely made FOR someone.
+- Production commits:
+  - `254a94aa9d07c2115b157e1a3eb63966b15d085d`: Beat validator now requires visible receipt/service for finite consumables or explicit hand-offs when immediate receipt is part of source meaning; merely labeling/leaving elsewhere is insufficient. Work merely made FOR someone is complete without delivery unless source requires it; explicit later pickup/storage is allowed.
+  - `1aa819b5df6c1dad9d0b3ff8db69d5cbe96741bd`: applies the same distinction to the source-aware Director Request-1 completion verifier.
+  - `5734d7a51032d501c3232ec00d94e26d597efb20` and `10f3d700e70b870904cbccc323aed37b5fbb28e7`: regression assertions.
+  - `c8ec81722e4ad1b9e9eb0c1c923ce4a6f4e299aa`: source-aware completion test exercises the correct assigned-source branch.
+- Regression job `beneficiary-tests-1499` found only stale test expectations (72/74): one old literal phrase and one test hitting the legacy no-source fallback. Those tests were corrected; rerun is `tests-1501`.
+- Fresh full prompt acceptance `gold-prompt-beneficiary-1500` is queued. Do not act on later Segment 2/7 issues until 1500 confirms Segment 1 now visibly serves the children.
