@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-director-result-completion-1152",
+  "kind": "llama_chat",
+  "started_at": 1790392969.9993367,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe medic stabilizes the patient.\n\nRAW SCENE\nThe medic begins treatment; the monitor still shows a falling blood pressure.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- If CURRENT BEAT names an achieved result (activate, start, open, close, lock, repair, heal, stabilize, seal, fill, land, finish, equip, or equivalent), RAW SCENE must visibly reach that result.\n- Beginning, attempting, approaching, startup/progress indicators, or partial movement do NOT satisfy the achieved result unless the result itself is visibly established.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly receive/participate when physically possible.\n- Do not judge style, pacing, camera, continuity, later events, or harmless extra detail.\nReturn {\"valid\":true,\"issue\":\"\"} only when CURRENT BEAT is complete; otherwise false with a short concrete issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-xu1mgrxux0su3inklznhc",
+    "object": "chat.completion",
+    "created": 1790392970,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Patient not visibly stabilized\"}",
+          "reasoning": "We need to check if RAW SCENE visibly completes the beat: \"The medic stabilizes the patient.\" The beat says that the medic stabilizes the patient. In RAW SCENE, we have: \"The medic begins treatment; the monitor still shows a falling blood pressure.\"\n\nDoes this show stabilization? No, it shows beginning of treatment and monitor still showing falling BP. That indicates not stabilized yet. So it's incomplete.\n\nThus valid false with issue: \"Patient not visibly stabilized.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 295,
+      "completion_tokens": 118,
+      "total_tokens": 413,
+      "completion_tokens_details": {
+        "reasoning_tokens": 96
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790392971.9558465,
+  "status": "ok"
+}
