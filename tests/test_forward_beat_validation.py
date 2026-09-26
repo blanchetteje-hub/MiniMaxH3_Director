@@ -63,9 +63,9 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("progressive wording", messages[1]["content"])
         self.assertIn("ongoing/repeated process", messages[1]["content"])
         self.assertIn("SECOND CHECK — ASSIGNED PERSISTENT END STATE", messages[1]["content"])
-        self.assertIn("already-known named subjects", messages[1]["content"])
+        self.assertIn("entities already named in CURRENT STATE or STATE EFFECTS IF VALID", messages[1]["content"])
         self.assertIn("matching assigned typed effect", messages[1]["content"])
-        self.assertIn("newly introduced incidental threats", messages[1]["content"])
+        self.assertIn("new incidental target or threat", messages[1]["content"])
         self.assertIn("merely labeling it for them", messages[1]["content"])
         self.assertIn("work merely made FOR someone", messages[1]["content"])
 
