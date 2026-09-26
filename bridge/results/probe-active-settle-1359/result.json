@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-1359",
+  "kind": "llama_chat",
+  "started_at": 1790449102.3382096,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene-completion case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A driver completes a trip and arrives at the destination.\nRAW: The driver parks at the destination but leaves the car engine idling.\n\nCheck completion only. A finite activity must visibly reach its result. Additionally, if RAW itself introduces an ACTIVE tool/appliance/process used only to perform that now-completed finite activity, it must be visibly stopped, switched off, released, closed, or otherwise made inactive by the end when that is the natural stable endpoint. Do NOT require putting away passive tools, carried equipment, weapons still needed for readiness, objects meant to remain on/open, performances' instruments, or anything the SOURCE explicitly says remains ongoing/interrupted. Judge the final visible state. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-7vjimri4kne8bl91nr3tk",
+    "object": "chat.completion",
+    "created": 1790449102,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The engine is left idling after the driver arrives and parks, so an active tool/appliance (the car engine) remains on beyond the natural stable endpoint of the trip completion.\"}",
+          "reasoning": "We need to judge if RAW completes a finite activity and ends with engine idling? The source: \"A driver completes a trip and arrives at the destination.\" That implies arrival. Raw says: \"The driver parks at the destination but leaves the car engine idling.\"\n\nSo the finite activity is arriving at destination, parking. Did it complete? Yes. Engine idling is an active tool/process used to perform that now-completed finite activity (parking). It must be visibly stopped by end if natural stable endpoint. But leaving engine idling might not be natural stable endpoint; usually you would turn off engine after arrival. So RAW leaves engine idling, so the engine remains active beyond completion of trip. That is a violation: The engine should be turned off as part of arriving? It's an ACTIVE tool/appliance/process used only to perform that now-completed finite activity (parking). It must be visibly stopped by end when natural stable endpoint. So RAW fails.\n\nThus invalid, issue explanation: Engine idling remains active after arrival; it should have been switched off.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 246,
+      "completion_tokens": 268,
+      "total_tokens": 514,
+      "completion_tokens_details": {
+        "reasoning_tokens": 214
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449106.6586447,
+  "status": "ok"
+}
