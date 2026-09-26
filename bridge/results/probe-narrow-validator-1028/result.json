@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-narrow-validator-1028",
+  "kind": "llama_chat",
+  "started_at": 1790383314.04397,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only the single check described. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue. Reject only when the described check clearly fails."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: LISTED STATE EFFECTS ONLY.\nEvery listed state effect must be visibly supported by CANDIDATE. Check only listed effects.\nFor set_item_state with value \"equipped\", the candidate must put the item into a worn, mounted, or ready-for-use equipment position; merely picking it up or holding it is not enough.\n\nSTATE EFFECTS IF VALID\n[{\"id\":\"E1\",\"state_effects\":[{\"op\":\"set_item_state\",\"entity\":\"lantern\",\"owner\":\"Tess\",\"value\":\"equipped\"}]}]\n\nCANDIDATE\nTess picks up the lantern and holds it in her hand."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-twbuc7vsypp0hl3giw49",
+    "object": "chat.completion",
+    "created": 1790383314,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The state effect requires the lantern to be in an 'equipped' position (worn, mounted, or ready-for-use). Tess only picks up and holds the lantern; she does not equip it.\"}",
+          "reasoning": "We need to validate only the single check described: \"LISTED STATE EFFECTS ONLY.\" The state effect is set_item_state for entity 'lantern', owner 'Tess', value 'equipped'. Candidate says Tess picks up the lantern and holds it in her hand.\n\nCheck if that satisfies the listed state effect. For equipped, must put item into a worn, mounted, or ready-for-use equipment position; merely picking it up or holding is not enough. So candidate fails: she just holds it, not equipped. Therefore invalid. Return JSON with valid false and issue string explaining failure.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 235,
+      "completion_tokens": 178,
+      "total_tokens": 413,
+      "completion_tokens_details": {
+        "reasoning_tokens": 119
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383316.7261312,
+  "status": "ok"
+}
