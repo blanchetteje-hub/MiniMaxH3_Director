@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1376",
+  "kind": "llama_chat",
+  "started_at": 1790449357.7525587,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A worker finishes drilling a hole.\nRAW: The hole is complete; the worker releases the trigger and holds the idle drill.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6th6qrm67gr765mie0nf3",
+    "object": "chat.completion",
+    "created": 1790449357,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW reaches SOURCE-assigned endpoint.\n\nSOURCE: \"A worker finishes drilling a hole.\"\n\nSo the activity is finishing drilling. The assigned endpoint: the hole is drilled, presumably drill stops? Finite activity finished. So any active process used only for that must end in natural inactive state when physically reasonable. Drilling uses trigger and motor. In RAW: \"The hole is complete; the worker releases the trigger and holds the idle drill.\" That means trigger released (motor off). Idle drill held. The drill is idle, so it's not actively drilling. So it meets requirement that active process ends in natural inactive state. It says worker holds the idle drill - that's fine.\n\nThus RAW reaches endpoint: yes. No issue. Return {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 285,
+      "completion_tokens": 178,
+      "total_tokens": 463,
+      "completion_tokens_details": {
+        "reasoning_tokens": 159
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449360.6456468,
+  "status": "ok"
+}
