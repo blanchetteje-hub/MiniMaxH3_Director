@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-coherence-general-1056",
+  "kind": "llama_chat",
+  "started_at": 1790383646.265671,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate only physical/causal coherence inside one candidate beat. Judge meaning, not exact wording. Return one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CHECK: WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY.\nRead actions literally in order and carry stated results forward.\n- Reject repeating an irreversible removal or destruction on the same specific target, part, or object unless restoration/regeneration/reinstallation happens first.\n- A non-terminal injury is not a removal. Different targets or parts are different cases.\n- Reject an ordinary action that makes an entire body/object become a materially different substance or vanish without an established capability or physically plausible cause.\n- Accept explicit magic/technology, restoration, regeneration, and ordinary physical causes that support the result.\nDo not judge story coverage, future ownership, or state-effect records.\n\nESTABLISHED CONTEXT\nSora is an established shapeshifter who can transform her own body into a wolf.\n\nCANDIDATE\nSora drops to all fours and transforms herself into a wolf."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-thewoyymriiktb5j51efpj",
+    "object": "chat.completion",
+    "created": 1790383646,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to check within-beat physical/causal coherence only. The candidate: \"Sora drops to all fours and transforms herself into a wolf.\" Sora is shapeshifter, can transform her own body into a wolf. She drops to all fours (makes sense). Then she transforms into a wolf. That seems physically coherent: dropping to all fours then transforming. No removal or destruction repeated. It's an ordinary action? The transformation is magical but allowed. So valid.\n\nReturn JSON with \"valid\": true, issue empty string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 281,
+      "completion_tokens": 126,
+      "total_tokens": 407,
+      "completion_tokens_details": {
+        "reasoning_tokens": 108
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790383648.1700933,
+  "status": "ok"
+}
