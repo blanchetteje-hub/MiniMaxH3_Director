@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1195",
+  "kind": "llama_chat",
+  "started_at": 1790440647.3325846,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT BEAT\nThe healer performs healing magic as Ilya and Rook watch.\n\nRAW SCENE\nThe healer heals Ilya. Rook watches from the doorway. The healer lowers her staff.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin\n  or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly\n  receive/participate when physically possible.\n- Judge the final frame: the required result must already be true, not merely\n  attempted, approaching, starting up, partly complete, or still in progress.\n- Do not judge style, pacing, camera, continuity, future events, or harmless\n  extra detail.\nReturn valid=true only when CURRENT BEAT is complete in RAW SCENE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-bb2h43ra6lic94g99lny4a",
+    "object": "chat.completion",
+    "created": 1790440647,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Ilya’s watching action is not shown in the raw scene\"}",
+          "reasoning": "We need to check if the raw scene visibly completes current beat.\n\nCurrent Beat: \"The healer performs healing magic as Ilya and Rook watch.\"\n\nSo actions: Healer performs healing magic; Ilya watches; Rook watches.\n\nRaw Scene: \"The healer heals Ilya. Rook watches from the doorway. The healer lowers her staff.\"\n\nCheck each:\n\nHealer performs healing magic: Raw says \"healer heals Ilya.\" That implies performing healing magic? It could be considered a result of healing, but does it show she is performing magic? He heals Ilya; that likely involves magic. But rule: Every explicit action/result in current beat must visibly happen. The healer performs healing magic as Ilya and Rook watch.\n\nRaw: \"The healer heals Ilya.\" That shows the healer's action (healing). Does it include magic? It says heal, but not explicitly mention magic. However, it's implied that healing is magical. But maybe we need explicit mention of performing magic? The beat says performs healing magic; raw just says heals Ilya. Might be okay.\n\nIlya watches: Raw doesn't mention Ilya watching. Healer heals Ilya (so Ilya receives). Does he watch? Not explicitly. So missing Ilya's watching action.\n\nRook watches from doorway: Raw has Rook watches from the doorway. That matches.\n\nAlso healer lowers staff: extra detail, fine.\n\nThus current beat incomplete because Ilya's watching not shown. Also maybe healing magic not explicit but implied. But rule says every named beneficiary must visibly receive/participate when physically possible. Beneficiary is Ilya; he receives heal. He does participate? He watches? The beat says watch. So missing that.\n\nTherefore valid=false, issue: \"Ilya's watching action is missing.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 275,
+      "completion_tokens": 393,
+      "total_tokens": 668,
+      "completion_tokens_details": {
+        "reasoning_tokens": 363
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440652.8157768,
+  "status": "ok"
+}
