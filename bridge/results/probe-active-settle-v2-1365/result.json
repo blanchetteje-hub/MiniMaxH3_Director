@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-active-settle-v2-1365",
+  "kind": "llama_chat",
+  "started_at": 1790449290.2734027,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one scene endpoint. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A worker finishes washing the equipment.\nRAW: The equipment is clean; the worker turns off the faucet and sets down the brush.\n\nJudge only whether RAW reaches the SOURCE-assigned endpoint.\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (for example burner off, motor stopped, trigger released, water stopped).\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself the intended result (lamp on, gate open) stays that way.\n3. If SOURCE explicitly says the activity remains ongoing or is interrupted before completion, do NOT force completion or shutdown merely because the process is still active. Judge whether RAW faithfully reaches that ongoing/interrupted state.\nReturn exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-eicp897grlbiz2qqi96dvp",
+    "object": "chat.completion",
+    "created": 1790449290,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW reaches SOURCE-assigned endpoint.\n\nSOURCE: \"A worker finishes washing the equipment.\"\n\nSo activity is finishing washing. The endpoint: washing finished, presumably equipment clean and water stopped? Let's parse rules:\n\n1. If SOURCE assigns a completed finite activity, any active process used only to perform that completed activity must end in its natural inactive/stable state when physically reasonable (e.g., burner off, motor stopped, trigger released, water stopped).\n\nSo washing is the activity; after finishing washing, processes like faucet should be turned off.\n\n2. This does NOT mean passive tools must be put away. A held weapon/tool may remain held if SOURCE or RAW establishes continued readiness or future use. An object whose ON/open state is itself intended result stays that way.\n\n3. If SOURCE explicitly says activity remains ongoing or interrupted before completion, do not force completion/shutdown just because process still active; judge whether RAW faithfully reaches that ongoing/interrupted state.\n\nSo we need to see if RAW matches the endpoint: \"A worker finishes washing the equipment.\" That implies washing is finished. The equipment clean; faucet turned off; brush set down. Does this satisfy? Yes, water stopped (faucet off). Brush set down but tool can remain held? It's set down so fine.\n\nThus RAW reaches endpoint. So valid true.\n\nReturn JSON: {\"valid\":true,\"issue\":\"\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 286,
+      "completion_tokens": 299,
+      "total_tokens": 585,
+      "completion_tokens_details": {
+        "reasoning_tokens": 280
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790449295.0226467,
+  "status": "ok"
+}
