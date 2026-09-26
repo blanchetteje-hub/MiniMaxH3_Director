@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-local-relation-v3-1236",
+  "kind": "llama_chat",
+  "started_at": 1790443470.9352643,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether two adjacent source responsibilities belong to one local beat job. Return valid JSON only."
+      },
+      {
+        "role": "user",
+        "content": "LEFT:\nA baker finishes arranging pastries in the display case.\n\nRIGHT:\nA fire alarm suddenly sounds and smoke appears under the back door.\n\nChoose MERGE or NEW_TASK.\nMERGE only when RIGHT's PRIMARY ACTION:\n- continues the same uninterrupted local action as LEFT;\n- is the direct immediate response to a NEW problem/event introduced by LEFT itself; or\n- is immediate follow-through on the exact object/action LEFT just obtained, opened, or started (for example retrieve -> equip/use/consume, open -> remove).\nOtherwise choose NEW_TASK after LEFT reaches a usable stopping point.\nA completed protection/safety action, completed victory/resolution, or completed assembly is a stopping point; it does NOT itself create a new problem just because another task follows. Shared earlier danger/goal is not enough to MERGE.\nJudge only the concrete local actions.\nReturn JSON with the single key relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yau5w19w6ljtnp90jivavb",
+    "object": "chat.completion",
+    "created": 1790443470,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NEW_TASK\"}",
+          "reasoning": "We need decide if RIGHT's action merges with LEFT or starts NEW_TASK.\n\nLEFT: \"A baker finishes arranging pastries in the display case.\" So primary action: finishing arrangement of pastries, presumably placing them on display case. That is a completed assembly? It's an arrangement; maybe it's finished. The pastry arrangement is done. That's a stopping point (completed assembly). RIGHT: \"A fire alarm suddenly sounds and smoke appears under the back door.\"\n\nIs this immediate follow-through on same action? No. Does it continue same uninterrupted local action as LEFT? Not exactly, because left's action was arranging pastries; right is about fire alarm sounding due to maybe something else. Is it direct response to a new problem/event introduced by LEFT itself? The event: finishing arrangement of pastries might cause the fire alarm? Maybe if pastry display case had some heat or something? But not necessarily. It's likely independent.\n\nIs it immediate follow-through on exact object/action left just obtained, opened, or started? No.\n\nThus MERGE only when RIGHT's primary action continues same local action as LEFT; it's a new problem/event introduced by LEFT itself; or immediate follow-through on the exact object/action left just got. None of those apply. So choose NEW_TASK after LEFT reaches usable stopping point (arrangement finished). So relation: \"NEW_TASK\".\n\nReturn JSON with single key relation.\n\nThus output:\n\n{\"relation\":\"NEW_TASK\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 270,
+      "completion_tokens": 296,
+      "total_tokens": 566,
+      "completion_tokens_details": {
+        "reasoning_tokens": 280
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790443475.4159942,
+  "status": "ok"
+}
