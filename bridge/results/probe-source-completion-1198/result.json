@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-source-completion-1198",
+  "kind": "llama_chat",
+  "started_at": 1790440680.0505838,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE — authoritative work for this segment\nThe healer treats Ilya and Rook with healing magic.\n\nDERIVED BEAT — staging suggestion; cannot remove source requirements\nThe healer performs healing magic as Ilya and Rook watch.\n\nRAW SCENE\nThe healer touches her staff to Ilya and then Rook; both wounds close. She puts the staff down.\n\nCheck only completion:\n1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\nReturn valid (boolean) and issue (short explanation if invalid, empty string otherwise)."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 1536,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-rz649st72nrzus7hmtkg6i",
+    "object": "chat.completion",
+    "created": 1790440680,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to check RAW SCENE against assigned source: \"The healer treats Ilya and Rook with healing magic.\" Derived beat: \"The healer performs healing magic as Ilya and Rook watch.\"\n\nRAW SCENE: \"The healer touches her staff to Ilya and then Rook; both wounds close. She puts the staff down.\"\n\nCheck completion:\n\n1. Require actions, results, participant roles assigned by SOURCE. Source says healer treats Ilya and Rook with healing magic. So healer must perform healing magic on them. RAW SCENE: healer touches staff to Ilya and then Rook; both wounds close. That seems like she performed healing magic on each? She touched staff to Ilya and then Rook, presumably applying healing magic. The result: both wounds close. That's the effect.\n\nBut does it mention that they watch? Derived beat says \"as Ilya and Rook watch.\" RAW SCENE doesn't mention watching; but derived beat is optional if consistent with source. Source didn't specify spectators. So it's okay to not include watchers. But we need to check if any spectator roles are required by source: no.\n\n2. Finite activity needs visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone insufficient. Here the healer touches staff to Ilya and Rook; both wounds close. So they benefit (wounds close). They \"receive\" the healing? The wound closing is a result for them. But do we need to show them receiving it? It says \"both wounds close.\" That indicates their wounds closed, so yes.\n\n3. Attempts and progress not prove completion. Source activity: healer treats Ilya and Rook with healing magic. Is that ongoing or interrupted? Not specified as ongoing; it's a treatment. The RAW SCENE shows the wound closing after touching staff to each. So it seems completed.\n\n4. Ignore style, camera, future events, harmless staging. No extra source requirements invented.\n\nThus RAW SCENE completes assigned source: healer treats Ilya and Rook with healing magic. It includes action (touch staff), result (wounds close). Participants: healer, Ilya, Rook. So valid true.\n\nAny issue? None. Return JSON {valid:true,issue:\"\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 306,
+      "completion_tokens": 479,
+      "total_tokens": 785,
+      "completion_tokens_details": {
+        "reasoning_tokens": 460
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790440686.7299192,
+  "status": "ok"
+}
