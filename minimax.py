@@ -16299,6 +16299,26 @@ def _director_timestamps(value):
     return timestamps
 
 
+def _canonicalize_director_timestamps(value):
+    """Rewrite recognized Director timestamps to exact H3 syntax."""
+    text_value = str(value or "")
+    out = []
+    cursor = 0
+    for match in _DIRECTOR_TIMESTAMP_RE.finditer(text_value):
+        out.append(text_value[cursor:match.start()])
+        minutes = int(match.group("minutes"))
+        seconds = int(match.group("seconds"))
+        fraction = (match.group("fraction") or "0").ljust(3, "0")[:3]
+        out.append(f"At {minutes:02d}:{seconds:02d}.{fraction},")
+        cursor = match.end()
+        while cursor < len(text_value) and text_value[cursor] in " \t,-":
+            cursor += 1
+        if cursor < len(text_value) and not text_value[cursor].isspace():
+            out.append(" ")
+    out.append(text_value[cursor:])
+    return "".join(out)
+
+
 # Require Request 2 to preserve every Request 1 timestamp and canonical syntax.
 def _validate_director_timestamp_correspondence(raw_scene, detailed_description):
     """Require Request 2 timestamps to preserve sequence and canonical H3 syntax."""
@@ -25426,10 +25446,21 @@ def request_segment_llm(bundle, beats, run_id, run_config):
 
         timestamp_error = " ".join(timestamp_issues)
         if formatter_attempt >= max_formatter_attempts:
+            repaired_description = _canonicalize_director_timestamps(
+                llm_result.get("detailed_description", "")
+            )
+            repaired_issues = _validate_director_timestamp_correspondence(
+                raw_scene,
+                repaired_description,
+            )
+            if repaired_issues:
+                raise BeatGenerationError(
+                    "Director Request 2 could not preserve canonical timestamps: "
+                    + " ".join(repaired_issues)
+                )
+            llm_result["detailed_description"] = repaired_description
             print(
-                f"WARNING: Director Request 2 timestamp validation failed "
-                f"after {max_formatter_attempts} attempts; using the last "
-                f"LLM output as the final result: {timestamp_error}",
+                "Director Request 2 timestamp syntax repaired deterministically.",
                 flush=True,
             )
             break
