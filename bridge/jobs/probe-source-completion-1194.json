@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-source-completion-1194",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "ASSIGNED SOURCE \u2014 authoritative work for this segment\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\n\nDERIVED BEAT \u2014 staging suggestion; cannot remove source requirements\nAmy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\n\nRAW SCENE\nAmy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.\n\nCheck only completion:\n1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\nReturn valid (boolean) and issue (short explanation if invalid, empty string otherwise)."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 1536,
+  "timeout_seconds": 180
+}

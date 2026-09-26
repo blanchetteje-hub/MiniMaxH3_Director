@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-source-completion-1191",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Check only whether RAW SCENE visibly completes CURRENT BEAT. Judge meaning, not wording. Return exactly one JSON object with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT BEAT\nAmy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\n\nRAW SCENE\nAt 00:00.000 Amy flips a pancake in a skillet on the stove, her tight black tank top and denim jeans visible.\nAt 00:01.000 She pours milk into a bowl placed on the counter.\nAt 00:02.000 A toaster pops up toast on the counter beside the bowl.\nAt 00:03.000 Amy places a plate with pancakes on the counter.\nAt 00:04.000 Will watches her, eyes on the skillet.\nAt 00:05.000 Amber watches too, peering at the sizzling pancake.\nAt 00:06.000 She lifts the spatula to flip another pancake.\nAt 00:07.000 Amy sets the spatula down, turns off the stove, and smiles.\nEnd continuity state: Amy stands in the kitchen wearing a tight black tank top and denim jeans, having cooked breakfast while Will and Amber watch.\n\nRULES\n- Every explicit action/result in CURRENT BEAT must visibly happen.\n- A finite activity must reach its natural observable result, not merely begin\n  or remain underway.\n- If CURRENT BEAT is for named people, every named beneficiary must visibly\n  receive/participate when physically possible.\n- Judge the final frame: the required result must already be true, not merely\n  attempted, approaching, starting up, partly complete, or still in progress.\n- Do not judge style, pacing, camera, continuity, future events, or harmless\n  extra detail.\nReturn valid=true only when CURRENT BEAT is complete in RAW SCENE."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 1536,
+  "timeout_seconds": 180
+}

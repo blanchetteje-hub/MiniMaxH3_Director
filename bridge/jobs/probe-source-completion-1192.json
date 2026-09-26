@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-source-completion-1192",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Check whether RAW SCENE completes the assigned source work. Judge meaning, not wording. Return JSON with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "ASSIGNED SOURCE \u2014 authoritative work for this segment\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\n\nDERIVED BEAT \u2014 staging suggestion; cannot remove source requirements\nAmy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\n\nRAW SCENE\nAt 00:00.000 Amy flips a pancake in a skillet on the stove, her tight black tank top and denim jeans visible.\nAt 00:01.000 She pours milk into a bowl placed on the counter.\nAt 00:02.000 A toaster pops up toast on the counter beside the bowl.\nAt 00:03.000 Amy places a plate with pancakes on the counter.\nAt 00:04.000 Will watches her, eyes on the skillet.\nAt 00:05.000 Amber watches too, peering at the sizzling pancake.\nAt 00:06.000 She lifts the spatula to flip another pancake.\nAt 00:07.000 Amy sets the spatula down, turns off the stove, and smiles.\nEnd continuity state: Amy stands in the kitchen wearing a tight black tank top and denim jeans, having cooked breakfast while Will and Amber watch.\n\nCheck only completion:\n1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.\n2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.\n3. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.\n4. Ignore style, camera, future events, and harmless staging. Do not invent extra source requirements.\nReturn valid (boolean) and issue (short explanation if invalid, empty string otherwise)."
+    }
+  ],
+  "temperature": 0,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "max_tokens": 1536,
+  "timeout_seconds": 180
+}
