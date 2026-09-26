@@ -9886,6 +9886,15 @@ describes an ongoing/repeated process such as majority, most, repeatedly,
 throughout, continuing, or an equivalent non-terminal assignment; one valid
 non-terminal instance may satisfy that repeated job.
 
+SECOND CHECK — ASSIGNED PERSISTENT END STATE: For already-known named subjects,
+barriers, and items, STATE EFFECTS IF VALID is authoritative about persistent
+final-state changes assigned to this beat. If CANDIDATE BEAT ends with a known
+subject/object newly relocated, contained/freed, locked/unlocked, equipped/
+unequipped, held/dropped, damaged, or otherwise persistently changed, require a
+matching assigned typed effect. Temporary motion that returns to the prior state
+does not need an effect. Do not demand typed effects for harmless transient
+staging or newly introduced incidental threats in an ongoing/repeated process.
+
 A. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept
 paraphrases and clear implications, but require every materially required action
 or result when the job has multiple parts. PREVIOUS FINAL BEAT is history only:
