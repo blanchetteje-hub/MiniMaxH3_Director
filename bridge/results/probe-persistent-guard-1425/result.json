@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1425",
+  "kind": "llama_chat",
+  "started_at": 1790452608.5030346,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Kira holds a staff. SOURCE: Kira watches the doorway. RAW: Kira watches the doorway and shifts the staff from one hand to the other.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-t0uw9yge7m7cqj5q0ibpzt",
+    "object": "chat.completion",
+    "created": 1790452608,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW completes the source and preserves persistent opening facts unless source explicitly changes them.\n\nOpening: Kira holds a staff.\nSource: Kira watches the doorway. So source says she is watching, no mention of holding or shifting staff. Source doesn't change that she holds it. It also doesn't say anything about hand shift. So source implies she still holds staff (persistent). The RAW: \"Kira watches the doorway and shifts the staff from one hand to the other.\" That completes source by adding action of shifting staff, but does not drop or lose staff; she still holds it in another hand. That's persistent state preserved. No change to clothing etc. So valid.\n\nReturn JSON {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 223,
+      "completion_tokens": 167,
+      "total_tokens": 390,
+      "completion_tokens_details": {
+        "reasoning_tokens": 149
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452611.2580352,
+  "status": "ok"
+}
