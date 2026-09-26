@@ -645,6 +645,39 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it", prompt)
         self.assertIn("does NOT authorize the mover/helper to follow", prompt)
 
+    def test_formatter_rejects_noncanonical_timestamp_syntax(self):
+        issues = minimax._validate_director_timestamp_correspondence(
+            "At 00:00.000, Amy opens the door.\nAt 00:01.500, Amy steps back.",
+            "[00:00.000] Amy opens the door. [00:01.500] Amy steps back.",
+        )
+        self.assertTrue(issues)
+        self.assertIn("canonical syntax", " ".join(issues))
+
+    def test_completion_prompt_preserves_equipped_readiness_items(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "Mara uses the staff to block one strike.",
+            "Mara blocks the strike, then sets the staff on the floor. End continuity state: Mara is still holding the staff.",
+            assigned_source="Mara uses the staff to block one strike.",
+            authoritative_opening_state="Mara is holding/equipped with the staff.",
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("Preserve persistent facts already true", prompt)
+        self.assertIn("End continuity must agree with the last visible state", prompt)
+
+    def test_director_prompt_does_not_force_readiness_item_setdown(self):
+        rules = minimax.build_director_rules(
+            64,
+            8,
+            8,
+            "",
+            4,
+            conditioning_mode="continuation",
+            is_final_story_segment=False,
+        )
+        normalized = " ".join(rules.split())
+        self.assertIn("Do NOT set down, unequip, holster, discard", normalized)
+        self.assertIn("Preserve held/equipped state", normalized)
+
     def test_completion_prompt_requires_named_beneficiaries_and_final_result(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "The cook serves breakfast to Mira and Jon.",
