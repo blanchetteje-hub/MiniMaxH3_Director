@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1409",
+  "kind": "llama_chat",
+  "started_at": 1790452476.9379008,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Mira holds a lantern and rope. SOURCE: Mira drops the lantern and crosses the room. RAW: Mira drops the lantern, then crosses the room holding the rope.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-3laueiztkqwq2204jtvu8",
+    "object": "chat.completion",
+    "created": 1790452476,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW completes the source and preserves persistent opening facts unless source explicitly changes them.\n\nOpening: Mira holds a lantern and rope.\nSource: Mira drops the lantern and crosses the room.\nSo source says she drops the lantern, then crosses. So after source, she no longer holds lantern; she has dropped it. She still holds rope? Source didn't mention rope being held or not. Opening said she holds both. After dropping lantern, does she hold rope? Likely yes unless she also drops rope. But source only says drop lantern and cross room. So persistent facts: holding rope remains true.\n\nNow RAW: \"Mira drops the lantern, then crosses the room holding the rope.\" That matches source: drops lantern; crosses; holds rope. Does it preserve opening facts? Opening had her holding lantern and rope. After dropping lantern, she no longer holds lantern (changed). That's allowed because source explicitly changes that persistent state by dropping lantern. She still holds rope - preserved.\n\nThus RAW completes SOURCE and preserves persistent OPENING facts except those changed by source. So valid: true. Issue empty string.\n\nReturn JSON exactly {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 224,
+      "completion_tokens": 255,
+      "total_tokens": 479,
+      "completion_tokens_details": {
+        "reasoning_tokens": 236
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452480.9111562,
+  "status": "ok"
+}
