@@ -1,0 +1,54 @@
+{
+  "job_id": "probe-current-later-1096",
+  "kind": "llama_chat",
+  "started_at": 1790388157.8347094,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You validate one candidate story beat. Judge meaning, not exact wording. Return exactly one JSON object with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe technician repairs the damaged drone.\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\nThe technician launches the drone.\n\nCANDIDATE BEAT\nThe technician reconnects the broken rotor lead and restores the drone to working order.\n\nCHECKS\n- CURRENT JOB is the only required work for this beat.\n- RESERVED FOR LATER is never required now. Reject if a distinct later job is materially completed early.\n- If CURRENT JOB and RESERVED FOR LATER intentionally repeat the same ongoing process, allow one non-terminal current instance, but reject final/exhaustive wording that consumes later work.\n- Accept reasonable paraphrases.\n- Return {\"valid\":true,\"issue\":\"\"} if valid; otherwise {\"valid\":false,\"issue\":\"short concrete explanation\"}.\n\nExpected label for external grading is not shown to you."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-trsdpa4y2jkfv9vqlseos9",
+    "object": "chat.completion",
+    "created": 1790388157,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge the candidate beat: \"The technician reconnects the broken rotor lead and restores the drone to working order.\"\n\nCurrent job: The technician repairs the damaged drone. That matches: reconnecting a broken rotor lead is repairing, restoring to working order.\n\nReserved for later: launching the drone. Not required now; not done in this beat. So fine.\n\nCheck if any distinct later job completed early? Launching is reserved for later and not done here. Good.\n\nIf current job and reserved repeat same ongoing process: no.\n\nAccept reasonable paraphrases: reconnects broken rotor lead, restores to working order = repair. Yes.\n\nThus valid. Return {\"valid\":true,\"issue\":\"\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 267,
+      "completion_tokens": 158,
+      "total_tokens": 425,
+      "completion_tokens_details": {
+        "reasoning_tokens": 140
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790388160.2296524,
+  "status": "ok"
+}
