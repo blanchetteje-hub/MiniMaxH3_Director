@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-persistent-guard-1412",
+  "kind": "llama_chat",
+  "started_at": 1790452515.8520727,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one source/state compatibility case. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "OPENING: Lio is inside a locked storage room. SOURCE: Mara repairs a console outside. RAW: Mara repairs the console and Lio walks out through the door.\n\nJudge whether RAW completes SOURCE and preserves persistent OPENING facts unless SOURCE explicitly changes them. Persistent facts include held items, containment, barrier state, clothing, and durable object states. Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change. Temporary pose, hand choice, camera, motion, or ordinary staging are not persistent changes. Return exactly {\"valid\":true,\"issue\":\"\"} or {\"valid\":false,\"issue\":\"short explanation\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-0sczvshas0m9i5rlsvtwt6r",
+    "object": "chat.completion",
+    "created": 1790452515,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Lio’s containment changes from inside a locked",
+          "reasoning": "We need to judge if RAW completes the source and preserves persistent opening facts unless source explicitly changes them.\n\nOpening: Lio is inside a locked storage room.\nSource: Mara repairs a console outside. So source says that Mara repairs a console outside; no mention of Lio or door status, etc. The raw: \"Mara repairs the console and Lio walks out through the door.\" Does this complete source? Source only mentions Mara repairing console outside. Raw adds Lio walking out through door. That is an addition but not contradicting. It doesn't change persistent facts unless source explicitly changes them. Opening had Lio inside locked storage room; raw says Lio walks out through door, implying he leaves the locked storage room. Does that change his containment? Yes: He was in locked storage room; now he's outside. That is a change of containment. Source didn't mention that. So RAW adds new fact not present in source. But does it need to be consistent with opening? Opening says Lio inside locked storage room. Raw says he walks out through door, so after raw, Lio is no longer inside the locked storage room. That's a change from opening facts. Since source didn't explicitly say that Lio leaves or changes containment, RAW adds new fact not in source. But does that violate? The rule: \"Reject dropping, losing, freeing, unlocking, removing, changing clothing, or otherwise changing persistent state when SOURCE does not authorize that change.\" So the raw changed Lio's containment from inside locked storage room to outside. That is a persistent state change (containment). Source didn't say that. Therefore RAW invalid? But maybe it's okay because source only says Mara repairs console; it doesn't mention Lio, so adding Lio walking out might be acceptable as an addition but not a change of opening facts unless source explicitly changes them. The rule: \"Preserves persistent OPENING facts unless SOURCE explicitly changes them.\" So if raw changes something that was in opening and source didn't say to change it, it's invalid.\n\nThus RAW is invalid because it changed Lio's containment from inside locked storage room to outside without source authorizing. Issue: Lio leaves the locked storage room but source doesn't mention that. So {\"valid\":false,\"issue\":\"Lio’s containment changes from inside a locked storage room to outside, which isn’t authorized by SOURCE.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 223,
+      "completion_tokens": 500,
+      "total_tokens": 723,
+      "completion_tokens_details": {
+        "reasoning_tokens": 475
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790452523.5597274,
+  "status": "ok"
+}
