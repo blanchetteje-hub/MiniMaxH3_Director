@@ -1,0 +1,165 @@
+{
+  "basis": "Acceptance 1211 false merges: protection -> gear and terminal resolution -> release; resulting allocation 7+1, not 6+2. Production prompt remains unchanged pending results.",
+  "cases": [
+    {
+      "job_id": "probe-local-relation-1215",
+      "case": "baseline_to_danger",
+      "variant": "production",
+      "left": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+      "right": "Suddenly, a zombie breaks the kitchen door window and Amy sees the danger.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1216",
+      "case": "baseline_to_danger",
+      "variant": "narrow_response",
+      "left": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+      "right": "Suddenly, a zombie breaks the kitchen door window and Amy sees the danger.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1217",
+      "case": "danger_to_protection",
+      "variant": "production",
+      "left": "Suddenly, a zombie breaks the kitchen door window and Amy sees the danger.",
+      "right": "She rushes her kids to the basement, gets them inside, and then locks the door.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1218",
+      "case": "danger_to_protection",
+      "variant": "narrow_response",
+      "left": "Suddenly, a zombie breaks the kitchen door window and Amy sees the danger.",
+      "right": "She rushes her kids to the basement, gets them inside, and then locks the door.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1219",
+      "case": "protection_to_gear",
+      "variant": "production",
+      "left": "She rushes her kids to the basement, gets them inside, and then locks the door.",
+      "right": "She retrieves her hidden arsenal consisting of a pistol and a katana.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1220",
+      "case": "protection_to_gear",
+      "variant": "narrow_response",
+      "left": "She rushes her kids to the basement, gets them inside, and then locks the door.",
+      "right": "She retrieves her hidden arsenal consisting of a pistol and a katana.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1221",
+      "case": "retrieve_to_equip",
+      "variant": "production",
+      "left": "She retrieves her hidden arsenal consisting of a pistol and a katana.",
+      "right": "She equips the weapons.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1222",
+      "case": "retrieve_to_equip",
+      "variant": "narrow_response",
+      "left": "She retrieves her hidden arsenal consisting of a pistol and a katana.",
+      "right": "She equips the weapons.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1223",
+      "case": "resolution_to_release",
+      "variant": "production",
+      "left": "Amy kills the last of the zombies, her house now soaked in blood.",
+      "right": "She lets her kids out of the basement.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1224",
+      "case": "resolution_to_release",
+      "variant": "narrow_response",
+      "left": "Amy kills the last of the zombies, her house now soaked in blood.",
+      "right": "She lets her kids out of the basement.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1225",
+      "case": "fantasy_shelter_to_gear",
+      "variant": "production",
+      "left": "The ranger escorts the villagers into a stone refuge and bars its door.",
+      "right": "The ranger fetches a bow and quiver from a weapons rack.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1226",
+      "case": "fantasy_shelter_to_gear",
+      "variant": "narrow_response",
+      "left": "The ranger escorts the villagers into a stone refuge and bars its door.",
+      "right": "The ranger fetches a bow and quiver from a weapons rack.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1227",
+      "case": "fantasy_victory_to_release",
+      "variant": "production",
+      "left": "The knight slays the last ogre in the courtyard.",
+      "right": "The knight unlocks the captives' cells.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1228",
+      "case": "fantasy_victory_to_release",
+      "variant": "narrow_response",
+      "left": "The knight slays the last ogre in the courtyard.",
+      "right": "The knight unlocks the captives' cells.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1229",
+      "case": "scifi_failure_to_protection",
+      "variant": "production",
+      "left": "A coolant pipe ruptures and scalding vapor jets toward the crew.",
+      "right": "The engineer immediately closes the emergency valve to stop the leak.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1230",
+      "case": "scifi_failure_to_protection",
+      "variant": "narrow_response",
+      "left": "A coolant pipe ruptures and scalding vapor jets toward the crew.",
+      "right": "The engineer immediately closes the emergency valve to stop the leak.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1231",
+      "case": "retrieve_to_consume",
+      "variant": "production",
+      "left": "The mage retrieves a healing potion from her satchel.",
+      "right": "She drinks that potion.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1232",
+      "case": "retrieve_to_consume",
+      "variant": "narrow_response",
+      "left": "The mage retrieves a healing potion from her satchel.",
+      "right": "She drinks that potion.",
+      "expected": "MERGE"
+    },
+    {
+      "job_id": "probe-local-relation-1233",
+      "case": "completed_assembly_to_test",
+      "variant": "production",
+      "left": "The technician finishes assembling the sensor rig.",
+      "right": "The technician runs a calibration test on it.",
+      "expected": "NEW_TASK"
+    },
+    {
+      "job_id": "probe-local-relation-1234",
+      "case": "completed_assembly_to_test",
+      "variant": "narrow_response",
+      "left": "The technician finishes assembling the sensor rig.",
+      "right": "The technician runs a calibration test on it.",
+      "expected": "NEW_TASK"
+    }
+  ]
+}

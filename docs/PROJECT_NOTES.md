@@ -837,3 +837,23 @@ Paired probes 1191–1210 support this correction: the source-aware variant matc
 One repaired positive omitted appearance details, limiting appearance-fidelity
 claims; one baseline request failed with HTTP 400. Full H3 acceptance 1211 must
 confirm the fix end to end before advancing past the breakfast mismatch.
+
+### Acceptance 1211: reopen demonstrated grouping instability
+
+Acceptance 1211 generated all 8 prompts, but allocation regressed to 7+1.
+The existing local-relation classifier incorrectly merged completed protection
+with gear retrieval and terminal resolution with releasing protected people.
+These are observed exceptions to the earlier "locked grouping" checkpoint;
+those historical passes do not establish stability across fresh runs.
+
+Keep Python grouping/allocation unchanged. Probe a shorter single binary
+classifier that distinguishes a new danger/problem's immediate protective
+response from a new task merely enabled by completed protection or victory.
+Batch 1215–1234 compares that wording with production on exact failed pairs
+and generic controls. Do not adopt the experimental wording before review.
+
+Source-aware Director completion remains implemented but is not gold-accepted:
+1211's breakfast does not clearly show serving both recipients and settling the
+stove. Later capture failures remain documented in HANDOFF; the earliest current
+semantic target is grouping. The missing Segment 5 report was a logging/parser
+artifact, now reproducibly repaired without rerunning generation.

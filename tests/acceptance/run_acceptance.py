@@ -85,7 +85,7 @@ def load_benchmark(path: Path) -> dict:
 
 def parse_h3_prompts(log_text: str) -> dict[int, str]:
     starts = re.compile(
-        r"DIRECTOR REQUEST 2: H3 prompt - SEGMENT\s+(\d+)\s*$"
+        r"DIRECTOR REQUEST 2: H3 prompt - SEGMENT\s+(\d+)(?!\d)"
     )
     ends = re.compile(r"END H3 PROMPT - SEGMENT\s+(\d+)(?!\d)")
     prompts: dict[int, str] = {}

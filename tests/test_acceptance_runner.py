@@ -46,6 +46,22 @@ detailed_description: world
         )
         self.assertEqual(prompts[2], "detailed_description: world")
 
+    def test_parse_h3_prompts_allows_interleaved_start_marker(self):
+        log = (
+            "# DIRECTOR REQUEST 2: H3 prompt - SEGMENT 5Added States: \n"
+            "subject_definitions: Mira\n"
+            "detailed_description: Mira opens the gate.\n"
+            "# END H3 PROMPT - SEGMENT 5\n"
+            "# DIRECTOR REQUEST 2: H3 prompt - SEGMENT 15Added States: \n"
+            "detailed_description: Mira returns.\n"
+            "# END H3 PROMPT - SEGMENT 15\n"
+        )
+        prompts = run_acceptance.parse_h3_prompts(log)
+        self.assertEqual(set(prompts), {5, 15})
+        self.assertIn("Mira opens the gate.", prompts[5])
+        self.assertNotIn("Added States", prompts[5])
+        self.assertEqual(prompts[15], "detailed_description: Mira returns.")
+
     def test_parse_h3_prompts_allows_trailing_text_after_end_marker(self):
         log = """
 # ================================================================ DIRECTOR REQUEST 2: H3 prompt - SEGMENT 2

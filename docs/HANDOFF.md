@@ -14,35 +14,38 @@ Active development branch:
 
 `gpt-arc-refresh`
 
-## Current status snapshot — 2026-09-26, source-aware Director
+## Current status snapshot — 2026-09-26, acceptance 1211
 
-- Reviewed all probes 1191–1210. Source-aware completion matched 10/10 intended
-  completion labels, including the exact captured breakfast failure, missing
-  fantasy/sci-fi recipients, spectators, explicit interruption, and reactor
-  startup versus completed activation. Baseline: 5/9 label matches, with the
-  fantasy negative rejected for missing *watching*, not the missing treatment.
-  Probe 1207 returned HTTP 400; this is not a semantic verdict.
-- Qualification: repaired-breakfast control 1194 omitted clothing from raw scene;
-  its reasoning incorrectly claimed clothing was present. The completion outcome
-  is useful, but do not count this as appearance-fidelity evidence. Corrected
-  positive controls retain the clothing and location explicitly.
-- Adopted the demonstrated input correction in the existing Director path:
-  source-span required_events assigned to the current beat are carried verbatim
-  into Request 1 and the existing completion check. The derived beat supplies
-  staging and cannot erase source actions/results/participant roles. No extra
-  semantic call or source rewrite was added. Legacy non-source-span behavior is
-  preserved. Normal and repair bundles both carry the assignment.
-- Source-aware checker wording matches the tested candidate. Regression checks
-  cover exact assignment scoping and forwarding through the retry loop.
-  Local tests: **65 passed**, prompt pipeline + source-span runtime adapter.
-- Evidence: `tests/LLM/probes/source_completion_1191_1210_results.json`.
-- Next bridge work: full prompt acceptance **1211**, transport retry **1212**,
-  and corrected breakfast positive controls **1213–1214**. A fresh 20-case
-  semantic batch is not needed before this end-to-end check.
-- Acceptance review: verify all 8 segments, 2 chapters / 6+2 beats, source roles
-  retained through Request 1, both breakfast recipients served, tools settled,
-  input budget respected, and no completion retry loop. Then address the earliest
-  remaining H3 mismatch. No gold-quality acceptance is claimed yet.
+- Reviewed full acceptance 1211 on `1d4a9015`. Runtime generated all 8 H3
+  segments, but acceptance reported missing Segment 5 and returned exit 2.
+  Cause: concurrent `Added States:` output was appended directly to the start
+  marker (`SEGMENT 5Added States:`). The start regex required end-of-line.
+- Fixed capture start-marker parsing to tolerate trailing diagnostic text,
+  matching existing end-marker behavior. Added multi-digit/interleaving regression.
+  **8 acceptance-runner tests pass**. Reparsing the original captured log recovers
+  segments 1–8 without rerunning the LLM. No semantic success is inferred.
+- Earlier semantic regression: planner produced **7+1**, not 6+2. Exact logs
+  show false MERGE judgments for protection -> gear retrieval and final kill ->
+  child release. Chapter boundary remains before terminal resolution, but both
+  wrong local groups change beat allocation. No deterministic counting defect.
+- Source-aware Director input was used; no input-budget or completion exhaustion
+  blocked this run. Breakfast ends with both children seated with plates but
+  does not clearly depict both servings or stove shutdown. Do not call it fixed.
+- Other deferred failures in this capture include unsupported neck-twist causing
+  limb detachment, children visible outside intended protection during combat,
+  and stale carried props. Fix earliest actual failure first: local grouping.
+- Controls 1212–1214 completed. Retried baseline 1212 again accepts the start
+  button despite reactor OFFLINE (only derived action checked). Both corrected
+  breakfast positives preserve appearance/location and return VALID.
+- Queued **20 paired grouping probes 1215–1234**, exact five Amy pairs plus
+  generic fantasy/sci-fi/task controls: current production prompt versus shorter
+  wording restricting immediate-response merging to a newly introduced problem,
+  not a subsequent task enabled by completed protection/victory.
+- Production grouping prompt remains unchanged pending reviewed results. No
+  benchmark-specific rules or extra semantic stage added. Next: grade the batch,
+  adopt only supported wording, then rerun planning/full acceptance as needed.
+- Evidence: `tests/LLM/probes/acceptance_1211_review.json` and
+  `tests/LLM/probes/local_relation_1215_1234.json`.
 
 The entries below are historical; this snapshot supersedes old stop/go decisions.
 

@@ -1,0 +1,54 @@
+{
+  "acceptance_job": 1211,
+  "revision": "1d4a9015",
+  "reported_missing": [
+    5
+  ],
+  "reparsed_segments": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "chapter_allocation": [
+    7,
+    1
+  ],
+  "false_merges": [
+    "completed protection -> retrieve gear",
+    "final threat resolution -> release children"
+  ],
+  "controls": [
+    {
+      "job": 1212,
+      "message": {
+        "role": "assistant",
+        "content": "{\"valid\": true, \"issue\": \"\"}",
+        "reasoning": "We need to check if the raw scene visibly completes current beat: \"The pilot presses the reactor start button.\" The raw scene says: \"The pilot presses START. The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.\"\n\nDoes that show the pilot pressing the reactor start button? It shows he presses START (maybe a button). But does it show the result of pressing the reactor start button? The current beat is just the action: press the reactor start button. That should be visible. In raw scene, \"The pilot presses START.\" That's presumably the same as pressing the reactor start button. So yes.\n\nBut check rule: Every explicit action/result in CURRENT BEAT must visibly happen. The action is pressing the reactor start button. It happens. No result needed? It's just an action. But maybe they want to see that he pressed it, not just started pressing. He presses START (the button). That seems fine.\n\nAlso \"The screen says STARTUP IN PROGRESS, REACTOR OFFLINE.\" That's a result of the press. So it's visible. The beat is complete: pilot pressed reactor start button and we see the screen update. So valid=true.\n\nReturn JSON with issue empty string? Probably \"\" or null. They want exactly one JSON object with boolean valid and string issue. If no issue, maybe issue=\"\" or \"none\". I'll set issue=\"\".\n\nThus output:\n\n{\"valid\":true,\"issue\":\"\"\n\n}",
+        "tool_calls": []
+      }
+    },
+    {
+      "job": 1213,
+      "message": {
+        "role": "assistant",
+        "content": "{\"valid\":true,\"issue\":\" \"}",
+        "reasoning": "We need to check if the raw scene completes current beat.\n\nCurrent Beat: \"Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\"\n\nSo we must see Amy cooking breakfast (finishing cooking?), wearing that outfit, kids watching. The raw scene says:\n\n\"In her home kitchen, Amy wears a tight black tank top and denim jeans. Will and Amber watch as Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.\"\n\nWe need to check if all explicit actions/results in current beat are visibly happening.\n\nCurrent Beat: \"Amy cooks breakfast in the kitchen\" - She is cooking breakfast; raw scene says she finishes cooking breakfast (so yes). \"wearing a tight black tank top and denim jeans\" - Yes. \"while her children Will and Amber watch.\" - Raw scene says Will and Amber watch as Amy finishes cooking breakfast, serves them plates etc. So they are watching.\n\nThus all explicit actions/results: Amy cooks breakfast -> she finished cooking; wearing outfit -> yes; kids watch -> yes. The raw scene shows that. Also the kids eat at table but that's extra.\n\nSo valid=true. No issue. Return JSON with valid:true and empty string or maybe \"\" for issue.",
+        "tool_calls": []
+      }
+    },
+    {
+      "job": 1214,
+      "message": {
+        "role": "assistant",
+        "content": "{\"valid\":true,\"issue\":\"\"}",
+        "reasoning": "We need to check RAW SCENE against assigned source.\n\nAssigned Source: \"Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\"\n\nSo requirements:\n\n- Amy at home (home kitchen)\n- Wearing tight black tank top and denim jeans\n- Cooking breakfast for her young kids\n\nAlso the kids are Will and Amber? The source says \"young kids\" but derived beat names them. But we need to check if they are included.\n\nDerived Beat: \"Amy cooks breakfast in the kitchen, wearing a tight black tank top and denim jeans while her children Will and Amber watch.\" So that includes watching.\n\nBut Source requires cooking breakfast for her young kids. That implies she is cooking breakfast for them; result should be that kids receive or participate in that result (eating). Watching alone insufficient.\n\nRAW SCENE: \"In her home kitchen, Amy wears a tight black tank top and denim jeans. Will and Amber watch as Amy finishes cooking breakfast, serves Will and Amber a plate each, sets down the skillet and spatula, and turns off the stove. Both children eat at the table.\"\n\nCheck:\n\n- Amy wearing correct clothing? Yes.\n- In home kitchen? Yes.\n- Cooking breakfast: She \"finishes cooking breakfast\" - yes she cooked it.\n- For her young kids: She serves them plates each; they eat at table. So result achieved.\n\nAlso watchers: Will and Amber watch as she finishes cooking, then eats. They are participants in the result (eating). Good.\n\nAny missing? Source didn't specify that Amy sets down skillet/spatula or turns off stove but that's fine extra staging.\n\nSource says \"cooking breakfast for her young kids\" - She does serve them plates; they eat at table. So yes.\n\nThus RAW SCENE completes source work.\n\nReturn valid true, issue empty string.",
+        "tool_calls": []
+      }
+    }
+  ]
+}
