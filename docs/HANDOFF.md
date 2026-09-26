@@ -1389,3 +1389,13 @@ transformation. Only then move on toward H3 prompt generation.
   - `c8ec81722e4ad1b9e9eb0c1c923ce4a6f4e299aa`: source-aware completion test exercises the correct assigned-source branch.
 - Regression job `beneficiary-tests-1499` found only stale test expectations (72/74): one old literal phrase and one test hitting the legacy no-source fallback. Those tests were corrected; rerun is `tests-1501`.
 - Fresh full prompt acceptance `gold-prompt-beneficiary-1500` is queued. Do not act on later Segment 2/7 issues until 1500 confirms Segment 1 now visibly serves the children.
+
+
+### 2026-09-26 — finite endpoint verified; beneficiary delivery is next gold boundary
+
+- Acceptance 1477 verified the finite-endpoint fix: Beat 1's ongoing cooking candidate was rejected, regenerated, and accepted only after breakfast visibly finished. Repeated combat beats stayed non-terminal. Regression 1478 passed 74/74.
+- The earliest remaining gold mismatch is Segment 1: finished breakfast plates are left on a counter instead of visibly reaching Will and Amber.
+- The active distinction is now: immediate consumables/explicit hand-offs must visibly reach the named recipient; work merely made FOR someone does not require delivery unless the source explicitly says so; explicit later pickup/storage is allowed.
+- Commits: 254a94aa9d07c2115b157e1a3eb63966b15d085d (Beat validator), 1aa819b5df6c1dad9d0b3ff8db69d5cbe96741bd (Director completion gate), 5734d7a51032d501c3232ec00d94e26d597efb20 and 10f3d700e70b870904cbccc323aed37b5fbb28e7 (tests), c8ec81722e4ad1b9e9eb0c1c923ce4a6f4e299aa (source-aware test branch).
+- Regression 1499 exposed only stale test expectations; corrected rerun is tests-1501.
+- Fresh full acceptance gold-prompt-beneficiary-1500 is queued. Do not act on later Segment 2/7 issues until Segment 1 is confirmed fixed.
