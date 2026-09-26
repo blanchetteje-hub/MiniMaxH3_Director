@@ -865,7 +865,7 @@ AUTHORITY RULES
 - Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
 - If CURRENT BEAT terminally removes/destroys/kills an entity or process, do not carry it forward as active unless CURRENT BEAT restores/restarts it.
 - If a subject is inside/behind a locked or sealed barrier, keep that containment true until CURRENT BEAT explicitly releases or moves them.
-- When only some subjects cross a doorway, hatch, gate, or other barrier and it then closes or locks, make the blocking explicit for H3: show exactly who crosses, keep non-crossing subjects on the original side, close the barrier between the groups, and state the final side of each group. After closure, do not keep the far-side group visibly beside the near-side group unless CURRENT BEAT explicitly reopens the barrier.
+- When only some subjects cross a doorway, hatch, gate, or other barrier and it then closes or locks, make the blocking explicit for H3: show exactly who crosses, keep non-crossing subjects on the original side, close the barrier between the groups, and state the final side of each group. Moving/pushing/guiding other subjects across the barrier does NOT imply that the mover crosses too. The mover remains on the original side unless ASSIGNED SOURCE/CURRENT BEAT explicitly says the mover also enters. After closure, do not keep the far-side group visibly beside the near-side group unless CURRENT BEAT explicitly reopens the barrier.
 - Do not invent wardrobe changes. Any clothing specified in the beat must be part of the response.
 
 LOCAL STAGING
@@ -24771,7 +24771,7 @@ RAW SCENE
 Check only completion and persistent-state compatibility:
 1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.
 2. A finite activity needs its visible result. For an activity benefiting people, those people must receive or participate in that result; watching alone is insufficient. Source-assigned spectators remain spectators.
-3. Preserve participant scope. Do not apply a source-assigned movement, containment, release, possession, injury, or other material result to additional participants merely because they are present. If SOURCE says one actor puts other people into a place/container, RAW must not also put the actor there unless SOURCE supports that.
+3. Preserve participant scope. Do not apply a source-assigned movement, containment, release, possession, injury, or other material result to additional participants merely because they are present. If SOURCE says one actor moves/pushes/guides other people into or across a place/barrier, that movement applies to those people only. RAW is invalid if it also moves the actor across/inside unless SOURCE explicitly says the actor crosses/enters too.
 4. Preserve persistent facts already true in AUTHORITATIVE OPENING STATE unless SOURCE/CURRENT BEAT explicitly changes them. This includes held/equipped items, containment, barrier state, clothing, injuries, and other durable conditions. Reject dropping, losing, freeing, unlocking, removing, or otherwise changing such state as harmless staging.
 5. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.
 6. Ignore style, camera, future events, and harmless non-persistent staging. Do not invent extra source requirements.
