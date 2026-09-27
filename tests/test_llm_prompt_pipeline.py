@@ -725,6 +725,90 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertEqual(contracts[0]["destination"], "basement")
         self.assertEqual(contracts[0]["occupants"], ["Will", "Amber"])
 
+    def test_beat_destination_presence_parser_is_strict(self):
+        self.assertEqual(
+            minimax.parse_beat_destination_presence_result(
+                {"relation": "AT_DESTINATION"}
+            ),
+            "AT_DESTINATION",
+        )
+        with self.assertRaises(ValueError):
+            minimax.parse_beat_destination_presence_result(
+                {"relation": "INSIDE"}
+            )
+        with self.assertRaises(ValueError):
+            minimax.parse_beat_destination_presence_result(
+                {"relation": "AT_DESTINATION", "valid": False}
+            )
+
+    def test_beat_destination_presence_prompt_checks_any_point(self):
+        messages = minimax.build_beat_destination_presence_messages(
+            "basement",
+            "Amy",
+            "Amy enters the basement, retrieves a pistol, then returns upstairs.",
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("physically at/inside DESTINATION at any point", prompt)
+        self.assertIn("even if the subject later leaves", prompt)
+        self.assertIn("Do not decide whether the placement is allowed", prompt)
+
+    def test_beat_destination_presence_contract_tracks_outside_named_subject(self):
+        state = minimax.new_beat_canonical_state()
+        state["characters"] = {
+            "Amy": {
+                "location": "home",
+                "containment": "free",
+                "contained_in": None,
+                "accessible": True,
+            },
+            "Will": {
+                "location": "basement",
+                "containment": "contained",
+                "contained_in": "basement",
+                "accessible": False,
+            },
+        }
+        state["environment"]["barriers"] = {
+            "door": {"status": "locked"}
+        }
+        contracts = minimax.build_beat_destination_presence_contracts(
+            state,
+            [],
+            "Amy retrieves her weapons from a closet in the basement.",
+        )
+        self.assertEqual(
+            contracts,
+            [
+                {
+                    "destination": "basement",
+                    "subject": "Amy",
+                    "barrier": "basement door",
+                }
+            ],
+        )
+
+    def test_beat_destination_presence_contract_skips_subject_already_inside(self):
+        state = minimax.new_beat_canonical_state()
+        state["characters"] = {
+            "Will": {
+                "location": "basement",
+                "containment": "contained",
+                "contained_in": "basement",
+                "accessible": False,
+            },
+        }
+        state["environment"]["barriers"] = {
+            "door": {"status": "locked"}
+        }
+        self.assertEqual(
+            minimax.build_beat_destination_presence_contracts(
+                state,
+                [],
+                "Will waits inside the basement.",
+            ),
+            [],
+        )
+
     def test_beat_validator_forbids_retrieving_interior_prop_across_closed_boundary(self):
         state = minimax.new_beat_canonical_state()
         state["characters"] = {
