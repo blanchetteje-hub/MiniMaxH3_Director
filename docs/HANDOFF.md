@@ -1584,3 +1584,15 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Queued generic barrier-final-state probes `probe-barrier-state-1669` through `1688` across doors, gates, airlocks, vaults, portals, shelters, garage doors, lab doors, and bulkheads. Enum under test: `LOCKED | CLOSED | OPEN | BROKEN | DESTROYED | UNSPECIFIED`. Expected answers are stored only in bridge job metadata, not shown to the model.
 - Do not wire the extractor into production until the probe batch is graded. If accepted, integrate it into the existing Request-1 loop alongside topology/traversal extraction rather than creating another semantic pipeline stage.
 
+### 2026-09-27 — closed-boundary fix held; Segment 7 terminal-state wording tightened
+
+- `acceptance-1668` completed all 8 segments and confirmed the new closed-boundary invariant works end to end:
+  - Segment 6 no longer invents a zombie crossing through the locked basement boundary; the attacking zombie instead enters from the already-broken kitchen entry.
+  - Segment 8 still releases Will and Amber successfully because the active typed containment effects authorize that transition.
+- The next demonstrated hard failure is Segment 7 reusing the just-killed Zombie3 as the final live target. Segment 6 visibly slices through Zombie3's skull and leaves its head on the kitchen floor; Segment 7 then slashes Zombie3's remaining body as if that newly satisfies “kills the last of the zombies.”
+- Developer-log inspection showed the terminal-target extractor received rendered continuity stating **“Zombie3’s head lies on the kitchen floor”** but GPT-OSS still classified the target as `ACTIVE_OR_UNRESOLVED`. Its reasoning treated the torso/body as potentially alive because the terminal rule said only “already dead” without defining obvious terminal physical evidence.
+- Production commit `c9fec04a21b4a4a57f15eea93769e0dce5a316f2` tightens only the existing action-relative terminal extractor: for `kill`, an explicit corpse, detached/severed head, decapitated body, or clearly lifeless remains are terminal even if the word `dead` is absent; RAW referring to those remains as a zombie/body/torso does not reactivate them.
+- Regression commit `512e459627f045208029fcfff6b2544514cb8e35` locks that prompt contract.
+- Queued generic terminal-physical probes `1669-1688`, followed by `tests-1689` and fresh full `acceptance-1690`.
+- `tests-1667` and traversal controls `1660-1666` had not produced result commits when this checkpoint was inspected; do not count them as evidence unless they later appear.
+
