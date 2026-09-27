@@ -163,7 +163,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("STATE EFFECTS IF VALID", prompt)
         self.assertIn('"id":"E1"', prompt)
         self.assertIn('"value":"open"', prompt)
-        self.assertIn("Every listed typed effect must be supported", prompt)
+        self.assertIn("Every listed typed effect must be supported by the candidate's FINAL state", prompt)
         self.assertIn("Do not invent missing-effect obligations for new incidental entities", prompt)
 
     def test_invalid_candidate_regenerates_same_beat_without_state_mutation(self):
