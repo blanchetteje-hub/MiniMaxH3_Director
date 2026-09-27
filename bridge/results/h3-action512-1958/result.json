@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action512-1958",
+  "kind": "llama_chat",
+  "started_at": 1790550078.3496025,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nRina winds the clock and the pendulum starts moving.\n\nFINAL H3 MICRO-ACTION:\nRina stops the pendulum and leaves the clock unwound.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-q3nu2b33hr2vn240i86og",
+    "object": "chat.completion",
+    "created": 1790550078,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CHANGED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"Rina winds the clock and the pendulum starts moving.\" Final H3 micro-action: \"Rina stops the pendulum and leaves the clock unwound.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. Here, in raw, Rina winds the clock (action) and pendulum starts moving (result). In final, she stops the pendulum (opposite of starting), and leaves the clock unwound (not wound). So both action and result differ: she doesn't wind it; she stops the pendulum instead of letting it start. So it's CHANGED.\n\nThus output JSON {\"status\":\"CHANGED\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 210,
+      "completion_tokens": 159,
+      "total_tokens": 369,
+      "completion_tokens_details": {
+        "reasoning_tokens": 143
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790550080.6929624,
+  "status": "ok"
+}
