@@ -15921,6 +15921,8 @@ def generate_beats_from_story(
                             flush=True,
                         )
                         continue
+                    except LLMConnectionError:
+                        raise
                     except Exception as error:
                         print(
                             "Focused ARC majority tail repair failed; falling back "
@@ -15961,6 +15963,8 @@ def generate_beats_from_story(
                                 "Macro arc repair did not return a complete arc."
                             )
                         break
+                    except LLMConnectionError:
+                        raise
                     except Exception as error:
                         repair_error = error
                         print(
@@ -16367,6 +16371,8 @@ def generate_beats_from_story(
                             ),
                             flush=True,
                         )
+                    except LLMConnectionError:
+                        raise
                     except Exception as source_plan_error:
                         active_macro_arc = None
                         print(
@@ -16544,6 +16550,8 @@ def generate_beats_from_story(
             for stale_path in (story_arc_path, hash_path, validation_state_path):
                 if os.path.exists(stale_path):
                     os.remove(stale_path)
+        except LLMConnectionError:
+            raise
         except Exception as error:
             # H3 generation is an interactive recovery loop. Any recoverable
             # failure at this outer boundary returns to arc creation instead
@@ -28731,9 +28739,9 @@ def _run_main(
 
     expected_render_count = len(render_futures_by_segment)
     if len(generated_video_paths) < expected_render_count + (resume_segment - 1):
-        print(
-            "WARNING: not every completed segment was added to the stitch list "
-            f"({len(generated_video_paths)} available); stitching best effort."
+        raise RuntimeError(
+            "Not every completed segment was added to the stitch list "
+            f"({len(generated_video_paths)} available); returning to recovery."
         )
 
     stitch_attempt = 0
