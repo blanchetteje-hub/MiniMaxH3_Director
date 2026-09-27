@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-physical-1688",
+  "kind": "llama_chat",
+  "started_at": 1790528337.7810826,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe engineer resolves the containment breach.\n\nAUTHORITATIVE OPENING STATE\nThe breach remains open and pressure is still falling.\n\nRAW SCENE\nThe engineer moves toward the emergency seal.\n\nTreat AUTHORITATIVE OPENING STATE as already true at 00:00.000 unless RAW SCENE visibly changes it. SOURCE assigns a terminal action such as killing, destroying, defeating, eliminating, finishing, or resolving a target/process. Inspect the target of that newly assigned action at the moment immediately BEFORE the terminal action begins in RAW SCENE. Return status ACTIVE_OR_UNRESOLVED if RAW establishes the target/process still needs the specific terminal result assigned by SOURCE. Judge terminal status relative to that assigned action: for kill, already dead is terminal. Treat a corpse, an already detached/severed head, a decapitated body, or clearly lifeless remains as already dead even when the word 'dead' is not used; RAW calling those remains a zombie/body/torso does not make the target active again. For destroy, already destroyed is terminal; for defeat/eliminate, already neutralized, incapacitated, restrained, or otherwise no longer an active opponent is terminal; for finish/complete, already complete is terminal; for resolve, already resolved is terminal. Return ALREADY_TERMINAL when RAW establishes that assigned terminal result was already true before the action begins. Return UNSPECIFIED only when RAW does not establish either. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-k6ega2vu27udo94r8wbc",
+    "object": "chat.completion",
+    "created": 1790528337,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to parse the scenario.\n\nASSIGNED SOURCE: \"The engineer resolves the containment breach.\"\n\nSo source assigns a terminal action: resolve (the target/process). The target is the containment breach? Yes, \"containment breach\" is the process that needs resolving. So assigned action: resolve the containment breach.\n\nAUTHORITATIVE OPENING STATE: \"The breach remains open and pressure is still falling.\" At 00:00.000 it's true unless RAW SCENE changes it.\n\nRAW SCENE: \"The engineer moves toward the emergency seal.\"\n\nSo at start, breach remains open (not resolved). The engineer moving towards emergency seal indicates he will likely resolve it soon but hasn't yet. So before action begins, the target is still active/unresolved. We need to inspect status immediately BEFORE terminal action begins in RAW SCENE.\n\nTerminal action: resolve containment breach. Is it already resolved? No, because breach remains open and pressure falling. The engineer moving toward seal indicates he will act to close it but hasn't yet closed. So it's ACTIVE_OR_UNRESOLVED.\n\nThus return {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 399,
+      "completion_tokens": 245,
+      "total_tokens": 644,
+      "completion_tokens_details": {
+        "reasoning_tokens": 225
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790528341.758935,
+  "status": "ok"
+}
