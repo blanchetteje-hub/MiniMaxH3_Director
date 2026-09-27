@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beat-destination-presence-1760",
+  "kind": "llama_chat",
+  "started_at": 1790540195.48179,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract subject destination presence only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\nlaboratory\n\nNAMED SUBJECT\nEli\n\nCANDIDATE BEAT\nEli receives a sample from someone standing in the laboratory but remains in the hall.\n\nClassify only whether CANDIDATE BEAT establishes that NAMED SUBJECT is physically at/inside DESTINATION at any point during the beat. Allowed values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED. AT_DESTINATION includes entering, standing in, acting in, or explicitly being inside DESTINATION even if the subject later leaves. NOT_AT_DESTINATION means the beat explicitly keeps the subject outside/elsewhere and does not place the subject inside. Reaching through an opening while the subject's body remains outside is NOT_AT_DESTINATION. UNSPECIFIED means the subject's relation to DESTINATION is not established clearly enough. Do not decide whether the placement is allowed. Return JSON: {\"relation\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-e93lv0cbhbq5g6ivuc7ir7",
+    "object": "chat.completion",
+    "created": 1790540195,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NOT_AT_DESTINATION\"}",
+          "reasoning": "We need to parse beat: \"Eli receives a sample from someone standing in the laboratory but remains in the hall.\" So Eli receives a sample from someone standing in lab, but Eli remains in hall. That means Eli stays outside lab; he is not inside lab. The beat explicitly says he remains in hall. So relation = NOT_AT_DESTINATION.\n\nReturn JSON: {\"relation\":\"NOT_AT_DESTINATION\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 272,
+      "completion_tokens": 100,
+      "total_tokens": 372,
+      "completion_tokens_details": {
+        "reasoning_tokens": 82
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790540197.3483536,
+  "status": "ok"
+}
