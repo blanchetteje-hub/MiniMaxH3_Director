@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1619",
+  "kind": "llama_chat",
+  "started_at": 1790481229.711902,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe mage resolves the curse.\n\nRAW SCENE\nThe curse still darkens the room and grips the villagers. The mage completes the ritual and the curse vanishes.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-k32u8bl66p1aagmrkahlu",
+    "object": "chat.completion",
+    "created": 1790481229,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nThe source says \"ASSIGNED SOURCE The mage resolves the curse.\" So assigned action: \"mage resolves the curse\". Terminal action? It seems that the target of that newly assigned action is the curse. We inspect before the terminal action begins, i.e., before the curse vanishes. RAW SCENE: \"The curse still darkens the room and grips the villagers. The mage completes the ritual and the curse vanishes.\" So before the curse vanishes, it's still active (darkening, gripping). So status ACTIVE_OR_UNRESOLVED.\n\nReturn JSON {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 234,
+      "completion_tokens": 153,
+      "total_tokens": 387,
+      "completion_tokens_details": {
+        "reasoning_tokens": 133
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481232.3663685,
+  "status": "ok"
+}
