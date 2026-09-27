@@ -9,6 +9,7 @@ prompts/
 story.txt
 beats.txt
 additional_states.txt
+append_system_prompts.txt
 story_arc.json
 story_arc.json.sha256
 subjects.txt
