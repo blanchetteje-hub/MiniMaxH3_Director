@@ -1,0 +1,23 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-barrier-state-1698",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 512,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Extract final barrier state only. Do not judge story validity. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "BARRIER\nwooden door\n\nRAW SCENE\nThe wooden door has a fist-sized hole punched through it but remains closed in the frame.\n\nClassify only the final visible/established state of BARRIER at the END of RAW SCENE. Allowed values: LOCKED, CLOSED, OPEN, BROKEN, DESTROYED, UNSPECIFIED. LOCKED includes locked, sealed, barred, or bolted. CLOSED means intact and shut/closed without an established lock. OPEN means intact and open/passable. BROKEN means the barrier is physically damaged, breached, warped, cracked, bent, or partly detached but still physically exists as that barrier; choose BROKEN even if the damage leaves a passable gap. DESTROYED means the barrier is gone, reduced to debris, or no longer exists/functions as a barrier. Structural state takes precedence over passability: damaged-but-present = BROKEN, absent/nonfunctional = DESTROYED, intact-and-passable = OPEN. UNSPECIFIED means RAW SCENE does not establish enough information. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+    }
+  ],
+  "expected": "BROKEN"
+}
