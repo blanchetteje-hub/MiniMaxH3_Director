@@ -14769,6 +14769,21 @@ def director_assigned_source(phase, beat_number):
     )
 
 
+def director_assigned_state_effects(phase, beat_number):
+    """Expose typed persistent effects assigned to this source-span beat."""
+    if not isinstance(phase, dict) or phase.get("narrative_purpose") != SOURCE_SPAN_PHASE_PURPOSE:
+        return []
+    effects = []
+    for event in phase.get("required_events", []):
+        if (
+            isinstance(event, dict)
+            and event.get("beat_number") == beat_number
+            and isinstance(event.get("state_effects"), list)
+        ):
+            effects.extend(copy.deepcopy(event["state_effects"]))
+    return effects
+
+
 def phase_authoritative_source(phase, fallback_story):
     """Return exact chapter source for source-span phases, else legacy story."""
     if (
@@ -24700,6 +24715,7 @@ def repair_existing_segment(
         "current_duration": duration,
         "active_beat_id": segment_number,
         "assigned_source": director_assigned_source(current_phase, segment_number),
+        "assigned_state_effects": director_assigned_state_effects(current_phase, segment_number),
         "current_beat_text": (
             str(beats[segment_number - 1])
             if beats and 1 <= int(segment_number) <= len(beats)
@@ -24854,6 +24870,7 @@ def build_director_raw_scene_completion_messages(
     raw_scene,
     assigned_source="",
     authoritative_opening_state="",
+    assigned_state_effects=None,
 ):
     """Check completion against exact assigned source when available."""
     if str(assigned_source or "").strip():
@@ -24868,17 +24885,21 @@ DERIVED BEAT — staging suggestion; cannot remove source requirements
 AUTHORITATIVE OPENING STATE — already true before this segment
 {authoritative_opening_state or 'N/A'}
 
+ASSIGNED TYPED END STATE — authoritative persistent changes for this segment
+{json.dumps(assigned_state_effects or [], ensure_ascii=False, separators=(",", ":"))}
+
 RAW SCENE
 {raw_scene}
 
 Check only completion and persistent-state compatibility:
-1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE. If SOURCE assigns an action now, RAW must visibly perform that action in this segment; an existing result or aftermath alone is insufficient.
-2. A finite activity needs its visible result. For a consumable or explicit hand-off to named people, they must visibly receive or be served the result when immediate receipt is part of SOURCE; merely labeling it for them or leaving it elsewhere is insufficient. For work merely made FOR someone, completion of the work is enough unless SOURCE explicitly requires delivery. Honor explicit later pickup/storage. Source-assigned spectators remain spectators.
-3. Preserve participant scope. Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it. Everyone else must stay on their original side unless SOURCE explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other people through does NOT authorize the mover/helper to follow. RAW is invalid if any unlisted participant crosses.
-4. Preserve persistent facts already true in AUTHORITATIVE OPENING STATE unless SOURCE/CURRENT BEAT explicitly changes them. This includes held/equipped items, containment, barrier state, clothing, injuries, and other durable conditions. Reject dropping, losing, freeing, unlocking, removing, or otherwise changing such state as harmless staging.
-5. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.
-6. End continuity must agree with the last visible state in RAW SCENE. If RAW sets down, drops, removes, closes, opens, equips, unequips, enters, exits, or otherwise materially changes something, the End continuity state cannot claim the opposite unless RAW visibly changes it back.
-7. Ignore style, camera, future events, and harmless non-persistent staging. Do not invent extra source requirements.
+1. ASSIGNED TYPED END STATE is authoritative for persistent final-state changes to already-known named subjects, barriers, and items. If RAW ends with one of those entities newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means that persistent change is INVALID. Temporary motion that returns to the opening state is allowed.
+2. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE. If SOURCE assigns an action now, RAW must visibly perform that action in this segment; an existing result or aftermath alone is insufficient.
+3. A finite activity needs its visible result. For a consumable or explicit hand-off to named people, they must visibly receive or be served the result when immediate receipt is part of SOURCE; merely labeling it for them or leaving it elsewhere is insufficient. For work merely made FOR someone, completion of the work is enough unless SOURCE explicitly requires delivery. Honor explicit later pickup/storage. Source-assigned spectators remain spectators.
+4. Preserve participant scope. Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it. When ASSIGNED TYPED END STATE contains location/containment changes for only some named subjects, do not give the mover/helper that same persistent location/containment change unless it has its own matching effect. Everyone else must stay on their original side unless SOURCE explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other people through does NOT authorize the mover/helper to follow. RAW is invalid if any unlisted participant crosses.
+5. Preserve persistent facts already true in AUTHORITATIVE OPENING STATE unless SOURCE/CURRENT BEAT explicitly changes them. This includes held/equipped items, containment, barrier state, clothing, injuries, and other durable conditions. Reject dropping, losing, freeing, unlocking, removing, or otherwise changing such state as harmless staging.
+6. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.
+7. End continuity must agree with the last visible state in RAW SCENE. If RAW sets down, drops, removes, closes, opens, equips, unequips, enters, exits, or otherwise materially changes something, the End continuity state cannot claim the opposite unless RAW visibly changes it back.
+8. Ignore style, camera, future events, and harmless non-persistent staging. Do not invent extra source requirements.
 Return valid (boolean) and issue (short explanation if invalid, empty string otherwise)."""},
         ]
     return [
@@ -25297,6 +25318,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                             raw_scene,
                             bundle.get("assigned_source", ""),
                             bundle.get("opening_state", ""),
+                            bundle.get("assigned_state_effects", []),
                         ),
                         response_format=DIRECTOR_RAW_SCENE_COMPLETION_RESPONSE_FORMAT,
                         history_metadata=completion_metadata,
@@ -26095,6 +26117,7 @@ def _run_main(
             "current_duration": current_duration,
             "active_beat_id": active_beat_id,
             "assigned_source": director_assigned_source(current_phase, active_beat_id),
+            "assigned_state_effects": director_assigned_state_effects(current_phase, active_beat_id),
             "current_beat_text": (
                 str(beats[active_beat_id - 1])
                 if beats and active_beat_id is not None
