@@ -701,6 +701,56 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             prompt,
         )
 
+    def test_beat_closed_boundary_contract_lists_contained_occupants(self):
+        state = minimax.new_beat_canonical_state()
+        state["characters"] = {
+            "Will": {
+                "containment": "contained",
+                "contained_in": "basement",
+                "location": "basement",
+                "accessible": False,
+            },
+            "Amber": {
+                "containment": "contained",
+                "contained_in": "basement",
+                "location": "basement",
+                "accessible": False,
+            },
+        }
+        state["environment"]["barriers"] = {
+            "door": {"status": "locked"}
+        }
+        contracts = minimax.build_beat_closed_boundary_contracts(state, [])
+        self.assertEqual(len(contracts), 1)
+        self.assertEqual(contracts[0]["destination"], "basement")
+        self.assertEqual(contracts[0]["occupants"], ["Will", "Amber"])
+
+    def test_beat_validator_forbids_cross_boundary_contact_with_contained_occupant(self):
+        state = minimax.new_beat_canonical_state()
+        state["characters"] = {
+            "Will": {
+                "containment": "contained",
+                "contained_in": "basement",
+                "location": "basement",
+                "accessible": False,
+            }
+        }
+        state["environment"]["barriers"] = {
+            "door": {"status": "locked"}
+        }
+        messages = minimax.build_beat_validation_messages(
+            previous_final_beat="Will is secured in the basement.",
+            current_state=state,
+            beat_job="Amy defeats another attacker.",
+            next_beat_job="Amy keeps fighting.",
+            candidate_beat="An attacker reaches for Will's arm before Amy stops it.",
+            assigned_state_effects=[],
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("Known contained occupants: Will", prompt)
+        self.assertIn("cannot reach, grab, bite, strike", prompt)
+        self.assertIn("physically interact across the boundary", prompt)
+
     def test_beat_validator_includes_closed_boundary_contract(self):
         state = minimax.new_beat_canonical_state()
         state["characters"] = {
