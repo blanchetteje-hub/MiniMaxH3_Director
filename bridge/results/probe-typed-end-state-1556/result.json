@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1556",
+  "kind": "llama_chat",
+  "started_at": 1790471952.3886478,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nLio starts contained in the cell.\n\nASSIGNED SOURCE\nMara checks on Lio through the bars.\n\nASSIGNED TYPED END STATE\n[]\n\nRAW SCENE\nMara opens the cell and Lio exits into the corridor, remaining free.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ylsbtrs05tjkmkkj2k79c",
+    "object": "chat.completion",
+    "created": 1790471952,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The RAW scene shows Lio exiting the cell and becoming free, but the typed end state has no effect for Lio’s release from containment; this persistent change is missing in the authoritative list.\"}",
+          "reasoning": "We need to validate raw scene against authoritative persistent end-state effects.\n\nOpen: Lio starts contained in cell. Mara checks on Lio through bars. Typed end state is [] meaning no changes? So final state should have no persistent change relative to start. But RAW says \"Mara opens the cell and Lio exits into corridor, remaining free.\" That means Lio moved from cell (contained) to corridor (free). That's a persistent change: Lio freed. The typed end state has no effect for that. So invalid.\n\nAlso need source work completed: Mara checks on Lio through bars. In RAW she opens the cell and Lio exits, so yes she did check? She opened cell; maybe that's part of checking. But main issue is missing typed effect.\n\nThus valid false, issue string describing mismatch: \"Lio freed from cell not reflected in typed end state\". Also mention that no typed effect for Lio's release. So JSON:\n\n{valid:false,issue:\"Typed end state does not include Lio being released/freed after opening the cell.\"}\n\nReturn only keys valid and issue.\n\nLet's produce.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 294,
+      "completion_tokens": 284,
+      "total_tokens": 578,
+      "completion_tokens_details": {
+        "reasoning_tokens": 227
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471957.0376728,
+  "status": "ok"
+}
