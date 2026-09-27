@@ -1,0 +1,23 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-barrier-traversal-1665",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 300,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Extract barrier traversal only. Do not judge whether the scene is valid or physically possible. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "BARRIER\nsealed bulkhead\n\nRAW SCENE\nA shape moves behind the sealed bulkhead; the camera cannot establish which side it started on or whether it passed through.\n\nClassify only whether RAW SCENE visibly establishes that any subject moves from one side of BARRIER through its boundary to the other side. Return TRAVERSED when a crossing through the named boundary is established. Return NOT_TRAVERSED when subjects only approach, touch, strike, look through, wait at, or remain on one side of the barrier. Return UNSPECIFIED when RAW SCENE does not establish enough spatial information to tell. Do not infer validity from whether the barrier is open, closed, locked, broken, magical, or intact. Do not infer an unseen route. Return JSON: {\"status\":\"...\"}"
+    }
+  ],
+  "expected": "UNSPECIFIED"
+}
