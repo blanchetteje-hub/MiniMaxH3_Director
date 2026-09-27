@@ -17125,6 +17125,118 @@ H3_ACTION_PRESERVATION_RESPONSE_FORMAT = {
     },
 }
 
+CONTINUITY_ATTACHMENT_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "continuity_attachment",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": ["ATTACHED", "NOT_ATTACHED", "UNSPECIFIED"],
+                },
+            },
+            "required": ["status"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
+def build_continuity_attachment_messages(subject_name, object_name, final_frame_text):
+    """Ask only whether one claimed object is physically attached to one Subject."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Judge one candidate continuity attachment. Return JSON only. "
+                "ATTACHED = the object/substance is physically attached, embedded, "
+                "worn, strapped, clipped, stuck, coated, wrapped, or otherwise fixed "
+                "to the named Subject at the final frame. NOT_ATTACHED = the Subject "
+                "merely holds, carries, touches, supports, or is near the object, or "
+                "the object is attached to something else. UNSPECIFIED = the text "
+                "does not establish whether it is attached. Judge only the supplied "
+                "final-frame text."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"SUBJECT: {str(subject_name or '').strip()}\n"
+                f"CANDIDATE ATTACHED OBJECT: {str(object_name or '').strip()}\n"
+                f"FINAL-FRAME TEXT: {str(final_frame_text or '').strip()}\n\n"
+                'Return {"status":"ATTACHED|NOT_ATTACHED|UNSPECIFIED"}.'
+            ),
+        },
+    ]
+
+
+def parse_continuity_attachment(raw_result):
+    """Parse one strict continuity attachment observation."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"status"}:
+        raise ValueError("Continuity attachment response must contain only status.")
+    status = candidate.get("status")
+    if status not in {"ATTACHED", "NOT_ATTACHED", "UNSPECIFIED"}:
+        raise ValueError("Unknown continuity attachment status.")
+    return status
+
+
+def filter_continuity_attached_objects(
+    state,
+    final_frame_text,
+    *,
+    llm_request=ask_llm,
+    history_metadata=None,
+):
+    """Keep only attached_objects claims that are attached to that Subject."""
+    if not isinstance(state, dict):
+        return state
+    filtered = copy.deepcopy(state)
+    subjects = filtered.get("subjects")
+    if not isinstance(subjects, dict):
+        return filtered
+
+    for subject_name, record in subjects.items():
+        if not isinstance(record, dict):
+            continue
+        attached = record.get("attached_objects")
+        if not isinstance(attached, list) or not attached:
+            continue
+        kept = []
+        for object_name in attached:
+            object_text = str(object_name or "").strip()
+            if not object_text:
+                continue
+            result = llm_request(
+                build_continuity_attachment_messages(
+                    subject_name,
+                    object_text,
+                    final_frame_text,
+                ),
+                response_format=CONTINUITY_ATTACHMENT_RESPONSE_FORMAT,
+                history_metadata={
+                    **dict(history_metadata or {}),
+                    "purpose": "continuity_attachment_extract",
+                    "subject": str(subject_name),
+                    "object": object_text,
+                },
+                temperature=0,
+                top_p=1,
+                max_tokens=512,
+                seed=42,
+                repeat_penalty=1.15,
+            )
+            if parse_continuity_attachment(result) == "ATTACHED":
+                kept.append(object_name)
+        record["attached_objects"] = kept
+    return filtered
+
+
 
 def _director_timed_action_map(value):
     """Return canonical timestamp -> text between this timestamp and the next."""
@@ -20601,6 +20713,12 @@ def request_combined_continuity(
                     final_frame_authority or h3_prompt,
                     subject_definitions,
                     committed_state=committed_state,
+                )
+                reduced_state = filter_continuity_attached_objects(
+                    reduced_state,
+                    final_frame_authority or h3_prompt,
+                    llm_request=llm_request,
+                    history_metadata=history_metadata,
                 )
             if str(subject_definitions or "").strip():
                 original_subjects = reduced_state.get("subjects")
