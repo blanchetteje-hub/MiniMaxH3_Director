@@ -376,3 +376,24 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - Combined with prior stress runs, the production-critical binary rule remains clean: only `PRESERVED` passes; `OMITTED` and `CHANGED` both reject.
 - Commit `4cacaeb4b1f6bde1a99403c8d80756b475b692f9` raises only this extractor's production completion cap from 384 to **512**. The prompt and deterministic Python gate are unchanged.
 - Do not spend more probe budget on this same invariant unless acceptance exposes a concrete false PRESERVED/false rejection. Next step is a fresh full acceptance run to identify the earliest remaining real gold-prompt failure; only then add another narrow extractor if deterministic Python cannot resolve it.
+
+
+### 2026-09-27 — continuity attached_objects extractor promoted
+
+- Acceptance `1961` completed all 8 segments, but exposed the next earliest quality failure in continuity state:
+  - Segment 6 final frame had Amy holding a katana with a zombie head hanging from the blade.
+  - Combined continuity incorrectly put `"zombie head"` in Amy's `attached_objects`.
+  - Phase 2 serialized that as “her zombie head remains attached to her,” and the bad fact leaked into Segment 7.
+- Root cause: the continuity schema allowed `attached_objects` but the local 20B had no narrow semantic definition of attachment-to-Subject versus merely held/carried/attached-to-something-else.
+- New tiny extractor contract:
+  - input: SUBJECT, one CANDIDATE ATTACHED OBJECT, FINAL-FRAME TEXT;
+  - output: `ATTACHED | NOT_ATTACHED | UNSPECIFIED`;
+  - Python keeps the claim only for `ATTACHED`; both other values are dropped.
+- 50-probe batch `continuity-attachment-1962` through `2011`:
+  - 50/50 normal completions;
+  - 48/50 exact three-way labels;
+  - the two exact misses were only `UNSPECIFIED -> NOT_ATTACHED`;
+  - 50/50 on the production keep/drop decision;
+  - zero false `ATTACHED`.
+- Production commit `ded7f4c94af0c91af82bdd090d545be56bdd0d12` adds the extractor with the proven short-prompt profile (temperature 0, top_p 1, max_tokens 512, seed 42, repeat_penalty 1.15) and filters combined-continuity `attached_objects` immediately after Subject guarding.
+- User preference for future narrow extractor tests: target ~50 probes per batch when practical.
