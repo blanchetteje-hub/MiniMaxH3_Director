@@ -349,3 +349,21 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   Both reuse the accepted Segment-1 RAW from acceptance 1774; only the final H3 candidate differs.
 - Queued 20 narrow action-preservation probes `h3-action-1777` through `h3-action-1796` across domestic, fantasy, sci-fi, transfer, repair, travel, and magical cases. Expected labels cover preserved, omitted, and materially changed actions.
 - Do not wire this extractor as a production rejection gate until the 20B probe matrix is graded. Once stable, production should reject/regenerate at the final H3 boundary before continuity extraction or ComfyUI.
+
+
+### 2026-09-27 — final-H3 action extractor promoted to production
+
+- Probe cap calibration on the previous GPT-OSS-20B model:
+  - 32 tokens: 20/20 truncated before JSON.
+  - 64 tokens: 20/20 truncated before JSON.
+  - 128 tokens: 10/20 normal completions.
+  - 256 tokens: first baseline batch completed 20/20; semantic stress batch completed 19/20.
+  - 384 tokens: semantic stress rerun completed 20/20 normally.
+- Production-relevant decision is binary: `PRESERVED` passes; both `OMITTED` and `CHANGED` reject. Across the completed 256/384 semantic stress cases, the extractor was 39/39 on that binary decision.
+- Exact three-way labels are intentionally not required for correctness because the model sometimes calls a missing action `CHANGED` instead of `OMITTED`; both mean the final H3 failed to preserve RAW.
+- Commit `ca9d68bda53b99b7eea98efad1bde0e570412ba6`:
+  - removes the stale/undefined `_active_validator_settings()` dependency from this extractor;
+  - pins the proven local profile directly: temperature 0, top_p 1, max_tokens 384, seed 42, repeat_penalty 1.15;
+  - runs `validate_final_h3_action_preservation()` immediately after `build_h3_prompt()`;
+  - raises `BeatGenerationError` on any non-PRESERVED RAW micro-action, before continuity extraction or ComfyUI.
+- Continue testing in ~20-case batches. Prefer generic, domain-diverse cases and focus on false PRESERVED decisions, because false rejection is recoverable via regeneration while false PRESERVED would allow a broken final prompt through.
