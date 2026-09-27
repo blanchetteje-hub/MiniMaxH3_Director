@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-extract-1575",
+  "kind": "llama_chat",
+  "started_at": 1790472185.7404432,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier-side placement only. Do not validate story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\nairlock chamber\n\nNAMED SUBJECTS\nDax; Mira\n\nSOURCE TEXT\nDax helps Mira through the airlock into the chamber but remains outside.\n\nFor each named subject, classify only where that subject is at the END of the text relative to DESTINATION.\nAllowed relation values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED.\nUse UNSPECIFIED if the text does not establish the final side. Temporary entry does not count if the subject returns before the end. Do not decide whether the scene is valid. Do not infer that a helper follows someone unless the text establishes it.\nReturn JSON only with one key subjects. subjects is an array containing one object per named subject, each with exactly entity and relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-rz8vcxbyo6rhm28qkesz",
+    "object": "chat.completion",
+    "created": 1790472185,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"subjects\":[{\"entity\":\"Dax\",\"relation\":\"NOT_AT_DESTINATION\"},{\"entity\":\"Mira\",\"relation\":\"AT_DESTINATION\"}]}",
+          "reasoning": "We need to extract final barrier-side placement relative to DESTINATION \"airlock chamber\". Named subjects: Dax; Mira.\n\nText: \"Dax helps Mira through the airlock into the chamber but remains outside.\"\n\nInterpretation: Destination is airlock chamber. At end of text, where are each? The sentence says Dax helps Mira through the airlock into the chamber but remains outside. So at end, Mira is inside the chamber (airlock chamber). Dax remains outside.\n\nThus relation for Mira: AT_DESTINATION. For Dax: NOT_AT_DESTINATION.\n\nReturn JSON with subjects array of objects {entity:\"Mira\",relation:\"AT_DESTINATION\"} etc.\n\nCheck order? Probably same as named subjects list: Dax then Mira. So first object entity \"Dax\" relation \"NOT_AT_DESTINATION\". Second \"Mira\" AT_DESTINATION.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 241,
+      "completion_tokens": 218,
+      "total_tokens": 459,
+      "completion_tokens_details": {
+        "reasoning_tokens": 180
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790472189.2879624,
+  "status": "ok"
+}
