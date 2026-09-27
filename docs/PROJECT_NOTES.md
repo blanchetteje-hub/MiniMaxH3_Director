@@ -58,6 +58,105 @@ Treat the local 20B-class model as capable but instruction-fragile.
 - Validators should make one narrow decision and return a minimal machine-readable result.
 - Use the larger GPT-5.6 Sol evaluator for fuzzy gold comparison rather than expecting the local 20B model to judge final artistic equivalence.
 
+## Empirical development heuristics
+
+These rules summarize repeated findings from MiniMax H3 acceptance work. Treat them as defaults unless new end-to-end evidence contradicts them.
+
+### Prefer extraction + deterministic decision over holistic LLM judgment
+
+When Python already owns the authoritative rule or expected state, do not ask the local model to decide overall validity.
+
+Prefer:
+
+1. Python supplies canonical truth / the expected invariant.
+2. A very small local-LLM call extracts one fuzzy fact from generated text.
+3. Python compares the extracted fact to canonical truth and decides validity.
+
+Examples include terminal-target state, finite-vs-ongoing completion, locked-boundary traversal, and observed barrier final state.
+
+> **Canonical Python truth + very small local-LLM extractors + deterministic comparisons.**
+
+The local model should answer the smallest semantic question necessary. It should not decide a deterministic consequence Python can derive.
+
+### LLM understands; Python calculates
+
+Use the local LLM for narrow semantic classification where language understanding is required.
+
+Use Python for:
+- counting and arithmetic;
+- chapter/beat allocation after semantic classifications are known;
+- exact source-span ownership;
+- ordering and structural integrity;
+- application of typed state effects;
+- expected final-state comparisons;
+- authorization derived from canonical state;
+- deterministic boundary and refresh scheduling.
+
+Repeated testing showed that the 20B model can classify the underlying semantics correctly and still fail when asked to perform the resulting bookkeeping or arithmetic.
+
+### Fix the earliest incorrect stage
+
+For every acceptance failure, trace backward until the first artifact that is wrong. Fix that stage rather than compensating downstream.
+
+Examples:
+- wrong Beat -> fix Beat CREATE/VALIDATE, not Director;
+- correct Beat but wrong RAW scene -> fix Director Request 1;
+- correct RAW scene but incorrect H3 translation -> fix Request 2;
+- wrong canonical state -> fix the source/state ownership that created it.
+
+A downstream stage must not repair an upstream semantic error merely because it has enough context to notice it.
+
+### Prompt failure usually means reduce responsibility before adding rules
+
+The local 20B is capable but instruction-fragile.
+
+When an important rule already exists and is still ignored, do not automatically add another paragraph of instructions. First consider:
+- shortening the prompt;
+- removing unrelated context;
+- splitting out one narrow extraction;
+- moving deterministic consequences into Python;
+- removing duplicated authority.
+
+When a local-model failure recurs despite explicit prompt instructions, treat that as evidence that the responsibility may be in the wrong place.
+
+### Do not create competing narrative authority
+
+`story.txt` is the one narrative source of truth.
+
+Do not ask an LLM to rewrite authoritative source into an intermediate narrative artifact when exact source spans or IDs can serve the same purpose.
+
+Generated summaries, outlines, continuity prose, and beats are derived artifacts. They may help execution but may never become independent permission to invent, omit, replace, or reinterpret story events.
+
+### Synthetic probes diagnose; acceptance decides
+
+Synthetic probes are useful for isolating suspected weaknesses, comparing prompt contracts, checking generic behavior, and exposing instruction instability.
+
+They are not, by themselves, a reason to redesign a production path that is working.
+
+Prefer the smallest change supported by:
+1. a demonstrated production/acceptance failure;
+2. focused generic probes;
+3. a fresh end-to-end acceptance showing the failure moved downstream.
+
+Do not chase every synthetic edge case at the cost of a stable real path.
+
+### Preserve stable architecture until evidence reopens it
+
+Once an architectural responsibility has repeatedly passed production acceptance, treat it as provisionally closed.
+
+Do not reopen chaptering, allocation, beat ownership, state architecture, or another stable layer merely because a later stage fails. Reopen it only when fresh evidence traces the earliest incorrect artifact back to that layer.
+
+### Narrow extractors are not new semantic pipelines
+
+A narrow extractor does not constitute a new CREATE/VALIDATE/REPAIR subsystem.
+
+It is an implementation mechanism inside an existing acceptance loop when:
+- Python owns the invariant;
+- generated natural language must be observed semantically;
+- deterministic parsing alone cannot recover the fact reliably.
+
+Keep extractors independent, tiny, and purpose-specific rather than combining them into another general validator.
+
 ## Chapter-first planning architecture
 
 The system is conceptually writing a book from `story.txt`.
