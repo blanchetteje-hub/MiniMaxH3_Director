@@ -1,0 +1,24 @@
+{
+  "kind": "llama_chat",
+  "job_id": "continuity-attachment-1980",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge one candidate continuity attachment. Return JSON only. ATTACHED = the object/substance is physically attached, embedded, worn, strapped, clipped, stuck, coated, wrapped, or otherwise fixed to the named Subject at the final frame. NOT_ATTACHED = the Subject merely holds, carries, touches, supports, or is near the object, or the object is attached to something else. UNSPECIFIED = the text does not establish whether it is attached. Judge only the supplied final-frame text."
+    },
+    {
+      "role": "user",
+      "content": "SUBJECT: Priya\nCANDIDATE ATTACHED OBJECT: IV tube\nFINAL-FRAME TEXT: An IV tube is taped to Priya's arm.\n\nReturn {\"status\":\"ATTACHED|NOT_ATTACHED|UNSPECIFIED\"}."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 1,
+  "max_tokens": 512,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "timeout_seconds": 600,
+  "metadata": {
+    "expected_status": "ATTACHED",
+    "purpose": "continuity_attachment_probe"
+  }
+}
