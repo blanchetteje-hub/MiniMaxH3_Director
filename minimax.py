@@ -25601,6 +25601,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "run_id": run_id,
                         "source_sha256": (run_config or {}).get("source_sha256"),
                         "purpose": "director_barrier_side_extract",
+                        "use_beat_validation_settings": True,
                         "segment": segment_number,
                         "attempt": request1_attempt,
                         "topology_index": topology_index,
@@ -25618,7 +25619,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                                     ),
                                     response_format=DIRECTOR_BARRIER_SIDE_RESPONSE_FORMAT,
                                     history_metadata=topology_metadata,
-                                    **_active_beat_validation_settings(),
                                 ),
                                 topology_subjects,
                             )
