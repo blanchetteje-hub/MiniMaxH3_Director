@@ -28770,6 +28770,16 @@ def _run_main(
             time.sleep(1)
 
 
+# Return a cheap identity for the current durable generation checkpoint.
+def _checkpoint_file_signature(path=GENERATION_STATE_FILE):
+    """Return a cheap signature proving whether this attempt changed a checkpoint."""
+    try:
+        stat = os.stat(path)
+    except OSError:
+        return None
+    return (stat.st_mtime_ns, stat.st_size)
+
+
 # Return the next segment after the contiguous committed checkpoint prefix.
 def _checkpoint_recovery_resume_segment(path=GENERATION_STATE_FILE):
     """Return a safe resume point for an automatic recovery attempt."""
@@ -28806,6 +28816,7 @@ def _checkpoint_recovery_resume_segment(path=GENERATION_STATE_FILE):
 def main():
     recovery_resume_segment = None
     while True:
+        checkpoint_signature_before = _checkpoint_file_signature()
         try:
             # Recreate worker pools after every failed attempt. Their context
             # managers drain/cancel the old work before the next recovery pass.
@@ -28837,16 +28848,25 @@ def main():
             # Explicit successful exits such as --help remain user-controlled.
             if getattr(error, "code", 0) in (0, None):
                 raise
-            recovery_resume_segment = _checkpoint_recovery_resume_segment()
+            # argparse/setup rejection occurs before a trustworthy current-run
+            # checkpoint exists. Retry setup rather than consuming stale state.
+            recovery_resume_segment = 1
             print(
                 f"WARNING: setup rejected the current attempt ({error}); "
-                f"retrying from segment {recovery_resume_segment}.",
+                "retrying setup from the beginning.",
                 file=sys.stderr,
                 flush=True,
             )
             time.sleep(1)
         except Exception as error:
-            recovery_resume_segment = _checkpoint_recovery_resume_segment()
+            checkpoint_signature_after = _checkpoint_file_signature()
+            if (
+                checkpoint_signature_after is not None
+                and checkpoint_signature_after != checkpoint_signature_before
+            ):
+                recovery_resume_segment = _checkpoint_recovery_resume_segment()
+            elif recovery_resume_segment is None:
+                recovery_resume_segment = 1
             print(
                 f"WARNING: recoverable generation failure: {error}",
                 file=sys.stderr,
