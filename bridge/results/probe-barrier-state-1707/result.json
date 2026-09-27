@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-state-1707",
+  "kind": "llama_chat",
+  "started_at": 1790528730.2439167,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier state only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nshelter hatch\n\nRAW SCENE\nThe hatch is dented and cracked but still shut and attached.\n\nClassify only the final visible/established state of BARRIER at the END of RAW SCENE. Allowed values: LOCKED, CLOSED, OPEN, BROKEN, DESTROYED, UNSPECIFIED. LOCKED includes locked, sealed, barred, or bolted. CLOSED means intact and shut/closed without an established lock. OPEN means intact and open/passable. BROKEN means the barrier is physically damaged, breached, warped, cracked, bent, or partly detached but still physically exists as that barrier; choose BROKEN even if the damage leaves a passable gap. DESTROYED means the barrier is gone, removed, or no longer exists/functions as a barrier. Structural state takes precedence over passability: damaged-but-present = BROKEN, absent/nonfunctional = DESTROYED, intact-and-passable = OPEN. UNSPECIFIED means RAW SCENE does not establish enough information. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-7rgr7p321xdy76igyim3er",
+    "object": "chat.completion",
+    "created": 1790528730,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"BROKEN\"}",
+          "reasoning": "We need to classify final visible/established state of BARRIER at end of RAW SCENE.\n\nBarrier: \"shelter hatch\". Raw Scene: \"The hatch is dented and cracked but still shut and attached.\"\n\nSo it's a hatch, which is closed (shut) but damaged. According to classification: BROKEN means physically damaged, breached, warped, cracked, bent, or partly detached but still physically exists as that barrier; choose BROKEN even if the damage leaves a passable gap.\n\nThe hatch is dented and cracked but still shut and attached. So it's broken (damaged). It's not destroyed because it still exists. Not open because it's closed. So status: \"BROKEN\".\n\nReturn JSON {\"status\":\"BROKEN\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 311,
+      "completion_tokens": 167,
+      "total_tokens": 478,
+      "completion_tokens_details": {
+        "reasoning_tokens": 151
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790528733.1287644,
+  "status": "ok"
+}
