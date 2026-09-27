@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1623",
+  "kind": "llama_chat",
+  "started_at": 1790481279.9922898,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nSera kills the wounded beast.\n\nRAW SCENE\nThe beast is bleeding but still breathing and snapping at Sera. Sera strikes its neck; it stops moving.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-rr3k4u3luqxo907orvrzd",
+    "object": "chat.completion",
+    "created": 1790481280,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nGiven source assigns a terminal action: \"Sera kills the wounded beast.\" So target is the beast, and action is kill (terminal). We inspect the target of that newly assigned action immediately before the terminal action begins. That means we look at RAW SCENE just before Sera strikes its neck? The raw scene says: \"The beast is bleeding but still breathing and snapping at Sera. Sera strikes its neck; it stops moving.\" So before the strike, the beast is bleeding, still breathing, snapping at Sera. Is that active/unresolved or already terminal? It's alive (breathing), so it's ACTIVE_OR_UNRESOLVED.\n\nThus status: \"ACTIVE_OR_UNRESOLVED\". Return JSON {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 235,
+      "completion_tokens": 185,
+      "total_tokens": 420,
+      "completion_tokens_details": {
+        "reasoning_tokens": 165
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481283.0812795,
+  "status": "ok"
+}
