@@ -1400,6 +1400,32 @@ DIRECTOR_BARRIER_SIDE_RESPONSE_FORMAT = {
     },
 }
 
+DIRECTOR_BARRIER_STATE_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_barrier_state_observation",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "LOCKED",
+                        "CLOSED",
+                        "OPEN",
+                        "BROKEN",
+                        "DESTROYED",
+                        "UNSPECIFIED",
+                    ],
+                },
+            },
+            "required": ["status"],
+            "additionalProperties": False,
+        },
+    },
+}
+
 DIRECTOR_BARRIER_TRAVERSAL_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
@@ -25314,6 +25340,94 @@ def compare_director_barrier_topology(contract, observation):
     return issues
 
 
+def build_director_barrier_state_contracts(assigned_state_effects):
+    """Return source-owned final barrier states for the active beat."""
+    try:
+        effects = _validate_state_effects(list(assigned_state_effects or []))
+    except (TypeError, ValueError):
+        return []
+
+    def normalize_expected(value):
+        mapping = {
+            "locked": "LOCKED",
+            "blocked": "LOCKED",
+            "closed": "CLOSED",
+            "open": "OPEN",
+            "unlocked": "OPEN",
+            "broken": "BROKEN",
+            "destroyed": "DESTROYED",
+        }
+        return mapping.get(str(value or "").casefold())
+
+    contracts = []
+    for effect in effects:
+        if effect.get("op") != "set_barrier_state":
+            continue
+        expected = normalize_expected(effect.get("value"))
+        if not expected:
+            continue
+        contracts.append({
+            "barrier": effect["entity"],
+            "expected": expected,
+            "source_state": effect["value"],
+        })
+    return contracts
+
+
+def build_director_barrier_state_messages(barrier, raw_scene):
+    """Ask the local model only for one barrier's final visible state."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract final barrier state only. Do not judge story validity. "
+                "Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"BARRIER\n{barrier}\n\nRAW SCENE\n"
+                + str(raw_scene or "")
+                + "\n\nClassify only the final visible/established state of "
+                "BARRIER at the END of RAW SCENE. Allowed values: LOCKED, CLOSED, "
+                "OPEN, BROKEN, DESTROYED, UNSPECIFIED. LOCKED includes locked, "
+                "sealed, barred, or bolted. CLOSED means intact and shut/closed "
+                "without an established lock. OPEN means intact and open/passable. "
+                "BROKEN means the barrier is physically damaged, breached, warped, "
+                "cracked, bent, or partly detached but still physically exists as "
+                "that barrier; choose BROKEN even if the damage leaves a passable "
+                "gap. DESTROYED means the barrier is gone, removed, or no longer "
+                "exists/functions as a barrier. Structural state takes precedence "
+                "over passability: damaged-but-present = BROKEN, absent/nonfunctional "
+                "= DESTROYED, intact-and-passable = OPEN. UNSPECIFIED means RAW "
+                "SCENE does not establish enough information. Do not decide whether "
+                "the scene is valid."
+            ),
+        },
+    ]
+
+
+def parse_director_barrier_state_observation(raw_result):
+    """Parse one strict barrier-state extraction."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"status"}:
+        raise ValueError("Barrier-state response must contain only status.")
+    status = candidate["status"]
+    if status not in {
+        "LOCKED",
+        "CLOSED",
+        "OPEN",
+        "BROKEN",
+        "DESTROYED",
+        "UNSPECIFIED",
+    }:
+        raise ValueError("Barrier-state response contains an invalid status.")
+    return status
+
+
 def build_director_closed_boundary_contracts(
     authoritative_opening_state,
     assigned_state_effects,
@@ -25895,6 +26009,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     request1_barrier_binding = build_director_barrier_binding_contract(
         bundle.get("assigned_state_effects", [])
     )
+    request1_barrier_state_contracts = build_director_barrier_state_contracts(
+        bundle.get("assigned_state_effects", [])
+    )
     request1_closed_boundary_contracts = build_director_closed_boundary_contracts(
         bundle.get("opening_state", ""),
         bundle.get("assigned_state_effects", []),
@@ -25998,6 +26115,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         independent_completion = None
         barrier_topology_issues = []
         barrier_traversal_issues = []
+        barrier_state_issues = []
         terminal_target_issue = ""
         current_beat_for_completion = str(
             bundle.get("current_beat_text") or ""
@@ -26187,6 +26305,51 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     and not barrier_topology_issues
                     and not barrier_traversal_issues
                 ):
+                    for state_index, state_contract in enumerate(
+                        request1_barrier_state_contracts,
+                        start=1,
+                    ):
+                        state_metadata = {
+                            "run_id": run_id,
+                            "source_sha256": (run_config or {}).get("source_sha256"),
+                            "purpose": "director_barrier_state_extract",
+                            "use_beat_validation_settings": True,
+                            "segment": segment_number,
+                            "attempt": request1_attempt,
+                            "state_index": state_index,
+                            "conditioning_mode": conditioning_mode,
+                            "opening_state_sha256": bundle.get("opening_state_sha256"),
+                        }
+                        try:
+                            observed_state = parse_director_barrier_state_observation(
+                                ask_llm(
+                                    build_director_barrier_state_messages(
+                                        state_contract["barrier"],
+                                        raw_scene,
+                                    ),
+                                    response_format=DIRECTOR_BARRIER_STATE_RESPONSE_FORMAT,
+                                    history_metadata=state_metadata,
+                                )
+                            )
+                        except (TypeError, ValueError, json.JSONDecodeError) as error:
+                            barrier_state_issues.append(
+                                "barrier-state extractor returned unusable output: "
+                                + str(error)
+                            )
+                            break
+                        if observed_state != state_contract["expected"]:
+                            barrier_state_issues.append(
+                                f"{state_contract['barrier']} must end "
+                                f"{state_contract['source_state']}, but RAW SCENE "
+                                f"ended {observed_state.lower().replace('_', ' ')}."
+                            )
+                            break
+                if (
+                    not terminal_target_issue
+                    and not barrier_topology_issues
+                    and not barrier_traversal_issues
+                    and not barrier_state_issues
+                ):
                     break
                 if barrier_topology_issues:
                     print(
@@ -26198,6 +26361,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     print(
                         "Director Request 1 closed-boundary traversal check failed: "
                         + "; ".join(barrier_traversal_issues),
+                        flush=True,
+                    )
+                if barrier_state_issues:
+                    print(
+                        "Director Request 1 barrier final-state check failed: "
+                        + "; ".join(barrier_state_issues),
                         flush=True,
                     )
             else:
@@ -26248,6 +26417,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             completion_failures.append(
                 "closed-boundary traversal check: "
                 + "; ".join(barrier_traversal_issues)
+            )
+        if barrier_state_issues:
+            completion_failures.append(
+                "barrier final-state check: " + "; ".join(barrier_state_issues)
             )
         request1_feedback = (
             "RAW SCENE STRUCTURE ERROR: "
