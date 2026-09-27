@@ -10085,8 +10085,12 @@ def build_beat_validation_messages(
                     "unless the assigned typed effects authorize opening/release. "
                     "While this boundary remains closed, an outside entity also "
                     "cannot reach, grab, bite, strike, hand something to, receive "
-                    "something from, or otherwise physically interact across the "
-                    "boundary with a contained occupant."
+                    "something from, retrieve/use an object located inside, or "
+                    "otherwise physically interact across the boundary with an "
+                    "occupant, prop, target, or other interior content. Do not stage "
+                    "a required action/object inside the protected destination when "
+                    "the acting subject remains outside and no opening/release is "
+                    "authorized."
                 )
             else:
                 lines.append(
@@ -14469,9 +14473,13 @@ def build_beat_generation_messages(
                             "object, body part, or other physical thing may cross into "
                             "or out of that destination unless this beat's typed effects "
                             "authorize opening/release; while closed, outside entities "
-                            "cannot reach, grab, bite, strike, exchange objects with, or "
-                            "otherwise physically interact across the boundary with "
-                            "those contained occupants."
+                            "cannot reach, grab, bite, strike, exchange objects with, "
+                            "retrieve/use an object located inside, or otherwise "
+                            "physically interact across the boundary with any occupant, "
+                            "prop, target, or other interior content; do not stage a "
+                            "required action/object inside the protected destination "
+                            "when its actor remains outside and no opening/release is "
+                            "authorized."
                         )
                     else:
                         closed_boundary_lines.append(
