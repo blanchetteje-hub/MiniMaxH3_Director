@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action384-1916",
+  "kind": "llama_chat",
+  "started_at": 1790549485.512219,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nSera places the glowing crystal into the pedestal; the portal ignites.\n\nFINAL H3 MICRO-ACTION:\nSera sets the luminous crystal in the pedestal and the portal flares to life.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yyy4o5e27ofltalkbh5lv",
+    "object": "chat.completion",
+    "created": 1790549485,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"PRESERVED\"}",
+          "reasoning": "We need compare RAW micro-action with final H3 micro-action. The raw: \"Sera places the glowing crystal into the pedestal; the portal ignites.\" Final: \"Sera sets the luminous crystal in the pedestal and the portal flares to life.\"\n\nCheck visible/audible action: Sera places vs sets - same action of putting crystal into pedestal. Material result: crystal is placed, portal ignites vs flares to life. Both describe portal lighting up. The adjectives differ: glowing vs luminous; but that's harmless detail. So PRESERVED.\n\nReturn JSON {\"status\":\"PRESERVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 217,
+      "completion_tokens": 138,
+      "total_tokens": 355,
+      "completion_tokens_details": {
+        "reasoning_tokens": 121
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790549487.5676808,
+  "status": "ok"
+}
