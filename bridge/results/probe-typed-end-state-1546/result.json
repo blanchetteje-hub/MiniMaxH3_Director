@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1546",
+  "kind": "llama_chat",
+  "started_at": 1790471861.2671397,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nArin starts before the portal with Nia and Sol.\n\nASSIGNED SOURCE\nArin sends Nia and Sol through the portal.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_location\",\"entity\":\"Nia\",\"value\":\"far chamber\"},{\"op\":\"set_location\",\"entity\":\"Sol\",\"value\":\"far chamber\"}]\n\nRAW SCENE\nNia and Sol pass through the portal while Arin stays on the original side.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5dopi8q60ao2n6fd6s6hnz",
+    "object": "chat.completion",
+    "created": 1790471861,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to validate raw scene against assigned typed end state.\n\nOpening state: Arin starts before portal with Nia and Sol. So all three on original side (near chamber?).\n\nAssigned source: Arin sends Nia and Sol through the portal. So action is that Arin causes them to go through portal.\n\nTyped end state: set_location for Nia and Sol to far chamber.\n\nRaw scene: \"Nia and Sol pass through the portal while Arin stays on the original side.\" That matches typed effect: they are in far chamber? It says they pass through, so final location is far chamber. So typed effects match raw. Also all typed effects present: two set_location ops for Nia and Sol. Raw scene includes both passing through.\n\nCheck rule 1: For already-known named subjects, barriers, items, typed end state authoritative. If RAW ends with one of them newly relocated etc require matching typed effect. Here they are relocated; we have matching typed effect. Good.\n\nRule 2: Temporary motion allowed when entity returns to opening state by the end. Not relevant.\n\nRule 3: Every listed typed effect must be true in RAW's final state. Yes, Nia and Sol far chamber.\n\nRule 4: Also require concrete assigned source work completed. Arin sends them through portal; raw says they pass while Arin stays original side. That implies Arin sent them? It could mean they passed on their own? But \"Arin sends\" means he causes them to go. Raw scene states Nia and Sol pass through the portal while Arin stays on original side. Does that imply Arin sent them? Could be ambiguous: They might have gone by themselves, but Arin staying suggests he didn't move with them. The action of sending could still be implied if they passed because of him. But raw scene doesn't explicitly say \"Arin sends\" or \"Arin causes\". It just says Nia and Sol pass through while Arin stays on original side. That might satisfy the source: Arin's presence before portal, he sends them; they go.\n\nBut rule 4: require concrete assigned source work to be completed. Does raw scene show that? The typed end state shows location change. But does it show that Arin sent them? It says \"Nia and Sol pass through the portal while Arin stays on original side.\" That implies they passed, but not necessarily that Arin sent them. However, if we interpret \"pass\" as being moved by portal due to Arin's action, it's fine.\n\nBut maybe rule 4 means that raw scene must include mention of Arin sending them? The typed end state only shows location changes; source is about the cause. Raw scene: Nia and Sol pass through while Arin stays on original side. That indicates they passed but not necessarily sent by Arin. But \"Arin sends\" could be implied.\n\nWe need to decide validity. Lik",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 331,
+      "completion_tokens": 600,
+      "total_tokens": 931,
+      "completion_tokens_details": {
+        "reasoning_tokens": 597
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471870.5977292,
+  "status": "ok"
+}
