@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-extract-1562",
+  "kind": "llama_chat",
+  "started_at": 1790472104.8955615,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier-side placement only. Do not validate story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\nbasement\n\nNAMED SUBJECTS\nAmy; Will; Amber\n\nRAW TEXT\nWill and Amber enter the basement. Amy follows them inside and locks the door behind all three.\n\nFor each named subject, classify only where that subject is at the END of the text relative to DESTINATION.\nAllowed relation values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED.\nUse UNSPECIFIED if the text does not establish the final side. Temporary entry does not count if the subject returns before the end. Do not decide whether the scene is valid. Do not infer that a helper follows someone unless the text establishes it.\nReturn JSON only with one key subjects. subjects is an array containing one object per named subject, each with exactly entity and relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ehhc0omxf9iiiehlm9c5c7",
+    "object": "chat.completion",
+    "created": 1790472104,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"subjects\":[{\"entity\":\"Amy\",\"relation\":\"AT_DESTINATION\"},{\"entity\":\"Will\",\"relation\":\"AT_DESTINATION\"},{\"entity\":\"Amber\",\"relation\":\"ATDESTINATION\"}]}",
+          "reasoning": "We need to parse: Destination basement.\n\nNamed subjects Amy; Will; Amber.\n\nText: \"Will and Amber enter the basement. Amy follows them inside and locks the door behind all three.\"\n\nAt end of text, where are they relative to destination? All three are in basement (entered). They lock door behind all three - still inside basement. So relation AT_DESTINATION for each.\n\nReturn JSON with subjects array: objects {entity:\"Amy\",relation:\"AT_DESTINATION\"}, etc.\n\nCheck order maybe as listed: Amy; Will; Amber. Provide that order.\n\nThus output:\n\n{\n  \"subjects\":[\n    {\"entity\":\"Amy\",\"relation\":\"AT_DESTINATION\"},\n    {\"entity\":\"Will\",\"relation\":\"AT_DESTINATION\"},\n    {\"entity\":\"Amber\",\"relation\":\"AT_DESTINATION\"}\n  ]\n}\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 245,
+      "completion_tokens": 210,
+      "total_tokens": 455,
+      "completion_tokens_details": {
+        "reasoning_tokens": 165
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790472108.2813492,
+  "status": "ok"
+}
