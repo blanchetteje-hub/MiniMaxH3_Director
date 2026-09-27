@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1629",
+  "kind": "llama_chat",
+  "started_at": 1790481313.7306693,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe team completes the seal.\n\nRAW SCENE\nThe breach is still open and venting air. The team closes the final clamp and the seal holds.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2hef96nt6yxdiob9if2toj",
+    "object": "chat.completion",
+    "created": 1790481313,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nThe source assigns a terminal action. Inspect target of that newly assigned action immediately before the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if still active, intact enough; ALREADY_TERMINAL if already dead etc.; UNSPECIFIED if RAW establishes neither.\n\nWe have \"ASSIGNED SOURCE\" and \"RAW SCENE\". The source assigns a terminal action. We need to inspect the target of that newly assigned action immediately before it begins. But we don't know what the target is from raw scene? Let's parse:\n\nRaw Scene: \"The breach is still open and venting air. The team closes the final clamp and the seal holds.\"\n\nSo the team closes the final clamp, sealing the breach.\n\nWhich terminal action was assigned by source? Likely closing the final clamp is a terminal action on the breach (the target). So before it begins, the breach is still open and venting air: it's active. So status ACTIVE_OR_UNRESOLVED.\n\nThus output JSON {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 232,
+      "completion_tokens": 241,
+      "total_tokens": 473,
+      "completion_tokens_details": {
+        "reasoning_tokens": 221
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481317.5953016,
+  "status": "ok"
+}
