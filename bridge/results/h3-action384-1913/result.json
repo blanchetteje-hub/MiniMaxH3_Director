@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action384-1913",
+  "kind": "llama_chat",
+  "started_at": 1790549473.4641778,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nThe pilot pulls the emergency lever; the landing gear deploys.\n\nFINAL H3 MICRO-ACTION:\nThe pilot yanks the emergency lever and the landing gear extends.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-0bvdortzwvja9wtkbtowx2",
+    "object": "chat.completion",
+    "created": 1790549473,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"PRESERVED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"The pilot pulls the emergency lever; the landing gear deploys.\" Final H3 micro-action: \"The pilot yanks the emergency lever and the landing gear extends.\"\n\nCheck if same visible/audible action and material result remain. The action: pulling vs yanking - synonyms, same action. Result: landing gear deploys vs extends - synonyms. So PRESERVED.\n\nReturn JSON only with status field.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 211,
+      "completion_tokens": 107,
+      "total_tokens": 318,
+      "completion_tokens_details": {
+        "reasoning_tokens": 90
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790549475.1300488,
+  "status": "ok"
+}
