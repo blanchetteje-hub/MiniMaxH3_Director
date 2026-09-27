@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-traversal-1666",
+  "kind": "llama_chat",
+  "started_at": 1790525023.8860133,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract barrier traversal only. Do not judge whether the scene is valid or physically possible. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\ngarage door\n\nRAW SCENE\nThe dog runs along the garage door, disappears briefly behind a parked truck, then is shown in the driveway; RAW SCENE never establishes whether it used the garage doorway.\n\nClassify only whether RAW SCENE visibly establishes that any subject moves from one side of BARRIER through its boundary to the other side. Return TRAVERSED when a crossing through the named boundary is established. Return NOT_TRAVERSED when subjects only approach, touch, strike, look through, wait at, or remain on one side of the barrier. Return UNSPECIFIED when RAW SCENE does not establish enough spatial information to tell. Do not infer validity from whether the barrier is open, closed, locked, broken, magical, or intact. Do not infer an unseen route. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-l9x2iarh0i0v4as8t23xc8",
+    "object": "chat.completion",
+    "created": 1790525023,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"UNSPECIFIED\"}",
+          "reasoning": "We need to parse the scenario.\n\nBarrier: garage door\n\nRaw scene description:\n\n\"The dog runs along the garage door, disappears briefly behind a parked truck, then is shown in the driveway; RAW SCENE never establishes whether it used the garage doorway.\"\n\nSo we have a dog running along the garage door. It disappears behind a parked truck (so maybe goes behind truck). Then it's shown in the driveway.\n\nWe need to determine if any subject moves from one side of BARRIER through its boundary to the other side. The barrier is the garage door. Does the scene establish that the dog moved across the garage door? We have: runs along the garage door, disappears briefly behind a parked truck (so maybe goes behind truck), then shown in driveway.\n\nBut we don't know if it used the garage doorway or not. So it's unspecified whether it crossed the barrier. The dog might be on one side of the garage door and remains there; but \"runs along\" could mean along the edge, but doesn't cross. It disappears behind a parked truck: maybe that is behind the truck, which may be on other side? But we don't know relative positions.\n\nThus status should be UNSPECIFIED because RAW SCENE never establishes whether it used garage doorway.\n\nReturn JSON {\"status\":\"UNSPECIFIED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 263,
+      "completion_tokens": 275,
+      "total_tokens": 538,
+      "completion_tokens_details": {
+        "reasoning_tokens": 258
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790525028.2620697,
+  "status": "ok"
+}
