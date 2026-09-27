@@ -1,0 +1,24 @@
+{
+  "kind": "llama_chat",
+  "job_id": "raw-coherence-2061",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge whether two consecutive visible micro-actions are physically compatible. Return JSON only. COMPATIBLE = the later action can occur from the state established by the earlier action, including an explicit release, transfer, repositioning, or transition in the later action. CONFLICT = the later action requires the same hand, foot, body position, held object, or other exclusive physical resource to still be in two incompatible states at once, or contradicts an immediately established physical state without a transition. UNSPECIFIED = the text does not establish enough physical state to decide. Ignore style and story quality; judge only immediate physical compatibility."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS MICRO-ACTION:\nIris removes the right glove.\n\nNEXT MICRO-ACTION:\nIris later grips the valve with her bare right hand.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 1,
+  "max_tokens": 512,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "timeout_seconds": 600,
+  "metadata": {
+    "expected_status": "COMPATIBLE",
+    "purpose": "raw_adjacent_physical_coherence_probe"
+  }
+}
