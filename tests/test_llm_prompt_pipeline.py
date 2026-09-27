@@ -753,6 +753,27 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("At 00:00.000, Amy", formatted)
         self.assertIn("At 00:01.500, Amy", formatted)
 
+    def test_completion_prompt_requires_unresolved_target_for_terminal_action(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "Amy kills the final zombie.",
+            "Amy strikes the already-dead zombie corpse again.",
+            assigned_source="Amy kills the final zombie.",
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("active/intact-enough/unresolved target", prompt)
+        self.assertIn("already-dead corpse", prompt)
+        self.assertIn("does not satisfy the source action", prompt)
+
+    def test_director_generation_requires_terminal_transition_from_unresolved_target(self):
+        rules = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
+            segment_seconds=8,
+            story_segment_ending_rules="",
+        )
+        normalized = " ".join(rules.split())
+        self.assertIn("active, intact enough to resolve, or otherwise unresolved", normalized)
+        self.assertIn("already-dead corpse", normalized)
+        self.assertIn("does NOT satisfy a newly assigned terminal action", normalized)
+
     def test_completion_prompt_requires_assigned_action_to_happen_now(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Mara cooks breakfast for Eli.",
