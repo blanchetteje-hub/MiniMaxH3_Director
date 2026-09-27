@@ -1,0 +1,24 @@
+{
+  "kind": "llama_chat",
+  "job_id": "h3-action384-1929",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+    },
+    {
+      "role": "user",
+      "content": "RAW MICRO-ACTION:\nTomas pulls the pin and throws the flare into the tunnel; red light fills it.\n\nFINAL H3 MICRO-ACTION:\nTomas drops the flare behind him, leaving the tunnel dark.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 1,
+  "max_tokens": 384,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "timeout_seconds": 600,
+  "metadata": {
+    "expected_status": "CHANGED",
+    "purpose": "h3_action_preservation_false_preserved_stress"
+  }
+}
