@@ -280,3 +280,26 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - Regression commit `1b69bdacc52c24bf197f827b197b137efe8790a7` proves the real production shape (wrapped event with empty `state_effects`) still yields the basement closed-boundary contract and destination-presence candidate for Amy.
 - Queued `tests-1771` and full `acceptance-1772`.
 - Acceptance checkpoint: after Beat 2 locks Will/Amber in the basement with Amy outside, the destination-presence extractor must now actually run on later candidate beats mentioning Amy and deterministically reject any candidate that places her inside the basement before an authorized opening/release.
+
+
+### 2026-09-27 — acceptance 1772 fixed Beat boundary plumbing; terminal target still ignored supplemental opening fact
+
+- `tests-1771`: 112/113 passed. The sole failure was test-only: an assertion searched the raw multi-line prompt for a sentence that is split by a newline. Commit `00d2b78ec55d037a4dc9830905fc8b7e3f8118ad` checks the normalized prompt instead.
+- `acceptance-1772` completed all 8 segments. The wrapped-effect boundary fix worked:
+  - Beat VALIDATE now receives `PYTHON-OWNED CLOSED BOUNDARIES` after Beat 2.
+  - Accepted Beats 3-7 keep Amy outside the locked basement; no later beat places her inside before Beat 8 release.
+  - Beat 8 explicitly unlocks/opens the basement door and releases Will/Amber.
+- The earliest important regression is again Segment 7's terminal action. Segment 6 continuity says Amy is near **the dead zombie on the kitchen floor**, but Segment 7 RAW begins with a generic `zombie on the floor` and attacks that same body again.
+- The terminal-target extractor did run, but returned `ACTIVE_OR_UNRESOLVED`. Root cause is authority wording:
+  - canonical SOURCE-AUTHORIZED CURRENT STATE does not track the incidental per-segment zombie corpse;
+  - RENDERED CONTINUITY does track it as dead;
+  - the extractor prompt called the whole bundle AUTHORITATIVE OPENING STATE but only explicitly said to treat AUTHORITATIVE OPENING STATE as already true, while also labeling rendered continuity supplemental;
+  - the 20B therefore treated RAW's vaguer `zombie on the floor` wording as alive and ignored the prior rendered dead-state fact.
+- Production commit `dd9b185477684286e2a06de3a7dfecf38d3e2068` makes the narrow terminal extractor's authority rule explicit:
+  - canonical state wins only on conflict;
+  - rendered continuity is still true for opening facts canonical state does not address;
+  - RAW omission or a vaguer noun cannot erase an opening fact;
+  - an opening dead/destroyed/resolved target remains terminal unless RAW visibly establishes revival/restoration.
+- Regression commit `922de00ce1d90ec04e408aa93b250d2d7483f743` locks that prompt contract.
+- Queued `tests-1773` and full `acceptance-1774`.
+- Acceptance checkpoint: Segment 7 must reject any RAW that attacks the dead Segment-6 zombie as the newly assigned “last zombie” kill; it must introduce/show an actually unresolved final zombie before the terminal action.
