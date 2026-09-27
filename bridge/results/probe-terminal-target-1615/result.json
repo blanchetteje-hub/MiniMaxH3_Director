@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1615",
+  "kind": "llama_chat",
+  "started_at": 1790481207.9814894,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nIvo defeats the last guard.\n\nRAW SCENE\nThe wounded guard is still standing and swinging a baton. Ivo knocks him unconscious and ends the fight.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-kt4jeyyqm9jplktlegfl1l",
+    "object": "chat.completion",
+    "created": 1790481207,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nThe source says \"Ivo defeats the last guard.\" So target is the guard? The action is Ivo defeating guard, which is a terminal action. We inspect the target before the terminal action begins. RAW: \"The wounded guard is still standing and swinging a baton. Ivo knocks him unconscious and ends the fight.\"\n\nSo before the terminal action (knocking him unconscious), the guard is still standing and swinging a baton. So he is active, not dead or corpse. Thus status ACTIVE_OR_UNRESOLVED.\n\nReturn JSON: {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 233,
+      "completion_tokens": 149,
+      "total_tokens": 382,
+      "completion_tokens_details": {
+        "reasoning_tokens": 129
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481210.549071,
+  "status": "ok"
+}
