@@ -957,3 +957,18 @@ Current design direction:
 This is intentionally more specific than ordinary continuity because the Amy basement boundary has repeatedly demonstrated instruction-fragile failure. It must remain generic for doors, gates, portals, airlocks, shelters, rooms, vehicles, containment areas, and similar barriers.
 
 The existing typed-effect Director change passes focused deterministic tests: `tests-1560` = 79/79. Direct validity probes showed the remaining weakness: GPT-OSS can still reinterpret helper grammar or over-reason missing effects. Therefore do not rely on direct LLM validity for barrier topology. Probe batch `probe-barrier-extract-1561` through `1580` tests the narrower extraction-only contract before production wiring.
+
+
+### 2026-09-26 — barrier topology extractor accepted; Python now owns validity
+
+- Barrier extraction probes `1561-1580` completed. The 10 RAW-scene cases all produced the intended semantic final-side placement. One RAW case emitted the right meaning with a malformed enum token (`ATDESTINATION`), which the production strict response schema prevents.
+- Source-text cases still showed helper-verb ambiguity (for example guide/get/escort can make the 20B model infer the helper followed). Therefore source prose is never passed to the topology extractor. It reads only the generated RAW SCENE.
+- Production commit `fdcd79da53e55ed54b871d88e29c96aa73dffc6d` adds the barrier-topology path inside the existing Director Request-1 retry loop:
+  - Python derives destination-side expectations from source-owned typed state effects plus canonical opening state;
+  - already-known subjects with an authorized location/containment effect must end at the destination;
+  - an unassigned subject is forbidden from ending there only when canonical opening state establishes that subject started elsewhere;
+  - a narrow LLM call extracts only `AT_DESTINATION | NOT_AT_DESTINATION | UNSPECIFIED` from RAW SCENE;
+  - Python performs the deterministic pass/fail comparison.
+- Commit `b8e5bb2501d581cdfab4e2873dff1b8486db8bb4` routes the extractor through the existing frozen validator-settings mechanism instead of passing internal validator settings directly to `ask_llm`.
+- This specifically avoids treating helper verbs as crossing authority while remaining generic for rooms, doors, gates, portals, shelters, airlocks, vehicles, and containment areas.
+- Focused mailbox regression/acceptance still needs a real local run before this checkpoint is considered accepted. Do not claim the Amy basement regression closed until that run proves Segment 2 leaves Amy on the authorized side while Will/Amber reach the basement.
