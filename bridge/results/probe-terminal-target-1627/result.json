@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1627",
+  "kind": "llama_chat",
+  "started_at": 1790481303.9595487,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nVale eliminates the final attacker.\n\nRAW SCENE\nThe attacker lies injured but conscious, reaching for a weapon. Vale disarms and fatally shoots him.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-vvf015b41k83pf3xnhxxks",
+    "object": "chat.completion",
+    "created": 1790481303,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nThe source says \"Vale eliminates the final attacker.\" So Vale's action is eliminating (terminal). The target of that newly assigned action is the final attacker. We inspect before the terminal action begins. RAW scene: \"The attacker lies injured but conscious, reaching for a weapon. Vale disarms and fatally shoots him.\"\n\nSo before the terminal action starts, the attacker is injured but conscious, still alive. So status ACTIVE_OR_UNRESOLVED.\n\nReturn JSON {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 232,
+      "completion_tokens": 133,
+      "total_tokens": 365,
+      "completion_tokens_details": {
+        "reasoning_tokens": 113
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481306.271198,
+  "status": "ok"
+}
