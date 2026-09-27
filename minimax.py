@@ -867,7 +867,7 @@ AUTHORITY RULES
 - SUBJECT DEFINITIONS establish identity/appearance only.
 - Expand the current assignment only. Preserve source beneficiaries as beneficiaries, not spectators. Do not advance the story.
 - Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
-- If CURRENT BEAT terminally removes/destroys/kills an entity or process, do not carry it forward as active unless CURRENT BEAT restores/restarts it.
+- If CURRENT BEAT terminally removes/destroys/kills/defeats/finishes an entity or process, that target/process must be visibly active, intact enough to resolve, or otherwise unresolved at the start of this beat, and the beat must visibly cause the terminal transition. Striking, mutilating, or interacting with an already-dead corpse, already-destroyed object, severed remnant, or already-resolved process does NOT satisfy a newly assigned terminal action. After the terminal transition, do not carry it forward as active unless CURRENT BEAT restores/restarts it.
 - If a subject is inside/behind a locked or sealed barrier, keep that containment true until CURRENT BEAT explicitly releases or moves them.
 - When people cross a doorway, hatch, gate, or other barrier, only the subjects explicitly named by ASSIGNED SOURCE/CURRENT BEAT as crossing may cross. Every other subject stays on the side where they started unless the source explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other subjects through NEVER implies that the mover/helper follows them. If the barrier then closes or locks, show the two sides explicitly and keep the groups separated until a later beat reopens/releases them.
 - Barrier change is not barrier crossing. Opening, breaking, unlocking, or damaging a boundary does not move the actor through it unless ASSIGNED SOURCE/CURRENT BEAT also assigns entry/crossing.\n- Do not invent wardrobe changes. Any clothing specified in the beat must be part of the response.
@@ -9952,7 +9952,12 @@ construction. Those phrases describe the result/state after X; they do not depic
 the assigned action occurring in this beat. Reject even when the completed state
 matches the desired result and even when later parts of CURRENT JOB are shown
 correctly. Accept only if the candidate also narrates the causative action itself
-(e.g. "Amy strikes the zombie and kills it") in this beat.
+(e.g. "Amy strikes the zombie and kills it") in this beat. If CURRENT JOB assigns
+a terminal action such as kill, destroy, defeat, finish, eliminate, or resolve,
+the candidate must begin that action on an active/intact-enough/unresolved target
+and visibly cause the terminal transition now. Attacking or manipulating a corpse,
+severed remnant, already-destroyed object, or already-resolved process is INVALID
+evidence for that newly assigned terminal action.
 
 A prerequisite, approach, or partial progress is NOT completion of a later required result: if
 CURRENT JOB requires
@@ -25178,7 +25183,7 @@ RAW SCENE
 
 Check only completion and persistent-state compatibility:
 1. ASSIGNED TYPED END STATE is authoritative for persistent final-state changes to already-known tracked state. Require matching typed effects for durable changes such as canonical story location, containment, barrier state, established inventory/readiness items, damage, clothing, or other continuity facts already present in OPENING STATE or explicitly named in TYPED END STATE. A canonical set_location value is coarse story geography/container state, not a camera-scale room position: movement between rooms, hallways, or subareas inside the same established canonical location is ordinary staging and does NOT require another set_location effect. Do NOT treat an incidental consumable, plate, cup, serving prop, or other newly introduced ordinary scene prop as persistent inventory merely because a known subject holds or uses it at the end of RAW. Temporary ordinary prop use and temporary motion are allowed unless SOURCE or OPENING STATE makes them continuity-significant.
-2. Require only the actions, results, and participant roles assigned by SOURCE. The derived beat is staging guidance only: it may make SOURCE more concrete but may NOT add a stricter action, transfer method, prop, destination, or participant requirement. If the derived beat says "hands", "passes", "places", or another specific gesture that SOURCE does not require, do not require that gesture. If SOURCE assigns an action now, RAW must visibly perform that source action in this segment; an existing result or aftermath alone is insufficient.
+2. Require only the actions, results, and participant roles assigned by SOURCE. The derived beat is staging guidance only: it may make SOURCE more concrete but may NOT add a stricter action, transfer method, prop, destination, or participant requirement. If the derived beat says "hands", "passes", "places", or another specific gesture that SOURCE does not require, do not require that gesture. If SOURCE assigns an action now, RAW must visibly perform that source action in this segment; an existing result or aftermath alone is insufficient. If SOURCE assigns a terminal action such as kill, destroy, defeat, finish, eliminate, or resolve, RAW must show an active/intact-enough/unresolved target before that action and then visibly cause the terminal transition. Attacking an already-dead corpse, severed remnant, already-destroyed object, or already-resolved process does not satisfy the source action.
 3. A finite activity needs its visible result. For a consumable or explicit hand-off to named people, the intended recipient must visibly receive, be served, or otherwise gain practical access to the result when immediate receipt is part of SOURCE. Do not prescribe hand-to-hand transfer unless SOURCE itself does. For work merely made FOR someone, completion of the work is enough unless SOURCE explicitly requires delivery. Honor explicit later pickup/storage. Source-assigned spectators remain spectators.
 4. Preserve participant scope. Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it. When ASSIGNED TYPED END STATE contains location/containment changes for only some named subjects, do not give the mover/helper that same persistent location/containment change unless it has its own matching effect. Everyone else must stay on their original side unless SOURCE explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other people through does NOT authorize the mover/helper to follow. RAW is invalid if any unlisted participant crosses. If AUTHORITATIVE BARRIER BINDING is non-empty, that generic barrier name refers specifically to the named destination boundary; locking/closing a different same-type barrier does not satisfy it.
 5. Preserve persistent facts already true in AUTHORITATIVE OPENING STATE unless SOURCE/CURRENT BEAT explicitly changes them. This includes held/equipped items, containment, barrier state, clothing, injuries, and other durable conditions. Reject dropping, losing, freeing, unlocking, removing, or otherwise changing such state as harmless staging.
@@ -25206,6 +25211,7 @@ RAW SCENE
 
 RULES
 - Every explicit action/result in CURRENT BEAT must visibly happen.
+- If CURRENT BEAT assigns a terminal action such as kill, destroy, defeat, finish, eliminate, or resolve, the target/process must be active/intact-enough/unresolved before the action and RAW must visibly cause the terminal transition. An already-dead corpse, severed remnant, already-destroyed object, or already-resolved process cannot satisfy a new terminal action.
 - A finite activity must reach its natural observable result, not merely begin
   or remain underway.
 - If CURRENT BEAT is for named people, every named beneficiary must visibly
