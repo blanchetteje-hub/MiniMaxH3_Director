@@ -25542,31 +25542,52 @@ def build_director_closed_boundary_contracts(
     return contracts
 
 
-def build_director_barrier_traversal_messages(barrier, raw_scene):
-    """Ask the local model only whether RAW SCENE crosses one named boundary."""
+def build_director_barrier_traversal_messages(
+    barrier,
+    raw_scene,
+    destination=None,
+):
+    """Ask the local model only whether RAW SCENE crosses one protected boundary."""
+    destination_text = str(destination or "").strip()
+    protected_section = (
+        f"\n\nPROTECTED DESTINATION\n{destination_text}"
+        if destination_text
+        else ""
+    )
+    destination_rule = (
+        " Return TRAVERSED also when RAW explicitly shows or states any physical "
+        "thing moving from outside PROTECTED DESTINATION to inside it or from "
+        "inside to outside it, even when the barrier noun is not repeated."
+        if destination_text
+        else ""
+    )
     return [
         {
             "role": "system",
             "content": (
-                "Extract barrier traversal only. Do not judge whether the scene "
+                "Extract boundary traversal only. Do not judge whether the scene "
                 "is valid or physically possible. Return JSON only."
             ),
         },
         {
             "role": "user",
             "content": (
-                f"BARRIER\n{barrier}\n\nRAW SCENE\n"
+                f"BOUND BARRIER\n{barrier}"
+                + protected_section
+                + "\n\nRAW SCENE\n"
                 + str(raw_scene or "")
-                + "\n\nClassify only whether RAW SCENE visibly establishes "
-                "that any subject moves from one side of BARRIER through its "
-                "boundary to the other side. Return TRAVERSED when a crossing "
-                "through the named boundary is established. Return NOT_TRAVERSED "
-                "when subjects only approach, touch, strike, look through, wait "
-                "at, or remain on one side of the barrier. Return UNSPECIFIED "
-                "when RAW SCENE does not establish enough spatial information "
-                "to tell. Do not infer validity from whether the barrier is open, "
-                "closed, locked, broken, magical, or intact. Do not infer an "
-                "unseen route."
+                + "\n\nClassify only whether RAW SCENE establishes that any "
+                "person, creature, object, body part, or other physical thing "
+                "crosses this boundary during the scene. Return TRAVERSED when "
+                "a crossing through BOUND BARRIER is established."
+                + destination_rule
+                + " Return NOT_TRAVERSED when things only approach, touch, strike, "
+                "wait near, remain on one side, or are already inside/outside "
+                "without crossing during this scene. Return UNSPECIFIED when the "
+                "scene gives different start/end sides but does not establish how "
+                "the change occurred, or when spatial information is insufficient. "
+                "Do not infer an unseen route. Do not decide whether crossing is "
+                "allowed."
             ),
         },
     ]
@@ -26318,6 +26339,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                                     build_director_barrier_traversal_messages(
                                         boundary_contract["barrier"],
                                         raw_scene,
+                                        boundary_contract.get("destination"),
                                     ),
                                     response_format=DIRECTOR_BARRIER_TRAVERSAL_RESPONSE_FORMAT,
                                     history_metadata=traversal_metadata,
