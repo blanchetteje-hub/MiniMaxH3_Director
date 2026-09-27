@@ -17226,7 +17226,7 @@ def validate_final_h3_action_preservation(
             },
             temperature=0,
             top_p=1,
-            max_tokens=384,
+            max_tokens=512,
             seed=42,
             repeat_penalty=1.15,
         )
