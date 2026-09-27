@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1614",
+  "kind": "llama_chat",
+  "started_at": 1790481201.8639505,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe crew destroys the reactor.\n\nRAW SCENE\nThe reactor is already a burned-out wreck. The crew fires another charge into the wreckage.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-7muwn32r4dvclj8qllfkx6",
+    "object": "chat.completion",
+    "created": 1790481201,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ALREADY_TERMINAL\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nThe scenario: \"ASSIGNED SOURCE The crew destroys the reactor.\" So source assigns a terminal action: destroy reactor. Inspect target of that newly assigned action immediately BEFORE the terminal action begins. That is, before destroying, we check status of reactor. RAW SCENE says: \"The reactor is already a burned-out wreck. The crew fires another charge into the wreckage.\"\n\nSo before destruction, the reactor is a burned-out wreck. Is it still active? It's burnt out; it's a wreck. So likely ALREADY_TERMINAL because it's dead/destroyed/finished.\n\nBut we need to interpret: \"burned-out wreck\" means destroyed already. The crew fires another charge into the wreckage - maybe to finish off. But before action, reactor is burned-out wreck. That suggests it is already terminal (dead). So status ALREADY_TERMINAL.\n\nReturn JSON {\"status\":\"ALREADY_TERMINAL\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 230,
+      "completion_tokens": 214,
+      "total_tokens": 444,
+      "completion_tokens_details": {
+        "reasoning_tokens": 195
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481205.3792965,
+  "status": "ok"
+}
