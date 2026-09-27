@@ -35,3 +35,76 @@ Possible future role:
 - This should remain a narrow classifier rather than another large semantic planning stage.
 
 Status: exploratory only; not yet validated across a broad genre set or wired into production.
+
+## Segment timing / duration-fit validation
+
+Potential future use: validate that the actions and dialogue assigned to one MiniMax H3 segment can plausibly fit within that segment's allotted runtime. Production segments may be anywhere from roughly **5 to 30 seconds**, so timing feasibility should not be assumed merely because a beat is semantically coherent.
+
+The old approach of asking the local model a broad question such as “does this collection of actions fit in N seconds?” was unreliable. Pairwise 8-second fit probes overthought simple cases and could accept intentionally overloaded action chains. Do not revive that holistic judgment as the default.
+
+Preferred future direction:
+
+> **Use deterministic Python timing checks for everything measurable; use a very small local-LLM estimation/extraction call only when the physical duration is genuinely underspecified.**
+
+### Deterministic Python timing checks
+
+Python should handle timing whenever the required duration can be estimated from explicit measurable content.
+
+Examples:
+- dialogue word count;
+- number of separately timed spoken lines;
+- explicit pauses/waits;
+- explicit source durations;
+- timestamp ordering;
+- timestamp bounds against the segment duration;
+- deterministic minimum spacing between sequential events where the renderer contract requires it;
+- other mechanically measurable timing constraints.
+
+For dialogue, use a configurable approximate speaking-rate baseline rather than asking the LLM whether the dialogue “feels too long.”
+
+A rough planning baseline at about **150 spoken words per minute** is:
+
+- 5 seconds ≈ 12 words;
+- 10 seconds ≈ 25 words;
+- 20 seconds ≈ 50 words;
+- 30 seconds ≈ 75 words.
+
+These are not automatic hard limits because reactions, pauses, movement, delivery speed, and overlapping action consume additional time. They are useful deterministic budget estimates.
+
+A future implementation could reserve part of the segment for non-dialogue action and compare the remaining speech budget against actual dialogue word count.
+
+### Narrow LLM duration estimation only for unknown physical actions
+
+Some physical actions cannot be timed reliably from text alone because key dimensions are unspecified.
+
+Example:
+
+> “Mateo climbs the stairs.”
+
+Python cannot know the duration without knowing facts such as:
+- how many stairs;
+- stair length/height;
+- Mateo's pace;
+- whether he is running, walking, injured, carrying something, etc.
+
+For cases like this, a small local-LLM call may estimate only the timing-relevant fact or duration class needed by Python.
+
+The LLM should not decide overall scene validity. Prefer outputs such as:
+- a coarse duration estimate/range;
+- QUICK / MODERATE / LONG;
+- KNOWN_ENOUGH / UNDERSPECIFIED;
+- or another very small contract chosen after probing.
+
+Python should then combine that observation with the known segment duration and other measurable timing costs to decide whether the segment is overloaded.
+
+### Architectural intent
+
+Keep the same general pattern used by current continuity invariants:
+
+1. Python owns the segment duration and measurable timing budget.
+2. Python calculates everything deterministic.
+3. Only genuinely fuzzy physical-duration questions go to a narrow local-LLM call.
+4. Python performs the final fit/overload decision.
+5. If overloaded, repair/regenerate the earliest responsible stage rather than compressing unrelated actions into unrealistic timestamps.
+
+This may become especially important for dialogue-heavy genres, where semantic beat structure can be correct while spoken content alone exceeds the available 5–30 second segment.
