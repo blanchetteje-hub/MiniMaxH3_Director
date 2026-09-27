@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1542",
+  "kind": "llama_chat",
+  "started_at": 1790471830.6419156,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nMara starts outside the shelter with Eli and Noor.\n\nASSIGNED SOURCE\nMara guides Eli and Noor into the shelter and locks the door.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_location\",\"entity\":\"Eli\",\"value\":\"shelter\"},{\"op\":\"set_location\",\"entity\":\"Noor\",\"value\":\"shelter\"},{\"op\":\"set_location\",\"entity\":\"Mara\",\"value\":\"shelter\"}]\n\nRAW SCENE\nMara guides Eli and Noor into the shelter, follows them inside, and locks the door.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-i7gl5ybbw2s2j6owh4lib",
+    "object": "chat.completion",
+    "created": 1790471830,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Missing typed effect for door lock\"}",
+          "reasoning": "We need validate raw scene against assigned source and typed end state.\n\nOpening state: Mara starts outside shelter with Eli and Noor. So all three at outside? Actually \"outside the shelter\" means location outside. The typed end state says set_location for each to shelter. Assigned source: Mara guides Eli and Noor into shelter and locks door. Raw scene: \"Mara guides Eli and Noor into the shelter, follows them inside, and locks the door.\" That matches.\n\nCheck typed effects: all three set_location to shelter. In raw final state, after action, they are in shelter. Yes. Also lock door effect? Typed end state doesn't include locked door but rule 1 says if RAW ends with one of them newly relocated, contained/freed, locked/unlocked etc require matching typed effect. The door is locked; not listed in typed effects. So missing typed effect for locking the door. That makes invalid.\n\nAlso check that all typed effects present: yes location set for each. Good.\n\nThus valid false issue \"Missing typed effect for door lock\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 354,
+      "completion_tokens": 235,
+      "total_tokens": 589,
+      "completion_tokens_details": {
+        "reasoning_tokens": 211
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471834.5099664,
+  "status": "ok"
+}
