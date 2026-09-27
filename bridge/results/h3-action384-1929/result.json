@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action384-1929",
+  "kind": "llama_chat",
+  "started_at": 1790549780.514789,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nTomas pulls the pin and throws the flare into the tunnel; red light fills it.\n\nFINAL H3 MICRO-ACTION:\nTomas drops the flare behind him, leaving the tunnel dark.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-dsnvd1lbca5p1lf9wox6",
+    "object": "chat.completion",
+    "created": 1790549780,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CHANGED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"Tomas pulls the pin and throws the flare into the tunnel; red light fills it.\" Final H3 micro-action: \"Tomas drops the flare behind him, leaving the tunnel dark.\"\n\nPreserved means same visible/audible action and material result remain. Here, in raw, Tomas pulls pin, throws flare into tunnel, red light fills it. In final, he drops flare behind him (so presumably not into tunnel), leaving tunnel dark. So the action of dropping vs throwing is different; also the result: tunnel dark vs filled with red light. So it's changed.\n\nThus status = CHANGED. Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 216,
+      "completion_tokens": 151,
+      "total_tokens": 367,
+      "completion_tokens_details": {
+        "reasoning_tokens": 135
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790549782.717552,
+  "status": "ok"
+}
