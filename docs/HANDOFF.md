@@ -1639,3 +1639,16 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Probe contract supplies both `BOUND BARRIER` and `PROTECTED DESTINATION`, then asks only whether any physical thing crosses that destination boundary during RAW: `TRAVERSED | NOT_TRAVERSED | UNSPECIFIED`. Explicit destination entry/exit counts even when the barrier noun is absent. Unseen route inference remains forbidden.
 - Do not wire until `1719-1738` are graded. If stable, generalize the existing closed-boundary traversal extractor to include destination-boundary crossing rather than creating another validator stage.
 
+### 2026-09-27 — destination-boundary traversal generalized inside existing topology check
+
+- Destination-boundary probes `1719-1738` produced **19/20 strict finals** with every completed JSON semantically correct. Probe `1720` timed out while reasoning toward NOT_TRAVERSED on an intentionally borderline “top of stairs” case; there was no wrong completed classification.
+- This is sufficient to generalize the existing closed-boundary traversal observation rather than add another semantic stage.
+- Production commit `64970d3ac9de8693872d93228db10012f9056a56` changes the existing traversal extractor to accept both:
+  - `BOUND BARRIER`, and
+  - optional Python-owned `PROTECTED DESTINATION`.
+- When a protected destination is known, the local model now returns TRAVERSED if RAW explicitly shows/states any physical thing moving into or out of that destination even when the barrier noun itself is omitted. It still returns UNSPECIFIED when start/end sides differ but the crossing route is not established, and it must not infer unseen routes.
+- The model still does not decide whether traversal is allowed. Python continues to reject TRAVERSED only for a canonically closed unchanged boundary.
+- This directly targets `acceptance-1712` Segment 5, where a severed zombie head was sent from the kitchen down onto the basement floor despite the locked basement boundary.
+- Regression commit `8e9bf54e13148ed0559b2d5f9af7a5609e04e018` adds protected-destination prompt coverage and verifies the existing closed-boundary contract exposes the destination to the traversal check.
+- Queued `tests-1739` and full `acceptance-1740`.
+
