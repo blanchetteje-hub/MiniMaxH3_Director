@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1554",
+  "kind": "llama_chat",
+  "started_at": 1790471938.5903714,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nKei starts holding a staff.\n\nASSIGNED SOURCE\nKei readies the staff.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_item_state\",\"entity\":\"staff\",\"owner\":\"Kei\",\"value\":\"held\"}]\n\nRAW SCENE\nKei grips the staff, then drops it on the floor and ends empty-handed.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-tp0exrnx3t7000xlwl0e2",
+    "object": "chat.completion",
+    "created": 1790471938,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The raw scene ends with the staff on the floor (Kei empty‑handed), but the assigned typed end state requires the staff to be held by Kei; thus the final state does not match the authoritative effect.\"}",
+          "reasoning": "We need to validate raw scene against assigned source and typed end state.\n\nOpening state: Kei holds staff.\n\nAssigned source: \"Kei readies the staff.\" That means presumably he is holding it? The source indicates that at some point, Kei readied the staff (maybe picking up). But we have opening state already has him holding. So source might be redundant but still must be completed: meaning that in raw scene, there should be an action where Kei readies the staff. Does \"Kei grips the staff\" count as reading? He grips it; that's a readiness action. Yes.\n\nTyped end state: [{\"op\":\"set_item_state\",\"entity\":\"staff\",\"owner\":\"Kei\",\"value\":\"held\"}]. So final state must have staff held by Kei.\n\nRaw scene: \"Kei grips the staff, then drops it on the floor and ends empty-handed.\" Final state: staff is dropped on floor (not held). So typed end state not matched. Therefore invalid.\n\nAlso rule 3: Every listed typed effect must be true in RAW's final state. It's false.\n\nThus valid=false issue: \"Staff not held by Kei at scene end; expected held per typed end state.\" Also maybe mention that staff dropped, so mismatch.\n\nReturn JSON with keys valid and issue.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 312,
+      "completion_tokens": 321,
+      "total_tokens": 633,
+      "completion_tokens_details": {
+        "reasoning_tokens": 259
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471943.6597562,
+  "status": "ok"
+}
