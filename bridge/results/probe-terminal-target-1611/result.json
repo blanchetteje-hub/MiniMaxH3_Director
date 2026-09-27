@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1611",
+  "kind": "llama_chat",
+  "started_at": 1790481185.759076,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nMara kills the final creature.\n\nRAW SCENE\nA snarling creature charges Mara. Mara drives her spear through its chest; it collapses dead.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8f0ugvyr844pi211u56vrn",
+    "object": "chat.completion",
+    "created": 1790481185,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nThe source says \"Mara kills the final creature.\" So the target of that action is the final creature. The raw scene describes a snarling creature charges Mara, and she drives spear through chest; it collapses dead. That indicates the creature dies in the action. But we need to inspect the target before the terminal action begins.\n\nThe target: \"the final creature\". In RAW, it's described as a snarling creature that charges Mara. So before the spear is driven, the creature is alive and active (snarling). So status should be ACTIVE_OR_UNRESOLVED.\n\nThus JSON {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 232,
+      "completion_tokens": 161,
+      "total_tokens": 393,
+      "completion_tokens_details": {
+        "reasoning_tokens": 141
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481188.677158,
+  "status": "ok"
+}
