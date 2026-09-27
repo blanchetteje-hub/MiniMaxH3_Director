@@ -682,6 +682,68 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("movement between rooms, hallways, or subareas", prompt)
         self.assertIn("does NOT require another set_location effect", prompt)
 
+    def test_beat_validator_includes_closed_boundary_contract(self):
+        state = minimax.new_beat_canonical_state()
+        state["characters"] = {
+            "Will": {
+                "location": "basement",
+                "containment": "contained",
+                "contained_in": "basement",
+                "accessible": False,
+            }
+        }
+        state["environment"]["barriers"] = {
+            "door": {"status": "locked"}
+        }
+        messages = minimax.build_beat_validation_messages(
+            previous_final_beat="Will is secured in the basement.",
+            current_state=state,
+            beat_job="Amy defeats another attacker.",
+            next_beat_job="Amy keeps fighting.",
+            candidate_beat="Amy strikes an attacker and its head falls onto the basement floor.",
+            assigned_state_effects=[],
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("PYTHON-OWNED CLOSED BOUNDARIES", prompt)
+        self.assertIn("basement door protects 'basement'", prompt)
+        self.assertIn("object, body part", prompt)
+        self.assertIn("may cross into or out of that destination", prompt)
+
+    def test_beat_generation_includes_closed_boundary_contract(self):
+        phase = {
+            "required_events": [
+                {
+                    "beat_number": 1,
+                    "event": "Will enters the basement and the door is locked.",
+                    "state_effects": [
+                        {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+                        {"op": "set_barrier_state", "entity": "door", "value": "locked"},
+                    ],
+                },
+                {
+                    "beat_number": 2,
+                    "event": "Amy defeats another attacker.",
+                    "state_effects": [],
+                },
+            ]
+        }
+        arc = {
+            "planner": {"type": "source_span"},
+            "phases": [phase],
+        }
+        messages = minimax.build_beat_generation_messages(
+            "Will enters the basement. Amy defeats another attacker.",
+            2,
+            batch_start=1,
+            batch_end=2,
+            current_phase=phase,
+            macro_arc=arc,
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("PYTHON-OWNED CLOSED BOUNDARIES", prompt)
+        self.assertIn("2. basement door protects 'basement'", prompt)
+        self.assertIn("body part", prompt)
+
     def test_beat_validator_includes_python_owned_barrier_binding(self):
         effects = [
             {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
@@ -867,8 +929,8 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("TRAVERSED", prompt)
         self.assertIn("NOT_TRAVERSED", prompt)
         self.assertIn("UNSPECIFIED", prompt)
-        self.assertIn("Do not infer validity", prompt)
-        self.assertNotIn("authorized", prompt.casefold())
+        self.assertIn("Do not decide whether crossing is allowed", prompt)
+        self.assertNotIn("PROTECTED DESTINATION", prompt)
 
     def test_barrier_traversal_parser_is_strict(self):
         self.assertEqual(
