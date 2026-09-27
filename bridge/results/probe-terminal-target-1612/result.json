@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1612",
+  "kind": "llama_chat",
+  "started_at": 1790481191.7474139,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nMara kills the final creature.\n\nRAW SCENE\nMara stands over the creature's already-dead corpse, then stabs the corpse again.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-xm8xqanfx185q81j5z4yrg",
+    "object": "chat.completion",
+    "created": 1790481191,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ALREADY_TERMINAL\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nThe source says \"Mara kills the final creature.\" So the target of that action is the final creature, presumably a living creature before being killed. The RAW scene: Mara stands over the creature's already-dead corpse, then stabs the corpse again. That indicates the creature was dead (already). But we need to inspect the target of the newly assigned action immediately BEFORE the terminal action begins.\n\nThe source assigns a terminal action \"Mara kills the final creature.\" So before that action starts, what is the status of the target? The RAW scene says it's already-dead corpse. So the target is dead (already). Therefore status: ALREADY_TERMINAL.\n\nReturn JSON {\"status\":\"ALREADY_TERMINAL\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 231,
+      "completion_tokens": 176,
+      "total_tokens": 407,
+      "completion_tokens_details": {
+        "reasoning_tokens": 157
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481194.7463589,
+  "status": "ok"
+}
