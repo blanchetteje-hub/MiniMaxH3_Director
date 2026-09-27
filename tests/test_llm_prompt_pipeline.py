@@ -663,8 +663,45 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("ASSIGNED TYPED END STATE", prompt)
         self.assertIn('"entity":"Eli"', prompt)
         self.assertIn('"entity":"Noor"', prompt)
-        self.assertIn("No matching effect means that persistent change is INVALID", prompt)
+        self.assertIn("Require matching typed effects for durable changes", prompt)
         self.assertIn("do not give the mover/helper that same persistent location/containment change", prompt)
+
+    def test_completion_prompt_allows_room_to_room_staging_inside_canonical_location(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "Amy fights zombies in the house.",
+            "Amy moves from the kitchen into the hallway and fights a zombie.",
+            assigned_source="Amy fights zombies in the house.",
+            authoritative_opening_state=(
+                "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n"
+                '{"characters":{"Amy":{"location":"home"}}}'
+            ),
+            assigned_state_effects=[],
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("coarse story geography/container state", prompt)
+        self.assertIn("movement between rooms, hallways, or subareas", prompt)
+        self.assertIn("does NOT require another set_location effect", prompt)
+
+    def test_generic_barrier_binds_to_single_containment_destination(self):
+        effects = [
+            {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+            {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
+            {"op": "set_barrier_state", "entity": "door", "value": "locked"},
+        ]
+        self.assertEqual(
+            minimax.build_director_barrier_binding_contract(effects),
+            {"entity": "door", "destination": "basement", "state": "locked"},
+        )
+
+    def test_generic_barrier_binding_refuses_ambiguous_destinations(self):
+        effects = [
+            {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+            {"op": "set_containment", "entity": "Nia", "container": "vault", "value": "contained"},
+            {"op": "set_barrier_state", "entity": "door", "value": "locked"},
+        ]
+        self.assertIsNone(
+            minimax.build_director_barrier_binding_contract(effects)
+        )
 
     def test_director_assigned_state_effects_returns_only_active_beat_effects(self):
         phase = {
@@ -723,7 +760,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_source="Mara cooks breakfast for Eli.",
         )
         prompt = messages[1]["content"]
-        self.assertIn("must visibly perform that action in this segment", prompt)
+        self.assertIn("must visibly perform that source action in this segment", prompt)
         self.assertIn("existing result or aftermath alone is insufficient", prompt)
 
     def test_director_timestamp_range_rejects_invalid_segment_time(self):
@@ -780,7 +817,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         )
         prompt = messages[1]["content"]
         self.assertIn("explicit hand-off to named people", prompt)
-        self.assertIn("merely labeling it for them", prompt)
+        self.assertIn("visibly receive, be served, or otherwise gain practical access", prompt)
         self.assertIn("work merely made FOR someone", prompt)
 
     def test_completion_parser_normalizes_valid_issue(self):
