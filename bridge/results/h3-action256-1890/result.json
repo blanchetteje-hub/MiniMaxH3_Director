@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action256-1890",
+  "kind": "llama_chat",
+  "started_at": 1790548785.4060817,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nElena kneels and ties the child's shoelace.\n\nFINAL H3 MICRO-ACTION:\nElena crouches beside the child and knots the loose shoelace.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-wy3nzyqmr3knnttydzlazc",
+    "object": "chat.completion",
+    "created": 1790548785,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"PRESERVED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"Elena kneels and ties the child's shoelace.\" Final H3 micro-action: \"Elena crouches beside the child and knots the loose shoelace.\"\n\nPreserved? The action is tying/knots a shoelace. She kneels vs crouches, but still same position relative to child. Ties vs knots - synonyms. Loose shoelace vs child's shoelace. So it's preserved.\n\nThus status: PRESERVED. Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 212,
+      "completion_tokens": 121,
+      "total_tokens": 333,
+      "completion_tokens_details": {
+        "reasoning_tokens": 104
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790548787.2373097,
+  "status": "ok"
+}
