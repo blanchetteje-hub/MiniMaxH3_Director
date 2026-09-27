@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-state-1697",
+  "kind": "llama_chat",
+  "started_at": 1790528664.245292,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier state only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nairlock hatch\n\nRAW SCENE\nThe hatch is vaporized, leaving the passage unobstructed.\n\nClassify only the final visible/established state of BARRIER at the END of RAW SCENE. Allowed values: LOCKED, CLOSED, OPEN, BROKEN, DESTROYED, UNSPECIFIED. LOCKED includes locked, sealed, barred, or bolted. CLOSED means intact and shut/closed without an established lock. OPEN means intact and open/passable. BROKEN means the barrier is physically damaged, breached, warped, cracked, bent, or partly detached but still physically exists as that barrier; choose BROKEN even if the damage leaves a passable gap. DESTROYED means the barrier is gone, reduced to debris, or no longer exists/functions as a barrier. Structural state takes precedence over passability: damaged-but-present = BROKEN, absent/nonfunctional = DESTROYED, intact-and-passable = OPEN. UNSPECIFIED means RAW SCENE does not establish enough information. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-bfcfzs3msosuhfotyaz1x",
+    "object": "chat.completion",
+    "created": 1790528664,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"DESTROYED\"}",
+          "reasoning": "We have BARRIER \"airlock hatch\". Raw Scene: The hatch is vaporized, leaving the passage unobstructed.\n\nSo barrier was airlock hatch. It got vaporized. So it's gone. That means DESTROYED. Because no longer exists as a barrier. So status = \"DESTROYED\".\n\nReturn JSON {\"status\":\"DESTROYED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 312,
+      "completion_tokens": 89,
+      "total_tokens": 401,
+      "completion_tokens_details": {
+        "reasoning_tokens": 72
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790528665.9975286,
+  "status": "ok"
+}
