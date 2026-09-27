@@ -1,0 +1,23 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-finite-endpoint-1636",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 300,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Classify finite-activity completion only. Do not judge overall beat correctness. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "CURRENT JOB\nIvo repairs the generator.\n\nCANDIDATE BEAT\nIvo replaces the broken belt, restarts the generator, and its lights come back on.\n\nClassify only the finite-activity endpoint. Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent. Otherwise, when CURRENT JOB assigns a finite activity/task, return COMPLETE only if CANDIDATE BEAT shows a natural observable completion/result for that activity in this beat. Return ONGOING if it only shows the activity underway, continuing, approaching completion, or partly complete. Progressive source wording such as 'is cooking' or 'is repairing' can still describe a finite task and does not by itself make the job ongoing. Do not decide whether the beat is valid.\nReturn JSON: {\"status\":\"...\"}"
+    }
+  ],
+  "expected": "COMPLETE"
+}
