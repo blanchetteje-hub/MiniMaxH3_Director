@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1626",
+  "kind": "llama_chat",
+  "started_at": 1790481297.694065,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe engineer shuts down the rogue AI permanently.\n\nRAW SCENE\nThe AI was already permanently offline before the scene. The engineer smashes its inactive terminal.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-k3uhahhnflogn845pomvh",
+    "object": "chat.completion",
+    "created": 1790481297,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ALREADY_TERMINAL\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nGiven source: \"The engineer shuts down the rogue AI permanently.\"\n\nRAW SCENE: \"The AI was already permanently offline before the scene. The engineer smashes its inactive terminal.\"\n\nSOURCE assigns a terminal action. Inspect target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if already dead etc.; UNSPECIFIED if RAW establishes neither.\n\nWe need to identify the target of the terminal action from source. Source says \"The engineer shuts down the rogue AI permanently.\" So the terminal action: shutting down the rogue AI. Target is the rogue AI. Inspect before action begins, i.e., before shutdown occurs. According to RAW SCENE: \"The AI was already permanently offline before the scene.\" That means the AI is dead/terminated. So status should be ALREADY_TERMINAL.\n\nReturn JSON {\"status\":\"ALREADY_TERMINAL\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 232,
+      "completion_tokens": 232,
+      "total_tokens": 464,
+      "completion_tokens_details": {
+        "reasoning_tokens": 213
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481301.4876301,
+  "status": "ok"
+}
