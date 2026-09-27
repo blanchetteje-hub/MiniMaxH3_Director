@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-extract-1565",
+  "kind": "llama_chat",
+  "started_at": 1790472123.2688415,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier-side placement only. Do not validate story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\nrepair bay\n\nNAMED SUBJECTS\nTessa; Unit7\n\nRAW TEXT\nTessa rolls Unit7 into the repair bay, then returns to the corridor.\n\nFor each named subject, classify only where that subject is at the END of the text relative to DESTINATION.\nAllowed relation values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED.\nUse UNSPECIFIED if the text does not establish the final side. Temporary entry does not count if the subject returns before the end. Do not decide whether the scene is valid. Do not infer that a helper follows someone unless the text establishes it.\nReturn JSON only with one key subjects. subjects is an array containing one object per named subject, each with exactly entity and relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-75lrezyqe6oohet7eqqwv",
+    "object": "chat.completion",
+    "created": 1790472123,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"subjects\":[{\"entity\":\"Tessa\",\"relation\":\"NOT_AT_DESTINATION\"},{\"entity\":\"Unit7\",\"relation\":\"AT_DESTINATION\"}]}",
+          "reasoning": "We need to extract final barrier-side placement relative to DESTINATION \"repair bay\". Named subjects: Tessa; Unit7.\n\nText: \"Tessa rolls Unit7 into the repair bay, then returns to the corridor.\"\n\nAt end of text, where are they? The sentence ends with \"then returns to the corridor.\" That refers to Tessa. So at end, Tessa is in corridor (not at destination). Unit7 was rolled into repair bay but no mention after that; so final side: still in repair bay unless moved later. No mention of moving out. So relation for Unit7: AT_DESTINATION.\n\nThus output JSON:\n\n{\n  \"subjects\": [\n    {\"entity\":\"Tessa\",\"relation\":\"NOT_AT_DESTINATION\"},\n    {\"entity\":\"Unit7\",\"relation\":\"AT_DESTINATION\"}\n  ]\n}\n\nCheck format: exactly one key subjects, array with objects each entity and relation. Good.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 242,
+      "completion_tokens": 221,
+      "total_tokens": 463,
+      "completion_tokens_details": {
+        "reasoning_tokens": 183
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790472126.859225,
+  "status": "ok"
+}
