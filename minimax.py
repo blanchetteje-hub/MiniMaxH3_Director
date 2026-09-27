@@ -1400,6 +1400,29 @@ DIRECTOR_BARRIER_SIDE_RESPONSE_FORMAT = {
     },
 }
 
+DIRECTOR_TERMINAL_TARGET_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_terminal_target_observation",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "ACTIVE_OR_UNRESOLVED",
+                        "ALREADY_TERMINAL",
+                        "UNSPECIFIED",
+                    ],
+                },
+            },
+            "required": ["status"],
+            "additionalProperties": False,
+        },
+    },
+}
+
 DIRECTOR_CONTINUITY_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
@@ -25150,6 +25173,68 @@ def compare_director_barrier_topology(contract, observation):
     return issues
 
 
+_DIRECTOR_TERMINAL_ACTION_RE = re.compile(
+    r"\b(?:kill(?:s|ed|ing)?|destroy(?:s|ed|ing)?|defeat(?:s|ed|ing)?|"
+    r"eliminat(?:e|es|ed|ing)|finish(?:es|ed|ing)?|resolv(?:e|es|ed|ing))\b",
+    re.IGNORECASE,
+)
+
+
+def director_source_has_terminal_action(assigned_source):
+    """Return whether source explicitly assigns a terminal action now."""
+    return bool(_DIRECTOR_TERMINAL_ACTION_RE.search(str(assigned_source or "")))
+
+
+def build_director_terminal_target_messages(assigned_source, raw_scene):
+    """Extract only whether a terminal-action target was already terminal."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract terminal-target pre-action status only. Do not judge "
+                "overall story correctness. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "ASSIGNED SOURCE\n"
+                + str(assigned_source or "")
+                + "\n\nRAW SCENE\n"
+                + str(raw_scene or "")
+                + "\n\nSOURCE assigns a terminal action such as killing, "
+                "destroying, defeating, eliminating, finishing, or resolving a "
+                "target/process. Inspect the target of that newly assigned action "
+                "at the moment immediately BEFORE the terminal action begins in "
+                "RAW SCENE. Return status ACTIVE_OR_UNRESOLVED if RAW establishes "
+                "the target/process is still active, intact enough to resolve, or "
+                "otherwise unresolved. Return ALREADY_TERMINAL if RAW establishes "
+                "it is already dead, a corpse, severed remnant, destroyed, defeated, "
+                "finished, eliminated, or otherwise resolved before the action. "
+                "Return UNSPECIFIED only when RAW does not establish either. "
+                "Do not decide whether the scene is valid."
+            ),
+        },
+    ]
+
+
+def parse_director_terminal_target_observation(raw_result):
+    """Parse one strict terminal-target extraction."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"status"}:
+        raise ValueError("Terminal-target response must contain only status.")
+    status = candidate["status"]
+    if status not in {
+        "ACTIVE_OR_UNRESOLVED",
+        "ALREADY_TERMINAL",
+        "UNSPECIFIED",
+    }:
+        raise ValueError("Terminal-target response contains an invalid status.")
+    return status
+
+
 # Build the independent Request-1 CURRENT-BEAT completion check.
 def build_director_raw_scene_completion_messages(
     current_beat,
@@ -25613,6 +25698,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         )
         independent_completion = None
         barrier_topology_issues = []
+        terminal_target_issue = ""
         current_beat_for_completion = str(
             bundle.get("current_beat_text") or ""
         ).strip()
@@ -25664,6 +25750,48 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     "issue": "completion verifier returned unusable output: " + str(error),
                 }
             if independent_completion["valid"]:
+                if director_source_has_terminal_action(
+                    bundle.get("assigned_source", "")
+                ):
+                    terminal_metadata = {
+                        "run_id": run_id,
+                        "source_sha256": (run_config or {}).get("source_sha256"),
+                        "purpose": "director_terminal_target_extract",
+                        "use_beat_validation_settings": True,
+                        "segment": segment_number,
+                        "attempt": request1_attempt,
+                        "conditioning_mode": conditioning_mode,
+                        "opening_state_sha256": bundle.get("opening_state_sha256"),
+                    }
+                    try:
+                        terminal_status = parse_director_terminal_target_observation(
+                            ask_llm(
+                                build_director_terminal_target_messages(
+                                    bundle.get("assigned_source", ""),
+                                    raw_scene,
+                                ),
+                                response_format=DIRECTOR_TERMINAL_TARGET_RESPONSE_FORMAT,
+                                history_metadata=terminal_metadata,
+                            )
+                        )
+                    except (TypeError, ValueError, json.JSONDecodeError) as error:
+                        terminal_target_issue = (
+                            "terminal-target extractor returned unusable output: "
+                            + str(error)
+                        )
+                    else:
+                        if terminal_status == "ALREADY_TERMINAL":
+                            terminal_target_issue = (
+                                "assigned terminal action targets something already "
+                                "terminal before the action begins."
+                            )
+                    if terminal_target_issue:
+                        print(
+                            "Director Request 1 terminal-target check failed: "
+                            + terminal_target_issue,
+                            flush=True,
+                        )
+
                 topology_contracts = request1_topology_contracts
                 for topology_index, topology_contract in enumerate(
                     topology_contracts,
@@ -25713,7 +25841,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     )
                     if barrier_topology_issues:
                         break
-                if not barrier_topology_issues:
+                if not terminal_target_issue and not barrier_topology_issues:
                     break
                 print(
                     "Director Request 1 barrier topology check failed: "
@@ -25755,6 +25883,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         ):
             completion_failures.append(
                 "independent completion check: " + independent_completion["issue"]
+            )
+        if terminal_target_issue:
+            completion_failures.append(
+                "terminal target check: " + terminal_target_issue
             )
         if barrier_topology_issues:
             completion_failures.append(
