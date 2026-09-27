@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-source-authority-1594",
+  "kind": "llama_chat",
+  "started_at": 1790478095.4911017,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes ASSIGNED SOURCE. Judge meaning, not wording. Return JSON only with valid and issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nKei equips the pistol.\n\nDERIVED BEAT — staging only; cannot add stricter requirements\nKei draws and readies the pistol.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n{\"characters\":{\"Kei\":{\"held_objects\":[],\"equipped_objects\":[]}}}\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_item_state\",\"entity\":\"pistol\",\"owner\":\"Kei\",\"value\":\"equipped\"}]\n\nRAW SCENE\nKei draws the pistol, then drops it on the floor and ends empty-handed.\n\nRules: SOURCE defines required actions/results/roles. DERIVED BEAT cannot add a stricter transfer method. For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer. Work merely made FOR someone can finish without delivery unless SOURCE requires delivery; honor explicit later pickup/storage. Typed end state governs durable tracked continuity. Incidental consumables, plates, cups, and ordinary newly introduced serving props are not persistent inventory merely because a known subject holds them at the end.\nReturn JSON with boolean valid and string issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 450,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-c8ipfwpnlhkzs3dyatcbfk",
+    "object": "chat.completion",
+    "created": 1790478095,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Kei draws and drops the pistol, ending empty‑handed—so the pistol is not equipped to Kei as required by the source and typed end state.\"}",
+          "reasoning": "We need to check if RAW SCENE completes ASSIGNED SOURCE. The source: \"Kei equips the pistol.\" That means Kei should have the pistol equipped by the end of scene? Actually assigned typed end state says set_item_state entity:pistol owner:Kei value:equipped. So final state must be that pistol is equipped to Kei.\n\nRAW SCENE: \"Kei draws the pistol, then drops it on the floor and ends empty-handed.\" That means at end, pistol not held by Kei; it's dropped on floor. So fails requirement. Also typed end state says pistol should be equipped. So invalid. Issue: \"Pistol is not equipped to Kei at scene's end.\"\n\nReturn JSON with valid false and issue string.\n\nCheck if any nuance: The source requires that Kei equips the pistol, but raw scene shows he draws then drops it; so not equipped. Also typed end state says set_item_state pistol owner Kei value equipped. So mismatch. So invalid.\n\nThus output:\n\n{\"valid\":false,\"issue\":\"Kei does not equip the pistol by the end of the scene; the pistol is dropped on the floor.\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 331,
+      "completion_tokens": 280,
+      "total_tokens": 611,
+      "completion_tokens_details": {
+        "reasoning_tokens": 230
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790478099.8731637,
+  "status": "ok"
+}
