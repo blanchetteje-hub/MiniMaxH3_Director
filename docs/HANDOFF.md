@@ -1596,3 +1596,19 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Queued generic terminal-physical probes `1669-1688`, followed by `tests-1689` and fresh full `acceptance-1690`.
 - `tests-1667` and traversal controls `1660-1666` had not produced result commits when this checkpoint was inspected; do not count them as evidence unless they later appear.
 
+### 2026-09-27 — barrier final-state extractor accepted and wired
+
+- `tests-1667` passed **93/93**.
+- Initial barrier-state probes `1669-1688` produced **19/20 strict final JSON** with no wrong completed JSON. Probe `1675` timed out while debating OPEN vs BROKEN for a damaged-but-passable barrier, exposing an ambiguity in the enum definitions rather than a demonstrated semantic miss.
+- The extractor contract was tightened so structural state outranks passability:
+  - intact + passable => `OPEN`;
+  - damaged/breached/warped but still physically present => `BROKEN`;
+  - removed/gone/no longer functioning as a barrier => `DESTROYED`.
+- Focused edge probes `1689-1704` were **16/16 strict correct** at review time. Jobs `1705-1708` were still pending and are supplemental.
+- Production commit `2983787ea8b9bb9c06f54a7a5383284226443572` adds a narrow final barrier-state extractor to the existing Director Request-1 loop. Python derives source-owned expected states only from the active beat's typed `set_barrier_state` effects and compares them to the local model's extraction.
+- Mapping is deterministic: `locked|blocked -> LOCKED`, `closed -> CLOSED`, `open|unlocked -> OPEN`, `broken -> BROKEN`, `destroyed -> DESTROYED`.
+- The local model does not decide validity; it only extracts `LOCKED | CLOSED | OPEN | BROKEN | DESTROYED | UNSPECIFIED`. Python rejects any mismatch, including UNSPECIFIED when the active source effect requires a specific final barrier state.
+- This directly targets the `acceptance-1668` Segment-2 failure where RAW locked the basement door and then described the same door as open.
+- Regression commit `5c77587fd6fc68b8cefe7195779a86fd3b2868a5` adds typed-contract, unlocked/open mapping, structural-precedence prompt, and strict-parser coverage.
+- Queued `tests-1709` and fresh full `acceptance-1710`.
+
