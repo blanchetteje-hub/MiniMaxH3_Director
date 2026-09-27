@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-bound-destination-traversal-1738",
+  "kind": "llama_chat",
+  "started_at": 1790533479.8718483,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract boundary traversal only. Do not judge story validity or physical possibility. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BOUND BARRIER\ndoor\n\nPROTECTED DESTINATION\narchive room\n\nRAW SCENE\nCamera shows a cart near the archive room, then cuts away; its final side is not established.\n\nClassify only whether RAW SCENE establishes that any person, creature, object, body part, or other physical thing crosses the boundary of PROTECTED DESTINATION during the scene. Return TRAVERSED when RAW explicitly shows or states movement from outside the destination to inside it, from inside to outside it, or through BOUND BARRIER. The barrier noun does not need to be repeated if the destination crossing itself is explicit. Return NOT_TRAVERSED when things only approach, strike, wait near, remain on one side, or are already inside/outside without crossing during this scene. Return UNSPECIFIED when the scene gives different start/end sides but does not establish how the change occurred, or when spatial information is insufficient. Do not infer an unseen route. Do not decide whether crossing is allowed. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5qifgjblrk2zeklggpro9j",
+    "object": "chat.completion",
+    "created": 1790533479,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"UNSPECIFIED\"}",
+          "reasoning": "We need to determine if RAW SCENE establishes that any person, creature, object, body part, or other physical thing crosses the boundary of PROTECTED DESTINATION during the scene.\n\nPROTECTED DESTINATION: archive room\n\nBOUND BARRIER: door\n\nRAW SCENE: \"Camera shows a cart near the archive room, then cuts away; its final side is not established.\"\n\nSo we have a cart near the archive room. The camera shows it near the archive room but does not show whether it's inside or outside. It says final side is not established.\n\nThus we don't know if the cart crosses into the archive room (through door). So status: UNSPECIFIED.\n\nReturn JSON {\"status\":\"UNSPECIFIED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 297,
+      "completion_tokens": 160,
+      "total_tokens": 457,
+      "completion_tokens_details": {
+        "reasoning_tokens": 143
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790533482.5933864,
+  "status": "ok"
+}
