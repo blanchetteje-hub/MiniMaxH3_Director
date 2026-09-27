@@ -1,0 +1,54 @@
+{
+  "job_id": "source-action-1523",
+  "kind": "llama_chat",
+  "started_at": 1790468097.3947947,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge whether RAW visibly performs the action assigned by SOURCE. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nThe medic bandages Mara's arm.\n\nRAW:\nMara's arm is already wrapped in a clean bandage.\n\nRULES\n1. If SOURCE assigns an action to happen now, RAW must visibly perform that action in this segment.\n2. A finished/resulting state by itself does not prove the assigned action happened now.\n3. RAW may use the resulting state after it visibly performs the action.\n4. If SOURCE explicitly describes an ongoing/repeated condition, one visible ongoing instance may satisfy it.\nReturn {\"valid\":boolean,\"issue\":string}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-sn6633i9bedrxwycc5jyar",
+    "object": "chat.completion",
+    "created": 1790468097,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The bandage is already wrapped; no visible action of the medic applying it occurs in this segment.\"}",
+          "reasoning": "We need to judge if RAW visibly performs the action assigned by SOURCE.\n\nSOURCE: \"The medic bandages Mara's arm.\" So action is that the medic bandages Mara's arm. That implies a current action of applying a bandage, presumably visible in this segment. The RAW says: \"Mara's arm is already wrapped in a clean bandage.\"\n\nDoes that show the action happening now? It states it's already wrapped; no mention of the medic doing it currently. So not visibly performing the action. According to rule 2, finished state alone doesn't prove action happened now.\n\nThus invalid. Issue string: maybe \"Bandaging action not shown.\" Provide JSON with valid false and issue description.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 207,
+      "completion_tokens": 178,
+      "total_tokens": 385,
+      "completion_tokens_details": {
+        "reasoning_tokens": 140
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790468100.018384,
+  "status": "ok"
+}
