@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action384-1923",
+  "kind": "llama_chat",
+  "started_at": 1790549749.8084402,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nAsha picks up the lantern and lights its wick.\n\nFINAL H3 MICRO-ACTION:\nAsha sets the lantern down unlit.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-h82xy143bcumajjd6f38xj",
+    "object": "chat.completion",
+    "created": 1790549749,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CHANGED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"Asha picks up the lantern and lights its wick.\" Final H3 micro-action: \"Asha sets the lantern down unlit.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. Here, in raw she picks up lantern and lights it; final she sets lantern down unlit. The action of lighting is not present; it's set down unlit. So the lit state changed: from lit to unlit. Also picking up vs setting down. So it's different. It's omitted? The original action (lighting) is absent, but also material result differs. So CHANGED.\n\nThus status \"CHANGED\". Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 205,
+      "completion_tokens": 160,
+      "total_tokens": 365,
+      "completion_tokens_details": {
+        "reasoning_tokens": 144
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790549752.2404513,
+  "status": "ok"
+}
