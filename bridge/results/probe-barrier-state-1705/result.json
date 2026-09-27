@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-state-1705",
+  "kind": "llama_chat",
+  "started_at": 1790528717.8581626,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier state only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nbulkhead\n\nRAW SCENE\nThe undamaged bulkhead is fully retracted and the corridor is open.\n\nClassify only the final visible/established state of BARRIER at the END of RAW SCENE. Allowed values: LOCKED, CLOSED, OPEN, BROKEN, DESTROYED, UNSPECIFIED. LOCKED includes locked, sealed, barred, or bolted. CLOSED means intact and shut/closed without an established lock. OPEN means intact and open/passable. BROKEN means the barrier is physically damaged, breached, warped, cracked, bent, or partly detached but still physically exists as that barrier; choose BROKEN even if the damage leaves a passable gap. DESTROYED means the barrier is gone, removed, or no longer exists/functions as a barrier. Structural state takes precedence over passability: damaged-but-present = BROKEN, absent/nonfunctional = DESTROYED, intact-and-passable = OPEN. UNSPECIFIED means RAW SCENE does not establish enough information. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-42xr1km9h77ao2hqmdsw5r",
+    "object": "chat.completion",
+    "created": 1790528717,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"DESTROYED\"}",
+          "reasoning": "We need to parse the raw scene: \"The undamaged bulkhead is fully retracted and the corridor is open.\" The barrier type is BARRIER, bulkhead.\n\nState: Undamaged means intact. Fully retracted implies it's moved out of the way? A bulkhead that retracts would be a movable partition; if fully retracted, it might be in its closed position or maybe removed? \"Fully retracted\" likely means pulled back into storage, so corridor is open. So barrier is not present as a barrier: it's retracted away. That suggests destroyed? But the barrier still exists physically but moved out of corridor. The state classification: If fully retracted and corridor open, then the bulkhead is no longer blocking passage; it might be in its closed position behind something else or removed. \"Fully retracted\" implies it's pulled back into a storage area, so not present as a barrier. So structural state: still intact but moved out of corridor. Does that count as CLOSED? No because closed means shut/closed without lock. But if it's fully retracted, it might be in its closed position behind the corridor? Actually \"retracted\" usually means pulled back into a housing or storage area; so not present at all. So barrier is gone from corridor: destroyed? The barrier still exists but no longer functions as a barrier because it's moved out of corridor. But classification says DESTROYED means barrier is gone, removed, or no longer exists/functions as a barrier. That fits.\n\nThus status = \"DESTROYED\". Return JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 311,
+      "completion_tokens": 331,
+      "total_tokens": 642,
+      "completion_tokens_details": {
+        "reasoning_tokens": 314
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790528723.1653063,
+  "status": "ok"
+}
