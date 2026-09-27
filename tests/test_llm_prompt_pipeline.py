@@ -645,6 +645,53 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it", prompt)
         self.assertIn("does NOT authorize the mover/helper to follow", prompt)
 
+    def test_completion_prompt_uses_typed_effects_as_persistent_end_state_authority(self):
+        effects = [
+            {"op": "set_location", "entity": "Eli", "value": "shelter"},
+            {"op": "set_location", "entity": "Noor", "value": "shelter"},
+            {"op": "set_containment", "entity": "Eli", "container": "shelter", "value": "contained"},
+            {"op": "set_containment", "entity": "Noor", "container": "shelter", "value": "contained"},
+        ]
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "Mara guides Eli and Noor into the shelter and locks the door.",
+            "Mara follows Eli and Noor into the shelter and locks the door behind all three.",
+            assigned_source="Mara guides Eli and Noor into the shelter and locks the door.",
+            authoritative_opening_state="Mara starts outside the shelter with Eli and Noor.",
+            assigned_state_effects=effects,
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("ASSIGNED TYPED END STATE", prompt)
+        self.assertIn('"entity":"Eli"', prompt)
+        self.assertIn('"entity":"Noor"', prompt)
+        self.assertIn("No matching effect means that persistent change is INVALID", prompt)
+        self.assertIn("do not give the mover/helper that same persistent location/containment change", prompt)
+
+    def test_director_assigned_state_effects_returns_only_active_beat_effects(self):
+        phase = {
+            "narrative_purpose": minimax.SOURCE_SPAN_PHASE_PURPOSE,
+            "required_events": [
+                {
+                    "event": "Eli enters the shelter.",
+                    "beat_number": 1,
+                    "state_effects": [
+                        {"op": "set_location", "entity": "Eli", "value": "shelter"}
+                    ],
+                },
+                {
+                    "event": "Mara raises the staff.",
+                    "beat_number": 2,
+                    "state_effects": [
+                        {"op": "set_item_state", "entity": "staff", "owner": "Mara", "value": "held"}
+                    ],
+                },
+            ],
+        }
+        self.assertEqual(
+            minimax.director_assigned_state_effects(phase, 1),
+            [{"op": "set_location", "entity": "Eli", "value": "shelter"}],
+        )
+        self.assertEqual(minimax.director_assigned_state_effects({}, 1), [])
+
     def test_formatter_rejects_noncanonical_timestamp_syntax(self):
         issues = minimax._validate_director_timestamp_correspondence(
             "At 00:00.000, Amy opens the door.\nAt 00:01.500, Amy steps back.",
