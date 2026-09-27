@@ -15831,6 +15831,8 @@ def generate_beats_from_story(
                     combined_attempt=process_round,
                     max_attempts=BEAT_RETRY_ATTEMPTS,
                 )
+            except LLMConnectionError:
+                raise
             except Exception as error:
                 macro_arc, created = None, False
                 last_error = f"Arc creation failed: {error}"
@@ -15850,6 +15852,8 @@ def generate_beats_from_story(
                         combined_attempt=validation_round,
                         max_attempts=BEAT_RETRY_ATTEMPTS,
                     )
+                except LLMConnectionError:
+                    raise
                 except Exception as error:
                     validation, parsed = {
                         "valid": False,
