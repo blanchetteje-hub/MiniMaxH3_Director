@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action384-1927",
+  "kind": "llama_chat",
+  "started_at": 1790549767.8809738,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nTomas pulls the pin and throws the flare into the tunnel; red light fills it.\n\nFINAL H3 MICRO-ACTION:\nTomas yanks the pin, hurls the flare into the tunnel, and red light floods the passage.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-rv6y2ijpsn9515jwhg74k4",
+    "object": "chat.completion",
+    "created": 1790549767,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"PRESERVED\"}",
+          "reasoning": "We need to compare RAW micro-action with final H3 micro-action at same timestamp. The raw: \"Tomas pulls the pin and throws the flare into the tunnel; red light fills it.\" Final: \"Tomas yanks the pin, hurls the flare into the tunnel, and red light floods the passage.\"\n\nCheck differences:\n\n- \"pulls\" vs \"yanks\": synonyms.\n- \"throws\" vs \"hurls\": synonyms.\n- \"into the tunnel\" same.\n- \"red light fills it\" vs \"red light floods the passage\". Slight difference: \"fills it\" refers to the tunnel; final says \"floods the passage.\" The result is red light filling the tunnel. Both describe same effect: red light in the tunnel. So PRESERVED.\n\nThus status = PRESERVED. Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 225,
+      "completion_tokens": 185,
+      "total_tokens": 410,
+      "completion_tokens_details": {
+        "reasoning_tokens": 168
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790549770.5732443,
+  "status": "ok"
+}
