@@ -9898,6 +9898,30 @@ BEAT_FINITE_ENDPOINT_RESPONSE_FORMAT = {
 }
 
 
+BEAT_DESTINATION_PRESENCE_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "beat_destination_presence",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "relation": {
+                    "type": "string",
+                    "enum": [
+                        "AT_DESTINATION",
+                        "NOT_AT_DESTINATION",
+                        "UNSPECIFIED",
+                    ],
+                },
+            },
+            "required": ["relation"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
 def build_beat_finite_endpoint_messages(beat_job, candidate_beat):
     """Extract only whether one finite assigned activity visibly finishes."""
     return [
@@ -9942,6 +9966,121 @@ def parse_beat_finite_endpoint_result(raw_result):
     if status not in {"COMPLETE", "ONGOING", "NOT_APPLICABLE"}:
         raise ValueError("Finite-endpoint response contains an invalid status.")
     return status
+
+
+def build_beat_destination_presence_messages(
+    destination,
+    subject,
+    candidate_beat,
+):
+    """Extract only whether one named subject is ever inside one destination."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract subject destination presence only. Do not judge story "
+                "validity. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"DESTINATION\n{destination}\n\nNAMED SUBJECT\n{subject}\n\n"
+                "CANDIDATE BEAT\n"
+                + str(candidate_beat or "")
+                + "\n\nClassify only whether CANDIDATE BEAT establishes that "
+                "NAMED SUBJECT is physically at/inside DESTINATION at any point "
+                "during the beat. Allowed values: AT_DESTINATION, "
+                "NOT_AT_DESTINATION, UNSPECIFIED. AT_DESTINATION includes entering, "
+                "standing in, acting in, or explicitly being inside DESTINATION "
+                "even if the subject later leaves. NOT_AT_DESTINATION means the "
+                "beat explicitly keeps the subject outside/elsewhere and does not "
+                "place the subject inside. Reaching through an opening while the "
+                "subject's body remains outside is NOT_AT_DESTINATION. UNSPECIFIED "
+                "means the subject's relation to DESTINATION is not established "
+                "clearly enough. Do not decide whether the placement is allowed."
+            ),
+        },
+    ]
+
+
+def parse_beat_destination_presence_result(raw_result):
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = json.loads(candidate.strip())
+    if not isinstance(candidate, dict) or set(candidate) != {"relation"}:
+        raise ValueError(
+            "Beat destination-presence response must contain only relation."
+        )
+    relation = candidate["relation"]
+    if relation not in {
+        "AT_DESTINATION",
+        "NOT_AT_DESTINATION",
+        "UNSPECIFIED",
+    }:
+        raise ValueError(
+            "Beat destination-presence response contains an invalid relation."
+        )
+    return relation
+
+
+def build_beat_destination_presence_contracts(
+    current_state,
+    assigned_state_effects,
+    candidate_beat,
+):
+    """Return closed destinations and named tracked subjects canonically outside."""
+    if not isinstance(current_state, dict) or not current_state:
+        return []
+    candidate_text = str(candidate_beat or "")
+    contracts = []
+    for boundary in build_beat_closed_boundary_contracts(
+        current_state,
+        assigned_state_effects,
+    ):
+        destination = str(boundary.get("destination") or "").strip()
+        if not destination:
+            continue
+        destination_key = " ".join(
+            destination.replace("_", " ").split()
+        ).casefold()
+        for root_name in ("characters", "threats"):
+            root = current_state.get(root_name) or {}
+            if not isinstance(root, dict):
+                continue
+            for entity, record in root.items():
+                if not isinstance(record, dict):
+                    continue
+                entity = str(entity)
+                if not re.search(
+                    rf"(?<![\w]){re.escape(entity)}(?![\w])",
+                    candidate_text,
+                    re.IGNORECASE,
+                ):
+                    continue
+                location = " ".join(
+                    str(record.get("location") or "").replace("_", " ").split()
+                ).casefold()
+                contained_in = " ".join(
+                    str(record.get("contained_in") or "")
+                    .replace("_", " ")
+                    .split()
+                ).casefold()
+                if destination_key in {location, contained_in}:
+                    continue
+                known = [
+                    value
+                    for value in (location, contained_in)
+                    if value and value not in {"n/a", "na", "none", "null"}
+                ]
+                if not known:
+                    continue
+                contracts.append({
+                    "destination": destination,
+                    "subject": entity,
+                    "barrier": boundary.get("barrier"),
+                })
+    return contracts
 
 
 def _connective_beat_job():
@@ -11229,6 +11368,86 @@ def _run_forward_beat_validation(
                 flush=True,
             )
             if validation["valid"]:
+                presence_check_failed = False
+                presence_contracts = build_beat_destination_presence_contracts(
+                    state_before,
+                    [
+                        {
+                            "id": event["id"],
+                            "state_effects": copy.deepcopy(
+                                event.get("state_effects", [])
+                            ),
+                        }
+                        for event in assigned_current_events
+                    ],
+                    candidate,
+                )
+                for presence_contract in presence_contracts:
+                    try:
+                        relation = parse_beat_destination_presence_result(
+                            llm_request(
+                                build_beat_destination_presence_messages(
+                                    presence_contract["destination"],
+                                    presence_contract["subject"],
+                                    candidate,
+                                ),
+                                response_format=(
+                                    BEAT_DESTINATION_PRESENCE_RESPONSE_FORMAT
+                                ),
+                                parse_json_response=False,
+                                history_metadata={
+                                    **(history_metadata or {}),
+                                    "purpose": "beat_destination_presence_extract",
+                                    "use_beat_validation_settings": True,
+                                    "beat_number": beat_number,
+                                    "validation_attempt": validation_attempt,
+                                    "total_segments": int(total_segments),
+                                },
+                            )
+                        )
+                    except (
+                        LLMConnectionError,
+                        requests.RequestException,
+                        OSError,
+                        ValueError,
+                        TypeError,
+                    ) as error:
+                        last_issue = (
+                            "Beat destination-presence extractor failed: "
+                            f"{error}"
+                        )
+                        retry_feedback = last_issue
+                        regenerate_candidate = False
+                        presence_check_failed = True
+                        print(
+                            f"Beat {beat_number} destination-presence attempt "
+                            f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
+                            f"{last_issue}",
+                            flush=True,
+                        )
+                        break
+
+                    if relation == "AT_DESTINATION":
+                        last_issue = (
+                            f"{presence_contract['subject']} is canonically outside "
+                            f"{presence_contract['destination']} behind a closed "
+                            "boundary, but the candidate places that subject inside "
+                            "the protected destination."
+                        )
+                        retry_feedback = last_issue
+                        regenerate_candidate = True
+                        presence_check_failed = True
+                        print(
+                            f"Beat {beat_number} destination-presence attempt "
+                            f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: INVALID; "
+                            f"issue: {last_issue}",
+                            flush=True,
+                        )
+                        break
+
+                if presence_check_failed:
+                    continue
+
                 try:
                     finite_endpoint_status = parse_beat_finite_endpoint_result(
                         llm_request(
