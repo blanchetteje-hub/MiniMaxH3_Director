@@ -753,6 +753,25 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("At 00:00.000, Amy", formatted)
         self.assertIn("At 00:01.500, Amy", formatted)
 
+    def test_finite_endpoint_prompt_distinguishes_finite_from_repeated_work(self):
+        messages = minimax.build_beat_finite_endpoint_messages(
+            "Mara is cooking breakfast for Eli.",
+            "Mara is still cooking eggs at the stove.",
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("COMPLETE", prompt)
+        self.assertIn("ONGOING", prompt)
+        self.assertIn("NOT_APPLICABLE", prompt)
+        self.assertIn("Progressive source wording", prompt)
+
+    def test_finite_endpoint_parser_is_strict(self):
+        self.assertEqual(
+            minimax.parse_beat_finite_endpoint_result({"status": "COMPLETE"}),
+            "COMPLETE",
+        )
+        with self.assertRaises(ValueError):
+            minimax.parse_beat_finite_endpoint_result({"status": "DONE"})
+
     def test_terminal_target_source_detection_is_narrow(self):
         self.assertTrue(
             minimax.director_source_has_terminal_action(
