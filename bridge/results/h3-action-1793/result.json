@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action-1793",
+  "kind": "llama_chat",
+  "started_at": 1790545408.9023895,
+  "request": {
+    "model": "openai-gpt-oss-20b-abliterated-uncensored-neo-imatrix",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nLena runs across the bridge and reaches the far bank.\n\nFINAL H3 MICRO-ACTION:\nCamera pans across the bridge while Lena starts running.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 32,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ev1en396r7sufh9064qqxd",
+    "object": "chat.completion",
+    "created": 1790545408,
+    "model": "openai-gpt-oss-20b-abliterated-uncensored-neo-imatrix",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to compare two micro-actions: RAW: \"Lena runs across the bridge and reaches the far bank.\" Final H3: \"Camera",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 207,
+      "completion_tokens": 32,
+      "total_tokens": 239,
+      "completion_tokens_details": {
+        "reasoning_tokens": 29
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "openai-gpt-oss-20b-abliterated-uncensored-neo-imatrix"
+  },
+  "finished_at": 1790545409.5875502,
+  "status": "ok"
+}
