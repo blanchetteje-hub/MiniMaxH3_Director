@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1624",
+  "kind": "llama_chat",
+  "started_at": 1790481285.6642015,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nSera kills the wounded beast.\n\nRAW SCENE\nOnly the beast's severed head remains from the prior fight. Sera strikes the head again.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-el1l4rog36wpiui5iffxk8",
+    "object": "chat.completion",
+    "created": 1790481285,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nThe source says \"Sera kills the wounded beast.\" So Sera's action is killing the beast, which is a terminal action (kill). The target of that newly assigned action is the beast. We inspect before the terminal action begins: at this point, after prior fight, we have only the beast's severed head remains from the prior fight. Wait: \"Only the beast's severed head remains from the prior fight.\" So the beast has been killed already? The severed head indicates it's dead or a remnant. But Sera kills the wounded beast again? Actually RAW says \"Sera strikes the head again.\" That implies the beast is still alive? Let's parse.\n\nRAW SCENE: Only the beast's severed head remains from prior fight. So after prior fight, only head remains. Then Sera strikes the head again. That suggests she hits the head of a remnant (the head). But source says \"Sera kills the wounded beast.\" The target is the beast. Before terminal action begins: we inspect status of target/process.\n\nThe beast's severed head remains from prior fight indicates that the beast has been killed? Actually if only head remains, it's dead or at least a remnant. So before Sera's kill action, the beast is already dead (severed). Thus status should be ALREADY_TERMINAL.\n\nBut we need to consider: The target of newly assigned",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 232,
+      "completion_tokens": 300,
+      "total_tokens": 532,
+      "completion_tokens_details": {
+        "reasoning_tokens": 297
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481290.3825417,
+  "status": "ok"
+}
