@@ -1574,3 +1574,13 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Regression commit `bcaa4891e807bdb9d80fc9bd06f5381a820153f0` adds contract derivation, authorized-release, extraction-only prompt, and strict-parser coverage.
 - Queued `tests-1667` and fresh full `acceptance-1668`. Acceptance should verify Segment 6 no longer routes an attacking zombie through the locked basement boundary, while Segment 8 still permits Will/Amber release because its typed containment effects authorize that transition.
 
+### 2026-09-27 — acceptance 1668 closes unauthorized crossing; next failure is barrier final-state contradiction
+
+- `acceptance-1668` completed all 8 segments. The new closed-boundary traversal invariant fixed the demonstrated Segment-6 regression: the third zombie now attacks from the broken kitchen-entry side rather than emerging through the locked basement boundary.
+- Segment 8 still permits Will and Amber to leave the basement, confirming that explicit `set_containment(..., value="free")` effects correctly disable the no-traversal prohibition for the authorized release beat.
+- `tests-1667` had not produced a result commit when this checkpoint was reviewed, so do not claim that regression suite passed yet.
+- Earliest new hard failure is Segment 2 barrier state. RAW visibly locks the basement door at 00:05.500, then at 00:06.500 says Amy is watching through the **open basement door**. This contradicts the same beat's source-owned `set_barrier_state(..., value="locked")` effect even though no subject crosses the boundary.
+- The broad completion verifier accepted that contradiction, so do not add more prose to it. Use the established pattern: a narrow local-LLM extractor reports only the final observed state of the source-owned barrier; Python compares it to the typed effect.
+- Queued generic barrier-final-state probes `probe-barrier-state-1669` through `1688` across doors, gates, airlocks, vaults, portals, shelters, garage doors, lab doors, and bulkheads. Enum under test: `LOCKED | CLOSED | OPEN | BROKEN | DESTROYED | UNSPECIFIED`. Expected answers are stored only in bridge job metadata, not shown to the model.
+- Do not wire the extractor into production until the probe batch is graded. If accepted, integrate it into the existing Request-1 loop alongside topology/traversal extraction rather than creating another semantic pipeline stage.
+
