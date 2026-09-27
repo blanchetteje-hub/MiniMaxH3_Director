@@ -207,3 +207,20 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - Queued `tests-1745` and full `acceptance-1746`.
 - Acceptance checkpoint: Beat 6 must stop giving an outside attacker physical access to Will/Amber while the basement boundary is closed.
 
+### 2026-09-27 — acceptance 1746 completes 8/8; next earliest issue is interior prop access across locked basement
+
+- `tests-1745` ran 107 tests with **106 passed / 1 failed**. The sole failure was a stale exact-string assertion in `test_validator_prompt_includes_assigned_state_effects`; all new contained-occupant regressions passed.
+- `acceptance-1746` completed **all 8 segments**. The prior Beat-6 child-access violation was removed after regeneration; the accepted Beat 6 no longer lets an outside attacker reach Will or Amber.
+- However, review of the completed run found an earlier remaining topology error in Beat 3:
+  - Beat 2 locks Will and Amber inside the basement with Amy outside.
+  - Beat 3 then invents Amy's hidden pistol/katana as being in **a closet in the basement** and requires her to retrieve them.
+  - Director attempts to satisfy this impossible assignment by having Amy reach through/into the locked basement boundary while still describing the door as locked.
+- This is the same closed-boundary responsibility, not a new semantic class: a closed boundary must block physical access not only to contained occupants but also to interior props, targets, and other contents.
+- Production commit `16ecc43dd5b6a5e291ee71cf6bc422c62f89c39d` tightens the existing Beat CREATE + Beat VALIDATE closed-boundary contract:
+  - while closed, an outside entity cannot retrieve/use an object located inside or otherwise physically interact across the boundary with an occupant, prop, target, or other interior content;
+  - do not stage a required action/object inside the protected destination when the acting subject remains outside and no opening/release is authorized.
+- Test-maintenance commit `460e69ff80c8265ca0ab12dc9e12b98f76967493` refreshes the stale typed-effect prompt assertion.
+- Regression commit `64c43b1f0a35b132fc5aa2b87b6122f2bc7be40a` adds direct coverage for the Beat-3 failure mode: retrieving required weapons from a closet inside a locked protected destination.
+- Queued `tests-1747` and full `acceptance-1748`.
+- Acceptance checkpoint: Beat 3 must keep the hidden arsenal accessible to Amy on her side of the locked basement boundary; later combat beats must likewise avoid staging required targets/actions inside the protected basement unless an opening/release effect authorizes it.
+
