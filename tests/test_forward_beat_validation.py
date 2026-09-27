@@ -175,6 +175,8 @@ class ForwardBeatValidationTests(unittest.TestCase):
 
         def validator(messages, **kwargs):
             content = messages[1]["content"]
+            if "Classify only the finite-activity endpoint" in content:
+                return {"status": "COMPLETE"}
             if "WITHIN-BEAT PHYSICAL/CAUSAL COHERENCE ONLY" in content:
                 return {"valid": True, "issue": ""}
             marker = "CURRENT STATE\n"
@@ -204,6 +206,9 @@ class ForwardBeatValidationTests(unittest.TestCase):
 
     def test_valid_beat_commits_assigned_effects_after_validation(self):
         def validator(messages, **kwargs):
+            content = messages[1]["content"]
+            if "Classify only the finite-activity endpoint" in content:
+                return {"status": "COMPLETE"}
             return {"valid": True, "issue": ""}
 
         with tempfile.TemporaryDirectory() as directory:
