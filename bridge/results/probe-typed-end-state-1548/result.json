@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1548",
+  "kind": "llama_chat",
+  "started_at": 1790471885.5599554,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nCaptain Vale starts on the bridge with Jo and Ren.\n\nASSIGNED SOURCE\nVale orders Jo and Ren into the escape pod.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_containment\",\"entity\":\"Jo\",\"container\":\"escape pod\",\"value\":\"contained\"},{\"op\":\"set_containment\",\"entity\":\"Ren\",\"container\":\"escape pod\",\"value\":\"contained\"}]\n\nRAW SCENE\nJo and Ren enter the escape pod. Vale remains on the bridge and closes the hatch from outside.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-gqw4m6yrlld0jbumo0hzo",
+    "object": "chat.completion",
+    "created": 1790471885,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need validate raw scene against assigned typed end state.\n\nOpening state: Captain Vale starts on bridge with Jo and Ren. So initial positions: Vale on bridge, Jo somewhere? likely also on bridge? It says \"with Jo and Ren\" meaning all three are on the bridge initially. So Jo and Ren start on bridge.\n\nAssigned source: Vale orders Jo and Ren into escape pod. That means action: Vale instructs them to go into pod. The typed end state: set_containment for Jo and Ren in escape pod, value contained.\n\nRaw scene: \"Jo and Ren enter the escape pod. Vale remains on the bridge and closes the hatch from outside.\"\n\nSo final positions: Jo inside escape pod (contained). Ren inside escape pod (contained). Vale on bridge. Hatch closed from outside but that doesn't affect containment? The typed end state only cares about containment of Jo and Ren.\n\nCheck rule 1: For already-known named subjects, barriers, items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one newly relocated etc require matching typed effect. No match means invalid. Here Jo and Ren are contained in escape pod; matches typed effects. Good.\n\nRule 2: Temporary motion allowed when entity returns to opening state by end. Not relevant.\n\nRule 3: Every listed typed effect must be true in RAW's final state. Yes, both containments hold.\n\nRule 4: Also require concrete ASSIGNED SOURCE work completed. Vale orders Jo and Ren into escape pod; raw scene shows they enter the pod. So source satisfied.\n\nThus valid = true, issue empty string? Provide \"issue\": \"\" or maybe null. The JSON must have keys valid and issue. Issue can be empty string if no issues. Let's output: {\"valid\":true,\"issue\":\"\".}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 341,
+      "completion_tokens": 386,
+      "total_tokens": 727,
+      "completion_tokens_details": {
+        "reasoning_tokens": 367
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471891.5966756,
+  "status": "ok"
+}
