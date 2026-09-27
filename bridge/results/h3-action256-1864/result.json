@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action256-1864",
+  "kind": "llama_chat",
+  "started_at": 1790548425.3138454,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nThe knight raises his shield and blocks the dragon's flame.\n\nFINAL H3 MICRO-ACTION:\nThe knight lifts the shield; dragon fire strikes the shield and is stopped.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-bo2qte7664ofz613bt9q0f",
+    "object": "chat.completion",
+    "created": 1790548425,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"PRESERVED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"The knight raises his shield and blocks the dragon's flame.\" Final H3 micro-action: \"The knight lifts the shield; dragon fire strikes the shield and is stopped.\"\n\nPreserved? The action: Knight raising/lifting shield, blocking/stop dragon fire. Both mention shield raised/lifted, dragon fire striking it, being blocked/stopped. So same visible/audible action and result remain. Minor wording differences: \"raises\" vs \"lifts\", \"blocks the dragon's flame\" vs \"dragon fire strikes the shield and is stopped\". The result remains that the shield stops the fire. So PRESERVED.\n\nReturn JSON {\"status\":\"PRESERVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 212,
+      "completion_tokens": 160,
+      "total_tokens": 372,
+      "completion_tokens_details": {
+        "reasoning_tokens": 143
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790548427.823033,
+  "status": "ok"
+}
