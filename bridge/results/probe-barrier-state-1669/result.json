@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-state-1669",
+  "kind": "llama_chat",
+  "started_at": 1790527044.3224998,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier state only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nbasement door\n\nRAW SCENE\nMara turns the basement door lock. The latch clicks. End state: the basement door is locked.\n\nClassify only the final visible/established state of BARRIER at the END of RAW SCENE. Allowed values: LOCKED, CLOSED, OPEN, BROKEN, DESTROYED, UNSPECIFIED. LOCKED includes locked, sealed, barred, or bolted. CLOSED means shut/closed without an established lock. OPEN means open/passable through that barrier. BROKEN means damaged/breached but the barrier still physically exists. DESTROYED means the barrier is gone or no longer functions as a barrier. UNSPECIFIED means RAW SCENE does not establish enough information. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-zsned5tbcsk0retrvkyidd",
+    "object": "chat.completion",
+    "created": 1790527044,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"LOCKED\"}",
+          "reasoning": "We need to output JSON with status value from allowed list.\n\nThe raw scene says \"Mara turns the basement door lock. The latch clicks. End state: the basement door is locked.\" So final barrier state is LOCKED. Output JSON: {\"status\":\"LOCKED\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 256,
+      "completion_tokens": 72,
+      "total_tokens": 328,
+      "completion_tokens_details": {
+        "reasoning_tokens": 56
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790527045.601119,
+  "status": "ok"
+}
