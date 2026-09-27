@@ -10015,10 +10015,30 @@ def build_beat_closed_boundary_contracts(current_state, assigned_state_effects):
         "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n"
         + json.dumps(current_state, ensure_ascii=False, separators=(",", ":"))
     )
-    return build_director_closed_boundary_contracts(
+    contracts = build_director_closed_boundary_contracts(
         opening_state,
         assigned_state_effects,
     )
+    characters = current_state.get("characters", {})
+    threats = current_state.get("threats", {})
+    for contract in contracts:
+        destination = str(contract.get("destination") or "").strip()
+        occupants = []
+        if destination:
+            for root in (characters, threats):
+                if not isinstance(root, dict):
+                    continue
+                for entity, record in root.items():
+                    if not isinstance(record, dict):
+                        continue
+                    if (
+                        str(record.get("containment") or "").casefold() == "contained"
+                        and str(record.get("contained_in") or "").casefold()
+                        == destination.casefold()
+                    ):
+                        occupants.append(str(entity))
+        contract["occupants"] = occupants
+    return contracts
 
 
 def build_beat_validation_messages(
@@ -10056,12 +10076,17 @@ def build_beat_validation_messages(
             destination = contract.get("destination")
             label = contract["barrier"]
             if destination:
+                occupants = ", ".join(contract.get("occupants") or []) or "none listed"
                 lines.append(
                     f"- {label} protects {destination!r} and begins "
-                    f"{contract['state']}. No person, creature, object, body part, "
-                    "or other physical thing may cross into or out of that "
-                    "destination in this beat unless the assigned typed effects "
-                    "authorize opening/release."
+                    f"{contract['state']}. Known contained occupants: {occupants}. "
+                    "No person, creature, object, body part, or other physical "
+                    "thing may cross into or out of that destination in this beat "
+                    "unless the assigned typed effects authorize opening/release. "
+                    "While this boundary remains closed, an outside entity also "
+                    "cannot reach, grab, bite, strike, hand something to, receive "
+                    "something from, or otherwise physically interact across the "
+                    "boundary with a contained occupant."
                 )
             else:
                 lines.append(
@@ -14436,12 +14461,17 @@ def build_beat_generation_messages(
                 ):
                     destination = contract.get("destination")
                     if destination:
+                        occupants = ", ".join(contract.get("occupants") or []) or "none listed"
                         closed_boundary_lines.append(
                             f"{int(beat_number)}. {contract['barrier']} protects "
-                            f"{destination!r} and begins {contract['state']}; no "
-                            "person, creature, object, body part, or other physical "
-                            "thing may cross into or out of that destination unless "
-                            "this beat's typed effects authorize opening/release."
+                            f"{destination!r} and begins {contract['state']}; known "
+                            f"contained occupants: {occupants}; no person, creature, "
+                            "object, body part, or other physical thing may cross into "
+                            "or out of that destination unless this beat's typed effects "
+                            "authorize opening/release; while closed, outside entities "
+                            "cannot reach, grab, bite, strike, exchange objects with, or "
+                            "otherwise physically interact across the boundary with "
+                            "those contained occupants."
                         )
                     else:
                         closed_boundary_lines.append(
