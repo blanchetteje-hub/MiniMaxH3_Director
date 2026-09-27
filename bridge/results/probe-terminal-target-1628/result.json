@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1628",
+  "kind": "llama_chat",
+  "started_at": 1790481308.697722,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nVale eliminates the final attacker.\n\nRAW SCENE\nThe attacker is already dead on the floor. Vale fires another shot into the body.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-vu3ep73xez2oqz7dq11pi",
+    "object": "chat.completion",
+    "created": 1790481308,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ALREADY_TERMINAL\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nGiven source: \"Vale eliminates the final attacker.\" So source assigns a terminal action (eliminate). The target of that newly assigned action is the final attacker. We inspect before the terminal action begins, i.e., before Vale's elimination occurs. In RAW scene: \"The attacker is already dead on the floor. Vale fires another shot into the body.\"\n\nSo before the terminal action starts, the attacker is already dead (already a corpse). So status should be ALREADY_TERMINAL.\n\nReturn JSON {\"status\":\"ALREADY_TERMINAL\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 228,
+      "completion_tokens": 139,
+      "total_tokens": 367,
+      "completion_tokens_details": {
+        "reasoning_tokens": 120
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481311.1458967,
+  "status": "ok"
+}
