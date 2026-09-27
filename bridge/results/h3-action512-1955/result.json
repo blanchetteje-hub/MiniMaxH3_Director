@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action512-1955",
+  "kind": "llama_chat",
+  "started_at": 1790550064.724495,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nThe guard raises the gate and the wagon passes through.\n\nFINAL H3 MICRO-ACTION:\nThe guard lowers the gate before the wagon can pass.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-9qpuxdyglfglegv02bsvt",
+    "object": "chat.completion",
+    "created": 1790550064,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CHANGED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"The guard raises the gate and the wagon passes through.\" Final H3 micro-action: \"The guard lowers the gate before the wagon can pass.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. Here, in raw, guard raises gate; wagon passes through. In final, guard lowers gate before wagon can pass. So gate is lowered instead of raised, and wagon cannot pass (or at least not yet). That's a different action: raising vs lowering the gate. Also the material result changes: wagon passes vs can't pass. So it's CHANGED.\n\nThus status = \"CHANGED\". Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 207,
+      "completion_tokens": 155,
+      "total_tokens": 362,
+      "completion_tokens_details": {
+        "reasoning_tokens": 139
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790550067.0547729,
+  "status": "ok"
+}
