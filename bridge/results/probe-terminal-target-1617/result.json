@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1617",
+  "kind": "llama_chat",
+  "started_at": 1790481218.7193918,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nNia eliminates the final drone.\n\nRAW SCENE\nThe drone hovers and fires. Nia shoots its core; it crashes inert.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-y8j0eykkv6i9y6d75ck4jk",
+    "object": "chat.completion",
+    "created": 1790481218,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nGiven source: \"Nia eliminates the final drone.\" So source assigns a terminal action: Nia eliminates the final drone. The target of that newly assigned action is the final drone. We inspect its status immediately before the terminal action begins, based on RAW SCENE: \"The drone hovers and fires. Nia shoots its core; it crashes inert.\"\n\nSo before the terminal action (Nia shooting its core), what is the status? The drone is hovering and firing, so it's active. It hasn't been eliminated yet. So status ACTIVE_OR_UNRESOLVED.\n\nReturn JSON {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 229,
+      "completion_tokens": 158,
+      "total_tokens": 387,
+      "completion_tokens_details": {
+        "reasoning_tokens": 138
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481221.347677,
+  "status": "ok"
+}
