@@ -1,0 +1,24 @@
+{
+  "kind": "llama_chat",
+  "job_id": "h3-action64-1837",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+    },
+    {
+      "role": "user",
+      "content": "RAW MICRO-ACTION:\nLena runs across the bridge and reaches the far bank.\n\nFINAL H3 MICRO-ACTION:\nCamera pans across the bridge while Lena starts running.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 1,
+  "max_tokens": 64,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "timeout_seconds": 600,
+  "metadata": {
+    "expected_status": "OMITTED",
+    "purpose": "h3_action_preservation_64_token_probe"
+  }
+}
