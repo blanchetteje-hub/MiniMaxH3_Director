@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action-1786",
+  "kind": "llama_chat",
+  "started_at": 1790545386.1740448,
+  "request": {
+    "model": "openai-gpt-oss-20b-abliterated-uncensored-neo-imatrix",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nJon hands the red vial to Priya; Priya takes it.\n\nFINAL H3 MICRO-ACTION:\nJon passes Priya the red vial, and Priya receives it in her hand.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 32,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-omu3dxv2zud2xlhnyqar25",
+    "object": "chat.completion",
+    "created": 1790545386,
+    "model": "openai-gpt-oss-20b-abliterated-uncensored-neo-imatrix",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to compare two micro-actions: RAW vs FINAL. Determine if same visible/audible action and material result remain even if wording differs etc",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 216,
+      "completion_tokens": 32,
+      "total_tokens": 248,
+      "completion_tokens_details": {
+        "reasoning_tokens": 29
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "openai-gpt-oss-20b-abliterated-uncensored-neo-imatrix"
+  },
+  "finished_at": 1790545386.9899433,
+  "status": "ok"
+}
