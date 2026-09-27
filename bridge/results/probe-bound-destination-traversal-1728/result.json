@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-bound-destination-traversal-1728",
+  "kind": "llama_chat",
+  "started_at": 1790533425.6614196,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract boundary traversal only. Do not judge story validity or physical possibility. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BOUND BARRIER\nsteel gate\n\nPROTECTED DESTINATION\ncourtyard\n\nRAW SCENE\nThe ball rolls toward the gate and stops outside the courtyard.\n\nClassify only whether RAW SCENE establishes that any person, creature, object, body part, or other physical thing crosses the boundary of PROTECTED DESTINATION during the scene. Return TRAVERSED when RAW explicitly shows or states movement from outside the destination to inside it, from inside to outside it, or through BOUND BARRIER. The barrier noun does not need to be repeated if the destination crossing itself is explicit. Return NOT_TRAVERSED when things only approach, strike, wait near, remain on one side, or are already inside/outside without crossing during this scene. Return UNSPECIFIED when the scene gives different start/end sides but does not establish how the change occurred, or when spatial information is insufficient. Do not infer an unseen route. Do not decide whether crossing is allowed. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-utmo7tws7guc6lzv3tw0l",
+    "object": "chat.completion",
+    "created": 1790533425,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NOT_TRAVERSED\"}",
+          "reasoning": "We need to parse RAW SCENE: \"The ball rolls toward the gate and stops outside the courtyard.\"\n\nBound barrier: steel gate.\n\nProtected destination: courtyard.\n\nSo we have a ball rolling towards the gate, then stops outside the courtyard. So it didn't cross into courtyard; it's still outside. It approached but stopped outside. No crossing of boundary. So status = NOT_TRAVERSED.\n\nReturn JSON {\"status\":\"NOT_TRAVERSED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 290,
+      "completion_tokens": 106,
+      "total_tokens": 396,
+      "completion_tokens_details": {
+        "reasoning_tokens": 88
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790533427.5752494,
+  "status": "ok"
+}
