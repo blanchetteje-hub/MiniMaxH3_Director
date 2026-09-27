@@ -323,3 +323,29 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - ComfyUI execution/render failures remain recoverable; only inability to connect to ComfyUI is fatal.
 - Regression commit `b425eb86c1c491dda3ce92f1a1aa4e56c258ad10` covers supervisor retry and fatal propagation for LLM/ComfyUI connection errors.
 - Queued `tests-1775` and full `acceptance-1776`.
+
+
+### 2026-09-27 — final H3 validation now follows Python-owned truth + tiny extractor architecture
+
+- New direction: do not trust Request 2 / formatter output merely because its JSON parsed and timestamps matched. The actual final H3 string assembled by Python is the render boundary and must be validated there.
+- Acceptance 1774 exposed the need: Request 2 still contained `Amy ... flips eggs`, but later deterministic wardrobe reconciliation accidentally consumed the action and the final H3 string contained only `Amy, wearing black tank top and denim jeans.` The pre-assembly formatter checks could not see this loss.
+- Final-H3 validation architecture:
+  1. Python deterministically pairs RAW SCENE and final-H3 micro-actions by canonical timestamp.
+  2. A tiny local extractor sees exactly one RAW micro-action and one final-H3 micro-action.
+  3. Extractor returns only `PRESERVED | OMITTED | CHANGED`.
+  4. Python owns acceptance: any non-PRESERVED required RAW action rejects the final prompt.
+  5. Additional final-H3 invariants should follow the same pattern: deterministic Python contracts plus narrow observation extractors, not one holistic “is this prompt good?” judge.
+- Commit `291028805a719b6c45211e6589281db419399091` independently fixes the demonstrated wardrobe-regex bug so canonical wardrobe replacement no longer swallows a following physical action.
+- Commit `a92225e1e87357159795634b8341f96bf0c8f1c3` adds the first final-H3 action-preservation extractor and replayable post-Director fixture API.
+- Commit `a3786944f47dfb9eb6f7127e5bdac4781e3ab132` adds `tools/run_h3_prompt_fixtures.py`, which runs only final-H3 extractors against saved fixtures.
+- Commit `1ca78bf998d716a6c8c6687f49b02a28087d2228` adds the allowlisted bridge job kind `run_h3_prompt_fixtures` for fast local fixture replay after the bridge worker is updated/restarted.
+- Commit `ae4c8583a681bf6cfa6049b6fc12d20c67d9e8b7` adds prompt-generation capture flags:
+  - `--capture-h3-validation-segment N`
+  - `--capture-h3-validation-fixture PATH`
+  These save accepted RAW + fully assembled final H3 + minimal authority metadata before ComfyUI and also work in `--test-prompt-generation` mode.
+- Seed fixtures:
+  - `tests/fixtures/h3_prompt_validation/amy_segment1_preserved.json`
+  - `tests/fixtures/h3_prompt_validation/amy_segment1_action_omitted.json`
+  Both reuse the accepted Segment-1 RAW from acceptance 1774; only the final H3 candidate differs.
+- Queued 20 narrow action-preservation probes `h3-action-1777` through `h3-action-1796` across domestic, fantasy, sci-fi, transfer, repair, travel, and magical cases. Expected labels cover preserved, omitted, and materially changed actions.
+- Do not wire this extractor as a production rejection gate until the 20B probe matrix is graded. Once stable, production should reject/regenerate at the final H3 boundary before continuity extraction or ComfyUI.
