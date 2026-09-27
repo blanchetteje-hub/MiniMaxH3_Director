@@ -262,3 +262,21 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - Queued `tests-1769` and full `acceptance-1770`.
 - Acceptance checkpoint: after Beat 2 locks Will/Amber in the basement with Amy outside, Beats 3-6 must not place Amy physically inside the basement at any point unless an active source-owned opening/release transition authorizes it. Beat 3's hidden arsenal must therefore be staged somewhere accessible on Amy's side of the boundary.
 
+
+
+### 2026-09-27 — acceptance 1770 exposed wrapped-effect plumbing bug in Beat boundary validation
+
+- `acceptance-1770` completed 8/8 but still allowed the old topology failure:
+  - Beat 6 explicitly placed Amy fighting zombies **inside the locked basement** while Will/Amber remained contained there.
+  - Segment 7 then continued with Amy in the basement although the basement boundary was still canonically locked.
+- The newly added Beat destination-presence extractor itself was not the problem. The 1770 developer log contained **no `beat_destination_presence_extract` calls** for the accepted combat beats.
+- Root cause: Beat VALIDATE passed assigned effects as event wrappers:
+  `[{"id":"E6","state_effects":[]}]`
+  while the shared Python boundary derivation expects the flat typed-effect list. `_validate_state_effects` rejected that wrapper shape, so closed-boundary derivation silently returned no contracts. Beat CREATE used flat effects and therefore did receive the boundary contract, explaining the asymmetry.
+- Production commit `9ac76adcc7cc81136fe61d899440bd94d2807e09`:
+  - adds one deterministic normalizer for Beat assigned effects;
+  - flattens event wrappers before Python barrier-binding / closed-boundary derivation;
+  - leaves the validator-facing wrapped event structure intact for traceability.
+- Regression commit `1b69bdacc52c24bf197f827b197b137efe8790a7` proves the real production shape (wrapped event with empty `state_effects`) still yields the basement closed-boundary contract and destination-presence candidate for Amy.
+- Queued `tests-1771` and full `acceptance-1772`.
+- Acceptance checkpoint: after Beat 2 locks Will/Amber in the basement with Amy outside, the destination-presence extractor must now actually run on later candidate beats mentioning Amy and deterministically reject any candidate that places her inside the basement before an authorized opening/release.
