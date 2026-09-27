@@ -525,6 +525,65 @@ def run_pytest_job(source_root: Path, job: dict) -> dict:
 
 
 
+def run_h3_prompt_fixture_job(source_root: Path, job: dict) -> dict:
+    """Run only saved final-H3 extractor fixtures on one code branch."""
+
+    code_branch = str(job.get("code_branch") or DEFAULT_CODE_BRANCH).strip()
+    fixtures = job.get("fixtures")
+    if not isinstance(fixtures, list) or not fixtures:
+        raise ValueError(
+            "run_h3_prompt_fixtures requires a non-empty fixtures array."
+        )
+
+    worktree = ensure_code_test_worktree(source_root, code_branch)
+    allowed_root = (worktree / "tests" / "fixtures" / "h3_prompt_validation").resolve()
+    normalized = []
+    for raw_path in fixtures:
+        if not isinstance(raw_path, str) or not raw_path.strip():
+            raise ValueError("Fixture paths must be non-empty strings.")
+        path = safe_source_path(worktree, raw_path.strip())
+        try:
+            path.relative_to(allowed_root)
+        except ValueError as error:
+            raise ValueError(
+                "run_h3_prompt_fixtures may only read fixtures under "
+                "tests/fixtures/h3_prompt_validation/."
+            ) from error
+        if not path.is_file():
+            raise ValueError(f"H3 fixture does not exist: {raw_path!r}")
+        normalized.append(str(path.relative_to(worktree)))
+
+    model = str(job.get("model") or "gpt").strip()
+    timeout = max(1, min(int(job.get("timeout_seconds") or 900), 1800))
+    python = local_python(source_root)
+    command = [
+        python,
+        "tools/run_h3_prompt_fixtures.py",
+        "--model",
+        model,
+        *normalized,
+    ]
+    print(
+        f"Running final-H3 fixture job on {code_branch}: "
+        + " ".join(normalized),
+        flush=True,
+    )
+    completed = run_local_process(command, worktree, timeout)
+    return {
+        "code_branch": code_branch,
+        "fixtures": normalized,
+        "model": model,
+        "returncode": completed["returncode"],
+        "passed": completed["returncode"] == 0 and not completed["timed_out"],
+        "stdout": completed["stdout"],
+        "stderr": completed["stderr"],
+        "timed_out": completed["timed_out"],
+        "timeout_seconds": completed["timeout_seconds"],
+        "started_at": completed["started_at"],
+        "finished_at": completed["finished_at"],
+    }
+
+
 def execute_local_tests(job: dict, source_root: Path) -> dict:
     """Run only explicitly named unittest modules from the repository tests tree."""
 
@@ -796,6 +855,8 @@ def execute_job(job: dict, endpoint: str, source_root: Path, result_dir: Path,
         result["test_run"] = run_pytest_job(source_root, job)
     elif kind == "run_acceptance":
         result["process"] = execute_acceptance(job, source_root, result_dir)
+    elif kind == "run_h3_prompt_fixtures":
+        result["fixture_run"] = run_h3_prompt_fixture_job(source_root, job)
     elif kind == "collect_files":
         pass
     else:
