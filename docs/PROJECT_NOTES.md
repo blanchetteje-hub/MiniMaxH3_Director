@@ -997,3 +997,17 @@ The existing typed-effect Director change passes focused deterministic tests: `t
   - durable tracked inventory/readiness/location/containment/barrier/etc. remain governed by opening state and typed effects.
 - Generic source-authority probes `1585-1604` are queued, followed by `tests-1605` and fresh full acceptance `acceptance-1606`.
 - If 1606 clears Segment 1, immediately inspect Segment 2 to verify the new state-derived barrier contract now generates and validates Will/Amber inside the basement while Amy ends outside.
+
+
+### 2026-09-26 — Segment 2 topology passes, but barrier identity and location granularity required tightening
+
+- `acceptance-1606` successfully generated through Segment 3 and proved the side-of-barrier fix: Segment 2 ends with Amy in the kitchen while Will and Amber are in the basement. This closes the original “Amy followed the kids into the basement” failure.
+- However, Segment 2 still exposed a barrier-identity error: the Director locked a “kitchen door” instead of the barrier securing the basement children. The source-owned typed effect was too generic (`set_barrier_state(entity="door", value="locked")`). Barrier identity is therefore not considered fully solved yet.
+- Segment 4 then failed because the completion verifier treated Amy moving from kitchen to hallway as an unauthorized durable location change even though canonical `set_location(Amy, home)` is coarse story geography and both spaces are subareas inside the same home.
+- Production commit `7e0ec590d33a90b48cefc3a85528810cbd8df0ff` addresses both demonstrated failures:
+  - canonical `set_location` is explicitly coarse story geography/container state; room/hallway/subarea movement inside that location is local staging and does not require a new location effect;
+  - when one event has exactly one containment destination and exactly one generic barrier noun (`door|gate|hatch|barrier`), Python deterministically binds that barrier to the destination boundary (for example generic `door` + contained-in `basement` => basement boundary); ambiguous multi-destination cases are left unbound rather than guessed;
+  - Director generation receives this barrier binding up front, and the completion verifier rejects satisfying it with an unrelated same-type barrier.
+- Regression commit `a88538c6960b08d36888edb2ed4b8e5ca11b4121` refreshes three stale prompt-wording assertions and adds coverage for local movement plus unambiguous/ambiguous barrier binding.
+- Source-authority probes `1585-1604` were mixed: several reasoning traces still over-weighted derived staging despite the explicit authority rule. Production should therefore continue relying on source authority + deterministic state checks rather than trusting those direct probes as holistic validity judges.
+- Next checkpoint: run focused regressions, then fresh full acceptance. Inspect Segment 2 for **basement-door identity**, not only Amy/children sides, and Segment 4 for allowed kitchen→hallway staging.
