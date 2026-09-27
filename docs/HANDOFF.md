@@ -1560,3 +1560,17 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Queued generic traversal probes `probe-barrier-traversal-1647` through `1666` across basement doors, gates, airlocks, portals, vaults, shelters, train doors, laboratory doors, drawbridges, and ambiguous controls. The prompt does not expose the expected answer.
 - Do not wire this into production until the probe batch is graded. If accepted, integrate it into the existing Director Request-1 retry loop rather than creating a new semantic pipeline stage.
 
+### 2026-09-27 — locked-boundary traversal extractor accepted and wired
+
+- Processed traversal probes `1647-1659` were **13/13 semantically correct**. The remaining queued controls `1660-1666` had not produced result commits at implementation time and are not counted as model evidence.
+- Production commit `93e9997a8cb6b269fbfb12c37872a7e4d366fe28` adds a generic closed-boundary invariant to the existing Director Request-1 loop:
+  - canonical opening state identifies a currently closed/locked barrier;
+  - Python conservatively binds a generic `door|gate|hatch|barrier` to a containment destination only when that destination is unambiguous;
+  - current typed effects disable the prohibition when the beat explicitly authorizes release from that container or opens/unlocks/breaks/destroys the relevant barrier;
+  - otherwise Director generation receives an explicit no-traversal contract;
+  - a narrow local-LLM extractor classifies RAW SCENE only as `TRAVERSED | NOT_TRAVERSED | UNSPECIFIED`;
+  - Python rejects `TRAVERSED`. The LLM never decides whether crossing was permitted.
+- This specifically targets the demonstrated Segment-6 regression where a zombie was invented as emerging through the locked basement boundary while Will and Amber remained canonically contained behind it. The rule remains generic for doors, gates, hatches, portals/boundaries represented in canonical barrier state, shelters, vehicles, and similar containment boundaries.
+- Regression commit `bcaa4891e807bdb9d80fc9bd06f5381a820153f0` adds contract derivation, authorized-release, extraction-only prompt, and strict-parser coverage.
+- Queued `tests-1667` and fresh full `acceptance-1668`. Acceptance should verify Segment 6 no longer routes an attacking zombie through the locked basement boundary, while Segment 8 still permits Will/Amber release because its typed containment effects authorize that transition.
+
