@@ -1,0 +1,23 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-bound-destination-traversal-1725",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 384,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Extract boundary traversal only. Do not judge story validity or physical possibility. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "BOUND BARRIER\nairlock hatch\n\nPROTECTED DESTINATION\ncargo bay\n\nRAW SCENE\nA loose tool floats from the corridor into the cargo bay and strikes the far wall.\n\nClassify only whether RAW SCENE establishes that any person, creature, object, body part, or other physical thing crosses the boundary of PROTECTED DESTINATION during the scene. Return TRAVERSED when RAW explicitly shows or states movement from outside the destination to inside it, from inside to outside it, or through BOUND BARRIER. The barrier noun does not need to be repeated if the destination crossing itself is explicit. Return NOT_TRAVERSED when things only approach, strike, wait near, remain on one side, or are already inside/outside without crossing during this scene. Return UNSPECIFIED when the scene gives different start/end sides but does not establish how the change occurred, or when spatial information is insufficient. Do not infer an unseen route. Do not decide whether crossing is allowed. Return JSON: {\"status\":\"...\"}"
+    }
+  ],
+  "expected": "TRAVERSED"
+}
