@@ -1,0 +1,19 @@
+{
+  "kind": "llama_chat",
+  "job_id": "source-action-1518",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Judge whether RAW visibly performs the action assigned by SOURCE. Return JSON only with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE:\nMara cooks breakfast for Eli.\n\nRAW:\nMara fries eggs in a pan, plates them, and serves Eli.\n\nRULES\n1. If SOURCE assigns an action to happen now, RAW must visibly perform that action in this segment.\n2. A finished/resulting state by itself does not prove the assigned action happened now.\n3. RAW may use the resulting state after it visibly performs the action.\n4. If SOURCE explicitly describes an ongoing/repeated condition, one visible ongoing instance may satisfy it.\nReturn {\"valid\":boolean,\"issue\":string}."
+    }
+  ],
+  "temperature": 0,
+  "max_tokens": 384,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "timeout_seconds": 600
+}
