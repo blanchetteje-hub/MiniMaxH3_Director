@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action-1777",
+  "kind": "llama_chat",
+  "started_at": 1790545356.2268598,
+  "request": {
+    "model": "openai-gpt-oss-20b-abliterated-uncensored-neo-imatrix",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nAmy, wearing a tight black tank top and denim jeans, flips eggs in a skillet on the stove.\n\nFINAL H3 MICRO-ACTION:\nAmy, wearing black tank top and denim jeans, flips eggs in a skillet on the stove.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 32,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-vv09m7li1zj0b8cxi2qvzjp",
+    "object": "chat.completion",
+    "created": 1790545356,
+    "model": "openai-gpt-oss-20b-abliterated-uncensored-neo-imatrix",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to compare two micro-actions: RAW and FINAL. Determine if status is PRESERVED (same visible/audible action and material result remain",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 225,
+      "completion_tokens": 32,
+      "total_tokens": 257,
+      "completion_tokens_details": {
+        "reasoning_tokens": 29
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "openai-gpt-oss-20b-abliterated-uncensored-neo-imatrix"
+  },
+  "finished_at": 1790545357.3616047,
+  "status": "ok"
+}
