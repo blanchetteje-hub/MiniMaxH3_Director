@@ -804,9 +804,13 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
     def test_terminal_target_prompt_is_extraction_only(self):
         messages = minimax.build_director_terminal_target_messages(
             "Amy kills the final zombie.",
-            "Amy faces a headless zombie corpse and strikes it again.",
+            "Amy faces a zombie body and strikes it again.",
+            "Amy faces a headless zombie corpse from the prior segment.",
         )
         prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("AUTHORITATIVE OPENING STATE", prompt)
+        self.assertIn("headless zombie corpse from the prior segment", prompt)
+        self.assertIn("already true at 00:00.000", prompt)
         self.assertIn("moment immediately BEFORE the terminal action begins", prompt)
         self.assertIn("ALREADY_TERMINAL", prompt)
         self.assertIn("Do not decide whether the scene is valid", prompt)
