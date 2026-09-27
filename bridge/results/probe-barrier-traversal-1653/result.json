@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-traversal-1653",
+  "kind": "llama_chat",
+  "started_at": 1790524961.201519,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract barrier traversal only. Do not judge whether the scene is valid or physically possible. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nportal\n\nRAW SCENE\nThe mage stands before the portal and reaches one hand toward its dark surface without entering.\n\nClassify only whether RAW SCENE visibly establishes that any subject moves from one side of BARRIER through its boundary to the other side. Return TRAVERSED when a crossing through the named boundary is established. Return NOT_TRAVERSED when subjects only approach, touch, strike, look through, wait at, or remain on one side of the barrier. Return UNSPECIFIED when RAW SCENE does not establish enough spatial information to tell. Do not infer validity from whether the barrier is open, closed, locked, broken, magical, or intact. Do not infer an unseen route. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-i5tetfz3wyqvf6vw3dtaz",
+    "object": "chat.completion",
+    "created": 1790524961,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NOT_TRAVERSED\"}",
+          "reasoning": "We need to parse the raw scene: \"The mage stands before the portal and reaches one hand toward its dark surface without entering.\" The barrier is a portal. Does the mage cross? He reaches hand towards it but doesn't enter. So he hasn't crossed from one side to other. So NOT_TRAVERSED.\n\nReturn JSON {\"status\":\"NOT_TRAVERSED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 245,
+      "completion_tokens": 90,
+      "total_tokens": 335,
+      "completion_tokens_details": {
+        "reasoning_tokens": 72
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790524962.819882,
+  "status": "ok"
+}
