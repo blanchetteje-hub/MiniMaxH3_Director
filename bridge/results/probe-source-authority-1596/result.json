@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-source-authority-1596",
+  "kind": "llama_chat",
+  "started_at": 1790478845.5476172,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes ASSIGNED SOURCE. Judge meaning, not wording. Return JSON only with valid and issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nLena eats breakfast with Omar.\n\nDERIVED BEAT — staging only; cannot add stricter requirements\nLena picks up Omar's registered access card.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n{\"characters\":{\"Omar\":{\"held_objects\":[\"access card\"]},\"Lena\":{\"held_objects\":[]}}}\n\nASSIGNED TYPED END STATE\n[]\n\nRAW SCENE\nLena takes Omar's access card and ends holding it.\n\nRules: SOURCE defines required actions/results/roles. DERIVED BEAT cannot add a stricter transfer method. For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer. Work merely made FOR someone can finish without delivery unless SOURCE requires delivery; honor explicit later pickup/storage. Typed end state governs durable tracked continuity. Incidental consumables, plates, cups, and ordinary newly introduced serving props are not persistent inventory merely because a known subject holds them at the end.\nReturn JSON with boolean valid and string issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 450,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-t29ldb53owyun88vdo8ab",
+    "object": "chat.completion",
+    "created": 1790478845,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The scene only shows Lena taking Omar's access card; it does not depict her eating breakfast with Omar as required by the source. Additionally, the typed end state indicates no durable objects should be held at the end, but Lena ends holding an access card.\"}",
+          "reasoning": "We need to check whether RAW SCENE completes ASSIGNED SOURCE.\n\nASSIGNED SOURCE: \"Lena eats breakfast with Omar.\"\n\nDERIVED BEAT: staging only; cannot add stricter requirements\n\nAuthoritative opening state: characters: Omar holds access card, Lena none.\n\nAssigned typed end state: [] (empty list). Means no durable tracked continuity? So maybe nothing required to be held at the end. But we need to check if RAW SCENE \"Lena takes Omar's access card and ends holding it.\" completes source.\n\nSource requires that Lena eats breakfast with Omar. Does taking Omar's access card satisfy that? Not necessarily; eating breakfast is a separate action. The raw scene only describes taking the card, not eating breakfast. So does it complete source? No. It doesn't mention breakfast or eating. So it's incomplete.\n\nAlso typed end state empty means no durable objects required to be held at end. But RAW SCENE says Lena ends holding access card; that is a durable object but not in typed end state. That might be an issue: the typed end state indicates nothing should be held, but she holds one. However maybe typed end state refers to \"durable tracked continuity\" meaning objects that persist across scenes? If it's empty, then no objects are expected to carry over; but holding access card is a durable object. So that's inconsistent.\n\nThus RAW SCENE fails source and also violates typed end state.\n\nReturn JSON: valid false, issue string describing issues.\n\nLet's craft issue: \"The scene only shows Lena taking Omar's access card; it does not depict her eating breakfast with Omar as required by the source. Additionally, the typed end state indicates no durable objects should be held at the end, but Lena ends holding an access card.\"\n\nReturn JSON accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 310,
+      "completion_tokens": 425,
+      "total_tokens": 735,
+      "completion_tokens_details": {
+        "reasoning_tokens": 356
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790478852.146719,
+  "status": "ok"
+}
