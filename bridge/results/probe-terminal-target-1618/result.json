@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1618",
+  "kind": "llama_chat",
+  "started_at": 1790481223.9136853,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nNia eliminates the final drone.\n\nRAW SCENE\nThe drone is already smashed and inert on the floor. Nia shoots the wreck.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-osr9z26odnbd6s1vicoii",
+    "object": "chat.completion",
+    "created": 1790481223,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ALREADY_TERMINAL\"}",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nGiven source: \"Nia eliminates the final drone.\"\n\nRAW SCENE: \"The drone is already smashed and inert on the floor. Nia shoots the wreck.\"\n\nSo we have a target: the drone. The action assigned by SOURCE: eliminate (terminal). We inspect the target of that newly assigned action immediately BEFORE the terminal action begins.\n\nWe need to determine status: ACTIVE_OR_UNRESOLVED if still active, intact enough to resolve; ALREADY_TERMINAL if already dead etc.; UNSPECIFIED if RAW establishes neither.\n\nIn RAW SCENE, \"The drone is already smashed and inert on the floor.\" That indicates it's dead/inert. So before Nia shoots it (the terminal action), the target is already dead/terminated. So status: ALREADY_TERMINAL.\n\nReturn JSON {\"status\":\"ALREADY_TERMINAL\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 229,
+      "completion_tokens": 200,
+      "total_tokens": 429,
+      "completion_tokens_details": {
+        "reasoning_tokens": 181
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481227.2741504,
+  "status": "ok"
+}
