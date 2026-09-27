@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1544",
+  "kind": "llama_chat",
+  "started_at": 1790471843.2895026,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nTessa starts in the corridor with Unit7.\n\nASSIGNED SOURCE\nTessa rolls Unit7 into the repair bay.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_location\",\"entity\":\"Unit7\",\"value\":\"repair bay\"}]\n\nRAW SCENE\nTessa rolls Unit7 into the repair bay, then returns to the corridor while Unit7 remains inside.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1r3jhv0svhhqov7b2nylm",
+    "object": "chat.completion",
+    "created": 1790471843,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need validate raw scene against assigned typed end state.\n\nOpening: Tessa starts corridor with Unit7. Assigned source: Tessa rolls Unit7 into repair bay. Typed end state: set_location Unit7 to repair bay.\n\nRaw scene: \"Tessa rolls Unit7 into the repair bay, then returns to the corridor while Unit7 remains inside.\"\n\nSo final state: Unit7 in repair bay; Tessa back in corridor. That matches typed effect: Unit7 location is repair bay. So valid? Yes. Also rule 2 allows temporary motion: Tessa moved but returned.\n\nRule 3: every listed typed effect must be true in RAW's final state. Only one effect, it's true.\n\nThus valid = true, issue empty string or maybe \"\".\n\nReturn JSON with keys \"valid\" and \"issue\". Issue could be \"\" if no issues.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 318,
+      "completion_tokens": 190,
+      "total_tokens": 508,
+      "completion_tokens_details": {
+        "reasoning_tokens": 172
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471846.4210014,
+  "status": "ok"
+}
