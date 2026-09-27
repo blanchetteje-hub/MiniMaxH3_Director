@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-state-1675",
+  "kind": "llama_chat",
+  "started_at": 1790527134.2303884,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier state only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nvault door\n\nRAW SCENE\nThe blast tears the vault door off its hinges, leaving a jagged opening.\n\nClassify only the final visible/established state of BARRIER at the END of RAW SCENE. Allowed values: LOCKED, CLOSED, OPEN, BROKEN, DESTROYED, UNSPECIFIED. LOCKED includes locked, sealed, barred, or bolted. CLOSED means shut/closed without an established lock. OPEN means open/passable through that barrier. BROKEN means damaged/breached but the barrier still physically exists. DESTROYED means the barrier is gone or no longer functions as a barrier. UNSPECIFIED means RAW SCENE does not establish enough information. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-n4xu3ifvodgiiuzydt0ici",
+    "object": "chat.completion",
+    "created": 1790527134,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to classify final visible/established state of BARRIER at end of raw scene.\n\nRaw scene: \"The blast tears the vault door off its hinges, leaving a jagged opening.\"\n\nSo barrier is vault door. The blast tears it off its hinges, leaving a jagged opening. So it's broken? It's still physically present but damaged and open? It says \"jagged opening\" meaning door is torn off hinges, so likely open or broken. But the door itself remains as a jagged piece maybe. The barrier is no longer closed; there's an opening. Is it considered OPEN (passable) or BROKEN? According to definitions: BROKEN means damaged/breached but still physically exists. DESTROYED means gone or no longer functions as a barrier.\n\nThe vault door is torn off hinges, leaving jagged opening. The door remains but it's broken and open. But the question: final visible/established state of BARRIER at END of RAW SCENE. It says \"jagged opening\" meaning there's an opening; so passable? So OPEN maybe. However BROKEN also applies because physically exists but damaged.\n\nWhich is more appropriate? The door is still there, but it's broken and open. But the barrier's status: Is it considered BROKEN or OPEN? According to definitions: \"OPEN means open/passable through that barrier.\" That seems true; there's a jagged opening so passable. So final state likely OPEN. Because even",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 250,
+      "completion_tokens": 300,
+      "total_tokens": 550,
+      "completion_tokens_details": {
+        "reasoning_tokens": 297
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790527138.9369183,
+  "status": "ok"
+}
