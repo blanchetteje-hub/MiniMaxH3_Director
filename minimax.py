@@ -10007,6 +10007,20 @@ def _missing_named_director_subjects(
             missing.append(name)
     return missing
 
+def build_beat_closed_boundary_contracts(current_state, assigned_state_effects):
+    """Reuse Director closed-boundary derivation for beat create/validate."""
+    if not isinstance(current_state, dict) or not current_state:
+        return []
+    opening_state = (
+        "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n"
+        + json.dumps(current_state, ensure_ascii=False, separators=(",", ":"))
+    )
+    return build_director_closed_boundary_contracts(
+        opening_state,
+        assigned_state_effects,
+    )
+
+
 def build_beat_validation_messages(
     previous_final_beat,
     current_state,
@@ -10031,6 +10045,32 @@ def build_beat_validation_messages(
         if barrier_binding
         else ""
     )
+    closed_boundaries = build_beat_closed_boundary_contracts(
+        state,
+        state_effects,
+    )
+    closed_boundary_text = ""
+    if closed_boundaries:
+        lines = []
+        for contract in closed_boundaries:
+            destination = contract.get("destination")
+            label = contract["barrier"]
+            if destination:
+                lines.append(
+                    f"- {label} protects {destination!r} and begins "
+                    f"{contract['state']}. No person, creature, object, body part, "
+                    "or other physical thing may cross into or out of that "
+                    "destination in this beat unless the assigned typed effects "
+                    "authorize opening/release."
+                )
+            else:
+                lines.append(
+                    f"- {label} begins {contract['state']}; do not cross it in "
+                    "this beat unless the assigned typed effects authorize it."
+                )
+        closed_boundary_text = (
+            "\nPYTHON-OWNED CLOSED BOUNDARIES\n" + "\n".join(lines)
+        )
     system = (
         "You validate one candidate story beat. Judge meaning, not exact wording. "
         "Accept reasonable paraphrases and clear semantic implications. Reject "
@@ -10052,6 +10092,7 @@ RESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT
 STATE EFFECTS IF VALID
 {json.dumps(state_effects, ensure_ascii=False, separators=(",", ":"))}
 {barrier_binding_text}
+{closed_boundary_text}
 
 CANDIDATE BEAT
 {candidate_beat}
@@ -14357,6 +14398,7 @@ def build_beat_generation_messages(
     required_events = current_phase.get("required_events", [])
     event_lines = []
     barrier_binding_lines = []
+    closed_boundary_lines = []
     for event in required_events:
         if not isinstance(event, dict):
             continue
@@ -14376,6 +14418,31 @@ def build_beat_generation_messages(
                     f"{int(beat_number)}. {barrier_binding['entity']!r} is the "
                     f"boundary of {barrier_binding['destination']!r}."
                 )
+            if isinstance(macro_arc, dict):
+                before_state = source_authorized_state_before_beat(
+                    macro_arc,
+                    int(beat_number),
+                    subject_information=subject_information,
+                )
+                for contract in build_beat_closed_boundary_contracts(
+                    before_state,
+                    event.get("state_effects", []),
+                ):
+                    destination = contract.get("destination")
+                    if destination:
+                        closed_boundary_lines.append(
+                            f"{int(beat_number)}. {contract['barrier']} protects "
+                            f"{destination!r} and begins {contract['state']}; no "
+                            "person, creature, object, body part, or other physical "
+                            "thing may cross into or out of that destination unless "
+                            "this beat's typed effects authorize opening/release."
+                        )
+                    else:
+                        closed_boundary_lines.append(
+                            f"{int(beat_number)}. {contract['barrier']} begins "
+                            f"{contract['state']}; do not cross it unless this "
+                            "beat's typed effects authorize the transition."
+                        )
     required_events_text = (
         "\n".join(event_lines)
         if event_lines
@@ -14385,6 +14452,12 @@ def build_beat_generation_messages(
     barrier_bindings_text = (
         "\n".join(barrier_binding_lines)
         if barrier_binding_lines
+        else "N/A"
+    )
+
+    closed_boundaries_text = (
+        "\n".join(closed_boundary_lines)
+        if closed_boundary_lines
         else "N/A"
     )
 
@@ -14452,6 +14525,9 @@ REQUIRED EVENTS FOR REQUESTED BEATS {batch_start}-{batch_end}:
 PYTHON-OWNED BARRIER BINDINGS:
 {barrier_bindings_text}
 
+PYTHON-OWNED CLOSED BOUNDARIES:
+{closed_boundaries_text}
+
 Write exactly {batch_size} video beats, one per required event.
 
 Rules:
@@ -14461,6 +14537,10 @@ Rules:
 - PYTHON-OWNED BARRIER BINDINGS resolve otherwise-generic barrier names in the
   listed required event. Obey them exactly and do not substitute a different
   nearby door/gate/hatch/barrier.
+- PYTHON-OWNED CLOSED BOUNDARIES are authoritative physical constraints from
+  canonical state before that beat. Do not move any person, creature, object,
+  body part, or other physical thing across one unless that beat's assigned
+  typed effects authorize opening/release.
 - For a finite activity, show a visible transition: include the assigned
   activity itself, then show it finishing. Do not output only the activity
   underway or only its after-state.
