@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1555",
+  "kind": "llama_chat",
+  "started_at": 1790471946.1844292,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nLio starts contained in the cell.\n\nASSIGNED SOURCE\nMara releases Lio from the cell.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_containment\",\"entity\":\"Lio\",\"container\":\"cell\",\"value\":\"free\"},{\"op\":\"set_location\",\"entity\":\"Lio\",\"value\":\"corridor\"}]\n\nRAW SCENE\nMara opens the cell. Lio exits into the corridor and remains there.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yyrrlokjz62g9iscm5mwp",
+    "object": "chat.completion",
+    "created": 1790471946,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need validate raw scene against assigned source and typed end state.\n\nOpen cell: Lio starts contained in cell. Raw: \"Mara opens the cell. Lio exits into the corridor and remains there.\" So final state: Lio free, location corridor. Typed effects: set_containment Lio container cell value free; set_location Lio value corridor. Both match. Also source: Mara releases Lio from cell. That is satisfied by opening cell.\n\nCheck rule 1: For already-known named subjects etc. typed end state authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed... require matching typed effect. We have both matches. No missing or extra? All listed typed effects must be true in RAW's final state. Yes.\n\nRule 2: Temporary motion allowed when entity returns to opening state by end. Not relevant.\n\nThus valid = true, issue empty string.\n\nReturn JSON with keys \"valid\" and \"issue\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 329,
+      "completion_tokens": 216,
+      "total_tokens": 545,
+      "completion_tokens_details": {
+        "reasoning_tokens": 198
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471949.8177683,
+  "status": "ok"
+}
