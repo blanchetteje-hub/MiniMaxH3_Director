@@ -1,0 +1,55 @@
+{
+  "job_id": "continuity-attachment-1962",
+  "kind": "llama_chat",
+  "started_at": 1790551575.7184849,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one candidate continuity attachment. Return JSON only. ATTACHED = the object/substance is physically attached, embedded, worn, strapped, clipped, stuck, coated, wrapped, or otherwise fixed to the named Subject at the final frame. NOT_ATTACHED = the Subject merely holds, carries, touches, supports, or is near the object, or the object is attached to something else. UNSPECIFIED = the text does not establish whether it is attached. Judge only the supplied final-frame text."
+      },
+      {
+        "role": "user",
+        "content": "SUBJECT: Amy\nCANDIDATE ATTACHED OBJECT: zombie head\nFINAL-FRAME TEXT: Amy holds a katana steady with a zombie head hanging from the blade.\n\nReturn {\"status\":\"ATTACHED|NOT_ATTACHED|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-e2rmz9zes1nsmk4id1dwv",
+    "object": "chat.completion",
+    "created": 1790551575,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NOT_ATTACHED\"}",
+          "reasoning": "We need to judge whether the zombie head is attached to subject. Final frame text: \"Amy holds a katana steady with a zombie head hanging from the blade.\" The zombie head hangs from the blade, which Amy holds. So it's physically attached to the blade (which is held by Amy). But attachment refers to object/substance being physically attached to named Subject at final frame. Is it attached to subject? It's attached to the katana blade, not directly to Amy's body. However she holds the katana steady; but the head hangs from blade. So it's attached to the blade which is held by her. The question: \"ATTACHED = object/substance physically attached ... to named Subject at final frame.\" If the zombie head is hanging from the blade, and the blade is being held by Amy, does that count as attached? It's not directly on her body but attached to something she holds. Usually attachment means fixed to subject's body or clothing etc. The blade is an object she holds; it's not part of her body. So I'd say NOT_ATTACHED because zombie head is attached to the katana blade, which Amy holds. But maybe they consider that as attached to subject? Let's parse: \"Amy holds a katana steady with a zombie head hanging from the blade.\" The zombie head hangs from the blade; it's not on her. She holds it steady. So NOT_ATTACHED.\n\nReturn JSON {\"status\":\"NOT_ATTACHED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 226,
+      "completion_tokens": 308,
+      "total_tokens": 534,
+      "completion_tokens_details": {
+        "reasoning_tokens": 291
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790551580.0978105,
+  "status": "ok"
+}
