@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-bound-destination-traversal-1734",
+  "kind": "llama_chat",
+  "started_at": 1790533455.2743156,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract boundary traversal only. Do not judge story validity or physical possibility. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BOUND BARRIER\nbulkhead\n\nPROTECTED DESTINATION\nengine room\n\nRAW SCENE\nA loose panel rattles beside the engine-room entrance but stays in the corridor.\n\nClassify only whether RAW SCENE establishes that any person, creature, object, body part, or other physical thing crosses the boundary of PROTECTED DESTINATION during the scene. Return TRAVERSED when RAW explicitly shows or states movement from outside the destination to inside it, from inside to outside it, or through BOUND BARRIER. The barrier noun does not need to be repeated if the destination crossing itself is explicit. Return NOT_TRAVERSED when things only approach, strike, wait near, remain on one side, or are already inside/outside without crossing during this scene. Return UNSPECIFIED when the scene gives different start/end sides but does not establish how the change occurred, or when spatial information is insufficient. Do not infer an unseen route. Do not decide whether crossing is allowed. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-vdb9yynj1ljvgodpenwyv",
+    "object": "chat.completion",
+    "created": 1790533455,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NOT_TRAVERSED\"}",
+          "reasoning": "We need to parse the scenario.\n\nBOUND BARRIER: bulkhead\n\nPROTECTED DESTINATION: engine room\n\nRAW SCENE: \"A loose panel rattles beside the engine-room entrance but stays in the corridor.\"\n\nQuestion: Does any person, creature, object, body part, or other physical thing cross the boundary of PROTECTED DESTINATION during the scene? The barrier is a bulkhead. Engine room is protected destination.\n\nThe raw scene says: A loose panel rattles beside the engine-room entrance but stays in the corridor. So the panel is near the entrance but remains in the corridor; it does not cross into the engine room. It also doesn't leave the corridor to go inside or outside? It's just a panel that rattle, staying in corridor.\n\nThus no crossing of boundary. The panel stays on one side (corridor). No mention of any other thing moving across. So status: NOT_TRAVERSED.\n\nReturn JSON {\"status\":\"NOT_TRAVERSED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 294,
+      "completion_tokens": 213,
+      "total_tokens": 507,
+      "completion_tokens_details": {
+        "reasoning_tokens": 195
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790533458.7812777,
+  "status": "ok"
+}
