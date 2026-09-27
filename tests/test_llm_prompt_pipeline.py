@@ -682,6 +682,25 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("movement between rooms, hallways, or subareas", prompt)
         self.assertIn("does NOT require another set_location effect", prompt)
 
+    def test_beat_validator_does_not_require_effect_for_new_incidental_target(self):
+        messages = minimax.build_beat_validation_messages(
+            previous_final_beat="Amy is armed and ready.",
+            current_state=minimax.new_beat_canonical_state(),
+            beat_job="Amy kills a zombie that attacks her.",
+            next_beat_job="Amy keeps fighting.",
+            candidate_beat="Amy decapitates the attacking zombie with her katana.",
+            assigned_state_effects=[],
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn(
+            "NEVER reject because such a newly introduced incidental entity is injured, killed",
+            prompt,
+        )
+        self.assertIn(
+            "Do not invent missing-effect obligations for new incidental entities",
+            prompt,
+        )
+
     def test_beat_validator_includes_closed_boundary_contract(self):
         state = minimax.new_beat_canonical_state()
         state["characters"] = {
@@ -713,6 +732,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         phase = {
             "required_events": [
                 {
+                    "id": "E1",
                     "beat_number": 1,
                     "event": "Will enters the basement and the door is locked.",
                     "state_effects": [
@@ -721,8 +741,10 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
                     ],
                 },
                 {
+                    "id": "E2",
                     "beat_number": 2,
                     "event": "Amy defeats another attacker.",
+                    "depends_on": ["E1"],
                     "state_effects": [],
                 },
             ]
