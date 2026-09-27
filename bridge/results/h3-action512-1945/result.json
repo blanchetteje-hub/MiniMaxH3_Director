@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action512-1945",
+  "kind": "llama_chat",
+  "started_at": 1790550024.6403203,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nOwen places the letter in the drawer and locks it.\n\nFINAL H3 MICRO-ACTION:\nOwen places the letter in the drawer.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-19l1eky8sknsh4baq9edgk",
+    "object": "chat.completion",
+    "created": 1790550024,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"OMITTED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"Owen places the letter in the drawer and locks it.\" Final H3 micro-action: \"Owen places the letter in the drawer.\"\n\nThe difference: The final action omitted locking. So it's not preserved; it's omitted. There's no change of material result? The visible/audible action is placing the letter, same. But the lock part is missing. That is a different or absent action. According to instructions: PRESERVED = same visible/audible action and material result remain, even if wording differs. OMITTED = RAW action/result is absent. CHANGED = final H3 performs materially different or contradictory action/result.\n\nHere \"locks it\" is omitted. So status should be OMITTED. Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 206,
+      "completion_tokens": 172,
+      "total_tokens": 378,
+      "completion_tokens_details": {
+        "reasoning_tokens": 155
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790550027.0579288,
+  "status": "ok"
+}
