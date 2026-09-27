@@ -17054,6 +17054,205 @@ def _validate_director_timestamp_correspondence(
     return issues
 
 
+H3_ACTION_PRESERVATION_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "h3_action_preservation",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": ["PRESERVED", "OMITTED", "CHANGED"],
+                },
+            },
+            "required": ["status"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
+def _director_timed_action_map(value):
+    """Return canonical timestamp -> text between this timestamp and the next."""
+    text_value = str(value or "")
+    matches = list(_DIRECTOR_CANONICAL_TIMESTAMP_RE.finditer(text_value))
+    result = {}
+    for index, match in enumerate(matches):
+        timestamp = (
+            f"{int(match.group('minutes')):02d}:"
+            f"{int(match.group('seconds')):02d}."
+            f"{int(match.group('fraction')):03d}"
+        )
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text_value)
+        action = text_value[match.end():end].strip()
+        # Final H3 sections are not part of the last timed action.
+        action = re.split(
+            r"(?im)^\s*(?:overall_soundscape|non_diegetic_music|"
+            r"SPOKEN DIALOGUE|End continuity state)\s*:",
+            action,
+            maxsplit=1,
+        )[0].strip()
+        result[timestamp] = action
+    return result
+
+
+def build_h3_action_preservation_messages(raw_action, h3_action):
+    """Ask only whether one RAW micro-action survived final H3 assembly."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Compare one RAW video micro-action with the final H3 micro-action "
+                "at the same timestamp. Return JSON only. "
+                "PRESERVED = the same visible/audible action and material result "
+                "remain, even if wording, clothing adjectives, camera wording, or "
+                "harmless detail differs. OMITTED = the RAW action/result is absent. "
+                "CHANGED = final H3 performs a materially different or contradictory "
+                "action/result. Judge only these two snippets."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "RAW MICRO-ACTION:\n"
+                f"{str(raw_action or '').strip()}\n\n"
+                "FINAL H3 MICRO-ACTION:\n"
+                f"{str(h3_action or '').strip()}\n\n"
+                "Return {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+            ),
+        },
+    ]
+
+
+def parse_h3_action_preservation(raw_result):
+    """Parse one strict final-H3 action observation."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"status"}:
+        raise ValueError("H3 action preservation response must contain only status.")
+    status = candidate.get("status")
+    if status not in {"PRESERVED", "OMITTED", "CHANGED"}:
+        raise ValueError("Unknown H3 action preservation status.")
+    return status
+
+
+def validate_final_h3_action_preservation(
+    raw_scene,
+    final_h3_prompt,
+    *,
+    llm_request=ask_llm,
+    history_metadata=None,
+):
+    """Python pairs timestamps; tiny LLM calls observe semantic preservation."""
+    raw_actions = _director_timed_action_map(
+        _canonicalize_director_timestamps(raw_scene)
+    )
+    h3_actions = _director_timed_action_map(final_h3_prompt)
+    issues = []
+    observations = []
+    for timestamp, raw_action in raw_actions.items():
+        h3_action = h3_actions.get(timestamp, "")
+        if not h3_action:
+            observations.append({
+                "timestamp": timestamp,
+                "status": "OMITTED",
+                "raw_action": raw_action,
+                "h3_action": "",
+            })
+            issues.append(f"{timestamp}: final H3 omitted the RAW micro-action.")
+            continue
+        result = llm_request(
+            build_h3_action_preservation_messages(raw_action, h3_action),
+            response_format=H3_ACTION_PRESERVATION_RESPONSE_FORMAT,
+            history_metadata={
+                **dict(history_metadata or {}),
+                "purpose": "final_h3_action_preservation",
+                "timestamp": timestamp,
+            },
+            **_active_validator_settings(),
+        )
+        status = parse_h3_action_preservation(result)
+        observations.append({
+            "timestamp": timestamp,
+            "status": status,
+            "raw_action": raw_action,
+            "h3_action": h3_action,
+        })
+        if status != "PRESERVED":
+            issues.append(
+                f"{timestamp}: final H3 action is {status.lower()} relative to RAW."
+            )
+    return {"valid": not issues, "issues": issues, "observations": observations}
+
+
+def save_h3_prompt_validation_fixture(path, *, raw_scene, final_h3_prompt,
+                                      segment_number=None, duration=None,
+                                      assigned_source="", current_beat="",
+                                      opening_state="", assigned_state_effects=None,
+                                      subject_definitions="", label=""):
+    """Save a replayable post-Director fixture for final-H3 extractor testing."""
+    payload = {
+        "schema_version": 1,
+        "label": str(label or "").strip(),
+        "segment_number": segment_number,
+        "duration": duration,
+        "raw_scene": str(raw_scene or "").strip(),
+        "final_h3_prompt": str(final_h3_prompt or "").strip(),
+        "authority": {
+            "assigned_source": str(assigned_source or "").strip(),
+            "current_beat": str(current_beat or "").strip(),
+            "opening_state": str(opening_state or "").strip(),
+            "assigned_state_effects": copy.deepcopy(assigned_state_effects or []),
+            "subject_definitions": str(subject_definitions or "").strip(),
+        },
+    }
+    if not payload["raw_scene"] or not payload["final_h3_prompt"]:
+        raise ValueError("H3 prompt validation fixture requires RAW and final H3 text.")
+    directory = os.path.dirname(os.path.abspath(os.fspath(path)))
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    temp_path = os.fspath(path) + ".tmp"
+    with open(temp_path, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+    os.replace(temp_path, path)
+    return payload
+
+
+def load_h3_prompt_validation_fixture(path):
+    """Load one replayable final-H3 extractor fixture."""
+    with open(path, "r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+        raise ValueError("Unsupported H3 prompt validation fixture.")
+    if not str(payload.get("raw_scene") or "").strip():
+        raise ValueError("Fixture is missing raw_scene.")
+    if not str(payload.get("final_h3_prompt") or "").strip():
+        raise ValueError("Fixture is missing final_h3_prompt.")
+    return payload
+
+
+def run_h3_prompt_validation_fixture(path, *, llm_request=ask_llm):
+    """Run only final-prompt extractors against a saved fixture."""
+    fixture = load_h3_prompt_validation_fixture(path)
+    return {
+        "fixture": os.fspath(path),
+        "label": fixture.get("label", ""),
+        "action_preservation": validate_final_h3_action_preservation(
+            fixture["raw_scene"],
+            fixture["final_h3_prompt"],
+            llm_request=llm_request,
+            history_metadata={
+                "fixture": os.fspath(path),
+                "segment": fixture.get("segment_number"),
+            },
+        ),
+    }
+
+
 # Check the Request 2 state handoff without blocking generation.
 def _verify_authoritative_opening_state_handoff(
     formatter_messages,
