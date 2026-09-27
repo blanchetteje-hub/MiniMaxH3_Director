@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action384-1909",
+  "kind": "llama_chat",
+  "started_at": 1790549455.6258388,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nKai pours the blue liquid into the reactor; the warning light turns green.\n\nFINAL H3 MICRO-ACTION:\nKai pours the blue liquid onto the floor while the warning light stays red.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jlolo6k005ppyudjk6lodd",
+    "object": "chat.completion",
+    "created": 1790549455,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CHANGED\"}",
+          "reasoning": "We need to compare RAW micro-action with final H3 micro-action at same timestamp. The raw: \"Kai pours the blue liquid into the reactor; the warning light turns green.\" Final: \"Kai pours the blue liquid onto the floor while the warning light stays red.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. Here Kai pouring blue liquid is same action? In raw he pours into reactor; final pours onto floor. That's different location of pour. Material result: in raw, liquid goes into reactor, warning light turns green. Final: liquid on floor, warning light stays red. So both the material results differ. The action (pouring) is similar but target differs. That counts as changed? Yes because materially different or contradictory action/result. So status = CHANGED.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 215,
+      "completion_tokens": 186,
+      "total_tokens": 401,
+      "completion_tokens_details": {
+        "reasoning_tokens": 170
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790549458.2279637,
+  "status": "ok"
+}
