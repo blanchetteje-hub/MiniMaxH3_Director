@@ -1929,6 +1929,25 @@ def parse_args(arguments=None):
         help="write the selected development-only H3 fixture to PATH",
     )
     parser.add_argument(
+        "--capture-h3-validation-segment",
+        type=int,
+        default=None,
+        metavar="SEGMENT",
+        help=(
+            "save the accepted RAW SCENE and assembled final H3 prompt for one "
+            "segment as a replayable extractor fixture"
+        ),
+    )
+    parser.add_argument(
+        "--capture-h3-validation-fixture",
+        default=None,
+        metavar="PATH",
+        help=(
+            "write the selected post-Director final-H3 extractor fixture to PATH; "
+            "works with --test-prompt-generation and does not require ComfyUI"
+        ),
+    )
+    parser.add_argument(
         "--generate-beats",
         type=int,
         default=None,
@@ -2007,7 +2026,12 @@ def parse_args(arguments=None):
                 "--generate-beats accepts only its COUNT argument, not video "
                 "generation positionals."
             )
-        if args.capture_h3_segment is not None or args.capture_h3_fixture is not None:
+        if (
+            args.capture_h3_segment is not None
+            or args.capture_h3_fixture is not None
+            or args.capture_h3_validation_segment is not None
+            or args.capture_h3_validation_fixture is not None
+        ):
             parser.error("H3 fixture capture requires normal video generation.")
         return args
 
@@ -2062,6 +2086,21 @@ def parse_args(arguments=None):
         )
     if args.capture_h3_segment is not None and args.capture_h3_segment <= 0:
         parser.error("--capture-h3-segment must be a positive one-based segment.")
+    if (
+        (args.capture_h3_validation_segment is None)
+        != (args.capture_h3_validation_fixture is None)
+    ):
+        parser.error(
+            "--capture-h3-validation-segment and "
+            "--capture-h3-validation-fixture must be used together."
+        )
+    if (
+        args.capture_h3_validation_segment is not None
+        and args.capture_h3_validation_segment <= 0
+    ):
+        parser.error(
+            "--capture-h3-validation-segment must be a positive one-based segment."
+        )
 
     return args
 
@@ -28118,6 +28157,33 @@ def _run_main(
                 prompt_reduced_continuity_state if retention else None
             ),
         )
+        if (
+            getattr(args, "capture_h3_validation_segment", None) == segment
+            and getattr(args, "capture_h3_validation_fixture", None)
+        ):
+            save_h3_prompt_validation_fixture(
+                args.capture_h3_validation_fixture,
+                raw_scene=payload.get("raw_scene", ""),
+                final_h3_prompt=h3_prompt,
+                segment_number=segment,
+                duration=segment_bundle.get("current_duration"),
+                assigned_source=segment_bundle.get("assigned_source", ""),
+                current_beat=segment_bundle.get("current_beat_text", ""),
+                opening_state=payload.get(
+                    "authoritative_opening_state",
+                    payload.get("h3_opening_summary", ""),
+                ),
+                assigned_state_effects=segment_bundle.get(
+                    "assigned_state_effects", []
+                ),
+                subject_definitions=subject_definitions,
+                label=f"captured segment {segment}",
+            )
+            print(
+                f"Saved final-H3 extractor fixture to "
+                f"{args.capture_h3_validation_fixture}.",
+                flush=True,
+            )
         request1_ending_scene = _extract_end_continuity_state(
             payload.get("raw_scene", "")
         )
