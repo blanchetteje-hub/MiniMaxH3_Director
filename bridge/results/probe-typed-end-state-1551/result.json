@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1551",
+  "kind": "llama_chat",
+  "started_at": 1790471910.1009648,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nThe vault door starts unlocked.\n\nASSIGNED SOURCE\nRin locks the vault door.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_barrier_state\",\"entity\":\"vault door\",\"value\":\"locked\"}]\n\nRAW SCENE\nRin turns the key and leaves the vault door locked.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8u1gy4rtfijh2k9atvxro7",
+    "object": "chat.completion",
+    "created": 1790471910,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to validate raw scene against assigned typed end state.\n\nOpening state: vault door starts unlocked.\n\nAssigned source: Rin locks the vault door.\n\nTyped end state: [{\"op\":\"set_barrier_state\",\"entity\":\"vault door\",\"value\":\"locked\"}]\n\nRaw scene: \"Rin turns the key and leaves the vault door locked.\"\n\nWe need to check that raw ends with vault door locked. Yes, it says \"leaves ... locked\". So final state matches typed effect.\n\nAlso rule 1: For already-known named subjects, barriers, items, typed end state authoritative for persistent changes. If RAW ends with one of them newly relocated etc require matching typed effect. No matching effect means invalid. Here vault door is a barrier; raw says it's locked at the end. Typed effect sets it to locked. So matches.\n\nRule 2: Temporary motion allowed when entity returns to opening state by end. Not relevant.\n\nRule 3: Every listed typed effect must be true in RAW's final state. Yes, set_barrier_state vault door locked is true.\n\nRule 4: Also require concrete assigned source work completed. Assigned source: Rin locks the vault door. Raw says \"Rin turns the key and leaves ... locked.\" That implies she turned key to lock it. So yes.\n\nThus valid = true, issue empty string? Probably \"\" or null. Return JSON with keys valid and issue. Use boolean true and issue \"\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 303,
+      "completion_tokens": 305,
+      "total_tokens": 608,
+      "completion_tokens_details": {
+        "reasoning_tokens": 287
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471914.934101,
+  "status": "ok"
+}
