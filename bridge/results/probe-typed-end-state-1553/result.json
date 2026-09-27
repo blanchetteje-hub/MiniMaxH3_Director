@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1553",
+  "kind": "llama_chat",
+  "started_at": 1790471926.8655105,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nKei starts holding a staff.\n\nASSIGNED SOURCE\nKei readies the staff.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_item_state\",\"entity\":\"staff\",\"owner\":\"Kei\",\"value\":\"held\"}]\n\nRAW SCENE\nKei grips the staff and ends still holding it.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-h3re6stct2r025drjeylx91",
+    "object": "chat.completion",
+    "created": 1790471926,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to validate raw scene against assigned source and typed end state.\n\nOpening state: Kei holds staff (so staff owned by Kei, held). Assigned source: \"Kei readies the staff.\" That presumably means he is preparing it; maybe holding? But it's already held in opening state. The typed end state says set_item_state entity staff owner Kei value held. So final state must be that staff is held by Kei.\n\nRaw scene: \"Kei grips the staff and ends still holding it.\"\n\nSo raw indicates at end, staff is still being held by Kei. That matches typed effect. Also source requirement: \"Kei readies the staff.\" Does gripping count as readying? The rule says concrete ASSIGNED SOURCE work must be completed; do not invent extra requirements. So we need to check if raw scene includes that action. Raw says \"Kei grips the staff\". Is that same as \"readies\"? Might be considered fulfilling source: readies = grips? Possibly yes, but ambiguous.\n\nWe should interpret \"grips\" as readying. The rule 1: For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated... require a matching typed effect. No matching effect means INVALID. So we have match.\n\nRule 2: Temporary motion allowed when entity returns to opening state by end. Opening state already held; raw also holds, so fine.\n\nRule 3: Every listed typed effect must be true in RAW's final state. Yes.\n\nRule 4: Also require concrete ASSIGNED SOURCE work completed. Do not invent extra requirements. So we need to check if \"Kei readies the staff\" is done. Raw says \"Kei grips the staff\". Is that same? Might be considered as readying, but maybe they want exactly \"readies\"? The raw scene might not explicitly say \"readies\", but it implies he holds it. But rule 4: require concrete ASSIGNED SOURCE work to be completed. So we need to see if raw includes that action. It says \"Kei grips the staff\". That is a specific action, maybe considered as readies? The source phrase \"readies\" could mean prepares or gets ready; gripping might be part of it.\n\nBut rule 4: Do not invent extra requirements. Means we can't add new actions beyond those in raw scene. But if raw doesn't mention \"readies\", then it's missing the source action, so invalid. However maybe \"grips\" is considered as readies? The assignment says \"Kei readies the staff.\" That could be interpreted as him preparing it for use; gripping might be part of that.\n\nBut to be safe: We need to check if raw scene includes the exact phrase or an equivalent action. It doesn't say \"readies\". So maybe it's missing source requirement, thus invalid.\n\nThus valid = false, issue",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 306,
+      "completion_tokens": 600,
+      "total_tokens": 906,
+      "completion_tokens_details": {
+        "reasoning_tokens": 597
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471936.0508866,
+  "status": "ok"
+}
