@@ -25480,6 +25480,36 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     mode = "I2VA" if conditioning_mode == "clean_refresh" else "T2VA"
 
     request1_base_messages = copy.deepcopy(bundle.get("messages", []))
+    current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
+    request1_topology_contracts = build_director_barrier_topology_contract(
+        bundle.get("assigned_state_effects", []),
+        bundle.get("subject_definitions", ""),
+        bundle.get("assigned_source", ""),
+        current_beat_for_topology,
+        bundle.get("opening_state", ""),
+    )
+    if request1_topology_contracts and request1_base_messages:
+        topology_lines = []
+        for topology_contract in request1_topology_contracts:
+            destination = topology_contract["destination"]
+            for item in topology_contract["subjects"]:
+                if item["expected"] == "AT_DESTINATION":
+                    topology_lines.append(
+                        f"- {item['entity']} MUST end at {destination}."
+                    )
+                else:
+                    topology_lines.append(
+                        f"- {item['entity']} MUST NOT end at {destination}."
+                    )
+        request1_base_messages[-1] = dict(request1_base_messages[-1])
+        request1_base_messages[-1]["content"] = (
+            f"{request1_base_messages[-1].get('content', '')}\n\n"
+            "AUTHORITATIVE FINAL-SIDE CONTRACT — Python-derived from canonical "
+            "opening state and assigned typed effects; obey exactly:\n"
+            + "\n".join(topology_lines)
+            + "\nHelper/mover verbs do not override this contract. A subject may "
+            "temporarily cross only if its final side still matches the contract."
+        )
     request1_messages = request1_base_messages
     request1_result = None
     raw_scene = ""
@@ -25582,13 +25612,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     "issue": "completion verifier returned unusable output: " + str(error),
                 }
             if independent_completion["valid"]:
-                topology_contracts = build_director_barrier_topology_contract(
-                    bundle.get("assigned_state_effects", []),
-                    bundle.get("subject_definitions", ""),
-                    bundle.get("assigned_source", ""),
-                    current_beat_for_completion,
-                    bundle.get("opening_state", ""),
-                )
+                topology_contracts = request1_topology_contracts
                 for topology_index, topology_contract in enumerate(
                     topology_contracts,
                     start=1,
