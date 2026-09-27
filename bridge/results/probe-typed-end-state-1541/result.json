@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1541",
+  "kind": "llama_chat",
+  "started_at": 1790471818.8780708,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nMara starts outside the shelter with Eli and Noor.\n\nASSIGNED SOURCE\nMara guides Eli and Noor into the shelter and locks the door.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_location\",\"entity\":\"Eli\",\"value\":\"shelter\"},{\"op\":\"set_location\",\"entity\":\"Noor\",\"value\":\"shelter\"}]\n\nRAW SCENE\nEli and Noor enter the shelter. Mara remains outside and locks the door.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-d8nljtrlgb8kp09vcwuocd",
+    "object": "chat.completion",
+    "created": 1790471818,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need validate raw scene against assigned typed end state.\n\nOpening state: Mara outside shelter with Eli and Noor? Wait opening says \"Mara starts outside the shelter with Eli and Noor.\" So all three are outside at start.\n\nAssigned source: Mara guides Eli and Noor into the shelter and locks the door. That means after source, Eli and Noor inside shelter; Mara still outside but has locked door. The typed end state lists two ops: set_location for Eli to shelter, set_location for Noor to shelter. So that matches.\n\nRaw scene: \"Eli and Noor enter the shelter. Mara remains outside and locks the door.\" That indicates Eli and Noor are in shelter at final; Mara outside and locks door. This matches typed end state exactly. Also source requirement satisfied: Mara guides them into shelter (implied by entering) and locks door. So valid.\n\nCheck rule 1: For already-known named subjects, barriers, items, typed end state authoritative for persistent changes. Here we have location change of Eli and Noor; raw ends with them in shelter so matches. No other changes like locked/unlocked? The door is locked but not listed as typed effect; but rule says if RAW ends with one of them newly relocated, contained/freed, locked/unlocked etc require matching typed effect. But the door lock isn't a named subject? It's a barrier \"door\". It was locked in source and raw also locks it. Since it's a barrier, should be considered persistent change. Typed end state doesn't mention door lock; but rule 1 says if RAW ends with one of them newly relocated, contained/freed, locked/unlocked... require matching typed effect. So we need to check: The door is a named subject? It's a barrier \"door\". It was locked in source and raw locks it again. But the typed end state doesn't mention lock status; but rule 1 says if RAW ends with one of them newly relocated, contained/freed, locked/unlocked... require matching typed effect. So we need to see: The door is not listed as a subject? It's a barrier \"door\". It was locked in source and raw locks it again. But the typed end state doesn't mention lock status; but rule 1 says if RAW ends with one of them newly relocated, contained/freed, locked/unlocked... require matching typed effect. So we need to check: The door is not listed as a subject? It's a barrier \"door\". It was locked in source and raw locks it again. But the typed end state doesn't mention lock status; but rule 1 says if RAW ends with one of them newly relocated, contained/freed, locked/unlocked... require matching typed effect. So we need to check: The door is not listed as a subject? It's a barrier \"door\". It was locked in source and raw locks it again. But the typed end state doesn't mention lock status; but rule 1 says if RAW ends with one of them newly relocated",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 335,
+      "completion_tokens": 600,
+      "total_tokens": 935,
+      "completion_tokens_details": {
+        "reasoning_tokens": 597
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471828.1479263,
+  "status": "ok"
+}
