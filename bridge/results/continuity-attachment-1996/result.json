@@ -1,0 +1,55 @@
+{
+  "job_id": "continuity-attachment-1996",
+  "kind": "llama_chat",
+  "started_at": 1790551710.5478518,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one candidate continuity attachment. Return JSON only. ATTACHED = the object/substance is physically attached, embedded, worn, strapped, clipped, stuck, coated, wrapped, or otherwise fixed to the named Subject at the final frame. NOT_ATTACHED = the Subject merely holds, carries, touches, supports, or is near the object, or the object is attached to something else. UNSPECIFIED = the text does not establish whether it is attached. Judge only the supplied final-frame text."
+      },
+      {
+        "role": "user",
+        "content": "SUBJECT: Lena\nCANDIDATE ATTACHED OBJECT: paint\nFINAL-FRAME TEXT: Wet blue paint coats Lena's hands.\n\nReturn {\"status\":\"ATTACHED|NOT_ATTACHED|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8r8w8v8burwwtopl53630l",
+    "object": "chat.completion",
+    "created": 1790551710,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ATTACHED\"}",
+          "reasoning": "We need to judge whether the candidate object \"paint\" is physically attached, embedded, worn, strapped, clipped, stuck, coated, wrapped, or otherwise fixed to the named Subject at the final frame. The text: \"Wet blue paint coats Lena's hands.\" That indicates that wet blue paint coats her hands; it's coating them. Coating implies it covers and adheres? It's physically attached in a sense of covering. So ATTACHED.\n\nReturn JSON {\"status\":\"ATTACHED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 218,
+      "completion_tokens": 113,
+      "total_tokens": 331,
+      "completion_tokens_details": {
+        "reasoning_tokens": 97
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790551712.294867,
+  "status": "ok"
+}
