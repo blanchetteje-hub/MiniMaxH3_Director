@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action256-1871",
+  "kind": "llama_chat",
+  "started_at": 1790548455.9478004,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nJon hands the red vial to Priya; Priya takes it.\n\nFINAL H3 MICRO-ACTION:\nJon holds the red vial out toward Priya.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-c71drn1xbonpkpscxmdui",
+    "object": "chat.completion",
+    "created": 1790548455,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CHANGED\"}",
+          "reasoning": "We need compare RAW micro-action: \"Jon hands the red vial to Priya; Priya takes it.\" Final H3 micro-action: \"Jon holds the red vial out toward Priya.\"\n\nPreserved means same visible/audible action and material result remain. The final says Jon holds the vial out toward Priya, but doesn't mention handing or taking. Does that preserve? He is holding it out; presumably he might be offering to hand it. But the action of handing (giving) and receiving are not explicitly present. Material result: the vial ends up with Priya? In final, it's just held out; maybe still in Jon's hands. So material result differs: vial remains with Jon vs given to Priya.\n\nThus status likely CHANGED or OMITTED? The hand action is omitted. But \"holds the red vial out toward\" could be considered a handing gesture but not explicit. Material result changed: vial stays with Jon, so it's different. I'd say CHANGED.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 209,
+      "completion_tokens": 215,
+      "total_tokens": 424,
+      "completion_tokens_details": {
+        "reasoning_tokens": 199
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790548459.0734887,
+  "status": "ok"
+}
