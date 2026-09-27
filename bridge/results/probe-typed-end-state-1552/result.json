@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1552",
+  "kind": "llama_chat",
+  "started_at": 1790471920.5436747,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nThe vault door starts unlocked.\n\nASSIGNED SOURCE\nRin locks the vault door.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_barrier_state\",\"entity\":\"vault door\",\"value\":\"locked\"}]\n\nRAW SCENE\nRin locks the vault door, then unlocks it again before the scene ends.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jr0o9x01h7oe5k9k14fzeb",
+    "object": "chat.completion",
+    "created": 1790471920,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The raw scene ends with the vault door unlocked, which does not match the authoritative typed end state that requires it to be locked. The final persistent state of the vault door must be \\\"locked\\\" as specified by the typed effect.\"}",
+          "reasoning": "We need to validate raw scene against assigned typed end state.\n\nOpening state: vault door unlocked.\n\nAssigned source: Rin locks the vault door.\n\nTyped end state: set_barrier_state entity \"vault door\" value \"locked\".\n\nRaw scene: \"Rin locks the vault door, then unlocks it again before the scene ends.\"\n\nSo final state of vault door is unlocked. Typed end state says locked. So mismatch => invalid.\n\nAlso rule 1: For already-known named subjects, barriers, and items, typed end state authoritative for persistent final-state changes. If RAW ends with one newly changed, require matching typed effect. No match means INVALID.\n\nThus invalid because vault door ends unlocked but typed expects locked.\n\nReturn JSON {valid:false, issue:\"...\"} Provide explanation maybe: \"Vault door is unlocked at scene's end, contradicting assigned typed end state of locked.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 308,
+      "completion_tokens": 239,
+      "total_tokens": 547,
+      "completion_tokens_details": {
+        "reasoning_tokens": 175
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471924.421019,
+  "status": "ok"
+}
