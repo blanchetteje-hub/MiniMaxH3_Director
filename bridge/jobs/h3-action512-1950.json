@@ -1,0 +1,24 @@
+{
+  "kind": "llama_chat",
+  "job_id": "h3-action512-1950",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+    },
+    {
+      "role": "user",
+      "content": "RAW MICRO-ACTION:\nLena opens the book to page twenty and circles the map.\n\nFINAL H3 MICRO-ACTION:\nLena flips to page twenty and draws a circle around the map.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 1,
+  "max_tokens": 512,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "timeout_seconds": 600,
+  "metadata": {
+    "expected_status": "PRESERVED",
+    "purpose": "h3_action_preservation_512_token_probe"
+  }
+}
