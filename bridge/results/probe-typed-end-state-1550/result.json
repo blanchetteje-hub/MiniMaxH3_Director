@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1550",
+  "kind": "llama_chat",
+  "started_at": 1790471901.8885233,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nIvo starts in the lab.\n\nASSIGNED SOURCE\nIvo checks the roof access camera.\n\nASSIGNED TYPED END STATE\n[]\n\nRAW SCENE\nIvo climbs the stairs and ends standing on the roof.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-tcvwkhi3b5kn85lf2lcju",
+    "object": "chat.completion",
+    "created": 1790471901,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Ivo relocates to the roof without a matching typed effect, and the assigned source action \\\"Ivo checks the roof access camera\\\" is not performed in the raw scene.\"}",
+          "reasoning": "We need to validate raw scene against authoritative persistent end-state effects.\n\nOpening State: Ivo starts in lab.\n\nAssigned Source: \"Ivo checks the roof access camera.\" So source action is that Ivo checks the roof access camera. That presumably means he looks at it, maybe opens? But we don't know effect; but it's a check, not moving him.\n\nTyped End State: [] (empty list). Means no persistent changes expected from assigned typed end state. So final state should have no new relocations etc for known subjects/items.\n\nBut raw scene says \"Ivo climbs the stairs and ends standing on the roof.\" That means Ivo moved from lab to roof, which is a relocation of subject Ivo. Since typed end state has no effect indicating that Ivo moves to roof, it's not matching. So invalid.\n\nAlso need source work completed: Ivo checks roof access camera. Does raw scene include that? It says he climbs stairs and ends standing on roof; but didn't mention checking the camera. So maybe missing source action. But rule 4: require concrete assigned source work to be completed. So we also need check that \"Ivo checks the roof access camera\" is done in RAW. It's not, so invalid.\n\nThus issue: Ivo moved to roof without typed effect; and didn't check camera.\n\nReturn JSON with valid false and issue string describing problems.\n\nLet's craft issue: \"Ivo relocated to roof but no corresponding typed end state; also source action 'checks the roof access camera' missing.\"\n\nOk.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 287,
+      "completion_tokens": 361,
+      "total_tokens": 648,
+      "completion_tokens_details": {
+        "reasoning_tokens": 308
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471907.613955,
+  "status": "ok"
+}
