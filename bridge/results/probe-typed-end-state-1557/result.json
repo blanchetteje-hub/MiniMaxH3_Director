@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1557",
+  "kind": "llama_chat",
+  "started_at": 1790471959.6491084,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nNora starts outside the bunker with Paz.\n\nASSIGNED SOURCE\nNora gets Paz into the bunker, then shuts the hatch.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_location\",\"entity\":\"Paz\",\"value\":\"bunker\"},{\"op\":\"set_containment\",\"entity\":\"Paz\",\"container\":\"bunker\",\"value\":\"contained\"}]\n\nRAW SCENE\nNora steps into the bunker while guiding Paz, then steps back outside before shutting the hatch. Paz remains inside.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8roy4mfoy5eaouwxncxv7o",
+    "object": "chat.completion",
+    "created": 1790471959,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need validate raw scene against assigned typed end state.\n\nOpening state: Nora starts outside bunker with Paz. So Paz is outside, presumably in same location as Nora? \"outside the bunker\" means both are outside. The typed end state says set_location Paz to bunker; set_containment Paz container bunker value contained. That matches that Paz ends inside and contained.\n\nRaw scene: \"Nora steps into the bunker while guiding Paz, then steps back outside before shutting the hatch. Paz remains inside.\" So final state: Paz is inside bunker (location). Is Paz contained? The raw says she remains inside; but does containment happen when hatch shut? She was guided in, then Nora steps out and shuts hatch. That would contain her. Raw doesn't explicitly say \"shuts the hatch\" after stepping back outside. It says before shutting the hatch. So yes, hatch is closed. Thus Paz should be contained.\n\nCheck typed effect: set_location Paz bunker - true. set_containment Paz container bunker value contained - true.\n\nAlso need to check that source work completed: Nora gets Paz into bunker then shuts hatch. Raw scene includes steps: Nora steps in with Paz (gets her inside), then steps back outside before shutting the hatch. So she does shut hatch after stepping out? It says \"before shutting the hatch\" meaning she steps back outside, then shuts hatch. That matches source.\n\nThus valid true. Issue empty string or null? Should be \"\".\n\nReturn JSON: {\"valid\":true,\"issue\":\"\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 342,
+      "completion_tokens": 321,
+      "total_tokens": 663,
+      "completion_tokens_details": {
+        "reasoning_tokens": 302
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471964.869841,
+  "status": "ok"
+}
