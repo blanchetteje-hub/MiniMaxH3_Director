@@ -397,3 +397,26 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - zero false `ATTACHED`.
 - Production commit `ded7f4c94af0c91af82bdd090d545be56bdd0d12` adds the extractor with the proven short-prompt profile (temperature 0, top_p 1, max_tokens 512, seed 42, repeat_penalty 1.15) and filters combined-continuity `attached_objects` immediately after Subject guarding.
 - User preference for future narrow extractor tests: target ~50 probes per batch when practical.
+
+
+### 2026-09-27 — acceptance 2012 fixed attachment corruption; earliest remaining issue is RAW physical coherence
+
+- `acceptance-2012` completed all 8 segments.
+- The Segment-6 attachment bug is fixed:
+  - combined continuity now keeps Amy's `attached_objects` empty;
+  - the zombie head is no longer serialized as physically attached to Amy;
+  - Segment 7 no longer inherits the corrupted “head remains on Amy” fact.
+- Gold comparison discipline remains fuzzy, not reconstructive:
+  - do not require exact wording, timestamp count, choreography, camera path, or harmless staging;
+  - only source/continuity violations or failures of the four hard H3 prompt-writing rules are actionable.
+- The earliest actionable mismatch is Segment 1 RAW physical coherence:
+  - at 00:02.500 Amy explicitly keeps the pancake tray in her left hand;
+  - at 00:03.500 she extends that same left hand to offer Amber a pancake, with no release/transfer/repositioning;
+  - this is a concrete simultaneous-use conflict, not a harmless gold-staging difference.
+- Existing beat coherence runs before Director generation and cannot catch this; there is no RAW-scene adjacent-action coherence gate yet.
+- Queued 50 generic narrow probes `raw-coherence-2013` through `raw-coherence-2062`.
+  Extractor contract:
+  - input: PREVIOUS MICRO-ACTION + NEXT MICRO-ACTION;
+  - output: `COMPATIBLE | CONFLICT | UNSPECIFIED`;
+  - intended Python decision if proven: reject/regenerate RAW only on `CONFLICT`.
+- Probe batch spans hand occupancy, two-handed objects, feet/pedals, body-position transitions, dropping/retrieving objects, carried children, tools, weapons, controls, and explicit repositioning.
