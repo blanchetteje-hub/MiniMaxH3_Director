@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-physical-1683",
+  "kind": "llama_chat",
+  "started_at": 1790527284.3671596,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nMara kills Zombie3.\n\nAUTHORITATIVE OPENING STATE\nZombie3's head lies on the kitchen floor while its body is nearby.\n\nRAW SCENE\nMara slashes Zombie3's body and blood sprays.\n\nTreat AUTHORITATIVE OPENING STATE as already true at 00:00.000 unless RAW SCENE visibly changes it. SOURCE assigns a terminal action such as killing, destroying, defeating, eliminating, finishing, or resolving a target/process. Inspect the target of that newly assigned action at the moment immediately BEFORE the terminal action begins in RAW SCENE. Return status ACTIVE_OR_UNRESOLVED if RAW establishes the target/process still needs the specific terminal result assigned by SOURCE. Judge terminal status relative to that assigned action: for kill, already dead is terminal. Treat a corpse, an already detached/severed head, a decapitated body, or clearly lifeless remains as already dead even when the word 'dead' is not used; RAW calling those remains a zombie/body/torso does not make the target active again. For destroy, already destroyed is terminal; for defeat/eliminate, already neutralized, incapacitated, restrained, or otherwise no longer an active opponent is terminal; for finish/complete, already complete is terminal; for resolve, already resolved is terminal. Return ALREADY_TERMINAL when RAW establishes that assigned terminal result was already true before the action begins. Return UNSPECIFIED only when RAW does not establish either. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-cbvydmo9h3blzs34xbxnhb",
+    "object": "chat.completion",
+    "created": 1790527284,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ALREADY_TERMINAL\"}",
+          "reasoning": "We need to extract terminal-target pre-action status.\n\nSource: \"Mara kills Zombie3.\" So target is Zombie3, action kill.\n\nAuthoritative opening state at 00:00:000: Zombie3's head lies on the kitchen floor while its body is nearby. That means Zombie3 is dead? Head lying on floor and body nearby indicates zombie died? The head is detached but still part of corpse. It's a decapitated zombie, so it's already dead.\n\nRaw scene: \"Mara slashes Zombie3's body and blood sprays.\" So before the slash, Zombie3 is already dead (head lies). So kill action target is already dead before action begins. Thus status ALREADY_TERMINAL.\n\nReturn JSON {\"status\":\"ALREADY_TERMINAL\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 407,
+      "completion_tokens": 174,
+      "total_tokens": 581,
+      "completion_tokens_details": {
+        "reasoning_tokens": 155
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790527287.255363,
+  "status": "ok"
+}
