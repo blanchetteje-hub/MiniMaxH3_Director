@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-extract-1578",
+  "kind": "llama_chat",
+  "started_at": 1790472204.3468218,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier-side placement only. Do not validate story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\nthrone room\n\nNAMED SUBJECTS\nSera; Guard1; Guard2\n\nRAW TEXT\nBoth guards enter the throne room. Sera pauses in the doorway; her final side is not shown.\n\nFor each named subject, classify only where that subject is at the END of the text relative to DESTINATION.\nAllowed relation values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED.\nUse UNSPECIFIED if the text does not establish the final side. Temporary entry does not count if the subject returns before the end. Do not decide whether the scene is valid. Do not infer that a helper follows someone unless the text establishes it.\nReturn JSON only with one key subjects. subjects is an array containing one object per named subject, each with exactly entity and relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-k06r2wlp05jscy0xhymk58",
+    "object": "chat.completion",
+    "created": 1790472204,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"subjects\":[{\"entity\":\"Sera\",\"relation\":\"UNSPECIFIED\"},{\"entity\":\"Guard1\",\"relation\":\"AT_DESTINATION\"},{\"entity\":\"Guard2\",\"relation\":\"AT_DESTINATION\"}]}",
+          "reasoning": "We need to extract final barrier-side placement relative to DESTINATION (throne room). Named subjects: Sera; Guard1; Guard2.\n\nText: \"Both guards enter the throne room. Sera pauses in the doorway; her final side is not shown.\"\n\nInterpretation: At end of text, both guards are inside throne room? They entered and no mention they left. So at destination. Sera paused in doorway; final side not shown => unspecified relative to destination.\n\nThus relations:\nSera: UNSPECIFIED\nGuard1: AT_DESTINATION\nGuard2: AT_DESTINATION\n\nReturn JSON with subjects array of objects each {entity, relation}. Order maybe as listed? Probably maintain order given: Sera, Guard1, Guard2.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 251,
+      "completion_tokens": 200,
+      "total_tokens": 451,
+      "completion_tokens_details": {
+        "reasoning_tokens": 152
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790472207.6616075,
+  "status": "ok"
+}
