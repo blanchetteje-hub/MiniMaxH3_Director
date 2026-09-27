@@ -693,6 +693,69 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             {"entity": "door", "destination": "basement", "state": "locked"},
         )
 
+    def test_closed_boundary_contract_binds_generic_locked_door_to_containment(self):
+        opening = (
+            "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n"
+            '{"characters":{"Will":{"containment":"contained","contained_in":"basement"},'
+            '"Amber":{"containment":"contained","contained_in":"basement"}},'
+            '"environment":{"doors":{},"barriers":{"door":{"status":"locked"}},'
+            '"windows":{}}}'
+        )
+        self.assertEqual(
+            minimax.build_director_closed_boundary_contracts(opening, []),
+            [
+                {
+                    "barrier": "basement door",
+                    "state": "locked",
+                    "destination": "basement",
+                }
+            ],
+        )
+
+    def test_closed_boundary_contract_allows_authorized_release(self):
+        opening = (
+            "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n"
+            '{"characters":{"Will":{"containment":"contained","contained_in":"basement"}},'
+            '"environment":{"doors":{},"barriers":{"door":{"status":"locked"}},'
+            '"windows":{}}}'
+        )
+        effects = [
+            {
+                "op": "set_containment",
+                "entity": "Will",
+                "container": "basement",
+                "value": "free",
+            }
+        ]
+        self.assertEqual(
+            minimax.build_director_closed_boundary_contracts(opening, effects),
+            [],
+        )
+
+    def test_barrier_traversal_prompt_is_extraction_only(self):
+        messages = minimax.build_director_barrier_traversal_messages(
+            "airlock hatch",
+            "The creature comes through the airlock hatch into the cargo bay.",
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("TRAVERSED", prompt)
+        self.assertIn("NOT_TRAVERSED", prompt)
+        self.assertIn("UNSPECIFIED", prompt)
+        self.assertIn("Do not infer validity", prompt)
+        self.assertNotIn("authorized", prompt.casefold())
+
+    def test_barrier_traversal_parser_is_strict(self):
+        self.assertEqual(
+            minimax.parse_director_barrier_traversal_observation(
+                {"status": "TRAVERSED"}
+            ),
+            "TRAVERSED",
+        )
+        with self.assertRaises(ValueError):
+            minimax.parse_director_barrier_traversal_observation(
+                {"status": "CROSSED"}
+            )
+
     def test_generic_barrier_binding_refuses_ambiguous_destinations(self):
         effects = [
             {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
