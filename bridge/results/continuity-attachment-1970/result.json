@@ -1,0 +1,55 @@
+{
+  "job_id": "continuity-attachment-1970",
+  "kind": "llama_chat",
+  "started_at": 1790551609.4707334,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one candidate continuity attachment. Return JSON only. ATTACHED = the object/substance is physically attached, embedded, worn, strapped, clipped, stuck, coated, wrapped, or otherwise fixed to the named Subject at the final frame. NOT_ATTACHED = the Subject merely holds, carries, touches, supports, or is near the object, or the object is attached to something else. UNSPECIFIED = the text does not establish whether it is attached. Judge only the supplied final-frame text."
+      },
+      {
+        "role": "user",
+        "content": "SUBJECT: Amy\nCANDIDATE ATTACHED OBJECT: mud\nFINAL-FRAME TEXT: Mud is smeared across Amy's cheek and shirt.\n\nReturn {\"status\":\"ATTACHED|NOT_ATTACHED|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-cs6adan3vumr2rnbh8tfb",
+    "object": "chat.completion",
+    "created": 1790551609,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ATTACHED\"}",
+          "reasoning": "We need to judge whether the candidate object \"mud\" is physically attached, embedded, worn, strapped, clipped, stuck, coated, wrapped, or otherwise fixed to the named Subject at the final frame. The text: \"Mud is smeared across Amy's cheek and shirt.\" That indicates mud is on her cheek and shirt; it's smeared across them. Is that considered attached? It's physically present on her skin and clothing. It could be considered coated/attached. The definition says ATTACHED if object/substance is physically attached, embedded, worn, strapped, clipped, stuck, coated, wrapped, or otherwise fixed to the named Subject at final frame. \"Smeared across\" suggests it's coating her cheek and shirt; that qualifies as coated. So status: ATTACHED.\n\nReturn JSON {\"status\":\"ATTACHED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 221,
+      "completion_tokens": 181,
+      "total_tokens": 402,
+      "completion_tokens_details": {
+        "reasoning_tokens": 165
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790551612.0630105,
+  "status": "ok"
+}
