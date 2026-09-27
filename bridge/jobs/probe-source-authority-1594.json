@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-source-authority-1594",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 450,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Check whether RAW SCENE completes ASSIGNED SOURCE. Judge meaning, not wording. Return JSON only with valid and issue."
+    },
+    {
+      "role": "user",
+      "content": "ASSIGNED SOURCE\nKei equips the pistol.\n\nDERIVED BEAT — staging only; cannot add stricter requirements\nKei draws and readies the pistol.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n{\"characters\":{\"Kei\":{\"held_objects\":[],\"equipped_objects\":[]}}}\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_item_state\",\"entity\":\"pistol\",\"owner\":\"Kei\",\"value\":\"equipped\"}]\n\nRAW SCENE\nKei draws the pistol, then drops it on the floor and ends empty-handed.\n\nRules: SOURCE defines required actions/results/roles. DERIVED BEAT cannot add a stricter transfer method. For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer. Work merely made FOR someone can finish without delivery unless SOURCE requires delivery; honor explicit later pickup/storage. Typed end state governs durable tracked continuity. Incidental consumables, plates, cups, and ordinary newly introduced serving props are not persistent inventory merely because a known subject holds them at the end.\nReturn JSON with boolean valid and string issue."
+    }
+  ]
+}
