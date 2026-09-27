@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action256-1885",
+  "kind": "llama_chat",
+  "started_at": 1790548760.67013,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nThe ranger fires an arrow; it strikes the hanging rope and severs it.\n\nFINAL H3 MICRO-ACTION:\nThe ranger aims an arrow at the hanging rope.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-lh5mggbm5kmmlriobc9i8",
+    "object": "chat.completion",
+    "created": 1790548760,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"OMITTED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"The ranger fires an arrow; it strikes the hanging rope and severs it.\" Final H3 micro-action: \"The ranger aims an arrow at the hanging rope.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. Here final only says he aims an arrow at the rope, but doesn't say that the arrow is fired or strikes/severs rope. So the action of striking and severing is omitted. The aim is present but not the firing/impact. So it's OMITTED? Actually \"aims\" is a different action than \"fires\". He might be aiming before firing; but final micro-action does not mention that he fires, nor that it strikes or severs rope. So the result of severing rope is omitted.\n\nThus status: OMITTED.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 211,
+      "completion_tokens": 187,
+      "total_tokens": 398,
+      "completion_tokens_details": {
+        "reasoning_tokens": 170
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790548763.2865472,
+  "status": "ok"
+}
