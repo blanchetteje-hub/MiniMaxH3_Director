@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1622",
+  "kind": "llama_chat",
+  "started_at": 1790481272.7655725,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe captain finishes the evacuation.\n\nRAW SCENE\nThe evacuation is already complete and the last shuttle has departed. The captain checks the empty terminal.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-cg17s1yaovo02fyksn8x3mw",
+    "object": "chat.completion",
+    "created": 1790481272,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nThe scenario: \"ASSIGNED SOURCE The captain finishes the evacuation.\" So source assigns a terminal action? Actually, \"SOURCE assigns a terminal action\" means that in RAW SCENE, there is an assignment of a terminal action. We must inspect target of newly assigned action immediately BEFORE the terminal action begins. Return status ACTIVE_OR_UNRESOLVED if still active/intact enough to resolve; ALREADY_TERMINAL if already dead etc.; UNSPECIFIED if neither.\n\nWe need to identify what the target/process is in this scene: \"The evacuation is already complete and the last shuttle has departed. The captain checks the empty terminal.\" So the action assigned by source likely refers to checking the terminal? Or maybe the terminal itself? Let's parse:\n\nASSIGNED SOURCE: The captain finishes the evacuation.\n\nRAW SCENE: The evacuation is already complete and the last shuttle has departed. The captain checks the empty terminal.\n\nSo \"The captain checks the empty terminal\" could be a terminal action assigned by source? Actually, \"SOURCE assigns a terminal action.\" So maybe the source (captain) assigns an action to check the terminal. We need to inspect target of that newly assigned action immediately before it begins: The target is the terminal itself.\n\nWe must determine status of terminal pre-action: Is it active/unresolved or already terminal? Terminal means dead, corpse, severed remnant, destroyed, defeated, finished, eliminated, resolved. Here",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 230,
+      "completion_tokens": 300,
+      "total_tokens": 530,
+      "completion_tokens_details": {
+        "reasoning_tokens": 297
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481277.4805603,
+  "status": "ok"
+}
