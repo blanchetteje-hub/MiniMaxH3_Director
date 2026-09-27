@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action384-1934",
+  "kind": "llama_chat",
+  "started_at": 1790549801.580706,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nThe thief cuts the rope; the chandelier crashes onto the table.\n\nFINAL H3 MICRO-ACTION:\nThe thief saws halfway through the rope.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-kwn2mjxqcqn99d6kh9vyi",
+    "object": "chat.completion",
+    "created": 1790549801,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"OMITTED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"The thief cuts the rope; the chandelier crashes onto the table.\" Final H3 micro-action: \"The thief saws halfway through the rope.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. Here original had cutting rope (cutting) and chandelier crashing onto table as result. Final has saws halfway through rope but no mention of chandelier crash. So the result is missing. The action: \"cuts\" vs \"saws\". Both are similar? Cutting rope with a saw could be same action, but final says saws halfway through rope - implies still cutting but not finished. Also chandelier crash absent. So it's omitted or changed? Since material result (chandelier crashes onto table) is missing, that part is omitted. The action of cutting remains present albeit partially. But the result is omitted. According to instructions: PRESERVED = same visible/audible action and material result remain. OMITTED = RAW action/result absent. CHANGED = final H3 performs a materially different or contradictory action/result.\n\nHere we have partial action but missing result, so it's omitted? The chandelier crash is not present; the cutting continues but incomplete. So I'd say status: \"OMITTED\" because the material result (chandelier crashes onto table) is absent. But maybe they consider that the chopping of rope still occurs, but the chandelier crash didn't happen. That could be considered omitted. Yes.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 207,
+      "completion_tokens": 318,
+      "total_tokens": 525,
+      "completion_tokens_details": {
+        "reasoning_tokens": 301
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790549805.9278672,
+  "status": "ok"
+}
