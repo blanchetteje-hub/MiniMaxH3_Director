@@ -827,6 +827,37 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             [],
         )
 
+    def test_barrier_traversal_prompt_accepts_protected_destination(self):
+        messages = minimax.build_director_barrier_traversal_messages(
+            "basement door",
+            "The object rolls down the stairs and lands on the basement floor.",
+            "basement",
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("BOUND BARRIER", prompt)
+        self.assertIn("PROTECTED DESTINATION", prompt)
+        self.assertIn("basement", prompt)
+        self.assertIn("even when the barrier noun is not repeated", prompt)
+        self.assertIn("object, body part", prompt)
+
+    def test_closed_boundary_contract_exposes_destination_to_traversal_check(self):
+        opening = (
+            "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n"
+            '{"characters":{"Will":{"containment":"contained","contained_in":"basement"}},'
+            '"environment":{"doors":{},"barriers":{"door":{"status":"locked"}},'
+            '"windows":{}}}'
+        )
+        self.assertEqual(
+            minimax.build_director_closed_boundary_contracts(opening, []),
+            [
+                {
+                    "barrier": "basement door",
+                    "state": "locked",
+                    "destination": "basement",
+                }
+            ],
+        )
+
     def test_barrier_traversal_prompt_is_extraction_only(self):
         messages = minimax.build_director_barrier_traversal_messages(
             "airlock hatch",
