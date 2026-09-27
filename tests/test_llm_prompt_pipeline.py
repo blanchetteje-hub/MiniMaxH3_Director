@@ -876,6 +876,9 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("already true at 00:00.000", prompt)
         self.assertIn("moment immediately BEFORE the terminal action begins", prompt)
         self.assertIn("ALREADY_TERMINAL", prompt)
+        self.assertIn("detached/severed head", prompt)
+        self.assertIn("decapitated body", prompt)
+        self.assertIn("does not make the target active again", prompt)
         self.assertIn("Do not decide whether the scene is valid", prompt)
 
     def test_completion_prompt_requires_unresolved_target_for_terminal_action(self):
