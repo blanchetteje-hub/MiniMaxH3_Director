@@ -753,6 +753,45 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("At 00:00.000, Amy", formatted)
         self.assertIn("At 00:01.500, Amy", formatted)
 
+    def test_terminal_target_source_detection_is_narrow(self):
+        self.assertTrue(
+            minimax.director_source_has_terminal_action(
+                "Mara kills the final creature."
+            )
+        )
+        self.assertTrue(
+            minimax.director_source_has_terminal_action(
+                "The crew destroys the reactor."
+            )
+        )
+        self.assertFalse(
+            minimax.director_source_has_terminal_action(
+                "Mara wounds the creature and keeps fighting."
+            )
+        )
+
+    def test_terminal_target_parser_accepts_only_known_status(self):
+        self.assertEqual(
+            minimax.parse_director_terminal_target_observation(
+                {"status": "ALREADY_TERMINAL"}
+            ),
+            "ALREADY_TERMINAL",
+        )
+        with self.assertRaises(ValueError):
+            minimax.parse_director_terminal_target_observation(
+                {"status": "DEAD"}
+            )
+
+    def test_terminal_target_prompt_is_extraction_only(self):
+        messages = minimax.build_director_terminal_target_messages(
+            "Amy kills the final zombie.",
+            "Amy faces a headless zombie corpse and strikes it again.",
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("moment immediately BEFORE the terminal action begins", prompt)
+        self.assertIn("ALREADY_TERMINAL", prompt)
+        self.assertIn("Do not decide whether the scene is valid", prompt)
+
     def test_completion_prompt_requires_unresolved_target_for_terminal_action(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Amy kills the final zombie.",
