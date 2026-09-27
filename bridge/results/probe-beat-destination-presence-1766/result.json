@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beat-destination-presence-1766",
+  "kind": "llama_chat",
+  "started_at": 1790540221.1288333,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract subject destination presence only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\narchive room\n\nNAMED SUBJECT\nTess\n\nCANDIDATE BEAT\nTess is shown near the archive room, then the scene cuts away before her location is established.\n\nClassify only whether CANDIDATE BEAT establishes that NAMED SUBJECT is physically at/inside DESTINATION at any point during the beat. Allowed values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED. AT_DESTINATION includes entering, standing in, acting in, or explicitly being inside DESTINATION even if the subject later leaves. NOT_AT_DESTINATION means the beat explicitly keeps the subject outside/elsewhere and does not place the subject inside. Reaching through an opening while the subject's body remains outside is NOT_AT_DESTINATION. UNSPECIFIED means the subject's relation to DESTINATION is not established clearly enough. Do not decide whether the placement is allowed. Return JSON: {\"relation\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hmpuidrv6fn2emuaa7jr",
+    "object": "chat.completion",
+    "created": 1790540221,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NOT_AT_DESTINATION\"}",
+          "reasoning": "We need to classify if Tess is physically at/inside archive room during beat.\n\nBeat description: \"Tess is shown near the archive room, then the scene cuts away before her location is established.\" She is near but not inside; cutaway before location established. So relation unspecified? Actually we know she is near, but not inside. The beat doesn't establish that she's at/inside. So NOT_AT_DESTINATION? But \"near\" could be outside. It says \"Tess is shown near the archive room\". That implies outside or adjacent. Not inside. Then cuts away before location established. So relation: NOT_AT_DESTINATION.\n\nReturn JSON {\"relation\":\"NOT_AT_DESTINATION\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 275,
+      "completion_tokens": 156,
+      "total_tokens": 431,
+      "completion_tokens_details": {
+        "reasoning_tokens": 138
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790540223.7429028,
+  "status": "ok"
+}
