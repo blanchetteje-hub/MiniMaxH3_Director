@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action256-1873",
+  "kind": "llama_chat",
+  "started_at": 1790548465.1888862,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nThe mechanic tightens the final bolt and the engine stops rattling.\n\nFINAL H3 MICRO-ACTION:\nThe mechanic turns the final bolt tight; the engine's vibration settles.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-bha1w6cv2cahe8l4tuv8yw",
+    "object": "chat.completion",
+    "created": 1790548465,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"PRESERVED\"}",
+          "reasoning": "We need to compare RAW micro-action with FINAL H3 micro-action at same timestamp. The raw: \"The mechanic tightens the final bolt and the engine stops rattling.\" Final: \"The mechanic turns the final bolt tight; the engine's vibration settles.\"\n\nPreserved? Let's see: Both mention tightening final bolt, both result in engine stopping rattling/vibration settling. So action is same: tighten final bolt. Result: engine stops rattling vs engine's vibration settles. That's essentially same visible/audible effect. The wording differs but material remains. So status = PRESERVED.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 213,
+      "completion_tokens": 139,
+      "total_tokens": 352,
+      "completion_tokens_details": {
+        "reasoning_tokens": 122
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790548467.2667239,
+  "status": "ok"
+}
