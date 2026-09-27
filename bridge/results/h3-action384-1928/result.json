@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action384-1928",
+  "kind": "llama_chat",
+  "started_at": 1790549772.8528247,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nTomas pulls the pin and throws the flare into the tunnel; red light fills it.\n\nFINAL H3 MICRO-ACTION:\nTomas pulls the pin and holds the flare at his side.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-b4r5izeddyjsps9u7g6md",
+    "object": "chat.completion",
+    "created": 1790549772,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to compare RAW micro-action: \"Tomas pulls the pin and throws the flare into the tunnel; red light fills it.\" Final H3 micro-action: \"Tomas pulls the pin and holds the flare at his side.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. Here, in RAW he throws the flare into the tunnel, resulting in red light filling it. In final, he holds the flare at his side; no mention of throwing or red light. So the action \"pulls the pin\" is preserved. But the subsequent action (throws) and result (red light fills tunnel) are omitted. The question: Should we consider status as PRESERVED because some part remains? Or CHANGED? According to definition, PRESERVED = same visible/audible action and material result remain, even if wording differs. Here the visible action \"pulls the pin\" is present in both; but the subsequent action (throws) is omitted. The final H3 micro-action does not include throwing or red light. So it's an omission of that part. But overall micro-action: maybe we consider it as PRESERVED? Let's interpret: They compare one RAW video micro-action with the final H3 micro-action at same timestamp. We judge if the action/result is preserved, omitted, or changed.\n\nThe raw had two actions: pulls pin and throws flare into tunnel; red light fills it. Final has only pulls pin and holds flare at side. So the \"throws\" part is omitted. The result (red light) also omitted. So it's not fully preserved. It's partially preserved but missing some parts. According to categories, we choose one of PRESERVED, OMITTED, CHANGED.\n\nIf something is omitted, that means RAW action/result absent in final. Here at least the \"throws\" and red light are absent. But \"pulls",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 216,
+      "completion_tokens": 384,
+      "total_tokens": 600,
+      "completion_tokens_details": {
+        "reasoning_tokens": 381
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790549777.9895492,
+  "status": "ok"
+}
