@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1545",
+  "kind": "llama_chat",
+  "started_at": 1790471848.8201063,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nArin starts before the portal with Nia and Sol.\n\nASSIGNED SOURCE\nArin sends Nia and Sol through the portal.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_location\",\"entity\":\"Nia\",\"value\":\"far chamber\"},{\"op\":\"set_location\",\"entity\":\"Sol\",\"value\":\"far chamber\"}]\n\nRAW SCENE\nNia and Sol pass through the portal. Arin follows and ends in the far chamber with them.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-u0ajdfviuqg0116si2kmaw9k",
+    "object": "chat.completion",
+    "created": 1790471848,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Arin ends in the far chamber, but there is no corresponding \\\"set_location\\\" typed effect for Arin; the assigned typed end state only specifies Nia and Sol.\"}",
+          "reasoning": "We need validate raw scene against assigned typed end state.\n\nOpening state: Arin starts before portal with Nia and Sol. So all three at same location (before portal). Assigned source: Arin sends Nia and Sol through the portal. Typed end state: set_location for Nia to far chamber, Sol to far chamber. No mention of Arin's location; but raw scene says \"Arin follows and ends in the far chamber with them.\" So Arin also ends at far chamber.\n\nCheck rules:\n\n1. For already-known named subjects, barriers, items, typed end state authoritative for persistent final-state changes. If RAW ends with one newly relocated etc require matching typed effect. No match means invalid. Here Nia and Sol are relocated to far chamber; typed effects exist. Arin also relocated but no typed effect for Arin. Is that a problem? Rule 1: For already-known named subjects, barriers, items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated... require matching typed effect. No matching effect means INVALID.\n\nArin is an entity; it's known subject. Typed end state doesn't include Arin's location change. So RAW has Arin relocated to far chamber, but no typed effect for that. That violates rule 1: need a matching typed effect. Thus invalid.\n\nAlso check rule 3: Every listed typed effect must be true in RAW final state. Nia and Sol are indeed at far chamber; yes.\n\nRule 4: Also require concrete assigned source work to be completed. Arin sends Nia and Sol through portal. Raw scene says \"Nia and Sol pass through the portal.\" That matches sending them? Yes, they passed through. So that part is fine.\n\nBut missing typed effect for Arin's relocation makes invalid.\n\nThus output: valid false, issue string explaining mismatch: \"Arin relocated to far chamber but no matching typed end state effect.\"\n\nReturn JSON with keys valid and issue.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 335,
+      "completion_tokens": 462,
+      "total_tokens": 797,
+      "completion_tokens_details": {
+        "reasoning_tokens": 409
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471856.0251827,
+  "status": "ok"
+}
