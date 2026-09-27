@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-physical-1671",
+  "kind": "llama_chat",
+  "started_at": 1790527210.0132258,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe knight kills the dragon.\n\nAUTHORITATIVE OPENING STATE\nThe dragon is decapitated; its detached head rests several feet from the body.\n\nRAW SCENE\nThe knight thrusts a spear into the dragon's torso.\n\nTreat AUTHORITATIVE OPENING STATE as already true at 00:00.000 unless RAW SCENE visibly changes it. SOURCE assigns a terminal action such as killing, destroying, defeating, eliminating, finishing, or resolving a target/process. Inspect the target of that newly assigned action at the moment immediately BEFORE the terminal action begins in RAW SCENE. Return status ACTIVE_OR_UNRESOLVED if RAW establishes the target/process still needs the specific terminal result assigned by SOURCE. Judge terminal status relative to that assigned action: for kill, already dead is terminal. Treat a corpse, an already detached/severed head, a decapitated body, or clearly lifeless remains as already dead even when the word 'dead' is not used; RAW calling those remains a zombie/body/torso does not make the target active again. For destroy, already destroyed is terminal; for defeat/eliminate, already neutralized, incapacitated, restrained, or otherwise no longer an active opponent is terminal; for finish/complete, already complete is terminal; for resolve, already resolved is terminal. Return ALREADY_TERMINAL when RAW establishes that assigned terminal result was already true before the action begins. Return UNSPECIFIED only when RAW does not establish either. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2otjgnw2bksfbs7c8mv6n",
+    "object": "chat.completion",
+    "created": 1790527210,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ALREADY_TERMINAL\"}",
+          "reasoning": "We need to extract terminal-target pre-action status.\n\nGiven:\n\nASSIGNED SOURCE: \"The knight kills the dragon.\"\n\nAUTHORITATIVE OPENING STATE at 00:00.000: The dragon is decapitated; its detached head rests several feet from the body.\n\nRAW SCENE: The knight thrusts a spear into the dragon's torso.\n\nWe treat AUTHORITATIVE OPENING STATE as already true unless RAW SCENE visibly changes it. So before action begins, at 00:00.000, dragon is decapitated (head detached). That means dragon is dead? Decapitation implies death. The target of kill is dragon. We need status pre-action.\n\nWe check if the dragon is still alive or needs to be killed. Since it's already decapitated, it's dead. So terminal result \"kill\" is already achieved before action begins. Thus status ALREADY_TERMINAL.\n\nReturn JSON: {\"status\":\"ALREADY_TERMINAL\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 409,
+      "completion_tokens": 212,
+      "total_tokens": 621,
+      "completion_tokens_details": {
+        "reasoning_tokens": 193
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790527213.444093,
+  "status": "ok"
+}
