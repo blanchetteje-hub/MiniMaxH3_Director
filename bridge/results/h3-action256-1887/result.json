@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action256-1887",
+  "kind": "llama_chat",
+  "started_at": 1790548770.1834571,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nKai pours the blue liquid into the reactor; the warning light turns green.\n\nFINAL H3 MICRO-ACTION:\nKai empties the blue liquid into the reactor and its warning lamp changes to green.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-unz2unm35a7w0knbch08",
+    "object": "chat.completion",
+    "created": 1790548770,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"PRESERVED\"}",
+          "reasoning": "We need to compare RAW micro-action with final H3 micro-action at same timestamp. The raw: \"Kai pours the blue liquid into the reactor; the warning light turns green.\" Final: \"Kai empties the blue liquid into the reactor and its warning lamp changes to green.\"\n\nCheck if action preserved: pouring vs emptying? Pouring is a type of emptying, but difference in verb. Material result same: blue liquid into reactor, warning lamp changes to green. The wording changed slightly but visible/audible action remains. So PRESERVED.\n\nReturn JSON {\"status\":\"PRESERVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 217,
+      "completion_tokens": 137,
+      "total_tokens": 354,
+      "completion_tokens_details": {
+        "reasoning_tokens": 120
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790548772.246981,
+  "status": "ok"
+}
