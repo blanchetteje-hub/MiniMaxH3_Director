@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-physical-1669",
+  "kind": "llama_chat",
+  "started_at": 1790527195.5352194,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nMara kills the final ghoul.\n\nAUTHORITATIVE OPENING STATE\nGhoul7's severed head lies beside its body on the floor.\n\nRAW SCENE\nMara swings at Ghoul7's torso again.\n\nTreat AUTHORITATIVE OPENING STATE as already true at 00:00.000 unless RAW SCENE visibly changes it. SOURCE assigns a terminal action such as killing, destroying, defeating, eliminating, finishing, or resolving a target/process. Inspect the target of that newly assigned action at the moment immediately BEFORE the terminal action begins in RAW SCENE. Return status ACTIVE_OR_UNRESOLVED if RAW establishes the target/process still needs the specific terminal result assigned by SOURCE. Judge terminal status relative to that assigned action: for kill, already dead is terminal. Treat a corpse, an already detached/severed head, a decapitated body, or clearly lifeless remains as already dead even when the word 'dead' is not used; RAW calling those remains a zombie/body/torso does not make the target active again. For destroy, already destroyed is terminal; for defeat/eliminate, already neutralized, incapacitated, restrained, or otherwise no longer an active opponent is terminal; for finish/complete, already complete is terminal; for resolve, already resolved is terminal. Return ALREADY_TERMINAL when RAW establishes that assigned terminal result was already true before the action begins. Return UNSPECIFIED only when RAW does not establish either. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-kpbmakmvzrc8hov1lcakp",
+    "object": "chat.completion",
+    "created": 1790527195,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to extract terminal-target pre-action status.\n\nGiven:\n\nASSIGNED SOURCE\nMara kills the final ghoul.\n\nAUTHORITATIVE OPENING STATE\nGhoul7's severed head lies beside its body on the floor.\n\nRAW SCENE\nMara swings at Ghoul7's torso again.\n\nInterpretation: The source says Mara kills the final ghoul. So terminal action is kill, target is \"the final ghoul\". We need to inspect status of that target immediately before the terminal action begins in RAW SCENE. Raw scene: \"Mara swings at Ghoul7's torso again.\" That indicates she is attacking Ghoul7's torso. The opening state says Ghoul7's severed head lies beside its body on the floor. So Ghoul7 has a severed head and body, presumably dead? But we need to see if it's still alive or not.\n\nThe opening state: \"Ghoul7's severed head lies beside its body on the floor.\" That implies that Ghoul7 is already dead (head severed). The torso remains. So before she swings at it again, Ghoul7 is already dead? But maybe the torso could be a corpse. She swings at the torso again: indicates it's still there as a body part.\n\nThus status of target \"the final ghoul\" before kill action begins: Already dead (severed head). So terminal result assigned by source (\"kill\") was already true before action begins. Therefore return ALREADY_TERMINAL.\n\nCheck if any nuance: The raw scene says she swings at the torso again, implying maybe it's still alive? But \"Ghoul7's severed head lies beside its body on the floor.\" That indicates decap",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 408,
+      "completion_tokens": 350,
+      "total_tokens": 758,
+      "completion_tokens_details": {
+        "reasoning_tokens": 347
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790527201.141428,
+  "status": "ok"
+}
