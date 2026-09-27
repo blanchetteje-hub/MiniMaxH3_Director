@@ -24951,6 +24951,36 @@ def _director_opening_relation_to_destination(opening_state, entity, destination
     return None
 
 
+def build_director_barrier_binding_contract(assigned_state_effects):
+    """Bind one generic barrier to one unambiguous containment destination."""
+    try:
+        effects = _validate_state_effects(list(assigned_state_effects or []))
+    except (TypeError, ValueError):
+        return None
+    containers = {
+        effect["container"]
+        for effect in effects
+        if effect.get("op") == "set_containment"
+        and effect.get("value") in {"contained", "free"}
+        and effect.get("container")
+    }
+    barrier_effects = [
+        effect for effect in effects
+        if effect.get("op") == "set_barrier_state"
+        and str(effect.get("entity", "")).casefold()
+        in {"door", "gate", "hatch", "barrier"}
+    ]
+    if len(containers) != 1 or len(barrier_effects) != 1:
+        return None
+    destination = next(iter(containers))
+    barrier = barrier_effects[0]
+    return {
+        "entity": barrier["entity"],
+        "destination": destination,
+        "state": barrier["value"],
+    }
+
+
 def build_director_barrier_topology_contract(
     assigned_state_effects,
     subject_definitions="",
@@ -25122,6 +25152,7 @@ def build_director_raw_scene_completion_messages(
     assigned_source="",
     authoritative_opening_state="",
     assigned_state_effects=None,
+    barrier_binding=None,
 ):
     """Check completion against exact assigned source when available."""
     if str(assigned_source or "").strip():
@@ -25139,14 +25170,17 @@ AUTHORITATIVE OPENING STATE — already true before this segment
 ASSIGNED TYPED END STATE — authoritative persistent changes for this segment
 {json.dumps(assigned_state_effects or [], ensure_ascii=False, separators=(",", ":"))}
 
+AUTHORITATIVE BARRIER BINDING
+{json.dumps(barrier_binding or {}, ensure_ascii=False, separators=(",", ":"))}
+
 RAW SCENE
 {raw_scene}
 
 Check only completion and persistent-state compatibility:
-1. ASSIGNED TYPED END STATE is authoritative for persistent final-state changes to already-known tracked state. Require matching typed effects for durable changes such as location, containment, barrier state, established inventory/readiness items, damage, clothing, or other continuity facts already present in OPENING STATE or explicitly named in TYPED END STATE. Do NOT treat an incidental consumable, plate, cup, serving prop, or other newly introduced ordinary scene prop as persistent inventory merely because a known subject holds or uses it at the end of RAW. Temporary ordinary prop use and temporary motion are allowed unless SOURCE or OPENING STATE makes them continuity-significant.
+1. ASSIGNED TYPED END STATE is authoritative for persistent final-state changes to already-known tracked state. Require matching typed effects for durable changes such as canonical story location, containment, barrier state, established inventory/readiness items, damage, clothing, or other continuity facts already present in OPENING STATE or explicitly named in TYPED END STATE. A canonical set_location value is coarse story geography/container state, not a camera-scale room position: movement between rooms, hallways, or subareas inside the same established canonical location is ordinary staging and does NOT require another set_location effect. Do NOT treat an incidental consumable, plate, cup, serving prop, or other newly introduced ordinary scene prop as persistent inventory merely because a known subject holds or uses it at the end of RAW. Temporary ordinary prop use and temporary motion are allowed unless SOURCE or OPENING STATE makes them continuity-significant.
 2. Require only the actions, results, and participant roles assigned by SOURCE. The derived beat is staging guidance only: it may make SOURCE more concrete but may NOT add a stricter action, transfer method, prop, destination, or participant requirement. If the derived beat says "hands", "passes", "places", or another specific gesture that SOURCE does not require, do not require that gesture. If SOURCE assigns an action now, RAW must visibly perform that source action in this segment; an existing result or aftermath alone is insufficient.
 3. A finite activity needs its visible result. For a consumable or explicit hand-off to named people, the intended recipient must visibly receive, be served, or otherwise gain practical access to the result when immediate receipt is part of SOURCE. Do not prescribe hand-to-hand transfer unless SOURCE itself does. For work merely made FOR someone, completion of the work is enough unless SOURCE explicitly requires delivery. Honor explicit later pickup/storage. Source-assigned spectators remain spectators.
-4. Preserve participant scope. Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it. When ASSIGNED TYPED END STATE contains location/containment changes for only some named subjects, do not give the mover/helper that same persistent location/containment change unless it has its own matching effect. Everyone else must stay on their original side unless SOURCE explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other people through does NOT authorize the mover/helper to follow. RAW is invalid if any unlisted participant crosses.
+4. Preserve participant scope. Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it. When ASSIGNED TYPED END STATE contains location/containment changes for only some named subjects, do not give the mover/helper that same persistent location/containment change unless it has its own matching effect. Everyone else must stay on their original side unless SOURCE explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other people through does NOT authorize the mover/helper to follow. RAW is invalid if any unlisted participant crosses. If AUTHORITATIVE BARRIER BINDING is non-empty, that generic barrier name refers specifically to the named destination boundary; locking/closing a different same-type barrier does not satisfy it.
 5. Preserve persistent facts already true in AUTHORITATIVE OPENING STATE unless SOURCE/CURRENT BEAT explicitly changes them. This includes held/equipped items, containment, barrier state, clothing, injuries, and other durable conditions. Reject dropping, losing, freeing, unlocking, removing, or otherwise changing such state as harmless staging.
 6. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.
 7. End continuity must agree with the last visible state in RAW SCENE. If RAW sets down, drops, removes, closes, opens, equips, unequips, enters, exits, or otherwise materially changes something, the End continuity state cannot claim the opposite unless RAW visibly changes it back.
@@ -25488,6 +25522,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         current_beat_for_topology,
         bundle.get("opening_state", ""),
     )
+    request1_barrier_binding = build_director_barrier_binding_contract(
+        bundle.get("assigned_state_effects", [])
+    )
     if request1_topology_contracts and request1_base_messages:
         topology_lines = []
         for topology_contract in request1_topology_contracts:
@@ -25510,6 +25547,14 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             + "\nHelper/mover verbs do not override this contract. A subject may "
             "temporarily cross only if its final side still matches the contract."
         )
+        if request1_barrier_binding:
+            request1_base_messages[-1]["content"] += (
+                "\nAUTHORITATIVE BARRIER BINDING: the generic barrier named "
+                f"{request1_barrier_binding['entity']!r} is the boundary of "
+                f"{request1_barrier_binding['destination']!r} and ends "
+                f"{request1_barrier_binding['state']}. Do not reinterpret it as "
+                "an unrelated door/gate/hatch elsewhere in the scene."
+            )
     request1_messages = request1_base_messages
     request1_result = None
     raw_scene = ""
@@ -25601,6 +25646,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                             bundle.get("assigned_source", ""),
                             bundle.get("opening_state", ""),
                             bundle.get("assigned_state_effects", []),
+                            request1_barrier_binding,
                         ),
                         response_format=DIRECTOR_RAW_SCENE_COMPLETION_RESPONSE_FORMAT,
                         history_metadata=completion_metadata,
