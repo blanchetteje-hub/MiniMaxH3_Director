@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-source-authority-1585",
+  "kind": "llama_chat",
+  "started_at": 1790478011.4298358,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes ASSIGNED SOURCE. Judge meaning, not wording. Return JSON only with valid and issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nNora cooks dinner for Eli and June.\n\nDERIVED BEAT — staging only; cannot add stricter requirements\nNora plates dinner and hands each plate directly to Eli and June.\n\nAUTHORITATIVE OPENING STATE\nN/A\n\nASSIGNED TYPED END STATE\n[]\n\nRAW SCENE\nNora finishes dinner, sets a plate in front of Eli and another in front of June; both begin eating.\n\nRules: SOURCE defines required actions/results/roles. DERIVED BEAT cannot add a stricter transfer method. For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer. Work merely made FOR someone can finish without delivery unless SOURCE requires delivery; honor explicit later pickup/storage. Typed end state governs durable tracked continuity. Incidental consumables, plates, cups, and ordinary newly introduced serving props are not persistent inventory merely because a known subject holds them at the end.\nReturn JSON with boolean valid and string issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 450,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-znh5w7sug6tj173gagpf",
+    "object": "chat.completion",
+    "created": 1790478011,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to check whether RAW SCENE completes ASSIGNED SOURCE. Source: \"Nora cooks dinner for Eli and June.\" Derived beat: staging only; cannot add stricter requirements. So derived beat says Nora plates dinner and hands each plate directly to Eli and June.\n\nSo source requires that Nora cooks dinner for them, presumably meaning she prepares it. The derived beat adds plating and handing plates directly. That is a more specific action than just cooking. But the rule: DERIVED BEAT cannot add stricter transfer method. For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer.\n\nSource doesn't require hand-to-hand transfer; it only says she cooks dinner for them. So handing plates directly is okay? The derived beat adds that action but it's not stricter than source's requirement. It's a staging detail: plating and handing each plate directly to Eli and June. That seems fine.\n\nNow RAW SCENE: \"Nora finishes dinner, sets a plate in front of Eli and another in front of June; both begin eating.\" Does this complete the source? Source requires cooking dinner for them. The raw scene says she finished dinner (cooked) and set plates in front of each. That is consistent with plating but not explicitly handing plates directly to them. She sets a plate in front of Eli, another in front of June. That's placing plates on their tables or near them. Does that count as \"hands each plate directly\"? The derived beat says she hands each plate directly to Eli and June. Setting a plate in front might be considered giving the plate to them? It's not hand-to-hand transfer; it's setting it in front, which is visible receipt/service/access. According to rule: For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer.\n\nSource doesn't require hand-to-hand. So setting plates in front of each is acceptable as a visible receipt? The plate is placed in front; they can pick it up. That seems fine.\n\nBut derived beat says \"hands each plate directly to Eli and June.\" Does the raw scene satisfy that? It sets a plate in front, not handing them directly. But derived beat",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 297,
+      "completion_tokens": 450,
+      "total_tokens": 747,
+      "completion_tokens_details": {
+        "reasoning_tokens": 447
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790478018.3787065,
+  "status": "ok"
+}
