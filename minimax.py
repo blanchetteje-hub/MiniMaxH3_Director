@@ -1039,9 +1039,12 @@ _WARDROBE_DESCRIPTION_RE = re.compile(
 )
 
 _WARDROBE_ACTION_BOUNDARY_RE = re.compile(
-    r"(?i)\s+\b(?:while|then|before|after|stands?|sits?|walks?|runs?|"
-    r"moves?|turns?|looks?|holds?|carries?|raises?|lowers?(?!\s+garments?\b)|reaches?|"
-    r"speaks?|says?|enters?|exits?)\b.*$"
+    r"(?i)(?:,\s*|\s+)\b(?:while|as|when|then|before|after|"
+    r"stands?|sits?|walks?|runs?|moves?|turns?|looks?|holds?|carries?|"
+    r"raises?|lowers?(?!\s+garments?\b)|reaches?|speaks?|says?|"
+    r"enters?|exits?|flips?|cooks?|fries?|stirs?|serves?|places?|"
+    r"picks?|sets?|grabs?|pushes?|pulls?|swings?|shoots?|strikes?|"
+    r"kicks?|steps?)\b.*$"
 )
 
 _WARDROBE_CONDITION_CHANGE_RE = re.compile(
