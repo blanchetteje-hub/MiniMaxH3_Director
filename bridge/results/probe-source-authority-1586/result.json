@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-source-authority-1586",
+  "kind": "llama_chat",
+  "started_at": 1790478021.0545177,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes ASSIGNED SOURCE. Judge meaning, not wording. Return JSON only with valid and issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nNora hands a sealed envelope directly to Eli.\n\nDERIVED BEAT — staging only; cannot add stricter requirements\nNora gives Eli the envelope.\n\nAUTHORITATIVE OPENING STATE\nN/A\n\nASSIGNED TYPED END STATE\n[]\n\nRAW SCENE\nNora leaves the sealed envelope on a side table and walks away while Eli remains across the room.\n\nRules: SOURCE defines required actions/results/roles. DERIVED BEAT cannot add a stricter transfer method. For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer. Work merely made FOR someone can finish without delivery unless SOURCE requires delivery; honor explicit later pickup/storage. Typed end state governs durable tracked continuity. Incidental consumables, plates, cups, and ordinary newly introduced serving props are not persistent inventory merely because a known subject holds them at the end.\nReturn JSON with boolean valid and string issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 450,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-debhpjsh285sm0ggbilyc",
+    "object": "chat.completion",
+    "created": 1790478021,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The source requires Nora to hand the sealed envelope directly to Eli, but in the raw scene she simply leaves it on a side table for Eli to pick up later.\"}",
+          "reasoning": "We need to check if RAW SCENE completes ASSIGNED SOURCE. Source: \"Nora hands a sealed envelope directly to Eli.\" Derived beat says staging only; cannot add stricter requirements. So source requires hand-to-hand transfer of envelope from Nora to Eli. Raw scene: \"Nora leaves the sealed envelope on a side table and walks away while Eli remains across the room.\" That is not handing it directly, it's leaving it on a table for Eli later. Does that satisfy? Source says hands directly; raw doesn't. So invalid.\n\nReturn JSON with valid false and issue string explaining mismatch.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 288,
+      "completion_tokens": 170,
+      "total_tokens": 458,
+      "completion_tokens_details": {
+        "reasoning_tokens": 119
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790478023.9301498,
+  "status": "ok"
+}
