@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1540",
+  "kind": "llama_chat",
+  "started_at": 1790471801.7380688,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nMara starts outside the shelter with Eli and Noor.\n\nASSIGNED SOURCE\nMara guides Eli and Noor into the shelter and locks the door.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_location\",\"entity\":\"Eli\",\"value\":\"shelter\"},{\"op\":\"set_location\",\"entity\":\"Noor\",\"value\":\"shelter\"},{\"op\":\"set_containment\",\"entity\":\"Eli\",\"container\":\"shelter\",\"value\":\"contained\"},{\"op\":\"set_containment\",\"entity\":\"Noor\",\"container\":\"shelter\",\"value\":\"contained\"}]\n\nRAW SCENE\nEli and Noor enter the shelter. Mara follows them inside and locks the door behind all three.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-rga8r4hdpzkgrhivzavi9",
+    "object": "chat.completion",
+    "created": 1790471801,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need validate raw scene against assigned source and typed end state.\n\nOpening state: Mara starts outside shelter with Eli and Noor. So all three outside shelter initially.\n\nAssigned source: \"Mara guides Eli and Noor into the shelter and locks the door.\" That means after source, Eli and Noor inside shelter; Mara also inside? The phrase says Mara guides them into shelter and locks door behind all three. So yes, Mara is inside too. But typed end state only lists location for Eli and Noor as \"shelter\" and containment of both in shelter. It doesn't mention Mara's location or container. Also no lock status.\n\nTyped end state: set_location Eli to shelter; set_location Noor to shelter; set_containment Eli contained by shelter; set_containment Noor contained by shelter.\n\nSo we need raw scene final state matches these typed effects. Raw scene says \"Eli and Noor enter the shelter. Mara follows them inside and locks the door behind all three.\" So final: Eli, Noor, Mara inside shelter. Door locked. Containment? Are they contained in shelter? The typed end state indicates containment of Eli and Noor as 'contained' by shelter. That matches if we assume that being inside means contained. Raw scene says \"Mara follows them inside\" so all three inside. So location for Eli and Noor is correct. Containment also correct.\n\nBut does raw mention they are contained? It just says they enter the shelter, not necessarily containment. But rule 1: For already-known named subjects, barriers, items, typed end state authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked etc., require a matching typed effect. No matching effect means INVALID.\n\nSo we need to check that raw scene includes the relocation and containment events? It says \"Eli and Noor enter the shelter.\" That is relocation. Also \"Mara follows them inside\" also relocation for Mara but not in typed end state. But rule 3: Every listed typed effect must be true in RAW's final state. So we need to check that each typed effect appears as a change in raw scene? The typed effects are location and containment of Eli and Noor. Raw scene includes \"Eli and Noor enter the shelter.\" That covers relocation. For containment, does entering imply contained? Might not explicitly say but likely yes. But rule 1: If RAW ends with one of them newly relocated, contained/freed etc., require a matching typed effect. So if raw has new location for Eli and Noor, we need typed effect; it exists. Good.\n\nBut also typed effects must be true in RAW's final state. They are. So valid? Also rule 4: Must complete assigned source work. Source says Mara guides them into shelter and locks door behind all three. Raw scene matches that: \"Mara follows them inside\" (guides) and \"locks the door behind all three.\" Good.\n\nThus",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 381,
+      "completion_tokens": 600,
+      "total_tokens": 981,
+      "completion_tokens_details": {
+        "reasoning_tokens": 597
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471810.9218893,
+  "status": "ok"
+}
