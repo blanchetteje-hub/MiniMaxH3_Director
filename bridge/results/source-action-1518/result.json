@@ -1,0 +1,54 @@
+{
+  "job_id": "source-action-1518",
+  "kind": "llama_chat",
+  "started_at": 1790468064.0767698,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge whether RAW visibly performs the action assigned by SOURCE. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nMara cooks breakfast for Eli.\n\nRAW:\nMara fries eggs in a pan, plates them, and serves Eli.\n\nRULES\n1. If SOURCE assigns an action to happen now, RAW must visibly perform that action in this segment.\n2. A finished/resulting state by itself does not prove the assigned action happened now.\n3. RAW may use the resulting state after it visibly performs the action.\n4. If SOURCE explicitly describes an ongoing/repeated condition, one visible ongoing instance may satisfy it.\nReturn {\"valid\":boolean,\"issue\":string}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1bol5zalzjwk6832n5k97s",
+    "object": "chat.completion",
+    "created": 1790468064,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to judge if RAW visibly performs the action assigned by SOURCE.\n\nSOURCE: \"Mara cooks breakfast for Eli.\" That is a statement that Mara cooks breakfast. The action is cooking breakfast. Does RAW show that? RAW says: \"Mara fries eggs in a pan, plates them, and serves Eli.\"\n\nDoes frying eggs count as cooking breakfast? Breakfast includes eggs; she fries eggs (cooking). She also plates them and serves Eli. So yes, the action of cooking breakfast is performed.\n\nRule 1: If SOURCE assigns an action to happen now, RAW must visibly perform that action in this segment. The action \"Mara cooks breakfast for Eli\" is visible? Raw shows frying eggs, plating, serving. That seems like cooking breakfast. Yes.\n\nThus valid = true. Issue empty string or maybe \"\".\n\nReturn JSON {\"valid\":true,\"issue\":\"\".}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 208,
+      "completion_tokens": 196,
+      "total_tokens": 404,
+      "completion_tokens_details": {
+        "reasoning_tokens": 177
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790468067.0366428,
+  "status": "ok"
+}
