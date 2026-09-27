@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-finite-endpoint-1636",
+  "kind": "llama_chat",
+  "started_at": 1790482496.9256558,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify finite-activity completion only. Do not judge overall beat correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nIvo repairs the generator.\n\nCANDIDATE BEAT\nIvo replaces the broken belt, restarts the generator, and its lights come back on.\n\nClassify only the finite-activity endpoint. Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent. Otherwise, when CURRENT JOB assigns a finite activity/task, return COMPLETE only if CANDIDATE BEAT shows a natural observable completion/result for that activity in this beat. Return ONGOING if it only shows the activity underway, continuing, approaching completion, or partly complete. Progressive source wording such as 'is cooking' or 'is repairing' can still describe a finite task and does not by itself make the job ongoing. Do not decide whether the beat is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-gly39vvrprw3i0tlmijy",
+    "object": "chat.completion",
+    "created": 1790482496,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPLETE\"}",
+          "reasoning": "We need to classify finite-activity completion only.\n\nCURRENT JOB: \"Ivo repairs the generator.\"\n\nThis assigns an activity: repairing the generator. It's a finite task? Repairing could be considered finite, but it's ongoing until finished. The job is \"repairs\" (present tense). It might be ongoing or finite. But we need to classify based on candidate beat.\n\nCANDIDATE BEAT: \"Ivo replaces the broken belt, restarts the generator, and its lights come back on.\"\n\nThis shows that Ivo replaced belt, restarted generator, lights came back on. That indicates completion of repair? The job was repairing the generator; the beat shows a natural observable completion/result for that activity in this beat. So status should be COMPLETE.\n\nCheck if any ongoing: \"replaces\" is finite action done. Lights come back on indicates success. So it's complete.\n\nThus output JSON {\"status\":\"COMPLETE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 271,
+      "completion_tokens": 202,
+      "total_tokens": 473,
+      "completion_tokens_details": {
+        "reasoning_tokens": 186
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790482500.2581406,
+  "status": "ok"
+}
