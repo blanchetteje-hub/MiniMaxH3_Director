@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-source-authority-1602",
+  "kind": "llama_chat",
+  "started_at": 1790478898.0639,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes ASSIGNED SOURCE. Judge meaning, not wording. Return JSON only with valid and issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nRin prepares medicine for Ana and gives it to her.\n\nDERIVED BEAT — staging only; cannot add stricter requirements\nRin places the dose directly in Ana's hand.\n\nAUTHORITATIVE OPENING STATE\nN/A\n\nASSIGNED TYPED END STATE\n[]\n\nRAW SCENE\nRin prepares the dose and stores it in a cabinet while Ana waits nearby.\n\nRules: SOURCE defines required actions/results/roles. DERIVED BEAT cannot add a stricter transfer method. For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer. Work merely made FOR someone can finish without delivery unless SOURCE requires delivery; honor explicit later pickup/storage. Typed end state governs durable tracked continuity. Incidental consumables, plates, cups, and ordinary newly introduced serving props are not persistent inventory merely because a known subject holds them at the end.\nReturn JSON with boolean valid and string issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 450,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jpwquyhixwhmc8hep9g6",
+    "object": "chat.completion",
+    "created": 1790478898,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Rin prepares the medicine but stores it in a cabinet instead of giving it directly to Ana, so the source requirement that she gives it to her is not met.\"}",
+          "reasoning": "We need to check if RAW SCENE completes ASSIGNED SOURCE. Source: \"Rin prepares medicine for Ana and gives it to her.\" So source requires that Rin prepares medicine (dose) for Ana, and gives it to her. The derived beat says staging only; cannot add stricter requirements. It says \"Rin places the dose directly in Ana's hand.\" That is a direct hand-to-hand transfer.\n\nThe raw scene: \"Rin prepares the dose and stores it in a cabinet while Ana waits nearby.\"\n\nSo does this complete source? Source requires giving to her. Raw scene has Rin preparing, storing in cabinet; no mention of handing to Ana or Ana picking up. So not meeting requirement that she gives it to her.\n\nThus invalid. Issue: \"Rin did not give the medicine directly to Ana; instead stored it.\" Also typed end state is empty array? That means nothing tracked? But source requires delivery, so maybe need a durable inventory of dose in Ana's possession at end. So issue: missing hand-off and no durable tracking.\n\nReturn JSON with valid false and issue string.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 290,
+      "completion_tokens": 273,
+      "total_tokens": 563,
+      "completion_tokens_details": {
+        "reasoning_tokens": 222
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790478902.3518724,
+  "status": "ok"
+}
