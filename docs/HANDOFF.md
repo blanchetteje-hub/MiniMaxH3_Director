@@ -1418,3 +1418,13 @@ transformation. Only then move on toward H3 prompt generation.
 - Commit 29506319c85f3aaa7c10c9f80eebfdd5f0ba123c adds deterministic timestamp-range validation: seconds must be 00-59 and timestamps must be before the segment endpoint.
 - Commit 53b8c6b9b45ffc050e40a0050f77422f13cfbb7e adds regression coverage. Commit b8f5061c3d58d30e15a30cc0191945dd17279dad refreshes a stale validator wording assertion.
 - Focused tests are queued as tests-1537; fresh full acceptance is acceptance-1538.
+
+
+### 2026-09-26 — timestamp fix exposed Director typed-end-state regression
+
+- Acceptance `acceptance-1538` confirmed the malformed/out-of-range timestamp fix: Director Request 1 no longer emitted the previously observed invalid timestamp forms.
+- The earliest real failure moved backward to Segment 2 under fresh-run variance: Amy ended inside the basement with Will and Amber even though the authoritative typed effects relocate/contain only Will and Amber. This is a regression of the previously acceptable Segment-2 boundary, not a reason to reopen chapter/beat allocation.
+- The source-only Request-1 completion wording is not stable enough by itself for mover/helper barrier scope. The local 20B model can read verbs such as “guide/escort” as permission for the helper to follow.
+- Production change: Director completion validation now also receives the exact typed persistent effects assigned to the active beat. For already-known named subjects/barriers/items, those effects are authoritative for new persistent location, containment, barrier, item, damage, and similar end-state changes. A helper/mover may not inherit another subject’s location/containment effect unless it has its own matching effect. Temporary motion that returns to the opening state remains allowed.
+- Commits: `344f68f06549efc7c4d48589beb2308c40923fc8` (production) and `8cc20483ff95a7488d0afcf62206d5469d7053b6` (regressions).
+- Queued generic typed-end-state probes `1540-1559` plus focused regression job `tests-1560`. Grade the probes before another full Amy acceptance. Keep the rule generic across domestic, technical, fantasy, sci-fi, containment, barrier, and item-state cases; do not special-case the zombie fixture.
