@@ -1,0 +1,54 @@
+{
+  "job_id": "source-action-1517",
+  "kind": "llama_chat",
+  "started_at": 1790468058.9533815,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge whether RAW visibly performs the action assigned by SOURCE. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nMara cooks breakfast for Eli.\n\nRAW:\nMara places freshly cooked eggs on Eli's plate and serves him.\n\nRULES\n1. If SOURCE assigns an action to happen now, RAW must visibly perform that action in this segment.\n2. A finished/resulting state by itself does not prove the assigned action happened now.\n3. RAW may use the resulting state after it visibly performs the action.\n4. If SOURCE explicitly describes an ongoing/repeated condition, one visible ongoing instance may satisfy it.\nReturn {\"valid\":boolean,\"issue\":string}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hiqrksseho4m6z4yb9c5",
+    "object": "chat.completion",
+    "created": 1790468058,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The raw segment shows Mara placing already cooked eggs on Eli's plate and serving him; it does not visibly depict her cooking the breakfast as assigned by SOURCE.\"}",
+          "reasoning": "We need to judge if RAW visibly performs the action assigned by SOURCE.\n\nSOURCE: \"Mara cooks breakfast for Eli.\" So action is cooking breakfast for Eli. Does RAW show that? RAW says: \"Mara places freshly cooked eggs on Eli's plate and serves him.\"\n\nDoes placing freshly cooked eggs count as cooking breakfast? She placed eggs, but did she cook them? The phrase \"freshly cooked eggs\" implies they were cooked already; but does the action of placing them constitute cooking? No. Cooking is preparing food by heating etc. Placing doesn't cook.\n\nThus RAW didn't visibly perform cooking. So invalid. Issue: \"Mara only places and serves, not cooks breakfast.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 207,
+      "completion_tokens": 187,
+      "total_tokens": 394,
+      "completion_tokens_details": {
+        "reasoning_tokens": 138
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790468061.5718813,
+  "status": "ok"
+}
