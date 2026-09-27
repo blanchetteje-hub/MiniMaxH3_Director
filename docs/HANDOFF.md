@@ -188,4 +188,22 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - Queued `tests-1743` and full `acceptance-1744`.
 - Acceptance checkpoint: a valid repeated-combat beat that introduces and kills one incidental attacker should survive Beat VALIDATE without requiring a new typed death effect, avoiding needless regeneration into a topology violation.
 
+### 2026-09-27 — acceptance 1744 advances to Beat 6; protect contained occupants from cross-boundary contact
+
+- `tests-1743` ran 105 tests with **104 passed / 1 failed**. The sole failure was a stale assertion expecting the old exact validator wording around listed typed effects; production semantics were otherwise covered and the new incidental-target regression passed.
+- `acceptance-1744` confirms the incidental-zombie false positive is gone:
+  - Beat 4 survived validation after one unrelated structural retry.
+  - Segments 1-5 rendered prompts successfully.
+  - The prior Beat-4/5 basement-crossing dead-end did not recur.
+- The next earliest hard failure is Beat 6. Generated Beat 6 says: “The third zombie reaches for a child’s arm...” while Will and Amber remain canonically contained behind the locked basement door.
+- This is a closed-boundary topology violation even without explicit entry/exit wording: an outside attacker cannot physically reach/grab/bite/strike a contained occupant across a closed boundary.
+- Production commit `12b3db0cd40d3754aae370b39faefcbce89cd6fa` strengthens the existing Python-owned closed-boundary contract rather than adding another semantic stage:
+  - Beat closed-boundary contracts now list known contained occupants for each protected destination.
+  - Beat CREATE is told that while the boundary remains closed, outside entities cannot reach/grab/bite/strike/exchange objects with or otherwise physically interact across the boundary with those occupants.
+  - Beat VALIDATE receives the same occupant-aware constraint.
+  - Legitimate release/opening beats remain exempt because the existing contract is omitted when active typed effects authorize release/opening.
+- Test maintenance commit `5f114095f7de2135e1aee1799655b9eccbba0e71` updates the stale forward-validator wording assertion.
+- Regression commit `4dd448521e2401b6801084da07e5ddf20f0ffe95` adds canonical occupant-list coverage and explicit cross-boundary-contact prompt coverage.
+- Queued `tests-1745` and full `acceptance-1746`.
+- Acceptance checkpoint: Beat 6 must stop giving an outside attacker physical access to Will/Amber while the basement boundary is closed.
 
