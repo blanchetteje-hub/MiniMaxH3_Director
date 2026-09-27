@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beat-destination-presence-1753",
+  "kind": "llama_chat",
+  "started_at": 1790540166.8527122,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract subject destination presence only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\nvault\n\nNAMED SUBJECT\nIris\n\nCANDIDATE BEAT\nIris walks into the vault, picks up the ledger, and comes back to the corridor.\n\nClassify only whether CANDIDATE BEAT establishes that NAMED SUBJECT is physically at/inside DESTINATION at any point during the beat. Allowed values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED. AT_DESTINATION includes entering, standing in, acting in, or explicitly being inside DESTINATION even if the subject later leaves. NOT_AT_DESTINATION means the beat explicitly keeps the subject outside/elsewhere and does not place the subject inside. Reaching through an opening while the subject's body remains outside is NOT_AT_DESTINATION. UNSPECIFIED means the subject's relation to DESTINATION is not established clearly enough. Do not decide whether the placement is allowed. Return JSON: {\"relation\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-dkevl3uvt9cgvkuqmno8",
+    "object": "chat.completion",
+    "created": 1790540166,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"AT_DESTINATION\"}",
+          "reasoning": "We need to parse beat: \"Iris walks into the vault, picks up the ledger, and comes back to the corridor.\" So Iris physically enters vault at some point. Thus relation AT_DESTINATION.\n\nReturn JSON with key \"relation\" value \"AT_DESTINATION\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 273,
+      "completion_tokens": 71,
+      "total_tokens": 344,
+      "completion_tokens_details": {
+        "reasoning_tokens": 54
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790540168.2912955,
+  "status": "ok"
+}
