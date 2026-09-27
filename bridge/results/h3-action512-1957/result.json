@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action512-1957",
+  "kind": "llama_chat",
+  "started_at": 1790550073.3888574,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nRina winds the clock and the pendulum starts moving.\n\nFINAL H3 MICRO-ACTION:\nRina winds the clock.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nqcfrgj3g9iqfdcysinku",
+    "object": "chat.completion",
+    "created": 1790550073,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"OMITTED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"Rina winds the clock and the pendulum starts moving.\" Final H3 micro-action: \"Rina winds the clock.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. The final only says she winds the clock; it doesn't mention pendulum starting to move. So is that omitted? The pendulum movement is a result of winding. In RAW, it's explicitly mentioned. Final H3 omits that detail. Is that considered PRESERVED or OMITTED? According to definition: \"PRESERVED = the same visible/audible action and material result remain\". Here the action (winds clock) remains; but the material result (pendulum starts moving) is not present in final. So it's omitted. Thus status should be \"OMITTED\".\n\nReturn JSON only.\n\n",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 203,
+      "completion_tokens": 190,
+      "total_tokens": 393,
+      "completion_tokens_details": {
+        "reasoning_tokens": 173
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790550076.0494304,
+  "status": "ok"
+}
