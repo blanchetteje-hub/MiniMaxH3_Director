@@ -669,6 +669,16 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("At 00:00.000, Amy", formatted)
         self.assertIn("At 00:01.500, Amy", formatted)
 
+    def test_completion_prompt_requires_assigned_action_to_happen_now(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "Mara cooks breakfast for Eli.",
+            "Mara serves Eli freshly cooked eggs.",
+            assigned_source="Mara cooks breakfast for Eli.",
+        )
+        prompt = messages[1]["content"]
+        self.assertIn("must visibly perform that action in this segment", prompt)
+        self.assertIn("existing result or aftermath alone is insufficient", prompt)
+
     def test_completion_prompt_preserves_equipped_readiness_items(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Mara uses the staff to block one strike.",
