@@ -224,3 +224,19 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - Queued `tests-1747` and full `acceptance-1748`.
 - Acceptance checkpoint: Beat 3 must keep the hidden arsenal accessible to Amy on her side of the locked basement boundary; later combat beats must likewise avoid staging required targets/actions inside the protected basement unless an opening/release effect authorizes it.
 
+### 2026-09-27 — acceptance 1748 shows prompt-only closed-boundary rules remain instruction-fragile; probe narrow Beat destination-presence extractor
+
+- `tests-1747` ran 108 tests with **107 passed / 1 failed**. The only failure was a brittle exact-string assertion spanning a prompt line break. Test-maintenance commit `4e9bad14f4dd584d081c7e5bc712cfed1f686658` normalizes prompt whitespace before asserting the sentence.
+- `acceptance-1748` did not resolve the locked-basement topology issue:
+  - Beat 3 initially placed Amy's hidden arsenal in a basement storage closet after Amy had locked Will/Amber inside and remained outside.
+  - Beat coherence rejected one version, but the finalized/assigned Beat 3 still retained basement-storage wording while Director staged Amy in the kitchen area.
+  - Beat 4 then explicitly assigned Amy to fight **inside the locked basement**. Beat VALIDATE rejected two door-breach variants but accepted a later inside-basement version, and Director eventually accepted RAW that simply started Amy in the basement instead of showing a crossing.
+- This is evidence that more prose in the already-long Beat CREATE/VALIDATE contract is the wrong direction. Per PROJECT_NOTES doctrine, move the deterministic closed-boundary consequence to Python plus a tiny semantic extractor.
+- Existing Director final-side extraction is insufficient because a subject may enter a protected destination and later leave. The needed Beat-level observation is narrower:
+  - INPUT: one protected DESTINATION, one canonically outside NAMED SUBJECT, one CANDIDATE BEAT.
+  - OUTPUT: `AT_DESTINATION | NOT_AT_DESTINATION | UNSPECIFIED`.
+  - `AT_DESTINATION` means the beat places the subject physically at/inside the destination at **any point**, even if it later leaves.
+  - The extractor does not decide validity; Python rejects `AT_DESTINATION` when canonical opening state puts that subject outside and no active typed effect authorizes opening/release.
+- Queued 20 generic probes `1749-1768` across basements, shelters, vaults, engine rooms, bunkers, labs, cargo bays, courtyards, archives, and garages. Expected answers exist only in job metadata.
+- Do not wire the extractor until `1749-1768` are graded. If stable, integrate it as a tiny observation inside existing Beat VALIDATE rather than adding another broad rule or semantic pipeline.
+
