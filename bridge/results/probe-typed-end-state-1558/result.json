@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1558",
+  "kind": "llama_chat",
+  "started_at": 1790471967.514958,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nSera starts in the courtyard with two crates.\n\nASSIGNED SOURCE\nSera moves both crates into storage.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_location\",\"entity\":\"crate1\",\"value\":\"storage\"},{\"op\":\"set_location\",\"entity\":\"crate2\",\"value\":\"storage\"}]\n\nRAW SCENE\nSera moves crate1 into storage but leaves crate2 in the courtyard.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-d6m6spfvj3ileknvlf75",
+    "object": "chat.completion",
+    "created": 1790471967,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"Crate2 remains in the courtyard but should be at storage according to the assigned typed end state.\"}",
+          "reasoning": "We need validate raw scene against assigned typed end state.\n\nOpening state: Sera starts courtyard with two crates (crate1, crate2). Assigned source: Sera moves both crates into storage. Typed end state: set_location for crate1 to storage; crate2 to storage.\n\nRaw scene: \"Sera moves crate1 into storage but leaves crate2 in the courtyard.\" So final state: crate1 at storage, crate2 still courtyard. That matches typed effect for crate1 but not for crate2. Rule 3 says every listed typed effect must be true in RAW's final state. Typed effects list includes both crates set to storage; crate2 is not moved so invalid.\n\nAlso rule 4: assigned source work completed? Source requires moving both crates into storage, which raw didn't do (crate2 left). So incomplete.\n\nThus valid false. Issue string: \"Crate2 remains in courtyard but should be at storage per typed end state.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 323,
+      "completion_tokens": 229,
+      "total_tokens": 552,
+      "completion_tokens_details": {
+        "reasoning_tokens": 191
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471971.2144144,
+  "status": "ok"
+}
