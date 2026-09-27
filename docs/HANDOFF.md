@@ -240,3 +240,25 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - Queued 20 generic probes `1749-1768` across basements, shelters, vaults, engine rooms, bunkers, labs, cargo bays, courtyards, archives, and garages. Expected answers exist only in job metadata.
 - Do not wire the extractor until `1749-1768` are graded. If stable, integrate it as a tiny observation inside existing Beat VALIDATE rather than adding another broad rule or semantic pipeline.
 
+### 2026-09-27 — Beat destination-presence extractor accepted and wired
+
+- Re-read the latest `PROJECT_NOTES.md` before this iteration. The governing doctrine remains: do not stack more rules into an overloaded prompt when an explicit rule keeps being ignored; prefer canonical Python truth + a tiny semantic extractor + deterministic Python decision.
+- Destination-presence probes `1749-1768`:
+  - **19/20 produced result files**; `1751` had no result file and is not counted.
+  - **17/19 exact enum matches**.
+  - The two disagreements were only `NOT_AT_DESTINATION` vs `UNSPECIFIED` controls (`1750`, `1766`).
+  - Crucially for the production decision, every completed true-positive case where the named subject was physically inside the destination at any point was detected: **9/9 AT_DESTINATION**.
+  - No completed negative/ambiguous control was falsely classified `AT_DESTINATION`.
+- This is sufficient for a conservative deterministic rule: Python rejects **only** `AT_DESTINATION`; `NOT_AT_DESTINATION` and `UNSPECIFIED` both pass this narrow check and remain subject to the existing validators.
+- Production commit `84a6d46a7285304d57497e49064a7b9c07d5fa16` adds the narrow Beat destination-presence extractor inside the existing Beat VALIDATE loop:
+  - Python derives active closed-boundary contracts from canonical CURRENT STATE + active typed effects.
+  - For each protected destination, Python selects only tracked named subjects mentioned in the candidate whose canonical state places them outside that destination.
+  - The local model receives only DESTINATION, NAMED SUBJECT, and CANDIDATE BEAT and returns `AT_DESTINATION | NOT_AT_DESTINATION | UNSPECIFIED`.
+  - `AT_DESTINATION` means the candidate establishes the subject physically at/inside the protected destination at any point, even if it later leaves.
+  - Python rejects only `AT_DESTINATION` and regenerates the beat. The extractor never decides validity.
+  - Authorized opening/release beats remain exempt through the existing closed-boundary contract derivation.
+- Regression commit `5d51646a8a3526f8bed64708152a43fa7b45ea59` covers strict parsing, any-point prompt semantics, outside-subject contract derivation, and skipping a subject already inside the protected destination.
+- Test-maintenance commit `4e9bad14f4dd584d081c7e5bc712cfed1f686658` from the prior checkpoint normalizes the recurring typed-effect prompt assertion instead of comparing across source line breaks.
+- Queued `tests-1769` and full `acceptance-1770`.
+- Acceptance checkpoint: after Beat 2 locks Will/Amber in the basement with Amy outside, Beats 3-6 must not place Amy physically inside the basement at any point unless an active source-owned opening/release transition authorizes it. Beat 3's hidden arsenal must therefore be staged somewhere accessible on Amy's side of the boundary.
+
