@@ -693,6 +693,47 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             {"entity": "door", "destination": "basement", "state": "locked"},
         )
 
+    def test_barrier_state_contract_uses_active_typed_effect(self):
+        effects = [
+            {"op": "set_barrier_state", "entity": "door", "value": "locked"},
+            {"op": "set_location", "entity": "Mara", "value": "hall"},
+        ]
+        self.assertEqual(
+            minimax.build_director_barrier_state_contracts(effects),
+            [{"barrier": "door", "expected": "LOCKED", "source_state": "locked"}],
+        )
+
+    def test_barrier_state_contract_maps_unlocked_to_open(self):
+        effects = [
+            {"op": "set_barrier_state", "entity": "hatch", "value": "unlocked"},
+        ]
+        self.assertEqual(
+            minimax.build_director_barrier_state_contracts(effects),
+            [{"barrier": "hatch", "expected": "OPEN", "source_state": "unlocked"}],
+        )
+
+    def test_barrier_state_prompt_prioritizes_structural_damage(self):
+        messages = minimax.build_director_barrier_state_messages(
+            "vault door",
+            "The vault door is bent and partly detached, leaving an opening.",
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("damaged-but-present = BROKEN", prompt)
+        self.assertIn("intact-and-passable = OPEN", prompt)
+        self.assertIn("Do not decide whether the scene is valid", prompt)
+
+    def test_barrier_state_parser_is_strict(self):
+        self.assertEqual(
+            minimax.parse_director_barrier_state_observation(
+                {"status": "LOCKED"}
+            ),
+            "LOCKED",
+        )
+        with self.assertRaises(ValueError):
+            minimax.parse_director_barrier_state_observation(
+                {"status": "SEALED"}
+            )
+
     def test_closed_boundary_contract_binds_generic_locked_door_to_containment(self):
         opening = (
             "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n"
