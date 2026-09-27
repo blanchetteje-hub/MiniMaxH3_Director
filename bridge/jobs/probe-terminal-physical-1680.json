@@ -1,0 +1,23 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-terminal-physical-1680",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 350,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "ASSIGNED SOURCE\nThe mage defeats the demon.\n\nAUTHORITATIVE OPENING STATE\nThe demon is wounded but still attacking.\n\nRAW SCENE\nThe mage advances to strike.\n\nTreat AUTHORITATIVE OPENING STATE as already true at 00:00.000 unless RAW SCENE visibly changes it. SOURCE assigns a terminal action such as killing, destroying, defeating, eliminating, finishing, or resolving a target/process. Inspect the target of that newly assigned action at the moment immediately BEFORE the terminal action begins in RAW SCENE. Return status ACTIVE_OR_UNRESOLVED if RAW establishes the target/process still needs the specific terminal result assigned by SOURCE. Judge terminal status relative to that assigned action: for kill, already dead is terminal. Treat a corpse, an already detached/severed head, a decapitated body, or clearly lifeless remains as already dead even when the word 'dead' is not used; RAW calling those remains a zombie/body/torso does not make the target active again. For destroy, already destroyed is terminal; for defeat/eliminate, already neutralized, incapacitated, restrained, or otherwise no longer an active opponent is terminal; for finish/complete, already complete is terminal; for resolve, already resolved is terminal. Return ALREADY_TERMINAL when RAW establishes that assigned terminal result was already true before the action begins. Return UNSPECIFIED only when RAW does not establish either. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+    }
+  ],
+  "expected": "ACTIVE_OR_UNRESOLVED"
+}
