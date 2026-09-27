@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-bound-destination-traversal-1724",
+  "kind": "llama_chat",
+  "started_at": 1790533406.8299496,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract boundary traversal only. Do not judge story validity or physical possibility. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BOUND BARRIER\nvault door\n\nPROTECTED DESTINATION\nvault\n\nRAW SCENE\nThe ledger skids toward the vault entrance but stops in the corridor.\n\nClassify only whether RAW SCENE establishes that any person, creature, object, body part, or other physical thing crosses the boundary of PROTECTED DESTINATION during the scene. Return TRAVERSED when RAW explicitly shows or states movement from outside the destination to inside it, from inside to outside it, or through BOUND BARRIER. The barrier noun does not need to be repeated if the destination crossing itself is explicit. Return NOT_TRAVERSED when things only approach, strike, wait near, remain on one side, or are already inside/outside without crossing during this scene. Return UNSPECIFIED when the scene gives different start/end sides but does not establish how the change occurred, or when spatial information is insufficient. Do not infer an unseen route. Do not decide whether crossing is allowed. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nsoa80hv8fsjrqac7vtj9",
+    "object": "chat.completion",
+    "created": 1790533406,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NOT_TRAVERSED\"}",
+          "reasoning": "We need to determine if any person, creature, object, body part, or other physical thing crosses the boundary of PROTECTED DESTINATION during RAW SCENE.\n\nGiven:\n\nBOUND BARRIER: vault door\n\nPROTECTED DESTINATION: vault\n\nRAW SCENE: \"The ledger skids toward the vault entrance but stops in the corridor.\"\n\nSo we have a ledger (object) that skids towards the vault entrance, but stops in the corridor. So it does not cross into the vault; it's still outside. It approaches but doesn't enter.\n\nThus status is NOT_TRAVERSED.\n\nReturn JSON: {\"status\":\"NOT_TRAVERSED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 291,
+      "completion_tokens": 145,
+      "total_tokens": 436,
+      "completion_tokens_details": {
+        "reasoning_tokens": 127
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790533409.2522523,
+  "status": "ok"
+}
