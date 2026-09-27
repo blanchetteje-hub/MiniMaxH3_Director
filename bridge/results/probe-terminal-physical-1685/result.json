@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-physical-1685",
+  "kind": "llama_chat",
+  "started_at": 1790527295.9751647,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe pilot finishes disabling the drone.\n\nAUTHORITATIVE OPENING STATE\nThe drone is already disabled and motionless on the ground.\n\nRAW SCENE\nThe pilot cuts another cable.\n\nTreat AUTHORITATIVE OPENING STATE as already true at 00:00.000 unless RAW SCENE visibly changes it. SOURCE assigns a terminal action such as killing, destroying, defeating, eliminating, finishing, or resolving a target/process. Inspect the target of that newly assigned action at the moment immediately BEFORE the terminal action begins in RAW SCENE. Return status ACTIVE_OR_UNRESOLVED if RAW establishes the target/process still needs the specific terminal result assigned by SOURCE. Judge terminal status relative to that assigned action: for kill, already dead is terminal. Treat a corpse, an already detached/severed head, a decapitated body, or clearly lifeless remains as already dead even when the word 'dead' is not used; RAW calling those remains a zombie/body/torso does not make the target active again. For destroy, already destroyed is terminal; for defeat/eliminate, already neutralized, incapacitated, restrained, or otherwise no longer an active opponent is terminal; for finish/complete, already complete is terminal; for resolve, already resolved is terminal. Return ALREADY_TERMINAL when RAW establishes that assigned terminal result was already true before the action begins. Return UNSPECIFIED only when RAW does not establish either. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-28nj0dlzih1veha2yizlg",
+    "object": "chat.completion",
+    "created": 1790527295,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to parse the scenario.\n\nASSIGNED SOURCE says: \"The pilot finishes disabling the drone.\"\n\nSo source assigns a terminal action: finishing (or maybe 'finishing' means completing). The target is the drone.\n\nAUTHORITATIVE OPENING STATE: \"The drone is already disabled and motionless on the ground.\" So at 00:00.000, the drone is disabled and motionless.\n\nRAW SCENE: \"The pilot cuts another cable.\"\n\nWe treat opening state as true unless RAW changes it. The raw scene says the pilot cuts another cable. Does that change the status of the drone? It might be cutting a cable to further disable or maybe cut something else. But does it affect whether the drone is disabled? If it's already disabled, cutting another cable doesn't necessarily re-enable it; but could it mean the drone was still active and now gets disabled by cutting cable? However opening state says it's already disabled.\n\nWe need to inspect target of newly assigned action at moment immediately before terminal action begins in RAW SCENE. The terminal action is finishing disabling the drone. When does that begin? In raw scene, pilot cuts another cable; that's presumably part of finishing disabling. So just before cutting cable, what was status? According to opening state: disabled and motionless.\n\nThus target (drone) already has the specific terminal result assigned by source: \"finishing disabling\" means drone is disabled. Since it's already disabled, that is ALREADY_TERMINAL.\n\nBut check if any nuance: The raw scene might indicate cutting another cable could be part of finishing disabling; but before action begins, status remains as opening state: disabled and motionless. So yes, terminal result was already true before the action begins. Thus",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 399,
+      "completion_tokens": 350,
+      "total_tokens": 749,
+      "completion_tokens_details": {
+        "reasoning_tokens": 347
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790527301.4049277,
+  "status": "ok"
+}
