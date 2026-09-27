@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action512-1954",
+  "kind": "llama_chat",
+  "started_at": 1790550060.8237097,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nThe guard raises the gate and the wagon passes through.\n\nFINAL H3 MICRO-ACTION:\nThe guard raises the gate.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5zpm2njacj976h1vywfyxt",
+    "object": "chat.completion",
+    "created": 1790550060,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"OMITTED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"The guard raises the gate and the wagon passes through.\" Final H3 micro-action: \"The guard raises the gate.\"\n\nSo in final, only guard raising gate. The wagon passing through is omitted. So status = OMITTED.\n\nReturn JSON {\"status\":\"OMITTED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 202,
+      "completion_tokens": 81,
+      "total_tokens": 283,
+      "completion_tokens_details": {
+        "reasoning_tokens": 64
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790550062.087745,
+  "status": "ok"
+}
