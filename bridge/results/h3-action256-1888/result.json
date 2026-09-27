@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action256-1888",
+  "kind": "llama_chat",
+  "started_at": 1790548774.7137566,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nKai pours the blue liquid into the reactor; the warning light turns green.\n\nFINAL H3 MICRO-ACTION:\nKai carries the blue liquid toward the reactor.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jd7e7iz37vn0e4z083y67ai",
+    "object": "chat.completion",
+    "created": 1790548774,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to compare RAW micro-action: \"Kai pours the blue liquid into the reactor; the warning light turns green.\" Final H3 micro-action: \"Kai carries the blue liquid toward the reactor.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. Here, in raw we have pouring the liquid into the reactor, plus warning light turning green. In final, it's carrying the liquid towards the reactor; no mention of pouring or warning light.\n\nSo is the action preserved? The main action: Kai pours the blue liquid into the reactor. Final says he carries it toward the reactor (not necessarily pouring). So the material result \"blue liquid in reactor\" might not be achieved yet. Also warning light turning green is omitted. So it's likely OMITTED or CHANGED.\n\nWe need to decide if the final micro-action still includes the same visible/audible action and material result: He carries it toward the reactor, but doesn't pour into it. The blue liquid hasn't been poured; maybe he just moves it. So the pouring action is missing. Also warning light turning green is omitted. Thus it's not preserved.\n\nIs it changed? It performs a materially different or contradictory action/result. Yes, instead of pouring, he's carrying toward",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 209,
+      "completion_tokens": 256,
+      "total_tokens": 465,
+      "completion_tokens_details": {
+        "reasoning_tokens": 253
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790548778.2518172,
+  "status": "ok"
+}
