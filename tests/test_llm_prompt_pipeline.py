@@ -725,6 +725,33 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertEqual(contracts[0]["destination"], "basement")
         self.assertEqual(contracts[0]["occupants"], ["Will", "Amber"])
 
+    def test_beat_validator_forbids_retrieving_interior_prop_across_closed_boundary(self):
+        state = minimax.new_beat_canonical_state()
+        state["characters"] = {
+            "Amy": {"location": "home"},
+            "Will": {
+                "containment": "contained",
+                "contained_in": "basement",
+                "location": "basement",
+                "accessible": False,
+            },
+        }
+        state["environment"]["barriers"] = {
+            "door": {"status": "locked"}
+        }
+        messages = minimax.build_beat_validation_messages(
+            previous_final_beat="Amy locks Will in the basement.",
+            current_state=state,
+            beat_job="Amy retrieves and equips her hidden weapons.",
+            next_beat_job="Amy fights attackers.",
+            candidate_beat="Amy retrieves her pistol and katana from a closet in the basement.",
+            assigned_state_effects=[],
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("retrieve/use an object located inside", prompt)
+        self.assertIn("Do not stage a required action/object inside the protected destination", prompt)
+        self.assertIn("prop, target, or other interior content", prompt)
+
     def test_beat_validator_forbids_cross_boundary_contact_with_contained_occupant(self):
         state = minimax.new_beat_canonical_state()
         state["characters"] = {
