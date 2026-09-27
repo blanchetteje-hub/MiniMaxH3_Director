@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-extract-1574",
+  "kind": "llama_chat",
+  "started_at": 1790472178.8101375,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier-side placement only. Do not validate story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\nvault\n\nNAMED SUBJECTS\nIris; Kato\n\nRAW TEXT\nIris holds the vault door while Kato walks inside. The scene ends before Iris moves.\n\nFor each named subject, classify only where that subject is at the END of the text relative to DESTINATION.\nAllowed relation values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED.\nUse UNSPECIFIED if the text does not establish the final side. Temporary entry does not count if the subject returns before the end. Do not decide whether the scene is valid. Do not infer that a helper follows someone unless the text establishes it.\nReturn JSON only with one key subjects. subjects is an array containing one object per named subject, each with exactly entity and relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-k2hdgmpiq9h2cn3vfu4k5",
+    "object": "chat.completion",
+    "created": 1790472178,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"subjects\":[{\"entity\":\"Iris\",\"relation\":\"NOT_AT_DESTINATION\"},{\"entity\":\"Kato\",\"relation\":\"AT_DESTINATION\"}]}",
+          "reasoning": "We need to parse: Destination vault. Named subjects Iris; Kato.\n\nText: \"Iris holds the vault door while Kato walks inside. The scene ends before Iris moves.\"\n\nSo at end of text, Iris is holding the vault door (so presumably on the outside side? She holds it). Does that mean she is at destination? The destination is vault. Holding the vault door could be considered at the destination or not? Usually \"vault\" refers to the interior; but if she's holding the door, maybe still outside? But relation values: AT_DESTINATION means subject is at destination (inside?). Not sure.\n\nKato walks inside. So Kato is inside vault at end of text. So Kato relation = AT_DESTINATION.\n\nIris holds the vault door while Kato walks inside. The scene ends before Iris moves. That implies she hasn't moved from holding the door; likely still outside? But could be considered at destination if holding door counts as being at destination? Usually \"holding the vault door\" means she's on the other side of the door, maybe outside. So relation = NOT_AT_DESTINATION.\n\nThus output JSON: subjects array with objects for Iris and Kato.\n\nReturn only JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 244,
+      "completion_tokens": 282,
+      "total_tokens": 526,
+      "completion_tokens_details": {
+        "reasoning_tokens": 244
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790472183.2295737,
+  "status": "ok"
+}
