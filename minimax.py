@@ -27085,6 +27085,7 @@ def _run_main(
     summary_executor,
     director_prefetch_executor=None,
     render_executor=None,
+    recovery_resume_segment=None,
 ):
     args = parse_args()
     configure_reference_image_overrides(args)
@@ -27123,7 +27124,11 @@ def _run_main(
         if generate_beats_only
         else math.ceil(total_length / segment_length)
     )
-    resume_segment = args.resume
+    resume_segment = (
+        int(recovery_resume_segment)
+        if recovery_resume_segment is not None
+        else args.resume
+    )
 
     story_source = load_text_file(
         STORY_FILE,
@@ -27977,9 +27982,10 @@ def _run_main(
             except Exception as error:
                 print(
                     f"WARNING: waiting for the previous segment render to finish "
-                    f"before starting segment {segment} failed: {error}"
+                    f"before starting segment {segment} failed: {error}. "
+                    "Returning to the last committed segment checkpoint."
                 )
-                previous_video_path = assumed_comfyui_video_path(segment - 1)
+                raise
             finally:
                 pending_previous_render_future = None
 
@@ -28703,24 +28709,19 @@ def _run_main(
         except ComfyUIConnectionError:
             raise
         except Exception as error:
-            print(
-                f"WARNING: segment {expected_segment} render did not finish "
-                f"before stitching: {error}"
-            )
-            continue
+            raise RuntimeError(
+                f"Segment {expected_segment} render did not finish before stitching: "
+                f"{error}"
+            ) from error
         if not isinstance(render_result, tuple) or len(render_result) < 2:
-            print(
-                f"WARNING: segment {expected_segment} render returned no video "
-                "result; stitching the remaining clips as best effort."
+            raise RuntimeError(
+                f"Segment {expected_segment} render returned no usable video result."
             )
-            continue
         completed_video_path = render_result[1]
         if not isinstance(completed_video_path, str) or not completed_video_path.strip():
-            print(
-                f"WARNING: segment {expected_segment} render returned an invalid "
-                "video path; stitching the remaining clips as best effort."
+            raise RuntimeError(
+                f"Segment {expected_segment} render returned an invalid video path."
             )
-            continue
         completed_video_path = os.path.abspath(completed_video_path)
         _append_unique_video_path(
             generated_video_paths,
@@ -28735,8 +28736,9 @@ def _run_main(
             f"({len(generated_video_paths)} available); stitching best effort."
         )
 
-    last_stitch_error = None
-    for stitch_attempt in range(1, LLM_CONNECTION_RETRIES + 1):
+    stitch_attempt = 0
+    while True:
+        stitch_attempt += 1
         try:
             stitch_videos(
                 generated_video_paths,
@@ -28746,41 +28748,113 @@ def _run_main(
             )
             break
         except Exception as error:
-            last_stitch_error = error
+            cycle_attempt = ((stitch_attempt - 1) % LLM_CONNECTION_RETRIES) + 1
             print(
-                f"WARNING: stitching failed (attempt {stitch_attempt}/"
-                f"{LLM_CONNECTION_RETRIES}); retrying: {error}"
+                f"WARNING: stitching failed (attempt {cycle_attempt}/"
+                f"{LLM_CONNECTION_RETRIES} in current retry cycle): {error}"
             )
-            if stitch_attempt < LLM_CONNECTION_RETRIES:
-                time.sleep(1)
-    else:
-        print(
-            "WARNING: stitching failed after retries; generated segment files "
-            f"remain available for best-effort recovery: {last_stitch_error}"
-        )
+            if cycle_attempt == LLM_CONNECTION_RETRIES:
+                print(
+                    "Stitch retry cycle exhausted; restarting stitching from the "
+                    "same completed segment set.",
+                    flush=True,
+                )
+            time.sleep(1)
 
 
-# Run the command-line application.
+# Return the next segment after the contiguous committed checkpoint prefix.
+def _checkpoint_recovery_resume_segment(path=GENERATION_STATE_FILE):
+    """Return a safe resume point for an automatic recovery attempt."""
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            state = json.load(handle)
+    except (OSError, ValueError, TypeError):
+        return 1
+    if not isinstance(state, dict):
+        return 1
+    records = state.get("segments")
+    if not isinstance(records, list):
+        return 1
+    contiguous = 0
+    for expected, record in enumerate(records, start=1):
+        if (
+            not isinstance(record, dict)
+            or record.get("segment_number") != expected
+        ):
+            break
+        contiguous = expected
+    config = state.get("config")
+    total_segments = (
+        config.get("total_segments")
+        if isinstance(config, dict)
+        else None
+    )
+    if isinstance(total_segments, int) and contiguous >= total_segments:
+        return max(1, total_segments)
+    return contiguous + 1
+
+
+# Run the command-line application under a persistent recovery supervisor.
 def main():
-    # The context managers guarantee worker shutdown even when generation,
-    # ComfyUI, checkpointing, or either LLM task raises an exception.
-    with ThreadPoolExecutor(
-        max_workers=1,
-        thread_name_prefix="continuity-summary",
-    ) as summary_executor:
-        with ThreadPoolExecutor(
-            max_workers=1,
-            thread_name_prefix="director-prefetch",
-        ) as director_prefetch_executor:
+    recovery_resume_segment = None
+    while True:
+        try:
+            # Recreate worker pools after every failed attempt. Their context
+            # managers drain/cancel the old work before the next recovery pass.
             with ThreadPoolExecutor(
                 max_workers=1,
-                thread_name_prefix="comfyui-render",
-            ) as render_executor:
-                return _run_main(
-                    summary_executor,
-                    director_prefetch_executor,
-                    render_executor,
-                )
+                thread_name_prefix="continuity-summary",
+            ) as summary_executor:
+                with ThreadPoolExecutor(
+                    max_workers=1,
+                    thread_name_prefix="director-prefetch",
+                ) as director_prefetch_executor:
+                    with ThreadPoolExecutor(
+                        max_workers=1,
+                        thread_name_prefix="comfyui-render",
+                    ) as render_executor:
+                        return _run_main(
+                            summary_executor,
+                            director_prefetch_executor,
+                            render_executor,
+                            recovery_resume_segment=recovery_resume_segment,
+                        )
+        except (LLMConnectionError, ComfyUIConnectionError):
+            # The only automatic fatal conditions: required external runtime is
+            # unreachable. Prompt-only mode never enters the ComfyUI path.
+            raise
+        except KeyboardInterrupt:
+            raise
+        except SystemExit as error:
+            # Explicit successful exits such as --help remain user-controlled.
+            if getattr(error, "code", 0) in (0, None):
+                raise
+            recovery_resume_segment = _checkpoint_recovery_resume_segment()
+            print(
+                f"WARNING: setup rejected the current attempt ({error}); "
+                f"retrying from segment {recovery_resume_segment}.",
+                file=sys.stderr,
+                flush=True,
+            )
+            time.sleep(1)
+        except Exception as error:
+            recovery_resume_segment = _checkpoint_recovery_resume_segment()
+            print(
+                f"WARNING: recoverable generation failure: {error}",
+                file=sys.stderr,
+                flush=True,
+            )
+            print(
+                f"Restarting from the last committed checkpoint at segment "
+                f"{recovery_resume_segment}.",
+                file=sys.stderr,
+                flush=True,
+            )
+            if os.environ.get("MINIMAX_DEBUG", "").strip().casefold() in {
+                "1", "true", "yes", "on"
+            }:
+                traceback.print_exc()
+            time.sleep(1)
 
 
 if __name__ == "__main__":
@@ -28794,34 +28868,13 @@ if __name__ == "__main__":
         raise SystemExit(130) from None
     except LLMConnectionError as error:
         print(
-            f"\nWARNING: LLM connection failed; returning best effort: {error}",
+            f"\nFATAL: cannot connect to the LLM runtime: {error}",
             file=sys.stderr,
         )
+        raise SystemExit(1) from None
     except ComfyUIConnectionError as error:
         print(
-            f"\nWARNING: ComfyUI connection failed; returning best effort: {error}",
+            f"\nFATAL: cannot connect to ComfyUI: {error}",
             file=sys.stderr,
         )
-    except BeatGenerationError as error:
-        print(f"\nWARNING: beat generation failed: {error}", file=sys.stderr)
-        if os.environ.get("MINIMAX_DEBUG", "").strip().casefold() in {
-            "1", "true", "yes", "on"
-        }:
-            traceback.print_exc()
-    except SystemExit as error:
-        # argparse uses SystemExit for invalid optional input. Keep that
-        # recoverable at the application boundary; only the explicit emergency
-        # and connection branches above are allowed to terminate the process.
-        if getattr(error, "code", 0) in (0, None):
-            raise
-        print(
-            f"\nWARNING: command-line setup was rejected ({error}); "
-            "returning best effort.",
-            file=sys.stderr,
-        )
-    except Exception as e:
-        print(f"\nWARNING: non-fatal generation error: {e}", file=sys.stderr)
-        print(
-            "Continuing/returning best effort; set MINIMAX_DEBUG=1 for a traceback.",
-            file=sys.stderr,
-        )
+        raise SystemExit(1) from None
