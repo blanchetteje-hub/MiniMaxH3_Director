@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-physical-1680",
+  "kind": "llama_chat",
+  "started_at": 1790527266.2161908,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe mage defeats the demon.\n\nAUTHORITATIVE OPENING STATE\nThe demon is wounded but still attacking.\n\nRAW SCENE\nThe mage advances to strike.\n\nTreat AUTHORITATIVE OPENING STATE as already true at 00:00.000 unless RAW SCENE visibly changes it. SOURCE assigns a terminal action such as killing, destroying, defeating, eliminating, finishing, or resolving a target/process. Inspect the target of that newly assigned action at the moment immediately BEFORE the terminal action begins in RAW SCENE. Return status ACTIVE_OR_UNRESOLVED if RAW establishes the target/process still needs the specific terminal result assigned by SOURCE. Judge terminal status relative to that assigned action: for kill, already dead is terminal. Treat a corpse, an already detached/severed head, a decapitated body, or clearly lifeless remains as already dead even when the word 'dead' is not used; RAW calling those remains a zombie/body/torso does not make the target active again. For destroy, already destroyed is terminal; for defeat/eliminate, already neutralized, incapacitated, restrained, or otherwise no longer an active opponent is terminal; for finish/complete, already complete is terminal; for resolve, already resolved is terminal. Return ALREADY_TERMINAL when RAW establishes that assigned terminal result was already true before the action begins. Return UNSPECIFIED only when RAW does not establish either. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-n4doyvhn65r2snf6s3fxe",
+    "object": "chat.completion",
+    "created": 1790527266,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to extract terminal-target pre-action status.\n\nGiven:\n\nASSIGNED SOURCE: \"The mage defeats the demon.\"\n\nSo assigned terminal action: defeat (or eliminate). The target: the demon.\n\nAUTHORITATIVE OPENING STATE: \"The demon is wounded but still attacking.\" So at 00:00.000, demon is wounded but still attacking. That means it's alive and active opponent? It's wounded but still attacking => not neutralized or incapacitated. So status before action: ACTIVE_OR_UNRESOLVED.\n\nRAW SCENE: \"The mage advances to strike.\"\n\nSo the mage advances to strike; that indicates he's about to attack, but hasn't struck yet. The demon is still in state from opening: wounded but still attacking. No change indicated by RAW scene. So pre-action status remains active/unresolved.\n\nThus return {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 394,
+      "completion_tokens": 196,
+      "total_tokens": 590,
+      "completion_tokens_details": {
+        "reasoning_tokens": 176
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790527269.2341788,
+  "status": "ok"
+}
