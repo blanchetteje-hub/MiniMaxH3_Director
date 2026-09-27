@@ -10020,6 +10020,17 @@ def build_beat_validation_messages(
     settings = settings or _active_beat_validation_settings()
     state = compact_beat_validation_state(current_state)
     state_effects = assigned_state_effects if assigned_state_effects is not None else []
+    barrier_binding = build_director_barrier_binding_contract(state_effects)
+    barrier_binding_text = (
+        (
+            "\nPYTHON-OWNED BARRIER BINDING\n"
+            f"The generic barrier {barrier_binding['entity']!r} is the boundary "
+            f"of {barrier_binding['destination']!r}. Do not reinterpret it as "
+            "an unrelated barrier elsewhere."
+        )
+        if barrier_binding
+        else ""
+    )
     system = (
         "You validate one candidate story beat. Judge meaning, not exact wording. "
         "Accept reasonable paraphrases and clear semantic implications. Reject "
@@ -10040,6 +10051,7 @@ RESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT
 
 STATE EFFECTS IF VALID
 {json.dumps(state_effects, ensure_ascii=False, separators=(",", ":"))}
+{barrier_binding_text}
 
 CANDIDATE BEAT
 {candidate_beat}
@@ -14344,6 +14356,7 @@ def build_beat_generation_messages(
 
     required_events = current_phase.get("required_events", [])
     event_lines = []
+    barrier_binding_lines = []
     for event in required_events:
         if not isinstance(event, dict):
             continue
@@ -14355,10 +14368,24 @@ def build_beat_generation_messages(
             and event_text
         ):
             event_lines.append(f"{int(beat_number)}. {event_text}")
+            barrier_binding = build_director_barrier_binding_contract(
+                event.get("state_effects", [])
+            )
+            if barrier_binding:
+                barrier_binding_lines.append(
+                    f"{int(beat_number)}. {barrier_binding['entity']!r} is the "
+                    f"boundary of {barrier_binding['destination']!r}."
+                )
     required_events_text = (
         "\n".join(event_lines)
         if event_lines
         else "N/A (invalid arc: this phase has no assigned required events)"
+    )
+
+    barrier_bindings_text = (
+        "\n".join(barrier_binding_lines)
+        if barrier_binding_lines
+        else "N/A"
     )
 
     if previous_phase_final_beat is None and previous_beats:
@@ -14422,12 +14449,18 @@ DEFINED SUBJECTS:
 REQUIRED EVENTS FOR REQUESTED BEATS {batch_start}-{batch_end}:
 {required_events_text}
 
+PYTHON-OWNED BARRIER BINDINGS:
+{barrier_bindings_text}
+
 Write exactly {batch_size} video beats, one per required event.
 
 Rules:
 - SOURCE STORY is context only. For each beat, perform ONLY that beat's listed
   REQUIRED EVENT; do not pull later source-story events into the current beat.
 - Complete each required event visibly in its beat.
+- PYTHON-OWNED BARRIER BINDINGS resolve otherwise-generic barrier names in the
+  listed required event. Obey them exactly and do not substitute a different
+  nearby door/gate/hatch/barrier.
 - For a finite activity, show a visible transition: include the assigned
   activity itself, then show it finishing. Do not output only the activity
   underway or only its after-state.
@@ -25397,8 +25430,11 @@ def build_director_barrier_state_messages(barrier, raw_scene):
                 "BROKEN means the barrier is physically damaged, breached, warped, "
                 "cracked, bent, or partly detached but still physically exists as "
                 "that barrier; choose BROKEN even if the damage leaves a passable "
-                "gap. DESTROYED means the barrier is gone, removed, or no longer "
-                "exists/functions as a barrier. Structural state takes precedence "
+                "gap. DESTROYED means the barrier is physically gone, removed, "
+                "dismantled, or reduced so it no longer exists as that barrier. "
+                "An intact barrier that retracts, slides, swings, lifts, or otherwise "
+                "moves out of the passage is OPEN, not DESTROYED. Structural state "
+                "takes precedence "
                 "over passability: damaged-but-present = BROKEN, absent/nonfunctional "
                 "= DESTROYED, intact-and-passable = OPEN. UNSPECIFIED means RAW "
                 "SCENE does not establish enough information. Do not decide whether "
