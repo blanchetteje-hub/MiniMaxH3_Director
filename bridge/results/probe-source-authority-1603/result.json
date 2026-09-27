@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-source-authority-1603",
+  "kind": "llama_chat",
+  "started_at": 1790478904.7841928,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes ASSIGNED SOURCE. Judge meaning, not wording. Return JSON only with valid and issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nMilo repairs the radio for Tess.\n\nDERIVED BEAT — staging only; cannot add stricter requirements\nMilo fixes the radio and hands it back.\n\nAUTHORITATIVE OPENING STATE\nN/A\n\nASSIGNED TYPED END STATE\n[]\n\nRAW SCENE\nMilo completes the repair, tests the radio successfully, and leaves it on the bench for Tess to collect later.\n\nRules: SOURCE defines required actions/results/roles. DERIVED BEAT cannot add a stricter transfer method. For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer. Work merely made FOR someone can finish without delivery unless SOURCE requires delivery; honor explicit later pickup/storage. Typed end state governs durable tracked continuity. Incidental consumables, plates, cups, and ordinary newly introduced serving props are not persistent inventory merely because a known subject holds them at the end.\nReturn JSON with boolean valid and string issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 450,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-claa41pju1r77anfsrpsq3",
+    "object": "chat.completion",
+    "created": 1790478904,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to check if RAW SCENE completes ASSIGNED SOURCE: \"Milo repairs the radio for Tess.\" The source says Milo repairs the radio for Tess. That implies he does repair, presumably for her benefit. Does it require handing over? Source doesn't specify hand-off; just that he repairs the radio for Tess. Derived beat: \"staging only; cannot add stricter requirements\" and derived beat says \"Milo fixes the radio and hands it back.\" Wait derived beat says Milo fixes the radio and hands it back. That is a staging beat, but it's not part of source? The derived beat adds hand-back requirement. But rule: DERIVED BEAT cannot add stricter transfer method. So if source didn't require hand-off, derived beat adding hand-back might be too strict? Actually \"handed back\" implies he gives it to Tess immediately after fixing. Source says repairs the radio for Tess; that could mean he fixes it and then it's ready for her use later. The raw scene: Milo completes repair, tests successfully, leaves it on bench for Tess to collect later. That is not handing it back directly but leaving it for later pickup. Does source require hand-off? No. So leaving it on bench is fine. Derived beat says he hands it back; that might be stricter than source. But derived beat is staging only and cannot add stricter transfer method. Since raw scene doesn't include hand-back, it's missing the hand-back requirement from derived beat. However derived beat is not part of source? The assignment: \"DERIVED BEAT — staging only; cannot add stricter requirements\" So we can't add stricter than source. But derived beat says he hands it back. That might be a stricter transfer method than just leaving on bench for later pickup. Source didn't require hand-off, so handing back is extra requirement. The raw scene doesn't include that. So it's missing the hand-back. Thus RAW SCENE does not complete ASSIGNED SOURCE? Actually source: Milo repairs radio for Tess. Raw scene: he completes repair and leaves it on bench. That satisfies repairing for her. It didn't mention handing over, but that's okay because source didn't require hand-off. But derived beat says he hands back",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 292,
+      "completion_tokens": 450,
+      "total_tokens": 742,
+      "completion_tokens_details": {
+        "reasoning_tokens": 447
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790478911.6512935,
+  "status": "ok"
+}
