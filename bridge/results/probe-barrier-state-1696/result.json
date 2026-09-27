@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-state-1696",
+  "kind": "llama_chat",
+  "started_at": 1790528655.6609538,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier state only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nairlock hatch\n\nRAW SCENE\nThe intact hatch retracts into the wall and leaves the passage open.\n\nClassify only the final visible/established state of BARRIER at the END of RAW SCENE. Allowed values: LOCKED, CLOSED, OPEN, BROKEN, DESTROYED, UNSPECIFIED. LOCKED includes locked, sealed, barred, or bolted. CLOSED means intact and shut/closed without an established lock. OPEN means intact and open/passable. BROKEN means the barrier is physically damaged, breached, warped, cracked, bent, or partly detached but still physically exists as that barrier; choose BROKEN even if the damage leaves a passable gap. DESTROYED means the barrier is gone, reduced to debris, or no longer exists/functions as a barrier. Structural state takes precedence over passability: damaged-but-present = BROKEN, absent/nonfunctional = DESTROYED, intact-and-passable = OPEN. UNSPECIFIED means RAW SCENE does not establish enough information. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-s2w5adx19808ltdqqhe4bd",
+    "object": "chat.completion",
+    "created": 1790528655,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"OPEN\"}",
+          "reasoning": "We have a barrier \"airlock hatch\". The raw scene says: \"The intact hatch retracts into the wall and leaves the passage open.\" So the hatch was intact, then it retracted into the wall leaving the passage open. That means the hatch is no longer present as a barrier; it's inside the wall. Is that considered CLOSED? It's closed but not visible? The description says \"leaves the passage open\". So the passage is open because the hatch has moved out of the way. But what about the state of the hatch itself? It retracts into the wall, so it might be in a closed position inside the wall. Does that count as CLOSED or OPEN? The barrier is no longer blocking the passage; it's retracted. So passability: open. Structural state: intact and present but not visible? It's still there, just retracted. But does \"intact\" mean it's physically present? Yes. It retracts into the wall, so it remains intact. Does that count as CLOSED or OPEN? The barrier is closed inside the wall; but from perspective of passage, open. According to rule: structural state takes precedence over passability: damaged-but-present = BROKEN, absent/nonfunctional = DESTROYED, intact-and-passable = OPEN. Here it's intact and present (but retracted). Is it passable? The passage is open because the hatch has moved out of the way. So we consider barrier as OPEN? But \"intact\" means physically there; but if it's inside wall, does that count as still a barrier? It's not blocking the passage. So from perspective of passage, open. According to rule: intact-and-passable = OPEN. The hatch is intact and passable (the passage). So status should be OPEN.\n\nThus JSON {\"status\":\"OPEN\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 313,
+      "completion_tokens": 380,
+      "total_tokens": 693,
+      "completion_tokens_details": {
+        "reasoning_tokens": 365
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790528661.6938372,
+  "status": "ok"
+}
