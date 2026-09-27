@@ -1,0 +1,54 @@
+{
+  "job_id": "source-action-1531",
+  "kind": "llama_chat",
+  "started_at": 1790468141.2867737,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge whether RAW visibly performs the action assigned by SOURCE. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nThe courier delivers the parcel to Arin.\n\nRAW:\nArin is already holding the delivered parcel.\n\nRULES\n1. If SOURCE assigns an action to happen now, RAW must visibly perform that action in this segment.\n2. A finished/resulting state by itself does not prove the assigned action happened now.\n3. RAW may use the resulting state after it visibly performs the action.\n4. If SOURCE explicitly describes an ongoing/repeated condition, one visible ongoing instance may satisfy it.\nReturn {\"valid\":boolean,\"issue\":string}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-geizarm94tqj3t550tgu4",
+    "object": "chat.completion",
+    "created": 1790468141,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":false,\"issue\":\"The courier’s delivery action is not visibly performed in the RAW segment; it only shows Arin already holding the parcel, which is a resulting state rather than the action itself.\"}",
+          "reasoning": "We need to judge whether RAW visibly performs the action assigned by SOURCE.\n\nSOURCE: \"The courier delivers the parcel to Arin.\"\n\nSo action: The courier delivers the parcel to Arin. That is a delivery event, presumably at this moment. So we must check if RAW shows that the courier delivered it now. RAW says: \"Arin is already holding the delivered parcel.\" This indicates that Arin holds the parcel and it's delivered. But does it show the action of delivering? It states that Arin is already holding the delivered parcel, implying delivery has happened earlier or at some point before this segment. The rule 1: If SOURCE assigns an action to happen now, RAW must visibly perform that action in this segment.\n\nSo we need a visible action: e.g., \"The courier hands the parcel to Arin.\" But RAW only says Arin is already holding it. That doesn't show the delivery happening now; it's just showing result state. Rule 2: A finished/resulting state by itself does not prove the assigned action happened now.\n\nThus RAW fails rule 1 because no visible action of delivering in this segment. So valid = false, issue: \"The courier's delivery action is not visibly performed in RAW.\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 204,
+      "completion_tokens": 300,
+      "total_tokens": 504,
+      "completion_tokens_details": {
+        "reasoning_tokens": 247
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790468145.533885,
+  "status": "ok"
+}
