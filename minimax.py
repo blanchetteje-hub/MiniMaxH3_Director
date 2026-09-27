@@ -16260,7 +16260,37 @@ def _parse_director_raw_scene_result(raw_result):
     }
 
 
-def _director_raw_scene_structure_errors(raw_scene):
+def _director_timestamp_range_errors(value, segment_seconds=None):
+    """Return malformed/out-of-range Director timestamp errors."""
+    errors = []
+    limit = None
+    try:
+        limit = float(segment_seconds) if segment_seconds is not None else None
+    except (TypeError, ValueError):
+        limit = None
+    for match in re.finditer(
+        r"(?i)\bAt\s+(\d{1,2}):(\d{2,3})(?:[.:](\d{1,3}))?",
+        str(value or ""),
+    ):
+        minutes = int(match.group(1))
+        seconds = int(match.group(2))
+        fraction_text = match.group(3) or "0"
+        fraction = int(fraction_text.ljust(3, "0")[:3]) / 1000.0
+        if seconds >= 60:
+            errors.append(
+                f"Invalid timestamp '{match.group(0)}': seconds must be 00-59."
+            )
+            continue
+        absolute = minutes * 60 + seconds + fraction
+        if limit is not None and math.isfinite(limit) and absolute >= limit:
+            errors.append(
+                f"Invalid timestamp '{match.group(0)}': timestamp must be before "
+                f"the {limit:g}-second segment endpoint."
+            )
+    return errors
+
+
+def _director_raw_scene_structure_errors(raw_scene, segment_seconds=None):
     """Return deterministic Request-1 structure errors."""
     text_value = str(raw_scene or "").strip()
     markers = list(
@@ -16278,8 +16308,15 @@ def _director_raw_scene_structure_errors(raw_scene):
     ending_state = text_value[marker.end():].strip()
     if not ending_state:
         return ["End continuity state must be non-empty."]
-    if not _director_timestamps(text_value[:marker.start()]):
+    timed_scene = text_value[:marker.start()]
+    if not _director_timestamps(timed_scene):
         return ["RAW SCENE must contain at least one timed micro-beat before the end state."]
+    range_errors = _director_timestamp_range_errors(
+        timed_scene,
+        segment_seconds=segment_seconds,
+    )
+    if range_errors:
+        return range_errors
     if _DIRECTOR_TIMESTAMP_RE.search(ending_state):
         return ["End continuity state must be the trailing untimed final-frame statement."]
     return []
@@ -16322,7 +16359,11 @@ def _canonicalize_director_timestamps(value):
 
 
 # Require Request 2 to preserve every Request 1 timestamp and canonical syntax.
-def _validate_director_timestamp_correspondence(raw_scene, detailed_description):
+def _validate_director_timestamp_correspondence(
+    raw_scene,
+    detailed_description,
+    segment_seconds=None,
+):
     """Require Request 2 timestamps to preserve sequence and canonical H3 syntax."""
     raw_timestamps = _director_timestamps(raw_scene)
     formatted_timestamps = _director_timestamps(detailed_description)
@@ -16338,6 +16379,12 @@ def _validate_director_timestamp_correspondence(raw_scene, detailed_description)
     ]
 
     issues = []
+    issues.extend(
+        _director_timestamp_range_errors(
+            detailed_description,
+            segment_seconds=segment_seconds,
+        )
+    )
     if raw_timestamps != formatted_timestamps:
         issues.append(
             "RAW SCENE timestamps and detailed_description timestamps do not "
@@ -25188,7 +25235,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         )
         request1_result = _parse_director_raw_scene_result(raw_scene_result)
         raw_scene = request1_result["raw_scene"]
-        structure_errors = _director_raw_scene_structure_errors(raw_scene)
+        structure_errors = _director_raw_scene_structure_errors(
+            raw_scene,
+            segment_seconds=duration,
+        )
         missing_director_subjects = _missing_named_director_subjects(
             bundle.get("current_beat_text", ""),
             raw_scene,
@@ -25445,6 +25495,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         timestamp_issues = _validate_director_timestamp_correspondence(
             raw_scene,
             llm_result.get("detailed_description", ""),
+            segment_seconds=duration,
         )
         if not timestamp_issues:
             break
@@ -25457,6 +25508,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             repaired_issues = _validate_director_timestamp_correspondence(
                 raw_scene,
                 repaired_description,
+                segment_seconds=duration,
             )
             if repaired_issues:
                 raise BeatGenerationError(
