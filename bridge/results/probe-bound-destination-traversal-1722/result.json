@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-bound-destination-traversal-1722",
+  "kind": "llama_chat",
+  "started_at": 1790533396.706462,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract boundary traversal only. Do not judge story validity or physical possibility. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BOUND BARRIER\nshelter hatch\n\nPROTECTED DESTINATION\nshelter\n\nRAW SCENE\nA crate slides toward the shelter stairs but wedges against the threshold outside.\n\nClassify only whether RAW SCENE establishes that any person, creature, object, body part, or other physical thing crosses the boundary of PROTECTED DESTINATION during the scene. Return TRAVERSED when RAW explicitly shows or states movement from outside the destination to inside it, from inside to outside it, or through BOUND BARRIER. The barrier noun does not need to be repeated if the destination crossing itself is explicit. Return NOT_TRAVERSED when things only approach, strike, wait near, remain on one side, or are already inside/outside without crossing during this scene. Return UNSPECIFIED when the scene gives different start/end sides but does not establish how the change occurred, or when spatial information is insufficient. Do not infer an unseen route. Do not decide whether crossing is allowed. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-djderusdeu9qe1ikh768pg",
+    "object": "chat.completion",
+    "created": 1790533396,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NOT_TRAVERSED\"}",
+          "reasoning": "We need to determine if any person, creature, object, body part crosses boundary of PROTECTED DESTINATION during RAW SCENE.\n\nBOUND BARRIER: \"shelter hatch\"\n\nPROTECTED DESTINATION: \"shelter\"\n\nRAW SCENE: \"A crate slides toward the shelter stairs but wedges against the threshold outside.\"\n\nSo a crate slides towards the shelter stairs but wedges against the threshold outside. So it is approaching, but remains outside; wedge at threshold outside. It does not cross into shelter.\n\nThus crossing? No. The crate stays outside. Does any other thing cross? Only crate mentioned. So NOT_TRAVERSED.\n\nReturn JSON: {\"status\":\"NOT_TRAVERSED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 295,
+      "completion_tokens": 156,
+      "total_tokens": 451,
+      "completion_tokens_details": {
+        "reasoning_tokens": 138
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790533399.4463325,
+  "status": "ok"
+}
