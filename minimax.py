@@ -1400,6 +1400,29 @@ DIRECTOR_BARRIER_SIDE_RESPONSE_FORMAT = {
     },
 }
 
+DIRECTOR_BARRIER_TRAVERSAL_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_barrier_traversal_observation",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "TRAVERSED",
+                        "NOT_TRAVERSED",
+                        "UNSPECIFIED",
+                    ],
+                },
+            },
+            "required": ["status"],
+            "additionalProperties": False,
+        },
+    },
+}
+
 DIRECTOR_TERMINAL_TARGET_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
@@ -25291,6 +25314,127 @@ def compare_director_barrier_topology(contract, observation):
     return issues
 
 
+def build_director_closed_boundary_contracts(
+    authoritative_opening_state,
+    assigned_state_effects,
+):
+    """Return closed opening boundaries that the active beat may not traverse."""
+    state = _director_source_opening_state_json(authoritative_opening_state)
+    if not isinstance(state, dict) or not state:
+        return []
+    try:
+        effects = _validate_state_effects(list(assigned_state_effects or []))
+    except (TypeError, ValueError):
+        return []
+
+    def normalized(value):
+        return " ".join(str(value or "").replace("_", " ").split()).casefold()
+
+    opening_destinations = set()
+    for root in ("characters", "threats"):
+        for record in (state.get(root) or {}).values():
+            if not isinstance(record, dict):
+                continue
+            destination = normalized(record.get("contained_in"))
+            containment = normalized(record.get("containment"))
+            if destination and containment in {"contained", ""}:
+                opening_destinations.add(destination)
+
+    freed_destinations = {
+        normalized(effect.get("container"))
+        for effect in effects
+        if effect.get("op") == "set_containment"
+        and effect.get("value") == "free"
+        and effect.get("container")
+    }
+    opening_barrier_effects = {
+        normalized(effect.get("entity"))
+        for effect in effects
+        if effect.get("op") == "set_barrier_state"
+        and effect.get("value") in {"open", "unlocked", "broken", "destroyed"}
+    }
+
+    environment = state.get("environment") or {}
+    generic_barriers = {"door", "gate", "hatch", "barrier"}
+    contracts = []
+    for field in ("doors", "barriers", "windows"):
+        records = environment.get(field) or {}
+        if not isinstance(records, dict):
+            continue
+        for entity, record in records.items():
+            if not isinstance(record, dict) or not _barrier_is_closed(record):
+                continue
+            entity_key = normalized(entity)
+            destination = None
+            if entity_key in generic_barriers:
+                if len(opening_destinations) != 1:
+                    continue
+                destination = next(iter(opening_destinations))
+                barrier_label = f"{destination} {entity_key}"
+            else:
+                matches = [
+                    item for item in opening_destinations
+                    if item in entity_key or entity_key in item
+                ]
+                if len(matches) == 1:
+                    destination = matches[0]
+                barrier_label = " ".join(str(entity).replace("_", " ").split())
+
+            if destination and destination in freed_destinations:
+                continue
+            if entity_key in opening_barrier_effects or normalized(barrier_label) in opening_barrier_effects:
+                continue
+            contracts.append({
+                "barrier": barrier_label,
+                "state": str(record.get("status") or "closed"),
+                "destination": destination,
+            })
+    return contracts
+
+
+def build_director_barrier_traversal_messages(barrier, raw_scene):
+    """Ask the local model only whether RAW SCENE crosses one named boundary."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract barrier traversal only. Do not judge whether the scene "
+                "is valid or physically possible. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"BARRIER\n{barrier}\n\nRAW SCENE\n"
+                + str(raw_scene or "")
+                + "\n\nClassify only whether RAW SCENE visibly establishes "
+                "that any subject moves from one side of BARRIER through its "
+                "boundary to the other side. Return TRAVERSED when a crossing "
+                "through the named boundary is established. Return NOT_TRAVERSED "
+                "when subjects only approach, touch, strike, look through, wait "
+                "at, or remain on one side of the barrier. Return UNSPECIFIED "
+                "when RAW SCENE does not establish enough spatial information "
+                "to tell. Do not infer validity from whether the barrier is open, "
+                "closed, locked, broken, magical, or intact. Do not infer an "
+                "unseen route."
+            ),
+        },
+    ]
+
+
+def parse_director_barrier_traversal_observation(raw_result):
+    """Parse one strict barrier-traversal extraction."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"status"}:
+        raise ValueError("Barrier-traversal response must contain only status.")
+    status = candidate["status"]
+    if status not in {"TRAVERSED", "NOT_TRAVERSED", "UNSPECIFIED"}:
+        raise ValueError("Barrier-traversal response contains an invalid status.")
+    return status
+
+
 _DIRECTOR_TERMINAL_ACTION_RE = re.compile(
     r"\b(?:kill(?:s|ed|ing)?|destroy(?:s|ed|ing)?|defeat(?:s|ed|ing)?|"
     r"eliminat(?:e|es|ed|ing)|finish(?:es|ed|ing)?|resolv(?:e|es|ed|ing))\b",
@@ -25747,6 +25891,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     request1_barrier_binding = build_director_barrier_binding_contract(
         bundle.get("assigned_state_effects", [])
     )
+    request1_closed_boundary_contracts = build_director_closed_boundary_contracts(
+        bundle.get("opening_state", ""),
+        bundle.get("assigned_state_effects", []),
+    )
     if request1_topology_contracts and request1_base_messages:
         topology_lines = []
         for topology_contract in request1_topology_contracts:
@@ -25777,6 +25925,22 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 f"{request1_barrier_binding['state']}. Do not reinterpret it as "
                 "an unrelated door/gate/hatch elsewhere in the scene."
             )
+    if request1_closed_boundary_contracts and request1_base_messages:
+        closed_lines = [
+            f"- {item['barrier']} begins {item['state']} and MUST NOT be traversed "
+            "in this beat."
+            for item in request1_closed_boundary_contracts
+        ]
+        request1_base_messages[-1] = dict(request1_base_messages[-1])
+        request1_base_messages[-1]["content"] = (
+            f"{request1_base_messages[-1].get('content', '')}\n\n"
+            "AUTHORITATIVE CLOSED-BOUNDARY CONTRACT — Python-derived from "
+            "canonical opening state and current typed effects; obey exactly:\n"
+            + "\n".join(closed_lines)
+            + "\nApproaching, striking, or acting near a boundary is allowed. "
+            "Do not show any subject crossing through it unless CURRENT BEAT's "
+            "typed effects authorize that boundary/release transition."
+        )
     request1_messages = request1_base_messages
     request1_result = None
     raw_scene = ""
@@ -25829,6 +25993,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         )
         independent_completion = None
         barrier_topology_issues = []
+        barrier_traversal_issues = []
         terminal_target_issue = ""
         current_beat_for_completion = str(
             bundle.get("current_beat_text") or ""
@@ -25974,12 +26139,63 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     if barrier_topology_issues:
                         break
                 if not terminal_target_issue and not barrier_topology_issues:
+                    for traversal_index, boundary_contract in enumerate(
+                        request1_closed_boundary_contracts,
+                        start=1,
+                    ):
+                        traversal_metadata = {
+                            "run_id": run_id,
+                            "source_sha256": (run_config or {}).get("source_sha256"),
+                            "purpose": "director_barrier_traversal_extract",
+                            "use_beat_validation_settings": True,
+                            "segment": segment_number,
+                            "attempt": request1_attempt,
+                            "traversal_index": traversal_index,
+                            "conditioning_mode": conditioning_mode,
+                            "opening_state_sha256": bundle.get("opening_state_sha256"),
+                        }
+                        try:
+                            traversal_status = parse_director_barrier_traversal_observation(
+                                ask_llm(
+                                    build_director_barrier_traversal_messages(
+                                        boundary_contract["barrier"],
+                                        raw_scene,
+                                    ),
+                                    response_format=DIRECTOR_BARRIER_TRAVERSAL_RESPONSE_FORMAT,
+                                    history_metadata=traversal_metadata,
+                                )
+                            )
+                        except (TypeError, ValueError, json.JSONDecodeError) as error:
+                            barrier_traversal_issues.append(
+                                "barrier-traversal extractor returned unusable output: "
+                                + str(error)
+                            )
+                            break
+                        if traversal_status == "TRAVERSED":
+                            barrier_traversal_issues.append(
+                                f"{boundary_contract['barrier']} begins "
+                                f"{boundary_contract['state']} and current typed "
+                                "effects authorize no traversal through it."
+                            )
+                            break
+                if (
+                    not terminal_target_issue
+                    and not barrier_topology_issues
+                    and not barrier_traversal_issues
+                ):
                     break
-                print(
-                    "Director Request 1 barrier topology check failed: "
-                    + "; ".join(barrier_topology_issues),
-                    flush=True,
-                )
+                if barrier_topology_issues:
+                    print(
+                        "Director Request 1 barrier topology check failed: "
+                        + "; ".join(barrier_topology_issues),
+                        flush=True,
+                    )
+                if barrier_traversal_issues:
+                    print(
+                        "Director Request 1 closed-boundary traversal check failed: "
+                        + "; ".join(barrier_traversal_issues),
+                        flush=True,
+                    )
             else:
                 print(
                     "Director Request 1 independent completion check failed: "
@@ -26023,6 +26239,11 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         if barrier_topology_issues:
             completion_failures.append(
                 "barrier topology check: " + "; ".join(barrier_topology_issues)
+            )
+        if barrier_traversal_issues:
+            completion_failures.append(
+                "closed-boundary traversal check: "
+                + "; ".join(barrier_traversal_issues)
             )
         request1_feedback = (
             "RAW SCENE STRUCTURE ERROR: "
