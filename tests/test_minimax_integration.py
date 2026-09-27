@@ -1017,6 +1017,43 @@ class LmStudioIntegrationTests(unittest.TestCase):
         self.assertIn("original task", normalized[1]["content"])
         self.assertIn("correction", normalized[1]["content"])
 
+    def test_lm_message_normalizer_appends_optional_global_system_prompt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            append_path = os.path.join(directory, "append_system_prompt.txt")
+            with open(append_path, "w", encoding="utf-8") as handle:
+                handle.write("GLOBAL SYSTEM ADDITION")
+
+            with mock.patch.object(
+                minimax,
+                "APPEND_SYSTEM_PROMPT_FILE",
+                append_path,
+            ):
+                normalized = minimax.normalize_lm_studio_messages([
+                    {"role": "system", "content": "director"},
+                    {"role": "user", "content": "task"},
+                ])
+
+            self.assertEqual(
+                normalized[0]["content"],
+                "director\n\nGLOBAL SYSTEM ADDITION",
+            )
+            self.assertEqual(normalized[1]["content"], "task")
+
+    def test_lm_message_normalizer_ignores_missing_global_system_prompt_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            append_path = os.path.join(directory, "missing.txt")
+            with mock.patch.object(
+                minimax,
+                "APPEND_SYSTEM_PROMPT_FILE",
+                append_path,
+            ):
+                normalized = minimax.normalize_lm_studio_messages([
+                    {"role": "system", "content": "director"},
+                    {"role": "user", "content": "task"},
+                ])
+
+            self.assertEqual(normalized[0]["content"], "director")
+
     def test_append_prompt_history_appends_complete_message_batches(self):
         with tempfile.TemporaryDirectory() as directory:
             history_path = os.path.join(directory, "prompt_history.txt")
