@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-traversal-1652",
+  "kind": "llama_chat",
+  "started_at": 1790524956.5647068,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract barrier traversal only. Do not judge whether the scene is valid or physically possible. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nairlock hatch\n\nRAW SCENE\nThe creature comes through the airlock hatch into the cargo bay and lunges at the crew.\n\nClassify only whether RAW SCENE visibly establishes that any subject moves from one side of BARRIER through its boundary to the other side. Return TRAVERSED when a crossing through the named boundary is established. Return NOT_TRAVERSED when subjects only approach, touch, strike, look through, wait at, or remain on one side of the barrier. Return UNSPECIFIED when RAW SCENE does not establish enough spatial information to tell. Do not infer validity from whether the barrier is open, closed, locked, broken, magical, or intact. Do not infer an unseen route. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-or9i04xvitpmsg85hewnv",
+    "object": "chat.completion",
+    "created": 1790524956,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"TRAVERSED\"}",
+          "reasoning": "We need to parse the question.\n\nBarrier: \"airlock hatch\"\n\nRaw scene: \"The creature comes through the airlock hatch into the cargo bay and lunges at the crew.\"\n\nQuestion: Does it establish that any subject moves from one side of BARRIER through its boundary to the other side? The barrier is an airlock hatch. The raw scene says \"comes through\" meaning passes through the hatch, i.e., crosses the boundary.\n\nThus status should be TRAVERSED.\n\nReturn JSON only: {\"status\":\"TRAVERSED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 249,
+      "completion_tokens": 125,
+      "total_tokens": 374,
+      "completion_tokens_details": {
+        "reasoning_tokens": 108
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790524958.7098725,
+  "status": "ok"
+}
