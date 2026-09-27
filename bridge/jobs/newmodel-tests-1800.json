@@ -1,0 +1,11 @@
+{
+  "kind": "run_tests",
+  "job_id": "newmodel-tests-1800",
+  "code_branch": "new-model-test",
+  "tests": [
+    "tests/test_llm_prompt_pipeline.py",
+    "tests/test_forward_beat_validation.py",
+    "tests/test_acceptance_runner.py"
+  ],
+  "timeout_seconds": 1800
+}
