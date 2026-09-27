@@ -1459,3 +1459,13 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Commit `b8e5bb2501d581cdfab4e2873dff1b8486db8bb4` routes the extractor through the existing frozen validator-settings mechanism instead of passing internal validator settings directly to `ask_llm`.
 - This specifically avoids treating helper verbs as crossing authority while remaining generic for rooms, doors, gates, portals, shelters, airlocks, vehicles, and containment areas.
 - Focused mailbox regression/acceptance still needs a real local run before this checkpoint is considered accepted. Do not claim the Amy basement regression closed until that run proves Segment 2 leaves Amy on the authorized side while Will/Amber reach the basement.
+
+
+### 2026-09-26 — topology validator works; Director generation needed the contract up front
+
+- Fresh full acceptance `acceptance-1582` proved the new barrier-topology validator is catching the Amy basement error rather than accepting it. Segment 2 failed three Request-1 attempts: attempts 1 and 3 were rejected by the deterministic topology comparison because Amy ended in the basement; attempt 2 was rejected by the existing typed-effect completion verifier for the same unauthorized crossing.
+- This is a successful detection result but not yet an accepted end-to-end fix: repeated regeneration exhausted the 3-attempt Request-1 budget, so the Director generation prompt itself lacked enough explicit topology guidance.
+- The accepted Beat 2 wording included the ambiguous phrase that Amy “secures the door behind her.” Do not deterministically rewrite narrative prose to repair this. Canonical state/effects remain the authority.
+- Production commit `580f2d888925b91eb20ecf9c95df26f736339db4` now injects the Python-derived final-side contract into Director Request 1 before generation. Example shape: named subjects with authorized effects MUST end at the destination; a known unassigned subject proven by opening state to start elsewhere MUST NOT end there. Helper/mover verbs cannot override the contract, though temporary crossing is allowed if final placement matches.
+- The later topology extractor and Python comparison remain as enforcement. This gives three layers: state-derived generation constraint, narrow RAW-scene extraction, deterministic Python validation.
+- Next checkpoint: regression suite, then fresh full Amy acceptance. Success requires Segment 2 to generate a valid scene with Will/Amber in the basement and Amy on the non-basement side without exhausting retries.
