@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-source-authority-1591",
+  "kind": "llama_chat",
+  "started_at": 1790478069.6906989,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes ASSIGNED SOURCE. Judge meaning, not wording. Return JSON only with valid and issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nAri serves breakfast to Sam.\n\nDERIVED BEAT — staging only; cannot add stricter requirements\nAri passes a bowl directly into Sam's hands.\n\nAUTHORITATIVE OPENING STATE\nN/A\n\nASSIGNED TYPED END STATE\n[]\n\nRAW SCENE\nAri places the finished bowl on the table in front of Sam, who immediately starts eating.\n\nRules: SOURCE defines required actions/results/roles. DERIVED BEAT cannot add a stricter transfer method. For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer. Work merely made FOR someone can finish without delivery unless SOURCE requires delivery; honor explicit later pickup/storage. Typed end state governs durable tracked continuity. Incidental consumables, plates, cups, and ordinary newly introduced serving props are not persistent inventory merely because a known subject holds them at the end.\nReturn JSON with boolean valid and string issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 450,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nyjc3n1d3jj2qksuw9iyj",
+    "object": "chat.completion",
+    "created": 1790478069,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to check if RAW SCENE completes ASSIGNED SOURCE.\n\nASSIGNED SOURCE: \"Ari serves breakfast to Sam.\"\n\nSo source requires Ari serves breakfast to Sam. That means Ari must serve breakfast (some action). The derived beat says staging only; cannot add stricter requirements. Derived beat: \"Ari passes a bowl directly into Sam's hands.\" So the beat is that Ari passes a bowl directly into Sam's hands.\n\nBut we have derived beat, but source requires serving breakfast to Sam. Does passing a bowl satisfy? Yes if bowl contains breakfast. But does it need hand-to-hand transfer? Derived beat says \"passes a bowl directly into Sam's hands\" which is hand-to-hand. The raw scene: \"Ari places the finished bowl on the table in front of Sam, who immediately starts eating.\" So Ari places bowl on table; not passing to Sam's hands. That might be less strict than derived beat? Derived beat says passes a bowl directly into Sam's hands. Raw scene is placing bowl on table. That's not hand-to-hand transfer. The rule: \"For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer.\" But source doesn't require hand-to-hand; derived beat does? Derived beat says passes a bowl directly into Sam's hands. That is stricter than just placing on table. So raw scene fails to meet derived beat.\n\nBut the question: \"Check whether RAW SCENE completes ASSIGNED SOURCE.\" The assigned source requires Ari serves breakfast to Sam. Does raw scene serve breakfast? Yes, by placing bowl on table and Sam eats. But does it satisfy derived beat? Derived beat is staging only; cannot add stricter requirements. So derived beat says passes a bowl directly into Sam's hands. That is more strict than just placing on table. Since derived beat can't be stricter than source, but raw scene doesn't meet that. So it's not valid.\n\nAlso typed end state: [] means no durable tracked continuity? The typed end state empty indicates nothing persistent? But the bowl might be consumed; after Sam eats, bowl may be gone. That's fine.\n\nThus RAW SCENE does not complete ASSIGNED SOURCE because it fails derived beat requirement",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 288,
+      "completion_tokens": 450,
+      "total_tokens": 738,
+      "completion_tokens_details": {
+        "reasoning_tokens": 447
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790478076.6453476,
+  "status": "ok"
+}
