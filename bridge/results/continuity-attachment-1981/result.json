@@ -1,0 +1,55 @@
+{
+  "job_id": "continuity-attachment-1981",
+  "kind": "llama_chat",
+  "started_at": 1790551653.1372125,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one candidate continuity attachment. Return JSON only. ATTACHED = the object/substance is physically attached, embedded, worn, strapped, clipped, stuck, coated, wrapped, or otherwise fixed to the named Subject at the final frame. NOT_ATTACHED = the Subject merely holds, carries, touches, supports, or is near the object, or the object is attached to something else. UNSPECIFIED = the text does not establish whether it is attached. Judge only the supplied final-frame text."
+      },
+      {
+        "role": "user",
+        "content": "SUBJECT: Priya\nCANDIDATE ATTACHED OBJECT: clipboard\nFINAL-FRAME TEXT: Priya carries a clipboard under one arm.\n\nReturn {\"status\":\"ATTACHED|NOT_ATTACHED|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-4ahuydj6gnd7m61cy2f4l",
+    "object": "chat.completion",
+    "created": 1790551653,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NOT_ATTACHED\"}",
+          "reasoning": "We need to judge whether the clipboard is attached to Priya. The final frame text says \"Priya carries a clipboard under one arm.\" That means she holds it, but it's not physically attached (like strapped or clipped). So NOT_ATTACHED.\n\nReturn JSON: {\"status\":\"NOT_ATTACHED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 220,
+      "completion_tokens": 77,
+      "total_tokens": 297,
+      "completion_tokens_details": {
+        "reasoning_tokens": 60
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790551654.3290195,
+  "status": "ok"
+}
