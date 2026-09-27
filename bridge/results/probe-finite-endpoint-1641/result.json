@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-finite-endpoint-1641",
+  "kind": "llama_chat",
+  "started_at": 1790482525.456767,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify finite-activity completion only. Do not judge overall beat correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nNia is packing supplies for the trip.\n\nCANDIDATE BEAT\nNia places food into the bag and keeps packing.\n\nClassify only the finite-activity endpoint. Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent. Otherwise, when CURRENT JOB assigns a finite activity/task, return COMPLETE only if CANDIDATE BEAT shows a natural observable completion/result for that activity in this beat. Return ONGOING if it only shows the activity underway, continuing, approaching completion, or partly complete. Progressive source wording such as 'is cooking' or 'is repairing' can still describe a finite task and does not by itself make the job ongoing. Do not decide whether the beat is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6lcya21e43n0x6ujec711ji",
+    "object": "chat.completion",
+    "created": 1790482525,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ONGOING\"}",
+          "reasoning": "We need to classify finite-activity completion only.\n\nCURRENT JOB: \"Nia is packing supplies for the trip.\"\n\nThis indicates an ongoing process of packing supplies, but it's a finite activity (packing). The job says she is packing supplies. That could be ongoing or maybe finished? But we have no explicit end. It's just that she's packing supplies; likely ongoing.\n\nCANDIDATE BEAT: \"Nia places food into the bag and keeps packing.\"\n\nThis beat shows her placing food into the bag, which is part of packing supplies. She also continues packing (keeps packing). So it's still ongoing activity. The beat doesn't show completion of the entire job. It just shows a step.\n\nThus classification: ONGOING.\n\nReturn JSON {\"status\":\"ONGOING\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 266,
+      "completion_tokens": 171,
+      "total_tokens": 437,
+      "completion_tokens_details": {
+        "reasoning_tokens": 155
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790482528.3247561,
+  "status": "ok"
+}
