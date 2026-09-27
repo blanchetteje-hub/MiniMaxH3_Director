@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action384-1922",
+  "kind": "llama_chat",
+  "started_at": 1790549745.2236905,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nAsha picks up the lantern and lights its wick.\n\nFINAL H3 MICRO-ACTION:\nAsha picks up the lantern.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2398a6q79f9ozxs4mhpkw",
+    "object": "chat.completion",
+    "created": 1790549745,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"OMITTED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"Asha picks up the lantern and lights its wick.\" Final H3 micro-action: \"Asha picks up the lantern.\"\n\nSo final omitted lighting action. The visible/audible action of picking up remains, but lighting is missing. So status = OMITTED? Wait definition: PRESERVED if same visible/audible action and material result remain even if wording differs. Here the action of picking up remains; but the lighting action is absent. Material result: lantern lit vs not lit. The final H3 doesn't mention lighting, so that result is omitted. So status = OMITTED.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 203,
+      "completion_tokens": 148,
+      "total_tokens": 351,
+      "completion_tokens_details": {
+        "reasoning_tokens": 131
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790549747.3934193,
+  "status": "ok"
+}
