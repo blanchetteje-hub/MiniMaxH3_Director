@@ -1,0 +1,54 @@
+{
+  "job_id": "source-action-1533",
+  "kind": "llama_chat",
+  "started_at": 1790468156.5586615,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge whether RAW visibly performs the action assigned by SOURCE. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE:\nMara is resting while the machine continues running.\n\nRAW:\nMara rests beside the running machine.\n\nRULES\n1. If SOURCE assigns an action to happen now, RAW must visibly perform that action in this segment.\n2. A finished/resulting state by itself does not prove the assigned action happened now.\n3. RAW may use the resulting state after it visibly performs the action.\n4. If SOURCE explicitly describes an ongoing/repeated condition, one visible ongoing instance may satisfy it.\nReturn {\"valid\":boolean,\"issue\":string}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-k2hnpzq5x74gwqar1uugb",
+    "object": "chat.completion",
+    "created": 1790468156,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\" \"}",
+          "reasoning": "We need to judge if RAW visibly performs the action assigned by SOURCE.\n\nSOURCE: \"Mara is resting while the machine continues running.\"\n\nSo action: Mara rests. The phrase \"is resting\" indicates an ongoing state, but it's a verb describing current activity. According to rule 1: If SOURCE assigns an action to happen now, RAW must visibly perform that action in this segment. So we need visible rest.\n\nRAW: \"Mara rests beside the running machine.\"\n\nThis shows Mara rests (verb). It also says she is resting beside the machine which continues running? The machine continues running - but does RAW mention machine running? It says \"running machine\" implying it's running. So both conditions satisfied: Mara rests, machine runs. So valid.\n\nCheck rule 2: A finished/resulting state by itself does not prove action happened now. But here we have present tense rest; that's an ongoing action. It's visible. Good.\n\nThus valid true. Issue empty string? Provide issue if any. None. Return JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 204,
+      "completion_tokens": 223,
+      "total_tokens": 427,
+      "completion_tokens_details": {
+        "reasoning_tokens": 205
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790468159.7554579,
+  "status": "ok"
+}
