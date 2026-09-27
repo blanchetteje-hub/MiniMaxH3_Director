@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-finite-endpoint-1633",
+  "kind": "llama_chat",
+  "started_at": 1790482478.4368508,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify finite-activity completion only. Do not judge overall beat correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nMara is cooking breakfast for Eli.\n\nCANDIDATE BEAT\nMara stirs eggs in the pan while Eli waits.\n\nClassify only the finite-activity endpoint. Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent. Otherwise, when CURRENT JOB assigns a finite activity/task, return COMPLETE only if CANDIDATE BEAT shows a natural observable completion/result for that activity in this beat. Return ONGOING if it only shows the activity underway, continuing, approaching completion, or partly complete. Progressive source wording such as 'is cooking' or 'is repairing' can still describe a finite task and does not by itself make the job ongoing. Do not decide whether the beat is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ftvx5dnnx2h67lat64fmz3",
+    "object": "chat.completion",
+    "created": 1790482478,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to classify finite-activity completion only.\n\nCURRENT JOB: \"Mara is cooking breakfast for Eli.\"\n\nThis assigns an activity: cooking breakfast. It's a finite task? Cooking breakfast is a finite activity, but it's ongoing until finished. The job says \"is cooking\" which indicates ongoing process. But the instruction: Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent. Otherwise, when CURRENT JOB assigns a finite activity/task, return COMPLETE only if CANDIDATE BEAT shows a natural observable completion/result for that activity in this beat. Return ONGOING if it only shows the activity underway, continuing, approaching completion, or partly complete.\n\nSo \"Mara is cooking breakfast\" indicates ongoing process. So we should classify as ONGOING? But check: The job says \"is cooking breakfast\". That implies an ongoing action. It's a finite task but currently in progress. According to rule: Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent. So \"is cooking\" is not exactly those words? It says \"is cooking breakfast\". That indicates the action is happening now; it's a finite activity but currently underway. The rule: If job assigns a finite activity/task, return COMPLETE only if beat shows completion/result for that activity in this beat. Return ONGO",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 266,
+      "completion_tokens": 300,
+      "total_tokens": 566,
+      "completion_tokens_details": {
+        "reasoning_tokens": 297
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790482483.3169186,
+  "status": "ok"
+}
