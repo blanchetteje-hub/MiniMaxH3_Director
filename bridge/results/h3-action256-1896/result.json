@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action256-1896",
+  "kind": "llama_chat",
+  "started_at": 1790548811.9619646,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nSera places the glowing crystal into the pedestal; the portal ignites.\n\nFINAL H3 MICRO-ACTION:\nSera sets the luminous crystal in the pedestal and the portal flares to life.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-es9jrf3usikc0o4mukurcw",
+    "object": "chat.completion",
+    "created": 1790548811,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"PRESERVED\"}",
+          "reasoning": "We need compare RAW micro-action with final H3 micro-action. The raw: \"Sera places the glowing crystal into the pedestal; the portal ignites.\" Final: \"Sera sets the luminous crystal in the pedestal and the portal flares to life.\"\n\nCheck if same visible/audible action and material result remain, even if wording differs.\n\nAction: Sera placing crystal into pedestal. In final: Sera sets the luminous crystal in the pedestal. That's essentially same action (placing). Material result: The portal ignites vs portal flares to life. Both indicate portal lighting up. So PRESERVED. Return JSON with status \"PRESERVED\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 217,
+      "completion_tokens": 149,
+      "total_tokens": 366,
+      "completion_tokens_details": {
+        "reasoning_tokens": 132
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790548814.1527982,
+  "status": "ok"
+}
