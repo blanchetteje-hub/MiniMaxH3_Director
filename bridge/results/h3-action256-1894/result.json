@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action256-1894",
+  "kind": "llama_chat",
+  "started_at": 1790548802.111361,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nThe pilot pulls the emergency lever; the landing gear deploys.\n\nFINAL H3 MICRO-ACTION:\nThe pilot reaches for the emergency lever.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2n5tg3ot352mrxqh6o1ddi",
+    "object": "chat.completion",
+    "created": 1790548802,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CHANGED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"The pilot pulls the emergency lever; the landing gear deploys.\" Final H3 micro-action: \"The pilot reaches for the emergency lever.\"\n\nSo in final, he only reaches for lever, not pulling it. The action of deploying landing gear is missing. So it's omitted? Actually the lever reaching is present but the deployment isn't. The question: PRESERVED = same visible/audible action and material result remain. Here the lever pull (action) and landing gear deploy (result). Final only has reaching for lever, not pulling or deploying. So the action of pulling lever is missing; also the result of landing gear deploy is missing. So it's omitted? The lever reach is a different action: he reaches but doesn't pull. That could be considered CHANGED because the material action changed from pulling to just reaching. Also the result (landing gear) not present.\n\nThus status = \"CHANGED\". Return JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 206,
+      "completion_tokens": 208,
+      "total_tokens": 414,
+      "completion_tokens_details": {
+        "reasoning_tokens": 192
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790548805.1414862,
+  "status": "ok"
+}
