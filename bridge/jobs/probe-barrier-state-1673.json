@@ -1,0 +1,23 @@
+{
+  "kind": "llama_chat",
+  "job_id": "probe-barrier-state-1673",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 300,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Extract final barrier state only. Do not judge story validity. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "BARRIER\nairlock hatch\n\nRAW SCENE\nThe hatch seals with a heavy clunk and remains sealed.\n\nClassify only the final visible/established state of BARRIER at the END of RAW SCENE. Allowed values: LOCKED, CLOSED, OPEN, BROKEN, DESTROYED, UNSPECIFIED. LOCKED includes locked, sealed, barred, or bolted. CLOSED means shut/closed without an established lock. OPEN means open/passable through that barrier. BROKEN means damaged/breached but the barrier still physically exists. DESTROYED means the barrier is gone or no longer functions as a barrier. UNSPECIFIED means RAW SCENE does not establish enough information. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+    }
+  ],
+  "expected": "LOCKED"
+}
