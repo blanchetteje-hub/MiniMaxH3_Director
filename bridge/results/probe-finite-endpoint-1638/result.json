@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-finite-endpoint-1638",
+  "kind": "llama_chat",
+  "started_at": 1790482508.369007,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify finite-activity completion only. Do not judge overall beat correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nSera is painting a portrait for Dain.\n\nCANDIDATE BEAT\nSera continues adding color to the unfinished portrait.\n\nClassify only the finite-activity endpoint. Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent. Otherwise, when CURRENT JOB assigns a finite activity/task, return COMPLETE only if CANDIDATE BEAT shows a natural observable completion/result for that activity in this beat. Return ONGOING if it only shows the activity underway, continuing, approaching completion, or partly complete. Progressive source wording such as 'is cooking' or 'is repairing' can still describe a finite task and does not by itself make the job ongoing. Do not decide whether the beat is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-sqk7y5s2pzzp9dt6xn29b",
+    "object": "chat.completion",
+    "created": 1790482508,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to classify finite-activity completion only.\n\nCURRENT JOB: \"Sera is painting a portrait for Dain.\"\n\nThis indicates an ongoing activity (painting). The phrase \"is painting\" suggests continuous, but it's still a finite task. But the job description says Sera is painting a portrait for Dain. That could be considered ongoing or not? According to instructions: Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent.\n\n\"Painting\" itself is a finite activity but the phrase \"is painting\" indicates it's currently happening. But does that count as ongoing? The instruction says: If CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent. So \"painting\" isn't one of those words; it's just a verb in present continuous. That might still be considered ongoing but not necessarily the word 'continuing'. But they say progressive source wording like 'is cooking' can still describe a finite task and does not by itself make the job ongoing.\n\nThus we treat it as finite activity, not NOT_APPLICABLE. So we need to decide between COMPLETE or ONGOING based on CANDIDATE BEAT: \"Sera continues adding color to the unfinished portrait.\"\n\nThis beat shows Sera continuing adding color to an unfinished portrait. That indicates she is still working; it's ongoing. It hasn't finished painting",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 266,
+      "completion_tokens": 300,
+      "total_tokens": 566,
+      "completion_tokens_details": {
+        "reasoning_tokens": 297
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790482513.185009,
+  "status": "ok"
+}
