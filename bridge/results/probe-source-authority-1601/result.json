@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-source-authority-1601",
+  "kind": "llama_chat",
+  "started_at": 1790478888.7488859,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Check whether RAW SCENE completes ASSIGNED SOURCE. Judge meaning, not wording. Return JSON only with valid and issue."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nRin prepares medicine for Ana and gives it to her.\n\nDERIVED BEAT — staging only; cannot add stricter requirements\nRin places the dose directly in Ana's hand.\n\nAUTHORITATIVE OPENING STATE\nN/A\n\nASSIGNED TYPED END STATE\n[]\n\nRAW SCENE\nRin prepares the dose, sets it in front of Ana, and Ana takes it.\n\nRules: SOURCE defines required actions/results/roles. DERIVED BEAT cannot add a stricter transfer method. For consumables or explicit hand-offs, visible receipt/service/access is enough unless SOURCE itself requires hand-to-hand transfer. Work merely made FOR someone can finish without delivery unless SOURCE requires delivery; honor explicit later pickup/storage. Typed end state governs durable tracked continuity. Incidental consumables, plates, cups, and ordinary newly introduced serving props are not persistent inventory merely because a known subject holds them at the end.\nReturn JSON with boolean valid and string issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 450,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-xnymlh2jdbdoskoahjbe0q",
+    "object": "chat.completion",
+    "created": 1790478888,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to check if RAW SCENE completes ASSIGNED SOURCE. Source: \"Rin prepares medicine for Ana and gives it to her.\" Derived beat says Rin places dose directly in Ana's hand. So source requires giving medicine to Ana, presumably hand-to-hand transfer? The derived beat says place dose directly in Ana's hand. That is a direct hand-off.\n\nRaw scene: \"Rin prepares the dose, sets it in front of Ana, and Ana takes it.\" This sets it in front of Ana (not necessarily handing). Then Ana takes it. Does that count as giving to her? The source says gives it to her. Derived beat says place directly in hand. Raw scene places in front then she takes it. That is a transfer but not direct placement into hand by Rin; it's placed in front and Ana picks up. Is that acceptable? Source requires give, derived beat cannot add stricter method: so if source requires giving (hand-to-hand), raw must have hand-to-hand. But the derived beat says place directly in hand, which is a stricter requirement than just \"give\"? Actually placing dose directly into her hand is a specific way of giving; it's still giving but more precise. The rule: DERIVED BEAT cannot add stricter transfer method. So if source requires give (hand-to-hand), derived beat places it directly in Ana's hand, which is also hand-to-hand. But raw scene sets it in front and she takes it. That might be considered a different method? She picks up from front; not necessarily placed into her hand by Rin. The transfer occurs when she takes it. Is that giving? It could be seen as giving but not placing directly into hand. Does source require direct placement? Source says \"gives it to her.\" That's ambiguous: could mean handing over or just offering. Derived beat clarifies it's placed in hand, so that's a stricter method than just give. Raw scene doesn't match that derived beat; it places front and she takes. So raw scene fails to meet the derived beat's requirement.\n\nThus invalid. Issue: \"Dose not directly placed into Ana's hand as required by source/derived beat.\" Also typed end state is empty, so no",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 292,
+      "completion_tokens": 450,
+      "total_tokens": 742,
+      "completion_tokens_details": {
+        "reasoning_tokens": 447
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790478895.665081,
+  "status": "ok"
+}
