@@ -1627,3 +1627,15 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Also queued focused intact-moving-barrier probes `1713-1718`; these are supplemental and should all classify OPEN.
 - Acceptance checkpoint: Beat 2 must identify the generic `door` as the basement boundary before Director generation. If that holds, continue to the next earliest demonstrated mismatch rather than adding more barrier rules.
 
+### 2026-09-27 — acceptance 1712 fixes Beat-2 binding; next failure is unnamed destination crossing
+
+- `tests-1711` passed **100/100**.
+- Focused intact-moving-barrier probes `1713-1718` were **6/6 OPEN**, confirming the revised barrier-state wording correctly distinguishes an intact moved/open barrier from DESTROYED.
+- `acceptance-1712` fixed the upstream generic-door mistake: Beat 2 now explicitly locks the **basement door**, and Director Segment 2 preserves Will/Amber inside while Amy remains outside.
+- The next earliest hard failure is Beat/Segment 5. Generated Beat 5 says Amy decapitates a zombie and sends its head **down the staircase to the basement floor** while the basement boundary remains canonically locked.
+- The beat coherence checker caught one version of this violation on attempt 2 but accepted a retry containing the same protected-destination crossing. Director's current closed-boundary traversal extractor also misses it because RAW never explicitly names the basement door.
+- This is still the same topology responsibility, not a reason for a new semantic stage. The observation contract needs to detect crossing of the **bound destination boundary** even when the barrier noun is omitted.
+- Queued 20 generic destination-boundary traversal probes `1719-1738` across basements, shelters, vaults, cargo bays, courtyards, labs, garages, engine rooms, bunkers, and archives.
+- Probe contract supplies both `BOUND BARRIER` and `PROTECTED DESTINATION`, then asks only whether any physical thing crosses that destination boundary during RAW: `TRAVERSED | NOT_TRAVERSED | UNSPECIFIED`. Explicit destination entry/exit counts even when the barrier noun is absent. Unseen route inference remains forbidden.
+- Do not wire until `1719-1738` are graded. If stable, generalize the existing closed-boundary traversal extractor to include destination-boundary crossing rather than creating another validator stage.
+
