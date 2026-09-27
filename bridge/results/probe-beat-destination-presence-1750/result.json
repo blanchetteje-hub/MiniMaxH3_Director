@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beat-destination-presence-1750",
+  "kind": "llama_chat",
+  "started_at": 1790540153.3387847,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract subject destination presence only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\nbasement\n\nNAMED SUBJECT\nAmy\n\nCANDIDATE BEAT\nAmy retrieves her pistol and katana from a kitchen cabinet, then equips them.\n\nClassify only whether CANDIDATE BEAT establishes that NAMED SUBJECT is physically at/inside DESTINATION at any point during the beat. Allowed values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED. AT_DESTINATION includes entering, standing in, acting in, or explicitly being inside DESTINATION even if the subject later leaves. NOT_AT_DESTINATION means the beat explicitly keeps the subject outside/elsewhere and does not place the subject inside. Reaching through an opening while the subject's body remains outside is NOT_AT_DESTINATION. UNSPECIFIED means the subject's relation to DESTINATION is not established clearly enough. Do not decide whether the placement is allowed. Return JSON: {\"relation\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hsfuw963gytlnckw1u8",
+    "object": "chat.completion",
+    "created": 1790540153,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"UNSPECIFIED\"}",
+          "reasoning": "We need to determine if Amy physically at/inside basement during beat.\n\nBeat: \"Amy retrieves her pistol and katana from a kitchen cabinet, then equips them.\"\n\nWhere is kitchen? Not specified but likely in house; basement could be part of house. But relation not clear. The beat doesn't mention basement explicitly. So we don't know if she is inside basement or elsewhere. She might retrieve items from kitchen cabinet (kitchen maybe upstairs). No mention of basement.\n\nThus relation: UNSPECIFIED. Return JSON {\"relation\":\"UNSPECIFIED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 270,
+      "completion_tokens": 126,
+      "total_tokens": 396,
+      "completion_tokens_details": {
+        "reasoning_tokens": 109
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790540155.5514889,
+  "status": "ok"
+}
