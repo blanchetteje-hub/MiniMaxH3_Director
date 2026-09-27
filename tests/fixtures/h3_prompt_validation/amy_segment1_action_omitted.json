@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "label": "acceptance-1774 segment 1 wardrobe reconciliation action-loss regression",
+  "segment_number": 1,
+  "duration": 8,
+  "raw_scene": "At 00:00.000, Amy, wearing a tight black tank top and denim jeans, flips eggs in a skillet on the stove.\nAt 00:02.000, Eggs land on a plate; Amy places the plate on the counter.\nAt 00:04.000, Will sits at the kitchen table with a plate of eggs and takes a bite; Amber does the same.\nAt 00:06.000, Amy looks toward the table, watching Will and Amber eat.\nAt 00:07.500, Amy smiles while they continue eating.\nEnd continuity state: Amy watches Will and Amber eat eggs at the kitchen table.",
+  "final_h3_prompt": "subject_definitions: <Subject 1> is Amy, a woman shown in <Picture 1>. <Picture 1> defines Amy's facial identity, facial structure, hair, clothing, body proportions, and distinguishing features.\n<Subject 2> is Will, a 10-year-old boy.\n<Subject 3> is Amber, a 14-year-old girl.\n\ndetailed_description: [Shot 1]\n\nAt 00:00.000, Amy, wearing black tank top and denim jeans.\n\nAt 00:02.000, Eggs land on a plate; Amy places the plate on the counter.\n\nAt 00:04.000, Will sits at the kitchen table with a plate of eggs and takes a bite; Amber does the same.\n\nAt 00:06.000, Amy looks toward the table, watching Will and Amber eat.\n\nAt 00:07.500, Amy smiles while they continue eating.\n\noverall_soundscape: Sizzling of eggs, clinking of plates, subtle kitchen hum, munching sounds\n\nnon_diegetic_music: Soft piano\n\nSPOKEN DIALOGUE: None. No intelligible spoken words, vocalized language, or singing occur in this segment.",
+  "authority": {
+    "assigned_source": "Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.",
+    "current_beat": "Amy cooks breakfast in a kitchen while wearing a tight black tank top and denim jeans, watching Will and Amber eat the eggs.",
+    "opening_state": "",
+    "assigned_state_effects": [
+      {
+        "op": "set_clothing",
+        "entity": "Amy",
+        "slot": "upper",
+        "item": "black tank top",
+        "damage": "none"
+      },
+      {
+        "op": "set_clothing",
+        "entity": "Amy",
+        "slot": "lower",
+        "item": "denim jeans",
+        "damage": "none"
+      },
+      {
+        "op": "set_location",
+        "entity": "Amy",
+        "value": "home"
+      }
+    ],
+    "subject_definitions": "<Subject 1> is Amy, a woman shown in <Picture 1>.\n<Subject 2> is Will, a 10-year-old boy.\n<Subject 3> is Amber, a 14-year-old girl."
+  },
+  "expected": {
+    "action_preservation_valid": false
+  }
+}
