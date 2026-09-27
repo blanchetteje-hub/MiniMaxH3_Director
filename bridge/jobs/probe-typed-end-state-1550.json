@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 600,
+  "timeout_seconds": 600,
+  "job_id": "probe-typed-end-state-1550",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+    },
+    {
+      "role": "user",
+      "content": "OPENING STATE\nIvo starts in the lab.\n\nASSIGNED SOURCE\nIvo checks the roof access camera.\n\nASSIGNED TYPED END STATE\n[]\n\nRAW SCENE\nIvo climbs the stairs and ends standing on the roof.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+    }
+  ]
+}
