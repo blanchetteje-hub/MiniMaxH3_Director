@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-target-1620",
+  "kind": "llama_chat",
+  "started_at": 1790481234.9036527,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe mage resolves the curse.\n\nRAW SCENE\nThe curse has already lifted and the villagers are free. The mage repeats the final chant.\n\nSOURCE assigns a terminal action. Inspect the target of that newly assigned action immediately BEFORE the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if the target/process is still active, intact enough to resolve, or otherwise unresolved; ALREADY_TERMINAL if it is already dead, a corpse, severed remnant, destroyed, defeated, finished, eliminated, or resolved; UNSPECIFIED if RAW establishes neither. Do not decide whether the scene is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-n7xq51bcoaee6tk1dwmdz",
+    "object": "chat.completion",
+    "created": 1790481234,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to extract terminal-target pre-action status only.\n\nThe source assigns a terminal action. Inspect target of that newly assigned action immediately before the terminal action begins. Return exactly one status: ACTIVE_OR_UNRESOLVED if still active, intact enough to resolve; ALREADY_TERMINAL if already dead etc.; UNSPECIFIED if RAW establishes neither.\n\nWe have \"ASSIGNED SOURCE The mage resolves the curse.\" So source says mage resolves the curse. That is a terminal action? It might be that the mage's action of resolving the curse is terminal (the curse). But we need to inspect target of that newly assigned action immediately before it begins. Target: the curse? Or maybe the villagers? Let's parse.\n\nThe source assigns a terminal action: \"The mage resolves the curse.\" So the action is \"resolve the curse\". The target is likely the curse itself, or perhaps the villagers (the curse's effect). But we need to inspect status of that target before the action begins. RAW SCENE says: \"The curse has already lifted and the villagers are free. The mage repeats the final chant.\" So in RAW scene, the curse has already lifted. That means the curse is resolved? Or maybe it's still present but lifted? If it has lifted, then the curse is no longer active; it's resolved.\n\nThus before the action begins (the mage resolves the curse), the target \"curse\" is already terminal: it's resolved/lifted. So status should be ALREADY",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 229,
+      "completion_tokens": 300,
+      "total_tokens": 529,
+      "completion_tokens_details": {
+        "reasoning_tokens": 297
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790481239.6896613,
+  "status": "ok"
+}
