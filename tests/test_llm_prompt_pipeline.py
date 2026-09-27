@@ -679,6 +679,27 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("must visibly perform that action in this segment", prompt)
         self.assertIn("existing result or aftermath alone is insufficient", prompt)
 
+    def test_director_timestamp_range_rejects_invalid_segment_time(self):
+        self.assertTrue(
+            minimax._director_timestamp_range_errors(
+                "At 00:200.000, Amy moves.",
+                segment_seconds=8,
+            )
+        )
+        self.assertTrue(
+            minimax._director_timestamp_range_errors(
+                "At 01:00.000, Amy moves.",
+                segment_seconds=8,
+            )
+        )
+        self.assertEqual(
+            minimax._director_timestamp_range_errors(
+                "At 00:07.999, Amy moves.",
+                segment_seconds=8,
+            ),
+            [],
+        )
+
     def test_completion_prompt_preserves_equipped_readiness_items(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Mara uses the staff to block one strike.",
