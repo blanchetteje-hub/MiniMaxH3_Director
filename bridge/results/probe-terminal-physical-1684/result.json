@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-physical-1684",
+  "kind": "llama_chat",
+  "started_at": 1790527289.786873,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nMara kills Zombie3.\n\nAUTHORITATIVE OPENING STATE\nZombie3 is missing a forearm but lunges toward Mara.\n\nRAW SCENE\nMara raises the katana.\n\nTreat AUTHORITATIVE OPENING STATE as already true at 00:00.000 unless RAW SCENE visibly changes it. SOURCE assigns a terminal action such as killing, destroying, defeating, eliminating, finishing, or resolving a target/process. Inspect the target of that newly assigned action at the moment immediately BEFORE the terminal action begins in RAW SCENE. Return status ACTIVE_OR_UNRESOLVED if RAW establishes the target/process still needs the specific terminal result assigned by SOURCE. Judge terminal status relative to that assigned action: for kill, already dead is terminal. Treat a corpse, an already detached/severed head, a decapitated body, or clearly lifeless remains as already dead even when the word 'dead' is not used; RAW calling those remains a zombie/body/torso does not make the target active again. For destroy, already destroyed is terminal; for defeat/eliminate, already neutralized, incapacitated, restrained, or otherwise no longer an active opponent is terminal; for finish/complete, already complete is terminal; for resolve, already resolved is terminal. Return ALREADY_TERMINAL when RAW establishes that assigned terminal result was already true before the action begins. Return UNSPECIFIED only when RAW does not establish either. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-evh91v3bfzfy8yj98cth7o",
+    "object": "chat.completion",
+    "created": 1790527289,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to parse the scenario.\n\nASSIGNED SOURCE: \"Mara kills Zombie3.\"\n\nAUTHORITATIVE OPENING STATE: \"Zombie3 is missing a forearm but lunges toward Mara.\" So at 00:00, Zombie3 exists and lunge. It's missing a forearm but still alive presumably.\n\nRAW SCENE: \"Mara raises the katana.\"\n\nWe treat AUTHORITATIVE OPENING STATE as true unless RAW changes it. The raw scene only says Mara raises the katana; no mention of Zombie3's status change. So at moment immediately before terminal action begins (which is kill), we inspect target: Zombie3.\n\nIs Zombie3 still alive? Yes, missing forearm but lunges toward Mara indicates active opponent. Not dead or neutralized. So it's ACTIVE_OR_UNRESOLVED relative to kill. The assigned action kills Zombie3; the target needs that result. It's not yet killed. So status is ACTIVE_OR_UNRESOLVED.\n\nReturn JSON: {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 400,
+      "completion_tokens": 229,
+      "total_tokens": 629,
+      "completion_tokens_details": {
+        "reasoning_tokens": 209
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790527293.4734468,
+  "status": "ok"
+}
