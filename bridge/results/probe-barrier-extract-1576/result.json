@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-extract-1576",
+  "kind": "llama_chat",
+  "started_at": 1790472191.7768774,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier-side placement only. Do not validate story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\nairlock chamber\n\nNAMED SUBJECTS\nDax; Mira\n\nRAW TEXT\nMira enters the airlock chamber. Dax is still outside the threshold.\n\nFor each named subject, classify only where that subject is at the END of the text relative to DESTINATION.\nAllowed relation values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED.\nUse UNSPECIFIED if the text does not establish the final side. Temporary entry does not count if the subject returns before the end. Do not decide whether the scene is valid. Do not infer that a helper follows someone unless the text establishes it.\nReturn JSON only with one key subjects. subjects is an array containing one object per named subject, each with exactly entity and relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-bewqi55r49774kp6nw8kl",
+    "object": "chat.completion",
+    "created": 1790472191,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"subjects\":[{\"entity\":\"Dax\",\"relation\":\"NOT_AT_DESTINATION\"},{\"entity\":\"Mira\",\"relation\":\"AT_DESTINATION\"}]}",
+          "reasoning": "We need to extract final barrier-side placement relative to DESTINATION (airlock chamber). Named subjects: Dax; Mira.\n\nText: \"Mira enters the airlock chamber. Dax is still outside the threshold.\"\n\nAt end of text: after last sentence, we have \"Dax is still outside the threshold.\" So Dax remains outside. Mira entered earlier and no mention of leaving. So at end, Mira is inside airlock chamber (destination). Dax not at destination.\n\nThus relations:\nMira: AT_DESTINATION\nDax: NOT_AT_DESTINATION\n\nReturn JSON with subjects array containing objects {entity:\"Mira\", relation:\"AT_DESTINATION\"} etc.\n\nCheck format: exactly key \"subjects\". Array of one object per named subject. Each has entity and relation keys. Order maybe as given? Probably order Dax then Mira or same as names list. Let's keep the order from NAMED SUBJECTS: Dax; Mira. So array [ {entity:\"Dax\",relation:\"NOT_AT_DESTINATION\"}, {entity:\"Mira\",relation:\"AT_DESTINATION\"} ].\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 242,
+      "completion_tokens": 264,
+      "total_tokens": 506,
+      "completion_tokens_details": {
+        "reasoning_tokens": 226
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790472195.976216,
+  "status": "ok"
+}
