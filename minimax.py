@@ -10120,7 +10120,10 @@ contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or
 otherwise persistently changed, require a matching assigned typed effect.
 Temporary motion that returns to the prior state does not need an effect. A new
 incidental target or threat that appears only in CURRENT JOB/CANDIDATE BEAT is
-outside this check; do not require a typed effect for it.
+outside this check. NEVER reject because such a newly introduced incidental
+entity is injured, killed, destroyed, removed, or otherwise changed without a
+typed effect. Typed effects are required here only for entities already present
+in CURRENT STATE or explicitly named by STATE EFFECTS IF VALID.
 
 A. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept
 paraphrases and clear implications, but require every materially required action
@@ -10181,8 +10184,11 @@ identical to CURRENT JOB because the source intentionally repeats an ongoing
 process, allow another non-terminal instance; reject only terminal/exhaustive
 wording that consumes later work.
 
-D. TYPED STATE EFFECTS: Every listed typed effect must be supported by the
-candidate's FINAL state after all candidate actions happen in order. Judge meaning,
+D. TYPED STATE EFFECTS: This section validates ONLY the typed effects that
+are actually listed above. Do not invent missing-effect obligations for new
+incidental entities introduced by CURRENT JOB/CANDIDATE BEAT. Every listed typed
+effect must be supported by the candidate's FINAL state after all candidate
+actions happen in order. Judge meaning,
 not exact verbs. A later action can undo an earlier one: picked up then set down is
 not held at the end; gripped/readied then leaned or placed aside is not equipped at
 the end. Possession is not automatically equipped; breaking a barrier is not
