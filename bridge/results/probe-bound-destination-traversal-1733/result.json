@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-bound-destination-traversal-1733",
+  "kind": "llama_chat",
+  "started_at": 1790533449.9222877,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract boundary traversal only. Do not judge story validity or physical possibility. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BOUND BARRIER\nbulkhead\n\nPROTECTED DESTINATION\nengine room\n\nRAW SCENE\nSteam pushes a loose panel from the corridor into the engine room.\n\nClassify only whether RAW SCENE establishes that any person, creature, object, body part, or other physical thing crosses the boundary of PROTECTED DESTINATION during the scene. Return TRAVERSED when RAW explicitly shows or states movement from outside the destination to inside it, from inside to outside it, or through BOUND BARRIER. The barrier noun does not need to be repeated if the destination crossing itself is explicit. Return NOT_TRAVERSED when things only approach, strike, wait near, remain on one side, or are already inside/outside without crossing during this scene. Return UNSPECIFIED when the scene gives different start/end sides but does not establish how the change occurred, or when spatial information is insufficient. Do not infer an unseen route. Do not decide whether crossing is allowed. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-y0qnt6xvh5t75rojoxu3u7",
+    "object": "chat.completion",
+    "created": 1790533449,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"TRAVERSED\"}",
+          "reasoning": "We need to parse RAW SCENE: \"Steam pushes a loose panel from the corridor into the engine room.\" The boundary barrier is bulkhead, destination is engine room.\n\nThe scene says steam pushes a loose panel from the corridor into the engine room. So the panel crosses the boundary? It moves from corridor (outside) into engine room (inside). That indicates traversal of the panel across the boundary. The question: \"Classify only whether RAW SCENE establishes that any person, creature, object, body part, or other physical thing crosses the boundary of PROTECTED DESTINATION during the scene.\" So yes, a loose panel is an object crossing from corridor into engine room.\n\nThus status = TRAVERSED. Return JSON {\"status\":\"TRAVERSED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 291,
+      "completion_tokens": 168,
+      "total_tokens": 459,
+      "completion_tokens_details": {
+        "reasoning_tokens": 151
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790533452.737996,
+  "status": "ok"
+}
