@@ -1,0 +1,63 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Could not read C:\Users\J\AppData\Local\Temp\minimax-acceptance-7207o63l\repo\beats.txt (Required file not found: C:\Users\J\AppData\Local\Temp\minimax-acceptance-7207o63l\repo\beats.txt); regenerating the beat plan.
+Asking LM Studio to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-7207o63l\repo\beats.txt with 8 creative story beats.
+
+=== Source-span planning attempt 1/10 ===
+Source-span planner produced 7 chapter(s): chapter 1=1 beats, chapter 2=2 beats, chapter 3=1 beats, chapter 4=1 beats, chapter 5=1 beats, chapter 6=1 beats, chapter 7=1 beats
+Saved story arc to C:\Users\J\AppData\Local\Temp\minimax-acceptance-7207o63l\repo\story_arc.json.
+Generating macro phase 1 (1 beats, global beats 1-1 of 8).
+Requesting beats for phase 1 (attempt 1/10).
+Accepted macro phase 1; collected 1/8 beats.
+Generating macro phase 2 (2 beats, global beats 2-3 of 8).
+Requesting beats for phase 2 (attempt 1/10).
+Accepted macro phase 2; collected 3/8 beats.
+Generating macro phase 3 (1 beats, global beats 4-4 of 8).
+Requesting beats for phase 3 (attempt 1/10).
+Accepted macro phase 3; collected 4/8 beats.
+Generating macro phase 4 (1 beats, global beats 5-5 of 8).
+Requesting beats for phase 4 (attempt 1/10).
+Accepted macro phase 4; collected 5/8 beats.
+Generating macro phase 5 (1 beats, global beats 6-6 of 8).
+Requesting beats for phase 5 (attempt 1/10).
+Accepted macro phase 5; collected 6/8 beats.
+Generating macro phase 6 (1 beats, global beats 7-7 of 8).
+Requesting beats for phase 6 (attempt 1/10).
+Accepted macro phase 6; collected 7/8 beats.
+Generating macro phase 7 (1 beats, global beats 8-8 of 8).
+Requesting beats for phase 7 (attempt 1/10).
+Accepted macro phase 7; collected 8/8 beats.
+Beat 1 jobs: current=E1 - A realistic action film about a woman, Amy, protecting her two kids (Will and Amber) from a zombie apocalypse.; next=E2 - Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.; completed before=none; pending before=E1, E2, E3, E4, E5, E6, E7, E8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Checking Beat 1 within-beat physical coherence (attempt 1/10).
+Beat 1 coherence attempt 1/10: VALID.
+Required event E1 applied persistent state: set_condition = {"op": "set_condition", "entity": "Amy", "value": "protecting her two kids (Will and Amber) from a zombie apocalypse."}
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.; next=E3 - Suddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.; completed before=E1; pending before=E2, E3, E4, E5, E6, E7, E8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+Beat 2 coherence attempt 1/10: VALID.
+Required event E2 applied persistent state: set_clothing = {"op": "set_clothing", "entity": "Amy", "slot": "upper", "item": "tight, black tank top", "damage": "none"}
+Required event E2 applied persistent state: set_clothing = {"op": "set_clothing", "entity": "Amy", "slot": "lower", "item": "denim jeans", "damage": "none"}
+Required event E2 applied persistent state: set_location = {"op": "set_location", "entity": "Amy", "value": "home"}
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - Suddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.; next=E4 - She retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.; completed before=E1, E2; pending before=E3, E4, E5, E6, E7, E8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: VALID; issue: none
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+Beat 3 coherence attempt 1/10: VALID.
+Required event E3 applied persistent state: set_object_state = {"op": "set_object_state", "entity": "kitchen door window", "value": "damaged"}
+Required event E3 applied persistent state: set_containment = {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"}
+Required event E3 applied persistent state: set_containment = {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"}
+Required event E3 applied persistent state: set_barrier_state = {"op": "set_barrier_state", "entity": "door", "value": "locked"}
+Required event E3 applied persistent state: set_location = {"op": "set_location", "entity": "Will", "value": "basement"}
+Required event E3 applied persistent state: set_location = {"op": "set_location", "entity": "Amber", "value": "basement"}
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - She retrieves her hidden arsenal consisting of a pistol and a katana. She equips the weapons.; next=E5 - The majority of the film is Amy killing (dismembering, decapitating, etc.) zombies as they try; completed before=E1, E2, E3; pending before=E4, E5, E6, E7, E8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: INVALID; issue: Missing a typed effect to authorize Amy’s movement from home into the basement (unlocking/releasing the basement door) before retrieving and equipping her weapons.
+Validating Beat 4 (attempt 2/10) with the single beat validator.
+
+Emergency stop requested; exiting immediately.
