@@ -367,3 +367,12 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - runs `validate_final_h3_action_preservation()` immediately after `build_h3_prompt()`;
   - raises `BeatGenerationError` on any non-PRESERVED RAW micro-action, before continuity extraction or ComfyUI.
 - Continue testing in ~20-case batches. Prefer generic, domain-diverse cases and focus on false PRESERVED decisions, because false rejection is recoverable via regeneration while false PRESERVED would allow a broken final prompt through.
+
+
+### 2026-09-27 — final-H3 action extractor locked at 512 tokens
+
+- The 512-token verification batch `1941-1960` completed **20/20 normally**.
+- Exact three-way classification was **20/20** on this batch, with **zero false PRESERVED** decisions.
+- Combined with prior stress runs, the production-critical binary rule remains clean: only `PRESERVED` passes; `OMITTED` and `CHANGED` both reject.
+- Commit `4cacaeb4b1f6bde1a99403c8d80756b475b692f9` raises only this extractor's production completion cap from 384 to **512**. The prompt and deterministic Python gate are unchanged.
+- Do not spend more probe budget on this same invariant unless acceptance exposes a concrete false PRESERVED/false rejection. Next step is a fresh full acceptance run to identify the earliest remaining real gold-prompt failure; only then add another narrow extractor if deterministic Python cannot resolve it.
