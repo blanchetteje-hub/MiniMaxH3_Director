@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beat-destination-presence-1756",
+  "kind": "llama_chat",
+  "started_at": 1790540179.1881418,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract subject destination presence only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\nengine room\n\nNAMED SUBJECT\nDax\n\nCANDIDATE BEAT\nDax fights the intruder in the corridor outside the engine room.\n\nClassify only whether CANDIDATE BEAT establishes that NAMED SUBJECT is physically at/inside DESTINATION at any point during the beat. Allowed values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED. AT_DESTINATION includes entering, standing in, acting in, or explicitly being inside DESTINATION even if the subject later leaves. NOT_AT_DESTINATION means the beat explicitly keeps the subject outside/elsewhere and does not place the subject inside. Reaching through an opening while the subject's body remains outside is NOT_AT_DESTINATION. UNSPECIFIED means the subject's relation to DESTINATION is not established clearly enough. Do not decide whether the placement is allowed. Return JSON: {\"relation\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-1x0aq9qwsrydgz3koq6bf",
+    "object": "chat.completion",
+    "created": 1790540179,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NOT_AT_DESTINATION\"}",
+          "reasoning": "We need to determine if Dax physically at/inside engine room during beat. Beat says \"Dax fights the intruder in the corridor outside the engine room.\" So Dax fighting in corridor outside engine room, not inside. Corridor outside engine room means he's outside. No mention of entering or being inside. So NOT_AT_DESTINATION.\n\nReturn JSON: {\"relation\":\"NOT_AT_DESTINATION\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 269,
+      "completion_tokens": 97,
+      "total_tokens": 366,
+      "completion_tokens_details": {
+        "reasoning_tokens": 79
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790540180.9500973,
+  "status": "ok"
+}
