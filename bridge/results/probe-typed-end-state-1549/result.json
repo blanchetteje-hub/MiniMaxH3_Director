@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1549",
+  "kind": "llama_chat",
+  "started_at": 1790471894.0511584,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nIvo starts in the lab.\n\nASSIGNED SOURCE\nIvo goes to the roof.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_location\",\"entity\":\"Ivo\",\"value\":\"roof\"}]\n\nRAW SCENE\nIvo climbs the stairs and ends standing on the roof.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-89s0vumc2ijlth3qz3kt3",
+    "object": "chat.completion",
+    "created": 1790471894,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need to validate raw scene against authoritative persistent end-state effects.\n\nOpening State: Ivo starts in lab.\n\nAssigned Source: Ivo goes to roof.\n\nTyped End state: [{\"op\":\"set_location\",\"entity\":\"Ivo\",\"value\":\"roof\"}]\n\nRaw Scene: \"Ivo climbs the stairs and ends standing on the roof.\"\n\nWe need to check if raw scene matches typed end state. The typed effect says set location of Ivo to roof. Raw scene indeed has Ivo ending on roof, so that matches.\n\nAlso rule 1: For already-known named subjects etc., typed end state authoritative for persistent final-state changes. If RAW ends with one newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n\nHere Ivo is relocated to roof; typed effect matches.\n\nRule 2: Temporary motion allowed when entity returns to opening state by end. Not relevant.\n\nRule 3: Every listed typed effect must be true in RAW's final state. Yes.\n\nRule 4: Also require concrete assigned source work completed. Assigned Source: \"Ivo goes to the roof.\" Raw scene shows Ivo climbs stairs and ends on roof, so yes he went to roof.\n\nThus valid = true, issue empty string or maybe null? The JSON requires keys valid (boolean) and issue (string). If no issues, issue could be \"\".\n\nReturn {\"valid\":true,\"issue\":\"\".}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 302,
+      "completion_tokens": 328,
+      "total_tokens": 630,
+      "completion_tokens_details": {
+        "reasoning_tokens": 309
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471899.3509383,
+  "status": "ok"
+}
