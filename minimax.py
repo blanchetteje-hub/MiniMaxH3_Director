@@ -25303,7 +25303,11 @@ def director_source_has_terminal_action(assigned_source):
     return bool(_DIRECTOR_TERMINAL_ACTION_RE.search(str(assigned_source or "")))
 
 
-def build_director_terminal_target_messages(assigned_source, raw_scene):
+def build_director_terminal_target_messages(
+    assigned_source,
+    raw_scene,
+    authoritative_opening_state="",
+):
     """Extract only whether a terminal-action target was already terminal."""
     return [
         {
@@ -25318,9 +25322,13 @@ def build_director_terminal_target_messages(assigned_source, raw_scene):
             "content": (
                 "ASSIGNED SOURCE\n"
                 + str(assigned_source or "")
+                + "\n\nAUTHORITATIVE OPENING STATE\n"
+                + str(authoritative_opening_state or "N/A")
                 + "\n\nRAW SCENE\n"
                 + str(raw_scene or "")
-                + "\n\nSOURCE assigns a terminal action such as killing, "
+                + "\n\nTreat AUTHORITATIVE OPENING STATE as already true at "
+                "00:00.000 unless RAW SCENE visibly changes it. SOURCE assigns "
+                "a terminal action such as killing, "
                 "destroying, defeating, eliminating, finishing, or resolving a "
                 "target/process. Inspect the target of that newly assigned action "
                 "at the moment immediately BEFORE the terminal action begins in "
@@ -25892,6 +25900,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                                 build_director_terminal_target_messages(
                                     bundle.get("assigned_source", ""),
                                     raw_scene,
+                                    bundle.get("opening_state", ""),
                                 ),
                                 response_format=DIRECTOR_TERMINAL_TARGET_RESPONSE_FORMAT,
                                 history_metadata=terminal_metadata,
