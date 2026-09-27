@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action384-1937",
+  "kind": "llama_chat",
+  "started_at": 1790549816.7577724,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nIris turns the valve clockwise until the steam stops venting.\n\nFINAL H3 MICRO-ACTION:\nIris turns the valve clockwise once.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-lirn8u0xdvo10me0kre4kak",
+    "object": "chat.completion",
+    "created": 1790549816,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CHANGED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"Iris turns the valve clockwise until the steam stops venting.\" Final H3 micro-action: \"Iris turns the valve clockwise once.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. Here, in raw, Iris turns valve clockwise until steam stops venting. In final, she turns it clockwise once. Does that preserve? The material result is turning the valve clockwise to stop steam venting. Final says \"once\" which implies a single turn; but original might require multiple turns until steam stops. If one turn suffices to stop steam, then it's preserved. But if more than one turn needed, final omitted or changed? We don't know context: maybe turning once is enough. The difference: raw indicates continuous action until result achieved; final says just a single turn. That could be considered CHANGED because the action differs (continuous vs single). However, material result might still be same: valve turned clockwise to stop steam venting. If one turn stops it, then it's preserved.\n\nGiven typical micro-action comparison tasks, \"turns the valve clockwise until the steam stops venting\" vs \"turns the valve clockwise once.\" The difference is that final action may not capture continuous turning; but if result same (steam stops), it's PRESERVED? But wording changed: \"once\" implies a single turn. If one turn stops steam, then preserved.\n\nBut we need to judge only these two snippets. Without context of whether one turn suffices, I'd lean CHANGED because the action differs: raw continuous turning until stop; final just once. The material result might be same but action is different. So status = CHANGED.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 206,
+      "completion_tokens": 362,
+      "total_tokens": 568,
+      "completion_tokens_details": {
+        "reasoning_tokens": 346
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790549821.6199565,
+  "status": "ok"
+}
