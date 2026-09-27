@@ -1011,3 +1011,16 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Regression commit `a88538c6960b08d36888edb2ed4b8e5ca11b4121` refreshes three stale prompt-wording assertions and adds coverage for local movement plus unambiguous/ambiguous barrier binding.
 - Source-authority probes `1585-1604` were mixed: several reasoning traces still over-weighted derived staging despite the explicit authority rule. Production should therefore continue relying on source authority + deterministic state checks rather than trusting those direct probes as holistic validity judges.
 - Next checkpoint: run focused regressions, then fresh full acceptance. Inspect Segment 2 for **basement-door identity**, not only Amy/children sides, and Segment 4 for allowed kitchen→hallway staging.
+
+
+### 2026-09-26 — first complete 8-segment acceptance; next hard failure is terminal-action ownership
+
+- `tests-1607` passed 82/82.
+- `acceptance-1608` is the first structurally complete 8-segment prompt-generation acceptance after the recent fixes.
+- Segment 2 now satisfies both barrier requirements: Amy ends outside the basement, Will and Amber end inside, and the locked barrier is explicitly the basement door. This closes the original basement-side and wrong-door regressions.
+- Segment 4 no longer fails on kitchen/hallway-scale movement, confirming canonical `set_location` is now correctly treated as coarse story geography rather than room-level staging.
+- The next hard semantic failure is Segment 7. Source assigns “Amy kills the last of the zombies,” but RAW begins with the already-severed torso from Segment 6 and has Amy strike that corpse/remnant. The completion gate incorrectly accepted interaction with an already-terminal target as evidence of a newly assigned kill.
+- Production commit `df49c6aeb5455bf7e2d66a9f0d780b797485efd3` adds a generic terminal-action invariant to beat generation, Director generation, and Director completion: kill/destroy/defeat/finish/eliminate/resolve must begin from an active/intact-enough/unresolved target or process and visibly cause the terminal transition in the current beat. Corpses, severed remnants, already-destroyed objects, and already-resolved processes cannot satisfy a newly assigned terminal action.
+- Regression commit `7899fd73337b0f7e379122cc6ef3fa3b52775e3a` covers the new terminal-target rule.
+- Segment 1 still has softer gold-quality distance (children reach for breakfast rather than a stronger fully served/stove-settled endpoint), and Segment 8 has over-elaborated release staging. Do not prioritize those artistic/quality differences ahead of the demonstrated Segment-7 source violation.
+- Next checkpoint: regression suite, then fresh full acceptance. Verify Segment 7 attacks a live/unresolved final zombie rather than a corpse/remnant; after that, reassess the earliest remaining gold-quality mismatch.
