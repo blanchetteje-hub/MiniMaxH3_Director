@@ -1428,3 +1428,19 @@ transformation. Only then move on toward H3 prompt generation.
 - Production change: Director completion validation now also receives the exact typed persistent effects assigned to the active beat. For already-known named subjects/barriers/items, those effects are authoritative for new persistent location, containment, barrier, item, damage, and similar end-state changes. A helper/mover may not inherit another subject’s location/containment effect unless it has its own matching effect. Temporary motion that returns to the opening state remains allowed.
 - Commits: `344f68f06549efc7c4d48589beb2308c40923fc8` (production) and `8cc20483ff95a7488d0afcf62206d5469d7053b6` (regressions).
 - Queued generic typed-end-state probes `1540-1559` plus focused regression job `tests-1560`. Grade the probes before another full Amy acceptance. Keep the rule generic across domestic, technical, fantasy, sci-fi, containment, barrier, and item-state cases; do not special-case the zombie fixture.
+
+
+### 2026-09-26 — barrier topology should be state + Python + narrow LLM extraction
+
+Barrier-side continuity is a special high-value case and should not depend on one broad semantic validity judgment.
+
+Current design direction:
+- canonical typed state/effects define the authorized persistent transition (for example which subjects end in a destination/container and the barrier's final state);
+- Python deterministically derives the allowed transition contract from those effects and opening state;
+- a narrow local-LLM call only extracts each named subject's observed final relation to the destination from RAW SCENE using `AT_DESTINATION | NOT_AT_DESTINATION | UNSPECIFIED`;
+- Python compares extracted observations with the authorized contract and decides pass/fail;
+- the LLM does not decide whether following another subject was permitted, and helper verbs such as guide/escort/push/lead never grant a crossing by themselves.
+
+This is intentionally more specific than ordinary continuity because the Amy basement boundary has repeatedly demonstrated instruction-fragile failure. It must remain generic for doors, gates, portals, airlocks, shelters, rooms, vehicles, containment areas, and similar barriers.
+
+The existing typed-effect Director change passes focused deterministic tests: `tests-1560` = 79/79. Direct validity probes showed the remaining weakness: GPT-OSS can still reinterpret helper grammar or over-reason missing effects. Therefore do not rely on direct LLM validity for barrier topology. Probe batch `probe-barrier-extract-1561` through `1580` tests the narrower extraction-only contract before production wiring.
