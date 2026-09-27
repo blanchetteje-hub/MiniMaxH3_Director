@@ -24825,7 +24825,7 @@ RAW SCENE
 {raw_scene}
 
 Check only completion and persistent-state compatibility:
-1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE.
+1. Require the actions, results, and participant roles assigned by SOURCE. Use the derived beat only where consistent with SOURCE. If SOURCE assigns an action now, RAW must visibly perform that action in this segment; an existing result or aftermath alone is insufficient.
 2. A finite activity needs its visible result. For a consumable or explicit hand-off to named people, they must visibly receive or be served the result when immediate receipt is part of SOURCE; merely labeling it for them or leaving it elsewhere is insufficient. For work merely made FOR someone, completion of the work is enough unless SOURCE explicitly requires delivery. Honor explicit later pickup/storage. Source-assigned spectators remain spectators.
 3. Preserve participant scope. Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it. Everyone else must stay on their original side unless SOURCE explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other people through does NOT authorize the mover/helper to follow. RAW is invalid if any unlisted participant crosses.
 4. Preserve persistent facts already true in AUTHORITATIVE OPENING STATE unless SOURCE/CURRENT BEAT explicitly changes them. This includes held/equipped items, containment, barrier state, clothing, injuries, and other durable conditions. Reject dropping, losing, freeing, unlocking, removing, or otherwise changing such state as harmless staging.
