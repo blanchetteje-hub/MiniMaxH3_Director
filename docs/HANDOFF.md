@@ -1667,3 +1667,23 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Queued `tests-1741` and full `acceptance-1742`.
 - Acceptance checkpoint: Beat 5 must no longer propose any attacker/remnant entering the locked basement; Director should therefore be able to realize the assignment instead of exhausting retries.
 
+### 2026-09-27 — acceptance 1742 isolates Beat VALIDATE false positive as the real regression source
+
+- `tests-1741` ran 104 tests with **103 passed / 1 failed**. The sole failure was a synthetic fixture issue: its required events lacked IDs, so `source_authorized_state_before_beat` could not replay the event ledger. The production derivation itself was confirmed separately from the real acceptance log.
+- The `acceptance-1742` developer log proves Beat CREATE **did receive** the Python-owned closed-boundary contract for Beats 3-6:
+  - `basement door protects 'basement' and begins locked`
+  - no person/creature/object/body part may cross unless typed effects authorize it.
+- The initial generated Beat 4 obeyed that contract and stayed outside the basement.
+- The real regression was Beat VALIDATE falsely rejecting that valid Beat 4 with: “Missing typed state effect for the newly introduced zombie being dead or removed after decapitation.”
+- That rejection contradicts the validator's intended scope: a new incidental target/threat that exists only in CURRENT JOB/CANDIDATE BEAT is not part of canonical persistent state and must not require a typed effect merely because the candidate kills/damages/removes it.
+- The unnecessary regeneration then produced an impossible basement-door beat, which Director correctly rejected three times. Thus the earliest root cause is the validator false positive, not topology.
+- Production commit `ea5cc8bdb1c2ad4d11c0275d44a0126e7fc896e4` strengthens the existing Beat VALIDATE prompt:
+  - NEVER reject a newly introduced incidental entity merely for being injured/killed/destroyed/removed without a typed effect.
+  - Typed end-state obligations apply only to entities already in CURRENT STATE or explicitly named by STATE EFFECTS IF VALID.
+  - The typed-effects section must validate listed effects only; it must not invent missing-effect obligations for new incidental entities.
+- Regression commit `16f50f38c202b981a08452113a6c581f2413ddeb`:
+  - fixes the synthetic closed-boundary test fixture by adding required-event IDs/dependency;
+  - adds explicit coverage for the no-effect-required incidental-target validator rule.
+- Queued `tests-1743` and full `acceptance-1744`.
+- Acceptance checkpoint: a valid repeated-combat beat that introduces and kills one incidental attacker should survive Beat VALIDATE without requiring a new typed death effect, avoiding needless regeneration into a topology violation.
+
