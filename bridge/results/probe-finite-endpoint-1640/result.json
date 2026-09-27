@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-finite-endpoint-1640",
+  "kind": "llama_chat",
+  "started_at": 1790482521.3667972,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify finite-activity completion only. Do not judge overall beat correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nThe crew repeatedly repels waves of drones.\n\nCANDIDATE BEAT\nThe crew shoots down another wave of drones.\n\nClassify only the finite-activity endpoint. Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent. Otherwise, when CURRENT JOB assigns a finite activity/task, return COMPLETE only if CANDIDATE BEAT shows a natural observable completion/result for that activity in this beat. Return ONGOING if it only shows the activity underway, continuing, approaching completion, or partly complete. Progressive source wording such as 'is cooking' or 'is repairing' can still describe a finite task and does not by itself make the job ongoing. Do not decide whether the beat is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ixd060beokf7lnool76fhk",
+    "object": "chat.completion",
+    "created": 1790482521,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NOT_APPLICABLE\"}",
+          "reasoning": "We need to classify finite-activity completion only.\n\nCURRENT JOB: \"The crew repeatedly repels waves of drones.\"\n\nThis indicates an ongoing/repeated process, so it's NOT_APPLICABLE for finite activity endpoint. Because CURRENT JOB explicitly assigns repeated action. So status should be NOT_APPLICABLE.\n\nReturn JSON {\"status\":\"NOT_APPLICABLE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 264,
+      "completion_tokens": 87,
+      "total_tokens": 351,
+      "completion_tokens_details": {
+        "reasoning_tokens": 69
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790482523.033519,
+  "status": "ok"
+}
