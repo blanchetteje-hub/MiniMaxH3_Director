@@ -1203,3 +1203,23 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Regression commit `922de00ce1d90ec04e408aa93b250d2d7483f743` locks that prompt contract.
 - Queued `tests-1773` and full `acceptance-1774`.
 - Acceptance checkpoint: Segment 7 must reject any RAW that attacks the dead Segment-6 zombie as the newly assigned “last zombie” kill; it must introduce/show an actually unresolved final zombie before the terminal action.
+
+
+### 2026-09-27 — runtime termination policy: only infrastructure outages are automatically fatal
+
+- User-defined runtime invariant: automatic process termination is allowed only when the required LLM runtime cannot be reached, or when ComfyUI cannot be reached during a render-enabled run. Prompt-generation mode intentionally bypasses ComfyUI. Explicit user cancellation/help remain user-controlled exits, not failures.
+- All other failures must recover indefinitely. Local stages may use bounded retry cycles (normally 10 attempts), but exhausting a local budget must move control back to an earlier durable stage/checkpoint instead of ending the Python process.
+- Audit found the previous application boundary violated this rule: uncaught `BeatGenerationError`, `ValueError`, `RuntimeError`, workflow/render errors, etc. were printed as “best effort” and then the process ended.
+- Production commits:
+  - `d53ebabbd5864939a478da1f07159f3fc0842707`: adds a persistent application recovery supervisor; recoverable exceptions restart from the durable generation checkpoint; final render-barrier failures escalate to recovery; stitching now retries forever in 10-attempt cycles instead of giving up.
+  - `668aa27a46753eb153ad376d1caf195329ee2d6e`: preserves `LLMConnectionError` through ARC/source-span broad retry handlers so an actual LLM outage cannot be accidentally swallowed; incomplete render sets no longer fall through to best-effort stitching.
+  - `c028ecae83e745e9e52378bf549ce6a5362cbece`: recovery resumes only from a checkpoint written/changed by the failed attempt, preventing stale `generation_state.json` from an older run from being consumed.
+  - `d7fbe7f38c2fd956dee7d292a92108b05a0215c2`: preserves LLM outage propagation through the remaining ARC create/validate retry scopes.
+- Recovery behavior:
+  - a recoverable failure after committed segments restarts from the next uncommitted segment;
+  - a failure before a trustworthy current-run checkpoint restarts from the beginning/earlier stage;
+  - if all segments were committed and a later non-connection failure occurs, recovery deliberately backs up to the final segment rather than terminating;
+  - FFmpeg stitch failures retry the same completed set indefinitely;
+  - ComfyUI execution/render failures remain recoverable; only inability to connect to ComfyUI is fatal.
+- Regression commit `b425eb86c1c491dda3ce92f1a1aa4e56c258ad10` covers supervisor retry and fatal propagation for LLM/ComfyUI connection errors.
+- Queued `tests-1775` and full `acceptance-1776`.
