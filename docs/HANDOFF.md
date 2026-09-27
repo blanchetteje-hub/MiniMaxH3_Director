@@ -1469,3 +1469,18 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Production commit `580f2d888925b91eb20ecf9c95df26f736339db4` now injects the Python-derived final-side contract into Director Request 1 before generation. Example shape: named subjects with authorized effects MUST end at the destination; a known unassigned subject proven by opening state to start elsewhere MUST NOT end there. Helper/mover verbs cannot override the contract, though temporary crossing is allowed if final placement matches.
 - The later topology extractor and Python comparison remain as enforcement. This gives three layers: state-derived generation constraint, narrow RAW-scene extraction, deterministic Python validation.
 - Next checkpoint: regression suite, then fresh full Amy acceptance. Success requires Segment 2 to generate a valid scene with Will/Amber in the basement and Amy on the non-basement side without exhausting retries.
+
+
+### 2026-09-26 — Segment 1 verifier overreach narrowed back to source authority
+
+- Regression suite `tests-1583` passed 79/79.
+- Fresh acceptance `acceptance-1584` did not reach Segment 2 because Segment 1 exhausted its three Request-1 attempts. The accepted Beat 1 had strengthened source wording into a specific action: Amy “hands the steaming pancakes” to Will and Amber. RAW scenes where she finished breakfast, placed it in front of them, and they picked it up were rejected because the completion verifier treated the derived beat’s hand-to-hand gesture as a source requirement.
+- The verifier also over-policed the children briefly holding ordinary breakfast props as persistent typed inventory changes even though plates/food were newly introduced incidental scene props.
+- Production commit `dc3dca728c3baab6ee506a2d90cfa79ad4a4e2c0` restores the intended authority boundary:
+  - SOURCE alone defines required actions/results/participant roles;
+  - DERIVED BEAT may stage SOURCE but may not strengthen it with a stricter transfer method, prop, destination, or gesture;
+  - visible receipt/service/practical access is enough for consumables unless SOURCE itself requires a particular hand-off;
+  - ordinary newly introduced serving/consumable props are not treated as persistent inventory merely because a known subject holds them at segment end;
+  - durable tracked inventory/readiness/location/containment/barrier/etc. remain governed by opening state and typed effects.
+- Generic source-authority probes `1585-1604` are queued, followed by `tests-1605` and fresh full acceptance `acceptance-1606`.
+- If 1606 clears Segment 1, immediately inspect Segment 2 to verify the new state-derived barrier contract now generates and validates Will/Amber inside the basement while Amy ends outside.
