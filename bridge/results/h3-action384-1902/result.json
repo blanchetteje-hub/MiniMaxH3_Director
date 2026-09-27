@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action384-1902",
+  "kind": "llama_chat",
+  "started_at": 1790549424.9047585,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nNora opens the red toolbox and removes a wrench.\n\nFINAL H3 MICRO-ACTION:\nNora opens the red toolbox and looks inside.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-0u0lxw26tjtc4gn154kznl",
+    "object": "chat.completion",
+    "created": 1790549424,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CHANGED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"Nora opens the red toolbox and removes a wrench.\" Final H3 micro-action: \"Nora opens the red toolbox and looks inside.\"\n\nPreserved means same visible/audible action and material result remain. The raw had removal of wrench, final has looking inside. Materially different? Removing a wrench is an action that changes content; looking inside doesn't remove it. So it's changed. Not omitted because opening still present. It's not preserved. So status: CHANGED.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 206,
+      "completion_tokens": 124,
+      "total_tokens": 330,
+      "completion_tokens_details": {
+        "reasoning_tokens": 108
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790549426.7889812,
+  "status": "ok"
+}
