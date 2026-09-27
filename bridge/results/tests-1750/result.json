@@ -1,0 +1,26 @@
+{
+  "job_id": "tests-1750",
+  "kind": "run_tests",
+  "started_at": 1790548045.0188034,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_minimax_integration.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 5,
+    "passed": false,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_gpt-arc-refresh\nconfigfile: pytest.ini\ncollecting ... collected 0 items / 1 skipped\n\n============================= 1 skipped in 0.06s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790548047.0608878,
+    "finished_at": 1790548047.4908037
+  },
+  "finished_at": 1790548047.4908037,
+  "status": "ok"
+}
