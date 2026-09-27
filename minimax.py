@@ -17224,7 +17224,11 @@ def validate_final_h3_action_preservation(
                 "purpose": "final_h3_action_preservation",
                 "timestamp": timestamp,
             },
-            **_active_validator_settings(),
+            temperature=0,
+            top_p=1,
+            max_tokens=384,
+            seed=42,
+            repeat_penalty=1.15,
         )
         status = parse_h3_action_preservation(result)
         observations.append({
@@ -28170,6 +28174,22 @@ def _run_main(
                 prompt_reduced_continuity_state if retention else None
             ),
         )
+        h3_action_validation = validate_final_h3_action_preservation(
+            payload.get("raw_scene", ""),
+            h3_prompt,
+            history_metadata={
+                "run_id": run_id,
+                "source_sha256": run_config["source_sha256"],
+                "segment": segment,
+            },
+        )
+        if not h3_action_validation["valid"]:
+            issue_text = "; ".join(h3_action_validation["issues"])
+            raise BeatGenerationError(
+                f"Segment {segment} final H3 action preservation failed: "
+                f"{issue_text}"
+            )
+
         if (
             getattr(args, "capture_h3_validation_segment", None) == segment
             and getattr(args, "capture_h3_validation_fixture", None)
