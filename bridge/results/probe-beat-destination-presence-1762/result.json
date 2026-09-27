@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-beat-destination-presence-1762",
+  "kind": "llama_chat",
+  "started_at": 1790540203.883655,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract subject destination presence only. Do not judge story validity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\ncargo bay\n\nNAMED SUBJECT\nRin\n\nCANDIDATE BEAT\nRin runs past the cargo-bay entrance on the way to the bridge.\n\nClassify only whether CANDIDATE BEAT establishes that NAMED SUBJECT is physically at/inside DESTINATION at any point during the beat. Allowed values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED. AT_DESTINATION includes entering, standing in, acting in, or explicitly being inside DESTINATION even if the subject later leaves. NOT_AT_DESTINATION means the beat explicitly keeps the subject outside/elsewhere and does not place the subject inside. Reaching through an opening while the subject's body remains outside is NOT_AT_DESTINATION. UNSPECIFIED means the subject's relation to DESTINATION is not established clearly enough. Do not decide whether the placement is allowed. Return JSON: {\"relation\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-43bbpdq7sg3n8b1wrbp3w",
+    "object": "chat.completion",
+    "created": 1790540203,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"relation\":\"NOT_AT_DESTINATION\"}",
+          "reasoning": "We need to parse beat: \"Rin runs past the cargo-bay entrance on the way to the bridge.\" So Rin runs past the cargo-bay entrance, meaning she passes by it but doesn't enter. She is physically at/inside? Past means outside, near entrance. Not inside. So NOT_AT_DESTINATION.\n\nReturn JSON {\"relation\":\"NOT_AT_DESTINATION\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 271,
+      "completion_tokens": 93,
+      "total_tokens": 364,
+      "completion_tokens_details": {
+        "reasoning_tokens": 75
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790540205.6596544,
+  "status": "ok"
+}
