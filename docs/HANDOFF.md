@@ -1409,3 +1409,12 @@ transformation. Only then move on toward H3 prompt generation.
 - The stronger generic authority is Python-owned typed state effects. Commit f06023968ba6f02d012f89818d331dd73b0b7599 promotes an early ASSIGNED PERSISTENT END STATE check: an already-known named subject/barrier/item cannot end with a new persistent location/containment/barrier/item-state change unless a matching typed effect authorizes it. Temporary motion and incidental new threats remain exempt.
 - Regression coverage commit 82a1e236ed398bf98dd8372cfa27f9f5ef96f431. Focused regression job tests-1512 passed 74/74.
 - Full acceptance gold-prompt-state-1513 is currently queued/running and is the next semantic checkpoint.
+
+
+### 2026-09-26 — source action ownership fixed; timestamp range is next boundary
+
+- Acceptance 1536 confirmed Segment 1 now visibly performs the assigned cooking action before serving breakfast. Segments 1-2 are semantically acceptable under the PROJECT_NOTES gold-standard acceptance target.
+- The next earliest real failure is Segment 3 Request 1 producing malformed/out-of-range timestamps such as 00:200.000 and 01:600.000 inside an 8-second segment, plus filler micro-actions. Existing timestamp correspondence missed these because malformed timestamp-like tokens were not recognized by the normal parser.
+- Commit 29506319c85f3aaa7c10c9f80eebfdd5f0ba123c adds deterministic timestamp-range validation: seconds must be 00-59 and timestamps must be before the segment endpoint.
+- Commit 53b8c6b9b45ffc050e40a0050f77422f13cfbb7e adds regression coverage. Commit b8f5061c3d58d30e15a30cc0191945dd17279dad refreshes a stale validator wording assertion.
+- Focused tests are queued as tests-1537; fresh full acceptance is acceptance-1538.
