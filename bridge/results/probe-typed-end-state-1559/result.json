@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1559",
+  "kind": "llama_chat",
+  "started_at": 1790471973.7722478,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nDax starts outside the airlock with Mira.\n\nASSIGNED SOURCE\nDax helps Mira through the airlock.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_location\",\"entity\":\"Mira\",\"value\":\"ship interior\"}]\n\nRAW SCENE\nMira enters the ship interior. Dax stays outside the airlock; the scene ends with them on opposite sides.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yn5ln5gtgijtm392yh8y2e",
+    "object": "chat.completion",
+    "created": 1790471973,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need validate raw scene against assigned typed end state.\n\nOpening state: Dax starts outside airlock with Mira. So both at same location? \"outside the airlock\" maybe a location entity. They are together.\n\nAssigned source: Dax helps Mira through the airlock. Means Dax assists, presumably moves Mira into ship interior. The typed end state says set_location of Mira to ship interior. That matches.\n\nRaw scene: \"Mira enters the ship interior. Dax stays outside the airlock; the scene ends with them on opposite sides.\" So final positions: Mira inside ship interior, Dax still outside airlock. That's consistent with typed effect: Mira location changed to ship interior. No other changes. The typed end state only has that one op.\n\nCheck rule 1: If RAW ends with any of those subjects newly relocated etc require matching typed effect. Here only Mira relocation matches. Good.\n\nRule 2: Temporary motion allowed when entity returns to opening state by the end. Not relevant.\n\nRule 3: Every listed typed effect must be true in RAW's final state. Yes, set_location for Mira is true.\n\nRule 4: Also require concrete assigned source work completed. Dax helps Mira through airlock. In raw scene, Dax stays outside but presumably helped? The action \"Mira enters the ship interior\" implies she moved through airlock; Dax staying outside might still have helped by opening door etc. But does that count as completing source? We need to check if Dax's help is represented: He stays outside while Mira goes inside, so he must have opened/held door. That seems plausible.\n\nBut rule 4 says \"Also require the concrete ASSIGNED SOURCE work to be completed.\" So we need evidence of Dax helping through airlock. Raw scene only states that Dax stays outside; no explicit action of him opening or holding door. But maybe implied: He helps Mira, so he must have opened/held door. The raw says \"Mira enters the ship interior\" which implies she passed through airlock. If Dax stayed outside, he could have helped by opening door for her. That seems fine.\n\nBut is there any missing typed effect? No.\n\nThus valid = true, issue empty string or maybe null. Return JSON with keys valid and issue. Issue can be \"\" if no issues.\n\nLet's produce: {\"valid\":true,\"issue\":\"\".}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 320,
+      "completion_tokens": 508,
+      "total_tokens": 828,
+      "completion_tokens_details": {
+        "reasoning_tokens": 489
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471981.6251497,
+  "status": "ok"
+}
