@@ -1652,3 +1652,18 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Regression commit `8e9bf54e13148ed0559b2d5f9af7a5609e04e018` adds protected-destination prompt coverage and verifies the existing closed-boundary contract exposes the destination to the traversal check.
 - Queued `tests-1739` and full `acceptance-1740`.
 
+### 2026-09-27 — acceptance 1740 proves Director catch; impossible crossing must be blocked in Beat CREATE/VALIDATE
+
+- `tests-1739` ran 102 tests with **101 passed / 1 failed**. The failure was a stale assertion in `test_barrier_traversal_prompt_is_extraction_only` expecting the old prompt wording after the traversal extractor was intentionally generalized; this was not a production semantic failure.
+- `acceptance-1740` exited structurally incomplete at Segment 5 because the new Director destination-boundary check worked: it repeatedly rejected RAW that crossed the canonically locked basement boundary.
+- The run therefore demonstrated an earlier upstream assignment failure. Generated Beat 5 itself placed zombie/body-part action inside the basement while the basement boundary remained locked. Director could not legally realize the beat.
+- Production commit `77e9b1c3490336ee04317ee10967fe9332e9103c` moves the same Python-owned closed-boundary constraint upstream without a new semantic stage:
+  - `build_beat_closed_boundary_contracts` reuses the existing canonical closed-boundary derivation.
+  - Beat CREATE derives canonical state before each beat from the accepted macro arc and includes per-beat `PYTHON-OWNED CLOSED BOUNDARIES`.
+  - Beat VALIDATE independently derives the same contract from CURRENT STATE + active typed effects.
+  - The contract applies to any person, creature, object, body part, or other physical thing, so an untracked zombie/remnant cannot cross a protected boundary merely because it lacks a canonical entity record.
+  - Current typed effects still authorize legitimate opening/release transitions.
+- Regression commit `2bed4d36e7d5eb79559822a25d57ae9f13f0ab07` updates the stale traversal-prompt assertion and adds Beat CREATE + Beat VALIDATE closed-boundary coverage.
+- Queued `tests-1741` and full `acceptance-1742`.
+- Acceptance checkpoint: Beat 5 must no longer propose any attacker/remnant entering the locked basement; Director should therefore be able to realize the assignment instead of exhausting retries.
+
