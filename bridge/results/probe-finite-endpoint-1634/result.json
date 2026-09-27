@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-finite-endpoint-1634",
+  "kind": "llama_chat",
+  "started_at": 1790482485.9880931,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify finite-activity completion only. Do not judge overall beat correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nMara is cooking breakfast for Eli.\n\nCANDIDATE BEAT\nMara finishes the eggs, plates breakfast, and sets it in front of Eli.\n\nClassify only the finite-activity endpoint. Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent. Otherwise, when CURRENT JOB assigns a finite activity/task, return COMPLETE only if CANDIDATE BEAT shows a natural observable completion/result for that activity in this beat. Return ONGOING if it only shows the activity underway, continuing, approaching completion, or partly complete. Progressive source wording such as 'is cooking' or 'is repairing' can still describe a finite task and does not by itself make the job ongoing. Do not decide whether the beat is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-bz9hlil3tcdyjncdwgy2hn",
+    "object": "chat.completion",
+    "created": 1790482485,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPLETE\"}",
+          "reasoning": "We need to classify finite-activity completion only.\n\nCURRENT JOB: \"Mara is cooking breakfast for Eli.\"\n\nThis describes an activity that Mara is doing: cooking breakfast for Eli. It's a finite task? Cooking breakfast is a finite activity, but the phrase \"is cooking\" indicates ongoing process. But we consider if it's assigned as a finite activity/task. The job says she is cooking breakfast for Eli. That seems like a finite activity (cooking breakfast). So we need to classify based on candidate beat.\n\nCandidate Beat: \"Mara finishes the eggs, plates breakfast, and sets it in front of Eli.\"\n\nThis shows that Mara finished the eggs, plated breakfast, set it in front of Eli. That's completion of cooking breakfast? She has completed the process of cooking breakfast (eggs done, plating). So it's a natural observable completion/result for that activity.\n\nThus status: COMPLETE.\n\nReturn JSON {\"status\":\"COMPLETE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 271,
+      "completion_tokens": 202,
+      "total_tokens": 473,
+      "completion_tokens_details": {
+        "reasoning_tokens": 186
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790482489.3131847,
+  "status": "ok"
+}
