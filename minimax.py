@@ -1366,6 +1366,40 @@ DIRECTOR_RAW_SCENE_COMPLETION_RESPONSE_FORMAT = {
     },
 }
 
+DIRECTOR_BARRIER_SIDE_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_barrier_side_observation",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "subjects": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "entity": {"type": "string"},
+                            "relation": {
+                                "type": "string",
+                                "enum": [
+                                    "AT_DESTINATION",
+                                    "NOT_AT_DESTINATION",
+                                    "UNSPECIFIED",
+                                ],
+                            },
+                        },
+                        "required": ["entity", "relation"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "required": ["subjects"],
+            "additionalProperties": False,
+        },
+    },
+}
+
 DIRECTOR_CONTINUITY_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
@@ -24864,6 +24898,223 @@ def repair_existing_segment(
     }
 
 
+def _director_source_opening_state_json(opening_state):
+    """Return the deterministic source-authorized JSON prefix when present."""
+    text = str(opening_state or "").strip()
+    marker = "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)"
+    if not text.startswith(marker):
+        return {}
+    payload = text[len(marker):].lstrip("\r\n ")
+    payload = payload.split("\n\n", 1)[0].strip()
+    if not payload:
+        return {}
+    try:
+        parsed = json.loads(payload)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _director_opening_relation_to_destination(opening_state, entity, destination):
+    """Return True/False when canonical opening state locates entity vs destination."""
+    state = _director_source_opening_state_json(opening_state)
+    characters = state.get("characters") if isinstance(state, dict) else None
+    if not isinstance(characters, dict):
+        return None
+    key = next(
+        (
+            known
+            for known in characters
+            if str(known).casefold() == str(entity).casefold()
+        ),
+        None,
+    )
+    if key is None or not isinstance(characters.get(key), dict):
+        return None
+    record = characters[key]
+    destination_key = " ".join(str(destination or "").replace("_", " ").split()).casefold()
+    location = " ".join(str(record.get("location") or "").replace("_", " ").split()).casefold()
+    contained_in = " ".join(
+        str(record.get("contained_in") or "").replace("_", " ").split()
+    ).casefold()
+    if destination_key and (
+        location == destination_key or contained_in == destination_key
+    ):
+        return True
+    known_values = [
+        value
+        for value in (location, contained_in)
+        if value and value not in {"n/a", "na", "none", "null"}
+    ]
+    if known_values:
+        return False
+    return None
+
+
+def build_director_barrier_topology_contract(
+    assigned_state_effects,
+    subject_definitions="",
+    assigned_source="",
+    current_beat="",
+    authoritative_opening_state="",
+):
+    """Build deterministic destination-side expectations for barrier/containment beats."""
+    try:
+        effects = _validate_state_effects(list(assigned_state_effects or []))
+    except (TypeError, ValueError):
+        return []
+
+    containment_targets = {}
+    location_targets = {}
+    barrier_changed = any(
+        effect.get("op") == "set_barrier_state" for effect in effects
+    )
+    for effect in effects:
+        if (
+            effect.get("op") == "set_containment"
+            and effect.get("value") == "contained"
+        ):
+            containment_targets.setdefault(effect["container"], set()).add(
+                effect["entity"]
+            )
+        elif effect.get("op") == "set_location":
+            location_targets.setdefault(effect["value"], set()).add(effect["entity"])
+
+    destinations = set(containment_targets)
+    if barrier_changed:
+        destinations.update(location_targets)
+    if not destinations:
+        return []
+
+    try:
+        registry = parse_subject_registry(subject_definitions)
+    except (TypeError, ValueError):
+        registry = {}
+    authority_text = f"{assigned_source}\n{current_beat}"
+    relevant_names = []
+    for _subject_id, name, _record in _subject_registry_records(registry):
+        pattern = rf"(?<![\w]){re.escape(name)}(?![\w])"
+        if re.search(pattern, authority_text, re.IGNORECASE):
+            relevant_names.append(name)
+
+    contracts = []
+    for destination in sorted(destinations, key=str.casefold):
+        authorized = set(containment_targets.get(destination, set()))
+        authorized.update(location_targets.get(destination, set()))
+        subject_expectations = []
+        names = list(dict.fromkeys(relevant_names + sorted(authorized, key=str.casefold)))
+        for name in names:
+            canonical_authorized = any(
+                str(name).casefold() == str(entity).casefold()
+                for entity in authorized
+            )
+            if canonical_authorized:
+                expected = "AT_DESTINATION"
+            else:
+                opening_relation = _director_opening_relation_to_destination(
+                    authoritative_opening_state,
+                    name,
+                    destination,
+                )
+                if opening_relation is not False:
+                    continue
+                expected = "NOT_AT_DESTINATION"
+            subject_expectations.append({
+                "entity": name,
+                "expected": expected,
+            })
+        if subject_expectations:
+            contracts.append({
+                "destination": destination,
+                "subjects": subject_expectations,
+            })
+    return contracts
+
+
+def build_director_barrier_side_messages(destination, subjects, raw_scene):
+    """Ask the local model only where named subjects visibly end relative to a destination."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract final barrier-side placement only. Do not validate story "
+                "correctness. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"DESTINATION\n{destination}\n\n"
+                "NAMED SUBJECTS\n"
+                + "; ".join(subjects)
+                + "\n\nRAW SCENE\n"
+                + str(raw_scene or "")
+                + "\n\nFor each named subject, classify only where that subject "
+                "is at the END of RAW SCENE relative to DESTINATION. Allowed "
+                "relation values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED. "
+                "Use UNSPECIFIED if the final side is not established. Temporary "
+                "entry does not count when the subject returns before the end. "
+                "Do not decide whether the scene is valid. Do not infer that a "
+                "helper follows another subject unless RAW SCENE establishes it. "
+                "Return one subjects entry for every supplied named subject."
+            ),
+        },
+    ]
+
+
+def parse_director_barrier_side_observation(raw_result, expected_subjects):
+    """Parse one strict extraction and return a case-insensitive entity map."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"subjects"}:
+        raise ValueError("Barrier-side response must contain only subjects.")
+    items = candidate["subjects"]
+    if not isinstance(items, list):
+        raise ValueError("Barrier-side subjects must be an array.")
+    expected = {str(name).casefold(): str(name) for name in expected_subjects}
+    observed = {}
+    for item in items:
+        if not isinstance(item, dict) or set(item) != {"entity", "relation"}:
+            raise ValueError(
+                "Each barrier-side subject must contain only entity and relation."
+            )
+        entity = str(item["entity"]).strip()
+        relation = item["relation"]
+        key = entity.casefold()
+        if key not in expected or key in observed:
+            raise ValueError("Barrier-side response contains an unexpected subject.")
+        if relation not in {
+            "AT_DESTINATION",
+            "NOT_AT_DESTINATION",
+            "UNSPECIFIED",
+        }:
+            raise ValueError("Barrier-side response contains an invalid relation.")
+        observed[key] = relation
+    if set(observed) != set(expected):
+        raise ValueError("Barrier-side response omitted a required subject.")
+    return {expected[key]: observed[key] for key in expected}
+
+
+def compare_director_barrier_topology(contract, observation):
+    """Deterministically compare observed final sides with source-owned topology."""
+    issues = []
+    for item in contract.get("subjects", []):
+        entity = item["entity"]
+        expected = item["expected"]
+        observed = observation.get(entity, "UNSPECIFIED")
+        if expected == "AT_DESTINATION" and observed != "AT_DESTINATION":
+            issues.append(
+                f"{entity} must end at {contract['destination']}, but RAW SCENE "
+                f"was {observed.lower().replace('_', ' ')}."
+            )
+        elif expected == "NOT_AT_DESTINATION" and observed == "AT_DESTINATION":
+            issues.append(
+                f"{entity} is not authorized to end at {contract['destination']}."
+            )
+    return issues
+
+
 # Build the independent Request-1 CURRENT-BEAT completion check.
 def build_director_raw_scene_completion_messages(
     current_beat,
@@ -25280,6 +25531,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             )
         )
         independent_completion = None
+        barrier_topology_issues = []
         current_beat_for_completion = str(
             bundle.get("current_beat_text") or ""
         ).strip()
@@ -25330,12 +25582,74 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     "issue": "completion verifier returned unusable output: " + str(error),
                 }
             if independent_completion["valid"]:
-                break
-            print(
-                "Director Request 1 independent completion check failed: "
-                + independent_completion["issue"],
-                flush=True,
-            )
+                topology_contracts = build_director_barrier_topology_contract(
+                    bundle.get("assigned_state_effects", []),
+                    bundle.get("subject_definitions", ""),
+                    bundle.get("assigned_source", ""),
+                    current_beat_for_completion,
+                    bundle.get("opening_state", ""),
+                )
+                for topology_index, topology_contract in enumerate(
+                    topology_contracts,
+                    start=1,
+                ):
+                    topology_subjects = [
+                        item["entity"]
+                        for item in topology_contract["subjects"]
+                    ]
+                    topology_metadata = {
+                        "run_id": run_id,
+                        "source_sha256": (run_config or {}).get("source_sha256"),
+                        "purpose": "director_barrier_side_extract",
+                        "segment": segment_number,
+                        "attempt": request1_attempt,
+                        "topology_index": topology_index,
+                        "conditioning_mode": conditioning_mode,
+                        "opening_state_sha256": bundle.get("opening_state_sha256"),
+                    }
+                    try:
+                        topology_observation = (
+                            parse_director_barrier_side_observation(
+                                ask_llm(
+                                    build_director_barrier_side_messages(
+                                        topology_contract["destination"],
+                                        topology_subjects,
+                                        raw_scene,
+                                    ),
+                                    response_format=DIRECTOR_BARRIER_SIDE_RESPONSE_FORMAT,
+                                    history_metadata=topology_metadata,
+                                    **_active_beat_validation_settings(),
+                                ),
+                                topology_subjects,
+                            )
+                        )
+                    except (TypeError, ValueError, json.JSONDecodeError) as error:
+                        barrier_topology_issues.append(
+                            "barrier-side extractor returned unusable output: "
+                            + str(error)
+                        )
+                        break
+                    barrier_topology_issues.extend(
+                        compare_director_barrier_topology(
+                            topology_contract,
+                            topology_observation,
+                        )
+                    )
+                    if barrier_topology_issues:
+                        break
+                if not barrier_topology_issues:
+                    break
+                print(
+                    "Director Request 1 barrier topology check failed: "
+                    + "; ".join(barrier_topology_issues),
+                    flush=True,
+                )
+            else:
+                print(
+                    "Director Request 1 independent completion check failed: "
+                    + independent_completion["issue"],
+                    flush=True,
+                )
 
         completion_failures = [
             label
@@ -25365,6 +25679,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         ):
             completion_failures.append(
                 "independent completion check: " + independent_completion["issue"]
+            )
+        if barrier_topology_issues:
+            completion_failures.append(
+                "barrier topology check: " + "; ".join(barrier_topology_issues)
             )
         request1_feedback = (
             "RAW SCENE STRUCTURE ERROR: "
