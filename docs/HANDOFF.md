@@ -1612,3 +1612,18 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Regression commit `5c77587fd6fc68b8cefe7195779a86fd3b2868a5` adds typed-contract, unlocked/open mapping, structural-precedence prompt, and strict-parser coverage.
 - Queued `tests-1709` and fresh full `acceptance-1710`.
 
+### 2026-09-27 — acceptance 1710 reveals generic barrier binding must move upstream into Beat CREATE/VALIDATE
+
+- `tests-1709` passed **97/97**.
+- The final-state extractor fixed the prior Director-level Segment-2 contradiction, but `acceptance-1710` exposed an earlier source-binding failure in the generated Beat 2 itself: after putting Will and Amber in the basement, the beat said Amy **locks the kitchen door**.
+- This is earlier than Director generation and therefore must be corrected in the beat layer. The existing deterministic binding already has enough information: one generic barrier effect (`door`) + one containment destination (`basement`) => that generic barrier is the basement boundary.
+- Production commit `260abb229709226285e72f0dc99d0c90f99dbc8d` reuses that Python-owned binding in both Beat CREATE and Beat VALIDATE:
+  - Beat CREATE gets a compact `PYTHON-OWNED BARRIER BINDINGS` section keyed by beat number.
+  - Beat VALIDATE derives the same binding from the active beat's assigned typed effects and explicitly forbids reinterpretation as an unrelated nearby barrier.
+  - No new semantic call or pipeline stage was added.
+- The same production commit tightens the barrier-state extractor wording after supplemental probe `1705` misclassified an intact retracted bulkhead as DESTROYED. `DESTROYED` now requires the barrier to be physically absent/dismantled/destroyed; an intact barrier that retracts/slides/swings/lifts/moves out of the passage is OPEN.
+- Regression commit `044cffdd5b356e753d070037f8f23049ed79f35e` adds Beat CREATE binding, Beat VALIDATE binding, and retract/open wording coverage.
+- Queued `tests-1711` and full `acceptance-1712`.
+- Also queued focused intact-moving-barrier probes `1713-1718`; these are supplemental and should all classify OPEN.
+- Acceptance checkpoint: Beat 2 must identify the generic `door` as the basement boundary before Director generation. If that holds, continue to the next earliest demonstrated mismatch rather than adding more barrier rules.
+
