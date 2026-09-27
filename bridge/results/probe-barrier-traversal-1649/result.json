@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-traversal-1649",
+  "kind": "llama_chat",
+  "started_at": 1790524942.8576198,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract barrier traversal only. Do not judge whether the scene is valid or physically possible. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nsteel gate\n\nRAW SCENE\nThe knight charges the steel gate and slams a shoulder into it. The gate holds; the knight remains in the courtyard.\n\nClassify only whether RAW SCENE visibly establishes that any subject moves from one side of BARRIER through its boundary to the other side. Return TRAVERSED when a crossing through the named boundary is established. Return NOT_TRAVERSED when subjects only approach, touch, strike, look through, wait at, or remain on one side of the barrier. Return UNSPECIFIED when RAW SCENE does not establish enough spatial information to tell. Do not infer validity from whether the barrier is open, closed, locked, broken, magical, or intact. Do not infer an unseen route. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-fh9gfoa4zywq8ndrl38or",
+    "object": "chat.completion",
+    "created": 1790524942,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NOT_TRAVERSED\"}",
+          "reasoning": "We need to parse the scenario.\n\nBarrier: steel gate\n\nRaw scene: \"The knight charges the steel gate and slams a shoulder into it. The gate holds; the knight remains in the courtyard.\"\n\nSo the knight is charging at the gate, hits it with shoulder, but doesn't go through. Gate holds, knight remains in courtyard. So no traversal.\n\nThus status: NOT_TRAVERSED\n\nReturn JSON {\"status\":\"NOT_TRAVERSED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 254,
+      "completion_tokens": 108,
+      "total_tokens": 362,
+      "completion_tokens_details": {
+        "reasoning_tokens": 90
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790524944.8235018,
+  "status": "ok"
+}
