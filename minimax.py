@@ -150,6 +150,8 @@ PHRASE_EXCLUSIONS_FILE = os.path.join(SCRIPT_DIR, "phrase_exclusions.txt")
 
 ADDITIONAL_STATES_FILE = os.path.join(SCRIPT_DIR, "additional_states.txt")
 
+APPEND_SYSTEM_PROMPT_FILE = os.path.join(SCRIPT_DIR, "append_system_prompt.txt")
+
 SUBJECT_DEFINITIONS_FILE = os.path.join(SCRIPT_DIR, "subjects.txt")
 
 GENERATION_STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
@@ -7610,8 +7612,12 @@ def _lm_studio_rejected_response_format(response):
 
 # Merge adjacent same-role turns before Mistral's strict Jinja template.
 def normalize_lm_studio_messages(messages):
-    """Merge adjacent same-role turns before Mistral's strict Jinja template."""
+    """Merge adjacent same-role turns and append the optional global system text."""
     normalized = []
+    appended_system_prompt = load_text_file(
+        APPEND_SYSTEM_PROMPT_FILE,
+        required=False,
+    )
     for message in messages or []:
         if not isinstance(message, dict):
             raise TypeError("Each LM Studio message must be a dictionary.")
@@ -7619,8 +7625,15 @@ def normalize_lm_studio_messages(messages):
         content = str(message.get("content", ""))
         if role not in {"system", "user", "assistant"}:
             raise ValueError(f"Unsupported LM Studio message role: {role!r}")
-        if role == "system" and normalized:
-            raise ValueError("The LM Studio system message must be first.")
+        if role == "system":
+            if normalized:
+                raise ValueError("The LM Studio system message must be first.")
+            if appended_system_prompt:
+                content = (
+                    f"{content.rstrip()}\n\n{appended_system_prompt}"
+                    if content.strip()
+                    else appended_system_prompt
+                )
         if normalized and normalized[-1]["role"] == role:
             normalized[-1]["content"] += "\n\n" + content
         else:
