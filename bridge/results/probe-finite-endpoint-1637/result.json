@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-finite-endpoint-1637",
+  "kind": "llama_chat",
+  "started_at": 1790482503.3636112,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify finite-activity completion only. Do not judge overall beat correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "CURRENT JOB\nFor most of the night, guards patrol the wall.\n\nCANDIDATE BEAT\nTwo guards make another pass along the wall.\n\nClassify only the finite-activity endpoint. Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent. Otherwise, when CURRENT JOB assigns a finite activity/task, return COMPLETE only if CANDIDATE BEAT shows a natural observable completion/result for that activity in this beat. Return ONGOING if it only shows the activity underway, continuing, approaching completion, or partly complete. Progressive source wording such as 'is cooking' or 'is repairing' can still describe a finite task and does not by itself make the job ongoing. Do not decide whether the beat is valid.\nReturn JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yn9ynoz881cq9zahxcap9f",
+    "object": "chat.completion",
+    "created": 1790482503,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NOT_APPLICABLE\"}",
+          "reasoning": "We need to classify finite-activity completion only.\n\nCURRENT JOB: \"For most of the night, guards patrol the wall.\"\n\nThis says guards patrol the wall for most of the night. That's an ongoing/repeated process. So it's not a finite activity; it's continuous. The instruction: Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an ongoing/repeated/non-terminal process such as majority, most, repeatedly, throughout, continuing, or equivalent.\n\nThus status should be \"NOT_APPLICABLE\".\n\nReturn JSON {\"status\":\"NOT_APPLICABLE\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 266,
+      "completion_tokens": 127,
+      "total_tokens": 393,
+      "completion_tokens_details": {
+        "reasoning_tokens": 109
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790482505.6911988,
+  "status": "ok"
+}
