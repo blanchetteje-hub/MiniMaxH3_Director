@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-traversal-1665",
+  "kind": "llama_chat",
+  "started_at": 1790525016.5005646,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract barrier traversal only. Do not judge whether the scene is valid or physically possible. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nsealed bulkhead\n\nRAW SCENE\nA shape moves behind the sealed bulkhead; the camera cannot establish which side it started on or whether it passed through.\n\nClassify only whether RAW SCENE visibly establishes that any subject moves from one side of BARRIER through its boundary to the other side. Return TRAVERSED when a crossing through the named boundary is established. Return NOT_TRAVERSED when subjects only approach, touch, strike, look through, wait at, or remain on one side of the barrier. Return UNSPECIFIED when RAW SCENE does not establish enough spatial information to tell. Do not infer validity from whether the barrier is open, closed, locked, broken, magical, or intact. Do not infer an unseen route. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-sfnymyr3bcjwwqvhudozz",
+    "object": "chat.completion",
+    "created": 1790525016,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to parse the raw scene: \"A shape moves behind the sealed bulkhead; the camera cannot establish which side it started on or whether it passed through.\"\n\nSo we have a barrier named \"sealed bulkhead\". The subject is a shape moving behind the sealed bulkhead. The camera can't tell if it started on one side and moved to other, or just moved behind? It says moves behind the sealed bulkhead; but does that mean it passes through? Could be ambiguous: maybe it's behind meaning on the other side of the barrier. But we don't know which side it started from. So is there traversal? The shape moves behind the sealed bulkhead - implies crossing to the other side, because \"behind\" suggests beyond the barrier relative to camera's view. However, camera cannot establish whether it passed through or not; maybe it's ambiguous.\n\nWe need to decide status: TRAVERSED if a crossing through boundary established. NOT_TRAVERSED if only approaches etc. UNSPECIFIED when insufficient spatial info.\n\nHere we have shape moves behind sealed bulkhead; but camera can't tell which side started on or whether it passed through. So does that establish traversal? It says \"moves behind the sealed bulkhead\" - implies it's now behind, so must have crossed boundary to get there. But camera cannot confirm if it passed through or maybe moved around? The shape could be moving behind by going around the bulkhead (if open). But we don't know.\n\nThus spatial info insufficient:",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 254,
+      "completion_tokens": 300,
+      "total_tokens": 554,
+      "completion_tokens_details": {
+        "reasoning_tokens": 297
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790525021.256357,
+  "status": "ok"
+}
