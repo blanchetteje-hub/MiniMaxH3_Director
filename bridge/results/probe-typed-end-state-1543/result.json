@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1543",
+  "kind": "llama_chat",
+  "started_at": 1790471837.0817342,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nTessa starts in the corridor with Unit7.\n\nASSIGNED SOURCE\nTessa rolls Unit7 into the repair bay.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_location\",\"entity\":\"Unit7\",\"value\":\"repair bay\"}]\n\nRAW SCENE\nTessa rolls Unit7 into the repair bay and walks in after it, ending beside the unit.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-0o2xg9wstykeclay4mhkfy",
+    "object": "chat.completion",
+    "created": 1790471837,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"valid\":true,\"issue\":\"\"}",
+          "reasoning": "We need validate raw scene against assigned typed end state: set_location Unit7 repair bay.\n\nOpening state: Tessa starts in corridor with Unit7. So Unit7 is in corridor, presumably next to Tessa? The raw scene says \"Tessa rolls Unit7 into the repair bay and walks in after it, ending beside the unit.\" That means final location of Unit7 is repair bay. Good matches typed effect.\n\nAlso check that source work: Tessa rolls Unit7 into repair bay. That's done.\n\nAny other changes? Tessa ends beside the unit; but no typed effect for her location. Not required.\n\nCheck rule 1: If RAW ends with one of them newly relocated, etc., require matching typed effect. Yes we have relocation matched.\n\nRule 3: Every listed typed effect must be true in RAW's final state. We have set_location Unit7 repair bay; yes.\n\nThus valid = true, issue empty string? Provide \"\" or maybe null. Use empty string.\n\nReturn JSON with keys \"valid\" and \"issue\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 317,
+      "completion_tokens": 228,
+      "total_tokens": 545,
+      "completion_tokens_details": {
+        "reasoning_tokens": 210
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471840.876397,
+  "status": "ok"
+}
