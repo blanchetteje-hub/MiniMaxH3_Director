@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-bound-destination-traversal-1720",
+  "kind": "llama_chat",
+  "started_at": 1790533380.2209957,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract boundary traversal only. Do not judge story validity or physical possibility. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BOUND BARRIER\nbasement door\n\nPROTECTED DESTINATION\nbasement\n\nRAW SCENE\nAmy cuts the zombie's head off in the kitchen. The head rolls to the top of the basement stairs and stops there.\n\nClassify only whether RAW SCENE establishes that any person, creature, object, body part, or other physical thing crosses the boundary of PROTECTED DESTINATION during the scene. Return TRAVERSED when RAW explicitly shows or states movement from outside the destination to inside it, from inside to outside it, or through BOUND BARRIER. The barrier noun does not need to be repeated if the destination crossing itself is explicit. Return NOT_TRAVERSED when things only approach, strike, wait near, remain on one side, or are already inside/outside without crossing during this scene. Return UNSPECIFIED when the scene gives different start/end sides but does not establish how the change occurred, or when spatial information is insufficient. Do not infer an unseen route. Do not decide whether crossing is allowed. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 384,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ar60kxncy1o4i8w26afl",
+    "object": "chat.completion",
+    "created": 1790533380,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to determine if any person, creature, object, body part crosses boundary of PROTECTED DESTINATION (basement). The BOUND BARRIER is basement door.\n\nRAW SCENE: \"Amy cuts the zombie's head off in the kitchen. The head rolls to the top of the basement stairs and stops there.\"\n\nSo Amy is presumably outside basement? Kitchen likely above basement. She cuts zombie's head, then head rolls up to top of basement stairs (the landing). That means head moves from kitchen area onto top of basement stairs. Does that cross into basement? Top of basement stairs: Is that inside the basement or at the boundary? The top of basement stairs is usually the landing just above the door; but \"top\" could be the landing before entering basement, maybe outside basement. But it's ambiguous.\n\nWe need to see if head crosses boundary of PROTECTED DESTINATION (basement). If it rolls onto top of basement stairs and stops there: That might be at the top of the stairs, which is likely just above the door; but not inside basement yet. So no crossing? The head hasn't entered basement. It rolled up to top of basement stairs, maybe still outside.\n\nBut if \"top\" means the landing that leads into basement (like the step before entering), it's still outside. But could be considered at boundary? The barrier is basement door; so crossing would require going through door or onto inside side. Top of stairs might be just above door but not inside. So likely NOT_TRAVERSED.\n\nBut maybe \"top\" means top of stairs, which is the landing that leads into basement: That could be inside basement if the stairs go down to basement floor? Actually typical layout: Kitchen on ground floor; basement below with stairs leading down. The top of basement stairs would be at ground level just above door. So head stops there.\n\nThus no crossing. So status NOT",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 304,
+      "completion_tokens": 384,
+      "total_tokens": 688,
+      "completion_tokens_details": {
+        "reasoning_tokens": 381
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790533386.0939536,
+  "status": "ok"
+}
