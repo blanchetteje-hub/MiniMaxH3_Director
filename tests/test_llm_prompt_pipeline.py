@@ -2555,3 +2555,48 @@ class DirectorPromptCallContractTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RuntimeRecoverySupervisorTests(unittest.TestCase):
+    def test_main_retries_recoverable_failure_from_checkpoint(self):
+        with (
+            patch(
+                "minimax._run_main",
+                side_effect=[RuntimeError("recoverable"), "done"],
+            ) as run_main,
+            patch(
+                "minimax._checkpoint_file_signature",
+                side_effect=[("before", 1), ("after", 2), ("after", 2)],
+            ),
+            patch(
+                "minimax._checkpoint_recovery_resume_segment",
+                return_value=4,
+            ),
+            patch("minimax.time.sleep"),
+        ):
+            self.assertEqual(minimax.main(), "done")
+
+        self.assertEqual(run_main.call_count, 2)
+        self.assertIsNone(
+            run_main.call_args_list[0].kwargs["recovery_resume_segment"]
+        )
+        self.assertEqual(
+            run_main.call_args_list[1].kwargs["recovery_resume_segment"],
+            4,
+        )
+
+    def test_main_propagates_llm_connection_failure(self):
+        with patch(
+            "minimax._run_main",
+            side_effect=minimax.LLMConnectionError("offline"),
+        ):
+            with self.assertRaises(minimax.LLMConnectionError):
+                minimax.main()
+
+    def test_main_propagates_comfyui_connection_failure(self):
+        with patch(
+            "minimax._run_main",
+            side_effect=minimax.ComfyUIConnectionError("offline"),
+        ):
+            with self.assertRaises(minimax.ComfyUIConnectionError):
+                minimax.main()
