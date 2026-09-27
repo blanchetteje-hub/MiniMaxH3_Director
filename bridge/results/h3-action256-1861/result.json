@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action256-1861",
+  "kind": "llama_chat",
+  "started_at": 1790548411.2322986,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nAmy, wearing a tight black tank top and denim jeans, flips eggs in a skillet on the stove.\n\nFINAL H3 MICRO-ACTION:\nAmy, wearing black tank top and denim jeans, flips eggs in a skillet on the stove.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nu6yqovtrrcj92tnapphkm",
+    "object": "chat.completion",
+    "created": 1790548411,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"PRESERVED\"}",
+          "reasoning": "We need to compare RAW micro-action with final H3 micro-action at same timestamp. The raw: \"Amy, wearing a tight black tank top and denim jeans, flips eggs in a skillet on the stove.\" Final: \"Amy, wearing black tank top and denim jeans, flips eggs in a skillet on the stove.\"\n\nDifferences: In final, removed adjective \"tight\". Also removed \"a\" before black tank top? Actually original had \"wearing a tight black tank top\", final has \"wearing black tank top\". So clothing description changed slightly. The action remains flipping eggs in skillet on stove. Material result same. Only difference is the word \"tight\" omitted. That is harmless detail. So status: PRESERVED.\n\nReturn JSON {\"status\":\"PRESERVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 225,
+      "completion_tokens": 173,
+      "total_tokens": 398,
+      "completion_tokens_details": {
+        "reasoning_tokens": 156
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790548413.8457942,
+  "status": "ok"
+}
