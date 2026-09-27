@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-traversal-1650",
+  "kind": "llama_chat",
+  "started_at": 1790524947.3809557,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract barrier traversal only. Do not judge whether the scene is valid or physically possible. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nsteel gate\n\nRAW SCENE\nThe knight slips through the steel gate and appears on the inner keep side.\n\nClassify only whether RAW SCENE visibly establishes that any subject moves from one side of BARRIER through its boundary to the other side. Return TRAVERSED when a crossing through the named boundary is established. Return NOT_TRAVERSED when subjects only approach, touch, strike, look through, wait at, or remain on one side of the barrier. Return UNSPECIFIED when RAW SCENE does not establish enough spatial information to tell. Do not infer validity from whether the barrier is open, closed, locked, broken, magical, or intact. Do not infer an unseen route. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-5a4rid4w1fn7rn7w9q2hzj",
+    "object": "chat.completion",
+    "created": 1790524947,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"TRAVERSED\"}",
+          "reasoning": "We need to parse the scenario.\n\nBarrier: steel gate\n\nRaw scene: \"The knight slips through the steel gate and appears on the inner keep side.\"\n\nSo the knight moves from one side of the barrier (outer side) through its boundary to the other side. The phrase \"slips through\" indicates crossing. So status should be TRAVERSED.\n\nReturn JSON only: {\"status\":\"TRAVERSED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 244,
+      "completion_tokens": 99,
+      "total_tokens": 343,
+      "completion_tokens_details": {
+        "reasoning_tokens": 82
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790524949.1832893,
+  "status": "ok"
+}
