@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-typed-end-state-1547",
+  "kind": "llama_chat",
+  "started_at": 1790471873.7266753,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Validate one RAW SCENE against authoritative persistent end-state effects. Return JSON only with boolean valid and string issue."
+      },
+      {
+        "role": "user",
+        "content": "OPENING STATE\nCaptain Vale starts on the bridge with Jo and Ren.\n\nASSIGNED SOURCE\nVale orders Jo and Ren into the escape pod.\n\nASSIGNED TYPED END STATE\n[{\"op\":\"set_containment\",\"entity\":\"Jo\",\"container\":\"escape pod\",\"value\":\"contained\"},{\"op\":\"set_containment\",\"entity\":\"Ren\",\"container\":\"escape pod\",\"value\":\"contained\"}]\n\nRAW SCENE\nJo and Ren enter the escape pod. Vale climbs in with them and closes the hatch.\n\nRULES\n1. For already-known named subjects, barriers, and items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect. No matching effect means INVALID.\n2. Temporary motion is allowed when the entity returns to its opening state by the end.\n3. Every listed typed effect must be true in RAW's final state.\n4. Also require the concrete ASSIGNED SOURCE work to be completed. Do not invent extra requirements.\nReturn one JSON object with exactly keys valid and issue."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 600,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hzc8w74e1uesafjsrr2tnq",
+    "object": "chat.completion",
+    "created": 1790471873,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need validate raw scene against assigned source and typed end state.\n\nOpening state: Captain Vale starts on bridge with Jo and Ren. So initial positions: Vale on bridge, Jo on bridge? It says \"Captain Vale starts on the bridge with Jo and Ren.\" That implies all three are on bridge initially.\n\nAssigned source: Vale orders Jo and Ren into the escape pod. So action: Vale orders them to go into escape pod. This is a command; we need that in raw scene: Jo and Ren enter the escape pod. Yes, they do.\n\nTyped end state: set_containment for Jo and Ren into escape pod as contained. The typed effect says both are contained in escape pod at final state.\n\nRaw scene: \"Jo and Ren enter the escape pod. Vale climbs in with them and closes the hatch.\" So after that, all three inside escape pod? It says Vale climbs in with them; so Vale also enters. But typed end state only mentions Jo and Ren containment. Does it require Vale to be contained too? No, typed effect doesn't mention Vale. The rule: For already-known named subjects, barriers, items, ASSIGNED TYPED END STATE is authoritative for persistent final-state changes. If RAW ends with one of them newly relocated, etc., require a matching typed effect. So Jo and Ren are new containment; they have typed effects. They match.\n\nAlso need to check that the source work completed: Vale orders Jo and Ren into escape pod. Raw scene shows Jo and Ren enter escape pod. That matches ordering? It doesn't explicitly mention order but it's implied by \"enter\". But rule 4 says also require concrete ASSIGNED SOURCE work to be completed. Do we consider that as satisfied if they entered the pod after being ordered? Yes.\n\nAlso check no extra changes: Vale climbs in, closes hatch. That's not a typed effect; but is it allowed? It's an additional change: Vale's containment changed from bridge to escape pod. But it's not listed in typed end state. Rule 1 says for already-known named subjects, barriers, items, ASSIGNED TYPED END STATE authoritative for persistent final-state changes. If RAW ends with one of them newly relocated... require a matching typed effect. So if Vale is also new containment but no typed effect, that might be invalid? But rule: \"If RAW ends with one of them newly relocated, contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or otherwise persistently changed, require a matching typed effect.\" That applies to any named subject. Vale is also relocated from bridge to escape pod. So we need a typed effect for Vale containment? But typed end state only lists Jo and Ren. So that might be invalid.\n\nBut maybe the rule means \"for already-known named subjects\" meaning those in typed end state list? Actually it says: For already-known named subjects, barriers, items, ASSIGNED TYPED END STATE is authoritative for",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 339,
+      "completion_tokens": 600,
+      "total_tokens": 939,
+      "completion_tokens_details": {
+        "reasoning_tokens": 597
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790471882.9910784,
+  "status": "ok"
+}
