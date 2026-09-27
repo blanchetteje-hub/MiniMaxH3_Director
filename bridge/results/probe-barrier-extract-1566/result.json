@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-extract-1566",
+  "kind": "llama_chat",
+  "started_at": 1790472129.512016,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract final barrier-side placement only. Do not validate story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "DESTINATION\nrepair bay\n\nNAMED SUBJECTS\nTessa; Unit7\n\nRAW TEXT\nTessa rolls Unit7 into the repair bay and ends standing beside it inside the bay.\n\nFor each named subject, classify only where that subject is at the END of the text relative to DESTINATION.\nAllowed relation values: AT_DESTINATION, NOT_AT_DESTINATION, UNSPECIFIED.\nUse UNSPECIFIED if the text does not establish the final side. Temporary entry does not count if the subject returns before the end. Do not decide whether the scene is valid. Do not infer that a helper follows someone unless the text establishes it.\nReturn JSON only with one key subjects. subjects is an array containing one object per named subject, each with exactly entity and relation."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-f2qfiukfet4db67qpbwn9u",
+    "object": "chat.completion",
+    "created": 1790472129,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"subjects\":[{\"entity\":\"Tessa\",\"relation\":\"AT_DESTINATION\"},{\"entity\":\"Unit7\",\"relation\":\"AT_DESTINATION\"}]}",
+          "reasoning": "We need to extract final barrier-side placement relative to DESTINATION \"repair bay\". The raw text: \"Tessa rolls Unit7 into the repair bay and ends standing beside it inside the bay.\"\n\nAt end of text, Tessa is standing beside Unit7 inside the bay. So she is at destination? She is in the repair bay. So relation AT_DESTINATION.\n\nUnit7: It was rolled into the repair bay; no mention after that. At end, it's still inside the bay. So also AT_DESTINATION.\n\nThus both are AT_DESTINATION. Return JSON with subjects array of objects each entity and relation.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 244,
+      "completion_tokens": 161,
+      "total_tokens": 405,
+      "completion_tokens_details": {
+        "reasoning_tokens": 124
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790472132.3232157,
+  "status": "ok"
+}
