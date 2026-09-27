@@ -1550,3 +1550,13 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - Production commit `4b8fabe39c50e1fcbc7a74ae5d923155e9f736f3` now passes AUTHORITATIVE OPENING STATE into terminal-target extraction. Opening state is explicitly already true at 00:00.000 unless RAW visibly changes it, so a terminal state from the prior segment cannot disappear through RAW compression.
 - Test-harness commit `8ef7ba4545be2108d379b30385f50e17a1ae230a` updates the two forward-validation mocks to return `COMPLETE` for the new narrow endpoint call. Regression commit `2f451120318c5bb212a2710b747c35d7b829dbaf` asserts the terminal extractor receives and treats opening state as authoritative.
 - Next checkpoint: regression suite + full acceptance. Segment 1 should remain complete/served; Segment 7 should reject any RAW that targets a zombie already established terminal by opening continuity.
+
+### 2026-09-27 — acceptance 1646 passes prior fixes; locked-boundary traversal is next topology target
+
+- `tests-1645` passed **89/89**.
+- `acceptance-1646` completed all 8 segments. Beat 1 now rejects an incomplete cooking-only candidate and accepts a finished breakfast endpoint. Segment 7 now begins with an active final zombie and performs a real terminal transition, confirming the opening-state-aware terminal extractor fixed the demonstrated corpse/remnant regression.
+- The next demonstrated hard continuity failure remains spatial/barrier topology: Segment 6 invents a larger zombie **emerging from the basement door** while Will and Amber are canonically contained behind that locked basement boundary and the active beat has no barrier-opening/breach state effect. This is not an Amy-specific wording issue; it is a generic locked-boundary traversal invariant.
+- Design under test: when canonical opening state says a bound barrier is closed/locked and the active beat has no authorized effect that opens, unlocks, breaks, or otherwise changes that barrier, Python owns the invariant that no subject may traverse it. A narrow local-LLM extractor should answer only whether RAW SCENE visibly establishes a crossing through the named boundary: `TRAVERSED | NOT_TRAVERSED | UNSPECIFIED`. Python decides validity. Do not ask the LLM whether traversal was permitted.
+- Queued generic traversal probes `probe-barrier-traversal-1647` through `1666` across basement doors, gates, airlocks, portals, vaults, shelters, train doors, laboratory doors, drawbridges, and ambiguous controls. The prompt does not expose the expected answer.
+- Do not wire this into production until the probe batch is graded. If accepted, integrate it into the existing Director Request-1 retry loop rather than creating a new semantic pipeline stage.
+
