@@ -787,6 +787,54 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             ],
         )
 
+    def test_beat_destination_presence_contract_accepts_event_wrapped_effects(self):
+        state = minimax.new_beat_canonical_state()
+        state["characters"] = {
+            "Amy": {
+                "location": "home",
+                "containment": "free",
+                "contained_in": None,
+                "accessible": True,
+            },
+            "Will": {
+                "location": "basement",
+                "containment": "contained",
+                "contained_in": "basement",
+                "accessible": False,
+            },
+        }
+        state["environment"]["barriers"] = {
+            "door": {"status": "locked"}
+        }
+        wrapped_effects = [{"id": "E6", "state_effects": []}]
+        contracts = minimax.build_beat_destination_presence_contracts(
+            state,
+            wrapped_effects,
+            "Amy fights zombies inside the basement.",
+        )
+        self.assertEqual(
+            contracts,
+            [
+                {
+                    "destination": "basement",
+                    "subject": "Amy",
+                    "barrier": "basement door",
+                }
+            ],
+        )
+
+        messages = minimax.build_beat_validation_messages(
+            previous_final_beat="Amy waits outside.",
+            current_state=state,
+            beat_job="Amy fights zombies.",
+            next_beat_job=None,
+            candidate_beat="Amy fights zombies inside the basement.",
+            assigned_state_effects=wrapped_effects,
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("PYTHON-OWNED CLOSED BOUNDARIES", prompt)
+        self.assertIn("basement door protects 'basement'", prompt)
+
     def test_beat_destination_presence_contract_skips_subject_already_inside(self):
         state = minimax.new_beat_canonical_state()
         state["characters"] = {
