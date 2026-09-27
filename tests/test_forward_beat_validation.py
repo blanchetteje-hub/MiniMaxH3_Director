@@ -65,7 +65,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("SECOND CHECK — ASSIGNED PERSISTENT END STATE", messages[1]["content"])
         self.assertIn("entities already named in CURRENT STATE or STATE EFFECTS IF VALID", messages[1]["content"])
         self.assertIn("matching assigned typed effect", messages[1]["content"])
-        self.assertIn("new incidental target or threat that appears only", messages[1]["content"])
+        self.assertIn("incidental target or threat that appears only", messages[1]["content"])
         self.assertIn("merely labeling it for them", messages[1]["content"])
         self.assertIn("work merely made FOR someone", messages[1]["content"])
 
