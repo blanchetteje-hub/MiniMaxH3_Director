@@ -10146,6 +10146,23 @@ def _missing_named_director_subjects(
             missing.append(name)
     return missing
 
+def _flatten_beat_assigned_state_effects(assigned_state_effects):
+    """Normalize beat event wrappers to the flat typed-effect list used by Python."""
+    flattened = []
+    for item in assigned_state_effects or []:
+        if (
+            isinstance(item, dict)
+            and "state_effects" in item
+            and "op" not in item
+        ):
+            nested = item.get("state_effects") or []
+            if isinstance(nested, list):
+                flattened.extend(copy.deepcopy(nested))
+            continue
+        flattened.append(copy.deepcopy(item))
+    return flattened
+
+
 def build_beat_closed_boundary_contracts(current_state, assigned_state_effects):
     """Reuse Director closed-boundary derivation for beat create/validate."""
     if not isinstance(current_state, dict) or not current_state:
@@ -10156,7 +10173,7 @@ def build_beat_closed_boundary_contracts(current_state, assigned_state_effects):
     )
     contracts = build_director_closed_boundary_contracts(
         opening_state,
-        assigned_state_effects,
+        _flatten_beat_assigned_state_effects(assigned_state_effects),
     )
     characters = current_state.get("characters", {})
     threats = current_state.get("threats", {})
@@ -10193,7 +10210,8 @@ def build_beat_validation_messages(
     settings = settings or _active_beat_validation_settings()
     state = compact_beat_validation_state(current_state)
     state_effects = assigned_state_effects if assigned_state_effects is not None else []
-    barrier_binding = build_director_barrier_binding_contract(state_effects)
+    flat_state_effects = _flatten_beat_assigned_state_effects(state_effects)
+    barrier_binding = build_director_barrier_binding_contract(flat_state_effects)
     barrier_binding_text = (
         (
             "\nPYTHON-OWNED BARRIER BINDING\n"
