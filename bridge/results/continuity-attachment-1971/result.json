@@ -1,0 +1,55 @@
+{
+  "job_id": "continuity-attachment-1971",
+  "kind": "llama_chat",
+  "started_at": 1790551614.4235215,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge one candidate continuity attachment. Return JSON only. ATTACHED = the object/substance is physically attached, embedded, worn, strapped, clipped, stuck, coated, wrapped, or otherwise fixed to the named Subject at the final frame. NOT_ATTACHED = the Subject merely holds, carries, touches, supports, or is near the object, or the object is attached to something else. UNSPECIFIED = the text does not establish whether it is attached. Judge only the supplied final-frame text."
+      },
+      {
+        "role": "user",
+        "content": "SUBJECT: Amy\nCANDIDATE ATTACHED OBJECT: helmet\nFINAL-FRAME TEXT: Amy wears a helmet secured under her chin.\n\nReturn {\"status\":\"ATTACHED|NOT_ATTACHED|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-6vbgg1c3bu3hsyo84cttzh",
+    "object": "chat.completion",
+    "created": 1790551614,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ATTACHED\"}",
+          "reasoning": "We need to judge whether the object \"helmet\" is physically attached, embedded, worn, strapped, clipped, stuck, coated, wrapped, or otherwise fixed to the named Subject at the final frame. The text: \"Amy wears a helmet secured under her chin.\" She wears it; it's secured under her chin. That indicates it's attached (secured). So status = ATTACHED.\n\nReturn JSON only: {\"status\":\"ATTACHED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 219,
+      "completion_tokens": 102,
+      "total_tokens": 321,
+      "completion_tokens_details": {
+        "reasoning_tokens": 86
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790551616.0237446,
+  "status": "ok"
+}
