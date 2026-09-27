@@ -682,6 +682,60 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("movement between rooms, hallways, or subareas", prompt)
         self.assertIn("does NOT require another set_location effect", prompt)
 
+    def test_beat_validator_includes_python_owned_barrier_binding(self):
+        effects = [
+            {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+            {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
+            {"op": "set_barrier_state", "entity": "door", "value": "locked"},
+        ]
+        messages = minimax.build_beat_validation_messages(
+            previous_final_beat="Amy is in the kitchen.",
+            current_state=minimax.new_beat_canonical_state(),
+            beat_job="Amy gets Will and Amber into the basement and locks the door.",
+            next_beat_job="Amy retrieves her weapons.",
+            candidate_beat="Amy gets Will and Amber into the basement, then locks the kitchen door.",
+            assigned_state_effects=effects,
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("PYTHON-OWNED BARRIER BINDING", prompt)
+        self.assertIn("'door' is the boundary of 'basement'", prompt)
+        self.assertIn("Do not reinterpret it as an unrelated barrier", prompt)
+
+    def test_beat_generation_includes_python_owned_barrier_binding(self):
+        phase = {
+            "required_events": [
+                {
+                    "beat_number": 2,
+                    "event": "Amy gets Will and Amber into the basement and locks the door.",
+                    "state_effects": [
+                        {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+                        {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
+                        {"op": "set_barrier_state", "entity": "door", "value": "locked"},
+                    ],
+                }
+            ]
+        }
+        messages = minimax.build_beat_generation_messages(
+            "Amy protects her children.",
+            2,
+            batch_start=2,
+            batch_end=2,
+            current_phase=phase,
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("PYTHON-OWNED BARRIER BINDINGS", prompt)
+        self.assertIn("2. 'door' is the boundary of 'basement'.", prompt)
+        self.assertIn("do not substitute a different nearby", prompt)
+
+    def test_barrier_state_prompt_does_not_destroy_retracted_intact_barrier(self):
+        messages = minimax.build_director_barrier_state_messages(
+            "bulkhead",
+            "The intact bulkhead retracts and leaves the corridor open.",
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("OPEN, not DESTROYED", prompt)
+        self.assertIn("retracts", prompt)
+
     def test_generic_barrier_binds_to_single_containment_destination(self):
         effects = [
             {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
