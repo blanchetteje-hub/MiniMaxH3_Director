@@ -9829,6 +9829,72 @@ BEAT_VALIDATION_RESPONSE_FORMAT = {
 }
 
 
+BEAT_FINITE_ENDPOINT_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "beat_finite_endpoint",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": ["COMPLETE", "ONGOING", "NOT_APPLICABLE"],
+                },
+            },
+            "required": ["status"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
+def build_beat_finite_endpoint_messages(beat_job, candidate_beat):
+    """Extract only whether one finite assigned activity visibly finishes."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Classify finite-activity completion only. Do not judge overall "
+                "beat correctness. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "CURRENT JOB\n"
+                + str(beat_job or "")
+                + "\n\nCANDIDATE BEAT\n"
+                + str(candidate_beat or "")
+                + "\n\nClassify only the finite-activity endpoint. "
+                "Return NOT_APPLICABLE when CURRENT JOB explicitly assigns an "
+                "ongoing/repeated/non-terminal process such as majority, most, "
+                "repeatedly, throughout, continuing, or equivalent. Otherwise, "
+                "when CURRENT JOB assigns a finite activity/task, return COMPLETE "
+                "only if CANDIDATE BEAT shows a natural observable completion/result "
+                "for that activity in this beat. Return ONGOING if it only shows "
+                "the activity underway, continuing, approaching completion, or "
+                "partly complete. Progressive source wording such as 'is cooking' "
+                "or 'is repairing' can still describe a finite task and does not "
+                "by itself make the job ongoing. Do not decide whether the beat is "
+                "valid."
+            ),
+        },
+    ]
+
+
+def parse_beat_finite_endpoint_result(raw_result):
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = json.loads(candidate.strip())
+    if not isinstance(candidate, dict) or set(candidate) != {"status"}:
+        raise ValueError("Finite-endpoint response must contain only status.")
+    status = candidate["status"]
+    if status not in {"COMPLETE", "ONGOING", "NOT_APPLICABLE"}:
+        raise ValueError("Finite-endpoint response contains an invalid status.")
+    return status
+
+
 def _connective_beat_job():
     """Return the generic job used for beats with no assigned required event."""
     return (
@@ -11026,6 +11092,58 @@ def _run_forward_beat_validation(
                 flush=True,
             )
             if validation["valid"]:
+                try:
+                    finite_endpoint_status = parse_beat_finite_endpoint_result(
+                        llm_request(
+                            build_beat_finite_endpoint_messages(
+                                current_job,
+                                candidate,
+                            ),
+                            response_format=BEAT_FINITE_ENDPOINT_RESPONSE_FORMAT,
+                            parse_json_response=False,
+                            history_metadata={
+                                **(history_metadata or {}),
+                                "purpose": "beat_finite_endpoint_extract",
+                                "use_beat_validation_settings": True,
+                                "beat_number": beat_number,
+                                "validation_attempt": validation_attempt,
+                                "total_segments": int(total_segments),
+                            },
+                        )
+                    )
+                except (
+                    LLMConnectionError,
+                    requests.RequestException,
+                    OSError,
+                    ValueError,
+                    TypeError,
+                ) as error:
+                    last_issue = f"Beat finite-endpoint extractor failed: {error}"
+                    retry_feedback = last_issue
+                    regenerate_candidate = False
+                    print(
+                        f"Beat {beat_number} finite-endpoint attempt "
+                        f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: "
+                        f"{last_issue}",
+                        flush=True,
+                    )
+                    continue
+
+                if finite_endpoint_status == "ONGOING":
+                    last_issue = (
+                        "Finite assigned activity is still underway and has no "
+                        "observable completion endpoint."
+                    )
+                    retry_feedback = last_issue
+                    regenerate_candidate = True
+                    print(
+                        f"Beat {beat_number} finite-endpoint attempt "
+                        f"{validation_attempt}/{BEAT_RETRY_ATTEMPTS}: INVALID; "
+                        f"issue: {last_issue}",
+                        flush=True,
+                    )
+                    continue
+
                 coherence_messages = build_beat_coherence_validation_messages(
                     current_state=state_before,
                     beat_job=current_job,
