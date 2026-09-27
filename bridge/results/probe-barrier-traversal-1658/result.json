@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-barrier-traversal-1658",
+  "kind": "llama_chat",
+  "started_at": 1790524984.0957432,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract barrier traversal only. Do not judge whether the scene is valid or physically possible. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "BARRIER\nshelter hatch\n\nRAW SCENE\nA mutant climbs through the shelter hatch and drops into the bunker.\n\nClassify only whether RAW SCENE visibly establishes that any subject moves from one side of BARRIER through its boundary to the other side. Return TRAVERSED when a crossing through the named boundary is established. Return NOT_TRAVERSED when subjects only approach, touch, strike, look through, wait at, or remain on one side of the barrier. Return UNSPECIFIED when RAW SCENE does not establish enough spatial information to tell. Do not infer validity from whether the barrier is open, closed, locked, broken, magical, or intact. Do not infer an unseen route. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 300,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ma0ucq9687qimyzbqtzv2k",
+    "object": "chat.completion",
+    "created": 1790524984,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"TRAVERSED\"}",
+          "reasoning": "We need to parse the question.\n\nBarrier: \"shelter hatch\"\n\nRaw scene: \"A mutant climbs through the shelter hatch and drops into the bunker.\"\n\nQuestion: Does it establish that any subject moves from one side of BARRIER through its boundary to the other side? The barrier is a shelter hatch. The raw scene says the mutant climbs through the hatch, dropping into the bunker. So yes, traversal occurs.\n\nThus status should be \"TRAVERSED\".\n\nReturn JSON only: {\"status\":\"TRAVERSED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 244,
+      "completion_tokens": 121,
+      "total_tokens": 365,
+      "completion_tokens_details": {
+        "reasoning_tokens": 104
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790524986.2276087,
+  "status": "ok"
+}
