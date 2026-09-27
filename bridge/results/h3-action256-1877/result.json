@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action256-1877",
+  "kind": "llama_chat",
+  "started_at": 1790548483.76595,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nLena runs across the bridge and reaches the far bank.\n\nFINAL H3 MICRO-ACTION:\nCamera pans across the bridge while Lena starts running.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-tzt8ui2h7ugc4tq6wg1fgu",
+    "object": "chat.completion",
+    "created": 1790548483,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"OMITTED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"Lena runs across the bridge and reaches the far bank.\" Final H3 micro-action: \"Camera pans across the bridge while Lena starts running.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. The final says camera pans across the bridge while Lena starts running. Does it include that she reaches the far bank? It doesn't mention reaching the far bank. So the result of reaching far bank is omitted. Also \"runs across\" vs \"starts running\". She runs across in RAW; final just says starts running, but not necessarily across or reaching far bank. The material result (reaching far bank) is missing. So status = OMITTED.\n\nReturn JSON: {\"status\":\"OMITTED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 207,
+      "completion_tokens": 174,
+      "total_tokens": 381,
+      "completion_tokens_details": {
+        "reasoning_tokens": 157
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790548486.258026,
+  "status": "ok"
+}
