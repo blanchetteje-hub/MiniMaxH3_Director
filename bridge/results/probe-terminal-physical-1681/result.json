@@ -1,0 +1,57 @@
+{
+  "job_id": "probe-terminal-physical-1681",
+  "kind": "llama_chat",
+  "started_at": 1790527271.7425988,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract terminal-target pre-action status only. Do not judge overall story correctness. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe soldiers eliminate the turret.\n\nAUTHORITATIVE OPENING STATE\nThe turret is a burned-out wreck with its barrel torn off.\n\nRAW SCENE\nThe soldiers shoot the wreck again.\n\nTreat AUTHORITATIVE OPENING STATE as already true at 00:00.000 unless RAW SCENE visibly changes it. SOURCE assigns a terminal action such as killing, destroying, defeating, eliminating, finishing, or resolving a target/process. Inspect the target of that newly assigned action at the moment immediately BEFORE the terminal action begins in RAW SCENE. Return status ACTIVE_OR_UNRESOLVED if RAW establishes the target/process still needs the specific terminal result assigned by SOURCE. Judge terminal status relative to that assigned action: for kill, already dead is terminal. Treat a corpse, an already detached/severed head, a decapitated body, or clearly lifeless remains as already dead even when the word 'dead' is not used; RAW calling those remains a zombie/body/torso does not make the target active again. For destroy, already destroyed is terminal; for defeat/eliminate, already neutralized, incapacitated, restrained, or otherwise no longer an active opponent is terminal; for finish/complete, already complete is terminal; for resolve, already resolved is terminal. Return ALREADY_TERMINAL when RAW establishes that assigned terminal result was already true before the action begins. Return UNSPECIFIED only when RAW does not establish either. Do not decide whether the scene is valid. Return JSON: {\"status\":\"...\"}"
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 350,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jdg72fl2juj2wq8i5b2g9",
+    "object": "chat.completion",
+    "created": 1790527271,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ALREADY_TERMINAL\"}",
+          "reasoning": "We need to parse the scenario.\n\nASSIGNED SOURCE: \"The soldiers eliminate the turret.\"\n\nSo source assigns a terminal action: eliminating the turret. So target = turret, action = eliminate (neutralize). We must inspect the target of that newly assigned action at the moment immediately BEFORE the terminal action begins in RAW SCENE.\n\nRAW SCENE: \"The soldiers shoot the wreck again.\" The opening state is AUTHORITATIVE OPENING STATE: \"The turret is a burned-out wreck with its barrel torn off.\"\n\nSo before the raw scene's action (shooting), we have the turret as a burned-out wreck. Is it already neutralized? It's a wreck, barrel torn off. That seems like it's already destroyed/neutralized. The target is the turret; action eliminate: if already neutralized/incapacitated, then terminal.\n\nThus status should be ALREADY_TERMINAL.\n\nCheck if any nuance: \"The soldiers shoot the wreck again.\" They are shooting it again but it's a wreck. So before they shoot, it's still a wreck. It's already eliminated? The turret is burned-out and barrel torn off; that indicates it's neutralized. So yes.\n\nThus output JSON {\"status\":\"ALREADY_TERMINAL\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 400,
+      "completion_tokens": 265,
+      "total_tokens": 665,
+      "completion_tokens_details": {
+        "reasoning_tokens": 246
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790527276.0076792,
+  "status": "ok"
+}
