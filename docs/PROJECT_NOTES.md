@@ -1278,3 +1278,13 @@ Containment/location effects can authorize a temporary crossing without changing
 - BEAT CREATE/VALIDATE should stage restoration by beat end.
 - Director Request 1 verifies the final barrier state with the existing narrow barrier-state extractor.
 - Do not invent an ARC barrier-state effect solely because a temporary transition is necessary for an action.
+
+
+### Containment overlay invalidates transient spatial frame
+
+A canonical `set_containment` effect changes the subject's spatial frame.
+
+- On any containment transition, clear prompt-derived `pose_action`, `topology`, and `spatial_relationships`.
+- For `contained`, set the canonical position to the container and re-add only `inside <container>`.
+- For `free`, remove the container-bound position/relationship and let later continuity establish new local staging.
+- Do this even when the prompt-derived `position` string already equals the canonical container; matching position does not make other spatial relationships trustworthy.
