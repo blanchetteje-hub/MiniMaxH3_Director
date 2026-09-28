@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2095",
+  "kind": "llama_chat",
+  "started_at": 1790555650.9251182,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nThe guard throws the key across the yard.\n\nNEXT MICRO-ACTION:\nThe guard immediately unlocks the gate using that same key without retrieving it.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-q02ryo792d761dn3q5k49",
+    "object": "chat.completion",
+    "created": 1790555650,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPATIBLE\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: \"The guard throws the key across the yard.\" So guard has a key, he throws it across the yard. That means after throwing, the key is somewhere in the yard (not with him). Next action: \"The guard immediately unlocks the gate using that same key without retrieving it.\"\n\nWe need to see if it's compatible: The guard uses that same key to unlock the gate without retrieving it. But he threw it across the yard; so unless the key was thrown onto or near the gate, but we don't know. He didn't retrieve it. So is unlocking possible? If the key landed on the gate, maybe he can use it directly. But text says \"using that same key\" implies he's using the key he just threw. Without retrieving it: meaning he hasn't picked it up again. Could he unlock with a key that's not in his hand? He could if it's on the gate or near enough to insert into lock. The phrase \"immediately unlocks the gate using that same key without retrieving it\" suggests he's using the key while it's still somewhere else, maybe on the gate. But is that physically possible? Yes: If he throws the key onto the gate's lock and then uses it directly. So no conflict.\n\nBut we need to check if any body part or object state conflicts. The guard had a key in his hand before throwing; after throw, it's not with him. He unlocks using that same key without retrieving it. That means he must have used the key while still on the gate. No conflict: the key is no longer held by him but he's using it.\n\nThus status = COMPATIBLE.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 303,
+      "completion_tokens": 361,
+      "total_tokens": 664,
+      "completion_tokens_details": {
+        "reasoning_tokens": 344
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555655.8332975,
+  "status": "ok"
+}
