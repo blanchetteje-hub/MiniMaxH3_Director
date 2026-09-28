@@ -1099,5 +1099,42 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         )
 
 
+    def test_director_topology_keeps_unassigned_helper_outside_destination(self):
+        effects = [
+            {"op": "set_containment", "entity": "ChildA", "container": "safe room", "value": "contained"},
+            {"op": "set_containment", "entity": "ChildB", "container": "safe room", "value": "contained"},
+            {"op": "set_barrier_state", "entity": "door", "value": "locked"},
+            {"op": "set_location", "entity": "ChildA", "value": "safe room"},
+            {"op": "set_location", "entity": "ChildB", "value": "safe room"},
+        ]
+        contracts = minimax.build_director_barrier_topology_contract(
+            effects,
+            (
+                "<Subject 1> is Caregiver, an adult.\n"
+                "<Subject 2> is ChildA, a child.\n"
+                "<Subject 3> is ChildB, a child."
+            ),
+            assigned_source=(
+                "Caregiver gets ChildA and ChildB into the safe room, then locks the door."
+            ),
+            current_beat=(
+                "Caregiver rushes ChildA and ChildB into the safe room and locks its door."
+            ),
+            authoritative_opening_state=(
+                'SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n'
+                '{"characters":{"Caregiver":{"location":"home"}}}'
+            ),
+        )
+        self.assertEqual(len(contracts), 1)
+        by_name = {
+            item["entity"]: item["expected"]
+            for item in contracts[0]["subjects"]
+        }
+        self.assertEqual(by_name["ChildA"], "AT_DESTINATION")
+        self.assertEqual(by_name["ChildB"], "AT_DESTINATION")
+        self.assertEqual(by_name["Caregiver"], "NOT_AT_DESTINATION")
+
+
+
 if __name__ == "__main__":
     unittest.main()
