@@ -26741,26 +26741,9 @@ def parse_director_barrier_traversal_observation(raw_result):
     return status
 
 
-_DIRECTOR_TERMINAL_ACTION_RE = re.compile(
-    r"\b(?:kill(?:s|ed|ing)?|destroy(?:s|ed|ing)?|defeat(?:s|ed|ing)?|"
-    r"eliminat(?:e|es|ed|ing)|finish(?:es|ed|ing)?|resolv(?:e|es|ed|ing)|"
-    r"decapitat(?:e|es|ed|ing)|behead(?:s|ed|ing)?)\b",
-    re.IGNORECASE,
-)
-_DIRECTOR_HEAD_SEVER_ACTION_RE = re.compile(
-    r"(?is)\b(?:cut|cuts|cutting|slice|slices|sliced|slicing|slash|slashes|"
-    r"slashed|slashing|sever|severs|severed|severing)\b"
-    r"[^.;]{0,100}\bhead\b[^.;]{0,60}\b(?:off|from)\b"
-)
-
-
 def director_source_has_terminal_action(assigned_source):
-    """Return whether source explicitly assigns a terminal action now."""
-    text = str(assigned_source or "")
-    return bool(
-        _DIRECTOR_TERMINAL_ACTION_RE.search(text)
-        or _DIRECTOR_HEAD_SEVER_ACTION_RE.search(text)
-    )
+    """Return whether there is assigned source work worth a terminal-state check."""
+    return bool(str(assigned_source or "").strip())
 
 
 def build_director_terminal_target_messages(
@@ -26768,12 +26751,12 @@ def build_director_terminal_target_messages(
     raw_scene,
     authoritative_opening_state="",
 ):
-    """Extract only whether a terminal-action target was already terminal."""
+    """Extract whether an irreversible source transition targets finished state."""
     return [
         {
             "role": "system",
             "content": (
-                "Extract terminal-target pre-action status only. Do not judge "
+                "Extract irreversible-target pre-action status only. Do not judge "
                 "overall story correctness. Return JSON only."
             ),
         },
@@ -26789,30 +26772,23 @@ def build_director_terminal_target_messages(
                 + "\n\nEverything in AUTHORITATIVE OPENING STATE is already true "
                 "at 00:00.000. If it contains both SOURCE-AUTHORIZED CURRENT STATE "
                 "and RENDERED CONTINUITY, canonical source-authorized facts win any "
-                "conflict, but rendered continuity is still true for opening facts "
+                "conflict, while rendered continuity remains true for opening facts "
                 "the canonical state does not address. RAW SCENE does not erase an "
-                "opening fact merely by omitting it or using a vaguer noun. SOURCE "
-                "assigns a terminal action such as killing, destroying, defeating, "
-                "eliminating, finishing, or resolving a target/process. Inspect the "
-                "target of that newly assigned action at the moment immediately "
-                "BEFORE the terminal action begins in RAW SCENE. Return status "
-                "ACTIVE_OR_UNRESOLVED only when the opening state plus RAW establish "
-                "the target/process still needs the specific terminal result assigned "
-                "by SOURCE. Judge terminal status relative to that assigned action: "
-                "for kill, already dead is terminal. Treat a corpse, an already "
-                "detached/severed head, a decapitated body, or clearly lifeless "
-                "remains as already dead even when the word 'dead' is not used; if "
-                "opening continuity says the target is dead, RAW later calling those "
-                "same remains a zombie/body/torso does not make the target active "
-                "again unless RAW visibly establishes revival. For destroy, already "
-                "destroyed is terminal; for defeat/eliminate, already neutralized, "
-                "incapacitated, restrained, or otherwise no longer an active opponent "
-                "is terminal; for finish/complete, already complete is terminal; for "
-                "resolve, already resolved is terminal. Return ALREADY_TERMINAL when "
-                "the opening state or RAW establishes that assigned terminal result "
-                "was already true before the action begins. Return UNSPECIFIED only "
-                "when neither opening state nor RAW establishes either status. Do not "
-                "decide whether the scene is valid."
+                "opening fact merely by omitting it or using a vaguer noun. Determine "
+                "whether ASSIGNED SOURCE requires an irreversible terminal transition "
+                "for a target or process in this segment. If it does not, return "
+                "UNSPECIFIED. If it does, inspect that target immediately before the "
+                "assigned transition begins in RAW SCENE. Return ACTIVE_OR_UNRESOLVED "
+                "only when opening state plus RAW establish that the target still "
+                "needs the specific terminal result assigned by SOURCE. Return "
+                "ALREADY_TERMINAL when that exact terminal result is already true "
+                "before the new action begins. Treat clearly completed, permanently "
+                "separated, disabled, consumed, removed, or otherwise irreversible "
+                "end states as terminal when they already satisfy the assigned result. "
+                "Do not infer restoration or reversal unless RAW visibly establishes "
+                "it. Return UNSPECIFIED when the source does not assign a terminal "
+                "transition or when status cannot be determined. Do not decide whether "
+                "the scene is valid."
             ),
         },
     ]
@@ -26868,7 +26844,7 @@ RAW SCENE
 
 Check only completion and persistent-state compatibility:
 1. ASSIGNED TYPED END STATE is authoritative for persistent final-state changes to already-known tracked state. Require matching typed effects for durable changes such as canonical story location, containment, barrier state, established inventory/readiness items, damage, clothing, or other continuity facts already present in OPENING STATE or explicitly named in TYPED END STATE. A canonical set_location value is coarse story geography/container state, not a camera-scale room position: movement between rooms, hallways, or subareas inside the same established canonical location is ordinary staging and does NOT require another set_location effect. Do NOT treat an incidental consumable, plate, cup, serving prop, or other newly introduced ordinary scene prop as persistent inventory merely because a known subject holds or uses it at the end of RAW. Temporary ordinary prop use and temporary motion are allowed unless SOURCE or OPENING STATE makes them continuity-significant.
-2. Require only the actions, results, and participant roles assigned by SOURCE. The derived beat is staging guidance only: it may make SOURCE more concrete but may NOT add a stricter action, transfer method, prop, destination, or participant requirement. If the derived beat says "hands", "passes", "places", or another specific gesture that SOURCE does not require, do not require that gesture. If SOURCE assigns an action now, RAW must visibly perform that source action in this segment; an existing result or aftermath alone is insufficient. If SOURCE assigns a terminal action such as kill, destroy, defeat, finish, eliminate, or resolve, RAW must show an active/intact-enough/unresolved target before that action and then visibly cause the terminal transition. Attacking an already-dead corpse, severed remnant, already-destroyed object, or already-resolved process does not satisfy the source action.
+2. Require only the actions, results, and participant roles assigned by SOURCE. The derived beat is staging guidance only: it may make SOURCE more concrete but may NOT add a stricter action, transfer method, prop, destination, or participant requirement. If the derived beat says "hands", "passes", "places", or another specific gesture that SOURCE does not require, do not require that gesture. If SOURCE assigns an action now, RAW must visibly perform that source action in this segment; an existing result or aftermath alone is insufficient. If SOURCE assigns an irreversible terminal transition, RAW must show a target that has not already reached that exact terminal result before the action and must visibly cause the assigned transition. Reapplying an already-complete irreversible result does not satisfy the source action.
 3. A finite activity needs its visible result. For a consumable or explicit hand-off to named people, the intended recipient must visibly receive, be served, or otherwise gain practical access to the result when immediate receipt is part of SOURCE. Do not prescribe hand-to-hand transfer unless SOURCE itself does. For work merely made FOR someone, completion of the work is enough unless SOURCE explicitly requires delivery. Honor explicit later pickup/storage. Source-assigned spectators remain spectators.
 4. Preserve participant scope. Only subjects explicitly named by SOURCE as crossing/entering/exiting a barrier may cross it. When ASSIGNED TYPED END STATE contains location/containment changes for only some named subjects, do not give the mover/helper that same persistent location/containment change unless it has its own matching effect. Everyone else must stay on their original side unless SOURCE explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other people through does NOT authorize the mover/helper to follow. RAW is invalid if any unlisted participant crosses. If AUTHORITATIVE BARRIER BINDING is non-empty, that generic barrier name refers specifically to the named destination boundary; locking/closing a different same-type barrier does not satisfy it.
 5. Preserve persistent facts already true in AUTHORITATIVE OPENING STATE unless SOURCE/CURRENT BEAT explicitly changes them. This includes held/equipped items, containment, barrier state, clothing, injuries, and other durable conditions. Reject dropping, losing, freeing, unlocking, removing, or otherwise changing such state as harmless staging.
