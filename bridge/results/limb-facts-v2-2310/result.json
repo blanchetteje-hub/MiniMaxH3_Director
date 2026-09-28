@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2310",
+  "kind": "llama_chat",
+  "started_at": 1790558149.2490404,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nAmy holds a katana in her left hand and pistol in her right.\n\nNEXT MICRO-ACTION:\nAmy grabs a zombie with both hands without dropping either weapon.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ji0ndroj96hsbi0vsujvp",
+    "object": "chat.completion",
+    "created": 1790558149,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"katana\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"pistol\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"object\":\"katana\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"pistol\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: Amy holds a katana in her left hand and pistol in her right.\n\nSo previous list: each hand explicitly occupied at the END of action. So LEFT_HAND with object \"katana\". RIGHT_HAND with object \"pistol\".\n\nNEXT: Amy grabs a zombie with both hands without dropping either weapon. So next list: each hand required by new action; object must be physical object that limb manipulates/holds/presses/uses. If NEXT operates same physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS.\n\nShe grabs a zombie with both hands. She doesn't drop either weapon. So she holds katana and pistol still? But grabbing zombie uses both hands; but they are occupied by weapons. Does \"grabs a zombie\" mean using both hands to hold zombie while also holding weapons? That seems impossible physically, but the instruction says without dropping either weapon. So maybe she grabs zombie with both hands while still holding weapons: so each hand is used for grabbing zombie and holds weapon simultaneously? But we need object labels: For each limb required by new action; if same physical object already occupying that limb, repeat EXACTLY same object label.\n\nSo LEFT_HAND: currently katana. She uses it to grab zombie. So object remains \"katana\". RIGHT_HAND: pistol. So object remains \"pistol\".\n\nBut also the zombie is being grabbed with both hands. But we need each hand explicitly required by new action; object must be physical object that limb manipulates/holds/presses/uses. The zombie is not held by a single hand but both together. For each hand, the object could still be \"zombie\"? But instruction: If NEXT operates same physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. So for LEFT_HAND, previous object was katana; if she uses it to grab zombie, it's still katana? Or is she using both hands to hold zombie while also holding weapons? The wording \"grabs a zombie with both hands without dropping either weapon\" implies each hand holds the zombie and also holds its weapon. So the limb's primary occupancy remains the weapon.\n\nThus next list: LEFT_HAND object \"katana\", RIGHT_HAND object \"pistol\". Freed_before_use: none, because she didn't release any before using? She grabs zombie with both hands without dropping either weapon; no freed objects. But maybe we need to consider that each hand is used for grabbing zombie but still holds the same object. So no freed.\n\nThus JSON:\n\n{\n\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"katana\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"pistol\"}],\n\"next\":[{\"limb\":\"LEFT_HAND\",\"object\":\"katana\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"pistol\"}],\n\"freed_before_use\": []\n}\n\nCheck format: \"previous\":[{...}], \"next\":[{...}]. Freed list empty array.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 415,
+      "completion_tokens": 685,
+      "total_tokens": 1100,
+      "completion_tokens_details": {
+        "reasoning_tokens": 616
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790558158.327519,
+  "status": "ok"
+}
