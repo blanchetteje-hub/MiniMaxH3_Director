@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2074",
+  "kind": "llama_chat",
+  "started_at": 1790555525.4933925,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nOwen holds a flashlight in his right hand.\n\nNEXT MICRO-ACTION:\nOwen uses his right hand to turn a key while still holding the flashlight, with no release or repositioning.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-mhfu1r4cssemaqv5vkj3ea",
+    "object": "chat.completion",
+    "created": 1790555525,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPATIBLE\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: \"Owen holds a flashlight in his right hand.\" So at that point, Owen's right hand is holding the flashlight. Next action: \"Owen uses his right hand to turn a key while still holding the flashlight, with no release or repositioning.\"\n\nWe need to determine if this next action is compatible with previous state. The question: can he use his right hand to turn a key while still holding the flashlight? That would require using same hand for two tasks simultaneously. If he's turning a key, presumably needs to hold it in that hand. But maybe he could hold flashlight and turn key at same time if key is small or held by other hand? The text says \"while still holding the flashlight\" meaning his right hand remains holding flashlight. He uses his right hand to turn a key while still holding flashlight. That implies he's using same hand for two tasks: turning key and holding flashlight. Is that physically possible? It might be conflict if he needs both hands, but maybe it's okay if key is small or held by thumb? But the text says \"uses his right hand to turn a key\" meaning he uses it to manipulate key. He could hold flashlight with one finger and use other fingers to turn key. That seems physically possible. The question: does this conflict with previous state that his right hand holds flashlight? It doesn't say he releases or repositioning, so it's still holding flashlight. So the next action is \"turn a key\" while holding flashlight. Is that compatible? Yes, if we assume he can hold both at same time. There's no explicit mention of releasing flashlight. The question: does turning a key require his right hand to be free? Not necessarily; could use thumb for key and other fingers for flashlight. So it's physically possible.\n\nThus status = COMPATIBLE.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 312,
+      "completion_tokens": 393,
+      "total_tokens": 705,
+      "completion_tokens_details": {
+        "reasoning_tokens": 376
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555530.804436,
+  "status": "ok"
+}
