@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2292",
+  "kind": "llama_chat",
+  "started_at": 1790557991.7017362,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nTomas holds a rope in his right hand.\n\nNEXT MICRO-ACTION:\nTomas grabs a ladder rung with the right hand without releasing the rope.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-cgh8zl59l1u1vf71s2rwrn",
+    "object": "chat.completion",
+    "created": 1790557991,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"previous\": [\n    {\n      \"limb\": \"RIGHT_HAND\",\n      \"object\": \"rope\"\n    }\n  ],\n  \"next\": [\n    {\n      \"limb\": \"RIGHT_HAND\",\n      \"object\": \"ladder rung\"\n    }\n  ],\n  \"freed_before_use\": []\n}\n```\n",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: Tomas holds a rope in his right hand. So previous list: one entry: {\"limb\":\"RIGHT_HAND\", \"object\":\"rope\"}. Next action: Tomas grabs a ladder rung with the right hand without releasing the rope. So next: RIGHT_HAND uses ladder rung, but also still holding rope? The rule says if NEXT operates SAME physical object already occupying that limb, repeat EXACTLY same object label used in PREVIOUS. But here it's different object (ladder rung). He is grabbing a ladder rung with his right hand without releasing the rope. So he now holds both objects? Actually physically one hand can hold two items: rope and ladder rung simultaneously? The action says grabs ladder rung while still holding rope, so the limb uses ladder rung but also continues to occupy rope. But we need list each hand/foot explicitly required by new action; object must be physical object that limb manipulates/holds/presses/uses. If NEXT operates SAME physical object already occupying that limb, repeat same label. Here it's different: ladder rung. So next entry: {\"limb\":\"RIGHT_HAND\", \"object\":\"ladder rung\"}. Freed_before_use? The right hand didn't release rope before using the new object; it grabs ladder rung without releasing rope. So no freed_before_use for RIGHT_HAND. But maybe we need to list limb that was freed before use if any. Since he didn't free rope, none. So freed_before_use empty array.\n\nReturn JSON: {\"previous\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"rope\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"ladder rung\"}],\"freed_before_use\":[]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 413,
+      "completion_tokens": 429,
+      "total_tokens": 842,
+      "completion_tokens_details": {
+        "reasoning_tokens": 348
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557997.5666811,
+  "status": "ok"
+}
