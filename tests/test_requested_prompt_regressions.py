@@ -558,6 +558,16 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         self.assertIn("door that is the boundary of basement", prompt)
         self.assertIn("Amy locks the kitchen door.", prompt)
 
+    def test_end_state_cannot_reacquire_plate_after_setting_it_down(self):
+        raw = (
+            "At 00:00.000, Amy picks up a second plate.\n"
+            "At 00:01.000, Amy sets the second plate in front of Amber.\n"
+            "End continuity state: Amy stands holding two plates."
+        )
+        issues = minimax._director_explicit_object_state_conflict_errors(raw)
+        self.assertTrue(issues)
+        self.assertIn("End continuity state", issues[0])
+
     def test_unrelated_placed_object_does_not_block_other_held_object(self):
         raw = (
             "At 00:00.000, Mara places the cup on the table beside her backpack.\n"
