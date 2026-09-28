@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2277",
+  "kind": "llama_chat",
+  "started_at": 1790557860.404442,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nMedic holds a syringe in the right hand.\n\nNEXT MICRO-ACTION:\nMedic depresses the syringe plunger.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jwkalo1dsa9wqp41wapb3o",
+    "object": "chat.completion",
+    "created": 1790557860,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"syringe\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"syringe\"}],\"freed_before_use\":[]}\n",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Medic holds a syringe in the right hand.\" So at end of action, RIGHT_HAND occupied by object \"syringe\". Next micro-action: \"Medic depresses the syringe plunger.\" This uses same physical object (the syringe) with the right hand. The next limb usage is RIGHT_HAND and object \"syringe\" again. No release before use; so freed_before_use empty.\n\nReturn JSON accordingly. Ensure format exactly as specified. Use array of objects for previous, next, freed_before_use list. For previous: [{\"limb\":\"RIGHT_HAND\",\"object\":\"syringe\"}]. Next: same. Freed_before_use: [].\n\nCheck if any nuance: \"depresses the syringe plunger\" uses right hand on syringe; no release. So correct.\n\nReturn JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 405,
+      "completion_tokens": 225,
+      "total_tokens": 630,
+      "completion_tokens_details": {
+        "reasoning_tokens": 176
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557863.660573,
+  "status": "ok"
+}
