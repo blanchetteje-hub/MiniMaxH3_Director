@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-compare-2395",
+  "kind": "llama_chat",
+  "started_at": 1790614221.4919968,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one supplied target state. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "TARGET\nevacuation\n\nREQUIRED END STATE\ncomplete\n\nOPENING FACTS\nall civilians have evacuated; evacuation is complete\n\nRAW SCENE\nthe captain finishes the evacuation\n\nClassify the target immediately BEFORE the action that would produce REQUIRED END STATE.\nMATCH = REQUIRED END STATE is already true.\nNOT_MATCH = facts establish a different current state, so REQUIRED END STATE is not yet true.\nUNKNOWN = facts do not establish either.\nOpening facts remain true unless RAW explicitly changes them before that action. Do not infer unstated changes. Return exactly {\"status\":\"MATCH\"}, {\"status\":\"NOT_MATCH\"}, or {\"status\":\"UNKNOWN\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-tskw30y2tmkjx08kb7iqqh",
+    "object": "chat.completion",
+    "created": 1790614221,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"MATCH\"}",
+          "reasoning": "We need to classify the target state \"evacuation\" immediately BEFORE the action that would produce REQUIRED END STATE \"complete\". The opening facts: all civilians have evacuated; evacuation is complete. So before any action, evacuation is already complete. Thus required end state is true. Therefore status MATCH.\n\nReturn JSON exactly {\"status\":\"MATCH\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 212,
+      "completion_tokens": 82,
+      "total_tokens": 294,
+      "completion_tokens_details": {
+        "reasoning_tokens": 67
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790614222.651186,
+  "status": "ok"
+}
