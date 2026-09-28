@@ -174,7 +174,7 @@ Structural planning passes: source-span planning remained active and produced
 exactly **2 chapters / 6 + 2 beats**. This is not yet semantic acceptance.
 
 Review of the actual accepted beats and developer log found:
-- Beat 4 fires a pistol to sever a zombie's head, then decapitates that same
+- Beat 4 applies an irreversible terminal transition to one target, then repeats that same
   zombie with a katana. The production validator explicitly accepted this
   internally contradictory sequence; it checked the actions independently.
 - Beat 7 describes the last zombie "shattering into blood", an unsupported
@@ -191,7 +191,7 @@ coherence failure first, within the existing single validator.
 Completed batch **936–955** (`gpt-runtime` queue commit `716c003`):
 - 10 matched cases, full production validator versus replacement of check B;
 - **6/10 reference-label matches for each variant**, all 20 normal completions;
-- both accept the captured double decapitation, unsupported body transformation,
+- both accept the captured duplicate terminal transition, unsupported body transformation,
   and walking through a still-closed locked door;
 - the replacement also regresses the repeated-crystal-removal case, while fixing
   an unsupported dead-target assumption on the corrected final-kill control;
@@ -202,12 +202,12 @@ Completed batch **956–975** (`gpt-runtime` queue commit `4d0e006`):
 - compact single validator: **7/10** reference matches;
 - isolated coherence diagnostic: **7/10** reference matches;
 - all 20 completed normally;
-- compact validator caught the actual double decapitation, repeated crystal
+- compact validator caught the actual duplicate terminal transition, repeated crystal
   removal, and locked-door crossing; the isolated diagnostic still missed the
-  actual double decapitation;
+  actual duplicate terminal transition;
 - both accepted the unsupported body transformation and incorrectly inferred
   that a previous neck injury had already killed the last target;
-- compact also rejected different-target decapitations by demanding unassigned
+- compact also rejected different-target terminal transitions by demanding unassigned
   state effects, despite an empty effects list;
 - no production change adopted. This does not support adding a separate
   coherence subsystem.
@@ -217,7 +217,7 @@ Completed batch **976–995** (`gpt-runtime` queue commit `84cd6c5`):
   This is a small targeted development set, not broad validator accuracy.
 - All 20 returned parseable JSON and completed normally, using 229–957 completion
   tokens. These are semantic failures, not truncation failures.
-- 976 correctly catches the actual double decapitation; crystal removal,
+- 976 correctly catches the actual duplicate terminal transition; crystal removal,
   restoration, different targets, explicit magic, coverage, named participants,
   and current-action-versus-aftermath controls also behave as intended.
 - 978 rejects the unsupported body transformation for the wrong reason: it
@@ -1510,8 +1510,8 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - `acceptance-1608` is the first structurally complete 8-segment prompt-generation acceptance after the recent fixes.
 - Segment 2 now satisfies both barrier requirements: Amy ends outside the basement, Will and Amber end inside, and the locked barrier is explicitly the basement door. This closes the original basement-side and wrong-door regressions.
 - Segment 4 no longer fails on kitchen/hallway-scale movement, confirming canonical `set_location` is now correctly treated as coarse story geography rather than room-level staging.
-- The next hard semantic failure is Segment 7. Source assigns “Amy kills the last of the zombies,” but RAW begins with the already-severed torso from Segment 6 and has Amy strike that corpse/remnant. The completion gate incorrectly accepted interaction with an already-terminal target as evidence of a newly assigned kill.
-- Production commit `df49c6aeb5455bf7e2d66a9f0d780b797485efd3` adds a generic terminal-action invariant to beat generation, Director generation, and Director completion: kill/destroy/defeat/finish/eliminate/resolve must begin from an active/intact-enough/unresolved target or process and visibly cause the terminal transition in the current beat. Corpses, severed remnants, already-destroyed objects, and already-resolved processes cannot satisfy a newly assigned terminal action.
+- The next hard semantic failure is Segment 7. Source assigns “Amy kills the last of the zombies,” but RAW begins with the already-terminal target from Segment 6 and has Amy reuse that target. The completion gate incorrectly accepted interaction with an already-terminal target as evidence of a newly assigned kill.
+- Production commit `df49c6aeb5455bf7e2d66a9f0d780b797485efd3` adds a generic terminal-action invariant to beat generation, Director generation, and Director completion: an irreversible terminal result must begin from a target or process that has not already reached that result and visibly cause the transition in the current beat. An already-satisfied terminal state cannot satisfy the same newly assigned action again.
 - Regression commit `7899fd73337b0f7e379122cc6ef3fa3b52775e3a` covers the new terminal-target rule.
 - Segment 1 still has softer gold-quality distance (children reach for breakfast rather than a stronger fully served/stove-settled endpoint), and Segment 8 has over-elaborated release staging. Do not prioritize those artistic/quality differences ahead of the demonstrated Segment-7 source violation.
-- Next checkpoint: regression suite, then fresh full acceptance. Verify Segment 7 attacks a live/unresolved final zombie rather than a corpse/remnant; after that, reassess the earliest remaining gold-quality mismatch.
+- Next checkpoint: regression suite, then fresh full acceptance. Verify Segment 7 uses an unresolved final target rather than reusing an already-terminal target; after that, reassess the earliest remaining gold-quality mismatch.
