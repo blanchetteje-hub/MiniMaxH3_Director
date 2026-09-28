@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2223",
+  "kind": "llama_chat",
+  "started_at": 1790557133.5969925,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nCook holds a pan handle in the left hand.\n\nNEXT MICRO-ACTION:\nCook stirs with a spoon in the right hand.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-72daonl9t7hh30r8aujygq",
+    "object": "chat.completion",
+    "created": 1790557133,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"pan_handle\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"spoon\"}],\"freed_before_use\":[]}\n",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Cook holds a pan handle in the left hand.\" So occupied limb is LEFT_HAND, task? The object/task occupying it at end of action: pan_handle (object). Use short lowercase label copied or normalized from text. So \"pan_handle\" maybe. They said use short lowercase labels copied or normalized from the text. So we can use \"pan handle\"? But they want short lowercase object/task labels. Probably combine words with underscore? In example, they used \"pan_handle\". Let's do that.\n\nNEXT: \"Cook stirs with a spoon in the right hand.\" Limb required for new action: RIGHT_HAND. Object/task that limb acts on: spoon (object). So task is stirring? But we need object or task. The text says \"stirs with a spoon\" so the limb acts on spoon. So task could be stir, but they want object/task label. Let's use \"spoon\". They said short lowercase labels copied or normalized from the text. So \"spoon\".\n\nIf NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb: It doesn't mention pan handle being released. So freed_before_use empty.\n\nReturn JSON with arrays of objects for previous and next, each having limb and task fields. Freed_before_use array empty.\n\nThus:\n\n{\n  \"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"pan_handle\"}],\n  \"next\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"spoon\"}],\n  \"freed_before_use\": []\n}\n\nCheck format: JSON only, no extra keys. Use double quotes. Good.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 283,
+      "completion_tokens": 381,
+      "total_tokens": 664,
+      "completion_tokens_details": {
+        "reasoning_tokens": 334
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557138.7746832,
+  "status": "ok"
+}
