@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2267",
+  "kind": "llama_chat",
+  "started_at": 1790557767.325342,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nJon carries a box with both hands.\n\nNEXT MICRO-ACTION:\nJon opens a door with his left hand without setting down the box.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-piuuytyc7uuyz6gmjgj9",
+    "object": "chat.completion",
+    "created": 1790557767,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"previous\": [\n    { \"limb\": \"LEFT_HAND\",   \"object\": \"box\" },\n    { \"limb\": \"RIGHT_HAND\",  \"object\": \"box\" }\n  ],\n  \"next\": [\n    { \"limb\": \"LEFT_HAND\",   \"object\": \"door\" }\n  ],\n  \"freed_before_use\": []\n}\n```\n",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: Jon carries a box with both hands. So at the end of that action, both hands are occupied by \"box\". The object must be physical object or task occupying that limb. So we list each hand explicitly occupied at END of action.\n\nThus previous array should have entries for LEFT_HAND and RIGHT_HAND? Or BOTH_HANDS? It says: For PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\nSo if both hands are used, we need two entries: one for left hand, one for right hand. Each with object \"box\". So previous = [{\"limb\":\"LEFT_HAND\",\"object\":\"box\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"box\"}].\n\nNEXT: Jon opens a door with his left hand without setting down the box.\n\nSo next action requires left hand to open door. The object is physical object that limb manipulates/holds/presses/uses. So left hand uses \"door\" (or maybe \"door handle\"?). But we need exact same object label used in PREVIOUS if it's the SAME physical object already occupying that limb. Here, left hand was holding box previously; now it opens door without setting down the box. That means left hand is still holding box while opening door? Wait: He carries a box with both hands. Then he opens a door with his left hand without setting down the box. So he's using left hand to open door but also carrying box. How can that be? Maybe he uses left hand to push or pull door handle while still holding box in both hands? That seems impossible physically, but maybe it's like he holds box and pushes door with left hand simultaneously. But we need to list each limb explicitly required by the new action.\n\nSo next array: LEFT_HAND is used for opening a door. The object that limb manipulates/holds/presses/uses is \"door\". Since the left hand was already holding \"box\" from previous, but now it's using it on door? But if he hasn't set down box, then his left hand still holds box while also interacting with door. That seems contradictory: one hand can't hold two objects simultaneously unless we consider that the object being used is same as before (box). But he's opening a door; maybe he uses the box to open the door? He could push the door with the box using left hand, but then the object would be \"box\". However the action says opens a door. So likely the limb interacts with door handle. The object for that limb is \"door\" (or \"door_handle\"). But we need to use same label if it's same physical object already occupying that limb. It's not; box vs door are different objects.\n\nThus next array: [{\"limb\":\"LEFT_HAND\",\"object\":\"door\"}]. Also maybe RIGHT_HAND remains occupied by box? The action only mentions left hand, but right hand still holds box. But we list each limb explicitly required by the new action. So just left hand is needed for opening door. Right hand not used in this action.\n\nAlso freed_before_use: If NEXT explicitly releases, sets down, transfers, pockets, or repositions prior object before using limb for something else. Here he does NOT set down box; so no freeing. But maybe the left hand was holding box and now uses it to open door? That would be same physical object (box) used again. But if it's still holding box while opening door, then not freed. So freed_before_use empty.\n\nThus output JSON: {\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"box\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"box\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"object\":\"door\"}],\"freed_before_use\":[]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 410,
+      "completion_tokens": 858,
+      "total_tokens": 1268,
+      "completion_tokens_details": {
+        "reasoning_tokens": 765
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557778.5090864,
+  "status": "ok"
+}
