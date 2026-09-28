@@ -17276,12 +17276,21 @@ def _validate_director_timestamp_correspondence(
     ]
 
     issues = []
+    description_text = str(detailed_description or "")
     issues.extend(
         _director_timestamp_range_errors(
-            detailed_description,
+            description_text,
             segment_seconds=segment_seconds,
         )
     )
+    if re.search(
+        r"(?i)\[(?:\s*At\s+)?\d{1,2}(?::\d{2})?[.:]\d{3}[^\]]*\]",
+        description_text,
+    ):
+        issues.append(
+            "Bracketed or nested timestamp wrappers are invalid; every timed "
+            "micro-action must begin directly with 'At mm:ss.nnn,'."
+        )
     if raw_timestamps != formatted_timestamps:
         issues.append(
             "RAW SCENE timestamps and detailed_description timestamps do not "
