@@ -26743,14 +26743,24 @@ def parse_director_barrier_traversal_observation(raw_result):
 
 _DIRECTOR_TERMINAL_ACTION_RE = re.compile(
     r"\b(?:kill(?:s|ed|ing)?|destroy(?:s|ed|ing)?|defeat(?:s|ed|ing)?|"
-    r"eliminat(?:e|es|ed|ing)|finish(?:es|ed|ing)?|resolv(?:e|es|ed|ing))\b",
+    r"eliminat(?:e|es|ed|ing)|finish(?:es|ed|ing)?|resolv(?:e|es|ed|ing)|"
+    r"decapitat(?:e|es|ed|ing)|behead(?:s|ed|ing)?)\b",
     re.IGNORECASE,
+)
+_DIRECTOR_HEAD_SEVER_ACTION_RE = re.compile(
+    r"(?is)\b(?:cut|cuts|cutting|slice|slices|sliced|slicing|slash|slashes|"
+    r"slashed|slashing|sever|severs|severed|severing)\b"
+    r"[^.;]{0,100}\bhead\b[^.;]{0,60}\b(?:off|from)\b"
 )
 
 
 def director_source_has_terminal_action(assigned_source):
     """Return whether source explicitly assigns a terminal action now."""
-    return bool(_DIRECTOR_TERMINAL_ACTION_RE.search(str(assigned_source or "")))
+    text = str(assigned_source or "")
+    return bool(
+        _DIRECTOR_TERMINAL_ACTION_RE.search(text)
+        or _DIRECTOR_HEAD_SEVER_ACTION_RE.search(text)
+    )
 
 
 def build_director_terminal_target_messages(
@@ -27392,7 +27402,11 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                                 build_director_terminal_target_messages(
                                     bundle.get("assigned_source", ""),
                                     raw_scene,
-                                    bundle.get("opening_state", ""),
+                                    (
+                                        str(bundle.get("opening_state", "") or "")
+                                        + "\n\nEXACT PREVIOUS FINAL FRAME\n"
+                                        + str(bundle.get("previous_final_frame", "") or "N/A")
+                                    ),
                                 ),
                                 response_format=DIRECTOR_TERMINAL_TARGET_RESPONSE_FORMAT,
                                 history_metadata=terminal_metadata,
@@ -28368,6 +28382,13 @@ def _run_main(
             )
             if conditioning_mode != "initial" else set()
         )
+        previous_final_frame = ""
+        if recent_items:
+            previous_result = list(recent_items)[-1][1]
+            previous_final_frame = _extract_end_continuity_state(
+                get_detailed_description(previous_result, "")
+            )
+
         # Phase 2 is already H3-ready opening prose; use the same concise text
         # for both Director continuity and the final H3 prompt.
         h3_opening_summary = opening_summary
@@ -28407,6 +28428,7 @@ def _run_main(
             "estimated_tokens": estimated_tokens,
             "recent_count": recent_count,
             "opening_state": opening_summary,
+            "previous_final_frame": previous_final_frame,
             "registry_state": opening_state,
             "opening_summary": opening_summary,
             "h3_opening_summary": h3_opening_summary,
