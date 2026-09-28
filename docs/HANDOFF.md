@@ -176,3 +176,14 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Mailbox queue was purged before this change; no unprocessed bridge jobs remain.
 - Relevant commits: `bed344efb92d54ef35b8ffacc77be2519f098a6d`, `f77774decddde57c313ce33b9fb55e0314e65174`, `c8eccde5fbc8a5a1d836cfcbf2b2965e90d895dd`, `c62550df1dfb3cb297e7355f007592bbe5bba074`, `b15bca3e89de32db38c1535ff14150a53bdeeea2`, `d264644d405a8d913b0eab7bdc0978df964a52d7`.
 - Next action: pull `gpt-arc-refresh`, restart the bridge, then run targeted tests and a Director-only acceptance using `director_plan_job: "acceptance-2451"` before doing another full ARC/BEATS acceptance.
+
+
+## 2026-09-28 — Director-only acceptance 2457 findings
+
+- `tests-2456` passed: 54/54 targeted regression tests.
+- `acceptance-2457` completed, but exposed a flaw in the frozen-plan harness: `story_arc.json` was copied without a matching `.sha256` sidecar, so normal `load_story_arc()` rejected it as a stale cache. The run therefore did not exercise frozen typed state effects even though `beats.txt` was reused.
+- Director-only mode now parses the explicitly supplied frozen `story_arc.json` directly and validates its declared beat count/schema without using the normal story-source cache hash gate. It still fails closed if the supplied frozen arc is invalid.
+- Prompt-only checkpoints now persist the exact assembled `h3_prompt` per completed segment. The acceptance runner prefers that exact field over parsing console text, avoiding false prompt contamination from concurrent/asynchronous stdout such as `Added States:`.
+- The GPT formatter's trailing `Added States:` cleanup regex also had accidental literal backslashes and is now corrected.
+- Stale `tests/test_director_retry.py` helpers were updated to the current five-field Request-1 completion response and current containment prompt wording.
+- Relevant commits: `8c494f0e4760f686ffbe468e32408346f1e0d13d`, `3a6d83ba5245ea2a227609bd8582963859244116`, `9f16c086213e0f179d2e718c34b9f4b154739ba2`, `a4d035f09e007c4bdc63d3e5e78f0b46e0d0088c`.
