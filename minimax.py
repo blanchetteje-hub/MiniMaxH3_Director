@@ -17239,28 +17239,28 @@ def filter_continuity_attached_objects(
 
 
 _DIRECTOR_LIMB_HOLD_RE = re.compile(
-    r"(?i)\\b(?:hold(?:s|ing)?|keep(?:s|ing)?|carr(?:y|ies|ying)|"
-    r"grip(?:s|ping)?|clutch(?:es|ing)?)\\s+"
-    r"(?P<object>[^.;,]{1,80}?)\\s+"
-    r"(?:in|with)\\s+(?:her|his|their|the)?\\s*"
-    r"(?P<limb>left\\s+hand|right\\s+hand)\\b"
+    r"(?i)\b(?:hold(?:s|ing)?|keep(?:s|ing)?|carr(?:y|ies|ying)|"
+    r"grip(?:s|ping)?|clutch(?:es|ing)?)\s+"
+    r"(?P<object>[^.;,]{1,80}?)\s+"
+    r"(?:in|with)\s+(?:her|his|their|the)?\s*"
+    r"(?P<limb>left\s+hand|right\s+hand)\b"
 )
 
 _DIRECTOR_LIMB_RELEASE_RE = re.compile(
-    r"(?i)\\b(?:release(?:s|d|ing)?|let(?:s|ting)?\\s+go|set(?:s|ting)?\\s+down|"
-    r"put(?:s|ting)?\\s+down|transfer(?:s|red|ring)?|shift(?:s|ed|ing)?|"
+    r"(?i)\b(?:release(?:s|d|ing)?|let(?:s|ting)?\s+go|set(?:s|ting)?\s+down|"
+    r"put(?:s|ting)?\s+down|transfer(?:s|red|ring)?|shift(?:s|ed|ing)?|"
     r"reposition(?:s|ed|ing)?|pocket(?:s|ed|ing)?|holster(?:s|ed|ing)?|"
-    r"drop(?:s|ped|ping)?)\\b"
+    r"drop(?:s|ped|ping)?)\b"
 )
 
 _DIRECTOR_INDEPENDENT_LIMB_ACTION_RE = re.compile(
-    r"(?i)\\b(?:offer(?:s|ed|ing)?|give(?:s|n|ing)?|hand(?:s|ed|ing)?|"
-    r"grab(?:s|bed|bing)?|pick(?:s|ed|ing)?\\s+up|take(?:s|n|ing)?|"
+    r"(?i)\b(?:offer(?:s|ed|ing)?|give(?:s|n|ing)?|hand(?:s|ed|ing)?|"
+    r"grab(?:s|bed|bing)?|pick(?:s|ed|ing)?\s+up|take(?:s|n|ing)?|"
     r"catch(?:es|ing)?|open(?:s|ed|ing)?|close(?:s|d|ing)?|"
     r"pull(?:s|ed|ing)?|push(?:es|ed|ing)?|turn(?:s|ed|ing)?|"
     r"press(?:es|ed|ing)?|clap(?:s|ped|ping)?|write(?:s|written|ing)?|"
     r"sign(?:s|ed|ing)?|tie(?:s|d|ing)?|unlock(?:s|ed|ing)?|"
-    r"lock(?:s|ed|ing)?|throw(?:s|n|ing)?)\\b"
+    r"lock(?:s|ed|ing)?|throw(?:s|n|ing)?)\b"
 )
 
 
@@ -17278,7 +17278,7 @@ def _director_explicit_limb_conflict_errors(raw_scene):
         for match in _DIRECTOR_LIMB_HOLD_RE.finditer(previous):
             held_object = " ".join(match.group("object").split()).strip()
             held_key = re.sub(
-                r"(?i)^(?:a|an|the)\\s+",
+                r"(?i)^(?:a|an|the)\s+",
                 "",
                 held_object,
             ).casefold()
@@ -17286,7 +17286,7 @@ def _director_explicit_limb_conflict_errors(raw_scene):
             if not held_key or not limb:
                 continue
             if re.search(
-                rf"(?i)\\b(?:her|his|their|the)?\\s*{re.escape(limb)}\\b",
+                rf"(?i)\b(?:her|his|their|the)?\s*{re.escape(limb)}\b",
                 following,
             ) is None:
                 continue
@@ -17306,38 +17306,37 @@ def _director_explicit_limb_conflict_errors(raw_scene):
 
 
 _DIRECTOR_OBJECT_PLACEMENT_RE = re.compile(
-    r"(?i)\\b(?:set(?:s|ting)?(?:\\s+down)?|place(?:s|d|ing)?|"
-    r"put(?:s|ting)?(?:\\s+down)?|drop(?:s|ped|ping)?)\\s+"
-    r"(?P<object>[^.;,]{1,120}?)\\s+"
-    r"(?:on|onto|into|inside|beside|at)\\b"
+    r"(?i)\b(?:set(?:s|ting)?(?:\s+down)?|place(?:s|d|ing)?|"
+    r"put(?:s|ting)?(?:\s+down)?|drop(?:s|ped|ping)?)\b"
 )
 
 _DIRECTOR_OBJECT_REACQUIRE_RE = re.compile(
-    r"(?i)\\b(?:pick(?:s|ed|ing)?\\s+up|lift(?:s|ed|ing)?|"
+    r"(?i)\b(?:pick(?:s|ed|ing)?\s+up|lift(?:s|ed|ing)?|"
     r"grab(?:s|bed|bing)?|take(?:s|n|ing)?|retrieve(?:s|d|ing)?|"
-    r"recover(?:s|ed|ing)?|scoop(?:s|ed|ing)?\\s+up|"
-    r"gather(?:s|ed|ing)?)\\b"
+    r"recover(?:s|ed|ing)?|scoop(?:s|ed|ing)?\s+up|"
+    r"gather(?:s|ed|ing)?)\b"
 )
 
 _DIRECTOR_HOLD_ASSERTION_RE = re.compile(
-    r"(?i)\\bhold(?:s|ing)?\\s+(?P<object>[^.;,]{1,100})"
+    r"(?i)\bhold(?:s|ing)?\s+(?P<object>[^.;]{1,120})"
 )
 
 
 def _director_object_phrase_keys(value):
-    """Return conservative lexical keys for an explicitly named object phrase."""
+    """Return conservative noun keys for an explicitly named held-object phrase."""
     keys = []
-    for part in re.split(r"(?i)\\s*(?:,|\\band\\b|\\bwith\\b)\\s*", str(value or "")):
+    for part in re.split(r"(?i)\s*(?:,|\band\b|\bwith\b)\s*", str(value or "")):
         cleaned = re.sub(
-            r"(?i)^(?:a|an|the|his|her|their|its)\\s+",
+            r"(?i)^(?:a|an|the|his|her|their|its)\s+",
             "",
             part.strip(" ,;:-"),
         )
         words = re.findall(r"[A-Za-z0-9'-]+", cleaned)
         if not words:
             continue
+        # Prefer the final noun-like token; this deliberately stays lexical.
         key = words[-1].casefold()
-        if key in {"hand", "hands", "ready"}:
+        if key in {"hand", "hands", "ready", "again"}:
             continue
         keys.append(key)
     return list(dict.fromkeys(keys))
@@ -17355,32 +17354,30 @@ def _director_explicit_object_state_conflict_errors(raw_scene):
         timestamp, previous = actions[index]
         next_timestamp, following = actions[index + 1]
         hold_match = _DIRECTOR_HOLD_ASSERTION_RE.search(following)
-        if hold_match is None:
-            continue
-        if _DIRECTOR_OBJECT_REACQUIRE_RE.search(following):
+        if hold_match is None or _DIRECTOR_OBJECT_REACQUIRE_RE.search(following):
             continue
         held_keys = _director_object_phrase_keys(hold_match.group("object"))
-        if not held_keys:
+        if not held_keys or _DIRECTOR_OBJECT_PLACEMENT_RE.search(previous) is None:
             continue
 
         previous_folded = previous.casefold()
-        for placement in _DIRECTOR_OBJECT_PLACEMENT_RE.finditer(previous):
-            placed_text = placement.group("object").strip()
-            placed_folded = placed_text.casefold()
-            pronoun_placement = re.search(r"(?i)\\b(?:it|them)\\b", placed_text)
-            if pronoun_placement:
-                matches_placed_object = all(key in previous_folded for key in held_keys)
-            else:
-                matches_placed_object = all(key in placed_folded for key in held_keys)
-            if not matches_placed_object:
-                continue
-            issues.append(
-                f"{next_timestamp}: object(s) {', '.join(held_keys)!r} were explicitly "
-                f"placed down/onto a destination at {timestamp} and are then described "
-                "as held again without an explicit pickup, retrieval, or other "
-                "reacquisition."
-            )
-            break
+        # Only reject when every held object is explicitly named in the prior
+        # placement action. This covers "sets them..." while avoiding inference
+        # about unrelated props.
+        if not all(re.search(rf"(?i)\b{re.escape(key)}s?\b", previous_folded) for key in held_keys):
+            continue
+        if re.search(
+            r"(?i)\b(?:set|sets|setting|place|places|placed|placing|"
+            r"put|puts|putting|drop|drops|dropped|dropping)\b",
+            previous,
+        ) is None:
+            continue
+        issues.append(
+            f"{next_timestamp}: object(s) {', '.join(held_keys)!r} were explicitly "
+            f"placed down/onto a destination at {timestamp} and are then described "
+            "as held again without an explicit pickup, retrieval, or other "
+            "reacquisition."
+        )
     return issues
 
 
@@ -27290,7 +27287,16 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                             observed_state = parse_director_barrier_state_observation(
                                 ask_llm(
                                     build_director_barrier_state_messages(
-                                        state_contract["barrier"],
+                                        (
+                                            f"{state_contract['barrier']} that is the "
+                                            f"boundary of {request1_barrier_binding['destination']}"
+                                            if (
+                                                request1_barrier_binding
+                                                and str(request1_barrier_binding.get("entity", "")).casefold()
+                                                == str(state_contract["barrier"]).casefold()
+                                            )
+                                            else state_contract["barrier"]
+                                        ),
                                         raw_scene,
                                     ),
                                     response_format=DIRECTOR_BARRIER_STATE_RESPONSE_FORMAT,
