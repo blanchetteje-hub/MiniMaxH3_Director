@@ -28320,7 +28320,10 @@ def _run_main(
             story_arc_path=STORY_ARC_FILE,
             story_arc_source=story_source,
             phrase_exclusions=phrase_exclusions,
-            force_generate=(generate_beats_only or generate_prompts_only),
+            force_generate=(
+                generate_beats_only
+                or (generate_prompts_only and resume_segment == 1)
+            ),
         )
     except LLMConnectionError:
         raise
@@ -28349,6 +28352,24 @@ def _run_main(
 
     generated_prompts_payload = None
     if generate_prompts_only:
+        saved_prompt_prefix = []
+        if resume_segment > 1 and os.path.isfile(GENERATED_PROMPTS_FILE):
+            try:
+                previous_payload = load_generated_prompts_file(
+                    GENERATED_PROMPTS_FILE
+                )
+                saved_prompt_prefix = [
+                    copy.deepcopy(record)
+                    for record in previous_payload.get("prompts", [])
+                    if int(record.get("segment", 0)) < resume_segment
+                ]
+            except Exception as error:
+                print(
+                    f"WARNING: could not reuse saved prompt prefix during "
+                    f"recovery: {error}. Regenerating the prompt file from the "
+                    "current resume point.",
+                    flush=True,
+                )
         generated_prompts_payload = {
             "version": 1,
             "config": {
@@ -28361,7 +28382,7 @@ def _run_main(
                 "total_segments": total_segments,
             },
             "macro_arc": copy.deepcopy(macro_arc),
-            "prompts": [],
+            "prompts": saved_prompt_prefix,
         }
         save_generated_prompts_file(generated_prompts_payload)
 
