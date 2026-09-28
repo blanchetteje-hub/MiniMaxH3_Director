@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2307",
+  "kind": "llama_chat",
+  "started_at": 1790558119.435647,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nPriya grips the rail with her left hand.\n\nNEXT MICRO-ACTION:\nPriya catches a cup with her right hand.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-wrv4ufpv48suljvs4yw0q",
+    "object": "chat.completion",
+    "created": 1790558119,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"rail\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"cup\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Priya grips the rail with her left hand.\" So at end of action, LEFT_HAND is occupied by object \"rail\". Next micro-action: \"Priya catches a cup with her right hand.\" At start of next action? We list each hand/foot explicitly required by new action; object must be physical object that limb manipulates. Right hand used to catch cup => RIGHT_HAND occupies \"cup\".\n\nIf NEXT operates same physical object already occupying that limb, repeat exactly the same label. But here it's a different limb and different object.\n\nAlso if NEXT releases or sets down prior object before using limb for something else: not relevant because right hand was free; left hand remains occupied by rail from previous action? The next action uses right hand only. So freed_before_use list includes limbs that were previously occupied but are released before use in the new action. But here no release occurs, as left hand still holds rail and is not used in next action. Freed_before_use refers to limb that was previously occupied but then released before using it for something else? The instruction: \"If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\" In this case, no release. So freed_before_use empty.\n\nThus JSON:\n\n{\n\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"rail\"}],\n\"next\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"cup\"}],\n\"freed_before_use\": []\n}\n\nCheck formatting: \"freed_before_use\":[\"...\"] list of limb strings? Should be array. If empty, [].\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 408,
+      "completion_tokens": 395,
+      "total_tokens": 803,
+      "completion_tokens_details": {
+        "reasoning_tokens": 350
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790558124.9718394,
+  "status": "ok"
+}
