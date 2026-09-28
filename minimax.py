@@ -1464,11 +1464,7 @@ DIRECTOR_TERMINAL_TARGET_RESPONSE_FORMAT = {
             "properties": {
                 "status": {
                     "type": "string",
-                    "enum": [
-                        "ACTIVE_OR_UNRESOLVED",
-                        "ALREADY_TERMINAL",
-                        "UNSPECIFIED",
-                    ],
+                    "enum": ["MATCH", "NOT_MATCH", "UNKNOWN"],
                 },
             },
             "required": ["status"],
@@ -26744,59 +26740,71 @@ def director_source_has_terminal_action(assigned_source):
     return bool(str(assigned_source or "").strip())
 
 
+def build_director_terminal_state_contracts(assigned_state_effects):
+    """Return Python-owned state transitions eligible for duplicate-result checks."""
+    contracts = []
+    for effect in assigned_state_effects or []:
+        if not isinstance(effect, dict):
+            continue
+        if effect.get("op") not in {
+            "set_barrier_state",
+            "set_threat_state",
+            "set_object_state",
+        }:
+            continue
+        entity = str(effect.get("entity") or "").strip()
+        value = str(effect.get("value") or "").strip()
+        if entity and value:
+            contracts.append({"target": entity, "required_end_state": value})
+    return contracts
+
+
 def build_director_terminal_target_messages(
-    assigned_source,
+    target,
+    required_end_state,
     raw_scene,
     authoritative_opening_state="",
 ):
-    """Map observed target condition to the closest Python-owned state."""
+    """Compare observed pre-action state to one Python-owned required end state."""
     return [
         {
             "role": "system",
-            "content": (
-                "Classify one target state. Return JSON only. "
-                "Do not judge overall story correctness."
-            ),
+            "content": "Compare one supplied target state. Return JSON only.",
         },
         {
             "role": "user",
             "content": (
-                "ASSIGNED SOURCE\n"
-                + str(assigned_source or "")
-                + "\n\nAUTHORITATIVE OPENING STATE\n"
+                "TARGET\n"
+                + str(target or "")
+                + "\n\nREQUIRED END STATE\n"
+                + str(required_end_state or "")
+                + "\n\nOPENING FACTS\n"
                 + str(authoritative_opening_state or "N/A")
                 + "\n\nRAW SCENE\n"
                 + str(raw_scene or "")
-                + "\n\nMap the target condition immediately BEFORE the "
-                "source-assigned action begins to the closest Python state:\n"
-                "ACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not "
-                "already true.\n"
-                "ALREADY_TERMINAL = the exact assigned terminal outcome is already "
-                "true before the action begins.\n"
-                "UNSPECIFIED = SOURCE does not assign a terminal outcome, or the "
-                "supplied facts do not establish either state.\n"
-                "Compare meaning, not wording. Opening facts remain true unless RAW "
-                "visibly changes them. Source-authorized opening facts win direct "
-                "conflicts; rendered opening facts still apply where source state is "
-                "silent. Do not invent reversal or restoration. Return only status."
+                + "\n\nClassify the target immediately BEFORE the action that "
+                "would produce REQUIRED END STATE.\n"
+                "MATCH = REQUIRED END STATE is already true.\n"
+                "NOT_MATCH = facts establish a different current state, so "
+                "REQUIRED END STATE is not yet true.\n"
+                "UNKNOWN = facts do not establish either.\n"
+                "Opening facts remain true unless RAW explicitly changes them "
+                "before that action. Do not infer unstated changes. "
+                "Return JSON with only status."
             ),
         },
     ]
 
 
 def parse_director_terminal_target_observation(raw_result):
-    """Parse one strict terminal-target extraction."""
+    """Parse one strict terminal-target state comparison."""
     candidate = raw_result
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
     if not isinstance(candidate, dict) or set(candidate) != {"status"}:
         raise ValueError("Terminal-target response must contain only status.")
     status = candidate["status"]
-    if status not in {
-        "ACTIVE_OR_UNRESOLVED",
-        "ALREADY_TERMINAL",
-        "UNSPECIFIED",
-    }:
+    if status not in {"MATCH", "NOT_MATCH", "UNKNOWN"}:
         raise ValueError("Terminal-target response contains an invalid status.")
     return status
 
@@ -27349,8 +27357,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     "issue": "completion verifier returned unusable output: " + str(error),
                 }
             if independent_completion["valid"]:
-                if director_source_has_terminal_action(
-                    bundle.get("assigned_source", "")
+                terminal_contracts = build_director_terminal_state_contracts(
+                    bundle.get("assigned_state_effects") or []
+                )
+                for terminal_index, terminal_contract in enumerate(
+                    terminal_contracts,
+                    start=1,
                 ):
                     terminal_metadata = {
                         "run_id": run_id,
@@ -27359,6 +27371,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "use_beat_validation_settings": True,
                         "segment": segment_number,
                         "attempt": request1_attempt,
+                        "terminal_index": terminal_index,
                         "conditioning_mode": conditioning_mode,
                         "opening_state_sha256": bundle.get("opening_state_sha256"),
                     }
@@ -27366,7 +27379,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         terminal_status = parse_director_terminal_target_observation(
                             ask_llm(
                                 build_director_terminal_target_messages(
-                                    bundle.get("assigned_source", ""),
+                                    terminal_contract["target"],
+                                    terminal_contract["required_end_state"],
                                     raw_scene,
                                     (
                                         str(bundle.get("opening_state", "") or "")
@@ -27383,18 +27397,20 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                             "terminal-target extractor returned unusable output: "
                             + str(error)
                         )
-                    else:
-                        if terminal_status == "ALREADY_TERMINAL":
-                            terminal_target_issue = (
-                                "assigned terminal action targets something already "
-                                "terminal before the action begins."
-                            )
-                    if terminal_target_issue:
-                        print(
-                            "Director Request 1 terminal-target check failed: "
-                            + terminal_target_issue,
-                            flush=True,
+                        break
+                    if terminal_status == "MATCH":
+                        terminal_target_issue = (
+                            f"{terminal_contract['target']} already has assigned "
+                            f"end state {terminal_contract['required_end_state']} "
+                            "before the action begins."
                         )
+                        break
+                if terminal_target_issue:
+                    print(
+                        "Director Request 1 terminal-target check failed: "
+                        + terminal_target_issue,
+                        flush=True,
+                    )
 
                 topology_contracts = request1_topology_contracts
                 for topology_index, topology_contract in enumerate(
