@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2263",
+  "kind": "llama_chat",
+  "started_at": 1790557738.7899323,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nAmy keeps the tray in her left hand.\n\nNEXT MICRO-ACTION:\nAmy extends her left hand to hand Amber a pancake.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-9emhpeqqytw28ozd71h6zl",
+    "object": "chat.completion",
+    "created": 1790557738,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"tray\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"object\":\"pancake\"}],\"freed_before_use\":[\"LEFT_HAND\"]}",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: Amy keeps the tray in her left hand. So at end of action, left hand occupied by \"tray\". Right hand? Not mentioned; presumably free.\n\nSo previous list should include each hand/foot explicitly occupied at END of action. Only left hand is occupied with object \"tray\".\n\nThus previous array: [{\"limb\":\"LEFT_HAND\",\"object\":\"tray\"}].\n\nNext micro-action: Amy extends her left hand to hand Amber a pancake. So the new action requires left hand to hold or manipulate pancake? She extends left hand to hand Amber a pancake. That means she uses left hand to give pancake, so object is \"pancake\". The previous object on that limb was tray; but next action operates the same physical object already occupying that limb? No: it's different object (tray vs pancake). So we list new object as \"pancake\" for LEFT_HAND. Also check if she releases or sets down prior object before using left hand. She extends her left hand to hand Amber a pancake, presumably giving away tray? Actually the action says \"extends her left hand to hand Amber a pancake.\" That implies she uses left hand to give pancake; but does she release tray first? The phrase \"keeps the tray in her left hand\" then \"extends her left hand to hand Amber a pancake\". She might still hold tray while extending? But likely she releases tray. Since next action explicitly uses left hand for new object, we consider that prior object is freed before use. So limb LEFT_HAND should be listed in freed_before_use.\n\nAlso check if any other limbs used: right hand not mentioned; maybe free. Feet no mention.\n\nThus next array: [{\"limb\":\"LEFT_HAND\",\"object\":\"pancake\"}].\n\nfreed_before_use: [\"LEFT_HAND\"].\n\nReturn JSON accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 408,
+      "completion_tokens": 428,
+      "total_tokens": 836,
+      "completion_tokens_details": {
+        "reasoning_tokens": 378
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557744.9290967,
+  "status": "ok"
+}
