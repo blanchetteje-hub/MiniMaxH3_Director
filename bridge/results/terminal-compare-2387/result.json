@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-compare-2387",
+  "kind": "llama_chat",
+  "started_at": 1790614124.1460068,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one supplied target state. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "TARGET\npressure hatch 4\n\nREQUIRED END STATE\nsealed\n\nOPENING FACTS\npressure hatch 4 is sealed\n\nRAW SCENE\nthe operator seals hatch 4 again\n\nClassify the target immediately BEFORE the action that would produce REQUIRED END STATE.\nMATCH = REQUIRED END STATE is already true.\nNOT_MATCH = facts establish a different current state, so REQUIRED END STATE is not yet true.\nUNKNOWN = facts do not establish either.\nOpening facts remain true unless RAW explicitly changes them before that action. Do not infer unstated changes. Return exactly {\"status\":\"MATCH\"}, {\"status\":\"NOT_MATCH\"}, or {\"status\":\"UNKNOWN\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-kvkzwyg61oayq1k1q93ui",
+    "object": "chat.completion",
+    "created": 1790614124,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"MATCH\"}",
+          "reasoning": "We need to classify the target state immediately BEFORE the action that would produce REQUIRED END STATE.\n\nTarget: pressure hatch 4\n\nRequired end state: sealed\n\nOpening facts: \"pressure hatch 4 is sealed\"\n\nRAW SCENE: \"the operator seals hatch 4 again\"\n\nSo before the action (operator sealing hatch 4 again), what is the state? Opening facts say it's already sealed. RAW scene says operator seals it again, but that hasn't happened yet at the moment before the action. So the target's current state is sealed.\n\nThus required end state \"sealed\" is already true: MATCH.\n\nReturn JSON {\"status\":\"MATCH\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 213,
+      "completion_tokens": 143,
+      "total_tokens": 356,
+      "completion_tokens_details": {
+        "reasoning_tokens": 128
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790614126.425369,
+  "status": "ok"
+}
