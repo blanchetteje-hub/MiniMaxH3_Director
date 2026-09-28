@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2253",
+  "kind": "llama_chat",
+  "started_at": 1790557419.2508037,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nLena holds a camera with both hands.\n\nNEXT MICRO-ACTION:\nLena presses the camera shutter with her right index finger.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-00y3ezel8ivybvaa81nsuh6",
+    "object": "chat.completion",
+    "created": 1790557419,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Lena holds a camera with both hands.\" So previous action uses BOTH_HANDS, task is holding? The object/task label should be short lowercase normalized from text. Object could be 'camera'. Task maybe 'hold'? They say use only explicit text; do not invent releases or extra grip capacity.\n\nSo for PREVIOUS: limb = BOTH_HANDS, task = camera (object). Or \"holds\" as task? But they want object/task labels copied or normalized from the text. The example says short lowercase object/task labels copied or normalized from the text. So we can use 'camera' as task? Actually it's an object being held. Task is holding. They might expect 'hold'? Let's think: In previous, \"Lena holds a camera with both hands.\" So limb BOTH_HANDS used to hold camera. The task could be 'hold'. But they say short lowercase labels copied or normalized from the text. 'camera' appears in text; 'holds' is verb. They might want 'camera' as object and 'hold' as task? But we need one field: \"task\". So maybe it's the action being performed, e.g., hold camera. The label could be 'camera'. Or 'hold_camera'? Not sure.\n\nLet's examine instructions: For PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action. So for previous, we need to list limbs that are occupied after the action ends. That is BOTH_HANDS occupied by holding camera. The \"object/task\" occupying it could be 'camera' or 'hold_camera'. They say use short lowercase labels copied or normalized from text.\n\nThus likely they want: {\"limb\":\"BOTH_HANDS\",\"task\":\"camera\"}? Or maybe \"hold\"? But the object is camera, task is hold. Which one to choose? The phrase \"object/task occupying it\" could be either. Let's parse: limb and the object/task occupying it at end of action. So after holding a camera with both hands, the limbs are occupied by 'camera' (the object). Task might be 'hold'. But they say use short lowercase labels copied or normalized from text. \"Camera\" is in text; \"holds\" is also in text but as verb.\n\nMaybe we should choose task = hold_camera? That seems too long.\n\nLet's look at example: They didn't give an example. So ambiguous.\n\nBut maybe the expected output for previous would be [{\"limb\":\"BOTH_HANDS\",\"task\":\"camera\"}]. For next, \"Lena presses the camera shutter with her right index finger.\" The limb used is RIGHT_INDEX? But they only have values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, etc. So we use RIGHT_HAND (since pressing shutter uses hand). Task: 'press_shutter'? Or just 'shutter' or 'camera'. They say short lowercase labels copied or normalized from text. \"Camera\" appears; \"shutter\" also appears. The action is pressing the camera shutter. So maybe task = shutter? But it's a part of camera.\n\nBut we need to list each limb required for new action and object/task that limb acts on. So RIGHT_HAND used to press shutter. Task: 'shutter' or 'camera_shutter'? Let's choose 'shutter'.\n\nAlso freed_before_use: If NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use. In next action, does she free camera? She presses shutter with right index finger; presumably still holding camera. So no freeing.\n\nThus freed_before_use empty array.\n\nSo output:\n\n{\n\"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 283,
+      "completion_tokens": 768,
+      "total_tokens": 1051,
+      "completion_tokens_details": {
+        "reasoning_tokens": 765
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557429.4199355,
+  "status": "ok"
+}
