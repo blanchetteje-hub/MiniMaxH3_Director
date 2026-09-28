@@ -26749,13 +26749,13 @@ def build_director_terminal_target_messages(
     raw_scene,
     authoritative_opening_state="",
 ):
-    """Extract whether an irreversible source transition targets finished state."""
+    """Map observed target condition to the closest Python-owned state."""
     return [
         {
             "role": "system",
             "content": (
-                "Extract irreversible-target pre-action status only. Do not judge "
-                "overall story correctness. Return JSON only."
+                "Classify one target state. Return JSON only. "
+                "Do not judge overall story correctness."
             ),
         },
         {
@@ -26767,26 +26767,18 @@ def build_director_terminal_target_messages(
                 + str(authoritative_opening_state or "N/A")
                 + "\n\nRAW SCENE\n"
                 + str(raw_scene or "")
-                + "\n\nEverything in AUTHORITATIVE OPENING STATE is already true "
-                "at 00:00.000. If it contains both SOURCE-AUTHORIZED CURRENT STATE "
-                "and RENDERED CONTINUITY, canonical source-authorized facts win any "
-                "conflict, while rendered continuity remains true for opening facts "
-                "the canonical state does not address. RAW SCENE does not erase an "
-                "opening fact merely by omitting it or using a vaguer noun. Determine "
-                "whether ASSIGNED SOURCE requires an irreversible terminal transition "
-                "for a target or process in this segment. If it does not, return "
-                "UNSPECIFIED. If it does, inspect that target immediately before the "
-                "assigned transition begins in RAW SCENE. Return ACTIVE_OR_UNRESOLVED "
-                "only when opening state plus RAW establish that the target still "
-                "needs the specific terminal result assigned by SOURCE. Return "
-                "ALREADY_TERMINAL when that exact terminal result is already true "
-                "before the new action begins. Treat clearly completed, permanently "
-                "separated, disabled, consumed, removed, or otherwise irreversible "
-                "end states as terminal when they already satisfy the assigned result. "
-                "Do not infer restoration or reversal unless RAW visibly establishes "
-                "it. Return UNSPECIFIED when the source does not assign a terminal "
-                "transition or when status cannot be determined. Do not decide whether "
-                "the scene is valid."
+                + "\n\nMap the target condition immediately BEFORE the "
+                "source-assigned action begins to the closest Python state:\n"
+                "ACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not "
+                "already true.\n"
+                "ALREADY_TERMINAL = the exact assigned terminal outcome is already "
+                "true before the action begins.\n"
+                "UNSPECIFIED = SOURCE does not assign a terminal outcome, or the "
+                "supplied facts do not establish either state.\n"
+                "Compare meaning, not wording. Opening facts remain true unless RAW "
+                "visibly changes them. Source-authorized opening facts win direct "
+                "conflicts; rendered opening facts still apply where source state is "
+                "silent. Do not invent reversal or restoration. Return only status."
             ),
         },
     ]
