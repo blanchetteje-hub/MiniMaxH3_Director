@@ -272,9 +272,9 @@ SUBJECT_LIST_FIELDS = (
 # Token budgets, generation limits, sampling controls, and continuity safety rails.
 # ------------------------------------------------------------
 
-# Current local 24B runtime is configured around a ~6k context window.
+# GPT-20B local runtime is configured with an 8192-token context window.
 # Keep input below this so there is real room for the model's completion.
-LLM_CONTEXT_TOKEN_BUDGET = 6044
+LLM_CONTEXT_TOKEN_BUDGET = 8192
 LLM_CONTEXT_SAFETY_TOKENS = 128
 LLM_MIN_COMPLETION_TOKENS = 256
 LLM_INPUT_TOKEN_BUDGET = 4500
@@ -7963,7 +7963,7 @@ def ask_llm(
     thinking=None,
     chat_template=None,
     jinja=None,
-    max_tokens=8000,
+    max_tokens=8192,
     parse_json_response=None,
 ):
     last_error = None
