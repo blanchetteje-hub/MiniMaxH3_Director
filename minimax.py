@@ -20902,6 +20902,8 @@ def request_combined_continuity(
     subject_definitions="",
     committed_state=None,
     ending_scene="",
+    assigned_state_effects=None,
+    barrier_binding=None,
 ):
     """Run the single combined continuity extraction/reduction call.
 
@@ -21051,8 +21053,13 @@ def request_combined_continuity(
         )
         print(
             "WARNING: Continuity exhausted its JSON/content retries; using "
-            f"the last canonical state: {combined_error}"
+            f"the last canonical state plus source-authorized end state: {combined_error}"
         )
+    reduced_state = _continuity_apply_authoritative_state_effects(
+        reduced_state,
+        assigned_state_effects,
+        barrier_binding=barrier_binding,
+    )
     _print_continuity_phase_result(1, "COMBINED CONTINUITY", reduced_state)
 
     if defer_opening:
@@ -28664,6 +28671,12 @@ def _run_main(
                 subject_definitions=subject_definitions,
                 committed_state=copy.deepcopy(continuity_state),
                 ending_scene=request1_ending_scene,
+                assigned_state_effects=segment_bundle.get(
+                    "assigned_state_effects", []
+                ),
+                barrier_binding=build_director_barrier_binding_contract(
+                    segment_bundle.get("assigned_state_effects", [])
+                ),
             )
             print(
                 f"Combined continuity requested for segment {segment} "
