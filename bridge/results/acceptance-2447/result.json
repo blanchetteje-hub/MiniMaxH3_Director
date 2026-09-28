@@ -1,0 +1,32 @@
+{
+  "job_id": "acceptance-2447",
+  "kind": "run_acceptance",
+  "started_at": 1790628830.3703353,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt"
+    ],
+    "returncode": 1,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 64 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-v0j_2fh9\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260928-165351\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-v0j_2fh9\\repo\\minimax.py\", line 23, in <module>\n    from gpt_formatter import (\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-v0j_2fh9\\repo\\gpt_formatter.py\", line 62, in <module>\n    _WRAPPED_LOCAL_TIME = re.compile(\n                          ^^^^^^^^^^^\n  File \"C:\\Program Files (x86)\\Python311\\Lib\\re\\__init__.py\", line 227, in compile\n    return _compile(pattern, flags)\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Program Files (x86)\\Python311\\Lib\\re\\__init__.py\", line 294, in _compile\n    p = _compiler.compile(pattern, flags)\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Program Files (x86)\\Python311\\Lib\\re\\_compiler.py\", line 745, in compile\n    p = _parser.parse(p, flags)\n        ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Program Files (x86)\\Python311\\Lib\\re\\_parser.py\", line 994, in parse\n    raise source.error(\"unbalanced parenthesis\")\nre.error: unbalanced parenthesis at position 110\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260928-165351\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6, 7, 8]. Include run.log for diagnosis.\nMiniMax exited with code 1; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790628831.4733348,
+    "finished_at": 1790628832.5554354,
+    "artifacts": {
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "source_result_dir": "tests\\acceptance\\results\\amy_zombie_house-20260928-165351",
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1790628832.6125126,
+  "status": "ok"
+}
