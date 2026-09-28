@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2217",
+  "kind": "llama_chat",
+  "started_at": 1790557066.9594228,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nJon carries a box with both hands.\n\nNEXT MICRO-ACTION:\nJon opens a door with his left hand without setting down the box.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-05oahypkql85g8f8s0u68ih",
+    "object": "chat.completion",
+    "created": 1790557066,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"box\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"task\":\"door\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. For PREVIOUS, report each occupied limb and the object/task occupying it at end of action.\n\nPREVIOUS: Jon carries a box with both hands. So limbs used: BOTH_HANDS. Task/object: \"box\". The task is carrying? But we should use short lowercase labels copied or normalized from text. So \"box\" as object. For next, report each limb required for new action and the object/task that limb acts on.\n\nNEXT: Jon opens a door with his left hand without setting down the box. So limb used: LEFT_HAND. Task/object: \"door\". Also note that he didn't set down the box before using left hand; so freed_before_use should list limbs that free previous object before use? The instruction: If NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use. Here it says \"without setting down the box\" meaning he didn't set down the box before opening door with left hand. So no freeing occurs; so freed_before_use is empty array? But maybe we consider that the left hand was used to open door while still holding box with both hands, but left hand is part of both hands. Actually if he's carrying a box with both hands, then his left hand is occupied by the box. He opens a door with his left hand without setting down the box: So he uses left hand that is already occupied? That seems contradictory; maybe he holds the box in both hands but still can use left hand to open door? But physically impossible unless he releases it partially. The instruction says if NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb, list that limb in freed_before_use. Here \"without setting down the box\" means he didn't free the box; so no limb is freed before use. So freed_before_use empty.\n\nBut maybe we consider that left hand was occupied by box and then used to open door: That implies it frees the box? But text says without setting down, meaning still holding. So not freeing. So freed_before_use = [].\n\nReturn JSON with previous array containing one object: limb \"BOTH_HANDS\", task \"box\". Next array contains one object: limb \"LEFT_HAND\", task \"door\".\n\nCheck format: {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}\n\nSo freed_before_use empty list. Use uppercase for limbs as specified.\n\nThus final JSON:\n\n{\n  \"previous\": [\n    {\n      \"limb\": \"BOTH_HANDS\",\n      \"task\": \"box\"\n    }\n  ],\n  \"next\": [\n    {\n      \"limb\": \"LEFT_HAND\",\n      \"task\": \"door\"\n    }\n  ],\n  \"freed_before_use\": []\n}\n\nCheck if any other tasks: maybe \"carry\" but object is box. Use short lowercase labels copied or normalized from text. So \"box\". Good.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 284,
+      "completion_tokens": 675,
+      "total_tokens": 959,
+      "completion_tokens_details": {
+        "reasoning_tokens": 628
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557075.9271848,
+  "status": "ok"
+}
