@@ -26542,9 +26542,16 @@ def build_director_barrier_topology_contract(
                     name,
                     destination,
                 )
-                if opening_relation is not False:
-                    continue
-                expected = "NOT_AT_DESTINATION"
+                # Typed containment/location effects define the authorized final
+                # destination set for this barrier beat. A relevant named subject
+                # without such an effect may remain inside only when canonical
+                # opening state already places them there; helper/mover wording
+                # does not silently authorize following the moved subjects.
+                expected = (
+                    "AT_DESTINATION"
+                    if opening_relation is True
+                    else "NOT_AT_DESTINATION"
+                )
             subject_expectations.append({
                 "entity": name,
                 "expected": expected,
