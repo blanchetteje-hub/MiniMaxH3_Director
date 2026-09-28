@@ -477,3 +477,21 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - `976d81b4cea7a746f2e0c821cb8e88332ed8e280`: applies assigned source effects after combined continuity extraction and on fallback; generic barrier names are qualified with the Python-owned containment destination.
   - `da7f9046583730acc31bd19c6b5228d20aa61082`: regressions for authoritative containment/location and barrier naming.
 - Next checkpoint: focused regressions + fresh acceptance. After Segment 2, Will/Amber must remain in the basement and the basement door must remain locked even if the continuity LLM returns unusable JSON.
+
+
+### 2026-09-28 — acceptance 2322: canonical continuity now survives, but stale move metadata and duplicate clothing state remain
+
+- `tests-2321`: 31/31 passed.
+- The Segment-2 continuity fallback no longer moves Will/Amber back to the kitchen. Python-owned containment/location/barrier state survives continuity schema failure.
+- Earliest remaining defect actually begins in Segment 1 ARC state effects:
+  - Amy's tank top and jeans are correctly emitted as `set_clothing`;
+  - the same garments are also incorrectly emitted as `set_item_state=equipped`;
+  - the authoritative continuity overlay then treats those item-state effects as held/equipped props.
+- Segment 2 also reveals stale transient continuity after an authoritative move:
+  - Will/Amber are correctly moved to `basement`;
+  - old visual fields survive: `pose_action=eating pancakes`, `topology=seated`, and `spatial_relationships=at kitchen table`.
+- Fixes:
+  - `1551a10777ac00cd531c1f67a517abe19afb7997`: reject same-garment duplicate `set_clothing` + `set_item_state` pairs, and clear location-dependent transient visual fields when authoritative containment/location changes.
+  - `41692bf849a96ccda6dba2881c1cb19909af2d75`: regressions for duplicate clothing state and stale move metadata.
+- Held ordinary props are intentionally preserved across authoritative movement unless source state says otherwise; e.g. a child may still carry a pancake into the basement.
+- Next checkpoint: focused regressions + fresh full acceptance.
