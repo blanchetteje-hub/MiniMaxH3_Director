@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-state-2355",
+  "kind": "llama_chat",
+  "started_at": 1790613622.6231444,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify one target state. Return JSON only. Do not judge overall story correctness."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe technician permanently disables the final relay.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE: Relay R7 is active.\n\nRAW SCENE\nThe technician checks relay R7, then permanently disables it.\n\nMap the target condition immediately BEFORE the source-assigned action begins to the closest Python state:\nACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\nALREADY_TERMINAL = the exact assigned terminal outcome is already true before the action begins.\nUNSPECIFIED = SOURCE does not assign a terminal outcome, or the supplied facts do not establish either state.\nCompare meaning, not wording. Opening facts remain true unless RAW visibly changes them. Source-authorized opening facts win direct conflicts; rendered opening facts still apply where source state is silent. Do not invent reversal or restoration. Return only status."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-v8cj0tuagqcahfu6t55crh",
+    "object": "chat.completion",
+    "created": 1790613622,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to classify the target condition immediately before the source-assigned action begins.\n\nThe source assigned action: \"The technician permanently disables the final relay.\" The target condition refers to the state of Relay R7? It says \"Relay R7 is active\" in opening state. So before disabling, it's active. Is that the terminal outcome? The terminal outcome likely is \"Relay R7 is inactive\"? Or maybe \"Relay R7 is disabled\". But we need to map the target condition immediately BEFORE the source-assigned action begins.\n\nWe have: SOURCE-AUTHORIZED CURRENT STATE: Relay R7 is active. So before disabling, it's active. Is that already the assigned terminal outcome? The assigned terminal outcome might be \"Relay R7 is inactive\" after disable. But before it becomes inactive, it's active. So ACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\n\nThus status: ACTIVE_OR_UNRESOLVED. Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 261,
+      "completion_tokens": 213,
+      "total_tokens": 474,
+      "completion_tokens_details": {
+        "reasoning_tokens": 193
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790613625.668641,
+  "status": "ok"
+}
