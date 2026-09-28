@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2246",
+  "kind": "llama_chat",
+  "started_at": 1790557350.8303063,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nKai holds a canister with both hands.\n\nNEXT MICRO-ACTION:\nKai grabs two railings with both hands without releasing the canister.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-au270x613p0rbmobm2jh6i",
+    "object": "chat.completion",
+    "created": 1790557350,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"canister\"}],\"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"railings\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Kai holds a canister with both hands.\" So previous action uses BOTH_HANDS, task is holding a canister. The object/task label should be short lowercase normalized from text. Use \"canister\" as the object.\n\nSo previous array has one entry: {\"limb\":\"BOTH_HANDS\",\"task\":\"canister\"}.\n\nNEXT: \"Kai grabs two railings with both hands without releasing the canister.\" So next action uses BOTH_HANDS, task is grabbing railings? The object/task label should be short lowercase. Use \"railings\" as object. Also note that it says \"without releasing the canister\". That means the previous object (canister) remains held while new action occurs. But we need to list freed_before_use: limbs that free/releases before using them for next action. Since he grabs railings with both hands without releasing the canister, no limb is freed before use. So freed_before_use should be empty array.\n\nBut check if \"without releasing the canister\" indicates that the previous object remains held; but does it mean that the hand didn't free? Yes. So freed_before_use: [].\n\nReturn JSON only with keys \"previous\", \"next\", \"freed_before_use\". Each limb values as specified: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, etc. Use uppercase for limb names. Task labels lowercase short normalized from text: canister and railings.\n\nThus output:\n\n{\n  \"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"canister\"}],\n  \"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"railings\"}],\n  \"freed_before_use\": []\n}\n\nCheck formatting. Use JSON array for freed_before_use: [].\n\nReturn only that JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 285,
+      "completion_tokens": 421,
+      "total_tokens": 706,
+      "completion_tokens_details": {
+        "reasoning_tokens": 370
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557356.43521,
+  "status": "ok"
+}
