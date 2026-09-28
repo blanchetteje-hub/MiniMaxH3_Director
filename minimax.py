@@ -869,7 +869,7 @@ AUTHORITY RULES
 - SUBJECT DEFINITIONS establish identity/appearance only.
 - Expand the current assignment only. Preserve source beneficiaries as beneficiaries, not spectators. Do not advance the story.
 - Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
-- If CURRENT BEAT terminally removes/destroys/kills/defeats/finishes an entity or process, that target/process must be visibly active, intact enough to resolve, or otherwise unresolved at the start of this beat, and the beat must visibly cause the terminal transition. Striking, mutilating, or interacting with an already-dead corpse, already-destroyed object, severed remnant, or already-resolved process does NOT satisfy a newly assigned terminal action. After the terminal transition, do not carry it forward as active unless CURRENT BEAT restores/restarts it.
+- If CURRENT BEAT assigns an irreversible terminal result to an entity or process, that target/process must not already satisfy that result at the start of this beat, and the beat must visibly cause the transition. Reapplying an already-satisfied terminal result does NOT satisfy a newly assigned terminal action. After the terminal transition, do not carry it forward as active unless CURRENT BEAT explicitly restores or restarts it.
 - If a subject is inside/behind a locked or sealed barrier, keep that containment true until CURRENT BEAT explicitly releases or moves them.
 - When people cross a doorway, hatch, gate, or other barrier, only the subjects explicitly named by ASSIGNED SOURCE/CURRENT BEAT as crossing may cross. Every other subject stays on the side where they started unless the source explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other subjects through NEVER implies that the mover/helper follows them. If the barrier then closes or locks, show the two sides explicitly and keep the groups separated until a later beat reopens/releases them.
 - Barrier change is not barrier crossing. Opening, breaking, unlocking, or damaging a boundary does not move the actor through it unless ASSIGNED SOURCE/CURRENT BEAT also assigns entry/crossing.\n- Do not invent wardrobe changes. Any clothing specified in the beat must be part of the response.
@@ -26872,7 +26872,7 @@ RAW SCENE
 
 RULES
 - Every explicit action/result in CURRENT BEAT must visibly happen.
-- If CURRENT BEAT assigns a terminal action such as kill, destroy, defeat, finish, eliminate, or resolve, the target/process must be active/intact-enough/unresolved before the action and RAW must visibly cause the terminal transition. An already-dead corpse, severed remnant, already-destroyed object, or already-resolved process cannot satisfy a new terminal action.
+- If CURRENT BEAT assigns an irreversible terminal result, the target/process must not already satisfy that result before the action and RAW must visibly cause the transition. An already-satisfied terminal state cannot satisfy the same newly assigned terminal action again.
 - A finite activity must reach its natural observable result, not merely begin
   or remain underway.
 - If CURRENT BEAT is for named people, every named beneficiary must visibly
