@@ -59,6 +59,11 @@ _LOCAL_TIME = re.compile(
     r"(?P<seconds>\d{2})(?:(?P<separator>[.:])(?P<fraction>\d{1,3}))?"
     r"(?:\s+seconds?)?\s*[,;:\-]?\s*"
 )
+_WRAPPED_LOCAL_TIME = re.compile(
+    r"(?i)[\\[(]\\s*(?P<timestamp>(?:At\\s+)?\\d{1,2}:\\d{2}"
+    r"(?:[.:]\\d{1,3})?(?:\\s+seconds?)?\\s*[,;:\\-]?)\\s*[\\])]"
+)
+
 _ZERO_LOCAL_TIME = re.compile(
     r"(?i)(?<![\w:])(?:at\s+)?(?:\d{1,2}:00(?:[.:]0{1,3})?|"
     r"0+\.0{1,3})(?:\s+seconds?)?\s*[,;:\-]?\s*"
@@ -788,6 +793,13 @@ def _validate_video_references(
 
 def _repair_shots(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     description = result[DESCRIPTION]
+    # GPT-OSS occasionally wraps otherwise-valid timestamps in presentation
+    # punctuation such as "(At 00:01.500, )" or "[At 00:01.500, ]".
+    # Remove those model-specific wrappers before canonical time normalization.
+    description = _WRAPPED_LOCAL_TIME.sub(
+        lambda match: match.group("timestamp").strip(),
+        description,
+    )
     number = _segment_number(context)
     # Remove every model-supplied shot marker. The pipeline produces one shot
     # per segment, so retaining a second marker would create a false cut.
