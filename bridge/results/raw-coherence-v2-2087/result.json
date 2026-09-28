@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2087",
+  "kind": "llama_chat",
+  "started_at": 1790555605.9934378,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nRina holds a phone to her ear.\n\nNEXT MICRO-ACTION:\nRina speaks into the phone.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-rtmw72le1ue6kye2rzcrrk",
+    "object": "chat.completion",
+    "created": 1790555606,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPATIBLE\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: \"Rina holds a phone to her ear.\" Next: \"Rina speaks into the phone.\"\n\nWe must determine if next follows physically from established state.\n\nThe first action: Rina holds a phone to her ear. That implies she has one hand holding the phone? Actually, \"holds a phone to her ear\" could involve both hands or just one? Typically you hold with one hand and maybe use other for something else. But we don't know if it's one hand or two.\n\nThe next action: Rina speaks into the phone. She is speaking into the phone; that requires holding the phone near ear, which she already does. So physically compatible. No conflict. There's no mention of freeing a hand etc. So status = COMPATIBLE.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 295,
+      "completion_tokens": 186,
+      "total_tokens": 481,
+      "completion_tokens_details": {
+        "reasoning_tokens": 169
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555608.6284347,
+  "status": "ok"
+}
