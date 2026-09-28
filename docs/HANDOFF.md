@@ -136,3 +136,15 @@ Verify, in this order:
 5. Identify the **earliest new real failure** from that run and fix only that failure.
 
 Do not reopen already-verified historical failures unless a fresh run actually reproduces them.
+
+
+## 2026-09-28 — acceptance 2445 + GPT formatter timestamp wrappers
+
+- `tests-2444` passed 51/51 (1 skipped) across prompt-generation mode, requested prompt regressions, and minimax integration coverage.
+- `acceptance-2445` completed all 8 segments with canonical timestamp syntax throughout, so the parenthesized timestamp failure from `acceptance-2443` did not reproduce on the next stochastic run.
+- Nevertheless, `acceptance-2443` demonstrated a real GPT-OSS formatter quirk: Request 2 could emit wrappers such as `(At 00:01.500, )` around otherwise valid timestamps, and the shared timestamp checker could see the valid inner token.
+- Architectural rule: model-specific representation cleanup belongs in the model formatter. Shared orchestration should enforce the final H3 contract, not accumulate GPT-specific punctuation repair.
+- Commit `b9b5297509bc25f5cc2f30846e65eddcaef58e4a` adds GPT-only deterministic unwrapping for parenthesized or bracketed local timestamps before canonical normalization.
+- Commit `b6b0ee96a254460277bb6fb11d470369bf3f9c1c` adds formatter regression coverage for both wrapper forms.
+- `acceptance-2445` also showed one `Added States:` string visually interleaved inside the printed Segment-6 H3 block. This has not yet been proven to be part of the actual prompt object rather than concurrent console-output/capture interleaving, so do not patch it until a direct prompt-object or repeated acceptance result proves the defect.
+- Next checkpoint: run formatter/regression tests, then fresh full acceptance. Confirm wrapped timestamps are normalized by `gpt_formatter.py`; if `Added States:` appears again, trace its origin before changing production behavior.
