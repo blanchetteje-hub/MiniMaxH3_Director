@@ -521,5 +521,38 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         )
 
 
+    def test_explicit_set_down_then_held_again_is_rejected(self):
+        raw = (
+            "At 00:00.000, Amy brings the plate and bowl together, sets them side by side on a table.\n"
+            "At 00:01.000, Amy stands beside the table, holding the plate and bowl.\n"
+            "End continuity state: Amy stands beside the table."
+        )
+        issues = minimax._director_explicit_object_state_conflict_errors(raw)
+        self.assertTrue(issues)
+        self.assertIn("held again", issues[0])
+
+    def test_set_down_then_explicit_pickup_is_not_rejected(self):
+        raw = (
+            "At 00:00.000, Jon places the toolbox on the floor.\n"
+            "At 00:01.000, Jon picks up the toolbox and holds it against his chest.\n"
+            "End continuity state: Jon holds the toolbox."
+        )
+        self.assertEqual(
+            minimax._director_explicit_object_state_conflict_errors(raw),
+            [],
+        )
+
+    def test_unrelated_placed_object_does_not_block_other_held_object(self):
+        raw = (
+            "At 00:00.000, Mara places the cup on the table beside her backpack.\n"
+            "At 00:01.000, Mara stands holding the backpack.\n"
+            "End continuity state: Mara holds the backpack."
+        )
+        self.assertEqual(
+            minimax._director_explicit_object_state_conflict_errors(raw),
+            [],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
