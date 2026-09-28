@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-conflict-2118",
+  "kind": "llama_chat",
+  "started_at": 1790556303.2514539,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether the NEXT action demands a hand or foot that the PREVIOUS action explicitly leaves occupied by a different independent task. Return JSON only. Do not invent extra grip capacity, release, retrieval, transfer, or repositioning. Reusing the occupied limb to continue operating the SAME held object/task is NO_CONFLICT. If the text explicitly frees, sets down, pockets, transfers, or repositions the object before the new task, that is NO_CONFLICT. If an occupied limb must perform a different independent task with no explicit freeing/repositioning, return CONFLICT. Ignore all non-limb coherence."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nJon carries a box with both hands.\n\nNEXT MICRO-ACTION:\nJon sets the box down, then opens the door with his left hand.\n\nReturn {\"status\":\"CONFLICT|NO_CONFLICT\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-pwqi0hbpx7tc4mg0vwwd",
+    "object": "chat.completion",
+    "created": 1790556303,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NO_CONFLICT\"}",
+          "reasoning": "We need to decide if next action demands a hand or foot that previous action explicitly leaves occupied by different independent task. Previous: Jon carries a box with both hands. So both hands are occupied carrying the box. Next: Jon sets the box down, then opens the door with his left hand.\n\nHe sets the box down first; that frees both hands? The text says \"sets the box down\" - presumably he releases it from both hands. Then opens the door with his left hand. So after setting down, left hand is free to open door. No conflict because left hand was occupied but freed before new task.\n\nThus status: NO_CONFLICT. Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 243,
+      "completion_tokens": 152,
+      "total_tokens": 395,
+      "completion_tokens_details": {
+        "reasoning_tokens": 135
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790556305.4767337,
+  "status": "ok"
+}
