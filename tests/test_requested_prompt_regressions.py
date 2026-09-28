@@ -299,6 +299,60 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "set_barrier_state=broken"):
             minimax._validate_required_event_state_effect_grounding(event, effects)
 
+    def test_source_unit_state_extractor_repairs_invalid_barrier_state(self):
+        class Unit:
+            id = "U1"
+            text = "A zombie shatters the kitchen door window."
+
+        class Plan:
+            source_units = [Unit()]
+
+        responses = [
+            {
+                "state_effects": [
+                    {
+                        "op": "set_object_state",
+                        "entity": "kitchen door window",
+                        "value": "damaged",
+                    }
+                ]
+            },
+            {
+                "state_effects": [
+                    {
+                        "op": "set_barrier_state",
+                        "entity": "kitchen door window",
+                        "value": "broken",
+                    }
+                ]
+            },
+        ]
+        seen_messages = []
+
+        def fake_llm(messages, **kwargs):
+            seen_messages.append(messages)
+            return responses.pop(0)
+
+        effects = minimax.extract_source_span_state_effects(
+            Plan(),
+            fake_llm,
+        )
+        self.assertEqual(
+            effects["U1"],
+            [
+                {
+                    "op": "set_barrier_state",
+                    "entity": "kitchen door window",
+                    "value": "broken",
+                }
+            ],
+        )
+        self.assertEqual(len(seen_messages), 2)
+        self.assertIn(
+            "previous state extraction was invalid",
+            seen_messages[1][-1]["content"],
+        )
+
     def test_explicit_shattered_window_accepts_broken_barrier_state(self):
         event = "A zombie shatters the kitchen door window and glass falls inward."
         effects = [
