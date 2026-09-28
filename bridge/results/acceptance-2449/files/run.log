@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-3s3h6oey\repo\minimax.py", line 23, in <module>
+    from gpt_formatter import (
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-3s3h6oey\repo\gpt_formatter.py", line 62, in <module>
+    _WRAPPED_LOCAL_TIME = re.compile(
+                          ^^^^^^^^^^^
+  File "C:\Program Files (x86)\Python311\Lib\re\__init__.py", line 227, in compile
+    return _compile(pattern, flags)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files (x86)\Python311\Lib\re\__init__.py", line 294, in _compile
+    p = _compiler.compile(pattern, flags)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files (x86)\Python311\Lib\re\_compiler.py", line 745, in compile
+    p = _parser.parse(p, flags)
+        ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files (x86)\Python311\Lib\re\_parser.py", line 994, in parse
+    raise source.error("unbalanced parenthesis")
+re.error: unbalanced parenthesis at position 110
