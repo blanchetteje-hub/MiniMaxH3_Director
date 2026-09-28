@@ -1256,3 +1256,14 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - The public repository must remain SFW.
 - Runtime/user-provided source material may contain arbitrary content, but committed code, tests, fixtures, examples, comments, and documentation must not embed graphic or sexual examples.
 - When a semantic distinction depends on such source material, use neutral abstract states/enums plus a tiny extractor that maps the runtime observation to the closest Python-owned state. Python owns the acceptance decision.
+
+
+### Terminal duplicate-result validation
+
+For Director Request 1 duplicate-result checks, follow the standard project rule: Python owns the state target and required value; the local LLM only observes whether the opening/RAW facts already match it.
+
+- Do not ask the local model to infer a terminal outcome from narrative prose when a typed state effect already supplies the target and value.
+- Current production scope is intentionally narrow: `set_barrier_state`, `set_threat_state`, and `set_object_state`.
+- Comparator output is `MATCH | NOT_MATCH | UNKNOWN`.
+- Python rejects only `MATCH`; both non-match states are allowed to continue.
+- Expand the checked state families only when acceptance demonstrates a real duplicate-result failure outside this scope.
