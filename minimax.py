@@ -158,6 +158,11 @@ GENERATION_STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
 
 PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
 
+GENERATED_PROMPTS_FILE = os.path.join(SCRIPT_DIR, "generated_prompts.txt")
+
+DEFAULT_GENERATED_PROMPT_SEGMENT_LENGTH = 8.0
+DEFAULT_GENERATED_PROMPT_MEGAPIXELS = 0.5
+
 FINAL_VIDEO = os.path.join(VIDEO_OUTPUT, "final.mp4")
 
 VISION_FRAME_OUTPUT = os.path.join(VIDEO_OUTPUT, "vision_frames")
@@ -1956,6 +1961,25 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
+        "--generate-prompts",
+        type=int,
+        default=None,
+        metavar="COUNT",
+        help=(
+            "generate COUNT beats and final H3 prompts, save them to "
+            "generated_prompts.txt, then exit without running ComfyUI"
+        ),
+    )
+    parser.add_argument(
+        "--generate-from-prompts",
+        action="store_true",
+        default=False,
+        help=(
+            "load generated_prompts.txt and run only the saved final H3 prompts "
+            "through ComfyUI using their saved workflow/continuity metadata"
+        ),
+    )
+    parser.add_argument(
         "--model",
         choices=tuple(FORMATTER_CLASSES),
         default="gpt",
@@ -2011,6 +2035,58 @@ def parse_args(arguments=None):
     args = parser.parse_args(normalize_command_line(arguments))
     args.ff = args.ff == "ff" or args.first_frame
 
+    if args.generate_prompts is not None:
+        if args.generate_prompts <= 0:
+            parser.error("--generate-prompts must be greater than zero.")
+        if args.generate_from_prompts:
+            parser.error(
+                "--generate-prompts cannot be combined with --generate-from-prompts."
+            )
+        if args.generate_beats is not None:
+            parser.error(
+                "--generate-prompts cannot be combined with --generate-beats."
+            )
+        if args.repair is not None:
+            parser.error("--generate-prompts cannot be combined with --repair.")
+        if args.test_prompt_generation:
+            parser.error(
+                "--generate-prompts already performs prompt-only generation; "
+                "do not combine it with --test-prompt-generation."
+            )
+        if args.segment_length is None:
+            args.segment_length = DEFAULT_GENERATED_PROMPT_SEGMENT_LENGTH
+        if args.megapixels is None:
+            args.megapixels = DEFAULT_GENERATED_PROMPT_MEGAPIXELS
+        if args.total_length is None:
+            args.total_length = args.segment_length * args.generate_prompts
+        expected_count = math.ceil(args.total_length / args.segment_length)
+        if expected_count != args.generate_prompts:
+            parser.error(
+                "--generate-prompts COUNT must match ceil(total_length / "
+                "segment_length) when video positionals are supplied."
+            )
+        return args
+
+    if args.generate_from_prompts:
+        if args.generate_beats is not None:
+            parser.error(
+                "--generate-from-prompts cannot be combined with --generate-beats."
+            )
+        if args.repair is not None or args.test_prompt_generation:
+            parser.error(
+                "--generate-from-prompts cannot be combined with --repair or "
+                "--test-prompt-generation."
+            )
+        if any(
+            value is not None
+            for value in (args.segment_length, args.total_length, args.megapixels)
+        ):
+            parser.error(
+                "--generate-from-prompts reads timing/render settings from "
+                "generated_prompts.txt; do not supply video positionals."
+            )
+        return args
+
     if args.generate_beats is not None:
         if args.generate_beats <= 0:
             parser.error("--generate-beats must be greater than zero.")
@@ -2050,7 +2126,8 @@ def parse_args(arguments=None):
     ):
         parser.error(
             "segment_length, total_length, and megapixels are required unless "
-            "--generate-beats COUNT is used."
+            "--generate-beats COUNT, --generate-prompts COUNT, or "
+            "--generate-from-prompts is used."
         )
     if args.segment_length <= 0:
         parser.error("segment_length must be greater than 0.")
