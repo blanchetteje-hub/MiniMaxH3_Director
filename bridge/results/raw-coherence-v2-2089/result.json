@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2089",
+  "kind": "llama_chat",
+  "started_at": 1790555618.5995226,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nThe medic holds a syringe in the right hand.\n\nNEXT MICRO-ACTION:\nThe medic injects the patient with the syringe.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-uylpu3k78cgi7z2q31au7",
+    "object": "chat.completion",
+    "created": 1790555618,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPATIBLE\"}",
+          "reasoning": "We have two micro-actions: previous: \"The medic holds a syringe in the right hand.\" Next: \"The medic injects the patient with the syringe.\"\n\nWe need to determine if next action is compatible, conflict or unspecified. The first states that the medic holds a syringe in the right hand. That means the syringe is held by the right hand.\n\nNext says the medic injects the patient with the syringe. This implies using the syringe (held) to inject. So it's physically consistent: the syringe is already held; injecting uses it. No conflict. It's compatible.\n\nThus status = COMPATIBLE. Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 299,
+      "completion_tokens": 143,
+      "total_tokens": 442,
+      "completion_tokens_details": {
+        "reasoning_tokens": 126
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555620.6945689,
+  "status": "ok"
+}
