@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2231",
+  "kind": "llama_chat",
+  "started_at": 1790557201.9404666,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nMara holds a flashlight in her left hand.\n\nNEXT MICRO-ACTION:\nMara sweeps the flashlight beam across the wall.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-hntyn0z44hwg45lwt29fbo",
+    "object": "chat.completion",
+    "created": 1790557201,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"flashlight\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"task\":\"flashlight\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Mara holds a flashlight in her left hand.\" So occupied limb is LEFT_HAND, task/object: flashlight (object). Use short lowercase object/task labels copied or normalized from the text. So \"flashlight\" as task? The instruction says use short lowercase object/task labels copied or normalized from the text. So we can set task to \"flashlight\". For next action: \"Mara sweeps the flashlight beam across the wall.\" This uses a limb required for new action and the object/task that limb acts on. Sweeping the flashlight beam likely requires her hand holding the flashlight? She is sweeping the beam, so she moves the flashlight with her left hand. So limb used: LEFT_HAND (since she holds flashlight). Task/object: \"flashlight\" or maybe \"beam\"? The text says sweeps the flashlight beam across the wall. The object being acted on by the limb could be \"flashlight\". But also the beam is a task? Let's interpret as the limb acts on the flashlight to sweep its beam. So use \"flashlight\".\n\nAlso check if NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb: It doesn't mention releasing or setting down; she sweeps the beam, so still holding flashlight. So freed_before_use is empty.\n\nReturn JSON with arrays of objects for previous and next. Each object has \"limb\" and \"task\". For previous: [{\"limb\":\"LEFT_HAND\",\"task\":\"flashlight\"}]. Next: [{\"limb\":\"LEFT_HAND\",\"task\":\"flashlight\"}].\n\nfreed_before_use: [].\n\nCheck format: {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}.\n\nSo final JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 283,
+      "completion_tokens": 424,
+      "total_tokens": 707,
+      "completion_tokens_details": {
+        "reasoning_tokens": 377
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557207.7512114,
+  "status": "ok"
+}
