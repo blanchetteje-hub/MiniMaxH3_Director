@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2218",
+  "kind": "llama_chat",
+  "started_at": 1790557078.431497,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nJon carries a box with both hands.\n\nNEXT MICRO-ACTION:\nJon sets the box down, then opens the door with his left hand.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-vufvwc9ltimui9508lgtg",
+    "object": "chat.completion",
+    "created": 1790557078,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. For PREVIOUS, report each occupied limb and the object/task occupying it at end of action.\n\nPREVIOUS: Jon carries a box with both hands. So after that action, his BOTH_HANDS are occupied carrying \"box\". Task is \"carry\" or maybe just \"box\"? The instruction says use short lowercase object/task labels copied or normalized from text. For task we can say \"carry\". But the example? They want limb and task occupying it at end of action. So for PREVIOUS: limb BOTH_HANDS, task carry (object box). Might be \"box\" as task? Actually they said \"task that limb acts on.\" In previous, the limb is used to carry a box. The object is box; the task is carrying. But maybe we just use \"carry\". Let's see instruction: For PREVIOUS, report each occupied limb and the object/task occupying it at end of action.\n\nSo for BOTH_HANDS, task could be \"box\" or \"carry\"? They say \"object/task labels copied or normalized from text.\" The text says \"carries a box with both hands.\" So object is \"box\". Task is \"carry\". Which one to use? It might want the limb and the object/task occupying it. Could list as task: carry, but also mention object: box. But they only have one field for task. Maybe we choose \"carry\" because it's a task. The example not given.\n\nLet's interpret: For PREVIOUS, report each occupied limb and the object/task occupying it at end of action. So if he carries a box with both hands, then BOTH_HANDS are used to carry a box. So maybe task is \"box\". But that seems odd. Let's choose \"carry\" as task. Because it's what he's doing.\n\nFor NEXT: Jon sets the box down, then opens the door with his left hand. We need limb required for new action and object/task that limb acts on. The next action includes two sub-actions: set the box down (likely uses BOTH_HANDS? Actually setting down might use both hands or one hand; but he has both hands free after setting down? He sets it down, then opens door with left hand. So we need to report each limb required for new action and object/task that limb acts on.\n\nSo first sub-action: set the box down uses BOTH_HANDS (maybe). But maybe just \"box\" as task. Then second sub-action: open door with left hand uses LEFT_HAND, task is \"door\". The instruction says if NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb, list that limb in freed_before_use.\n\nSo he sets the box down (releasing both hands) then opens door with left hand. So LEFT_HAND was free after setting down? Actually BOTH_HANDS were used to carry box; when set down, they are released. Then uses LEFT_HAND for opening door. So we should list \"left_hand\" in freed_before_use.\n\nBut the limb used for next action: The new action includes two tasks: set_box_down and open_door. We need to report each limb required for new action and object/task that limb acts on. So maybe two entries: one for BOTH_HANDS with task box (set down), another for LEFT_HAND with task door.\n\nBut the instruction says \"For NEXT, report each limb required for the new action and the object/task that limb acts on.\" The new action is a sequence of sub-actions; we should list both. So next array will have two objects: {\"limb\":\"both_hands\",\"task\":\"box\"} and {\"limb\":\"left_hand\",\"task\":\"door\"}. Or maybe \"set_box_down\"? But task label from",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 285,
+      "completion_tokens": 768,
+      "total_tokens": 1053,
+      "completion_tokens_details": {
+        "reasoning_tokens": 765
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557088.5739899,
+  "status": "ok"
+}
