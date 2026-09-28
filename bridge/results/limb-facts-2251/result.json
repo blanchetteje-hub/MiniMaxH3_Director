@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2251",
+  "kind": "llama_chat",
+  "started_at": 1790557393.9345052,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nAsha holds a bowl in both hands.\n\nNEXT MICRO-ACTION:\nAsha rotates the bowl.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yexvx6ioxjpfg7ag4kloh",
+    "object": "chat.completion",
+    "created": 1790557393,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Asha holds a bowl in both hands.\" So occupied limbs at end of action: BOTH_HANDS, task: hold? The object is bowl. Task label should be short lowercase normalized from text. They say use short lowercase object/task labels copied or normalized from the text. For previous we report each occupied limb and the object/task occupying it at the end of the action.\n\nSo for PREVIOUS: limb = BOTH_HANDS, task = hold? The object is bowl. But they want \"task\" field to be the object/task occupying it. They say \"object/task labels copied or normalized from the text.\" So maybe we use \"bowl\". Or \"hold\"? Let's read instructions carefully:\n\n\"For PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\"\n\nSo if Asha holds a bowl in both hands, then BOTH_HANDS is occupied by holding a bowl. The task could be \"hold\" or \"holding\". But they say use short lowercase labels copied or normalized from text. So maybe we should use \"bowl\" as object? Or \"hold\"? Let's see examples: Not given.\n\nBut the phrase \"object/task occupying it\" suggests that the limb is occupied by a task (like holding) and an object (the bowl). But they only want one field \"task\". Maybe it's the action being performed, e.g., hold. The object might be separate? They didn't specify separate fields for object vs task.\n\nThey say: \"Use short lowercase object/task labels copied or normalized from the text.\" So maybe we can use \"bowl\" as label because that's an object. But they said \"object/task\". Could be either. Let's interpret that each limb has a task, which could be holding bowl. The task is \"hold_bowl\"? Or just \"bowl\".\n\nBut likely they'd want \"bowl\" for the object and maybe \"hold\" for the action? Hmm.\n\nLet's examine typical usage: If Asha holds a bowl in both hands, then BOTH_HANDS are occupied by \"holding\". But the object is bowl. The limb uses the task of holding bowl. So we could set task = \"bowl\".\n\nBut they say \"object/task labels copied or normalized from the text.\" That means if the text says \"holds a bowl\", we can use \"hold\" and \"bowl\"? They didn't specify separate fields.\n\nMaybe each entry has two keys: limb, task. The task is what the limb is doing with that object. So for holding a bowl, the task could be \"hold_bowl\". But they want short lowercase labels copied or normalized from text. So maybe we use \"hold\" as task and \"bowl\" as object? But only one field.\n\nLet's read again: \"For PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\" That implies that for each limb, we need to specify what occupies it (object or task). So if BOTH_HANDS hold a bowl, then the occupancy is \"bowl\". The task might be \"hold\" but they didn't ask for separate. They just want one field: task.\n\nThus likely we set task = \"bowl\".\n\nSimilarly for NEXT: Asha rotates the bowl. That requires which limb? Rotating a bowl could use BOTH_HANDS or maybe RIGHT_HAND if rotating with right hand. But typical action of rotating a bowl uses both hands to rotate it. So limb required is BOTH_HANDS, and object/task that limb acts on is \"bowl\". The task might be \"rotate\" but they want the object? They say \"object/task that limb acts on.\" That could be \"bowl\".\n\nThus next",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 277,
+      "completion_tokens": 768,
+      "total_tokens": 1045,
+      "completion_tokens_details": {
+        "reasoning_tokens": 765
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557404.0687053,
+  "status": "ok"
+}
