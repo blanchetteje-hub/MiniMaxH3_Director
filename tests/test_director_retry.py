@@ -27,9 +27,14 @@ def formatter_response(description):
 
 
 def director_response(raw_scene, beat_complete=True):
-    """A Request 1 Director reply using the current structured completion contract."""
+    """A structurally valid Request 1 reply for unit tests."""
+    scene = str(raw_scene).strip()
+    if not scene.startswith("At "):
+        scene = "At 00:00.000, " + scene
+    if "End continuity state:" not in scene:
+        scene += "\nEnd continuity state: The described action has reached its final visible state."
     return {
-        "raw_scene": raw_scene,
+        "raw_scene": scene,
         "finite_activity_complete": beat_complete,
         "named_beneficiaries_complete": beat_complete,
         "activity_tools_settled": beat_complete,
@@ -63,12 +68,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "include every explicit required action/object/outcome",
             request.call_args_list[1].args[0][-1]["content"],
         )
-        self.assertEqual(
-            payload["request1_result"],
-            {
-                "raw_scene": "Mark completes the action.",
-                "beat_complete": True,
-            },
+        self.assertTrue(payload["request1_result"]["beat_complete"])
+        self.assertIn(
+            "Mark completes the action.",
+            payload["request1_result"]["raw_scene"],
         )
 
     def test_request_one_incomplete_after_retry_budget_fails_before_request_two(self):
@@ -501,12 +504,11 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             story_segment_ending_rules="",
         )
         self.assertIn(
-            "do not carry that ended entity/process into later micro-beats "
-            "or the END CONTINUITY STATE",
+            "After the terminal transition, do not carry it forward as active",
             prompt,
         )
         self.assertIn(
-            "still active, moving, speaking, sounding, or otherwise continuing",
+            "unless CURRENT BEAT explicitly restores or restarts it",
             prompt,
         )
 
@@ -838,6 +840,24 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(ask_llm.call_count, 11)
         self.assertEqual(payload["llm_result"]["detailed_description"], last_text)
         self.assertEqual(payload["llm_result"]["overall_soundscape"], "N/A")
+
+
+    def test_completion_prompt_rejects_unassigned_terminal_outcome(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "Operator damages the machine's outer panel.",
+            (
+                "At 00:00.000, Operator dents the machine's outer panel.\n"
+                "At 00:01.000, The machine collapses permanently and stops.\n"
+                "End continuity state: The machine is motionless and permanently stopped."
+            ),
+            assigned_source="Operator damages the machine's outer panel.",
+            authoritative_opening_state="N/A",
+            assigned_state_effects=[],
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn("non-terminal injury/damage/change", prompt)
+        self.assertIn("motionless/collapsed", prompt)
+
 
 
 if __name__ == "__main__":
