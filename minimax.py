@@ -20971,31 +20971,18 @@ def _continuity_apply_authoritative_state_effects(
         elif op == "set_containment":
             record = subject_record(effect["entity"])
             container = effect["container"]
+            # A canonical containment transition changes the subject's spatial
+            # frame. Prompt-derived pose/topology/relationships belong to the
+            # pre-transition frame and cannot be trusted afterward.
+            record["pose_action"] = "N/A"
+            record["topology"] = "N/A"
+            record["spatial_relationships"] = []
             if effect["value"] == "contained":
-                old_position = str(record.get("position") or "").strip()
-                if (
-                    old_position
-                    and old_position.upper() != "N/A"
-                    and old_position.casefold() != container.casefold()
-                ):
-                    record["pose_action"] = "N/A"
-                    record["topology"] = "N/A"
-                    record["spatial_relationships"] = []
                 record["position"] = container
-                relation = f"inside {container}"
-                record["spatial_relationships"] = [
-                    item for item in record.get("spatial_relationships", [])
-                    if str(item).casefold() != f"outside {container}".casefold()
-                ]
-                if relation not in record["spatial_relationships"]:
-                    record["spatial_relationships"].append(relation)
+                record["spatial_relationships"] = [f"inside {container}"]
             else:
                 if str(record.get("position") or "").casefold() == container.casefold():
                     record["position"] = f"outside {container}"
-                record["spatial_relationships"] = [
-                    item for item in record.get("spatial_relationships", [])
-                    if str(item).casefold() != f"inside {container}".casefold()
-                ]
         elif op == "set_item_state":
             record = subject_record(effect["owner"])
             held = list(record.get("held_props") or [])
