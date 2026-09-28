@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-state-2357",
+  "kind": "llama_chat",
+  "started_at": 1790613636.1368847,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify one target state. Return JSON only. Do not judge overall story correctness."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe operator seals the last pressure hatch.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE: Pressure hatch 4 is open.\n\nRAW SCENE\nThe operator swings hatch 4 closed and seals it.\n\nMap the target condition immediately BEFORE the source-assigned action begins to the closest Python state:\nACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\nALREADY_TERMINAL = the exact assigned terminal outcome is already true before the action begins.\nUNSPECIFIED = SOURCE does not assign a terminal outcome, or the supplied facts do not establish either state.\nCompare meaning, not wording. Opening facts remain true unless RAW visibly changes them. Source-authorized opening facts win direct conflicts; rendered opening facts still apply where source state is silent. Do not invent reversal or restoration. Return only status."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-e4rgfn6t03iko40y7iu6t",
+    "object": "chat.completion",
+    "created": 1790613636,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to classify the target condition immediately before the source-assigned action begins.\n\nGiven: ASSIGNED SOURCE says \"The operator seals the last pressure hatch.\" So assigned terminal outcome? The action is sealing the last pressure hatch, presumably closing it and sealing it. That means after action, hatch 4 will be closed (sealed). But we need to classify target condition before action begins. We have AUTHORITATIVE OPENING STATE: SOURCE-AUTHORIZED CURRENT STATE: Pressure hatch 4 is open.\n\nRAW SCENE: \"The operator swings hatch 4 closed and seals it.\" So the raw scene shows that after action, hatch 4 is closed and sealed. But we need target condition immediately before source-assigned action begins. That means before the operator seals the last pressure hatch (i.e., before closing). At that moment, hatch 4 is open.\n\nWe compare meaning: The assigned terminal outcome? \"The operator seals the last pressure hatch.\" Terminal outcome likely refers to hatch being sealed/closed. So target condition before action: hatch 4 is open. Is that already true? Yes, source-authorized opening state says it's open. So ALREADY_TERMINAL? Wait, ALREADY_TERMINAL means the exact assigned terminal outcome is already true before the action begins. But the assigned terminal outcome is \"sealed\" (closed). That is not yet true; hatch 4 is open. So it's ACTIVE_OR_UNRESOLVED: The assigned terminal outcome is not already true.\n\nThus status = ACTIVE_OR_UNRESOLVED. Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 261,
+      "completion_tokens": 334,
+      "total_tokens": 595,
+      "completion_tokens_details": {
+        "reasoning_tokens": 314
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790613640.9378908,
+  "status": "ok"
+}
