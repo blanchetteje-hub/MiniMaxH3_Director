@@ -1,0 +1,55 @@
+{
+  "job_id": "h3-action512-1801",
+  "kind": "llama_chat",
+  "started_at": 1790560790.1527147,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one RAW video micro-action with the final H3 micro-action at the same timestamp. Return JSON only. PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs. OMITTED = the RAW action/result is absent. CHANGED = final H3 performs a materially different or contradictory action/result. Judge only these two snippets."
+      },
+      {
+        "role": "user",
+        "content": "RAW MICRO-ACTION:\nThe knight raises his shield and blocks the dragon's flame.\n\nFINAL H3 MICRO-ACTION:\nThe knight raises his shield.\n\nReturn {\"status\":\"PRESERVED|OMITTED|CHANGED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-cw3uk5lhfo2qgwgvvwgjk",
+    "object": "chat.completion",
+    "created": 1790560790,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"OMITTED\"}",
+          "reasoning": "We need to compare RAW micro-action: \"The knight raises his shield and blocks the dragon's flame.\" Final H3 micro-action: \"The knight raises his shield.\"\n\nPreserved means same visible/audible action and material result remain, even if wording differs. Here final only says he raises shield; does not mention blocking flame. The action of raising shield is present in both. But the result (blocking dragon's flame) is omitted. So is that considered PRESERVED or OMITTED? According to definition: \"PRESERVED = the same visible/audible action and material result remain, even if wording, clothing adjectives, camera wording, or harmless detail differs.\" The material result of blocking flame remains in RAW but not final. Final only has raising shield; no mention of blocking flame. So the material result is omitted. Thus status should be OMITTED.\n\nBut check: \"The knight raises his shield\" includes action of raising shield. But does it include blocking? Not explicitly. Material result (blocking dragon's flame) absent. So it's omitted. Therefore output JSON {\"status\":\"OMITTED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 203,
+      "completion_tokens": 240,
+      "total_tokens": 443,
+      "completion_tokens_details": {
+        "reasoning_tokens": 223
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790560793.5474741,
+  "status": "ok"
+}
