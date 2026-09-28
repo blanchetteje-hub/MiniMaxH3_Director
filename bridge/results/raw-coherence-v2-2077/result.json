@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2077",
+  "kind": "llama_chat",
+  "started_at": 1790555544.4788687,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nMara sets the backpack on the floor.\n\nNEXT MICRO-ACTION:\nMara continues walking with the backpack still on her shoulders.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-v85akd7v5ao53viq5e5cnp",
+    "object": "chat.completion",
+    "created": 1790555544,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CONFLICT\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: \"Mara sets the backpack on the floor.\" So she places it down, presumably onto the floor. Next action: \"Mara continues walking with the backpack still on her shoulders.\"\n\nSo after setting the backpack on the floor, it's no longer on her shoulders. But next says she's continuing walking with the backpack still on her shoulders. That conflicts because if she set it on the floor, then it's not on her shoulders unless she picked it up again. No mention of picking it back up. So conflict.\n\nThus status: CONFLICT.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 300,
+      "completion_tokens": 138,
+      "total_tokens": 438,
+      "completion_tokens_details": {
+        "reasoning_tokens": 122
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555546.5260532,
+  "status": "ok"
+}
