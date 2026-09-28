@@ -732,17 +732,51 @@ class RequestedPromptRegressionTests(unittest.TestCase):
     def test_blank_source_skips_terminal_state_check(self):
         self.assertFalse(minimax.director_source_has_terminal_action(""))
 
-    def test_terminal_state_extractor_uses_abstract_python_states(self):
+    def test_terminal_state_extractor_uses_python_owned_target_and_state(self):
         messages = minimax.build_director_terminal_target_messages(
-            "Apply the assigned irreversible transition to the target.",
-            "The target is visible in the scene.",
-            "The target already satisfies the assigned end state.",
+            "machine A",
+            "inactive",
+            "At 00:00.000, the operator faces machine A.",
+            "machine A is inactive",
         )
         prompt = "\n".join(message["content"] for message in messages)
-        self.assertIn("ACTIVE_OR_UNRESOLVED", prompt)
-        self.assertIn("ALREADY_TERMINAL", prompt)
-        self.assertIn("UNSPECIFIED", prompt)
-        self.assertIn("Compare meaning, not wording", prompt)
+        self.assertIn("TARGET\nmachine A", prompt)
+        self.assertIn("REQUIRED END STATE\ninactive", prompt)
+        self.assertIn("MATCH", prompt)
+        self.assertIn("NOT_MATCH", prompt)
+        self.assertIn("UNKNOWN", prompt)
+
+    def test_terminal_state_contracts_use_only_stateful_object_families(self):
+        contracts = minimax.build_director_terminal_state_contracts(
+            [
+                {"op": "set_threat_state", "entity": "machine A", "value": "inactive"},
+                {"op": "set_barrier_state", "entity": "gate B", "value": "closed"},
+                {"op": "set_object_state", "entity": "module C", "value": "inactive"},
+                {"op": "set_condition", "entity": "room", "value": "quiet"},
+                {"op": "set_location", "entity": "operator", "value": "lab"},
+                {"op": "set_clothing", "entity": "operator", "slot": "upper", "item": "jacket", "damage": "none"},
+            ]
+        )
+        self.assertEqual(
+            contracts,
+            [
+                {"target": "machine A", "required_end_state": "inactive"},
+                {"target": "gate B", "required_end_state": "closed"},
+                {"target": "module C", "required_end_state": "inactive"},
+            ],
+        )
+
+    def test_terminal_state_parser_uses_match_contract(self):
+        self.assertEqual(
+            minimax.parse_director_terminal_target_observation(
+                {"status": "MATCH"}
+            ),
+            "MATCH",
+        )
+        with self.assertRaises(ValueError):
+            minimax.parse_director_terminal_target_observation(
+                {"status": "ALREADY_TERMINAL"}
+            )
 
     def test_same_hand_same_object_continuation_is_not_rejected(self):
         raw = (
