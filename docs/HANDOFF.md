@@ -550,3 +550,21 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - `5af1232d03b38e606cff919d1415c9a09ace05a5`: replaced explicit trigger/example language with generic irreversible terminal-state logic.
   - `69c312d1d51e972ae27bfff7c43c9a19a766d404`: replaced explicit regressions with SFW machine-state examples.
 - Expected behavior: if a later segment tries to reapply an irreversible terminal result to the same continuing target without an explicit reversal/restoration, Request 1 should reject and regenerate it.
+
+
+### 2026-09-28 — public-repo SFW cleanup and generic terminal-state micro-extractor
+
+- Public repository rule is now explicit in `docs/PROJECT_NOTES.md`: committed code/tests/fixtures/comments/docs stay SFW; arbitrary runtime source content is handled only at runtime.
+- Removed domain-specific graphic examples from active prompt contracts, regression fixtures, current handoff, and archived handoff.
+- Terminal-target validation now follows the preferred deterministic + tiny-extractor pattern:
+  - LLM sees ASSIGNED SOURCE + authoritative opening state + RAW;
+  - it maps the observed pre-action target condition to exactly one Python-owned enum: `ACTIVE_OR_UNRESOLVED | ALREADY_TERMINAL | UNSPECIFIED`;
+  - no domain-specific examples are embedded in the repository;
+  - Python alone decides whether `ALREADY_TERMINAL` invalidates the candidate.
+- Commits:
+  - `83dbf8d3bb7ebcb1ab25ca4c1ad1c88cbf01d8b1`, `9cb4dd18fc88149216c34cb2ed47583b82342528`: remove graphic prompt examples.
+  - `e2a523c0ec6ea300bce13c9b33f2bfcfd5a882bf`: SFW regression fixture.
+  - `49a3f2ea5362b6e75d6917d8559b6872f199edfe`, `98ed6f55bc5cb0833a8844936f099f601991600d`: sanitize current + archived handoff history.
+  - `e573dac1b2c7b8d9abd8f3f2c57b28f2506ca100`: architectural SFW rule in PROJECT_NOTES.
+  - `397455495a14ba6c42f48703677c5cfca2e27fb0`, `6b312f8b4ed1c109f47016a15ffd60431f31e850`: abstract terminal-state micro-extractor regression + implementation.
+- Repo scan of `minimax.py`, requested regressions, HANDOFF, HANDOFF_OLD, and PROJECT_NOTES found zero remaining graphic-keyword hits from the cleaned categories.
