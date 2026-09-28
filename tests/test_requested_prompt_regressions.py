@@ -287,6 +287,32 @@ class RequestedPromptRegressionTests(unittest.TestCase):
             merged["subjects"]["Will"]["spatial_relationships"],
         )
 
+    def test_explicit_shattered_window_rejects_generic_object_damage(self):
+        event = "A zombie shatters the kitchen door window and glass falls inward."
+        effects = [
+            {
+                "op": "set_object_state",
+                "entity": "kitchen door window",
+                "value": "damaged",
+            }
+        ]
+        with self.assertRaisesRegex(ValueError, "set_barrier_state=broken"):
+            minimax._validate_required_event_state_effect_grounding(event, effects)
+
+    def test_explicit_shattered_window_accepts_broken_barrier_state(self):
+        event = "A zombie shatters the kitchen door window and glass falls inward."
+        effects = [
+            {
+                "op": "set_barrier_state",
+                "entity": "kitchen door window",
+                "value": "broken",
+            }
+        ]
+        self.assertEqual(
+            minimax._validate_required_event_state_effect_grounding(event, effects),
+            effects,
+        )
+
     def test_state_effects_reject_duplicate_clothing_item_state(self):
         with self.assertRaisesRegex(ValueError, "garment represented by set_clothing"):
             minimax._validate_state_effects([
