@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2216",
+  "kind": "llama_chat",
+  "started_at": 1790557058.9232063,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nAmy holds a pistol in her right hand.\n\nNEXT MICRO-ACTION:\nAmy picks up a katana with her right hand without releasing the pistol.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nothhhaa4ozsjltd3uq7",
+    "object": "chat.completion",
+    "created": 1790557058,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"pistol\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"katana\"}],\"freed_before_use\":[]}\n",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: Amy holds a pistol in her right hand. So previous action occupies RIGHT_HAND with task \"hold\" or maybe \"holds\". The object is pistol.\n\nNEXT: picks up katana with right hand without releasing the pistol. So next action uses RIGHT_HAND for picking up katana, but also still holding pistol? It says without releasing the pistol. So the limb used in next action is RIGHT_HAND and the task is pick_up (katana). Freed_before_use: if NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb. Here it does not release pistol; so no freed limbs.\n\nThus JSON:\n\nprevious: [{\"limb\":\"RIGHT_HAND\",\"task\":\"hold\"}] maybe \"holds\"? The task label should be short lowercase object/task labels copied or normalized from the text. So tasks: hold, pick_up? Use \"hold\" and \"pick_up\". Object labels: pistol, katana.\n\nBut format expects each limb entry has limb and task only; no object field. Wait spec: For PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action. So we need to include both limb and task? The example says \"task\" maybe includes object? It says \"object/task\". So likely just a string like \"pistol\" or \"hold\"? Actually ambiguous.\n\nBut they say use short lowercase object/task labels copied or normalized from text. So for previous, the task is pistol (the object). For next, task is katana. Freed_before_use empty array.\n\nThus:\n\n{\n  \"previous\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"pistol\"}],\n  \"next\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"katana\"}],\n  \"freed_before_use\": []\n}\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 286,
+      "completion_tokens": 423,
+      "total_tokens": 709,
+      "completion_tokens_details": {
+        "reasoning_tokens": 376
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557064.5909443,
+  "status": "ok"
+}
