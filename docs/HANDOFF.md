@@ -659,3 +659,11 @@ User-requested unattended two-phase workflow:
 - `call_llm()` computed `effective_max_tokens = min(max_tokens, context_budget - safety - estimated_input)`, so ordinary creative prompts could be sent with much smaller completion caps such as `2634`.
 - Commit `819d613b51d0baee773f2246e2c0cf946f068056` changes `LLM_CONTEXT_TOKEN_BUDGET` from 6044 to 8192 and the default `call_llm(... max_tokens=...)` ceiling from 8000 to 8192.
 - The 128-token safety reserve and input-size subtraction remain. This prevents impossible requests while allowing the GPT-20B runtime to use its full configured context instead of an obsolete ~6k software cap.
+
+
+### 2026-09-28 — Segment-level Director retry exhaustion now escalates to planning
+
+- User run became stuck indefinitely on Segment 4. The log repeatedly showed `Director Request 1 closed-boundary traversal check failed`, then after 3 local attempts the application supervisor resumed from Segment 4 and reused the same planning checkpoint.
+- One retry also showed the deeper contract mismatch: RAW created a durable terminal zombie-state change while the assigned typed end state was empty. This demonstrates the current Beat/typed-state checkpoint itself can be incompatible with Director validation, so replaying the same segment cannot necessarily heal it.
+- Commit `fe4254683e3ce1507ebf2117505bd425e490800e` changes recovery narrowly: when Director Request 1 exhausts its local 3-attempt completion budget, recovery escalates to planning at Segment 1 instead of reusing the same later-segment checkpoint forever.
+- In `--generate-prompts` mode, Segment-1 recovery forces a fresh beat plan, allowing a poisoned Beat/typed-state contract to be regenerated while preserving the application's recover-forever policy.
