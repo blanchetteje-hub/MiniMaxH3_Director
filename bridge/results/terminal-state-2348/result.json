@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-state-2348",
+  "kind": "llama_chat",
+  "started_at": 1790613576.2183325,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify one target state. Return JSON only. Do not judge overall story correctness."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe supervisor archives the final project.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE: Project Cedar is archived.\n\nRAW SCENE\nThe supervisor opens Project Cedar and archives it.\n\nMap the target condition immediately BEFORE the source-assigned action begins to the closest Python state:\nACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\nALREADY_TERMINAL = the exact assigned terminal outcome is already true before the action begins.\nUNSPECIFIED = SOURCE does not assign a terminal outcome, or the supplied facts do not establish either state.\nCompare meaning, not wording. Opening facts remain true unless RAW visibly changes them. Source-authorized opening facts win direct conflicts; rendered opening facts still apply where source state is silent. Do not invent reversal or restoration. Return only status."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-es06l4b3m5esdj9jufqxw",
+    "object": "chat.completion",
+    "created": 1790613576,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to classify the target state before action begins: \"Project Cedar is archived.\" The supervisor archives it. So before archiving, Project Cedar is not archived. Thus ACTIVE_OR_UNRESOLVED? Let's parse definitions:\n\n- ACTIVE_OR_UNRESOLVED = assigned terminal outcome is not already true.\n- ALREADY_TERMINAL = exact assigned terminal outcome is already true before action begins.\n\nSo before the action, \"Project Cedar is archived\" is false. So it's ACTIVE_OR_UNRESOLVED. Return JSON only: {\"status\":\"ACTIVE_OR_UNRESOLVED\"}? The format likely just status key. Let's output that.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 256,
+      "completion_tokens": 148,
+      "total_tokens": 404,
+      "completion_tokens_details": {
+        "reasoning_tokens": 128
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790613578.6639843,
+  "status": "ok"
+}
