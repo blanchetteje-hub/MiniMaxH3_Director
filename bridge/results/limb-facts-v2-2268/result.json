@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2268",
+  "kind": "llama_chat",
+  "started_at": 1790557780.90486,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nJon carries a box with both hands.\n\nNEXT MICRO-ACTION:\nJon sets the box down, then opens the door with his left hand.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-sgb1sbfb5kdmlpf5f5z9o",
+    "object": "chat.completion",
+    "created": 1790557780,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"box\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"box\"}],\"next\":[{\"limb\":\"BOTH_HANDS\",\"object\":\"box\"},{\"limb\":\"LEFT_HAND\",\"object\":\"door\"}],\"freed_before_use\":[\"LEFT_HAND\"]}",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: Jon carries a box with both hands. So at the end of that action, both hands are occupied by \"box\". The object must be physical object or task occupying that limb. So we list each hand explicitly occupied at END of action.\n\nThus previous array: [{\"limb\":\"LEFT_HAND\",\"object\":\"box\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"box\"}] (or BOTH_HANDS? But spec says list each hand/foot explicitly). So two entries.\n\nNEXT micro-action: Jon sets the box down, then opens the door with his left hand. We need to list each hand/foot required by new action; object must be physical object that limb manipulates/holds/presses/uses. If NEXT operates same physical object already occupying that limb, repeat EXACTLY same object label used in PREVIOUS.\n\nSo first part: sets the box down. That uses both hands? He is setting it down with both hands presumably. But then opens door with left hand. So we need to list each hand explicitly required by new action. For \"sets the box down\", that requires BOTH_HANDS, object \"box\". Then for opening door with left hand: LEFT_HAND, object \"door\" (the physical object). The question: do we include both? Yes.\n\nAlso freed_before_use: If NEXT explicitly releases, sets down, transfers, pockets, or repositions prior object before using limb for something else. Here he sets the box down before opening door. So left hand is used to open door after releasing box. But does that count as freeing before use? The left hand was occupied by \"box\" in previous action; then it releases (sets down) and uses door. So freed_before_use should include LEFT_HAND.\n\nBut also right hand: It sets the box down with both hands, but after setting down, maybe it's free too. But does he use right hand for anything else? No. The question is \"If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else\". So left hand uses door after releasing box; so LEFT_HAND freed_before_use.\n\nRight hand also released but not used again in next action. But freed_before_use refers to limbs that are freed before use of new object? The right hand is freed but not used for anything else, so maybe not included. Freed_before_use likely includes any limb that was occupied by previous object and then freed before being used for something else. Right hand isn't used again; left hand is.\n\nThus output: {\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"box\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"box\"}],\"next\":[{\"limb\":\"BOTH_HANDS\",\"object\":\"box\"},{\"limb\":\"LEFT_HAND\",\"object\":\"door\"}],\"freed_before_use\":[\"LEFT_HAND\"]}.\n\nCheck if BOTH_HANDS is allowed? Allowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, etc. So we can use BOTH_HANDS for the set down action. That seems fine.\n\nAlternatively could list two entries for both hands separately in next: left hand box and right hand box. But spec says \"list each hand/foot explicitly required by new action\". For setting box down, both hands are used; but maybe it's okay to have BOTH_HANDS entry. The example didn't show that. They said allowed limb values include BOTH_HANDS.\n\nThus final JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 411,
+      "completion_tokens": 777,
+      "total_tokens": 1188,
+      "completion_tokens_details": {
+        "reasoning_tokens": 707
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557791.075804,
+  "status": "ok"
+}
