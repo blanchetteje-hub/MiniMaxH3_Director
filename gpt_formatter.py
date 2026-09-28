@@ -64,6 +64,7 @@ _WRAPPED_LOCAL_TIME = re.compile(
     r"(?:[.:]\\d{1,3})?(?:\\s+seconds?)?\\s*[,;:\\-]?)\\s*[)\\]]"
 )
 
+
 _ZERO_LOCAL_TIME = re.compile(
     r"(?i)(?<![\w:])(?:at\s+)?(?:\d{1,2}:00(?:[.:]0{1,3})?|"
     r"0+\.0{1,3})(?:\s+seconds?)?\s*[,;:\-]?\s*"
@@ -757,6 +758,13 @@ def _repair_fields(result: dict[str, Any], context: Mapping[str, Any]) -> None:
         result[field] = re.sub(r"(?i)\s*\(\s*unidentified\s*\)", "", result[field])
         result[field] = _strip_markdown(result[field])
         result[field] = _replace_unsupported_dashes(result[field])
+        # GPT-OSS can echo orchestration/control labels into a rendered field.
+        # They are representation leakage, not story content.
+        result[field] = re.sub(
+            r"(?i)\\s*Added\\s+States\\s*:\\s*$",
+            "",
+            result[field],
+        ).rstrip()
 
 
 def _repair_video_references(
