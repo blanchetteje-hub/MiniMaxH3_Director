@@ -10343,6 +10343,22 @@ def build_beat_validation_messages(
         state,
         state_effects,
     )
+    preserved_barriers = build_director_preserved_barrier_state_contracts(
+        json.dumps(state, ensure_ascii=False, separators=(",", ":")),
+        flat_state_effects,
+    )
+    preserved_barrier_text = ""
+    if preserved_barriers:
+        preserved_barrier_text = (
+            "\nPYTHON-OWNED FINAL BARRIER STATES\n"
+            + "\n".join(
+                f"- {item['barrier']} begins {item['source_state']} and must end "
+                f"{item['source_state']} because no typed barrier effect changes it. "
+                "Temporary opening/unlocking for an authorized crossing is allowed "
+                "only if the opening state is restored before beat end."
+                for item in preserved_barriers
+            )
+        )
     closed_boundary_text = ""
     if closed_boundaries:
         lines = []
@@ -10396,6 +10412,7 @@ STATE EFFECTS IF VALID
 {json.dumps(state_effects, ensure_ascii=False, separators=(",", ":"))}
 {barrier_binding_text}
 {closed_boundary_text}
+{preserved_barrier_text}
 
 CANDIDATE BEAT
 {candidate_beat}
@@ -14813,6 +14830,7 @@ def build_beat_generation_messages(
     event_lines = []
     barrier_binding_lines = []
     closed_boundary_lines = []
+    preserved_barrier_lines = []
     for event in required_events:
         if not isinstance(event, dict):
             continue
@@ -14838,6 +14856,18 @@ def build_beat_generation_messages(
                     int(beat_number),
                     subject_information=subject_information,
                 )
+                for contract in build_director_preserved_barrier_state_contracts(
+                    json.dumps(before_state, ensure_ascii=False, separators=(",", ":")),
+                    event.get("state_effects", []),
+                ):
+                    preserved_barrier_lines.append(
+                        f"{int(beat_number)}. {contract['barrier']} begins "
+                        f"{contract['source_state']} and must end "
+                        f"{contract['source_state']} unless this beat has an "
+                        "explicit barrier-state effect changing it; temporary "
+                        "opening/unlocking for an authorized crossing is allowed "
+                        "only if the opening state is restored by beat end."
+                    )
                 for contract in build_beat_closed_boundary_contracts(
                     before_state,
                     event.get("state_effects", []),
@@ -14881,6 +14911,11 @@ def build_beat_generation_messages(
     closed_boundaries_text = (
         "\n".join(closed_boundary_lines)
         if closed_boundary_lines
+        else "N/A"
+    )
+    preserved_barriers_text = (
+        "\n".join(preserved_barrier_lines)
+        if preserved_barrier_lines
         else "N/A"
     )
 
@@ -14951,6 +14986,9 @@ PYTHON-OWNED BARRIER BINDINGS:
 PYTHON-OWNED CLOSED BOUNDARIES:
 {closed_boundaries_text}
 
+PYTHON-OWNED FINAL BARRIER STATES:
+{preserved_barriers_text}
+
 Write exactly {batch_size} video beats, one per required event.
 
 Rules:
@@ -14964,6 +15002,10 @@ Rules:
   canonical state before that beat. Do not move any person, creature, object,
   body part, or other physical thing across one unless that beat's assigned
   typed effects authorize opening/release.
+- PYTHON-OWNED FINAL BARRIER STATES are authoritative final-state constraints.
+  A release/crossing may temporarily open or unlock a listed barrier, but if no
+  typed barrier effect changes it, restore its listed opening state before the
+  beat ends.
 - For a finite activity, show a visible transition: include the assigned
   activity itself, then show it finishing. Do not output only the activity
   underway or only its after-state.
