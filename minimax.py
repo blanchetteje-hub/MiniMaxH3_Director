@@ -899,7 +899,7 @@ MICRO-BEATS
 - Use continuous camera movement liberally when it improves spatial clarity or reveals the next action: pan, orbit, track, tilt, push/pull, follow, or reframe. Prefer movement over cuts. Cuts are rare and should be used only when continuous movement would be impractical or confusing.
 - Keep spatial relationships explicit when important.
 - Prefer names over pronouns. Within one timestamp, use a pronoun only when exactly one person could reasonably be its referent; otherwise repeat the person's name.
-- For difficult disconnections (for example decapitation), use separate timestamps when multiple visible stages are needed.
+- For difficult irreversible separations, use separate timestamps when multiple visible stages are needed.
 - For continuation segments, avoid ending the final timed action on spoken dialogue when a visual handoff can follow.
 - Keep the END CONTINUITY STATE to one sentence, untimed, and nearly identical to the last visible state. Do not invent anything new there.
 - Be short and succinct; describe only visual/audio information.
@@ -10509,7 +10509,7 @@ E. MATERIAL FIDELITY: Harmless local staging is allowed, but reject invented
 details that materially change the assigned action, participant treatment, object
 use, location/result, or story meaning. Named tools and weapons must be used in a
 physically coherent way unless CURRENT JOB explicitly establishes an unusual use;
-for example a firearm may shoot/strike but does not slash or decapitate as a blade.
+for example one tool must not perform a distinct action that belongs to a different tool class.
 Do not invent consequential aggression, injury, forced movement, humiliation, or
 other harmful treatment of a protected/non-hostile participant merely to dramatize
 an otherwise simple assigned action. Do not reject ordinary neutral staging.
