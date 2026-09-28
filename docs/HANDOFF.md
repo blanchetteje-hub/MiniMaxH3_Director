@@ -586,3 +586,17 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - rejects Request 1 only when the observed pre-action state already matches the exact assigned typed end state.
 - Regression commit `40d366c424e91e420d3cca0fd668a0ffecb0da86` covers typed contract selection, prompt shape, and strict parser behavior.
 - Next checkpoint: requested regression suite, then fresh full acceptance. The Segment-7-style repeated completed target must regenerate until the assigned typed terminal state is not already true before the action.
+
+
+### 2026-09-28 — preserve temporary barrier transitions
+
+- Acceptance `2436` passed the terminal-target regression and produced a source-faithful 8-segment run, but exposed a new upstream state-contract defect at the final release beat.
+- ARC correctly emitted `set_containment=free` for the children and did **not** invent an unstated persistent door state.
+- The beat/Director nevertheless made the temporary unlock permanent even though canonical opening state still had the basement door locked and no `set_barrier_state` effect changed that final state.
+- This is now handled as a Python-owned preservation invariant:
+  - a containment/release effect may authorize temporary crossing of a closed barrier;
+  - if no typed barrier-state effect changes that barrier, its opening canonical state must be restored by beat/segment end.
+- Commit `c8544d0b96c35a7f2cee4bccd63312201b75589b` adds Director final-barrier preservation contracts and reuses the existing tiny barrier-state extractor to verify the final visible state.
+- Commit `500aff99521644f6712437d8d29ea475dd67cdc0` feeds the same final-barrier constraint into BEAT CREATE and BEAT VALIDATE so bad plans are prevented upstream when possible.
+- Commit `d07bb2e23a481ab49234206e81d79e9110c14662` adds regressions for a contained subject being released through a locked generic barrier and for explicit barrier effects overriding preservation.
+- Next checkpoint: requested regression suite, then full acceptance. Final release may temporarily unlock/open the basement boundary, but without an explicit barrier effect it must end locked again.
