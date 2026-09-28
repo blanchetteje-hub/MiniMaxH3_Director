@@ -30157,14 +30157,36 @@ def main():
                 recovery_resume_segment = _checkpoint_recovery_resume_segment()
             elif recovery_resume_segment is None:
                 recovery_resume_segment = 1
+            director_contract_exhausted = (
+                isinstance(error, BeatGenerationError)
+                and str(error).startswith(
+                    "Director Request 1 did not confirm completion of Beat "
+                )
+            )
+            if director_contract_exhausted and recovery_resume_segment > 1:
+                failed_segment = recovery_resume_segment
+                recovery_resume_segment = 1
+                print(
+                    f"WARNING: Director Request 1 exhausted its local retry budget "
+                    f"at segment {failed_segment}; invalidating the reused planning "
+                    "checkpoint and restarting from planning.",
+                    file=sys.stderr,
+                    flush=True,
+                )
             print(
                 f"WARNING: recoverable generation failure: {error}",
                 file=sys.stderr,
                 flush=True,
             )
             print(
-                f"Restarting from the last committed checkpoint at segment "
-                f"{recovery_resume_segment}.",
+                (
+                    "Restarting from planning at segment 1."
+                    if director_contract_exhausted and recovery_resume_segment == 1
+                    else (
+                        "Restarting from the last committed checkpoint at segment "
+                        f"{recovery_resume_segment}."
+                    )
+                ),
                 file=sys.stderr,
                 flush=True,
             )
