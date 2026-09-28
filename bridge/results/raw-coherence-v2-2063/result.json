@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2063",
+  "kind": "llama_chat",
+  "started_at": 1790555462.4291809,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nAmy keeps the tray in her left hand.\n\nNEXT MICRO-ACTION:\nAmy extends her left hand to offer Amber a pancake.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8s98mj6ms0tkpzmmk4nlh",
+    "object": "chat.completion",
+    "created": 1790555462,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"UNSPECIFIED\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: \"Amy keeps the tray in her left hand.\" So Amy's left hand is holding the tray. Next action: \"Amy extends her left hand to offer Amber a pancake.\"\n\nSo she extends her left hand, presumably still holding the tray? But offering a pancake implies maybe using that same hand to hold or present a pancake. If she's extending her left hand while keeping the tray in it, can she also extend to offer a pancake? The text says \"Amy keeps the tray in her left hand.\" That means at that moment, her left hand is holding the tray. Next action: \"Amy extends her left hand to offer Amber a pancake.\" Does this require her left hand to be free or hold something else? She could still keep the tray while extending and offering a pancake if she has both items in one hand? But physically you can't hold two objects with one hand unless it's small, but we don't know. The text explicitly says \"keeps the tray\" meaning continues holding it. Then extends her left hand to offer a pancake: maybe she holds the pancake in that same hand while extending? That would mean she's still keeping the tray and offering a pancake simultaneously. But is that physically possible? She could hold both if one is small, but we don't know. The text doesn't say she releases the tray or transfers it. So it's ambiguous whether she can extend her left hand to offer a pancake while holding the tray.\n\nWe need to decide: COMPATIBLE means next action follows physically from established state. CONFLICT means requires an occupied body part/object/state incompatible at same time, or reverses without explicit transition. UNSPECIFIED if lacking enough info.\n\nShe keeps the tray in her left hand; then extends that same hand to offer a pancake. She could still hold the tray while extending and offering a pancake? But \"offer Amber a pancake\" implies she is presenting a pancake with her left hand, maybe holding it. If she's already holding the tray, can she also present a pancake? The text doesn't say she releases or transfers the tray. So it's ambiguous: either she holds both (possible) or she must release the tray to offer the pancake.\n\nThus we might consider this as UNSPECIFIED because we don't know if she keeps the tray while offering the pancake. But maybe \"keeps\" implies continuous holding, so next action extends that same hand but still holding the tray? She could extend her left hand with the tray and also present a pancake? That would be two objects in one hand; not specified.\n\nThus likely UNSPECIFIED because we don't know if she holds both or releases. The text doesn't mention releasing the tray. So it's ambiguous: either she keeps it while offering, which is possible but not explicitly stated. Or she offers with that same hand, implying maybe still holding the tray? But \"offer a pancake\" might require her left hand to hold the pancake; if she's already holding the tray, then conflict unless she can hold both.\n\nThus I'd say UNSPECIFIED.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 299,
+      "completion_tokens": 633,
+      "total_tokens": 932,
+      "completion_tokens_details": {
+        "reasoning_tokens": 616
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555471.160331,
+  "status": "ok"
+}
