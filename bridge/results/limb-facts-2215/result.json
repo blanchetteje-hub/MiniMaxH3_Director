@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2215",
+  "kind": "llama_chat",
+  "started_at": 1790557046.302205,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nAmy holds a pistol in her right hand.\n\nNEXT MICRO-ACTION:\nAmy fires the pistol.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8xghww6jqgjxeh04tys4o",
+    "object": "chat.completion",
+    "created": 1790557046,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: Amy holds a pistol in her right hand. So occupied limb is RIGHT_HAND, task \"hold\" or maybe \"holds\"? The object/task label should be short lowercase normalized from text. They say use short lowercase object/task labels copied or normalized from the text. For previous we report each occupied limb and the object/task occupying it at end of action.\n\nSo PREVIOUS: Amy holds a pistol in her right hand. So limb RIGHT_HAND, task \"hold\" maybe? The object is pistol. But they want \"task\": the object/task that limb acts on. They say use short lowercase object/task labels copied or normalized from text. So likely \"pistol\". For next action: Amy fires the pistol. Limb required for new action and the object/task that limb acts on. She uses right hand to fire? The task is \"fire\" maybe, but they want object/task label. Could be \"pistol\" again. But we need to list each limb required for the new action and the object/task that limb acts on.\n\nSo next: RIGHT_HAND, task \"fire\"? Or \"pistol\". Which one? They say \"object/task that limb acts on.\" In previous they used \"holds a pistol in her right hand\": so limb is RIGHT_HAND, task is \"hold\" or maybe \"pistol\"? The phrase \"holds a pistol\" indicates the action of holding. So likely task = hold. But object = pistol. Which one to use? They say short lowercase object/task labels copied or normalized from text. Could be either.\n\nLet's interpret: For PREVIOUS, report each occupied limb and the object/task occupying it at end of action. That means what is the limb used for? The \"object\" could be the thing being held. So task might be hold. But they say \"object/task\". Might combine both? They want a single field \"task\": maybe the action or the object.\n\nExamples: If text says \"Amy holds a pistol in her right hand.\" Then previous limb RIGHT_HAND, task \"pistol\" (the object). For next: \"Amy fires the pistol.\" Limb RIGHT_HAND, task \"fire\"? Or \"pistol\". The limb acts on the pistol to fire. So maybe task = \"fire\".\n\nBut they want short lowercase labels copied or normalized from text. So we can use \"hold\", \"fire\", \"pistol\" etc.\n\nLet's decide: For previous, limb RIGHT_HAND, task \"hold\". Because she holds a pistol; the action is hold. But then what about object? They didn't ask for separate field for object. Only one field \"task\".\n\nBut they say \"object/task labels copied or normalized from text.\" So we can choose either.\n\nBetter to use \"pistol\" as it's an object, but also could be task. The phrase \"holds a pistol\" indicates the action is hold; the object is pistol. Which label? They didn't specify separate fields for object and task. Only one field \"task\". So maybe they want the action: e.g., \"hold\".\n\nBut in next micro-action: \"Amy fires the pistol.\" Task could be \"fire\". That seems consistent.\n\nThus previous: limb RIGHT_HAND, task \"hold\". Next: limb RIGHT_HAND, task \"fire\". Freed_before_use? If NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb. Does she release the pistol before firing? No, she holds it and fires; no freeing. So freed_before_use empty.\n\nReturn JSON:\n\n{\n  \"previous\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"hold\"}],\n  \"next\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"fire\"}],\n  \"freed_before_use\": []\n",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 276,
+      "completion_tokens": 768,
+      "total_tokens": 1044,
+      "completion_tokens_details": {
+        "reasoning_tokens": 765
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557056.4520187,
+  "status": "ok"
+}
