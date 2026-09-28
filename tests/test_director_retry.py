@@ -27,9 +27,12 @@ def formatter_response(description):
 
 
 def director_response(raw_scene, beat_complete=True):
-    """A Request 1 Director reply using the structured completion contract."""
+    """A Request 1 Director reply using the current structured completion contract."""
     return {
         "raw_scene": raw_scene,
+        "finite_activity_complete": beat_complete,
+        "named_beneficiaries_complete": beat_complete,
+        "activity_tools_settled": beat_complete,
         "beat_complete": beat_complete,
     }
 
@@ -492,7 +495,11 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(parsed["subject_genders"], {"Amy": "female"})
 
     def test_director_prompt_blocks_terminal_state_carryover(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(segment_seconds=8)
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
+            segment_seconds=8,
+            beat_number=1,
+            story_segment_ending_rules="",
+        )
         self.assertIn(
             "do not carry that ended entity/process into later micro-beats "
             "or the END CONTINUITY STATE",
@@ -508,10 +515,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             segment_seconds=8,
             story_segment_ending_rules="",
         )
-        self.assertIn("CONTAINMENT HANDOFF", prompt)
-        self.assertIn("remaining inside/behind that barrier", prompt)
-        self.assertIn("Do not re-co-locate a contained subject", prompt)
-        self.assertIn("must not appear beside an outside character", prompt)
+        self.assertIn("inside/behind a locked or sealed barrier", prompt)
+        self.assertIn("keep that containment true", prompt)
+        self.assertIn("only the subjects explicitly named", prompt)
+        self.assertIn("helper follows", prompt)
 
     def test_validation_prompt_checks_scope_creep_into_exact_next_beat(self):
         messages = minimax.build_director_continuity_validation_messages(
