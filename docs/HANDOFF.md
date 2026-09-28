@@ -510,3 +510,18 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - `01fa61d65795773e13e45fb2678001229d059fe1`: for barrier-like entities (door/window/gate/hatch/barrier), explicit break/shatter/smash wording rejects generic object damage and requires `set_barrier_state=broken`.
   - `03b8b43255f4b0e979098496733add0cc8559040`: regressions for reject/accept cases.
 - Next checkpoint: focused regressions + fresh full acceptance. Segment 2 canonical continuity should say the kitchen door window is broken, not merely damaged.
+
+
+### 2026-09-28 — acceptance 2326: source-span planner incorrectly fell back to legacy ARC after one repairable extractor error
+
+- `tests-2325`: 35/35 passed.
+- The explicit broken-barrier rule itself is correct.
+- `acceptance-2326` exposed a control-flow regression:
+  - source-span state extraction produced `set_object_state=destroyed/damaged` for an explicitly broken window;
+  - deterministic validation correctly rejected it;
+  - instead of repairing that tiny extractor response, the planner immediately abandoned source-span planning and entered the legacy ARC loop.
+- This violates the current architecture direction: repairable source-span/state-extractor failures must remain inside the current deterministic + tiny-extractor path rather than switch semantic architectures.
+- Production commits:
+  - `a58e538712dd10d05b254794f421583ff323f295`: source-unit state extraction now retries locally with the exact validation error as correction feedback; a failed source-span plan restarts source-span planning instead of entering the legacy ARC loop.
+  - `a455b345551ae4a2a99c62aa0ded3fbbd0147206`: regression proving an invalid broken-window object-state response repairs to `set_barrier_state=broken`.
+- Next checkpoint: focused regressions + fresh full acceptance. Expected: source-span planner remains active, repairs the broken-window state locally, and does not print/use the legacy ARC fallback.
