@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2075",
+  "kind": "llama_chat",
+  "started_at": 1790555533.2068627,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nMara wears a backpack.\n\nNEXT MICRO-ACTION:\nMara opens the backpack zipper with her right hand.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-pywubzn27bc6o11v4sll1g",
+    "object": "chat.completion",
+    "created": 1790555533,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"UNSPECIFIED\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: \"Mara wears a backpack.\" That means she puts on a backpack, presumably wearing it around her back. It doesn't specify which hands are occupied or free. Wearing a backpack likely involves both arms? But the text only says she wears a backpack; no mention of hand usage.\n\nThe next micro-action: \"Mara opens the backpack zipper with her right hand.\" She uses her right hand to open the zipper. Is that compatible? The previous action didn't specify whether any hand is occupied or free, so we don't know if her right hand was free. But wearing a backpack might involve both hands initially but after putting it on she could have freed them. However it's not explicitly stated.\n\nWe need to decide: COMPATIBLE if the next action follows physically from established state; CONFLICT if requires an occupied body part/object/state incompatible at same time, or reverses without explicit transition; UNSPECIFIED if lacking enough info.\n\nThe previous micro-action didn't mention hand usage. So we don't know whether her right hand is free. But wearing a backpack could involve both hands but after she wears it, maybe both are free? The text doesn't specify that the right hand remains occupied. So it's unspecified whether the right hand is free or not. Since no explicit transition freeing the hand, we can't assume it's free.\n\nThus next action uses her right hand to open zipper; if her right hand was still holding something from wearing backpack (like pulling straps), then conflict? But wearing a backpack might involve both hands but after she wears it, maybe she releases them. The text doesn't say \"she puts the backpack on and frees her hands.\" So it's unspecified.\n\nThus status: UNSPECIFIED.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 296,
+      "completion_tokens": 367,
+      "total_tokens": 663,
+      "completion_tokens_details": {
+        "reasoning_tokens": 350
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555538.1583767,
+  "status": "ok"
+}
