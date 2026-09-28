@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2099",
+  "kind": "llama_chat",
+  "started_at": 1790555674.2185981,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nElena carries the child in both arms.\n\nNEXT MICRO-ACTION:\nElena uses both hands to tie her shoelace while still carrying the child.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-34ian4vvx5i6dtwkobwhyr",
+    "object": "chat.completion",
+    "created": 1790555674,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CONFLICT\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: \"Elena carries the child in both arms.\" So she has both arms occupied holding the child. Next action: \"Elena uses both hands to tie her shoelace while still carrying the child.\"\n\nShe is using both hands to tie shoelace, but also still carrying child with both arms. That means both arms are used for two tasks simultaneously? She carries child in both arms; tying shoelace requires both hands (arms). So she would need both arms free to tie laces, but they are occupied holding the child. Unless she uses one hand to hold lace and other to hold child? But text says \"uses both hands\" meaning both arms used for tying. That conflicts with carrying child in both arms.\n\nThus status: CONFLICT.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 305,
+      "completion_tokens": 183,
+      "total_tokens": 488,
+      "completion_tokens_details": {
+        "reasoning_tokens": 167
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555676.7600436,
+  "status": "ok"
+}
