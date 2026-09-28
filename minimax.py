@@ -13495,27 +13495,54 @@ def extract_source_span_state_effects(
     history_metadata=None,
     subject_information="",
 ):
-    """Extract persistent state once per authoritative source unit."""
+    """Extract persistent state per authoritative source unit with local repair."""
     effects_by_unit = {}
     for unit in plan.source_units:
-        raw = llm_request(
-            build_source_unit_state_effect_messages(
+        last_error = None
+        for attempt in range(1, BEAT_RETRY_ATTEMPTS + 1):
+            messages = build_source_unit_state_effect_messages(
                 unit.text,
                 subject_information=subject_information,
-            ),
-            response_format=build_source_unit_state_effect_response_format(),
-            history_metadata={
-                **(history_metadata or {}),
-                "purpose": "source_unit_state_effects",
-                "source_unit_id": unit.id,
-            },
-            **ARC_LLM_SAMPLING_PARAMETERS,
-        )
-        effects_by_unit[unit.id] = parse_source_unit_state_effects(
-            raw,
-            unit.text,
-            llm_request=llm_request,
-        )
+            )
+            if last_error is not None:
+                messages[-1]["content"] += (
+                    "\n\nCORRECTION: Your previous state extraction was invalid. "
+                    + str(last_error)
+                    + "\nReturn the corrected typed state_effects only."
+                )
+            raw = llm_request(
+                messages,
+                response_format=build_source_unit_state_effect_response_format(),
+                history_metadata={
+                    **(history_metadata or {}),
+                    "purpose": "source_unit_state_effects",
+                    "source_unit_id": unit.id,
+                    "attempt": attempt,
+                },
+                **ARC_LLM_SAMPLING_PARAMETERS,
+            )
+            try:
+                effects_by_unit[unit.id] = parse_source_unit_state_effects(
+                    raw,
+                    unit.text,
+                    llm_request=llm_request,
+                )
+                break
+            except LLMConnectionError:
+                raise
+            except ValueError as error:
+                last_error = error
+                if attempt < BEAT_RETRY_ATTEMPTS:
+                    print(
+                        f"Source-unit state extraction for {unit.id} was invalid "
+                        f"({attempt}/{BEAT_RETRY_ATTEMPTS}); retrying: {error}",
+                        flush=True,
+                    )
+        else:
+            raise ValueError(
+                f"Source-unit state extraction for {unit.id} did not validate "
+                f"after {BEAT_RETRY_ATTEMPTS} attempts: {last_error}"
+            )
     return effects_by_unit
 
 
@@ -16480,29 +16507,15 @@ def generate_beats_from_story(
                     except Exception as source_plan_error:
                         active_macro_arc = None
                         print(
-                            "Source-span planner could not produce a fully "
-                            "deterministic beat/source plan; falling back to the "
-                            f"legacy ARC loop: {source_plan_error}",
+                            "Source-span planner could not produce a valid "
+                            "beat/source plan; restarting source-span planning: "
+                            f"{source_plan_error}",
                             flush=True,
                         )
+                        continue
 
                 if active_macro_arc is None:
-                    print(
-                        f"\n=== Legacy macro arc generation attempt "
-                        f"{process_attempt}/{BEAT_PROCESS_ATTEMPTS} ===",
-                        flush=True,
-                    )
-                    active_macro_arc, validation_success = request_kiss_macro_arc(
-                        max_attempts=BEAT_PROCESS_ATTEMPTS
-                    )
-                    if not validation_success or active_macro_arc is None:
-                        active_macro_arc = best_effort_macro_arc()
-                        print(
-                            "WARNING: No valid macro arc was available after the "
-                            "macro-arc retry budget; using a deterministic linear "
-                            "arc as best effort.",
-                            flush=True,
-                        )
+                    continue
 
                 save_story_arc(
                     active_macro_arc,
