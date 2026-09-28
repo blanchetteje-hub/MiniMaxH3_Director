@@ -600,3 +600,14 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - Commit `500aff99521644f6712437d8d29ea475dd67cdc0` feeds the same final-barrier constraint into BEAT CREATE and BEAT VALIDATE so bad plans are prevented upstream when possible.
 - Commit `d07bb2e23a481ab49234206e81d79e9110c14662` adds regressions for a contained subject being released through a locked generic barrier and for explicit barrier effects overriding preservation.
 - Next checkpoint: requested regression suite, then full acceptance. Final release may temporarily unlock/open the basement boundary, but without an explicit barrier effect it must end locked again.
+
+
+### 2026-09-28 — containment transition clears stale spatial relationships
+
+- Acceptance `2438` confirmed the temporary barrier-transition fix works: the final release beat unlocks/opens the basement door, lets Will and Amber out, then closes and relocks it.
+- The accompanying regression run `2437` had two test-only failures caused by a missing `import json`; product code was not implicated. Commit `bb6742efd396eba75eed4051832600e6147e7452` fixes the test import.
+- Earliest new acceptance defect was actually Segment 2 continuity: after Will and Amber were authoritatively moved/contained in the basement, prompt-derived spatial relationships such as `in Amy's arms` survived even though Amy remained in the kitchen. That stale relation propagated through later segments and eventually mutated into `inside Amy's arms in the basement`.
+- Root cause: `_continuity_apply_authoritative_state_effects()` cleared transient pose/topology/spatial relationships only when prompt-derived `position` differed from the canonical container. If the extractor already wrote `position=basement`, contradictory spatial relationships could survive.
+- Commit `c50508260e05834ad848442f011e73e17837dddd` makes every canonical `set_containment` transition invalidate prompt-derived pose/topology/spatial relationships, then re-adds only the canonical `inside <container>` relationship for contained subjects.
+- Commit `51e5f0f669deb01b9469d7693bf7394f80baf80b` adds a regression for the exact stale-cross-location relation case.
+- Next checkpoint: requested regression suite and full acceptance. Segment 2 continuity should now show Will/Amber simply inside the basement, with no stale physical relationship to Amy outside.
