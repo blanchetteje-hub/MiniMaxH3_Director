@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2283",
+  "kind": "llama_chat",
+  "started_at": 1790557910.5673828,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nSera carries a crystal in both hands.\n\nNEXT MICRO-ACTION:\nSera lowers the crystal onto a pedestal.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-h0rlk2ogkfnz1es32pe1wq",
+    "object": "chat.completion",
+    "created": 1790557910,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"previous\": [\n    {\"limb\":\"LEFT_HAND\", \"object\":\"crystal\"},\n    {\"limb\":\"RIGHT_HAND\", \"object\":\"crystal\"}\n  ],\n  \"next\": [\n    {\"limb\":\"LEFT_HAND\", \"object\":\"crystal\"},\n    {\"limb\":\"RIGHT_HAND\", \"object\":\"crystal\"}\n  ],\n  \"freed_before_use\": []\n}\n```\n",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Sera carries a crystal in both hands.\" So at the end of that action, both hands are occupied with a crystal. The object is \"crystal\". For each hand explicitly occupied: LEFT_HAND and RIGHT_HAND? Or BOTH_HANDS? They say list each hand/foot explicitly occupied at the END of the action; so we should have two entries: one for LEFT_HAND, one for RIGHT_HAND, both with object \"crystal\".\n\nNEXT: \"Sera lowers the crystal onto a pedestal.\" This uses the same physical object (the crystal). So next limb usage: both hands again? She is lowering the crystal. The action likely requires both hands to hold it while placing on pedestal. So we list each hand explicitly required by new action; object must be the physical object that limb manipulates/holds/presses/uses. Since it's same object, repeat exactly \"crystal\". So two entries: LEFT_HAND and RIGHT_HAND with object \"crystal\".\n\nIf NEXT operates SAME physical object already occupying that limb, we repeat EXACTLY the same object label used in PREVIOUS. Yes.\n\nAlso freed_before_use? If NEXT explicitly releases, sets down, transfers, pockets, or repositions prior object before using limb for something else. Here she lowers crystal onto pedestal; no release before use. She uses it directly. So freed_before_use empty array.\n\nReturn JSON: {\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"crystal\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"crystal\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"object\":\"crystal\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"crystal\"}],\"freed_before_use\":[]}\n\nCheck formatting.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 406,
+      "completion_tokens": 451,
+      "total_tokens": 857,
+      "completion_tokens_details": {
+        "reasoning_tokens": 356
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557916.68191,
+  "status": "ok"
+}
