@@ -17254,7 +17254,7 @@ _DIRECTOR_LIMB_RELEASE_RE = re.compile(
 )
 
 _DIRECTOR_INDEPENDENT_LIMB_ACTION_RE = re.compile(
-    r"(?i)\b(?:offer(?:s|ed|ing)?|give(?:s|n|ing)?|hand(?:s|ed|ing)?|"
+    r"(?i)\b(?:offer(?:s|ed|ing)?|give(?:s|n|ing)?|"
     r"grab(?:s|bed|bing)?|pick(?:s|ed|ing)?\s+up|take(?:s|n|ing)?|"
     r"catch(?:es|ing)?|open(?:s|ed|ing)?|close(?:s|d|ing)?|"
     r"pull(?:s|ed|ing)?|push(?:es|ed|ing)?|turn(?:s|ed|ing)?|"
@@ -17307,7 +17307,9 @@ def _director_explicit_limb_conflict_errors(raw_scene):
 
 _DIRECTOR_OBJECT_PLACEMENT_RE = re.compile(
     r"(?i)\b(?:set(?:s|ting)?(?:\s+down)?|place(?:s|d|ing)?|"
-    r"put(?:s|ting)?(?:\s+down)?|drop(?:s|ped|ping)?)\b"
+    r"put(?:s|ting)?(?:\s+down)?|drop(?:s|ped|ping)?)\s+"
+    r"(?P<object>[^.;,]{1,100}?)\s+"
+    r"(?:on|onto|into|inside|beside|at)\b"
 )
 
 _DIRECTOR_OBJECT_REACQUIRE_RE = re.compile(
@@ -17319,6 +17321,10 @@ _DIRECTOR_OBJECT_REACQUIRE_RE = re.compile(
 
 _DIRECTOR_HOLD_ASSERTION_RE = re.compile(
     r"(?i)\bhold(?:s|ing)?\s+(?P<object>[^.;]{1,120})"
+)
+
+_DIRECTOR_END_CONTINUITY_RE = re.compile(
+    r"(?im)^\s*End continuity state\s*:\s*(?P<state>.+?)\s*$"
 )
 
 
@@ -17334,7 +17340,6 @@ def _director_object_phrase_keys(value):
         words = re.findall(r"[A-Za-z0-9'-]+", cleaned)
         if not words:
             continue
-        # Prefer the final noun-like token; this deliberately stays lexical.
         key = words[-1].casefold()
         if key in {"hand", "hands", "ready", "again"}:
             continue
@@ -17342,42 +17347,72 @@ def _director_object_phrase_keys(value):
     return list(dict.fromkeys(keys))
 
 
-def _director_explicit_object_state_conflict_errors(raw_scene):
-    """Reject adjacent set-down -> held-again contradictions with no reacquisition."""
-    actions = list(
-        _director_timed_action_map(
-            _canonicalize_director_timestamps(raw_scene)
-        ).items()
+def _director_placed_object_keys(previous):
+    """Return only objects explicitly placed/dropped in one micro-action."""
+    placed = []
+    text = str(previous or "")
+    for match in _DIRECTOR_OBJECT_PLACEMENT_RE.finditer(text):
+        phrase = match.group("object").strip()
+        phrase_folded = phrase.casefold()
+        if re.search(r"(?i)\b(?:it|them)\b", phrase):
+            # Resolve only explicit same-action pronouns to nouns named before
+            # the placement verb; never scoop up destination/context nouns after it.
+            prefix = text[:match.start()]
+            candidates = re.findall(
+                r"(?i)\b(?:a|an|the)\s+([A-Za-z][A-Za-z0-9'-]*)\b",
+                prefix,
+            )
+            placed.extend(word.casefold() for word in candidates[-3:])
+        else:
+            placed.extend(_director_object_phrase_keys(phrase))
+    return list(dict.fromkeys(placed))
+
+
+def _director_object_state_transition_issue(previous, following, timestamp, next_label):
+    """Return one explicit set-down -> held-again contradiction, if any."""
+    hold_match = _DIRECTOR_HOLD_ASSERTION_RE.search(str(following or ""))
+    if hold_match is None or _DIRECTOR_OBJECT_REACQUIRE_RE.search(str(following or "")):
+        return None
+    held_keys = _director_object_phrase_keys(hold_match.group("object"))
+    placed_keys = _director_placed_object_keys(previous)
+    if not held_keys or not placed_keys:
+        return None
+    overlap = [key for key in held_keys if key in placed_keys]
+    if not overlap:
+        return None
+    return (
+        f"{next_label}: object(s) {', '.join(overlap)!r} were explicitly "
+        f"placed down/onto a destination at {timestamp} and are then described "
+        "as held again without an explicit pickup, retrieval, or other reacquisition."
     )
+
+
+def _director_explicit_object_state_conflict_errors(raw_scene):
+    """Reject explicit adjacent/end-state set-down -> held-again contradictions."""
+    canonical = _canonicalize_director_timestamps(raw_scene)
+    actions = list(_director_timed_action_map(canonical).items())
     issues = []
     for index in range(len(actions) - 1):
         timestamp, previous = actions[index]
         next_timestamp, following = actions[index + 1]
-        hold_match = _DIRECTOR_HOLD_ASSERTION_RE.search(following)
-        if hold_match is None or _DIRECTOR_OBJECT_REACQUIRE_RE.search(following):
-            continue
-        held_keys = _director_object_phrase_keys(hold_match.group("object"))
-        if not held_keys or _DIRECTOR_OBJECT_PLACEMENT_RE.search(previous) is None:
-            continue
-
-        previous_folded = previous.casefold()
-        # Only reject when every held object is explicitly named in the prior
-        # placement action. This covers "sets them..." while avoiding inference
-        # about unrelated props.
-        if not all(re.search(rf"(?i)\b{re.escape(key)}s?\b", previous_folded) for key in held_keys):
-            continue
-        if re.search(
-            r"(?i)\b(?:set|sets|setting|place|places|placed|placing|"
-            r"put|puts|putting|drop|drops|dropped|dropping)\b",
-            previous,
-        ) is None:
-            continue
-        issues.append(
-            f"{next_timestamp}: object(s) {', '.join(held_keys)!r} were explicitly "
-            f"placed down/onto a destination at {timestamp} and are then described "
-            "as held again without an explicit pickup, retrieval, or other "
-            "reacquisition."
+        issue = _director_object_state_transition_issue(
+            previous, following, timestamp, next_timestamp
         )
+        if issue:
+            issues.append(issue)
+
+    if actions:
+        end_match = _DIRECTOR_END_CONTINUITY_RE.search(canonical)
+        if end_match:
+            timestamp, previous = actions[-1]
+            issue = _director_object_state_transition_issue(
+                previous,
+                end_match.group("state"),
+                timestamp,
+                "End continuity state",
+            )
+            if issue:
+                issues.append(issue)
     return issues
 
 
