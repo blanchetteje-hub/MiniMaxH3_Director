@@ -722,6 +722,25 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         self.assertTrue(issues)
         self.assertIn("left hand", issues[0])
 
+    def test_head_severing_source_triggers_terminal_target_check(self):
+        self.assertTrue(
+            minimax.director_source_has_terminal_action(
+                "Amy slashes its head from the torso with her katana."
+            )
+        )
+        self.assertTrue(
+            minimax.director_source_has_terminal_action(
+                "Amy slices the zombie's head off."
+            )
+        )
+
+    def test_nonterminal_head_motion_does_not_trigger_terminal_target_check(self):
+        self.assertFalse(
+            minimax.director_source_has_terminal_action(
+                "The zombie turns its head toward Amy."
+            )
+        )
+
     def test_same_hand_same_object_continuation_is_not_rejected(self):
         raw = (
             "At 00:00.000, Amy holds a pistol in her right hand.\n"
