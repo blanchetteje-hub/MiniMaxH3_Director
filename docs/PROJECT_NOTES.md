@@ -516,7 +516,7 @@ The Beat 7 opening setup re-establishes only the facts needed to resume the scen
 - current pose/action readiness: Amy is holding the katana above her head;
 - persistent visual identity/clothing: black tank top and denim jeans;
 - persistent visible condition: Amy's front is covered in green vomit;
-- relevant environment aftermath: two earlier zombie corpses remain on the kitchen floor even though they are not currently in view.
+- relevant environment aftermath: two earlier terminal target remnants remain in the kitchen even though they are not currently in view.
 
 What it notably does **not** need:
 
@@ -653,7 +653,7 @@ Use simple concrete ambience, object sounds, dialogue, combat sounds, and music-
 
 - Avoid ending append segments on dialogue when practical because H3 may carry vocal momentum forward.
 - Re-state important visual details not actually proven by the incoming video tail.
-- Difficult dismemberment/decapitation may need separate timed stages: strike, detachment, detached-part movement, reaction, collapse.
+- Difficult multi-stage physical transitions may need separate timed stages: initiating action, state change, resulting movement, reaction, settling.
 - For fades, judge story/continuity from the semantic scene state immediately before the literal black frame.
 - Persistent room continuity may eventually require durable room identity/state or a representative image, but implement it only when acceptance demonstrates the need.
 
@@ -1118,16 +1118,16 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 - `acceptance-1608` is the first structurally complete 8-segment prompt-generation acceptance after the recent fixes.
 - Segment 2 now satisfies both barrier requirements: Amy ends outside the basement, Will and Amber end inside, and the locked barrier is explicitly the basement door. This closes the original basement-side and wrong-door regressions.
 - Segment 4 no longer fails on kitchen/hallway-scale movement, confirming canonical `set_location` is now correctly treated as coarse story geography rather than room-level staging.
-- The next hard semantic failure is Segment 7. Source assigns “Amy kills the last of the zombies,” but RAW begins with the already-severed torso from Segment 6 and has Amy strike that corpse/remnant. The completion gate incorrectly accepted interaction with an already-terminal target as evidence of a newly assigned kill.
-- Production commit `df49c6aeb5455bf7e2d66a9f0d780b797485efd3` adds a generic terminal-action invariant to beat generation, Director generation, and Director completion: kill/destroy/defeat/finish/eliminate/resolve must begin from an active/intact-enough/unresolved target or process and visibly cause the terminal transition in the current beat. Corpses, severed remnants, already-destroyed objects, and already-resolved processes cannot satisfy a newly assigned terminal action.
+- The next hard semantic failure is Segment 7. Source assigns a new terminal result, but RAW begins with the already-terminal target from Segment 6 and reuses it. The completion gate incorrectly accepted interaction with an already-terminal target as evidence of the newly assigned transition.
+- Production commit `df49c6aeb5455bf7e2d66a9f0d780b797485efd3` adds a generic terminal-action invariant to beat generation, Director generation, and Director completion: an irreversible terminal result must begin from a target or process that has not already reached that result and must visibly cause the transition in the current beat. An already-satisfied terminal state cannot satisfy the same newly assigned action again.
 - Regression commit `7899fd73337b0f7e379122cc6ef3fa3b52775e3a` covers the new terminal-target rule.
 - Segment 1 still has softer gold-quality distance (children reach for breakfast rather than a stronger fully served/stove-settled endpoint), and Segment 8 has over-elaborated release staging. Do not prioritize those artistic/quality differences ahead of the demonstrated Segment-7 source violation.
-- Next checkpoint: regression suite, then fresh full acceptance. Verify Segment 7 attacks a live/unresolved final zombie rather than a corpse/remnant; after that, reassess the earliest remaining gold-quality mismatch.
+- Next checkpoint: regression suite, then fresh full acceptance. Verify Segment 7 uses an unresolved final target rather than reusing an already-terminal target; after that, reassess the earliest remaining gold-quality mismatch.
 
 
 ### 2026-09-26 — terminal-action prompt rule was insufficient; moved to narrow extraction + Python decision
 
-- `tests-1609` passed the prompt-contract regression, but `acceptance-1610` still repeated the Segment-7 failure: RAW begins with the headless corpse from Segment 6 and has Amy strike that corpse again while claiming to kill the final zombie.
+- `tests-1609` passed the prompt-contract regression, but `acceptance-1610` still repeated the Segment-7 failure: RAW begins with the already-terminal target from Segment 6 and reuses it for another terminal action.
 - This proves broad generation/completion wording is still too instruction-fragile for the local 20B. Do not keep stacking prose rules for this case.
 - Production commit `2675c3958abb9aa78c35fbe2f1eaee9ba4fdaee6` adds a narrow terminal-target extraction path inside the existing Request-1 acceptance loop:
   - it runs only when SOURCE explicitly contains a terminal action (kill/destroy/defeat/eliminate/finish/resolve);
@@ -1144,7 +1144,7 @@ The existing typed-effect Director change passes focused deterministic tests: `t
 
 - `tests-1631` passed 87/87.
 - Terminal-target probes `1611-1630`: 16/20 strict successes. Three cases reasoned to the expected answer but exhausted the small 300-token probe budget before emitting final JSON; one real miss treated an already unconscious/restrained guard as still unresolved for a `defeat` action.
-- `acceptance-1632` fixed the demonstrated Segment-7 failure: the last zombie is visibly active before Amy decapitates it, so the assigned terminal action now causes a real live→dead transition rather than striking the prior corpse/remnant.
+- `acceptance-1632` fixed the demonstrated Segment-7 failure: the final target is visibly unresolved before Amy performs the assigned terminal action, so the action causes a real unresolved→terminal transition rather than reusing the prior target.
 - Commit `a4de6aa4f00d056cf4d35f51fe4afc3d376fb584` makes terminal extraction action-relative: terminal means already dead for `kill`, already destroyed for `destroy`, already neutralized/incapacitated for `defeat/eliminate`, already complete for `finish/complete`, and already resolved for `resolve`.
 - The earliest remaining gold-quality failure is now Segment 1. In `acceptance-1632`, Beat 1 was accepted on the first try as “Amy is cooking breakfast...” even though the finite activity had no completion endpoint; Director then ended the segment with Amy still cooking. This is an upstream beat-validation miss, not an H3 formatter problem.
 - Production commit `9f188533c8b698de3c5f11c9a4f366c39f03575f` adds a narrow post-VALID finite-endpoint extractor inside the existing beat validation loop. It returns only `COMPLETE | ONGOING | NOT_APPLICABLE`; Python rejects `ONGOING`. Explicit repeated/ongoing assignments (majority/most/repeatedly/throughout/continuing/etc.) return NOT_APPLICABLE and remain non-terminal by design.
@@ -1191,7 +1191,7 @@ The existing typed-effect Director change passes focused deterministic tests: `t
   - Beat 8 explicitly unlocks/opens the basement door and releases Will/Amber.
 - The earliest important regression is again Segment 7's terminal action. Segment 6 continuity says Amy is near **the dead zombie on the kitchen floor**, but Segment 7 RAW begins with a generic `zombie on the floor` and attacks that same body again.
 - The terminal-target extractor did run, but returned `ACTIVE_OR_UNRESOLVED`. Root cause is authority wording:
-  - canonical SOURCE-AUTHORIZED CURRENT STATE does not track the incidental per-segment zombie corpse;
+  - canonical SOURCE-AUTHORIZED CURRENT STATE does not track the incidental per-segment terminal target;
   - RENDERED CONTINUITY does track it as dead;
   - the extractor prompt called the whole bundle AUTHORITATIVE OPENING STATE but only explicitly said to treat AUTHORITATIVE OPENING STATE as already true, while also labeling rendered continuity supplemental;
   - the 20B therefore treated RAW's vaguer `zombie on the floor` wording as alive and ignored the prior rendered dead-state fact.
@@ -1249,3 +1249,10 @@ The existing typed-effect Director change passes focused deterministic tests: `t
   Both reuse the accepted Segment-1 RAW from acceptance 1774; only the final H3 candidate differs.
 - Queued 20 narrow action-preservation probes `h3-action-1777` through `h3-action-1796` across domestic, fantasy, sci-fi, transfer, repair, travel, and magical cases. Expected labels cover preserved, omitted, and materially changed actions.
 - Do not wire this extractor as a production rejection gate until the 20B probe matrix is graded. Once stable, production should reject/regenerate at the final H3 boundary before continuity extraction or ComfyUI.
+
+
+## Public repository content rule
+
+- The public repository must remain SFW.
+- Runtime/user-provided source material may contain arbitrary content, but committed code, tests, fixtures, examples, comments, and documentation must not embed graphic or sexual examples.
+- When a semantic distinction depends on such source material, use neutral abstract states/enums plus a tiny extractor that maps the runtime observation to the closest Python-owned state. Python owns the acceptance decision.
