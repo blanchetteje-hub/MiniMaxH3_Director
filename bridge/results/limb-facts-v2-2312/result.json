@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2312",
+  "kind": "llama_chat",
+  "started_at": 1790558167.7659807,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nPilot grips the yoke with both hands.\n\nNEXT MICRO-ACTION:\nPilot releases the yoke, then reaches overhead with both hands.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ta2sq9r782alkx5jumzzh",
+    "object": "chat.completion",
+    "created": 1790558167,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"yoke\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"yoke\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"object\":\"gesture\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"gesture\"}],\"freed_before_use\":[\"LEFT_HAND\",\"RIGHT_HAND\"]}",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: Pilot grips the yoke with both hands.\n\nSo at end of action, both hands are occupied by \"yoke\". So previous list has entries for LEFT_HAND and RIGHT_HAND? Or BOTH_HANDS? The instruction says: For PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nSo we need to list each hand separately. So two entries: LEFT_HAND, yoke; RIGHT_HAND, yoke. Or maybe BOTH_HANDS? But they say list each hand/foot explicitly. So likely separate entries for left and right. Let's do that.\n\nNEXT MICRO-ACTION:\nPilot releases the yoke, then reaches overhead with both hands.\n\nSo next action requires both hands to reach overhead. The object is \"gesture\" because no physical object being held; it's a gesture? They say: For NEXT: list each hand/foot explicitly required by new action; \"object\" must be the physical object that limb manipulates/holds/presses/uses. If same physical object already occupying that limb, repeat exactly same label used in PREVIOUS.\n\nBut here he releases yoke before reaching overhead with both hands. So next uses both hands for a gesture (reaching overhead). Since no object being held, use \"gesture\". Also freed_before_use: if NEXT explicitly releases the prior object before using the limb for something else, list that limb in freed_before_use. He released yoke before reaching overhead; so left hand and right hand are freed before use? Actually he releases both hands from yoke then uses them to reach overhead. So we should include BOTH_HANDS or separate limbs? Freed_before_use expects a list of limb values: LEFT_HAND, RIGHT_HAND maybe.\n\nBut the instruction says \"If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\" So we need to include each hand that was released. He released yoke with both hands; so LEFT_HAND and RIGHT_HAND are freed.\n\nThus output JSON:\n\n{\n  \"previous\":[\n    {\"limb\":\"LEFT_HAND\",\"object\":\"yoke\"},\n    {\"limb\":\"RIGHT_HAND\",\"object\":\"yoke\"}\n  ],\n  \"next\":[\n    {\"limb\":\"LEFT_HAND\",\"object\":\"gesture\"},\n    {\"limb\":\"RIGHT_HAND\",\"object\":\"gesture\"}\n  ],\n  \"freed_before_use\":[\"LEFT_HAND\",\"RIGHT_HAND\"]\n}\n\nCheck formatting: JSON only. Good.\n\nLet's produce that.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 410,
+      "completion_tokens": 611,
+      "total_tokens": 1021,
+      "completion_tokens_details": {
+        "reasoning_tokens": 538
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790558175.822727,
+  "status": "ok"
+}
