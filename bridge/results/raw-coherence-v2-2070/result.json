@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2070",
+  "kind": "llama_chat",
+  "started_at": 1790555505.0469296,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nPriya grips the rail with her left hand.\n\nNEXT MICRO-ACTION:\nPriya uses her left hand to grab the falling cup without releasing the rail.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-3ytxffdxhqugew24t5fyq",
+    "object": "chat.completion",
+    "created": 1790555505,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CONFLICT\"}",
+          "reasoning": "We have two micro-actions. The previous: \"Priya grips the rail with her left hand.\" So left hand is holding rail. Next: \"Priya uses her left hand to grab the falling cup without releasing the rail.\"\n\nSo she still holds rail, and also grabs cup? She uses same hand to grab cup while not releasing rail. That would require two objects in one hand simultaneously unless it's a multi-grip or something. The instruction says treat one hand as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that's CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object.\n\nHere left hand holds rail. Next action uses left hand to grab cup without releasing rail. That means she tries to hold two objects with one hand simultaneously. That's conflict because it's not specified that she releases rail first or moves it. So status: CONFLICT.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 305,
+      "completion_tokens": 214,
+      "total_tokens": 519,
+      "completion_tokens_details": {
+        "reasoning_tokens": 198
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555508.0040221,
+  "status": "ok"
+}
