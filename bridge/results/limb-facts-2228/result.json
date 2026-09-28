@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2228",
+  "kind": "llama_chat",
+  "started_at": 1790557173.486574,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nMedic holds a syringe in the right hand.\n\nNEXT MICRO-ACTION:\nMedic grabs a clipboard with the right hand while still holding the syringe.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-czkd9cz66j5050k3o91fhx7",
+    "object": "chat.completion",
+    "created": 1790557173,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"syringe\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"clipboard\"}],\"freed_before_use\":[] }",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Medic holds a syringe in the right hand.\" So previous action occupies RIGHT_HAND with task \"hold\" or maybe just object \"syringe\". The format expects each occupied limb and the object/task occupying it at end of action.\n\nSo for previous, we have one entry: {\"limb\":\"RIGHT_HAND\",\"task\":\"syringe\"}? Or \"task\": \"holds\"? They say use short lowercase object/task labels copied or normalized from text. So task could be \"hold\" but they want object/task label. The example says \"object/task\". In the previous action, the limb is RIGHT_HAND and the object/task occupying it: syringe (the object). So we can set task as \"syringe\".\n\nThus previous array: [{\"limb\":\"RIGHT_HAND\",\"task\":\"syringe\"}].\n\nNext micro-action: \"Medic grabs a clipboard with the right hand while still holding the syringe.\" This means next action uses RIGHT_HAND to grab clipboard, but also still holds syringe. So limb required for new action is RIGHT_HAND and object/task that limb acts on is clipboard. Also we need freed_before_use if NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb. It doesn't free the syringe; it still holds it while grabbing clipboard. So no freeing.\n\nThus next array: [{\"limb\":\"RIGHT_HAND\",\"task\":\"clipboard\"}].\n\nfreed_before_use empty list.\n\nReturn JSON accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 285,
+      "completion_tokens": 350,
+      "total_tokens": 635,
+      "completion_tokens_details": {
+        "reasoning_tokens": 303
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557178.2226553,
+  "status": "ok"
+}
