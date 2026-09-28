@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2084",
+  "kind": "llama_chat",
+  "started_at": 1790555585.4405632,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nThe cook holds the pan handle in the left hand.\n\nNEXT MICRO-ACTION:\nThe cook uses the left hand to pick up a plate without releasing the pan.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-rnqgcife7ncnsxvdbp11fr",
+    "object": "chat.completion",
+    "created": 1790555585,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CONFLICT\"}",
+          "reasoning": "We have two micro-actions. The previous: \"The cook holds the pan handle in the left hand.\" So left hand is holding pan handle. Next action: \"The cook uses the left hand to pick up a plate without releasing the pan.\"\n\nSo left hand currently holds pan handle, and picks up a plate with same hand without releasing pan. That means left hand would need to hold both? The text says \"without releasing the pan\" meaning still holding pan while picking up plate. So is that possible physically? It might be conflict because one hand cannot hold two objects simultaneously unless it's specified as multitasking or using both hands, but here only left hand used. But maybe can pick up a plate with same hand while holding pan handle? That would require the left hand to hold both at once; not explicitly stated if it can do that. The text says \"without releasing the pan\" meaning still holds pan. So picking up plate requires using left hand, but it's already occupied by pan. So conflict unless we assume multitasking or same object? But no mention of multitouch.\n\nThus status: CONFLICT.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 306,
+      "completion_tokens": 239,
+      "total_tokens": 545,
+      "completion_tokens_details": {
+        "reasoning_tokens": 223
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555588.7012153,
+  "status": "ok"
+}
