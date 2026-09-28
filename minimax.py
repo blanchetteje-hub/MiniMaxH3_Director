@@ -28402,11 +28402,28 @@ def _run_main(
         total_segments,
     )
     try:
-        macro_arc = load_story_arc(
-            STORY_ARC_FILE,
-            total_segments,
-            story_source,
-        )
+        if director_only:
+            raw_frozen_arc = load_text_file(STORY_ARC_FILE, required=True)
+            declared_count = _story_arc_declared_beat_count(raw_frozen_arc)
+            if declared_count is not None and declared_count != int(total_segments):
+                raise ValueError(
+                    f"frozen story arc declares {declared_count} beats; "
+                    f"expected {int(total_segments)}"
+                )
+            macro_arc = parse_beat_arc_plan(
+                raw_frozen_arc,
+                total_segments,
+                llm_request=ask_llm,
+                validate_state_effects=False,
+            )
+            if not isinstance(macro_arc, dict):
+                raise ValueError("frozen story arc did not parse to an object")
+        else:
+            macro_arc = load_story_arc(
+                STORY_ARC_FILE,
+                total_segments,
+                story_source,
+            )
     except Exception as error:
         if director_only:
             raise BeatGenerationError(
@@ -29651,6 +29668,7 @@ def _run_main(
                     prompt_reduced_continuity_state
                 )
                 completed_record["continuity_source"] = continuity_source
+                completed_record["h3_prompt"] = h3_prompt
                 generation_state["continuity_prompt_state"] = copy.deepcopy(
                     prompt_reduced_continuity_state
                 )
