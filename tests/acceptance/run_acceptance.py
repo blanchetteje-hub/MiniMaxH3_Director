@@ -293,7 +293,9 @@ def build_report(
                     "gold_mode": expected_mode,
                     "pipeline_mode": MODE_TO_PIPELINE[expected_mode],
                     "gold_target": gold,
-                    "generated_h3_prompt": generated_prompts.get(number),
+                    "generated_h3_prompt": (
+                        record.get("h3_prompt") or generated_prompts.get(number)
+                    ),
                     "generated_request2_result": record.get("llm_result"),
                     "generated_continuity_state": record.get("continuity_state"),
                     "generated_subject_identity_snapshot": record.get(
