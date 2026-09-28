@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2303",
+  "kind": "llama_chat",
+  "started_at": 1790558084.0493603,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nLena holds a camera with both hands.\n\nNEXT MICRO-ACTION:\nLena presses the camera shutter with her right index finger.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-59o0bqs47kg18wud4sl1o8",
+    "object": "chat.completion",
+    "created": 1790558084,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"camera\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"camera\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"camera\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Lena holds a camera with both hands.\" So at the end of that action, both hands are occupied by the camera. The object is \"camera\". For each hand explicitly occupied: LEFT_HAND and RIGHT_HAND? It says both hands. So we list each limb separately.\n\nThus previous array: [{\"limb\":\"LEFT_HAND\",\"object\":\"camera\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"camera\"}].\n\nNEXT: \"Lena presses the camera shutter with her right index finger.\" The action uses the right hand (specifically right index finger). But the object is still the camera. So next limb: RIGHT_HAND, object: \"camera\". Also we need to check if any freed_before_use? It says pressing the camera shutter; she didn't release or set down the camera before using it. She just presses with her right index finger while holding the camera. The action uses the same physical object already occupying that limb (the camera). So no freed_before_use.\n\nBut do we need to list both hands for next? Only the hand used: RIGHT_HAND. But maybe also left hand remains occupied by camera but not explicitly required in this action. According to instructions, \"list each hand/foot explicitly required by the new action\". So only right hand is needed. So next array: [{\"limb\":\"RIGHT_HAND\",\"object\":\"camera\"}].\n\nfreed_before_use empty.\n\nReturn JSON accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 409,
+      "completion_tokens": 351,
+      "total_tokens": 760,
+      "completion_tokens_details": {
+        "reasoning_tokens": 296
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790558088.9302847,
+  "status": "ok"
+}
