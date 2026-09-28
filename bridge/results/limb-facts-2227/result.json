@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2227",
+  "kind": "llama_chat",
+  "started_at": 1790557165.6788373,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nMedic holds a syringe in the right hand.\n\nNEXT MICRO-ACTION:\nMedic depresses the syringe plunger.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-v2tadxvongjivaytw6v1qk",
+    "object": "chat.completion",
+    "created": 1790557165,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"syringe\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"plunger\"}],\"freed_before_use\":[]}\n",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Medic holds a syringe in the right hand.\" So occupied limb is RIGHT_HAND, task/object is \"syringe\". Use short lowercase object/task labels copied or normalized from text. The label should be \"syringe\" (lowercase). For next action: \"Medic depresses the syringe plunger.\" This requires using which limb? Depressing a syringe plunger likely uses right hand as well, but could use both hands? Usually one hand. But we need to infer based on context: previous had right hand holding syringe; next action is depressing plunger - presumably same hand (right). So limb required for new action: RIGHT_HAND. Task/object: \"syringe\" or maybe \"plunger\"? The object being acted upon is the syringe plunger, but task label could be \"syringe\". They say use short lowercase labels copied or normalized from text. In next micro-action, they mention \"the syringe plunger.\" So we might set task as \"plunger\" or \"syringe_plunger\"? But likely just \"plunger\". The object being acted on is the plunger of the syringe. Let's choose \"plunger\".\n\nAlso freed_before_use: If NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb, list that limb in freed_before_use. Does next action free or release? It depresses the plunger; doesn't mention releasing syringe. So no freeing.\n\nThus JSON:\n\n{\n  \"previous\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"syringe\"}],\n  \"next\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"plunger\"}],\n  \"freed_before_use\": []\n}\n\nReturn only JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 279,
+      "completion_tokens": 405,
+      "total_tokens": 684,
+      "completion_tokens_details": {
+        "reasoning_tokens": 357
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557171.125948,
+  "status": "ok"
+}
