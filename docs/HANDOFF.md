@@ -158,3 +158,21 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Commit `052e11f8e7af37437e95c81ea82f81445af56dbb` fixes the wrapper regex and strips a trailing `Added States:` control label from GPT-rendered fields.
 - Commit `7472eec0faf95350560c5acae6f365c65b5e7758` adds regression coverage for the control-label cleanup.
 - 2451 also exhausted Director Request-1 retries once at Segment 4 and correctly escalated to replanning, after which the full run completed. Treat that as recovered model variance unless fresh acceptances show a consistent pattern.
+
+
+## 2026-09-28 — Director-only test path and retry recovery
+
+- Repeated late-segment Request-1 failures were wasting full ARC/BEATS regeneration time because exhausted Director retries triggered the recovery supervisor's plan invalidation path.
+- `DIRECTOR_RAW_SCENE_ATTEMPTS` is now 5 (was 3).
+- New `--director-only` mode:
+  - requires existing valid `story_arc.json` and `beats.txt`;
+  - never calls ARC/BEATS generation or repair;
+  - implies prompt-generation test mode, so ComfyUI is never called;
+  - runs the normal per-segment Director Request 1 -> Request 2 -> formatter/final-H3 validation path;
+  - on exhausted Director retries, recovery resumes from the last committed segment and does not invalidate/rebuild the frozen plan.
+- Acceptance runner now accepts `--director-plan-dir PATH`, copying a frozen `story_arc.json` + `beats.txt` into its isolated workspace before invoking `minimax.py --director-only`.
+- Bridge `run_acceptance` jobs may set `director_plan_job` to a prior acceptance job ID. The bridge reuses saved plan files when available; for older jobs such as `acceptance-2451`, it can materialize the embedded `generated_story_arc` and `generated_beats_text` from `acceptance_run.json` into a local temporary directory. The actual runtime story/plan is not added to the public code branch.
+- Full acceptance artifacts now preserve `story_arc.json` and `beats.txt` for later Director-only runs.
+- Mailbox queue was purged before this change; no unprocessed bridge jobs remain.
+- Relevant commits: `bed344efb92d54ef35b8ffacc77be2519f098a6d`, `f77774decddde57c313ce33b9fb55e0314e65174`, `c8eccde5fbc8a5a1d836cfcbf2b2965e90d895dd`, `c62550df1dfb3cb297e7355f007592bbe5bba074`, `b15bca3e89de32db38c1535ff14150a53bdeeea2`, `d264644d405a8d913b0eab7bdc0978df964a52d7`.
+- Next action: pull `gpt-arc-refresh`, restart the bridge, then run targeted tests and a Director-only acceptance using `director_plan_job: "acceptance-2451"` before doing another full ARC/BEATS acceptance.
