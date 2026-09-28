@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-state-2353",
+  "kind": "llama_chat",
+  "started_at": 1790613611.247418,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify one target state. Return JSON only. Do not judge overall story correctness."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe controller deactivates the last drone.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE: Drone K is deactivated.\n\nRAW SCENE\nThe controller tracks the inactive craft and deactivates the craft.\n\nMap the target condition immediately BEFORE the source-assigned action begins to the closest Python state:\nACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\nALREADY_TERMINAL = the exact assigned terminal outcome is already true before the action begins.\nUNSPECIFIED = SOURCE does not assign a terminal outcome, or the supplied facts do not establish either state.\nCompare meaning, not wording. Opening facts remain true unless RAW visibly changes them. Source-authorized opening facts win direct conflicts; rendered opening facts still apply where source state is silent. Do not invent reversal or restoration. Return only status."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-vm9ts03ygvn8dzwu9mfzb",
+    "object": "chat.completion",
+    "created": 1790613611,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ALREADY_TERMINAL\"}",
+          "reasoning": "We need to classify one target state: the controller deactivates the last drone.\n\nGiven:\n\nASSIGNED SOURCE\nThe controller deactivates the last drone.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE: Drone K is deactivated.\n\nRAW SCENE\nThe controller tracks the inactive craft and deactivates the craft.\n\nWe need to map target condition immediately BEFORE source-assigned action begins to closest Python state. The target condition? \"the controller deactivates the last drone.\" So before that action, what is status of that condition? Is it already true or not?\n\nGiven opening: Drone K is deactivated. That means the last drone (K) is already deactivated. So the assigned terminal outcome (\"Drone K is deactivated\") is already true before action begins.\n\nThus state = ALREADY_TERMINAL.\n\nCheck if any conflict: RAW scene says \"The controller tracks the inactive craft and deactivates the craft.\" It doesn't change that Drone K is deactivated; it just mentions tracking an inactive craft. So still deactivated.\n\nSo answer JSON with status: ALREADY_TERMINAL.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 263,
+      "completion_tokens": 246,
+      "total_tokens": 509,
+      "completion_tokens_details": {
+        "reasoning_tokens": 227
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790613614.9059634,
+  "status": "ok"
+}
