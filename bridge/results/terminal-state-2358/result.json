@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-state-2358",
+  "kind": "llama_chat",
+  "started_at": 1790613643.7079127,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify one target state. Return JSON only. Do not judge overall story correctness."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe archivist closes the final case.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE: Case Delta remains open.\n\nRAW SCENE\nThe archivist adds the last note, then closes Case Delta.\n\nMap the target condition immediately BEFORE the source-assigned action begins to the closest Python state:\nACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\nALREADY_TERMINAL = the exact assigned terminal outcome is already true before the action begins.\nUNSPECIFIED = SOURCE does not assign a terminal outcome, or the supplied facts do not establish either state.\nCompare meaning, not wording. Opening facts remain true unless RAW visibly changes them. Source-authorized opening facts win direct conflicts; rendered opening facts still apply where source state is silent. Do not invent reversal or restoration. Return only status."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ve7eoppioqyzyzvmu25n",
+    "object": "chat.completion",
+    "created": 1790613643,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to classify one target state: the condition immediately before the source-assigned action begins.\n\nSource assigned action: \"The archivist closes the final case.\" So action is closing Case Delta (the last note added, then close). The target condition refers to the state of Case Delta just before this action. We have opening facts:\n\n- AUTHORITATIVE OPENING STATE: SOURCE-AUTHORIZED CURRENT STATE: Case Delta remains open.\n\nSo at start, Case Delta is open. Then RAW SCENE says \"The archivist adds the last note, then closes Case Delta.\" So before closing, after adding last note but before close, Case Delta still remains open (since not closed yet). The target condition is that Case Delta remains open? But we need to map to one of three states: ACTIVE_OR_UNRESOLVED, ALREADY_TERMINAL, UNSPECIFIED.\n\nWe consider the assigned terminal outcome. What is the assigned terminal outcome? Source says \"The archivist closes the final case.\" So the terminal outcome is that Case Delta becomes closed (final). The target condition before action begins: Is the assigned terminal outcome already true? No, because it's open. So ACTIVE_OR_UNRESOLVED.\n\nThus output JSON with status: ACTIVE_OR_UNRESOLVED.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 261,
+      "completion_tokens": 276,
+      "total_tokens": 537,
+      "completion_tokens_details": {
+        "reasoning_tokens": 256
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790613647.7832584,
+  "status": "ok"
+}
