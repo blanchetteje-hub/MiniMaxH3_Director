@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2086",
+  "kind": "llama_chat",
+  "started_at": 1790555599.6941426,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nDax presses the brake pedal with his right foot.\n\nNEXT MICRO-ACTION:\nDax keeps pressing the brake while also stomping a separate pedal with the same right foot.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-v0gg08pru1hconlzjhrbr",
+    "object": "chat.completion",
+    "created": 1790555599,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CONFLICT\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: Dax presses the brake pedal with his right foot. So at that moment, his right foot is on the brake pedal. Next action: Dax keeps pressing the brake while also stomping a separate pedal with the same right foot.\n\nSo he continues pressing the brake and simultaneously stomps another pedal with the same right foot. That means he's using the same foot to press two pedals? The text says \"stomping a separate pedal\" meaning there's another pedal, presumably not the brake. He uses his right foot for both: keep pressing the brake while also stomping a separate pedal.\n\nIs that physically possible? If he keeps pressing the brake with his right foot and at same time stomps another pedal with the same right foot, that would require moving the foot to stomp another pedal while still on the brake. That seems conflicting unless there's an explicit transition: maybe he lifts off the brake then stomps? But text says \"keeps pressing the brake\" meaning continues pressing it. So his right foot is simultaneously on two pedals? That's physically impossible if they are separate. Unless one is a small pedal that can be stomped while still holding down the brake, but likely conflict.\n\nThus status: CONFLICT.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 309,
+      "completion_tokens": 273,
+      "total_tokens": 582,
+      "completion_tokens_details": {
+        "reasoning_tokens": 257
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555603.5301788,
+  "status": "ok"
+}
