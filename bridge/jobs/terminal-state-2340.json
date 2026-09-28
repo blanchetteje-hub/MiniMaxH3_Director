@@ -1,0 +1,23 @@
+{
+  "kind": "llama_chat",
+  "job_id": "terminal-state-2340",
+  "model": "gpt",
+  "temperature": 0,
+  "top_p": 1,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 512,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Classify one target state. Return JSON only. Do not judge overall story correctness."
+    },
+    {
+      "role": "user",
+      "content": "ASSIGNED SOURCE\nThe courier completes the last delivery.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE: Package 9 has already been delivered to its destination.\n\nRAW SCENE\nThe courier arrives with Package 9 and completes its delivery.\n\nMap the target condition immediately BEFORE the source-assigned action begins to the closest Python state:\nACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\nALREADY_TERMINAL = the exact assigned terminal outcome is already true before the action begins.\nUNSPECIFIED = SOURCE does not assign a terminal outcome, or the supplied facts do not establish either state.\nCompare meaning, not wording. Opening facts remain true unless RAW visibly changes them. Source-authorized opening facts win direct conflicts; rendered opening facts still apply where source state is silent. Do not invent reversal or restoration. Return only status."
+    }
+  ]
+}
