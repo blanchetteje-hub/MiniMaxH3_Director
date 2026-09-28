@@ -440,3 +440,22 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - explicit release before reuse;
   - ambiguous same-hand movement that must be ignored.
 - Queued `tests-2313` and full `acceptance-2314`.
+
+
+### 2026-09-27 — acceptance 2318 fixed wrong-door binding; next failure is explicit RAW end-state contradiction
+
+- `acceptance-2318` completed all 8 segments.
+- The prior wrong-door failure is fixed: generic `door` state extraction is now qualified by the Python-owned containment destination, so Segment 2 ends with the basement door locked rather than accepting an unrelated kitchen door.
+- `tests-2317` exposed two false-positive regressions in the new deterministic RAW guards:
+  - the same-hand verb regex treated the noun `hand` as an action verb;
+  - the set-down guard treated any object mentioned later in the placement sentence as the placed object.
+- Production commits:
+  - `c8fc549a61b4f341b79138eedac8d29dc1c7ec66`: narrows both RAW guards and extends explicit set-down/held-again checking to the trailing `End continuity state`.
+  - `f1c33243f53bad6e5196edd16c88b6b2479063b4`: handles `in front of` placement wording and simple singular/plural object matching.
+  - `6d486cb4f95f5e6b3eb720513867e64fc9fdab56`: adds a regression for the demonstrated Segment-1 contradiction.
+- Earliest actionable acceptance failure is Segment 1 RAW:
+  - the last timed action sets the second breakfast plate in front of Amber;
+  - the trailing end state then says Amy is holding two plates;
+  - no pickup/reacquisition occurs.
+- This remains a deterministic explicit-state contradiction, so do not add another broad LLM coherence judge.
+- Next checkpoint: focused regression suite + fresh full acceptance. Segment 1 must regenerate if its trailing end state contradicts the final visible object state.
