@@ -1,0 +1,23 @@
+{
+  "kind": "llama_chat",
+  "job_id": "terminal-compare-2389",
+  "model": "gpt",
+  "temperature": 0,
+  "top_p": 1,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 256,
+  "timeout_seconds": 600,
+  "messages": [
+    {
+      "role": "system",
+      "content": "Compare one supplied target state. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "TARGET\nLine C\n\nREQUIRED END STATE\ndisconnected\n\nOPENING FACTS\nLine C is disconnected from the grid\n\nRAW SCENE\nthe engineer disconnects Line C\n\nClassify the target immediately BEFORE the action that would produce REQUIRED END STATE.\nMATCH = REQUIRED END STATE is already true.\nNOT_MATCH = facts establish a different current state, so REQUIRED END STATE is not yet true.\nUNKNOWN = facts do not establish either.\nOpening facts remain true unless RAW explicitly changes them before that action. Do not infer unstated changes. Return exactly {\"status\":\"MATCH\"}, {\"status\":\"NOT_MATCH\"}, or {\"status\":\"UNKNOWN\"}."
+    }
+  ]
+}
