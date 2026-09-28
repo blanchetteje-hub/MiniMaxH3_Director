@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2097",
+  "kind": "llama_chat",
+  "started_at": 1790555661.9658947,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nThe pilot holds the control yoke with both hands.\n\nNEXT MICRO-ACTION:\nThe pilot reaches overhead with both hands without releasing the yoke.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2rfdsy6vct3py9v2sz3lbb",
+    "object": "chat.completion",
+    "created": 1790555661,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPATIBLE\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: \"The pilot holds the control yoke with both hands.\" So at that point, both hands are occupied holding the yoke. Next action: \"The pilot reaches overhead with both hands without releasing the yoke.\"\n\nSo next action requires reaching overhead with both hands while still holding the yoke. That means both hands must be used to reach overhead and also hold the yoke simultaneously? The phrase says \"without releasing the yoke.\" So he is still holding it, but also reaching overhead. Is that physically possible? He could extend his arms overhead while still gripping the yoke. But if he's using both hands for the yoke, can they also reach overhead? It might be a conflict because to reach overhead with both hands you need them free or at least extended; but holding the yoke requires them to grip it. However it's possible that he could hold the yoke and extend his arms overhead simultaneously (like raising the yoke). But is that physically compatible? The text says \"reaches overhead with both hands without releasing the yoke.\" That implies he's using both hands for reaching while still holding the yoke, which might be a conflict if the yoke occupies them. However it's possible to hold and reach overhead simultaneously: you could lift the yoke up overhead. But does that require moving the yoke? The phrase \"reaches overhead\" suggests his arms go above head; but he holds the yoke with both hands, so maybe he's lifting it overhead. That seems physically compatible.\n\nBut we need to decide if it's COMPATIBLE or CONFLICT. Let's parse: previous state: both hands hold yoke. Next action: reaches overhead with both hands without releasing yoke. So his arms are reaching overhead while still holding the yoke. This is possible; no conflict. The yoke remains held, but he extends his arms to reach overhead. That could be physically compatible.\n\nThus status = COMPATIBLE.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 303,
+      "completion_tokens": 420,
+      "total_tokens": 723,
+      "completion_tokens_details": {
+        "reasoning_tokens": 403
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555667.584835,
+  "status": "ok"
+}
