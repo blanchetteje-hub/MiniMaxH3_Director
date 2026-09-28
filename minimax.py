@@ -8885,6 +8885,28 @@ def _validate_state_effects(effects):
                     f"Required-event {op} has invalid value: {item['value']!r}."
                 )
         normalized.append(item)
+
+    clothing_pairs = {
+        (
+            str(effect["entity"]).casefold(),
+            str(effect["item"]).casefold(),
+        )
+        for effect in normalized
+        if effect.get("op") == "set_clothing"
+    }
+    for effect in normalized:
+        if (
+            effect.get("op") == "set_item_state"
+            and (
+                str(effect["owner"]).casefold(),
+                str(effect["entity"]).casefold(),
+            )
+            in clothing_pairs
+        ):
+            raise ValueError(
+                "A garment represented by set_clothing must not also be "
+                "represented by set_item_state for the same wearer."
+            )
     return normalized
 
 
@@ -20841,11 +20863,31 @@ def _continuity_apply_authoritative_state_effects(
     for effect in effects:
         op = effect["op"]
         if op == "set_location":
-            subject_record(effect["entity"])["position"] = effect["value"]
+            record = subject_record(effect["entity"])
+            old_position = str(record.get("position") or "").strip()
+            new_position = effect["value"]
+            if (
+                old_position
+                and old_position.upper() != "N/A"
+                and old_position.casefold() != str(new_position).casefold()
+            ):
+                record["pose_action"] = "N/A"
+                record["topology"] = "N/A"
+                record["spatial_relationships"] = []
+            record["position"] = new_position
         elif op == "set_containment":
             record = subject_record(effect["entity"])
             container = effect["container"]
             if effect["value"] == "contained":
+                old_position = str(record.get("position") or "").strip()
+                if (
+                    old_position
+                    and old_position.upper() != "N/A"
+                    and old_position.casefold() != container.casefold()
+                ):
+                    record["pose_action"] = "N/A"
+                    record["topology"] = "N/A"
+                    record["spatial_relationships"] = []
                 record["position"] = container
                 relation = f"inside {container}"
                 record["spatial_relationships"] = [
