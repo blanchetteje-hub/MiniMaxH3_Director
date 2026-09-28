@@ -247,6 +247,79 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         self.assertIn('"flag": false', user_prompt)
         self.assertIn('"count": 0', user_prompt)
 
+    def test_authoritative_containment_overrides_prompt_continuity_position(self):
+        state = {
+            "version": 5,
+            "environment": {"location": "kitchen", "persistent_state": "N/A"},
+            "camera": "N/A",
+            "ongoing_action": "N/A",
+            "ongoing_audio": "N/A",
+            "subjects": {
+                "Will": {
+                    "name": "Will",
+                    "position": "kitchen doorway",
+                    "wardrobe": {},
+                    "held_props": [],
+                    "spatial_relationships": ["watching Amy"],
+                }
+            },
+        }
+        effects = [
+            {
+                "op": "set_containment",
+                "entity": "Will",
+                "container": "basement",
+                "value": "contained",
+            },
+            {
+                "op": "set_location",
+                "entity": "Will",
+                "value": "basement",
+            },
+        ]
+        merged = minimax._continuity_apply_authoritative_state_effects(
+            state,
+            effects,
+        )
+        self.assertEqual(merged["subjects"]["Will"]["position"], "basement")
+        self.assertIn(
+            "inside basement",
+            merged["subjects"]["Will"]["spatial_relationships"],
+        )
+
+    def test_authoritative_barrier_binding_names_destination_in_continuity(self):
+        state = {
+            "version": 5,
+            "environment": {"location": "kitchen", "persistent_state": "N/A"},
+            "camera": "N/A",
+            "ongoing_action": "N/A",
+            "ongoing_audio": "N/A",
+            "subjects": {},
+        }
+        effects = [
+            {
+                "op": "set_containment",
+                "entity": "Will",
+                "container": "basement",
+                "value": "contained",
+            },
+            {
+                "op": "set_barrier_state",
+                "entity": "door",
+                "value": "locked",
+            },
+        ]
+        binding = minimax.build_director_barrier_binding_contract(effects)
+        merged = minimax._continuity_apply_authoritative_state_effects(
+            state,
+            effects,
+            barrier_binding=binding,
+        )
+        self.assertIn(
+            "basement door locked",
+            merged["environment"]["persistent_state"],
+        )
+
     def test_end_state_projection_does_not_delete_offscreen_registered_subjects(self):
         definitions = (
             "<Subject 1> is Alex, referenced in <Picture 1>.\n"
