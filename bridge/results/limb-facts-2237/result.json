@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2237",
+  "kind": "llama_chat",
+  "started_at": 1790557263.5566006,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nIris pins a cloth with her left foot.\n\nNEXT MICRO-ACTION:\nIris presses harder on the cloth.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ckjemzgfozosuod14gmotj",
+    "object": "chat.completion",
+    "created": 1790557263,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_FOOT\",\"task\":\"cloth\"}],\"next\":[{\"limb\":\"LEFT_FOOT\",\"task\":\"cloth\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Iris pins a cloth with her left foot.\" So occupied limb is LEFT_FOOT, task is pinning? The object/task label should be short lowercase normalized from text. They say use short lowercase object/task labels copied or normalized from the text. For previous we report each occupied limb and the object/task occupying it at end of action.\n\nSo \"pins a cloth\" -> task: pin? Or maybe \"pin\"? But they want object/task labels like \"cloth\". The example says \"object/task that limb acts on.\" So for previous, limb LEFT_FOOT is used to pin a cloth. So we can say task: \"pin\" or \"clothing\"? They said short lowercase object/task labels copied or normalized from the text. In this case \"cloth\" is an object; \"pins\" is action. The limb acts on the cloth. So maybe task = \"cloth\". But they want each occupied limb and the object/task occupying it at end of action. That means the limb is used to pin a cloth, so the limb occupies the cloth? Actually the foot pins the cloth. So the limb is in contact with the cloth. The object being pinned: cloth.\n\nThus previous: [{\"limb\":\"LEFT_FOOT\",\"task\":\"cloth\"}].\n\nNext micro-action: \"Iris presses harder on the cloth.\" She uses which limb? Not specified, but likely same left foot or maybe both feet? But we need to infer from context. Since she pressed harder on the cloth, presumably using her left foot again (since that's what pinned it). The action doesn't mention freeing previous object before use. So freed_before_use empty.\n\nThus next: [{\"limb\":\"LEFT_FOOT\",\"task\":\"cloth\"}].\n\nBut check if \"presses\" might be a different task? They want limb and the object/task that limb acts on. So we can say task = \"cloth\". Or maybe \"press\"? But they said short lowercase labels copied or normalized from text. The action is pressing, but the object is cloth. I'd choose \"cloth\".\n\nThus output JSON: {\"previous\":[{\"limb\":\"LEFT_FOOT\",\"task\":\"cloth\"}],\"next\":[{\"limb\":\"LEFT_FOOT\",\"task\":\"cloth\"}],\"freed_before_use\":[]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 280,
+      "completion_tokens": 516,
+      "total_tokens": 796,
+      "completion_tokens_details": {
+        "reasoning_tokens": 469
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557270.4516087,
+  "status": "ok"
+}
