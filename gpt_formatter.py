@@ -761,7 +761,7 @@ def _repair_fields(result: dict[str, Any], context: Mapping[str, Any]) -> None:
         # GPT-OSS can echo orchestration/control labels into a rendered field.
         # They are representation leakage, not story content.
         result[field] = re.sub(
-            r"(?i)\\s*Added\\s+States\\s*:\\s*$",
+            r"(?i)\s*Added\s+States\s*:\s*$",
             "",
             result[field],
         ).rstrip()
