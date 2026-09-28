@@ -50,6 +50,8 @@ When testing the local model, never embed the expected semantic answer in the re
 Treat the local 20B-class model as capable but instruction-fragile.
 
 - Give each call one primary semantic responsibility whenever practical.
+- Judge task size by semantic responsibility, not output size: a tiny enum or short JSON response is still a large task if the model must infer multiple hidden facts before answering.
+- Prefer supplying Python-owned targets/expected states explicitly so the local model only observes or classifies one fuzzy fact at a time.
 - Keep prompts short, concrete, and procedural.
 - Prefer explicit inputs/outputs over prose explanations.
 - If the model spends many reasoning tokens circling a simple constraint, split the task or simplify the contract before increasing token limits.
