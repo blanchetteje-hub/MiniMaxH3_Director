@@ -28232,11 +28232,21 @@ def _run_main(
 ):
     args = parse_args()
     configure_reference_image_overrides(args)
+    if getattr(args, "generate_from_prompts", False):
+        return render_generated_prompts(args)
+
     generate_beats_count = getattr(args, "generate_beats", None)
     generate_beats_only = generate_beats_count is not None
+    generate_prompts_count = getattr(args, "generate_prompts", None)
+    generate_prompts_only = generate_prompts_count is not None
     if generate_beats_only:
         print(
             "Generating the story arc and beats based on story.txt",
+            flush=True,
+        )
+    if generate_prompts_only:
+        print(
+            "Generating story arc, beats, and final H3 prompts without ComfyUI.",
             flush=True,
         )
     configure_formatter(getattr(args, "model", "gpt"))
@@ -28261,11 +28271,16 @@ def _run_main(
     retention = bool(getattr(args, "retention", False))
     test_prompt_generation = bool(
         getattr(args, "test_prompt_generation", False)
+        or generate_prompts_only
     )
     total_segments = (
         int(generate_beats_count)
         if generate_beats_only
-        else math.ceil(total_length / segment_length)
+        else (
+            int(generate_prompts_count)
+            if generate_prompts_only
+            else math.ceil(total_length / segment_length)
+        )
     )
     resume_segment = (
         int(recovery_resume_segment)
@@ -28305,7 +28320,7 @@ def _run_main(
             story_arc_path=STORY_ARC_FILE,
             story_arc_source=story_source,
             phrase_exclusions=phrase_exclusions,
-            force_generate=generate_beats_only,
+            force_generate=(generate_beats_only or generate_prompts_only),
         )
     except LLMConnectionError:
         raise
@@ -28331,6 +28346,24 @@ def _run_main(
         total_segments,
         story_source,
     )
+
+    generated_prompts_payload = None
+    if generate_prompts_only:
+        generated_prompts_payload = {
+            "version": 1,
+            "config": {
+                "segment_length": segment_length,
+                "total_length": total_length,
+                "megapixels": megapixels,
+                "steps": args.steps,
+                "trim_frames": trim_frames,
+                "refresh_interval": refresh_interval,
+                "total_segments": total_segments,
+            },
+            "macro_arc": copy.deepcopy(macro_arc),
+            "prompts": [],
+        }
+        save_generated_prompts_file(generated_prompts_payload)
 
     # Beat generation deliberately happens before external runtime and workflow
     # validation so an empty beats.txt is populated before normal startup work.
@@ -29069,6 +29102,30 @@ def _run_main(
             raise BeatGenerationError(
                 f"Segment {segment} final H3 action preservation failed: "
                 f"{issue_text}"
+            )
+
+        if generate_prompts_only:
+            generated_prompts_payload["prompts"].append({
+                "segment": int(segment),
+                "duration": float(segment_bundle["current_duration"]),
+                "conditioning_mode": segment_bundle["conditioning_mode"],
+                "h3_prompt": h3_prompt,
+                "subject_definitions": subject_definitions,
+                "continuity_state": copy.deepcopy(continuity_state),
+                "continuity_summary": payload.get(
+                    "h3_opening_summary",
+                    segment_bundle.get("h3_opening_summary", ""),
+                ),
+                "loras": [
+                    list(item)
+                    for item in normalize_lora_list(loras)
+                ],
+            })
+            save_generated_prompts_file(generated_prompts_payload)
+            print(
+                f"Saved finalized H3 prompt {segment}/{total_segments} to "
+                f"{os.path.basename(GENERATED_PROMPTS_FILE)}.",
+                flush=True,
             )
 
         if (
@@ -29892,10 +29949,21 @@ def _run_main(
         print("Story beat tracking was disabled for this run.")
 
     if test_prompt_generation:
-        print(
-            "Prompt-generation test completed: prompts were generated for all "
-            "requested segments and no data was sent to ComfyUI."
-        )
+        if generate_prompts_only:
+            if len(generated_prompts_payload["prompts"]) != total_segments:
+                raise RuntimeError(
+                    "Prompt generation ended without saving every final H3 prompt."
+                )
+            save_generated_prompts_file(generated_prompts_payload)
+            print(
+                f"Saved {total_segments} finalized H3 prompt(s) to "
+                f"{GENERATED_PROMPTS_FILE}."
+            )
+        else:
+            print(
+                "Prompt-generation test completed: prompts were generated for all "
+                "requested segments and no data was sent to ComfyUI."
+            )
         return
 
     # Barrier: every submitted render must be complete before FFmpeg sees the
