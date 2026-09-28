@@ -1,9 +1,0 @@
-{
-  "kind": "run_tests",
-  "job_id": "tests-2331",
-  "code_branch": "gpt-arc-refresh",
-  "tests": [
-    "tests/test_requested_prompt_regressions.py"
-  ],
-  "timeout_seconds": 900
-}
