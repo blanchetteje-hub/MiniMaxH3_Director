@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2284",
+  "kind": "llama_chat",
+  "started_at": 1790557919.1248124,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nSera carries a crystal in both hands.\n\nNEXT MICRO-ACTION:\nSera pulls a lever with her left hand while still carrying the crystal.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-t5tmtgovtrcbyia5vl20r",
+    "object": "chat.completion",
+    "created": 1790557919,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"crystal\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"crystal\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"object\":\"lever\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"crystal\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Sera carries a crystal in both hands.\" So at the end of that action, both hands are occupied with object \"crystal\". For next: \"Sera pulls a lever with her left hand while still carrying the crystal.\" That means she uses left hand to pull lever; but also still holds crystal. The question: does left hand hold crystal or lever? She is pulling lever with left hand while still carrying crystal, meaning both hands are holding crystal and lever simultaneously? But physically can't hold two objects in same hand. Maybe she pulls lever with left hand while still carrying the crystal (maybe using right hand to hold crystal). Wait \"both hands\" earlier; now she uses left hand for lever but still carries crystal: maybe she holds crystal in right hand, left hand on lever. So at start of next action, left hand is used for lever, right hand continues holding crystal.\n\nThus we need list each limb explicitly required by new action. For NEXT: LEFT_HAND object \"lever\". RIGHT_HAND object \"crystal\" (still carrying). Also maybe both hands? But the rule says list each hand/foot explicitly required by new action; so left hand uses lever, right hand still holds crystal. So next array includes two entries.\n\nAlso freed_before_use: If NEXT explicitly releases, sets down, transfers, pockets, or repositions prior object before using limb for something else. Here she pulls a lever with her left hand while still carrying the crystal. She didn't release crystal; but she might reposition? The phrase \"while still carrying\" indicates no change to crystal. So freed_before_use empty.\n\nBut check rule: If NEXT operates SAME physical object already occupying that limb, repeat EXACTLY same object label used in PREVIOUS. For LEFT_HAND: previous had \"crystal\". Now left hand uses lever; not same object. Right hand remains with crystal (same as before). But we need to list each limb explicitly required by new action. So right hand is still holding crystal.\n\nThus output:\n\nprevious: [{\"limb\":\"LEFT_HAND\",\"object\":\"crystal\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"crystal\"}]\n\nnext: [{\"limb\":\"LEFT_HAND\",\"object\":\"lever\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"crystal\"}]\n\nfreed_before_use: [] (empty array)\n\nReturn JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 412,
+      "completion_tokens": 551,
+      "total_tokens": 963,
+      "completion_tokens_details": {
+        "reasoning_tokens": 483
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557926.5501227,
+  "status": "ok"
+}
