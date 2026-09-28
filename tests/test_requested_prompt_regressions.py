@@ -932,7 +932,8 @@ class RequestedPromptRegressionTests(unittest.TestCase):
             },
         }
         contracts = minimax.build_director_preserved_barrier_state_contracts(
-            json.dumps(opening),
+            "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n"
+            + json.dumps(opening),
             [
                 {
                     "op": "set_containment",
