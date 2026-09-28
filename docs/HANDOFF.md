@@ -568,3 +568,21 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - `e573dac1b2c7b8d9abd8f3f2c57b28f2506ca100`: architectural SFW rule in PROJECT_NOTES.
   - `397455495a14ba6c42f48703677c5cfca2e27fb0`, `6b312f8b4ed1c109f47016a15ffd60431f31e850`: abstract terminal-state micro-extractor regression + implementation.
 - Repo scan of `minimax.py`, requested regressions, HANDOFF, HANDOFF_OLD, and PROJECT_NOTES found zero remaining graphic-keyword hits from the cleaned categories.
+
+
+### 2026-09-28 — terminal duplicate check now compares Python-owned typed end state
+
+- Acceptance `2334` proved the prior generic terminal-target extractor was only partially effective: it rejected one repeated terminal target attempt, then accepted a retry that reapplied the same completed result.
+- A 50-case SFW probe matrix of the old extractor showed the responsibility was still too broad. The 20B model had to infer both the terminal outcome and the pre-action target state from prose, producing wrong active/terminal classifications, malformed keys, and token exhaustion.
+- A replacement comparator was tested on 50 SFW cases:
+  - Python supplies `TARGET` and `REQUIRED END STATE`;
+  - the LLM returns only `MATCH | NOT_MATCH | UNKNOWN`;
+  - production only rejects on `MATCH`.
+- On all parsed probes, the production-critical binary decision was clean: every truly already-complete state returned `MATCH`, while every case that should permit the action returned non-`MATCH`. One 256-token probe truncated; production keeps the larger normal completion budget.
+- Production commit `2011a79c9c09d6bc0cd64b1ccd9cd2e36e9a4027`:
+  - derives comparator contracts from Python-owned typed state effects;
+  - limits the duplicate-result gate to `set_barrier_state`, `set_threat_state`, and `set_object_state`;
+  - removes source-prose inference from the comparator;
+  - rejects Request 1 only when the observed pre-action state already matches the exact assigned typed end state.
+- Regression commit `40d366c424e91e420d3cca0fd668a0ffecb0da86` covers typed contract selection, prompt shape, and strict parser behavior.
+- Next checkpoint: requested regression suite, then fresh full acceptance. The Segment-7-style repeated completed target must regenerate until the assigned typed terminal state is not already true before the action.
