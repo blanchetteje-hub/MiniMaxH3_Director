@@ -17309,7 +17309,7 @@ _DIRECTOR_OBJECT_PLACEMENT_RE = re.compile(
     r"(?i)\b(?:set(?:s|ting)?(?:\s+down)?|place(?:s|d|ing)?|"
     r"put(?:s|ting)?(?:\s+down)?|drop(?:s|ped|ping)?)\s+"
     r"(?P<object>[^.;,]{1,100}?)\s+"
-    r"(?:on|onto|into|inside|beside|at)\b"
+    r"(?:on|onto|into|inside|beside|at|in\s+front\s+of)\b"
 )
 
 _DIRECTOR_OBJECT_REACQUIRE_RE = re.compile(
@@ -17341,6 +17341,8 @@ def _director_object_phrase_keys(value):
         if not words:
             continue
         key = words[-1].casefold()
+        if len(key) > 3 and key.endswith("s") and not key.endswith("ss"):
+            key = key[:-1]
         if key in {"hand", "hands", "ready", "again"}:
             continue
         keys.append(key)
