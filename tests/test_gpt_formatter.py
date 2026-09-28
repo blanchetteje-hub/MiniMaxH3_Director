@@ -36,5 +36,36 @@ class GPTFormatterTests(unittest.TestCase):
         )
 
 
+    def test_gpt_formatter_unwraps_model_timestamp_wrappers(self):
+        formatter = GPTFormatter()
+        context = {
+            "segment_number": 2,
+            "next_beat_id": 2,
+            "segment_duration": 8,
+        }
+        for wrapped in (
+            "(At 00:00.000, ) Amy opens the panel. "
+            "(At 00:01.500, ) Amy closes it.",
+            "[At 00:00.000, ] Amy opens the panel. "
+            "[At 00:01.500, ] Amy closes it.",
+        ):
+            with self.subTest(wrapped=wrapped):
+                formatted = formatter.format_prompt(
+                    {
+                        "detailed_description": wrapped,
+                        "overall_soundscape": "room tone",
+                        "non_diegetic_music": "N/A",
+                        "completed_beat_ids": [2],
+                    },
+                    context,
+                )
+                description = formatted["detailed_description"]
+                self.assertNotIn("(At ", description)
+                self.assertNotIn("[At ", description)
+                self.assertIn("At 00:00.000 seconds, Amy opens the panel.", description)
+                self.assertIn("At 00:01.500 seconds, Amy closes it.", description)
+
+
+
 if __name__ == "__main__":
     unittest.main()
