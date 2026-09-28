@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2247",
+  "kind": "llama_chat",
+  "started_at": 1790557358.8192923,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nGuard holds a key in the left hand.\n\nNEXT MICRO-ACTION:\nGuard turns the key in the lock.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-tt6x8jfufamv13533m6un",
+    "object": "chat.completion",
+    "created": 1790557358,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Guard holds a key in the left hand.\" So previous action occupies LEFT_HAND with task \"holds\" or maybe \"hold\"? The object is key. Task label should be short lowercase, normalized from text. They say use short lowercase object/task labels copied or normalized from the text.\n\nSo for previous we report each occupied limb and the object/task occupying it at end of action. So left hand holds a key. So task: hold? Or \"holds\"? The example says \"task\" is what limb acts on, maybe \"hold\". They say short lowercase object/task labels copied or normalized from the text.\n\nSo for previous we have {\"limb\":\"LEFT_HAND\",\"task\":\"key\"}? Wait they want each occupied limb and the object/task occupying it. So task might be key? Actually \"object/task\" is ambiguous: The limb occupies an object (key) or a task (holds). They say \"occupied limb and the object/task occupying it\". In previous example, guard holds a key in left hand. So limb LEFT_HAND occupied by holding key. So maybe we list {\"limb\":\"LEFT_HAND\",\"task\":\"hold\"}? But they want short lowercase labels copied or normalized from text. The task is hold; object is key.\n\nBut the format: \"previous\":[{\"limb\":\"...\",\"task\":\"...\"}]. They only have one field for task, not separate object and task. So maybe we combine both into a single string like \"hold_key\" or just \"key\"? Let's read instructions carefully:\n\n\"For PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\" That suggests that the limb is holding an object or performing a task. The example: Guard holds a key in left hand. So the limb LEFT_HAND occupies the key (object). But also it's doing hold? They say \"object/task\". Could be either.\n\nBut they want short lowercase labels copied or normalized from text. For object, we can use \"key\". For task, maybe \"hold\" but that is not an object. The example: \"Guard holds a key in the left hand.\" So the limb occupies the key (object). So I think we should set task to \"key\".\n\nBut then for next action: Guard turns the key in the lock. That uses LEFT_HAND? Actually turning key requires both hands? Usually you use one hand to turn, but maybe both. But they didn't specify which hand. The text says \"turns the key\". So likely left hand holds key and turns it. So limb used is LEFT_HAND (or BOTH_HANDS). They say if NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb, list that limb in freed_before_use.\n\nIn next action, guard turns the key in lock. He uses the same key he held. Does he release it? No, he's turning it. So no freeing. So freed_before_use empty.\n\nSo we need to output JSON: {\"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"key\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"task\":\"turn_key\"}],\"freed_before_use\":[]}\n\nBut \"turn_key\" is a task? They said short lowercase object/task labels copied or normalized from text. So maybe we use \"turn\". But the limb acts on key, so maybe \"turn_key\"? The previous had \"key\", next has \"turn_key\".\n\nAlternatively, they might want just \"turn\" as task and \"key\" as object but only one field.\n\nLet's examine instructions: \"For PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\" So we need to list limb and what occupies it. That could",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 279,
+      "completion_tokens": 768,
+      "total_tokens": 1047,
+      "completion_tokens_details": {
+        "reasoning_tokens": 765
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557368.8947182,
+  "status": "ok"
+}
