@@ -71,9 +71,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_request_one_incomplete_after_retry_budget_fails_before_request_two(self):
         request = mock.Mock(
             side_effect=[
-                director_response("The first required item occurs.", False),
-                director_response("The first required item occurs.", False),
-                director_response("The first required item occurs.", False),
+                director_response("The first required item occurs.", False)
+                for _ in range(minimax.DIRECTOR_RAW_SCENE_ATTEMPTS)
             ]
         )
 
