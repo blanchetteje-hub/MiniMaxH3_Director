@@ -538,17 +538,15 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - The in-flight `acceptance-2328` run used the bad validator and should be ignored/cancelled if still running.
 
 
-### 2026-09-28 — acceptance 2330: terminal target check missed anonymous zombie resurrection
+### 2026-09-28 — acceptance 2330: repeated irreversible target state
 
 - `tests-2329`: 37/37 passed.
 - `acceptance-2330` completed all 8 segments on the source-span path. The broken-window state is now `set_barrier_state=broken`; no legacy ARC fallback occurred.
-- Earliest remaining substantive continuity defect:
-  - Segment 4 explicitly decapitates a zombie. Final frame: severed head on floor, torso remains in front of Amy.
-  - Segment 5 begins from that continuing torso, then silently gives it a head again and decapitates it a second time.
-- Existing narrow terminal-target extraction already knows that severed/decapitated remains are terminal, but it missed this case because:
-  1. source trigger detection did not recognize phrases such as `slashes its head from the torso` / `slices the head off`;
-  2. reduced continuity had dropped the severed-head fact even though the exact prior final-frame text still contained it.
+- Earliest remaining continuity defect was a repeated irreversible target transition: the next segment reused a target whose prior exact final frame had already established the relevant terminal result.
+- Existing terminal-target extraction was the correct mechanism, but reduced continuity had dropped the decisive prior-frame fact and trigger logic was too specific.
+- The public repository must remain SFW. Runtime source may contain arbitrary user content, but committed code/tests/docs should not embed graphic or sexual examples.
 - Production commits:
-  - `1abd9928aacd5db27a84e7cbe7877050d0cb090e`: terminal-action detection now includes decapitation/beheading and explicit head-severing phrases; the terminal-target extractor also receives the exact prior segment End continuity state alongside reduced continuity.
-  - `85daa2ed55fe99d4f092d2e648c3fa97d311ebac`: regressions for head-sever terminal triggers and ordinary nonterminal head motion.
-- Expected behavior: if a new beat reuses already-decapitated anonymous remains as its target, terminal-target extraction rejects the RAW and Request 1 regenerates the segment with a distinct active zombie or otherwise non-conflicting staging.
+  - `1abd9928aacd5db27a84e7cbe7877050d0cb090e`: added exact prior final-frame context to terminal-state extraction.
+  - `5af1232d03b38e606cff919d1415c9a09ace05a5`: replaced explicit trigger/example language with generic irreversible terminal-state logic.
+  - `69c312d1d51e972ae27bfff7c43c9a19a766d404`: replaced explicit regressions with SFW machine-state examples.
+- Expected behavior: if a later segment tries to reapply an irreversible terminal result to the same continuing target without an explicit reversal/restoration, Request 1 should reject and regenerate it.
