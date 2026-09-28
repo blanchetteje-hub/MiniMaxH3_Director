@@ -26536,6 +26536,89 @@ def build_director_barrier_state_contracts(assigned_state_effects):
     return contracts
 
 
+def build_director_preserved_barrier_state_contracts(
+    authoritative_opening_state,
+    assigned_state_effects,
+):
+    """Return opening barrier states that must persist when no effect changes them."""
+    state = _director_source_opening_state_json(authoritative_opening_state)
+    if not isinstance(state, dict) or not state:
+        return []
+    try:
+        effects = _validate_state_effects(list(assigned_state_effects or []))
+    except (TypeError, ValueError):
+        return []
+
+    def normalized(value):
+        return " ".join(str(value or "").replace("_", " ").split()).casefold()
+
+    def expected_from_status(value):
+        mapping = {
+            "locked": "LOCKED",
+            "blocked": "LOCKED",
+            "closed": "CLOSED",
+            "open": "OPEN",
+            "unlocked": "OPEN",
+            "broken": "BROKEN",
+            "destroyed": "DESTROYED",
+        }
+        return mapping.get(normalized(value))
+
+    changed_barriers = {
+        normalized(effect.get("entity"))
+        for effect in effects
+        if effect.get("op") == "set_barrier_state"
+    }
+
+    opening_destinations = set()
+    for root in ("characters", "threats"):
+        records = state.get(root) or {}
+        if not isinstance(records, dict):
+            continue
+        for record in records.values():
+            if not isinstance(record, dict):
+                continue
+            destination = normalized(record.get("contained_in"))
+            containment = normalized(record.get("containment"))
+            if destination and containment in {"contained", ""}:
+                opening_destinations.add(destination)
+
+    environment = state.get("environment") or {}
+    generic_barriers = {"door", "gate", "hatch", "barrier"}
+    contracts = []
+    for field in ("doors", "barriers", "windows"):
+        records = environment.get(field) or {}
+        if not isinstance(records, dict):
+            continue
+        for entity, record in records.items():
+            if not isinstance(record, dict):
+                continue
+            source_state = str(record.get("status") or "").strip()
+            expected = expected_from_status(source_state)
+            if not expected:
+                continue
+            entity_key = normalized(entity)
+            destination = None
+            if entity_key in generic_barriers and len(opening_destinations) == 1:
+                destination = next(iter(opening_destinations))
+                barrier_label = f"{destination} {entity_key}"
+            else:
+                barrier_label = " ".join(str(entity).replace("_", " ").split())
+            if (
+                entity_key in changed_barriers
+                or normalized(barrier_label) in changed_barriers
+            ):
+                continue
+            contracts.append({
+                "barrier": barrier_label,
+                "expected": expected,
+                "source_state": source_state,
+                "destination": destination,
+                "preserved": True,
+            })
+    return contracts
+
+
 def build_director_barrier_state_messages(barrier, raw_scene):
     """Ask the local model only for one barrier's final visible state."""
     return [
@@ -27193,6 +27276,15 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     request1_barrier_state_contracts = build_director_barrier_state_contracts(
         bundle.get("assigned_state_effects", [])
     )
+    request1_preserved_barrier_state_contracts = (
+        build_director_preserved_barrier_state_contracts(
+            bundle.get("opening_state", ""),
+            bundle.get("assigned_state_effects", []),
+        )
+    )
+    request1_barrier_state_contracts.extend(
+        request1_preserved_barrier_state_contracts
+    )
     request1_closed_boundary_contracts = build_director_closed_boundary_contracts(
         bundle.get("opening_state", ""),
         bundle.get("assigned_state_effects", []),
@@ -27227,6 +27319,22 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 f"{request1_barrier_binding['state']}. Do not reinterpret it as "
                 "an unrelated door/gate/hatch elsewhere in the scene."
             )
+    if request1_preserved_barrier_state_contracts and request1_base_messages:
+        preserved_lines = [
+            f"- {item['barrier']} begins {item['source_state']} and MUST end "
+            f"{item['source_state']} because no assigned typed effect changes it."
+            for item in request1_preserved_barrier_state_contracts
+        ]
+        request1_base_messages[-1] = dict(request1_base_messages[-1])
+        request1_base_messages[-1]["content"] = (
+            f"{request1_base_messages[-1].get('content', '')}\n\n"
+            "AUTHORITATIVE FINAL BARRIER STATE — Python-derived from canonical "
+            "opening state; obey exactly:\n"
+            + "\n".join(preserved_lines)
+            + "\nA release or crossing may temporarily open/unlock the boundary, "
+            "but restore its canonical state before this beat ends unless a typed "
+            "barrier effect explicitly changes the final state."
+        )
     if request1_closed_boundary_contracts and request1_base_messages:
         closed_lines = [
             f"- {item['barrier']} begins {item['state']} and MUST NOT be traversed "
