@@ -525,3 +525,14 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - `a58e538712dd10d05b254794f421583ff323f295`: source-unit state extraction now retries locally with the exact validation error as correction feedback; a failed source-span plan restarts source-span planning instead of entering the legacy ARC loop.
   - `a455b345551ae4a2a99c62aa0ded3fbbd0147206`: regression proving an invalid broken-window object-state response repairs to `set_barrier_state=broken`.
 - Next checkpoint: focused regressions + fresh full acceptance. Expected: source-span planner remains active, repairs the broken-window state locally, and does not print/use the legacy ARC fallback.
+
+
+### 2026-09-28 — broken-barrier validator loop was over-scoped
+
+- During `acceptance-2328`, source-span planning repeatedly rejected Source Unit 3 with:
+  `Explicitly broken/shattered barrier-like entities must end with set_barrier_state=broken.`
+- Root cause: the deterministic rule looked for any break/shatter word anywhere in the source unit, then required every barrier-like effect in that unit to be `broken`. A unit containing both a broken kitchen window and a separately locked basement door therefore rejected the legitimate locked-door effect.
+- Fixes:
+  - `bdc89ea828f360115d8c697bae57efef4b232c2c`: scope break-state enforcement to the specific non-generic barrier entity named in the same clause as the break/shatter wording; generic `door/window/gate/hatch/barrier` names are skipped rather than guessed.
+  - `d05b62740b615f4d55ce3a26fa555c9e44f2c43e`: regression for a source unit containing both a broken kitchen door window and a locked basement door.
+- The in-flight `acceptance-2328` run used the bad validator and should be ignored/cancelled if still running.
