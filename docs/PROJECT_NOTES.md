@@ -1267,3 +1267,14 @@ For Director Request 1 duplicate-result checks, follow the standard project rule
 - Comparator output is `MATCH | NOT_MATCH | UNKNOWN`.
 - Python rejects only `MATCH`; both non-match states are allowed to continue.
 - Expand the checked state families only when acceptance demonstrates a real duplicate-result failure outside this scope.
+
+
+### Temporary barrier transitions
+
+Containment/location effects can authorize a temporary crossing without changing a barrier's persistent final state.
+
+- If canonical opening state says a barrier is locked/closed/etc. and the active beat has no `set_barrier_state` effect for that barrier, the barrier must end in its opening state.
+- A `set_containment=free` or other authorized crossing can temporarily open/unlock the barrier to make the movement physically possible.
+- BEAT CREATE/VALIDATE should stage restoration by beat end.
+- Director Request 1 verifies the final barrier state with the existing narrow barrier-state extractor.
+- Do not invent an ARC barrier-state effect solely because a temporary transition is necessary for an action.
