@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2255",
+  "kind": "llama_chat",
+  "started_at": 1790557438.9281316,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nOmar carries grocery bags in his left hand.\n\nNEXT MICRO-ACTION:\nOmar lifts the bags higher.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-94p7srvt1px4eidgx3w1",
+    "object": "chat.completion",
+    "created": 1790557438,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"grocery_bags\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"task\":\"grocery_bags\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Omar carries grocery bags in his left hand.\" So previous action uses LEFT_HAND, task is carrying? The object/task label should be short lowercase normalized from text. Likely \"carry\" or \"carrying\"? They say use short lowercase object/task labels copied or normalized from the text. So maybe \"carry\". But they said \"object/task that limb acts on\". In PREVIOUS: he carries grocery bags in his left hand. The task is carrying, but also the object is grocery bags. Which one? It says \"task\" not \"object\"? They say \"the object/task occupying it at the end of the action.\" So for previous we report each occupied limb and the object/task occupying it. That could be \"grocery_bags\". But they said short lowercase labels copied or normalized from text. The phrase is \"grocery bags\". We can use \"grocery_bags\" maybe underscore? They didn't specify underscores but likely yes. Use short lowercase object/task labels copied or normalized from the text. So we should produce \"grocery_bags\".\n\nThus previous: [{\"limb\":\"LEFT_HAND\",\"task\":\"grocery_bags\"}].\n\nNext action: \"Omar lifts the bags higher.\" He lifts the bags, presumably using his left hand? Or both hands? The phrase doesn't specify which limb used. But likely he uses same left hand to lift. So next: [{\"limb\":\"LEFT_HAND\",\"task\":\"bags\"}] or \"grocery_bags\"? They say object/task that limb acts on. In this action, the task is lifting; but the object is bags. Should we use \"bags\" as label? The phrase \"the bags\". Could be same grocery bags. So maybe \"grocery_bags\".\n\nBut they want short lowercase labels copied or normalized from text. \"bags\" appears in text. But earlier used \"grocery bags\". Which one to choose? For consistency, maybe use \"bags\"? They didn't specify that we must keep the same label across actions. The object/task occupying it at end of action: after lifting higher, he still has grocery bags in his left hand. So task is \"carry\" or \"lift\"? He lifts them higher but still carrying. But the limb occupancy remains with the bag.\n\nThus next: [{\"limb\":\"LEFT_HAND\",\"task\":\"grocery_bags\"}].\n\nFreed_before_use: If NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb, list that limb in freed_before_use. Here he lifts higher; no freeing of left hand. So empty array.\n\nThus JSON:\n\n{\"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"grocery_bags\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"task\":\"grocery_bags\"}],\"freed_before_use\":[]}\n\nCheck format: Use only JSON, no extra keys. Good.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 279,
+      "completion_tokens": 644,
+      "total_tokens": 923,
+      "completion_tokens_details": {
+        "reasoning_tokens": 593
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557447.4697165,
+  "status": "ok"
+}
