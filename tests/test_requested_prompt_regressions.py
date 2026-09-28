@@ -766,6 +766,64 @@ class RequestedPromptRegressionTests(unittest.TestCase):
             ],
         )
 
+    def test_releasing_contained_subject_preserves_unassigned_locked_barrier(self):
+        opening = {
+            "characters": {
+                "Will": {
+                    "containment": "contained",
+                    "contained_in": "basement",
+                    "location": "basement",
+                }
+            },
+            "environment": {
+                "doors": {
+                    "door": {"status": "locked"},
+                }
+            },
+        }
+        contracts = minimax.build_director_preserved_barrier_state_contracts(
+            json.dumps(opening),
+            [
+                {
+                    "op": "set_containment",
+                    "entity": "Will",
+                    "container": "basement",
+                    "value": "free",
+                }
+            ],
+        )
+        self.assertEqual(len(contracts), 1)
+        self.assertEqual(contracts[0]["barrier"], "basement door")
+        self.assertEqual(contracts[0]["expected"], "LOCKED")
+        self.assertEqual(contracts[0]["source_state"], "locked")
+
+    def test_explicit_barrier_effect_replaces_opening_barrier_state(self):
+        opening = {
+            "characters": {
+                "Will": {
+                    "containment": "contained",
+                    "contained_in": "basement",
+                    "location": "basement",
+                }
+            },
+            "environment": {
+                "doors": {
+                    "door": {"status": "locked"},
+                }
+            },
+        }
+        contracts = minimax.build_director_preserved_barrier_state_contracts(
+            json.dumps(opening),
+            [
+                {
+                    "op": "set_barrier_state",
+                    "entity": "door",
+                    "value": "unlocked",
+                }
+            ],
+        )
+        self.assertEqual(contracts, [])
+
     def test_terminal_state_parser_uses_match_contract(self):
         self.assertEqual(
             minimax.parse_director_terminal_target_observation(
