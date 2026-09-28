@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2245",
+  "kind": "llama_chat",
+  "started_at": 1790557340.6136599,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nKai holds a canister with both hands.\n\nNEXT MICRO-ACTION:\nKai passes the canister to Mara.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-way8h9x1zvcwjd80ii812d",
+    "object": "chat.completion",
+    "created": 1790557340,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"holds\"}],\"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"passes\"}],\"freed_before_use\":[\"BOTH_HANDS\"]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Kai holds a canister with both hands.\" So previous action occupies BOTH_HANDS, task is holding? The object/task label should be short lowercase normalized from text. Object is 'canister'. Task could be 'hold'? They say use short lowercase object/task labels copied or normalized from the text. For PREVIOUS: limb \"BOTH_HANDS\", task \"holds\" maybe? But they want object/task labels, not both. The format: {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}], ...}. So each entry has limb and task. Task is what limb does to an object or task. In PREVIOUS, the action is holding a canister with both hands. So task could be \"holds\" or maybe \"hold\". They said short lowercase labels copied or normalized from text. The word 'holds' appears in text: \"Kai holds a canister with both hands.\" So we use \"holds\".\n\nNEXT: \"Kai passes the canister to Mara.\" This action uses which limb? Passing likely requires BOTH_HANDS again, but could be just one hand? Usually passing an object might involve using both hands. But they didn't specify. We need to infer from text: \"passes\" implies using hands. Could be either left or right; unspecified. Use BOTH_HANDS as default if not specified. So limb is BOTH_HANDS. Task is 'pass' maybe? The word 'passes' appears in text, so use \"passes\". Freed_before_use: If NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb. In this case, passes the canister to Mara; does it free the canister from Kai's hands before passing? It says passes the canister to Mara - implies he releases it and gives to Mara. So freed_before_use includes BOTH_HANDS because he frees his hand before using them again? Actually he uses same limb to pass after freeing previous object. Freed_before_use: list limbs that free/releases/sets down/transfers/repositions the previous object before using that limb. He passes the canister, so he releases it from both hands and then uses those hands to pass. So freed_before_use includes BOTH_HANDS.\n\nThus output JSON:\n\n{\n  \"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"holds\"}],\n  \"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"passes\"}],\n  \"freed_before_use\":[\"BOTH_HANDS\"]\n}\n\nCheck format: keys are strings. Use double quotes.\n\nReturn only JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 279,
+      "completion_tokens": 585,
+      "total_tokens": 864,
+      "completion_tokens_details": {
+        "reasoning_tokens": 531
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557348.3370106,
+  "status": "ok"
+}
