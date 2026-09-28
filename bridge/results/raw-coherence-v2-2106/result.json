@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2106",
+  "kind": "llama_chat",
+  "started_at": 1790555708.6906314,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nNora drops the wrench onto the floor.\n\nNEXT MICRO-ACTION:\nNora tightens the bolt with the wrench without picking it back up.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-menvxl0ny4p07nxsl55ztco",
+    "object": "chat.completion",
+    "created": 1790555708,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CONFLICT\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: \"Nora drops the wrench onto the floor.\" So after that, the wrench is on the floor. Next action: \"Nora tightens the bolt with the wrench without picking it back up.\"\n\nSo she uses the wrench to tighten a bolt but doesn't pick it back up. That implies she must have the wrench in hand while tightening. But it's on the floor; if she didn't pick it up, how does she use it? She could be using the wrench that is still on the floor? Maybe she can reach down and use it without picking it up? The phrase \"without picking it back up\" suggests she uses the wrench as is on the floor. But physically to tighten a bolt with a wrench you need to hold it, but maybe she holds it while it's on the floor? She could be holding the wrench that was dropped onto the floor and then using it without picking it up again (i.e., still in hand). Wait: \"drops the wrench onto the floor\" means she releases it. So after dropping, her hand is free. Then to tighten bolt with wrench without picking it back up would require the wrench to be in her hand; but it's on the floor. She could pick it up again (but says not), or maybe she uses the wrench while still holding it? But if she dropped it, she no longer holds it.\n\nThus conflict: The next action requires the wrench to be held by Nora, but after dropping, it's on the floor and her hand is free. So unless she picks it back up, she can't use it. She didn't pick it back up. So CONFLICT.\n\nReturn JSON with status \"CONFLICT\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 303,
+      "completion_tokens": 364,
+      "total_tokens": 667,
+      "completion_tokens_details": {
+        "reasoning_tokens": 348
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555713.652999,
+  "status": "ok"
+}
