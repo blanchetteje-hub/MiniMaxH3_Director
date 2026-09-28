@@ -1,0 +1,24 @@
+{
+  "kind": "llama_chat",
+  "job_id": "limb-facts-2218",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS MICRO-ACTION:\nJon carries a box with both hands.\n\nNEXT MICRO-ACTION:\nJon sets the box down, then opens the door with his left hand.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 1,
+  "max_tokens": 768,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "timeout_seconds": 600,
+  "metadata": {
+    "expected_status": "NO_CONFLICT",
+    "purpose": "raw_limb_fact_extraction_probe"
+  }
+}
