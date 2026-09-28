@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2311",
+  "kind": "llama_chat",
+  "started_at": 1790558160.8112833,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nPilot has both hands free.\n\nNEXT MICRO-ACTION:\nPilot reaches overhead with both hands.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-f9y8lj9uc3kcduydu8tv4d",
+    "object": "chat.completion",
+    "created": 1790558160,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"previous\": [],\n  \"next\": [\n    {\n      \"limb\": \"BOTH_HANDS\",\n      \"object\": \"gesture\"\n    }\n  ],\n  \"freed_before_use\": []\n}\n```\n",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Pilot has both hands free.\" So at the end of that action, both hands are free (no object). For each hand/foot explicitly occupied at END of action; here none. But we list each hand? The instruction says: For PREVIOUS: list each hand/foot explicitly occupied at the END of the action. If no limb is occupied, maybe empty array? Probably yes.\n\nNEXT: \"Pilot reaches overhead with both hands.\" So next action requires both hands to reach overhead. What object? It's a gesture (no physical object). So for BOTH_HANDS, object = \"gesture\". Also if NEXT operates same physical object already occupying that limb, repeat exactly the same label used in PREVIOUS. But previous had no objects; so just new.\n\nAlso freed_before_use: If NEXT explicitly releases, sets down, transfers, pockets, or repositions prior object before using limb for something else. Here there was nothing to release. So empty array.\n\nThus JSON:\n\n{\n\"previous\": [],\n\"next\":[{\"limb\":\"BOTH_HANDS\",\"object\":\"gesture\"}],\n\"freed_before_use\":[]\n}\n\nCheck format: \"previous\":[{...}] but if none, maybe [].\n\nReturn only JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 401,
+      "completion_tokens": 321,
+      "total_tokens": 722,
+      "completion_tokens_details": {
+        "reasoning_tokens": 262
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790558165.340251,
+  "status": "ok"
+}
