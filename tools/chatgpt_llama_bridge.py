@@ -796,16 +796,41 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     if bool(job.get("planning_only")):
         command.append("--planning-only")
     director_plan_job = str(job.get("director_plan_job") or "").strip()
+    materialized_plan_dir = None
     if director_plan_job:
-        plan_dir = result_dir.parent / director_plan_job / "files"
-        if not (plan_dir / "story_arc.json").is_file():
-            raise FileNotFoundError(
-                f"Director plan job {director_plan_job!r} has no saved story_arc.json."
+        source_files = result_dir.parent / director_plan_job / "files"
+        plan_dir = source_files
+        if not (
+            (plan_dir / "story_arc.json").is_file()
+            and (plan_dir / "beats.txt").is_file()
+        ):
+            report_path = source_files / "acceptance_run.json"
+            if not report_path.is_file():
+                raise FileNotFoundError(
+                    f"Director plan job {director_plan_job!r} has no saved plan "
+                    "files or acceptance_run.json."
+                )
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            story_arc = report.get("generated_story_arc")
+            beats_text = str(report.get("generated_beats_text") or "")
+            if not isinstance(story_arc, dict) or not beats_text.strip():
+                raise ValueError(
+                    f"Director plan job {director_plan_job!r} did not capture a "
+                    "usable story arc and beats."
+                )
+            materialized_plan_dir = exec_root / ".director_plan_input"
+            if materialized_plan_dir.exists():
+                shutil.rmtree(materialized_plan_dir)
+            materialized_plan_dir.mkdir(parents=True)
+            (materialized_plan_dir / "story_arc.json").write_text(
+                json.dumps(story_arc, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
             )
-        if not (plan_dir / "beats.txt").is_file():
-            raise FileNotFoundError(
-                f"Director plan job {director_plan_job!r} has no saved beats.txt."
+            (materialized_plan_dir / "beats.txt").write_text(
+                beats_text.rstrip() + "\n",
+                encoding="utf-8",
             )
+            plan_dir = materialized_plan_dir
         command.extend(["--director-plan-dir", str(plan_dir.resolve())])
 
     developer_capture = start_lmstudio_developer_log(result_dir)
@@ -820,6 +845,8 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
             developer_capture,
             result_dir,
         )
+        if materialized_plan_dir is not None and materialized_plan_dir.exists():
+            shutil.rmtree(materialized_plan_dir, ignore_errors=True)
 
     artifacts = copy_acceptance_artifacts(exec_root, result_dir)
     artifacts.update(developer_artifacts)
