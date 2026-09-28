@@ -1,6 +1,9 @@
 import json
+import os
+import tempfile
 import unittest
-from unittest.mock import Mock
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import minimax
 
@@ -18,6 +21,114 @@ def _wardrobe(**overrides):
 
 
 class RequestedPromptRegressionTests(unittest.TestCase):
+
+    def test_generate_prompts_cli_defaults_to_self_contained_render_settings(self):
+        args = minimax.parse_args(["--generate-prompts", "3"])
+        self.assertEqual(args.generate_prompts, 3)
+        self.assertEqual(
+            args.segment_length,
+            minimax.DEFAULT_GENERATED_PROMPT_SEGMENT_LENGTH,
+        )
+        self.assertEqual(args.total_length, 24.0)
+        self.assertEqual(
+            args.megapixels,
+            minimax.DEFAULT_GENERATED_PROMPT_MEGAPIXELS,
+        )
+
+    def test_generated_prompts_file_round_trip(self):
+        payload = {
+            "version": 1,
+            "config": {
+                "segment_length": 8.0,
+                "total_length": 8.0,
+                "megapixels": 0.5,
+            },
+            "macro_arc": {},
+            "prompts": [
+                {
+                    "segment": 1,
+                    "duration": 8.0,
+                    "conditioning_mode": "initial",
+                    "h3_prompt": "subject_definitions: test",
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "generated_prompts.txt")
+            minimax.save_generated_prompts_file(payload, path)
+            self.assertEqual(
+                minimax.load_generated_prompts_file(path),
+                payload,
+            )
+
+    def test_generate_from_prompts_uses_saved_workflow_schedule_without_llm(self):
+        payload = {
+            "version": 1,
+            "config": {
+                "segment_length": 8.0,
+                "total_length": 16.0,
+                "megapixels": 0.5,
+                "steps": 6,
+                "trim_frames": 2,
+                "refresh_interval": 2,
+                "total_segments": 2,
+            },
+            "macro_arc": {},
+            "prompts": [
+                {
+                    "segment": 1,
+                    "duration": 8.0,
+                    "conditioning_mode": "initial",
+                    "h3_prompt": "subject_definitions: A",
+                    "subject_definitions": "",
+                    "continuity_state": {},
+                    "continuity_summary": "",
+                    "loras": [],
+                },
+                {
+                    "segment": 2,
+                    "duration": 8.0,
+                    "conditioning_mode": "clean_refresh",
+                    "h3_prompt": "subject_definitions: B",
+                    "subject_definitions": "",
+                    "continuity_state": {},
+                    "continuity_summary": "",
+                    "loras": [],
+                },
+            ],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "generated_prompts.txt")
+            minimax.save_generated_prompts_file(payload, path)
+            render_results = [
+                ({}, os.path.join(directory, "one.mp4"), 1280, 720, 0.5),
+                ({}, os.path.join(directory, "two.mp4"), 1280, 720, 0.5),
+            ]
+            with (
+                patch.object(minimax, "validate_runtime_environment"),
+                patch.object(
+                    minimax,
+                    "render_segment_with_retries",
+                    side_effect=render_results,
+                ) as render,
+                patch.object(minimax, "stitch_videos") as stitch,
+            ):
+                minimax.render_generated_prompts(
+                    SimpleNamespace(steps=6),
+                    path,
+                )
+            self.assertEqual(render.call_count, 2)
+            self.assertIsNone(render.call_args_list[0].args[4])
+            self.assertEqual(
+                render.call_args_list[1].args[4],
+                os.path.abspath(render_results[0][1]),
+            )
+            self.assertEqual(
+                render.call_args_list[1].kwargs["refresh_interval"],
+                2,
+            )
+            stitch.assert_called_once()
+
     def test_continuity_updates_registered_subjects_only(self):
         subjects = "<Subject 1> is Amy, referenced in <Picture 1>."
         committed = minimax.continuity_state_for_registry(subjects)
