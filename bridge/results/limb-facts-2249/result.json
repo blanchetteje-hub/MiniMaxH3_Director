@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2249",
+  "kind": "llama_chat",
+  "started_at": 1790557378.487551,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nMechanic holds a wrench in the right hand.\n\nNEXT MICRO-ACTION:\nMechanic turns the wrench clockwise.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-0v7k239m4l74593496oxe",
+    "object": "chat.completion",
+    "created": 1790557378,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"wrench\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"wrench\"}],\"freed_before_use\":[]}\n",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Mechanic holds a wrench in the right hand.\" So occupied limb is RIGHT_HAND, task/object is \"wrench\". Use short lowercase object/task labels copied or normalized from text. The label likely \"wrench\".\n\nNEXT: \"Mechanic turns the wrench clockwise.\" This requires using the same limb? Turning the wrench uses both hands typically but could be one hand if turning a wrench. But we need to report each limb required for new action and the object/task that limb acts on. So which limbs are used? The text says \"turns the wrench clockwise\". Usually you use your right hand, maybe left too. But explicit: no mention of both hands. We can assume RIGHT_HAND is used. Could also be BOTH_HANDS but not specified. Use only explicit text; do not invent releases or extra grip capacity.\n\nThus next limb: RIGHT_HAND? Or BOTH_HANDS? The action \"turns the wrench clockwise\" could involve using right hand to turn, maybe left hand for support. But no mention of left hand. So we use RIGHT_HAND.\n\nTask/object: \"wrench\".\n\nfreed_before_use: If NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb. Does it? It turns the wrench clockwise; doesn't free or set down. So freed_before_use empty array.\n\nReturn JSON with arrays.\n\nThus:\n\n{\n  \"previous\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"wrench\"}],\n  \"next\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"wrench\"}],\n  \"freed_before_use\": []\n}\n\nCheck format: limb values uppercase. Task lowercase. Good.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 279,
+      "completion_tokens": 392,
+      "total_tokens": 671,
+      "completion_tokens_details": {
+        "reasoning_tokens": 345
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557383.8237553,
+  "status": "ok"
+}
