@@ -8927,32 +8927,53 @@ def _validate_required_event_state_effect_grounding(event_text, effects):
             )
 
     event_folded = " ".join(str(event_text or "").split()).casefold()
-    explicit_break = bool(re.search(
+    break_pattern = re.compile(
         r"\b(?:break|breaks|broke|broken|breaking|shatter|shatters|"
-        r"shattered|shattering|smash|smashes|smashed|smashing)\b",
-        event_folded,
-    ))
-    if explicit_break:
-        for effect in normalized_effects:
-            entity = str(effect.get("entity") or "")
-            if not re.search(
-                r"(?i)\b(?:door|window|gate|hatch|barrier)\b",
-                entity,
-            ):
-                continue
-            if effect.get("op") == "set_object_state":
-                raise ValueError(
-                    "Explicitly broken/shattered barrier-like entities must use "
-                    "set_barrier_state=broken, not set_object_state."
-                )
-            if (
-                effect.get("op") == "set_barrier_state"
-                and effect.get("value") != "broken"
-            ):
-                raise ValueError(
-                    "Explicitly broken/shattered barrier-like entities must end "
-                    "with set_barrier_state=broken."
-                )
+        r"shattered|shattering|smash|smashes|smashed|smashing)\b"
+    )
+    barrier_generic_names = {"door", "window", "gate", "hatch", "barrier"}
+    clauses = [
+        " ".join(part.split()).casefold()
+        for part in re.split(
+            r"(?i)(?:[.;]|\bthen\b|,\s*\band\b)",
+            event_folded,
+        )
+        if part.strip()
+    ]
+
+    def entity_is_explicitly_broken(entity):
+        normalized = " ".join(
+            re.findall(r"[a-z0-9]+", str(entity or "").replace("_", " ").casefold())
+        )
+        if not normalized or normalized in barrier_generic_names:
+            return False
+        return any(
+            normalized in clause and break_pattern.search(clause)
+            for clause in clauses
+        )
+
+    for effect in normalized_effects:
+        entity = str(effect.get("entity") or "")
+        if not re.search(
+            r"(?i)\b(?:door|window|gate|hatch|barrier)\b",
+            entity.replace("_", " "),
+        ):
+            continue
+        if not entity_is_explicitly_broken(entity):
+            continue
+        if effect.get("op") == "set_object_state":
+            raise ValueError(
+                "Explicitly broken/shattered barrier-like entities must use "
+                "set_barrier_state=broken, not set_object_state."
+            )
+        if (
+            effect.get("op") == "set_barrier_state"
+            and effect.get("value") != "broken"
+        ):
+            raise ValueError(
+                "Explicitly broken/shattered barrier-like entities must end "
+                "with set_barrier_state=broken."
+            )
     return effects
 
 
