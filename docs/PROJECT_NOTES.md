@@ -1288,3 +1288,14 @@ A canonical `set_containment` effect changes the subject's spatial frame.
 - For `contained`, set the canonical position to the container and re-add only `inside <container>`.
 - For `free`, remove the container-bound position/relationship and let later continuity establish new local staging.
 - Do this even when the prompt-derived `position` string already equals the canonical container; matching position does not make other spatial relationships trustworthy.
+
+
+### Split prompt generation / ComfyUI rendering
+
+Support a two-phase unattended workflow for long runs:
+
+- `--generate-prompts N` performs all LLM-dependent work and saves finalized H3 prompts to `generated_prompts.txt` without contacting ComfyUI.
+- `--generate-from-prompts` performs only saved-prompt ComfyUI rendering + stitching and must not contact the LLM.
+- `generated_prompts.txt` is the render handoff contract. It must contain enough per-segment/run metadata to preserve the same initial/append/refresh workflow selection and reference/continuity behavior as a normal run.
+- Save prompt records incrementally so a long LLM phase can recover without losing already-finalized work.
+- On recovery, do not regenerate the beat plan if the existing prompt prefix and generation checkpoint are reusable.
