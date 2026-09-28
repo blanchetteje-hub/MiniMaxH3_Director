@@ -16,7 +16,7 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 
 ### 2026-09-26 — terminal-action prompt rule was insufficient; moved to narrow extraction + Python decision
 
-- `tests-1609` passed the prompt-contract regression, but `acceptance-1610` still repeated the Segment-7 failure: RAW begins with the headless corpse from Segment 6 and has Amy strike that corpse again while claiming to kill the final zombie.
+- `tests-1609` passed the prompt-contract regression, but `acceptance-1610` still repeated the Segment-7 failure: RAW begins with the already-terminal target from Segment 6 and reuses that same target for a new terminal action.
 - This proves broad generation/completion wording is still too instruction-fragile for the local 20B. Do not keep stacking prose rules for this case.
 - Production commit `2675c3958abb9aa78c35fbe2f1eaee9ba4fdaee6` adds a narrow terminal-target extraction path inside the existing Request-1 acceptance loop:
   - it runs only when SOURCE explicitly contains a terminal action (kill/destroy/defeat/eliminate/finish/resolve);
@@ -33,7 +33,7 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 
 - `tests-1631` passed 87/87.
 - Terminal-target probes `1611-1630`: 16/20 strict successes. Three cases reasoned to the expected answer but exhausted the small 300-token probe budget before emitting final JSON; one real miss treated an already unconscious/restrained guard as still unresolved for a `defeat` action.
-- `acceptance-1632` fixed the demonstrated Segment-7 failure: the last zombie is visibly active before Amy decapitates it, so the assigned terminal action now causes a real live→dead transition rather than striking the prior corpse/remnant.
+- `acceptance-1632` fixed the demonstrated Segment-7 failure: the final target is visibly unresolved before Amy performs the assigned terminal action, so the action causes a real unresolved→terminal transition rather than reusing the prior terminal target.
 - Commit `a4de6aa4f00d056cf4d35f51fe4afc3d376fb584` makes terminal extraction action-relative: terminal means already dead for `kill`, already destroyed for `destroy`, already neutralized/incapacitated for `defeat/eliminate`, already complete for `finish/complete`, and already resolved for `resolve`.
 - The earliest remaining gold-quality failure is now Segment 1. In `acceptance-1632`, Beat 1 was accepted on the first try as “Amy is cooking breakfast...” even though the finite activity had no completion endpoint; Director then ended the segment with Amy still cooking. This is an upstream beat-validation miss, not an H3 formatter problem.
 - Production commit `9f188533c8b698de3c5f11c9a4f366c39f03575f` adds a narrow post-VALID finite-endpoint extractor inside the existing beat validation loop. It returns only `COMPLETE | ONGOING | NOT_APPLICABLE`; Python rejects `ONGOING`. Explicit repeated/ongoing assignments (majority/most/repeatedly/throughout/continuing/etc.) return NOT_APPLICABLE and remain non-terminal by design.
@@ -55,7 +55,7 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 ### 2026-09-27 — acceptance 1646 passes prior fixes; locked-boundary traversal is next topology target
 
 - `tests-1645` passed **89/89**.
-- `acceptance-1646` completed all 8 segments. Beat 1 now rejects an incomplete cooking-only candidate and accepts a finished breakfast endpoint. Segment 7 now begins with an active final zombie and performs a real terminal transition, confirming the opening-state-aware terminal extractor fixed the demonstrated corpse/remnant regression.
+- `acceptance-1646` completed all 8 segments. Beat 1 now rejects an incomplete cooking-only candidate and accepts a finished breakfast endpoint. Segment 7 now begins with an active final zombie and performs a real terminal transition, confirming the opening-state-aware terminal extractor fixed the demonstrated terminal-target regression.
 - The next demonstrated hard continuity failure remains spatial/barrier topology: Segment 6 invents a larger zombie **emerging from the basement door** while Will and Amber are canonically contained behind that locked basement boundary and the active beat has no barrier-opening/breach state effect. This is not an Amy-specific wording issue; it is a generic locked-boundary traversal invariant.
 - Design under test: when canonical opening state says a bound barrier is closed/locked and the active beat has no authorized effect that opens, unlocks, breaks, or otherwise changes that barrier, Python owns the invariant that no subject may traverse it. A narrow local-LLM extractor should answer only whether RAW SCENE visibly establishes a crossing through the named boundary: `TRAVERSED | NOT_TRAVERSED | UNSPECIFIED`. Python decides validity. Do not ask the LLM whether traversal was permitted.
 - Queued generic traversal probes `probe-barrier-traversal-1647` through `1666` across basement doors, gates, airlocks, portals, vaults, shelters, train doors, laboratory doors, drawbridges, and ambiguous controls. The prompt does not expose the expected answer.
@@ -90,9 +90,9 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - `acceptance-1668` completed all 8 segments and confirmed the new closed-boundary invariant works end to end:
   - Segment 6 no longer invents a zombie crossing through the locked basement boundary; the attacking zombie instead enters from the already-broken kitchen entry.
   - Segment 8 still releases Will and Amber successfully because the active typed containment effects authorize that transition.
-- The next demonstrated hard failure is Segment 7 reusing the just-killed Zombie3 as the final live target. Segment 6 visibly slices through Zombie3's skull and leaves its head on the kitchen floor; Segment 7 then slashes Zombie3's remaining body as if that newly satisfies “kills the last of the zombies.”
-- Developer-log inspection showed the terminal-target extractor received rendered continuity stating **“Zombie3’s head lies on the kitchen floor”** but GPT-OSS still classified the target as `ACTIVE_OR_UNRESOLVED`. Its reasoning treated the torso/body as potentially alive because the terminal rule said only “already dead” without defining obvious terminal physical evidence.
-- Production commit `c9fec04a21b4a4a57f15eea93769e0dce5a316f2` tightens only the existing action-relative terminal extractor: for `kill`, an explicit corpse, detached/severed head, decapitated body, or clearly lifeless remains are terminal even if the word `dead` is absent; RAW referring to those remains as a zombie/body/torso does not reactivate them.
+- The next demonstrated hard failure is Segment 7 reusing the just-killed Zombie3 as the final live target. Segment 6 visibly puts Zombie3 into an irreversible terminal state; Segment 7 then reuses the same continuing target as if it were unresolved again.
+- Developer-log inspection showed the terminal-target extractor received rendered continuity containing explicit prior terminal-state evidence but GPT-OSS still classified the target as `ACTIVE_OR_UNRESOLVED`. Its reasoning treated the target as potentially unresolved because the terminal rule said only “already dead” without defining obvious terminal physical evidence.
+- Production commit `c9fec04a21b4a4a57f15eea93769e0dce5a316f2` tightens only the existing action-relative terminal extractor: for an irreversible terminal action, explicit prior terminal-state evidence remains terminal even if RAW later uses a vaguer noun; vague wording does not reactivate the same target.
 - Regression commit `512e459627f045208029fcfff6b2544514cb8e35` locks that prompt contract.
 - Queued generic terminal-physical probes `1669-1688`, followed by `tests-1689` and fresh full `acceptance-1690`.
 - `tests-1667` and traversal controls `1660-1666` had not produced result commits when this checkpoint was inspected; do not count them as evidence unless they later appear.
@@ -133,7 +133,7 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - `tests-1711` passed **100/100**.
 - Focused intact-moving-barrier probes `1713-1718` were **6/6 OPEN**, confirming the revised barrier-state wording correctly distinguishes an intact moved/open barrier from DESTROYED.
 - `acceptance-1712` fixed the upstream generic-door mistake: Beat 2 now explicitly locks the **basement door**, and Director Segment 2 preserves Will/Amber inside while Amy remains outside.
-- The next earliest hard failure is Beat/Segment 5. Generated Beat 5 says Amy decapitates a zombie and sends its head **down the staircase to the basement floor** while the basement boundary remains canonically locked.
+- The next earliest hard failure is Beat/Segment 5. Generated Beat 5 sends a detached target component **down the staircase to the basement floor** while the basement boundary remains canonically locked.
 - The beat coherence checker caught one version of this violation on attempt 2 but accepted a retry containing the same protected-destination crossing. Director's current closed-boundary traversal extractor also misses it because RAW never explicitly names the basement door.
 - This is still the same topology responsibility, not a reason for a new semantic stage. The observation contract needs to detect crossing of the **bound destination boundary** even when the barrier noun is omitted.
 - Queued 20 generic destination-boundary traversal probes `1719-1738` across basements, shelters, vaults, cargo bays, courtyards, labs, garages, engine rooms, bunkers, and archives.
@@ -149,7 +149,7 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - optional Python-owned `PROTECTED DESTINATION`.
 - When a protected destination is known, the local model now returns TRAVERSED if RAW explicitly shows/states any physical thing moving into or out of that destination even when the barrier noun itself is omitted. It still returns UNSPECIFIED when start/end sides differ but the crossing route is not established, and it must not infer unseen routes.
 - The model still does not decide whether traversal is allowed. Python continues to reject TRAVERSED only for a canonically closed unchanged boundary.
-- This directly targets `acceptance-1712` Segment 5, where a severed zombie head was sent from the kitchen down onto the basement floor despite the locked basement boundary.
+- This directly targets `acceptance-1712` Segment 5, where a detached target component was sent from the kitchen down onto the basement floor despite the locked basement boundary.
 - Regression commit `8e9bf54e13148ed0559b2d5f9af7a5609e04e018` adds protected-destination prompt coverage and verifies the existing closed-boundary contract exposes the destination to the traversal check.
 - Queued `tests-1739` and full `acceptance-1740`.
 
@@ -175,7 +175,7 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - `basement door protects 'basement' and begins locked`
   - no person/creature/object/body part may cross unless typed effects authorize it.
 - The initial generated Beat 4 obeyed that contract and stayed outside the basement.
-- The real regression was Beat VALIDATE falsely rejecting that valid Beat 4 with: “Missing typed state effect for the newly introduced zombie being dead or removed after decapitation.”
+- The real regression was Beat VALIDATE falsely rejecting that valid Beat 4 with: “Missing typed state effect for the newly introduced incidental target after its terminal transition.”
 - That rejection contradicts the validator's intended scope: a new incidental target/threat that exists only in CURRENT JOB/CANDIDATE BEAT is not part of canonical persistent state and must not require a typed effect merely because the candidate kills/damages/removes it.
 - The unnecessary regeneration then produced an impossible basement-door beat, which Director correctly rejected three times. Thus the earliest root cause is the validator false positive, not topology.
 - Production commit `ea5cc8bdb1c2ad4d11c0275d44a0126e7fc896e4` strengthens the existing Beat VALIDATE prompt:
@@ -289,9 +289,9 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - Beat VALIDATE now receives `PYTHON-OWNED CLOSED BOUNDARIES` after Beat 2.
   - Accepted Beats 3-7 keep Amy outside the locked basement; no later beat places her inside before Beat 8 release.
   - Beat 8 explicitly unlocks/opens the basement door and releases Will/Amber.
-- The earliest important regression is again Segment 7's terminal action. Segment 6 continuity says Amy is near **the dead zombie on the kitchen floor**, but Segment 7 RAW begins with a generic `zombie on the floor` and attacks that same body again.
+- The earliest important regression is again Segment 7's terminal action. Segment 6 continuity says Amy is near **the already-terminal target on the kitchen floor**, but Segment 7 RAW begins with a generic target wording and reuses that same target again.
 - The terminal-target extractor did run, but returned `ACTIVE_OR_UNRESOLVED`. Root cause is authority wording:
-  - canonical SOURCE-AUTHORIZED CURRENT STATE does not track the incidental per-segment zombie corpse;
+  - canonical SOURCE-AUTHORIZED CURRENT STATE does not track the incidental per-segment terminal target;
   - RENDERED CONTINUITY does track it as dead;
   - the extractor prompt called the whole bundle AUTHORITATIVE OPENING STATE but only explicitly said to treat AUTHORITATIVE OPENING STATE as already true, while also labeling rendered continuity supplemental;
   - the 20B therefore treated RAW's vaguer `zombie on the floor` wording as alive and ignored the prior rendered dead-state fact.
@@ -299,10 +299,10 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - canonical state wins only on conflict;
   - rendered continuity is still true for opening facts canonical state does not address;
   - RAW omission or a vaguer noun cannot erase an opening fact;
-  - an opening dead/destroyed/resolved target remains terminal unless RAW visibly establishes revival/restoration.
+  - an an opening terminal target remains terminal unless RAW visibly establishes restoration.
 - Regression commit `922de00ce1d90ec04e408aa93b250d2d7483f743` locks that prompt contract.
 - Queued `tests-1773` and full `acceptance-1774`.
-- Acceptance checkpoint: Segment 7 must reject any RAW that attacks the dead Segment-6 zombie as the newly assigned “last zombie” kill; it must introduce/show an actually unresolved final zombie before the terminal action.
+- Acceptance checkpoint: Segment 7 must reject any RAW that reuses the Segment-6 terminal target for the newly assigned terminal action; it must introduce/show an actually unresolved final zombie before the terminal action.
 
 
 ### 2026-09-27 — runtime termination policy: only infrastructure outages are automatically fatal
