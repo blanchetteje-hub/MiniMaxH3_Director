@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2066",
+  "kind": "llama_chat",
+  "started_at": 1790555482.1453342,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nAmy holds a pistol in her right hand.\n\nNEXT MICRO-ACTION:\nAmy picks up a katana with her right hand without releasing the pistol.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-j70gx58rqfqc7vpx9spnnd",
+    "object": "chat.completion",
+    "created": 1790555482,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CONFLICT\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: Amy holds a pistol in her right hand. So at that point, she has a pistol in her right hand. Next action: Amy picks up a katana with her right hand without releasing the pistol.\n\nSo we have one hand (right) holding a pistol. Then picking up a katana with same hand without releasing pistol. That means two objects held by same hand simultaneously? The text says \"without releasing the pistol\". So she holds both pistol and katana in right hand at same time, which is physically possible but maybe conflict if only one object per hand? But we treat each hand as exclusive physical resource for independent actions: If it is explicitly occupied and next action needs that same hand/foot for a different independent task, that's CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object. Here she picks up katana with right hand while pistol still in hand. That means picking up another object requires using the same hand but it's already occupied by pistol. So conflict? But maybe she can hold both objects simultaneously if one is a pistol and other a katana; but physically, you could hold two items in one hand? Usually not. The rule: treat one hand or foot as one exclusive physical resource for independent actions: If it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that's CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object.\n\nSo right hand holds pistol. Next action picks up katana with right hand without releasing pistol. That means she uses her right hand to pick up another item while still holding pistol. So conflict because right hand is occupied by pistol and needs to be used for picking up a new object, unless it's explicitly freed or repositioned. The text says \"without releasing the pistol\". So no release. So conflict.\n\nThus status: CONFLICT.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 303,
+      "completion_tokens": 418,
+      "total_tokens": 721,
+      "completion_tokens_details": {
+        "reasoning_tokens": 402
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555487.9075458,
+  "status": "ok"
+}
