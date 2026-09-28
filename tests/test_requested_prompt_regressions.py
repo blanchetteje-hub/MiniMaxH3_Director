@@ -248,6 +248,44 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         self.assertIn('"flag": false', user_prompt)
         self.assertIn('"count": 0', user_prompt)
 
+    def test_authoritative_containment_clears_stale_cross_location_relationships(self):
+        state = {
+            "version": 5,
+            "environment": {"location": "kitchen", "persistent_state": "N/A"},
+            "camera": "N/A",
+            "ongoing_action": "N/A",
+            "ongoing_audio": "N/A",
+            "subjects": {
+                "Will": {
+                    "name": "Will",
+                    "position": "basement",
+                    "pose_action": "in arms",
+                    "topology": "held by Amy",
+                    "wardrobe": {},
+                    "held_props": [],
+                    "spatial_relationships": ["in Amy's arms", "inside basement"],
+                }
+            },
+        }
+        merged = minimax._continuity_apply_authoritative_state_effects(
+            state,
+            [
+                {
+                    "op": "set_containment",
+                    "entity": "Will",
+                    "container": "basement",
+                    "value": "contained",
+                }
+            ],
+        )
+        self.assertEqual(merged["subjects"]["Will"]["position"], "basement")
+        self.assertEqual(merged["subjects"]["Will"]["pose_action"], "N/A")
+        self.assertEqual(merged["subjects"]["Will"]["topology"], "N/A")
+        self.assertEqual(
+            merged["subjects"]["Will"]["spatial_relationships"],
+            ["inside basement"],
+        )
+
     def test_authoritative_containment_overrides_prompt_continuity_position(self):
         state = {
             "version": 5,
