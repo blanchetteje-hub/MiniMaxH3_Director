@@ -638,3 +638,16 @@ User-requested unattended two-phase workflow:
   - `355c2f71568586ba44c9f7c17faa910530cc8f88`: main execution wiring.
   - `c928a912e2a28ecb4fd5d928a88ab3bd5ce0caec`: recovery-safe prompt prefix reuse.
   - `5c66c8efb27223ddd679a323df8ae36faa738315`: regressions for CLI defaults, file round-trip, and saved workflow schedule.
+
+
+### 2026-09-28 — acceptance 2440: containment fix held; malformed timestamp wrapper exposed
+
+- Acceptance `2440` confirmed the containment-overlay correction:
+  - Will and Amber remain simply located in the basement after Segment 2;
+  - stale cross-location relationships such as `in Amy's arms` no longer propagate.
+- The barrier restoration behavior also held in Segment 8: the basement door is temporarily opened for release, then ends locked again.
+- The next earliest deterministic H3 defect appeared in Segment 6: Request 2 returned timestamp wrappers such as `[At 00:00.000, ]` and `[07.999]`.
+- Existing timestamp correspondence validation incorrectly accepted the nested form because its canonical regex found the inner `At 00:00.000,` token and ignored the surrounding brackets.
+- Commit `5d4f5c37e1f54b925c568db6e919e69113ca0233` explicitly rejects bracketed/nested timestamp wrappers during Request-2 timestamp validation, forcing a formatter retry before final H3 assembly.
+- Commit `70846f73e9b904544861bb66ed121de7e325c834` adds a SFW regression for the nested timestamp case.
+- `tests-2441` showed all new split-generation regressions passing; its sole failure was an older preserved-barrier fixture passing raw JSON instead of the production SOURCE-AUTHORIZED wrapper. Commit `72796c243afaf6a300e82d766fbc87ef6204c93a` corrects that fixture.
