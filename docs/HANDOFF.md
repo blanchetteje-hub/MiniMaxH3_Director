@@ -611,3 +611,30 @@ Earlier batches established the source-span, chapter-first architecture: `story.
 - Commit `c50508260e05834ad848442f011e73e17837dddd` makes every canonical `set_containment` transition invalidate prompt-derived pose/topology/spatial relationships, then re-adds only the canonical `inside <container>` relationship for contained subjects.
 - Commit `51e5f0f669deb01b9469d7693bf7394f80baf80b` adds a regression for the exact stale-cross-location relation case.
 - Next checkpoint: requested regression suite and full acceptance. Segment 2 continuity should now show Will/Amber simply inside the basement, with no stale physical relationship to Amy outside.
+
+
+### 2026-09-28 — split LLM prompt generation from ComfyUI rendering
+
+User-requested unattended two-phase workflow:
+
+- `--generate-prompts N`
+  - generates the story arc, N beats, Director RAW scenes, continuity, and final validated H3 prompts;
+  - sends nothing to ComfyUI;
+  - writes `generated_prompts.txt` incrementally after each finalized H3 prompt;
+  - file is human-readable JSON despite the `.txt` extension;
+  - stores render metadata with every prompt so the later render phase does not need the LLM;
+  - standalone invocation defaults to 8-second segments and 0.5 MP; normal video positionals may be supplied to override those defaults as long as COUNT matches the resulting segment count;
+  - recovery reuses the already-written prompt prefix and existing beat plan rather than regenerating semantic work.
+- `--generate-from-prompts`
+  - loads `generated_prompts.txt`;
+  - skips story/ARC/BEAT/Director/continuity LLM generation entirely;
+  - sequentially sends the saved final H3 prompts to ComfyUI and stitches the resulting clips;
+  - uses the same existing `render_segment_with_retries()` workflow scheduling, including initial vs append vs chapter/numeric refresh selection;
+  - validates that the saved conditioning mode matches the workflow schedule before rendering.
+- Prompt file currently stores per-segment duration, final H3 prompt, conditioning mode, subject definitions, opening continuity state/summary, and LoRAs plus run-level segment length, total length, megapixels, steps, trim frames, refresh interval, and macro arc.
+- Commits:
+  - `0e9399dd32d3858c63fa8190bbe23adb871dd0fc`: CLI arguments/defaults.
+  - `f452ebd0e9eb14364a0ca0366fb89d22aa6fc0d6`: saved prompt format + render-only executor.
+  - `355c2f71568586ba44c9f7c17faa910530cc8f88`: main execution wiring.
+  - `c928a912e2a28ecb4fd5d928a88ab3bd5ce0caec`: recovery-safe prompt prefix reuse.
+  - `5c66c8efb27223ddd679a323df8ae36faa738315`: regressions for CLI defaults, file round-trip, and saved workflow schedule.
