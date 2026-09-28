@@ -287,6 +287,66 @@ class RequestedPromptRegressionTests(unittest.TestCase):
             merged["subjects"]["Will"]["spatial_relationships"],
         )
 
+    def test_state_effects_reject_duplicate_clothing_item_state(self):
+        with self.assertRaisesRegex(ValueError, "garment represented by set_clothing"):
+            minimax._validate_state_effects([
+                {
+                    "op": "set_clothing",
+                    "entity": "Amy",
+                    "slot": "upper",
+                    "item": "black tank top",
+                    "damage": "none",
+                },
+                {
+                    "op": "set_item_state",
+                    "entity": "black tank top",
+                    "owner": "Amy",
+                    "value": "equipped",
+                },
+            ])
+
+    def test_authoritative_move_clears_stale_location_metadata(self):
+        state = {
+            "version": 5,
+            "environment": {"location": "kitchen", "persistent_state": "N/A"},
+            "camera": "N/A",
+            "ongoing_action": "N/A",
+            "ongoing_audio": "N/A",
+            "subjects": {
+                "Will": {
+                    "name": "Will",
+                    "position": "at kitchen table",
+                    "pose_action": "eating pancakes",
+                    "topology": "seated",
+                    "wardrobe": {},
+                    "held_props": ["pancake"],
+                    "spatial_relationships": ["at kitchen table", "eating pancakes"],
+                }
+            },
+        }
+        merged = minimax._continuity_apply_authoritative_state_effects(
+            state,
+            [
+                {
+                    "op": "set_containment",
+                    "entity": "Will",
+                    "container": "basement",
+                    "value": "contained",
+                },
+                {
+                    "op": "set_location",
+                    "entity": "Will",
+                    "value": "basement",
+                },
+            ],
+        )
+        will = merged["subjects"]["Will"]
+        self.assertEqual(will["position"], "basement")
+        self.assertEqual(will["pose_action"], "N/A")
+        self.assertEqual(will["topology"], "N/A")
+        self.assertEqual(will["spatial_relationships"], ["inside basement"])
+        self.assertEqual(will["held_props"], ["pancake"])
+
     def test_authoritative_barrier_binding_names_destination_in_continuity(self):
         state = {
             "version": 5,
