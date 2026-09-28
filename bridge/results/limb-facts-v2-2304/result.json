@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2304",
+  "kind": "llama_chat",
+  "started_at": 1790558091.3867202,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nLena holds a camera with both hands.\n\nNEXT MICRO-ACTION:\nLena reaches for a cup with her right hand without releasing the camera.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-qr2uvj03kffzbh45mpv7k",
+    "object": "chat.completion",
+    "created": 1790558091,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"camera\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"camera\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"camera\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Lena holds a camera with both hands.\" So at the end of that action, both hands are occupied by camera. We list each hand explicitly occupied at END of action.\n\nSo previous array should have entries for LEFT_HAND and RIGHT_HAND? The instruction says: For PREVIOUS: list each hand/foot explicitly occupied at the END of the action; \"object\" must be physical object or task occupying that limb. So we need two objects: one per hand, but both hold same camera. Should we duplicate? Probably yes: left_hand holds camera, right_hand holds camera.\n\nThus previous = [{\"limb\":\"LEFT_HAND\",\"object\":\"camera\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"camera\"}].\n\nNEXT: \"Lena reaches for a cup with her right hand without releasing the camera.\" So next action requires right hand to reach for cup. The object is cup? But she hasn't released camera, so right hand still holds camera while reaching for cup? Actually \"reaches for a cup\" implies using right hand to grasp cup; but if not releasing camera, maybe it's holding both? She might be holding the camera with left hand and right hand also holds camera? Wait: The phrase \"without releasing the camera\" indicates she keeps camera in her hands while reaching. So right hand is still occupied by camera at start of next action. But it says reaches for a cup; so right hand will use cup as object, but it's already holding camera. How to interpret? She might be using right hand to reach for cup while still holding camera with left hand? Actually \"both hands\" hold camera initially. Then she uses her right hand to reach for cup without releasing the camera: meaning she keeps camera in both hands? But if she reaches for a cup, maybe she holds camera with left hand and right hand is free to grab cup? The phrase \"without releasing the camera\" could mean she doesn't let go of camera; but she might still hold it with both hands while reaching. So right hand remains holding camera.\n\nBut next action: \"Lena reaches for a cup with her right hand without releasing the camera.\" That implies that at start of this action, right hand is occupied by camera (from previous). She uses right hand to reach for cup; but she hasn't released camera yet. So what object does right hand manipulate? It holds camera and also reaching for cup? The instruction: For NEXT: list each hand/foot explicitly required by the new action; \"object\" must be physical object that limb manipulates/holds/presses/uses. If NEXT operates SAME physical object already occupying that limb, repeat EXACTLY same object label used in PREVIOUS.\n\nSo right hand is still holding camera (same object). So next array should have entry for RIGHT_HAND with object \"camera\". But also she reaches for cup; but the object of her action might be cup? However instruction says if NEXT operates SAME physical object already occupying that limb, repeat same object label. That means we don't change to cup because it's still camera. She hasn't released it yet.\n\nThus next array: [{\"limb\":\"RIGHT_HAND\",\"object\":\"camera\"}].\n\nBut what about left hand? The action \"reaches for a cup with her right hand\" doesn't mention left hand; but left hand remains holding camera from previous, so maybe we include left hand as occupied by camera too. But the instruction says list each hand/foot explicitly required by new action. Does left hand required? She might not use it in this action. So only right hand is required.\n\nThus next array: [{\"limb\":\"RIGHT_HAND\",\"object\":\"camera\"}].\n\nfreed_before_use: If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using limb for something else. Here she doesn't release camera; so no freed limbs. But maybe left hand remains holding camera but not used? Freed_before_use empty.\n\nThus output JSON:\n\n{\n\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"camera\"},{\"limb\":\"RIGHT_HAND\",\"object\":\"camera\"}],\n\"next\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"camera\"}],\n\"freed_before_use\": []\n}\n\nCheck formatting: array of strings for freed_before_use. Should be empty array.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 412,
+      "completion_tokens": 931,
+      "total_tokens": 1343,
+      "completion_tokens_details": {
+        "reasoning_tokens": 876
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790558103.549509,
+  "status": "ok"
+}
