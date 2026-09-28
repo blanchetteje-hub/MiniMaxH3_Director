@@ -459,3 +459,21 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - no pickup/reacquisition occurs.
 - This remains a deterministic explicit-state contradiction, so do not add another broad LLM coherence judge.
 - Next checkpoint: focused regression suite + fresh full acceptance. Segment 1 must regenerate if its trailing end state contradicts the final visible object state.
+
+
+### 2026-09-27 — acceptance 2320 exposed continuity fallback rolling canonical state backward
+
+- `tests-2319`: 29/29 passed.
+- The prior RAW object-state/end-state regressions are fixed.
+- `acceptance-2320` no longer reproduced the Segment-1 plate contradiction.
+- Earliest real failure moved to continuity after Segment 2:
+  - RAW and final H3 correctly put Will and Amber in the basement and lock the basement door.
+  - The combined continuity extractor failed schema three times.
+  - Its fallback copied the pre-Segment-2 rendered continuity state, resurrecting Will/Amber in the kitchen doorway and discarding the newly committed containment/location/barrier facts.
+  - Segment 3 then inherited that stale state and continued with the children in the kitchen.
+- This is a deterministic ownership bug, not an LLM reasoning problem. Python-owned source state must survive continuity extraction failure and must override conflicting prompt-continuity claims.
+- Production commits:
+  - `d2bb84704a9154a10517a9deb08adba9ba5bccb4`: adds a narrow typed-effect -> continuity overlay helper.
+  - `976d81b4cea7a746f2e0c821cb8e88332ed8e280`: applies assigned source effects after combined continuity extraction and on fallback; generic barrier names are qualified with the Python-owned containment destination.
+  - `da7f9046583730acc31bd19c6b5228d20aa61082`: regressions for authoritative containment/location and barrier naming.
+- Next checkpoint: focused regressions + fresh acceptance. After Segment 2, Will/Amber must remain in the basement and the basement door must remain locked even if the continuity LLM returns unusable JSON.
