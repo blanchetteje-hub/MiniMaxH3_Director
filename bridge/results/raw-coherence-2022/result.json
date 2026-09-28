@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-2022",
+  "kind": "llama_chat",
+  "started_at": 1790553625.6530218,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge whether two consecutive visible micro-actions are physically compatible. Return JSON only. COMPATIBLE = the later action can occur from the state established by the earlier action, including an explicit release, transfer, repositioning, or transition in the later action. CONFLICT = the later action requires the same hand, foot, body position, held object, or other exclusive physical resource to still be in two incompatible states at once, or contradicts an immediately established physical state without a transition. UNSPECIFIED = the text does not establish enough physical state to decide. Ignore style and story quality; judge only immediate physical compatibility."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nLena is standing upright.\n\nNEXT MICRO-ACTION:\nLena drops to one knee.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ctogpxpr3x8kwnhukdg22j",
+    "object": "chat.completion",
+    "created": 1790553625,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPATIBLE\"}",
+          "reasoning": "We need to judge if the next action can occur from state established by previous. Previous: \"Lena is standing upright.\" Next: \"Lena drops to one knee.\"\n\nStanding upright -> dropping to one knee is a transition; it's physically compatible. So status COMPATIBLE.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 237,
+      "completion_tokens": 77,
+      "total_tokens": 314,
+      "completion_tokens_details": {
+        "reasoning_tokens": 60
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790553626.9053724,
+  "status": "ok"
+}
