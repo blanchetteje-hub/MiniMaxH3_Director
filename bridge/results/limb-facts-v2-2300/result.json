@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2300",
+  "kind": "llama_chat",
+  "started_at": 1790558056.3326066,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nMechanic holds a wrench in the right hand.\n\nNEXT MICRO-ACTION:\nMechanic grabs a hammer with the right hand without releasing the wrench.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-y9okehv8cp98s8s9oamko",
+    "object": "chat.completion",
+    "created": 1790558056,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"wrench\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"hammer\"}],\"freed_before_use\":[]}\n",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Mechanic holds a wrench in the right hand.\" So at end of action, RIGHT_HAND occupied by object \"wrench\". Next: \"Mechanic grabs a hammer with the right hand without releasing the wrench.\" That means he uses his right hand to grab hammer while still holding wrench. So next limb usage: RIGHT_HAND is used for hammer but also holds wrench? The rule says if NEXT operates same physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. But here it's a different object (hammer). He grabs hammer with right hand without releasing wrench. That means he uses his right hand to grab hammer while still holding wrench. So next action: RIGHT_HAND is required for hammer; but also holds wrench? The rule says list each hand/foot explicitly required by the new action. \"object\" must be physical object that limb manipulates/holds/presses/uses. If NEXT operates SAME physical object already occupying that limb, repeat same label. But here it's different: he grabs a hammer with right hand while still holding wrench. So his right hand is used for hammer; but also holds wrench? The action \"grabs a hammer\" implies the hand uses to hold hammer. It might be using both objects simultaneously? He could have two objects in one hand? Usually not, but maybe he's grabbing hammer and still holding wrench. But we need to list each limb explicitly required by new action: RIGHT_HAND is used for hammer; also holds wrench? The rule says if NEXT operates SAME physical object already occupying that limb, repeat same label. Not the case.\n\nSo next: {\"limb\":\"RIGHT_HAND\",\"object\":\"hammer\"}.\n\nBut what about freed_before_use? He didn't release wrench before using hand for hammer. So no freeing. But maybe he uses right hand to grab hammer while still holding wrench; so he hasn't released it. Freed_before_use empty array.\n\nThus output:\n\n{\n\"previous\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"wrench\"}],\n\"next\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"hammer\"}],\n\"freed_before_use\": []\n}\n\nCheck if we need to include \"gesture\"? No, object is hammer.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 412,
+      "completion_tokens": 508,
+      "total_tokens": 920,
+      "completion_tokens_details": {
+        "reasoning_tokens": 462
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790558063.1488297,
+  "status": "ok"
+}
