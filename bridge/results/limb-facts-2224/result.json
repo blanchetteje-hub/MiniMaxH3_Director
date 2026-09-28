@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2224",
+  "kind": "llama_chat",
+  "started_at": 1790557141.1165533,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nCook holds a pan handle in the left hand.\n\nNEXT MICRO-ACTION:\nCook picks up a plate with the left hand without releasing the pan.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-9oylp5jkfynif3503s3yw",
+    "object": "chat.completion",
+    "created": 1790557141,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"pan_handle\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"task\":\"plate\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Cook holds a pan handle in the left hand.\" So occupied limb is LEFT_HAND, task/object: pan_handle? The object label should be short lowercase normalized from text. They say use short lowercase labels copied or normalized from the text. So maybe \"pan\" or \"pan_handle\". In example they used \"pan\"? Let's see instructions: For PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\n\nSo we have one limb: LEFT_HAND; task/object: pan? The phrase is \"holds a pan handle in the left hand.\" So maybe \"pan_handle\" or just \"pan\". They say short lowercase labels copied or normalized from text. I'd use \"pan_handle\".\n\nNEXT: \"Cook picks up a plate with the left hand without releasing the pan.\" So limb required for new action: LEFT_HAND; object/task that limb acts on: plate? The task is picking up plate, so maybe \"plate\". Also note that it doesn't release the pan before using that limb. So freed_before_use should list limbs that free previous objects before use. Since left hand holds pan and picks up plate without releasing pan, no freeing occurs. But rule says If NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use. Here it doesn't release pan; so freed_before_use empty array.\n\nReturn JSON: {\"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"pan_handle\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"task\":\"plate\"}],\"freed_before_use\":[]}\n\nCheck format: Use only explicit text, no extra grip capacity. Good.\n\nLet's output that.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 286,
+      "completion_tokens": 400,
+      "total_tokens": 686,
+      "completion_tokens_details": {
+        "reasoning_tokens": 354
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557146.4735668,
+  "status": "ok"
+}
