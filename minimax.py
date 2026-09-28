@@ -17305,6 +17305,85 @@ def _director_explicit_limb_conflict_errors(raw_scene):
     return issues
 
 
+_DIRECTOR_OBJECT_PLACEMENT_RE = re.compile(
+    r"(?i)\\b(?:set(?:s|ting)?(?:\\s+down)?|place(?:s|d|ing)?|"
+    r"put(?:s|ting)?(?:\\s+down)?|drop(?:s|ped|ping)?)\\s+"
+    r"(?P<object>[^.;,]{1,120}?)\\s+"
+    r"(?:on|onto|into|inside|beside|at)\\b"
+)
+
+_DIRECTOR_OBJECT_REACQUIRE_RE = re.compile(
+    r"(?i)\\b(?:pick(?:s|ed|ing)?\\s+up|lift(?:s|ed|ing)?|"
+    r"grab(?:s|bed|bing)?|take(?:s|n|ing)?|retrieve(?:s|d|ing)?|"
+    r"recover(?:s|ed|ing)?|scoop(?:s|ed|ing)?\\s+up|"
+    r"gather(?:s|ed|ing)?)\\b"
+)
+
+_DIRECTOR_HOLD_ASSERTION_RE = re.compile(
+    r"(?i)\\bhold(?:s|ing)?\\s+(?P<object>[^.;,]{1,100})"
+)
+
+
+def _director_object_phrase_keys(value):
+    """Return conservative lexical keys for an explicitly named object phrase."""
+    keys = []
+    for part in re.split(r"(?i)\\s*(?:,|\\band\\b|\\bwith\\b)\\s*", str(value or "")):
+        cleaned = re.sub(
+            r"(?i)^(?:a|an|the|his|her|their|its)\\s+",
+            "",
+            part.strip(" ,;:-"),
+        )
+        words = re.findall(r"[A-Za-z0-9'-]+", cleaned)
+        if not words:
+            continue
+        key = words[-1].casefold()
+        if key in {"hand", "hands", "ready"}:
+            continue
+        keys.append(key)
+    return list(dict.fromkeys(keys))
+
+
+def _director_explicit_object_state_conflict_errors(raw_scene):
+    """Reject adjacent set-down -> held-again contradictions with no reacquisition."""
+    actions = list(
+        _director_timed_action_map(
+            _canonicalize_director_timestamps(raw_scene)
+        ).items()
+    )
+    issues = []
+    for index in range(len(actions) - 1):
+        timestamp, previous = actions[index]
+        next_timestamp, following = actions[index + 1]
+        hold_match = _DIRECTOR_HOLD_ASSERTION_RE.search(following)
+        if hold_match is None:
+            continue
+        if _DIRECTOR_OBJECT_REACQUIRE_RE.search(following):
+            continue
+        held_keys = _director_object_phrase_keys(hold_match.group("object"))
+        if not held_keys:
+            continue
+
+        previous_folded = previous.casefold()
+        for placement in _DIRECTOR_OBJECT_PLACEMENT_RE.finditer(previous):
+            placed_text = placement.group("object").strip()
+            placed_folded = placed_text.casefold()
+            pronoun_placement = re.search(r"(?i)\\b(?:it|them)\\b", placed_text)
+            if pronoun_placement:
+                matches_placed_object = all(key in previous_folded for key in held_keys)
+            else:
+                matches_placed_object = all(key in placed_folded for key in held_keys)
+            if not matches_placed_object:
+                continue
+            issues.append(
+                f"{next_timestamp}: object(s) {', '.join(held_keys)!r} were explicitly "
+                f"placed down/onto a destination at {timestamp} and are then described "
+                "as held again without an explicit pickup, retrieval, or other "
+                "reacquisition."
+            )
+            break
+    return issues
+
+
 def _director_timed_action_map(value):
     """Return canonical timestamp -> text between this timestamp and the next."""
     text_value = str(value or "")
@@ -26974,6 +27053,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         if not structure_errors:
             structure_errors.extend(
                 _director_explicit_limb_conflict_errors(raw_scene)
+            )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_explicit_object_state_conflict_errors(raw_scene)
             )
         missing_director_subjects = _missing_named_director_subjects(
             bundle.get("current_beat_text", ""),
