@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-conflict-2147",
+  "kind": "llama_chat",
+  "started_at": 1790556429.781114,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether the NEXT action demands a hand or foot that the PREVIOUS action explicitly leaves occupied by a different independent task. Return JSON only. Do not invent extra grip capacity, release, retrieval, transfer, or repositioning. Reusing the occupied limb to continue operating the SAME held object/task is NO_CONFLICT. If the text explicitly frees, sets down, pockets, transfers, or repositions the object before the new task, that is NO_CONFLICT. If an occupied limb must perform a different independent task with no explicit freeing/repositioning, return CONFLICT. Ignore all non-limb coherence."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nGuard holds a key in his left hand.\n\nNEXT MICRO-ACTION:\nGuard inserts that key into the lock with his left hand.\n\nReturn {\"status\":\"CONFLICT|NO_CONFLICT\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-4ym3bv9akex8i9mtuzd79b",
+    "object": "chat.completion",
+    "created": 1790556429,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"NO_CONFLICT\"}",
+          "reasoning": "We need to decide if next action demands a hand or foot that previous action explicitly leaves occupied by different independent task. The guard holds a key in left hand. Next: Guard inserts that key into lock with left hand. That's same held object, same limb performing same task (inserting). No conflict. So NO_CONFLICT.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 241,
+      "completion_tokens": 87,
+      "total_tokens": 328,
+      "completion_tokens_details": {
+        "reasoning_tokens": 70
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790556431.2032773,
+  "status": "ok"
+}
