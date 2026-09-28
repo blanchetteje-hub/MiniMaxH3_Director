@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2244",
+  "kind": "llama_chat",
+  "started_at": 1790557330.5929909,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nNora holds a wrench in her left hand.\n\nNEXT MICRO-ACTION:\nNora picks up a mug with the left hand without releasing the wrench.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-va335jnnexayhupfj0qcz",
+    "object": "chat.completion",
+    "created": 1790557330,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"wrench\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"task\":\"mug\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Nora holds a wrench in her left hand.\" So previous action occupies left hand with task 'hold' or maybe 'holding'? The object is 'wrench'. Task label should be short lowercase, normalized from text. Use only explicit text; do not invent releases or extra grip capacity.\n\nSo for previous we report each occupied limb and the object/task occupying it at end of action. So \"left hand\" holds a wrench. So task: hold? The example says use short lowercase labels copied or normalized from text. 'holds' -> maybe 'hold'. Use 'wrench'.\n\nThus previous array: [{\"limb\":\"LEFT_HAND\",\"task\":\"wrench\"}] Wait they want limb and the object/task occupying it at end of action. They say \"object/task\" but in example? The format: {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}. So 'task' field is likely the object or task that limb acts on. For previous, it's \"wrench\". For next, we need to report each limb required for new action and the object/task that limb acts on.\n\nNext micro-action: \"Nora picks up a mug with the left hand without releasing the wrench.\" So she uses left hand again to pick up mug while still holding wrench. That means left hand is used for picking up mug, but also holds wrench? The text says 'without releasing the wrench', so left hand remains occupied by wrench while picking up mug. But maybe picks up mug with same hand that already has wrench; implies she uses left hand to pick up mug without releasing wrench. So limb required: LEFT_HAND. Object/task: mug.\n\nAlso freed_before_use: If NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use. But here it does not free; it's still holding wrench while picking up mug. So no freed limbs. So freed_before_use empty array.\n\nThus output JSON:\n\n{\n  \"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"wrench\"}],\n  \"next\":[{\"limb\":\"LEFT_HAND\",\"task\":\"mug\"}],\n  \"freed_before_use\": []\n}\n\nCheck limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, etc. Use uppercase.\n\nTask labels: short lowercase object/task labels copied or normalized from text. 'wrench' and 'mug'.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 287,
+      "completion_tokens": 571,
+      "total_tokens": 858,
+      "completion_tokens_details": {
+        "reasoning_tokens": 524
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557338.1661596,
+  "status": "ok"
+}
