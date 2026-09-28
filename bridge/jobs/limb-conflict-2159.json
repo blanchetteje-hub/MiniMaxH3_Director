@@ -1,0 +1,24 @@
+{
+  "kind": "llama_chat",
+  "job_id": "limb-conflict-2159",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Decide only whether the NEXT action demands a hand or foot that the PREVIOUS action explicitly leaves occupied by a different independent task. Return JSON only. Do not invent extra grip capacity, release, retrieval, transfer, or repositioning. Reusing the occupied limb to continue operating the SAME held object/task is NO_CONFLICT. If the text explicitly frees, sets down, pockets, transfers, or repositions the object before the new task, that is NO_CONFLICT. If an occupied limb must perform a different independent task with no explicit freeing/repositioning, return CONFLICT. Ignore all non-limb coherence."
+    },
+    {
+      "role": "user",
+      "content": "PREVIOUS MICRO-ACTION:\nIris pins a cloth down with her left foot.\n\nNEXT MICRO-ACTION:\nIris steps onto a second object with her right foot.\n\nReturn {\"status\":\"CONFLICT|NO_CONFLICT\"}."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 1,
+  "max_tokens": 768,
+  "seed": 42,
+  "repeat_penalty": 1.15,
+  "timeout_seconds": 600,
+  "metadata": {
+    "expected_status": "NO_CONFLICT",
+    "purpose": "raw_limb_resource_conflict_probe"
+  }
+}
