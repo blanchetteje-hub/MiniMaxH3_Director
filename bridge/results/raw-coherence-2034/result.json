@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-2034",
+  "kind": "llama_chat",
+  "started_at": 1790553684.0645044,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge whether two consecutive visible micro-actions are physically compatible. Return JSON only. COMPATIBLE = the later action can occur from the state established by the earlier action, including an explicit release, transfer, repositioning, or transition in the later action. CONFLICT = the later action requires the same hand, foot, body position, held object, or other exclusive physical resource to still be in two incompatible states at once, or contradicts an immediately established physical state without a transition. UNSPECIFIED = the text does not establish enough physical state to decide. Ignore style and story quality; judge only immediate physical compatibility."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nThe cook holds the pan handle in the left hand.\n\nNEXT MICRO-ACTION:\nThe cook uses the left hand to pick up a plate without releasing the pan.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ui9wcb0igykohnf1miejr",
+    "object": "chat.completion",
+    "created": 1790553684,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CONFLICT\"}",
+          "reasoning": "We need to judge if two consecutive visible micro-actions are physically compatible. The previous action: \"The cook holds the pan handle in the left hand.\" So left hand is holding pan handle. Next action: \"The cook uses the left hand to pick up a plate without releasing the pan.\"\n\nSo left hand picks up a plate while still holding the pan? That would require two objects held by same hand simultaneously, unless it's possible to hold both at once (like multitasking). But physically, one hand cannot hold two separate items unless they are small or overlapping. Pan handle is presumably large; plate also maybe similar size. So likely conflict: left hand can't pick up a plate while still holding the pan.\n\nThus status = CONFLICT. Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 251,
+      "completion_tokens": 167,
+      "total_tokens": 418,
+      "completion_tokens_details": {
+        "reasoning_tokens": 151
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790553686.414253,
+  "status": "ok"
+}
