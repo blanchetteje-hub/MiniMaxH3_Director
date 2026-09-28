@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-2054",
+  "kind": "llama_chat",
+  "started_at": 1790553801.9651284,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge whether two consecutive visible micro-actions are physically compatible. Return JSON only. COMPATIBLE = the later action can occur from the state established by the earlier action, including an explicit release, transfer, repositioning, or transition in the later action. CONFLICT = the later action requires the same hand, foot, body position, held object, or other exclusive physical resource to still be in two incompatible states at once, or contradicts an immediately established physical state without a transition. UNSPECIFIED = the text does not establish enough physical state to decide. Ignore style and story quality; judge only immediate physical compatibility."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nAsha lies prone on the floor.\n\nNEXT MICRO-ACTION:\nAsha is suddenly standing at the same instant with no transition.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-gzzyqtnqclevvju0xzsjyi",
+    "object": "chat.completion",
+    "created": 1790553801,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to judge if two consecutive visible micro-actions are physically compatible. The previous action: \"Asha lies prone on the floor.\" So Asha's body is lying prone (face down) on floor. Next action: \"Asha is suddenly standing at the same instant with no transition.\"\n\nSo from lying prone, she stands up. That requires a transition; but it's said \"at the same instant\" meaning there's no intermediate state? The question: Is it physically compatible that Asha goes from lying prone to standing instantly without any transition? It's possible if we assume instantaneous movement. But is there conflict because body position changes? It says \"no transition.\" So she lies prone, then at the same instant stands up. That means two positions simultaneously? If no transition, it's like a jump: She was lying and now she's standing at the same time. That's physically incompatible unless there's an instantaneous change. The phrase \"at the same instant\" suggests that both states happen concurrently; but if we interpret as immediate change with no intermediate state, then it's compatible because she can stand up instantly (like a sudden movement). But is it considered a transition? It says \"no transition.\" So maybe conflict: She can't be lying and standing at the same time. The later action requires her to be standing, which contradicts earlier prone position unless there's an instantaneous change. But physically possible if we allow instant change; but micro-actions are visible actions, so they happen sequentially. If no transition, it's like a jump from one state to another instantly. That is compatible: the later action can occur from the state established by earlier action with an explicit release or repositioning? The earlier action didn't mention any release of prone position. But \"standing\" requires her body to be upright; she must have moved out of lying prone. That's a repositioning, but no transition indicated. However, it's still possible: She can stand up instantly (like a jump). So I'd say COMPATIBLE.\n\nBut the instruction says: COMPATIBLE = later action can occur from state established by earlier action, including explicit release, transfer, repositioning, or transition in later action. CONFLICT = requires same hand, foot, body position to be in two incompatible states at once, or contradicts immediately established physical state without a transition.\n\nHere the later action contradicts the earlier body position (lying prone vs standing) but there's no transition indicated. But it's still possible if we consider that she can stand up instantly; that's a repositioning. The phrase \"no transition",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 245,
+      "completion_tokens": 512,
+      "total_tokens": 757,
+      "completion_tokens_details": {
+        "reasoning_tokens": 509
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790553808.700451,
+  "status": "ok"
+}
