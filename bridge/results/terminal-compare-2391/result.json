@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-compare-2391",
+  "kind": "llama_chat",
+  "started_at": 1790614144.4473567,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare one supplied target state. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "TARGET\nDrone K\n\nREQUIRED END STATE\ndeactivated\n\nOPENING FACTS\nDrone K is deactivated\n\nRAW SCENE\nthe controller deactivates Drone K\n\nClassify the target immediately BEFORE the action that would produce REQUIRED END STATE.\nMATCH = REQUIRED END STATE is already true.\nNOT_MATCH = facts establish a different current state, so REQUIRED END STATE is not yet true.\nUNKNOWN = facts do not establish either.\nOpening facts remain true unless RAW explicitly changes them before that action. Do not infer unstated changes. Return exactly {\"status\":\"MATCH\"}, {\"status\":\"NOT_MATCH\"}, or {\"status\":\"UNKNOWN\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 256,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-01wbf4odl0kbmbuy002q41",
+    "object": "chat.completion",
+    "created": 1790614144,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"MATCH\"}",
+          "reasoning": "We need to classify the target state immediately BEFORE the action that would produce required end state.\n\nTarget: Drone K\nRequired End State: deactivated\n\nOpening facts: \"Drone K is deactivated\"\n\nRaw scene: \"the controller deactivates Drone K\"\n\nSo before the action (controller deactivates), what is the state? Opening fact says it's already deactivated. Raw scene hasn't changed it yet, so still deactivated.\n\nThus required end state is already true before action => MATCH.\n\nReturn JSON {\"status\":\"MATCH\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 211,
+      "completion_tokens": 121,
+      "total_tokens": 332,
+      "completion_tokens_details": {
+        "reasoning_tokens": 106
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790614146.4937892,
+  "status": "ok"
+}
