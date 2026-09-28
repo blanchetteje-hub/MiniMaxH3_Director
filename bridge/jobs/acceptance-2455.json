@@ -1,0 +1,8 @@
+{
+  "kind": "run_acceptance",
+  "job_id": "acceptance-2455",
+  "code_branch": "gpt-arc-refresh",
+  "model": "gpt",
+  "director_plan_job": "acceptance-2451",
+  "timeout_seconds": 3600
+}
