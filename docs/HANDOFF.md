@@ -651,3 +651,11 @@ User-requested unattended two-phase workflow:
 - Commit `5d4f5c37e1f54b925c568db6e919e69113ca0233` explicitly rejects bracketed/nested timestamp wrappers during Request-2 timestamp validation, forcing a formatter retry before final H3 assembly.
 - Commit `70846f73e9b904544861bb66ed121de7e325c834` adds a SFW regression for the nested timestamp case.
 - `tests-2441` showed all new split-generation regressions passing; its sole failure was an older preserved-barrier fixture passing raw JSON instead of the production SOURCE-AUTHORIZED wrapper. Commit `72796c243afaf6a300e82d766fbc87ef6204c93a` corrects that fixture.
+
+
+### 2026-09-28 — GPT-20B context budget corrected to 8192
+
+- LM Studio was configured for an 8192-token context, but production code still hard-capped the local LLM context at 6044 tokens.
+- `call_llm()` computed `effective_max_tokens = min(max_tokens, context_budget - safety - estimated_input)`, so ordinary creative prompts could be sent with much smaller completion caps such as `2634`.
+- Commit `819d613b51d0baee773f2246e2c0cf946f068056` changes `LLM_CONTEXT_TOKEN_BUDGET` from 6044 to 8192 and the default `call_llm(... max_tokens=...)` ceiling from 8000 to 8192.
+- The 128-token safety reserve and input-size subtraction remain. This prevents impossible requests while allowing the GPT-20B runtime to use its full configured context instead of an obsolete ~6k software cap.
