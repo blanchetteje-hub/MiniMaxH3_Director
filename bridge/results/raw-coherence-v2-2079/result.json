@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2079",
+  "kind": "llama_chat",
+  "started_at": 1790555553.2923813,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nThe knight holds a shield in his left hand.\n\nNEXT MICRO-ACTION:\nThe knight draws a sword with his right hand.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-a9tfp7tu59qiwa313mx8q",
+    "object": "chat.completion",
+    "created": 1790555553,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPATIBLE\"}",
+          "reasoning": "We have two micro-actions: previous: \"The knight holds a shield in his left hand.\" Next: \"The knight draws a sword with his right hand.\"\n\nLeft hand holding shield. Right hand drawing sword. No conflict because different hands. So COMPATIBLE.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 299,
+      "completion_tokens": 74,
+      "total_tokens": 373,
+      "completion_tokens_details": {
+        "reasoning_tokens": 57
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555554.5134916,
+  "status": "ok"
+}
