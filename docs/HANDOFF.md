@@ -420,3 +420,23 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - output: `COMPATIBLE | CONFLICT | UNSPECIFIED`;
   - intended Python decision if proven: reject/regenerate RAW only on `CONFLICT`.
 - Probe batch spans hand occupancy, two-handed objects, feet/pedals, body-position transitions, dropping/retrieving objects, carried children, tools, weapons, controls, and explicit repositioning.
+
+
+### 2026-09-27 — abandoned broad limb LLM judgment; deterministic explicit same-hand guard
+
+- RAW physical-coherence investigation after acceptance 2012:
+  - broad adjacent-action LLM judge was too permissive;
+  - narrower binary limb-conflict judge reached 49/50 twice but repeatedly missed the same staff->clap edge case;
+  - fact-extraction variants were also unstable: invented releases, collapsed unrelated gestures onto held objects, inconsistent object labels, malformed JSON, and high reasoning/token cost.
+- Do not continue stacking prompt rules for this failure class.
+- The actual observed acceptance bug is much narrower and explicitly lexical:
+  - one RAW micro-action says a named left/right hand is occupied holding/carrying/gripping an object;
+  - the immediately following RAW micro-action explicitly names that same hand and performs a different object-manipulation action;
+  - no explicit release/transfer/reposition occurs and the held object is not referenced.
+- Production commit `92390fc0cfa00da01739db38059cf41d5bae46e2` adds a conservative deterministic Python guard for only that explicit pattern. Ambiguous same-hand motion is skipped rather than guessed.
+- Regression commit `80e86ba87ea4a47501abbed22716405e46752731` adds controls for:
+  - the Amy tray conflict;
+  - valid same-hand same-object continuation;
+  - explicit release before reuse;
+  - ambiguous same-hand movement that must be ignored.
+- Queued `tests-2313` and full `acceptance-2314`.
