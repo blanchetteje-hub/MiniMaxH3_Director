@@ -17238,6 +17238,73 @@ def filter_continuity_attached_objects(
 
 
 
+_DIRECTOR_LIMB_HOLD_RE = re.compile(
+    r"(?i)\\b(?:hold(?:s|ing)?|keep(?:s|ing)?|carr(?:y|ies|ying)|"
+    r"grip(?:s|ping)?|clutch(?:es|ing)?)\\s+"
+    r"(?P<object>[^.;,]{1,80}?)\\s+"
+    r"(?:in|with)\\s+(?:her|his|their|the)?\\s*"
+    r"(?P<limb>left\\s+hand|right\\s+hand)\\b"
+)
+
+_DIRECTOR_LIMB_RELEASE_RE = re.compile(
+    r"(?i)\\b(?:release(?:s|d|ing)?|let(?:s|ting)?\\s+go|set(?:s|ting)?\\s+down|"
+    r"put(?:s|ting)?\\s+down|transfer(?:s|red|ring)?|shift(?:s|ed|ing)?|"
+    r"reposition(?:s|ed|ing)?|pocket(?:s|ed|ing)?|holster(?:s|ed|ing)?|"
+    r"drop(?:s|ped|ping)?)\\b"
+)
+
+_DIRECTOR_INDEPENDENT_LIMB_ACTION_RE = re.compile(
+    r"(?i)\\b(?:offer(?:s|ed|ing)?|give(?:s|n|ing)?|hand(?:s|ed|ing)?|"
+    r"grab(?:s|bed|bing)?|pick(?:s|ed|ing)?\\s+up|take(?:s|n|ing)?|"
+    r"catch(?:es|ing)?|open(?:s|ed|ing)?|close(?:s|d|ing)?|"
+    r"pull(?:s|ed|ing)?|push(?:es|ed|ing)?|turn(?:s|ed|ing)?|"
+    r"press(?:es|ed|ing)?|clap(?:s|ped|ping)?|write(?:s|written|ing)?|"
+    r"sign(?:s|ed|ing)?|tie(?:s|d|ing)?|unlock(?:s|ed|ing)?|"
+    r"lock(?:s|ed|ing)?|throw(?:s|n|ing)?)\\b"
+)
+
+
+def _director_explicit_limb_conflict_errors(raw_scene):
+    """Reject only explicit adjacent same-hand reuse with no stated transition."""
+    actions = list(
+        _director_timed_action_map(
+            _canonicalize_director_timestamps(raw_scene)
+        ).items()
+    )
+    issues = []
+    for index in range(len(actions) - 1):
+        timestamp, previous = actions[index]
+        next_timestamp, following = actions[index + 1]
+        for match in _DIRECTOR_LIMB_HOLD_RE.finditer(previous):
+            held_object = " ".join(match.group("object").split()).strip()
+            held_key = re.sub(
+                r"(?i)^(?:a|an|the)\\s+",
+                "",
+                held_object,
+            ).casefold()
+            limb = " ".join(match.group("limb").split()).casefold()
+            if not held_key or not limb:
+                continue
+            if re.search(
+                rf"(?i)\\b(?:her|his|their|the)?\\s*{re.escape(limb)}\\b",
+                following,
+            ) is None:
+                continue
+            if _DIRECTOR_LIMB_RELEASE_RE.search(following):
+                continue
+            if held_key in following.casefold():
+                continue
+            if _DIRECTOR_INDEPENDENT_LIMB_ACTION_RE.search(following) is None:
+                continue
+            issues.append(
+                f"{next_timestamp}: {limb} is explicitly occupied by "
+                f"{held_object!r} at {timestamp} and is reused for a different "
+                "object-manipulation action without an explicit release, transfer, "
+                "or reposition."
+            )
+    return issues
+
+
 def _director_timed_action_map(value):
     """Return canonical timestamp -> text between this timestamp and the next."""
     text_value = str(value or "")
@@ -26904,6 +26971,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             raw_scene,
             segment_seconds=duration,
         )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_explicit_limb_conflict_errors(raw_scene)
+            )
         missing_director_subjects = _missing_named_director_subjects(
             bundle.get("current_beat_text", ""),
             raw_scene,
