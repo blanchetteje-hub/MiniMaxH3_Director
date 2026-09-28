@@ -8911,15 +8911,10 @@ def _validate_state_effects(effects):
 
 
 def _validate_required_event_state_effect_grounding(event_text, effects):
-    """Enforce lexical ownership for free-form condition values.
-
-    Python does not decide whether a condition is narratively true.  It only
-    requires the model's free-form condition vocabulary to be present in the
-    required event that owns the effect, so unrelated inferred facts cannot be
-    smuggled into authoritative canonical state.
-    """
+    """Enforce narrow deterministic ownership/operation rules for typed effects."""
     event_terms = set(_event_words(event_text))
-    for effect in effects or ():
+    normalized_effects = list(effects or ())
+    for effect in normalized_effects:
         if effect.get("op") != "set_condition":
             continue
         value_terms = set(_event_words(effect.get("value", "")))
@@ -8930,6 +8925,34 @@ def _validate_required_event_state_effect_grounding(event_text, effects):
                 f"{effect.get('value')!r} is not lexically grounded in its "
                 f"owning event; missing event word(s): {missing}."
             )
+
+    event_folded = " ".join(str(event_text or "").split()).casefold()
+    explicit_break = bool(re.search(
+        r"\b(?:break|breaks|broke|broken|breaking|shatter|shatters|"
+        r"shattered|shattering|smash|smashes|smashed|smashing)\b",
+        event_folded,
+    ))
+    if explicit_break:
+        for effect in normalized_effects:
+            entity = str(effect.get("entity") or "")
+            if not re.search(
+                r"(?i)\b(?:door|window|gate|hatch|barrier)\b",
+                entity,
+            ):
+                continue
+            if effect.get("op") == "set_object_state":
+                raise ValueError(
+                    "Explicitly broken/shattered barrier-like entities must use "
+                    "set_barrier_state=broken, not set_object_state."
+                )
+            if (
+                effect.get("op") == "set_barrier_state"
+                and effect.get("value") != "broken"
+            ):
+                raise ValueError(
+                    "Explicitly broken/shattered barrier-like entities must end "
+                    "with set_barrier_state=broken."
+                )
     return effects
 
 
