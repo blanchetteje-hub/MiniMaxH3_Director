@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-2028",
+  "kind": "llama_chat",
+  "started_at": 1790553655.8680744,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge whether two consecutive visible micro-actions are physically compatible. Return JSON only. COMPATIBLE = the later action can occur from the state established by the earlier action, including an explicit release, transfer, repositioning, or transition in the later action. CONFLICT = the later action requires the same hand, foot, body position, held object, or other exclusive physical resource to still be in two incompatible states at once, or contradicts an immediately established physical state without a transition. UNSPECIFIED = the text does not establish enough physical state to decide. Ignore style and story quality; judge only immediate physical compatibility."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nThe knight holds a shield in his left hand.\n\nNEXT MICRO-ACTION:\nThe knight raises the shield with his left arm.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-n6kc8xhaokgt3iyiw6qul",
+    "object": "chat.completion",
+    "created": 1790553655,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPATIBLE\"}",
+          "reasoning": "We need to judge if two consecutive visible micro-actions are physically compatible. The previous action: \"The knight holds a shield in his left hand.\" So state: left hand holding shield. Next action: \"The knight raises the shield with his left arm.\"\n\nRaising the shield with left arm implies moving it upward, presumably from held position to raised. That is consistent; no conflict. It's compatible.\n\nThus status = COMPATIBLE. Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 244,
+      "completion_tokens": 108,
+      "total_tokens": 352,
+      "completion_tokens_details": {
+        "reasoning_tokens": 91
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790553657.4823325,
+  "status": "ok"
+}
