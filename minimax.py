@@ -28077,6 +28077,148 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     return payload
 
 
+def save_generated_prompts_file(payload, path=GENERATED_PROMPTS_FILE):
+    """Atomically save finalized H3 prompts plus render-only metadata."""
+    if not isinstance(payload, dict):
+        raise ValueError("Generated prompt payload must be an object.")
+    directory = os.path.dirname(os.path.abspath(path))
+    os.makedirs(directory, exist_ok=True)
+    fd, temporary_path = tempfile.mkstemp(
+        prefix=".generated_prompts_",
+        suffix=".tmp",
+        dir=directory,
+        text=True,
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+        os.replace(temporary_path, path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+
+
+def load_generated_prompts_file(path=GENERATED_PROMPTS_FILE):
+    """Load and structurally validate generated_prompts.txt."""
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except FileNotFoundError:
+        raise FileNotFoundError(
+            f"Generated prompt file not found: {path}. Run --generate-prompts first."
+        ) from None
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"Generated prompt file is invalid JSON: {path} "
+            f"(line {error.lineno}, column {error.colno})."
+        ) from error
+    if not isinstance(payload, dict) or payload.get("version") != 1:
+        raise ValueError("generated_prompts.txt has an unsupported format.")
+    config = payload.get("config")
+    prompts = payload.get("prompts")
+    if not isinstance(config, dict) or not isinstance(prompts, list) or not prompts:
+        raise ValueError("generated_prompts.txt is missing config or prompts.")
+    for expected_segment, record in enumerate(prompts, start=1):
+        if (
+            not isinstance(record, dict)
+            or record.get("segment") != expected_segment
+            or not isinstance(record.get("h3_prompt"), str)
+            or not record["h3_prompt"].strip()
+        ):
+            raise ValueError(
+                "generated_prompts.txt contains an invalid or out-of-order "
+                f"record at segment {expected_segment}."
+            )
+    return payload
+
+
+def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
+    """Render saved final H3 prompts without contacting the LLM."""
+    payload = load_generated_prompts_file(path)
+    config = payload["config"]
+    prompts = payload["prompts"]
+    segment_length = float(config["segment_length"])
+    total_length = float(config["total_length"])
+    megapixels = float(config["megapixels"])
+    steps = int(config.get("steps", getattr(args, "steps", 6)))
+    trim_frames = int(config.get("trim_frames", TRIM_FRAMES_AFTER_FIRST))
+    refresh_interval = config.get("refresh_interval")
+    macro_arc = payload.get("macro_arc")
+    total_segments = len(prompts)
+
+    validate_runtime_environment()
+    generated_video_paths = []
+    previous_video_path = None
+    print(
+        f"Rendering {total_segments} saved H3 prompt(s) from "
+        f"{os.path.basename(path)} without LLM generation.",
+        flush=True,
+    )
+    for record in prompts:
+        segment = int(record["segment"])
+        saved_mode = validate_conditioning_mode(
+            record.get("conditioning_mode"),
+            segment,
+        )
+        scheduled_mode = conditioning_mode_for_segment(
+            segment,
+            refresh_interval,
+            macro_arc=macro_arc,
+        )
+        if saved_mode != scheduled_mode:
+            raise ValueError(
+                f"Saved Segment {segment} conditioning mode {saved_mode!r} "
+                f"does not match workflow schedule {scheduled_mode!r}."
+            )
+        duration = float(record["duration"])
+        loras = normalize_lora_list(record.get("loras", []))
+        subject_definitions = str(record.get("subject_definitions") or "")
+        continuity_state = record.get("continuity_state")
+        if not isinstance(continuity_state, dict):
+            continuity_state = {}
+        continuity_summary = str(record.get("continuity_summary") or "")
+        (
+            _workflow,
+            video_path,
+            width,
+            height,
+            rendered_megapixels,
+        ) = render_segment_with_retries(
+            segment,
+            duration,
+            megapixels,
+            record["h3_prompt"],
+            previous_video_path,
+            steps,
+            loras=loras,
+            refresh_interval=refresh_interval,
+            continuity_state=continuity_state,
+            macro_arc=macro_arc,
+            continuity_summary=continuity_summary,
+            subject_definitions=subject_definitions,
+            segment_length=segment_length,
+        )
+        previous_video_path = _append_unique_video_path(
+            generated_video_paths,
+            video_path,
+        )
+        print(
+            f"Created: {video_path}\n"
+            f"Resolution: {width} x {height} "
+            f"({width * height / 1_000_000:.3f} MP; "
+            f"target {rendered_megapixels:.2f} MP)"
+        )
+
+    stitch_videos(
+        generated_video_paths,
+        segment_length=segment_length,
+        total_duration=total_length,
+        trim_frames=trim_frames,
+    )
+    return generated_video_paths
+
+
 # ============================================================
 # MAIN
 # ============================================================
