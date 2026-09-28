@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-conflict-v2-2204",
+  "kind": "llama_chat",
+  "started_at": 1790556825.8768654,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether the NEXT action demands a hand or foot that the PREVIOUS action explicitly leaves occupied by a different independent task. Return JSON only. Do not invent extra grip capacity, release, retrieval, transfer, or repositioning. Reusing an occupied limb is NO_CONFLICT only when the NEXT action directly operates, moves, uses, or releases the SAME held/contacted object or task. A different independent gesture or object use with that occupied limb is CONFLICT unless the text explicitly frees, transfers, sets down, pockets, or repositions the prior object first. Ignore all non-limb coherence."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nNora carries a clipboard in the left hand.\n\nNEXT MICRO-ACTION:\nNora picks up a mug with the left hand without setting down the clipboard.\n\nReturn {\"status\":\"CONFLICT|NO_CONFLICT\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-e0mr0fc3ncktv9j6ds5wh",
+    "object": "chat.completion",
+    "created": 1790556825,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CONFLICT\"}",
+          "reasoning": "We need to decide if next action demands a hand or foot that previous action explicitly leaves occupied by different independent task. Previous: Nora carries a clipboard in left hand. Next: picks up mug with left hand without setting down clipboard. So left hand is already carrying clipboard, so picking up mug requires same hand for new object; it's a different independent gesture/object use. The text says \"without setting down the clipboard\" meaning she doesn't free it first. Thus conflict.\n\nReturn JSON {\"status\":\"CONFLICT\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 244,
+      "completion_tokens": 117,
+      "total_tokens": 361,
+      "completion_tokens_details": {
+        "reasoning_tokens": 101
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790556827.6522121,
+  "status": "ok"
+}
