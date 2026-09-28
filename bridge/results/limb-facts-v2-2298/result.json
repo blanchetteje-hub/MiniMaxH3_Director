@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2298",
+  "kind": "llama_chat",
+  "started_at": 1790558040.6883256,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nGuard holds a key in the left hand.\n\nNEXT MICRO-ACTION:\nGuard grabs a radio with the left hand without releasing the key.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-a7290ayp02eedwkrh7wyho",
+    "object": "chat.completion",
+    "created": 1790558040,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"key\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"object\":\"radio\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Guard holds a key in the left hand.\" So at end of action, left hand occupied by key.\n\nNEXT: \"Guard grabs a radio with the left hand without releasing the key.\" Means left hand now used for grabbing radio but still holding key? Actually \"without releasing the key\" means he keeps key while grabbing radio. But physically can hold both? Maybe uses same limb to grab radio while key remains in hand, so object is radio (since it's new). The rule: If NEXT operates SAME physical object already occupying that limb, repeat EXACTLY same object label used in PREVIOUS. Here the limb left hand had key; next action grabs a radio with left hand without releasing key. So he uses left hand to grab radio while still holding key? That means both objects on same hand? But rule: \"If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS.\" Here it's not same object; new object is radio. So next object's label should be \"radio\". The left hand remains occupied by key and now also grabbing radio? Might need to list both objects? But format: each entry has one limb and one object. For previous, we had LEFT_HAND with key.\n\nFor next, the left hand is used for grabbing a radio; but still holding key. So maybe two entries: one for key (still occupied) and one for radio (new). However rule says \"list each hand/foot explicitly required by the new action\". The new action requires left hand to grab radio. It doesn't require right hand. But also key remains on left hand, so it's still occupying that limb. Should we list both? Probably yes: For next, list LEFT_HAND with object \"radio\" (since that's what it uses). Also maybe include LEFT_HAND with object \"key\"? But the rule says each limb explicitly required by new action; but key is not used in this action, just remains. So maybe only radio.\n\nBut also freed_before_use? If NEXT releases or sets down prior object before using limb for something else. Here he doesn't release key. So no freed_before_use.\n\nThus output: previous: [{\"limb\":\"LEFT_HAND\",\"object\":\"key\"}]. next: [{\"limb\":\"LEFT_HAND\",\"object\":\"radio\"}]. freed_before_use empty array.\n\nReturn JSON accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 410,
+      "completion_tokens": 534,
+      "total_tokens": 944,
+      "completion_tokens_details": {
+        "reasoning_tokens": 489
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790558047.8152053,
+  "status": "ok"
+}
