@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-conflict-2137",
+  "kind": "llama_chat",
+  "started_at": 1790556381.811947,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Decide only whether the NEXT action demands a hand or foot that the PREVIOUS action explicitly leaves occupied by a different independent task. Return JSON only. Do not invent extra grip capacity, release, retrieval, transfer, or repositioning. Reusing the occupied limb to continue operating the SAME held object/task is NO_CONFLICT. If the text explicitly frees, sets down, pockets, transfers, or repositions the object before the new task, that is NO_CONFLICT. If an occupied limb must perform a different independent task with no explicit freeing/repositioning, return CONFLICT. Ignore all non-limb coherence."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nPilot holds the yoke with both hands.\n\nNEXT MICRO-ACTION:\nPilot reaches to overhead switches with both hands without releasing the yoke.\n\nReturn {\"status\":\"CONFLICT|NO_CONFLICT\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-tqil5ibalzbkkw3w4gwj6",
+    "object": "chat.completion",
+    "created": 1790556381,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"CONFLICT\"}",
+          "reasoning": "We need decide if next action demands a hand or foot that previous action explicitly leaves occupied by different independent task. Previous: Pilot holds yoke with both hands. Next: reaches to overhead switches with both hands without releasing the yoke.\n\nSo pilot's hands are already holding yoke, and they reach for switches with both hands without releasing yoke. That means same hands used for a new independent task (switches) while still holding yoke. That's conflict because same hand must perform different tasks simultaneously? The rule: Reusing occupied limb to continue operating SAME held object/task is NO_CONFLICT. But here it's a different independent task: switches vs yoke. So conflict.\n\nThus status \"CONFLICT\". Return JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 243,
+      "completion_tokens": 161,
+      "total_tokens": 404,
+      "completion_tokens_details": {
+        "reasoning_tokens": 145
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790556384.1437008,
+  "status": "ok"
+}
