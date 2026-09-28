@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-2020",
+  "kind": "llama_chat",
+  "started_at": 1790553614.1642723,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge whether two consecutive visible micro-actions are physically compatible. Return JSON only. COMPATIBLE = the later action can occur from the state established by the earlier action, including an explicit release, transfer, repositioning, or transition in the later action. CONFLICT = the later action requires the same hand, foot, body position, held object, or other exclusive physical resource to still be in two incompatible states at once, or contradicts an immediately established physical state without a transition. UNSPECIFIED = the text does not establish enough physical state to decide. Ignore style and story quality; judge only immediate physical compatibility."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nPriya grips the rail with her left hand.\n\nNEXT MICRO-ACTION:\nPriya uses her left hand to grab the falling cup without releasing the rail.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-i62c4l0lv8nluvs9qn0mr",
+    "object": "chat.completion",
+    "created": 1790553614,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPATIBLE\"}",
+          "reasoning": "We need to judge if two consecutive visible micro-actions are physically compatible. The previous action: \"Priya grips the rail with her left hand.\" So she is holding the rail in her left hand. Next action: \"Priya uses her left hand to grab the falling cup without releasing the rail.\"\n\nSo she tries to use same left hand to grab a cup while still gripping the rail. That would require two objects held by one hand simultaneously, which may be physically possible if the cup is small and can fit in the hand along with the rail? But \"without releasing the rail\" implies she hasn't let go of the rail; so her left hand holds both rail and cup at same time. Is that compatible? It depends on whether it's physically possible to hold two objects simultaneously. The question: \"COMPATIBLE = the later action can occur from the state established by the earlier action, including an explicit release, transfer, repositioning, or transition in the later action.\" So if she can grab cup while still holding rail, that is a transfer? Actually it's not releasing; but maybe she could hold both. But \"without releasing\" means she hasn't let go of rail. The question: Is it physically possible to use left hand to grab falling cup without releasing rail? If the cup falls near her hand and she can catch it while still holding rail, yes. So COMPATIBLE.\n\nBut if we consider that a single hand cannot hold both objects simultaneously (unless it's small), but micro-actions don't specify size; so maybe unspecified. But typical physics: one hand could hold two objects at once? Usually you can't hold two separate items with same hand unless they are in the same grasp or overlapping. The cup falling might be near rail, she can catch it while still holding rail if her palm holds both. So it's possible.\n\nThus likely COMPATIBLE. Let's answer accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 250,
+      "completion_tokens": 394,
+      "total_tokens": 644,
+      "completion_tokens_details": {
+        "reasoning_tokens": 377
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790553619.485659,
+  "status": "ok"
+}
