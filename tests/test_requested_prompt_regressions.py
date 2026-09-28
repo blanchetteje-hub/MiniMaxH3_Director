@@ -732,6 +732,18 @@ class RequestedPromptRegressionTests(unittest.TestCase):
     def test_blank_source_skips_terminal_state_check(self):
         self.assertFalse(minimax.director_source_has_terminal_action(""))
 
+    def test_terminal_state_extractor_uses_abstract_python_states(self):
+        messages = minimax.build_director_terminal_target_messages(
+            "Apply the assigned irreversible transition to the target.",
+            "The target is visible in the scene.",
+            "The target already satisfies the assigned end state.",
+        )
+        prompt = "\n".join(message["content"] for message in messages)
+        self.assertIn("ACTIVE_OR_UNRESOLVED", prompt)
+        self.assertIn("ALREADY_TERMINAL", prompt)
+        self.assertIn("UNSPECIFIED", prompt)
+        self.assertIn("Compare meaning, not wording", prompt)
+
     def test_same_hand_same_object_continuation_is_not_rejected(self):
         raw = (
             "At 00:00.000, Amy holds a pistol in her right hand.\n"
