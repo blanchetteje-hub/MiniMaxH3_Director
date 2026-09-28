@@ -357,6 +357,13 @@ def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
             target = artifacts_dir / filename
             shutil.copy2(source, target)
             copied[filename] = str(target.relative_to(result_dir))
+    generated_dir = latest / "generated"
+    for filename in ("story_arc.json", "beats.txt"):
+        source = generated_dir / filename
+        if source.is_file():
+            target = artifacts_dir / filename
+            shutil.copy2(source, target)
+            copied[filename] = str(target.relative_to(result_dir))
     copied["source_result_dir"] = str(latest.relative_to(exec_root))
     return copied
 
@@ -788,6 +795,18 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     ]
     if bool(job.get("planning_only")):
         command.append("--planning-only")
+    director_plan_job = str(job.get("director_plan_job") or "").strip()
+    if director_plan_job:
+        plan_dir = result_dir.parent / director_plan_job / "files"
+        if not (plan_dir / "story_arc.json").is_file():
+            raise FileNotFoundError(
+                f"Director plan job {director_plan_job!r} has no saved story_arc.json."
+            )
+        if not (plan_dir / "beats.txt").is_file():
+            raise FileNotFoundError(
+                f"Director plan job {director_plan_job!r} has no saved beats.txt."
+            )
+        command.extend(["--director-plan-dir", str(plan_dir.resolve())])
 
     developer_capture = start_lmstudio_developer_log(result_dir)
     try:
