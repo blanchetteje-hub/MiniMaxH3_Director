@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2274",
+  "kind": "llama_chat",
+  "started_at": 1790557828.0040202,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nCook holds a pan handle in the left hand.\n\nNEXT MICRO-ACTION:\nCook picks up a plate with the left hand without releasing the pan.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-jknexh9pdsoi3wspi9bzih",
+    "object": "chat.completion",
+    "created": 1790557828,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"pan handle\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"object\":\"plate\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Cook holds a pan handle in the left hand.\" So at end of action, LEFT_HAND occupied by object \"pan handle\". Next micro-action: \"Cook picks up a plate with the left hand without releasing the pan.\" That means left hand is used to pick up plate while still holding pan? Wait \"without releasing the pan\" implies that the pan remains held. But picking up a plate requires using left hand, but if it's already holding pan handle, maybe he uses same hand to hold both? The instruction: If NEXT operates SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. So next action's object for LEFT_HAND is \"pan handle\" because still holds it. But also picks up plate with left hand; but since pan remains held, maybe he uses right hand? Wait text: \"Cook picks up a plate with the left hand without releasing the pan.\" That implies left hand picks up plate while holding pan? Maybe using same hand to hold both? The instruction says list each limb explicitly required by new action. So LEFT_HAND is used for picking up plate, but also still holds pan handle. But object must be physical object that limb manipulates/holds/presses/uses. If the left hand picks up a plate while holding pan, which object does it manipulate? It manipulates plate; but it's already holding pan. The rule: \"If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS.\" But here next action uses plate, not pan. So left hand is now operating plate while still holding pan. Which object to list? It says object must be the physical object or task occupying that limb. For NEXT: \"list each hand/foot explicitly required by new action; 'object' must be the physical object that limb manipulates/holds/presses/uses.\" So left hand is manipulating plate, but also holds pan handle. Which one? The rule about same object: If next operates SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. But here it's not same; it's a new object (plate). So we list \"plate\" as object for LEFT_HAND.\n\nBut what about pan handle still held? That is freed_before_use? The left hand didn't release it before using plate. Freed_before_use refers to if NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using limb for something else. Here he picks up a plate with left hand without releasing the pan; so no freeing of pan handle. So freed_before_use empty.\n\nThus previous: [{\"limb\":\"LEFT_HAND\",\"object\":\"pan handle\"}]. Next: [{\"limb\":\"LEFT_HAND\",\"object\":\"plate\"}]. Freed_before_use: [].\n\nReturn JSON accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 412,
+      "completion_tokens": 636,
+      "total_tokens": 1048,
+      "completion_tokens_details": {
+        "reasoning_tokens": 590
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557836.4862244,
+  "status": "ok"
+}
