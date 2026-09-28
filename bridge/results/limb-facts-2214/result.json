@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2214",
+  "kind": "llama_chat",
+  "started_at": 1790557040.1948123,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nAmy keeps the tray in her left hand.\n\nNEXT MICRO-ACTION:\nAmy extends her right hand to hand Amber a pancake.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-yaukqwx5gsswv8mdwdatn",
+    "object": "chat.completion",
+    "created": 1790557040,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"tray\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"task\":\"pancake\"}],\"freed_before_use\":[] }",
+          "reasoning": "We need extract limb-use facts from two consecutive actions. PREVIOUS: \"Amy keeps the tray in her left hand.\" So occupied limb LEFT_HAND, task? The object is \"tray\". Task maybe \"keeps\" but we use short lowercase labels copied or normalized from text. Likely \"tray\". For next action: \"Amy extends her right hand to hand Amber a pancake.\" Limb RIGHT_HAND, task \"hand\"? Actually the action is handing a pancake. So task could be \"pancake\" or \"hand\"? The instruction says object/task labels short lowercase copied or normalized from text. In previous we used tray. For next maybe \"pancake\". But also \"hand Amber a pancake\" indicates hand as verb, but object is pancake. Use \"pancake\".\n\nAlso freed_before_use: If NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb. It says extends her right hand to hand Amber a pancake. No mention of tray being released. So no freed.\n\nReturn JSON with arrays. Format exactly as specified.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 282,
+      "completion_tokens": 263,
+      "total_tokens": 545,
+      "completion_tokens_details": {
+        "reasoning_tokens": 216
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557043.8343642,
+  "status": "ok"
+}
