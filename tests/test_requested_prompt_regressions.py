@@ -353,6 +353,28 @@ class RequestedPromptRegressionTests(unittest.TestCase):
             seen_messages[1][-1]["content"],
         )
 
+    def test_broken_window_does_not_force_locked_basement_door_broken(self):
+        event = (
+            "A zombie breaks the kitchen door window. "
+            "Amy rushes the kids to the basement and locks the basement door."
+        )
+        effects = [
+            {
+                "op": "set_barrier_state",
+                "entity": "kitchen door window",
+                "value": "broken",
+            },
+            {
+                "op": "set_barrier_state",
+                "entity": "basement door",
+                "value": "locked",
+            },
+        ]
+        self.assertEqual(
+            minimax._validate_required_event_state_effect_grounding(event, effects),
+            effects,
+        )
+
     def test_explicit_shattered_window_accepts_broken_barrier_state(self):
         event = "A zombie shatters the kitchen door window and glass falls inward."
         effects = [
