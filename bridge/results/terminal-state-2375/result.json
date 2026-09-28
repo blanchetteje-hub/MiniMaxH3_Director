@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-state-2375",
+  "kind": "llama_chat",
+  "started_at": 1790613771.2130654,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify one target state. Return JSON only. Do not judge overall story correctness."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe courier completes the last delivery.\n\nAUTHORITATIVE OPENING STATE\nRENDERED CONTINUITY: The courier is at the destination. Package status is unknown.\n\nRAW SCENE\nThe courier completes the delivery.\n\nMap the target condition immediately BEFORE the source-assigned action begins to the closest Python state:\nACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\nALREADY_TERMINAL = the exact assigned terminal outcome is already true before the action begins.\nUNSPECIFIED = SOURCE does not assign a terminal outcome, or the supplied facts do not establish either state.\nCompare meaning, not wording. Opening facts remain true unless RAW visibly changes them. Source-authorized opening facts win direct conflicts; rendered opening facts still apply where source state is silent. Do not invent reversal or restoration. Return only status."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-7eotlc4z82t4oigl8poavc",
+    "object": "chat.completion",
+    "created": 1790613771,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to classify the target state before the action begins: \"The courier completes the delivery.\" The assigned source says that the courier completes the last delivery. Authoritative opening state: RENDERED CONTINUITY: The courier is at the destination. Package status unknown.\n\nSo we have facts: Courier at destination, package status unknown. The action: \"The courier completes the delivery\" means presumably they deliver the package? So before this action begins, what is the target condition? We need to map to one of three states:\n\n- ACTIVE_OR_UNRESOLVED = assigned terminal outcome not already true.\n- ALREADY_TERMINAL = exact assigned terminal outcome already true before action begins.\n- UNSPECIFIED = SOURCE does not assign a terminal outcome or facts don't establish either state.\n\nWe have an \"assigned source\" that says the courier completes the last delivery. That is the target condition? The target condition presumably refers to the status of the package being delivered? Or maybe the courier's completion of delivery is the event, but the target condition might be something like \"Package delivered.\" But we need to see what assigned terminal outcome: The source assigns that the courier completes the last delivery. So the terminal outcome is \"Courier completes the last delivery\" which hasn't happened yet before action begins. So it's not already true; it's active/unresolved.\n\nThus status should be ACTIVE_OR_UNRESOLVED.\n\nBut check if any facts indicate it is already true? Courier at destination, package status unknown. No mention of delivered. So not terminal outcome. So ACTIVE_OR_UNRESOLVED.\n\nReturn JSON only: {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 260,
+      "completion_tokens": 351,
+      "total_tokens": 611,
+      "completion_tokens_details": {
+        "reasoning_tokens": 331
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790613776.3017564,
+  "status": "ok"
+}
