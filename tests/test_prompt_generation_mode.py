@@ -37,6 +37,19 @@ def test_parse_args_defaults_prompt_generation_test_mode_off():
     ).test_prompt_generation
 
 
+def test_director_only_implies_prompt_generation_and_never_combines_with_generation():
+    args = minimax.parse_args(["5", "10", ".2", "--director-only"])
+    assert args.director_only
+    assert args.test_prompt_generation
+
+    with __import__("pytest").raises(SystemExit):
+        minimax.parse_args(["5", "10", ".2", "--director-only", "--generate-prompts", "2"])
+
+
+def test_director_raw_scene_retry_budget_is_five():
+    assert minimax.DIRECTOR_RAW_SCENE_ATTEMPTS == 5
+
+
 def test_prompt_generation_mode_skips_comfyui_and_stitching():
     args = _args()
 
