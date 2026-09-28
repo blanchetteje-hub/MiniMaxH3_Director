@@ -495,3 +495,18 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - `41692bf849a96ccda6dba2881c1cb19909af2d75`: regressions for duplicate clothing state and stale move metadata.
 - Held ordinary props are intentionally preserved across authoritative movement unless source state says otherwise; e.g. a child may still carry a pancake into the basement.
 - Next checkpoint: focused regressions + fresh full acceptance.
+
+
+### 2026-09-28 — acceptance 2324: explicit broken barrier was weakened to generic object damage
+
+- `tests-2323`: 33/33 passed.
+- Duplicate clothing item-state and stale move metadata fixes are holding.
+- Earliest remaining defect is in ARC typed state for E2:
+  - source/event says the kitchen door window is broken/shattered;
+  - ARC emitted `set_object_state(entity="kitchen door window", value="damaged")`;
+  - continuity then correctly preserved that weaker but wrong canonical fact as `kitchen door window damaged`.
+- This is a deterministic typed-operation selection issue, not a need for another semantic pipeline.
+- Production commits:
+  - `01fa61d65795773e13e45fb2678001229d059fe1`: for barrier-like entities (door/window/gate/hatch/barrier), explicit break/shatter/smash wording rejects generic object damage and requires `set_barrier_state=broken`.
+  - `03b8b43255f4b0e979098496733add0cc8559040`: regressions for reject/accept cases.
+- Next checkpoint: focused regressions + fresh full acceptance. Segment 2 canonical continuity should say the kitchen door window is broken, not merely damaged.
