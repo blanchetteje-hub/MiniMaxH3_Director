@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2234",
+  "kind": "llama_chat",
+  "started_at": 1790557234.4283004,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nSera carries a crystal in both hands.\n\nNEXT MICRO-ACTION:\nSera pulls a lever with her left hand while still carrying the crystal.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-aes8vtjk5fcb437plwiez",
+    "object": "chat.completion",
+    "created": 1790557234,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Sera carries a crystal in both hands.\" So at the end of that action, each occupied limb is LEFT_HAND and RIGHT_HAND with task \"carry\" or maybe \"crystal\"? The object/task label should be short lowercase normalized from text. They say use only explicit text; do not invent releases or extra grip capacity.\n\nSo for PREVIOUS: report each occupied limb and the object/task occupying it at end of action. So both hands are carrying a crystal. Task could be \"carry\" but maybe they want \"crystal\". The example says short lowercase object/task labels copied or normalized from text. In this case, \"crystal\" is an object. But task might be \"carrying\"? They say each occupied limb and the object/task occupying it at end of action. So we need to decide: For PREVIOUS, report each occupied limb and the object/task occupying it. The limb uses a crystal; so maybe the task is \"carry\". But they want short lowercase labels copied or normalized from text. \"crystal\" appears in text. \"carrying\" also appears? It says \"carries a crystal\". So the action is carrying, but the object is crystal. Which one to use as task? The instruction: For PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action. That could be interpreted that we need both limb and what it's doing (task). But they say \"object/task labels\". So maybe we can choose either object or task. In example, not given.\n\nWe might use \"crystal\" as task? Or \"carry\"? Let's think: The limb is used to carry a crystal; the action is carrying. So the limb's task could be \"carry\". But they want short lowercase labels copied from text. Both \"carrying\" and \"crystal\" appear in text. Which one is more appropriate? I'd choose \"crystal\" as object, but then it's not a task. The instruction says \"object/task labels\". Could include both.\n\nBut the JSON structure: {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}], ...}. So each entry has limb and task. For PREVIOUS, we need two entries? Actually they say report each occupied limb and the object/task occupying it at end of action. That means for each limb that is occupied (LEFT_HAND, RIGHT_HAND), we list an entry with limb and task. The task could be \"crystal\" or \"carry\". I'd choose \"crystal\".\n\nBut maybe better to use \"carrying\"? Because it's a task. But the text says \"carries a crystal\", so the action is carrying. So I think \"carry\" is more appropriate.\n\nLet's decide: Use \"crystal\" as object? The limb holds the crystal, but the task could be \"hold\". Hmm.\n\nThe instruction: For PREVIOUS, report each occupied limb and the object/task occupying it at end of action. That implies that we need to specify what occupies the limb (object or task). So if a hand is holding an object, that's the object; if it's performing a task like pulling lever, that's the task. In this case, both hands are carrying crystal: so each hand holds \"crystal\". So task = \"crystal\".\n\nThus previous entries:\nLEFT_HAND -> \"crystal\"\nRIGHT_HAND -> \"crystal\"\n\nNow NEXT: \"Sera pulls a lever with her left hand while still carrying the crystal.\" So next action uses LEFT_HAND to pull lever. Also she is still carrying the crystal, presumably in both hands? But maybe only right hand holds it now because left hand used for lever? The phrase \"while still carrying the crystal\" implies that",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 286,
+      "completion_tokens": 768,
+      "total_tokens": 1054,
+      "completion_tokens_details": {
+        "reasoning_tokens": 765
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557244.5069537,
+  "status": "ok"
+}
