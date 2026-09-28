@@ -187,3 +187,14 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - The GPT formatter's trailing `Added States:` cleanup regex also had accidental literal backslashes and is now corrected.
 - Stale `tests/test_director_retry.py` helpers were updated to the current five-field Request-1 completion response and current containment prompt wording.
 - Relevant commits: `8c494f0e4760f686ffbe468e32408346f1e0d13d`, `3a6d83ba5245ea2a227609bd8582963859244116`, `9f16c086213e0f179d2e718c34b9f4b154739ba2`, `a4d035f09e007c4bdc63d3e5e78f0b46e0d0088c`.
+
+
+## 2026-09-28 — Director-only acceptance 2459
+
+- `acceptance-2459` is the first clean frozen-plan Director-only acceptance using the saved arc's typed state effects.
+- Segment 2 containment now behaves correctly: Will/Amber end inside the basement while Amy remains outside in the kitchen.
+- Exact checkpointed H3 prompts contain no `Added States:` contamination; prior appearances inside acceptance reports were caused by stdout scraping/interleaving.
+- Earliest remaining real prompt defect: Segment 5 authorizes only a non-terminal arm sever + limb disposal, but Request 1 added `zombie remains motionless on floor`, inventing a terminal/incapacitated outcome not assigned by source.
+- Rather than add another semantic pipeline/call, the existing independent Request-1 completion validator now explicitly rejects stronger terminal outcomes when SOURCE authorizes only non-terminal injury/damage/change.
+- `tests/test_director_retry.py` fixtures were also updated to emit structurally valid timed RAW SCENEs with a trailing `End continuity state:`, matching the current production Request-1 contract instead of failing for obsolete fixture shape.
+- Relevant commits: `fcf95ee5116ae698735f0c214b9d8cdf14565a21`, `f7f0ad4a8dd5bbd1e17cc955d7d0e6cbe534a653`.
