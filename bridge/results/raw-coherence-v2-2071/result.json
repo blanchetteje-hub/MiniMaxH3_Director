@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-v2-2071",
+  "kind": "llama_chat",
+  "started_at": 1790555510.3231194,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Compare two consecutive visible micro-actions. Return JSON only. Use only what the text explicitly establishes. Do NOT invent an unmentioned release, retrieval, transfer, extra grip capacity, hidden hand position, or other transition. Treat one hand or foot as one exclusive physical resource for independent actions: if it is explicitly occupied and the next action needs that same hand/foot for a different independent task, that is CONFLICT unless the next text explicitly frees, transfers, repositions, or reuses the same held object for that action. COMPATIBLE = the next action follows physically from the established state. CONFLICT = the next action requires an occupied body part/object/state to be incompatible at the same time, or reverses an established state without an explicit transition. UNSPECIFIED = the text truly lacks enough physical information to decide. Do not rescue a contradiction by imagining a possible off-screen action."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nLena kneels on the floor.\n\nNEXT MICRO-ACTION:\nLena reaches forward with both hands.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-7u70d6vrgfrnsrgxrie0nn",
+    "object": "chat.completion",
+    "created": 1790555510,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"UNSPECIFIED\"}",
+          "reasoning": "We need to compare two consecutive visible micro-actions. The previous action: \"Lena kneels on the floor.\" That establishes that Lena is in a kneeling position, presumably knees on floor, maybe hips above ground? She has both hands free? Kneeling implies she might have her hands on floor or somewhere else. But we don't know if she's using her hands for something while kneeling. The next action: \"Lena reaches forward with both hands.\" That requires that both hands are free to reach forward.\n\nWe need to see if the previous state allows this. If Lena is kneeling, she could have her hands on floor or maybe in front? But we don't know. She might be using her hands for something else while kneeling (like holding a tool). The text doesn't specify that her hands are occupied. So it's unspecified whether her hands are free.\n\nThus the next action requires both hands to reach forward, but if she had them on floor or used them, reaching forward would conflict unless they were freed. But we don't know. So status is UNSPECIFIED? Let's check: The previous micro-action \"Lena kneels on the floor.\" That establishes her position but not hand usage. Next action requires both hands to reach forward. If she had her hands free, it's compatible; if she had them occupied, conflict. Since unspecified, we choose UNSPECIFIED.\n\nThus output JSON {\"status\":\"UNSPECIFIED\"}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 295,
+      "completion_tokens": 306,
+      "total_tokens": 601,
+      "completion_tokens_details": {
+        "reasoning_tokens": 289
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790555514.5299327,
+  "status": "ok"
+}
