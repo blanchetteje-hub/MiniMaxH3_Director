@@ -473,7 +473,7 @@ class RequestedPromptRegressionTests(unittest.TestCase):
                 self.assertEqual(rendered.count("Live-action, cinematic"), 1)
                 self.assertIn("Amy moves", rendered)
                 if "00:00.000" in description:
-                    self.assertIn("At 00:00.000 seconds, Amy moves.", rendered)
+                    self.assertIn("At 00:00.000, Amy moves.", rendered)
 
 
     def test_explicit_adjacent_same_hand_conflict_is_rejected(self):
@@ -541,6 +541,22 @@ class RequestedPromptRegressionTests(unittest.TestCase):
             minimax._director_explicit_object_state_conflict_errors(raw),
             [],
         )
+
+    def test_barrier_binding_qualifies_generic_barrier_for_state_extraction(self):
+        effects = [
+            {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+            {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
+            {"op": "set_barrier_state", "entity": "door", "value": "locked"},
+        ]
+        binding = minimax.build_director_barrier_binding_contract(effects)
+        self.assertEqual(binding["destination"], "basement")
+        messages = minimax.build_director_barrier_state_messages(
+            f"{binding['entity']} that is the boundary of {binding['destination']}",
+            "Amy locks the kitchen door.",
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn("door that is the boundary of basement", prompt)
+        self.assertIn("Amy locks the kitchen door.", prompt)
 
     def test_unrelated_placed_object_does_not_block_other_held_object(self):
         raw = (
