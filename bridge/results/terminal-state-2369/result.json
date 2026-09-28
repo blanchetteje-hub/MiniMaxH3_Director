@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-state-2369",
+  "kind": "llama_chat",
+  "started_at": 1790613726.648317,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify one target state. Return JSON only. Do not judge overall story correctness."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe robot empties the final container.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE: Container 3 still contains parts.\n\nRAW SCENE\nThe robot tips Container 3 until it is empty.\n\nMap the target condition immediately BEFORE the source-assigned action begins to the closest Python state:\nACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\nALREADY_TERMINAL = the exact assigned terminal outcome is already true before the action begins.\nUNSPECIFIED = SOURCE does not assign a terminal outcome, or the supplied facts do not establish either state.\nCompare meaning, not wording. Opening facts remain true unless RAW visibly changes them. Source-authorized opening facts win direct conflicts; rendered opening facts still apply where source state is silent. Do not invent reversal or restoration. Return only status."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-s6dnb8akb7czir1vn5mbu",
+    "object": "chat.completion",
+    "created": 1790613726,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to classify the target condition immediately before the source-assigned action begins.\n\nThe assigned source: \"The robot empties the final container.\" So the terminal outcome is that Container 3 becomes empty? The source says it empties the final container, so after action it's empty. But we want state just before action starts. Opening facts:\n\nAUTHORITATIVE OPENING STATE:\nSOURCE-AUTHORIZED CURRENT STATE: Container 3 still contains parts.\n\nSo before action, Container 3 still contains parts (not empty). So target condition is \"Container 3 still contains parts.\" The assigned terminal outcome is that container becomes empty after action. But we need to map the target condition immediately BEFORE source-assigned action begins to closest Python state: ACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true. ALREADY_TERMINAL = exact assigned terminal outcome is already true before action begins. UNSPECIFIED if no assignment.\n\nSo before action, container still contains parts => it's not empty yet. So the assigned terminal outcome (empty) is not already true. Thus ACTIVE_OR_UNRESOLVED.\n\nThus output JSON: {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 261,
+      "completion_tokens": 257,
+      "total_tokens": 518,
+      "completion_tokens_details": {
+        "reasoning_tokens": 237
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790613730.4898756,
+  "status": "ok"
+}
