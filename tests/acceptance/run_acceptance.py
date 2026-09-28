@@ -217,6 +217,7 @@ def build_command(
     megapixels: float,
     extra_args: list[str],
     planning_only: bool = False,
+    director_only: bool = False,
 ) -> tuple[list[str], int | None]:
     beats = benchmark["beats"]
     if planning_only:
@@ -255,6 +256,8 @@ def build_command(
     # Disable the legacy numeric fallback for acceptance. Source-span chapter
     # starts must produce refreshes on their own.
     command.extend(["--refresh", "999999"])
+    if director_only:
+        command.append("--director-only")
     command.extend(extra_args)
     return command, refresh_interval
 
@@ -416,6 +419,15 @@ def parse_args(argv=None):
         ),
     )
     parser.add_argument(
+        "--director-plan-dir",
+        type=Path,
+        default=None,
+        help=(
+            "reuse story_arc.json and beats.txt from this directory and run "
+            "only the two Director prompt stages"
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="prepare and print the command without contacting the local LLM",
@@ -461,6 +473,15 @@ def main(argv=None) -> int:
     with tempfile.TemporaryDirectory(prefix="minimax-acceptance-") as temporary:
         workspace = Path(temporary) / "repo"
         prepare_workspace(REPO_ROOT, workspace, benchmark)
+        if args.director_plan_dir is not None:
+            plan_dir = args.director_plan_dir.resolve()
+            for filename in ("story_arc.json", "beats.txt"):
+                source = plan_dir / filename
+                if not source.is_file():
+                    raise FileNotFoundError(
+                        f"Director plan is missing required file: {source}"
+                    )
+                shutil.copy2(source, workspace / filename)
         command, refresh_interval = build_command(
             args.python,
             benchmark,
@@ -469,6 +490,7 @@ def main(argv=None) -> int:
             args.megapixels,
             list(args.extra_minimax_arg),
             planning_only=args.planning_only,
+            director_only=args.director_plan_dir is not None,
         )
 
         plan = {
