@@ -1,0 +1,55 @@
+{
+  "job_id": "raw-coherence-2058",
+  "kind": "llama_chat",
+  "started_at": 1790553827.4169967,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Judge whether two consecutive visible micro-actions are physically compatible. Return JSON only. COMPATIBLE = the later action can occur from the state established by the earlier action, including an explicit release, transfer, repositioning, or transition in the later action. CONFLICT = the later action requires the same hand, foot, body position, held object, or other exclusive physical resource to still be in two incompatible states at once, or contradicts an immediately established physical state without a transition. UNSPECIFIED = the text does not establish enough physical state to decide. Ignore style and story quality; judge only immediate physical compatibility."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nKai carries the blue canister with both hands.\n\nNEXT MICRO-ACTION:\nKai opens the nearby cabinet using one hand after shifting the canister under his arm.\n\nReturn {\"status\":\"COMPATIBLE|CONFLICT|UNSPECIFIED\"}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-bp7kkgolmm82qpm4zgp3gh",
+    "object": "chat.completion",
+    "created": 1790553827,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"COMPATIBLE\"}",
+          "reasoning": "We need to judge compatibility. The previous action: Kai carries the blue canister with both hands. So he holds it in both hands, presumably arms extended or holding. Next action: \"Kai opens the nearby cabinet using one hand after shifting the canister under his arm.\" He shifts the canister under his arm (so moves from both hands to under his arm). Then uses one hand to open cabinet.\n\nWe need to see if physically compatible: After carrying with both hands, he shifts it under his arm. That implies he releases at least one hand? Actually shifting under his arm could mean moving the canister from being held in both hands to resting on or under his arm (maybe using arms). He might use both arms to shift then hold it under his arm. Then opens cabinet with one hand.\n\nIs there conflict? The earlier action had him holding with both hands; next action says he shifts it under his arm and uses one hand to open cabinet. That seems compatible: after shifting, he can free a hand for opening the cabinet. So COMPATIBLE.\n\nReturn JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 251,
+      "completion_tokens": 235,
+      "total_tokens": 486,
+      "completion_tokens_details": {
+        "reasoning_tokens": 218
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790553830.638288,
+  "status": "ok"
+}
