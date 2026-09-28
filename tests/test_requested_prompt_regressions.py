@@ -95,7 +95,7 @@ class RequestedPromptRegressionTests(unittest.TestCase):
                 },
                 "Zombie": {
                     "name": "Zombie",
-                    "injuries": ["decapitated"],
+                    "injuries": ["minor scrape"],
                     "position": "near the doorway",
                 },
             },
