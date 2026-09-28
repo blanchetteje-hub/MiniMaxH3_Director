@@ -148,3 +148,13 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Commit `b6b0ee96a254460277bb6fb11d470369bf3f9c1c` adds formatter regression coverage for both wrapper forms.
 - `acceptance-2445` also showed one `Added States:` string visually interleaved inside the printed Segment-6 H3 block. This has not yet been proven to be part of the actual prompt object rather than concurrent console-output/capture interleaving, so do not patch it until a direct prompt-object or repeated acceptance result proves the defect.
 - Next checkpoint: run formatter/regression tests, then fresh full acceptance. Confirm wrapped timestamps are normalized by `gpt_formatter.py`; if `Added States:` appears again, trace its origin before changing production behavior.
+
+
+## 2026-09-28 — acceptance 2451 formatter follow-up
+
+- `tests-2450` imported successfully after the prior regex syntax fix and ran 54 tests, but the new timestamp-wrapper regression failed because the Python raw regex accidentally contained literal double backslashes, so it did not match real `(At ... )` / `[At ... ]` text.
+- `acceptance-2451` completed all 8 segments. Its final prompts used canonical timestamps, but Segment 4's captured `generated_h3_prompt` ended with a literal `Added States:` line. This proves the earlier 2445 observation was not merely console interleaving.
+- Both defects are GPT-OSS representation quirks and belong in `gpt_formatter.py`, not shared orchestration.
+- Commit `052e11f8e7af37437e95c81ea82f81445af56dbb` fixes the wrapper regex and strips a trailing `Added States:` control label from GPT-rendered fields.
+- Commit `7472eec0faf95350560c5acae6f365c65b5e7758` adds regression coverage for the control-label cleanup.
+- 2451 also exhausted Director Request-1 retries once at Segment 4 and correctly escalated to replanning, after which the full run completed. Treat that as recovered model variance unless fresh acceptances show a consistent pattern.
