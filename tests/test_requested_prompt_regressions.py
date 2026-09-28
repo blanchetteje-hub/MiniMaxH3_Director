@@ -476,5 +476,50 @@ class RequestedPromptRegressionTests(unittest.TestCase):
                     self.assertIn("At 00:00.000 seconds, Amy moves.", rendered)
 
 
+    def test_explicit_adjacent_same_hand_conflict_is_rejected(self):
+        raw = (
+            "At 00:00.000, Amy keeps the tray in her left hand.\n"
+            "At 00:02.500, Will takes a pancake; Amy keeps the tray in her left hand.\n"
+            "At 00:03.500, Amy extends her left hand to offer Amber another pancake.\n"
+            "End continuity state: Amy still holds the tray."
+        )
+        issues = minimax._director_explicit_limb_conflict_errors(raw)
+        self.assertTrue(issues)
+        self.assertIn("left hand", issues[0])
+
+    def test_same_hand_same_object_continuation_is_not_rejected(self):
+        raw = (
+            "At 00:00.000, Amy holds a pistol in her right hand.\n"
+            "At 00:01.000, Amy turns the pistol in her right hand toward the doorway.\n"
+            "End continuity state: Amy holds the pistol."
+        )
+        self.assertEqual(
+            minimax._director_explicit_limb_conflict_errors(raw),
+            [],
+        )
+
+    def test_same_hand_explicit_release_is_not_rejected(self):
+        raw = (
+            "At 00:00.000, Jon carries a box in his left hand.\n"
+            "At 00:01.000, Jon sets down the box, then opens the door with his left hand.\n"
+            "End continuity state: Jon stands beside the open door."
+        )
+        self.assertEqual(
+            minimax._director_explicit_limb_conflict_errors(raw),
+            [],
+        )
+
+    def test_ambiguous_same_hand_motion_without_object_manipulation_is_skipped(self):
+        raw = (
+            "At 00:00.000, Mara holds a flashlight in her left hand.\n"
+            "At 00:01.000, Mara extends her left hand toward the dark hallway.\n"
+            "End continuity state: Mara faces the hallway."
+        )
+        self.assertEqual(
+            minimax._director_explicit_limb_conflict_errors(raw),
+            [],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
