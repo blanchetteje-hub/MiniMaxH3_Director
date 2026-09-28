@@ -536,3 +536,19 @@ Earlier batches established the source-span, chapter-first architecture: `story.
   - `bdc89ea828f360115d8c697bae57efef4b232c2c`: scope break-state enforcement to the specific non-generic barrier entity named in the same clause as the break/shatter wording; generic `door/window/gate/hatch/barrier` names are skipped rather than guessed.
   - `d05b62740b615f4d55ce3a26fa555c9e44f2c43e`: regression for a source unit containing both a broken kitchen door window and a locked basement door.
 - The in-flight `acceptance-2328` run used the bad validator and should be ignored/cancelled if still running.
+
+
+### 2026-09-28 — acceptance 2330: terminal target check missed anonymous zombie resurrection
+
+- `tests-2329`: 37/37 passed.
+- `acceptance-2330` completed all 8 segments on the source-span path. The broken-window state is now `set_barrier_state=broken`; no legacy ARC fallback occurred.
+- Earliest remaining substantive continuity defect:
+  - Segment 4 explicitly decapitates a zombie. Final frame: severed head on floor, torso remains in front of Amy.
+  - Segment 5 begins from that continuing torso, then silently gives it a head again and decapitates it a second time.
+- Existing narrow terminal-target extraction already knows that severed/decapitated remains are terminal, but it missed this case because:
+  1. source trigger detection did not recognize phrases such as `slashes its head from the torso` / `slices the head off`;
+  2. reduced continuity had dropped the severed-head fact even though the exact prior final-frame text still contained it.
+- Production commits:
+  - `1abd9928aacd5db27a84e7cbe7877050d0cb090e`: terminal-action detection now includes decapitation/beheading and explicit head-severing phrases; the terminal-target extractor also receives the exact prior segment End continuity state alongside reduced continuity.
+  - `85daa2ed55fe99d4f092d2e648c3fa97d311ebac`: regressions for head-sever terminal triggers and ordinary nonterminal head motion.
+- Expected behavior: if a new beat reuses already-decapitated anonymous remains as its target, terminal-target extraction rejects the RAW and Request 1 regenerates the segment with a distinct active zombie or otherwise non-conflicting staging.
