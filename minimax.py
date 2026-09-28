@@ -299,7 +299,7 @@ BEAT_PHASE_GENERATION_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 
 BEAT_PROCESS_ATTEMPTS = BEAT_RETRY_ATTEMPTS
 
-DIRECTOR_RAW_SCENE_ATTEMPTS = 3
+DIRECTOR_RAW_SCENE_ATTEMPTS = 5
 
 BEAT_VALIDATION_STATE_VERSION = 3
 
@@ -1897,6 +1897,16 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
+        "--director-only",
+        action="store_true",
+        default=False,
+        help=(
+            "use the existing story_arc.json and beats.txt and run only the "
+            "Director Request 1 -> Request 2 prompt pipeline; never regenerate "
+            "the arc/beats and never submit to ComfyUI"
+        ),
+    )
+    parser.add_argument(
         "--vision-continuity",
         type=int,
         default=0,
@@ -2034,6 +2044,20 @@ def parse_args(arguments=None):
 
     args = parser.parse_args(normalize_command_line(arguments))
     args.ff = args.ff == "ff" or args.first_frame
+
+    if args.director_only:
+        if (
+            args.generate_beats is not None
+            or args.generate_prompts is not None
+            or args.generate_from_prompts
+            or args.repair is not None
+        ):
+            parser.error(
+                "--director-only cannot be combined with generation, render-only, "
+                "or repair modes."
+            )
+        # Director-only is a prompt-generation test mode by definition.
+        args.test_prompt_generation = True
 
     if args.generate_prompts is not None:
         if args.generate_prompts <= 0:
@@ -28248,6 +28272,7 @@ def _run_main(
     generate_beats_only = generate_beats_count is not None
     generate_prompts_count = getattr(args, "generate_prompts", None)
     generate_prompts_only = generate_prompts_count is not None
+    director_only = bool(getattr(args, "director_only", False))
     if generate_beats_only:
         print(
             "Generating the story arc and beats based on story.txt",
@@ -28256,6 +28281,12 @@ def _run_main(
     if generate_prompts_only:
         print(
             "Generating story arc, beats, and final H3 prompts without ComfyUI.",
+            flush=True,
+        )
+    if director_only:
+        print(
+            "Director-only test: using existing story_arc.json and beats.txt; "
+            "arc/beat generation is disabled.",
             flush=True,
         )
     configure_formatter(getattr(args, "model", "gpt"))
@@ -28281,6 +28312,7 @@ def _run_main(
     test_prompt_generation = bool(
         getattr(args, "test_prompt_generation", False)
         or generate_prompts_only
+        or director_only
     )
     total_segments = (
         int(generate_beats_count)
@@ -28318,28 +28350,37 @@ def _run_main(
     )
     if resume_segment == 1:
         reset_prompt_history()
-    try:
-        beats = load_or_generate_beats(
-            BEATS_FILE,
-            story,
-            total_segments,
-            history_metadata={"run_id": run_id},
-            beat_instructions=beat_instructions,
-            subject_information=subject_information,
-            story_arc_path=STORY_ARC_FILE,
-            story_arc_source=story_source,
-            phrase_exclusions=phrase_exclusions,
-            force_generate=(
-                generate_beats_only
-                or (generate_prompts_only and resume_segment == 1)
-            ),
-        )
-    except LLMConnectionError:
-        raise
-    except Exception as error:
-        raise BeatGenerationError(
-            f"Beat generation failed before the video workflow could start: {error}"
-        ) from error
+    if director_only:
+        try:
+            beats = load_beats(BEATS_FILE)
+        except Exception as error:
+            raise BeatGenerationError(
+                "Director-only mode requires a valid existing beats.txt; "
+                f"upstream generation is disabled: {error}"
+            ) from error
+    else:
+        try:
+            beats = load_or_generate_beats(
+                BEATS_FILE,
+                story,
+                total_segments,
+                history_metadata={"run_id": run_id},
+                beat_instructions=beat_instructions,
+                subject_information=subject_information,
+                story_arc_path=STORY_ARC_FILE,
+                story_arc_source=story_source,
+                phrase_exclusions=phrase_exclusions,
+                force_generate=(
+                    generate_beats_only
+                    or (generate_prompts_only and resume_segment == 1)
+                ),
+            )
+        except LLMConnectionError:
+            raise
+        except Exception as error:
+            raise BeatGenerationError(
+                f"Beat generation failed before the video workflow could start: {error}"
+            ) from error
     if beats and len(beats) != total_segments:
         raise ValueError(
             f"One-beat-per-segment requires exactly {total_segments} beats for "
@@ -28353,11 +28394,19 @@ def _run_main(
         resume_segment,
         total_segments,
     )
-    macro_arc = load_story_arc(
-        STORY_ARC_FILE,
-        total_segments,
-        story_source,
-    )
+    try:
+        macro_arc = load_story_arc(
+            STORY_ARC_FILE,
+            total_segments,
+            story_source,
+        )
+    except Exception as error:
+        if director_only:
+            raise BeatGenerationError(
+                "Director-only mode requires a valid existing story_arc.json; "
+                f"upstream generation is disabled: {error}"
+            ) from error
+        raise
 
     generated_prompts_payload = None
     if generate_prompts_only:
@@ -30105,6 +30154,7 @@ def _checkpoint_recovery_resume_segment(path=GENERATION_STATE_FILE):
 # Run the command-line application under a persistent recovery supervisor.
 def main():
     recovery_resume_segment = None
+    director_only_requested = "--director-only" in normalize_command_line(sys.argv[1:])
     while True:
         checkpoint_signature_before = _checkpoint_file_signature()
         try:
@@ -30163,7 +30213,11 @@ def main():
                     "Director Request 1 did not confirm completion of Beat "
                 )
             )
-            if director_contract_exhausted and recovery_resume_segment > 1:
+            if (
+                director_contract_exhausted
+                and recovery_resume_segment > 1
+                and not director_only_requested
+            ):
                 failed_segment = recovery_resume_segment
                 recovery_resume_segment = 1
                 print(
