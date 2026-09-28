@@ -67,5 +67,39 @@ class GPTFormatterTests(unittest.TestCase):
 
 
 
+    def test_gpt_formatter_strips_added_states_control_label(self):
+        formatter = GPTFormatter()
+        context = {
+            "segment_number": 4,
+            "next_beat_id": 4,
+            "segment_duration": 8,
+        }
+        formatted = formatter.format_prompt(
+            {
+                "detailed_description": (
+                    "At 00:00.000, operator opens the panel. "
+                    "At 00:01.500, operator closes the panel."
+                ),
+                "overall_soundscape": "room tone",
+                "non_diegetic_music": "N/A",
+                "completed_beat_ids": [4],
+            },
+            context,
+        )
+        formatted["detailed_description"] += "Added States:"
+        # Re-run the formatter on a model-shaped response carrying the leaked label.
+        repaired = formatter.format_prompt(
+            {
+                "detailed_description": formatted["detailed_description"],
+                "overall_soundscape": "room tone",
+                "non_diegetic_music": "N/A",
+                "completed_beat_ids": [4],
+            },
+            context,
+        )
+        self.assertNotIn("Added States:", repaired["detailed_description"])
+
+
+
 if __name__ == "__main__":
     unittest.main()
