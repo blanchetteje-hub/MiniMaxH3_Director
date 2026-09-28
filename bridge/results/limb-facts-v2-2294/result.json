@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2294",
+  "kind": "llama_chat",
+  "started_at": 1790558007.383151,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nNora holds a wrench in her left hand.\n\nNEXT MICRO-ACTION:\nNora picks up a mug with the left hand without releasing the wrench.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-0bre1061f7xrqudc45oakgs",
+    "object": "chat.completion",
+    "created": 1790558007,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"object\":\"wrench\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"object\":\"mug\"}],\"freed_before_use\":[]}\n",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Nora holds a wrench in her left hand.\" So at the end of that action, LEFT_HAND is occupied by object \"wrench\". Next micro-action: \"Nora picks up a mug with the left hand without releasing the wrench.\" That means she uses left hand to pick up mug while still holding wrench. So next limb usage: LEFT_HAND used for picking up mug; but also holds wrench? The rule says if NEXT operates SAME physical object already occupying that limb, repeat EXACTLY same object label used in PREVIOUS. But here it's a different object (mug). She picks up mug with left hand without releasing the wrench. So she uses left hand to pick up mug while still holding wrench. That means LEFT_HAND is now occupied by both? Actually physically can't hold two objects simultaneously, but maybe using same hand for both tasks: picking up mug and holding wrench. The rule says \"If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS.\" But here it's different object. So we list new object as \"mug\". Also if she didn't release wrench before using left hand for mug, then freed_before_use? It says: If NEXT explicitly releases, sets down, transfers, pockets, or repositions prior object before using limb for something else, list that limb in freed_before_use. Here she doesn't release the wrench; so no freed_before_use.\n\nThus output:\n\nprevious: [{\"limb\":\"LEFT_HAND\",\"object\":\"wrench\"}]\nnext: [{\"limb\":\"LEFT_HAND\",\"object\":\"mug\"}]\nfreed_before_use: []\n\nReturn JSON accordingly.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 413,
+      "completion_tokens": 393,
+      "total_tokens": 806,
+      "completion_tokens_details": {
+        "reasoning_tokens": 346
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790558012.716217,
+  "status": "ok"
+}
