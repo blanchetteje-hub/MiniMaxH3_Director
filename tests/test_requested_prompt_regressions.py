@@ -834,6 +834,25 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         )
         self.assertIn("SPOKEN DIALOGUE: None", prompt)
 
+    def test_bracketed_director_timestamps_are_rejected(self):
+        raw = (
+            "At 00:00.000, operator opens the panel.\n"
+            "At 00:01.200, operator closes the panel.\n"
+            "End continuity state: panel closed."
+        )
+        formatted = (
+            "[Shot 1] At [At 00:00.000, ], operator opens the panel. "
+            "[At 00:01.200, ] operator closes the panel."
+        )
+        issues = minimax._validate_director_timestamp_correspondence(
+            raw,
+            formatted,
+            segment_seconds=8,
+        )
+        self.assertTrue(
+            any("Bracketed or nested timestamp wrappers" in issue for issue in issues)
+        )
+
     def test_continuation_style_prefix_is_unique_and_timed_action_survives(self):
         for description in (
             "[Shot 1] Live-action, cinematic. At 00:00.000 seconds, Amy moves.",
