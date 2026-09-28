@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-state-2372",
+  "kind": "llama_chat",
+  "started_at": 1790613747.995675,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify one target state. Return JSON only. Do not judge overall story correctness."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe operator seals the last pressure hatch.\n\nAUTHORITATIVE OPENING STATE\nRENDERED CONTINUITY: The operator stands beside hatch 4. Its seal state is not visible.\n\nRAW SCENE\nThe operator presses the seal control.\n\nMap the target condition immediately BEFORE the source-assigned action begins to the closest Python state:\nACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\nALREADY_TERMINAL = the exact assigned terminal outcome is already true before the action begins.\nUNSPECIFIED = SOURCE does not assign a terminal outcome, or the supplied facts do not establish either state.\nCompare meaning, not wording. Opening facts remain true unless RAW visibly changes them. Source-authorized opening facts win direct conflicts; rendered opening facts still apply where source state is silent. Do not invent reversal or restoration. Return only status."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-nxe71lv5nwpzsz4m6pcud",
+    "object": "chat.completion",
+    "created": 1790613748,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to classify one target state: the operator seals the last pressure hatch.\n\nThe assigned source says \"The operator seals the last pressure hatch.\" So that action will set some condition? The target condition likely refers to the seal state of hatch 4? Let's parse:\n\nASSIGNED SOURCE: \"The operator seals the last pressure hatch.\"\n\nAUTHORITATIVE OPENING STATE: \"RENDERED CONTINUITY: The operator stands beside hatch 4. Its seal state is not visible.\" So before action, we don't know if it's sealed or not.\n\nRAW SCENE: \"The operator presses the seal control.\" That indicates that he seals it? Pressing seal control likely triggers sealing. But maybe the seal state changes to sealed after pressing. The target condition is \"operator seals the last pressure hatch\" which means the hatch becomes sealed. So before action begins, we need to determine if it's already sealed or not.\n\nWe have no explicit statement of its current seal state in opening facts: \"Its seal state is not visible.\" That implies unknown. So status should be UNSPECIFIED? But maybe source assigned terminal outcome: The operator seals the last pressure hatch => after action, hatch 4 becomes sealed. Before action, it's unsealed (or at least not sealed). Since we don't know if it was already sealed, but \"seals\" suggests a change from unsealed to sealed. So before action, it's not yet sealed. Thus ACTIVE_OR_UNRESOLVED? The assigned terminal outcome is not already true: the hatch is not sealed before pressing seal control. So status = ACTIVE_OR_UNRESOLVED.\n\nThus JSON: {\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 265,
+      "completion_tokens": 357,
+      "total_tokens": 622,
+      "completion_tokens_details": {
+        "reasoning_tokens": 337
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790613753.2132957,
+  "status": "ok"
+}
