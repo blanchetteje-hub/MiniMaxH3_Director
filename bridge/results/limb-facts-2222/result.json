@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2222",
+  "kind": "llama_chat",
+  "started_at": 1790557123.796156,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nPilot holds the yoke with both hands.\n\nNEXT MICRO-ACTION:\nPilot reaches overhead with both hands without releasing the yoke.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-0bq4uytjtt0he2bj5ylmwwb",
+    "object": "chat.completion",
+    "created": 1790557123,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"yoke\"}],\"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"reach_overhead\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Pilot holds the yoke with both hands.\" So previous action occupies BOTH_HANDS, task is holding the yoke. Use short lowercase object/task labels copied or normalized from text. The object is \"yoke\". Task could be \"hold\" but they want a label for the object/task occupying it at end of action. They say: For PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\n\nSo we need to list each occupied limb with its task/object. The limb is BOTH_HANDS. Task/obj \"yoke\". So previous array has one element: {\"limb\":\"BOTH_HANDS\",\"task\":\"yoke\"}.\n\nNext micro-action: \"Pilot reaches overhead with both hands without releasing the yoke.\" This action requires BOTH_HANDS to reach overhead, and it does not release the yoke. The task is reaching overhead? But they want object/task that limb acts on. So maybe \"reach\" or \"overhead\"? They say use short lowercase object/task labels copied or normalized from text. Could be \"reaching\". Or \"reach_overhead\". Let's see: In previous, we used \"yoke\" as the task/object. For next, they want each limb required for new action and the object/task that limb acts on. So limb is BOTH_HANDS; task could be \"overhead\"? The text says \"Pilot reaches overhead with both hands without releasing the yoke.\" So the limb acts to reach overhead. So maybe task: \"reach_overhead\". But they said short lowercase labels copied or normalized from text. \"reaches\" -> \"reach\". \"overhead\" is an adjective, but we can combine as \"reach_overhead\"? Might be okay.\n\nAlso freed_before_use: If NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use. Here it says without releasing the yoke, so no freeing. So freed_before_use is empty array [].\n\nThus output JSON:\n\n{\n  \"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"yoke\"}],\n  \"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"reach_overhead\"}],\n  \"freed_before_use\": []\n}\n\nCheck limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, etc. Use uppercase as specified.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 283,
+      "completion_tokens": 553,
+      "total_tokens": 836,
+      "completion_tokens_details": {
+        "reasoning_tokens": 501
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557131.2228725,
+  "status": "ok"
+}
