@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2239",
+  "kind": "llama_chat",
+  "started_at": 1790557283.640554,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nElena carries a child in both arms.\n\nNEXT MICRO-ACTION:\nElena adjusts the child higher.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-llmuhqitfs8nlx4hzum9hd",
+    "object": "chat.completion",
+    "created": 1790557283,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"child\"}],\"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"child\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Elena carries a child in both arms.\" So occupied limbs at end of action: BOTH_HANDS (both arms). Task/object: carrying a child? The object is 'child'. Use short lowercase label copied or normalized from text. So task could be 'carry' but they want the object/task that limb acts on. In previous, each occupied limb and the object/task occupying it at end of action. For both hands, the object is child. So we list one entry: {\"limb\":\"BOTH_HANDS\",\"task\":\"child\"}.\n\nNEXT: \"Elena adjusts the child higher.\" She uses which limbs? Adjusting a child likely requires using her arms (hands). Could be BOTH_HANDS again. The task/object: 'adjust' or 'child'? They want object/task that limb acts on. So it's adjusting the child, so maybe 'child'. But we need to list each limb required for new action and the object/task it acts on. She adjusts the child higher; likely uses both hands. So next entry: {\"limb\":\"BOTH_HANDS\",\"task\":\"child\"}.\n\nFreed_before_use: If NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb, list that limb in freed_before_use. Does she free or reposition? \"Elena adjusts the child higher.\" She is still holding it; not freeing. So no limbs freed before use. But maybe adjusting means moving child up while still carrying. No release. So freed_before_use empty array.\n\nReturn JSON: {\"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"child\"}],\"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"child\"}],\"freed_before_use\":[]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 278,
+      "completion_tokens": 414,
+      "total_tokens": 692,
+      "completion_tokens_details": {
+        "reasoning_tokens": 365
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557289.216347,
+  "status": "ok"
+}
