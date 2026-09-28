@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2260",
+  "kind": "llama_chat",
+  "started_at": 1790557483.2624083,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nAmy holds a katana in her left hand and pistol in her right.\n\nNEXT MICRO-ACTION:\nAmy grabs a zombie with both hands without dropping either weapon.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-0y5s9q1eknx1iy2f5izcjm",
+    "object": "chat.completion",
+    "created": 1790557483,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"katana\"},{\"limb\":\"RIGHT_HAND\",\"task\":\"pistol\"}],\"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"zombie\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: Amy holds a katana in her left hand and pistol in her right.\n\nSo previous action: \"Amy holds a katana in her left hand\" => limb LEFT_HAND, task? The object is 'katana'. So task could be 'hold' or just the object label? They say use short lowercase object/task labels copied or normalized from text. For tasks like hold, maybe we can use 'hold'? But they said \"object/task labels\". In example: previous action has each occupied limb and the object/task occupying it at end of action.\n\nSo for left hand: task is 'katana' (the object). Right hand: 'pistol'.\n\nThus previous array: [{\"limb\":\"LEFT_HAND\",\"task\":\"katana\"},{\"limb\":\"RIGHT_HAND\",\"task\":\"pistol\"}]\n\nNext micro-action: \"Amy grabs a zombie with both hands without dropping either weapon.\"\n\nSo next action requires BOTH_HANDS, task is 'zombie' (object). Also note that she doesn't drop weapons. So the previous objects remain on her hands.\n\nBut we need to list freed_before_use if NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb. Here it says \"without dropping either weapon\" meaning no freeing. So freed_before_use is empty array? They want [\"...\"] maybe empty string or []? The format: Return {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}. If none, we can put an empty list. So \"freed_before_use\":[].\n\nThus final JSON:\n\n{\n  \"previous\": [\n    {\"limb\":\"LEFT_HAND\",\"task\":\"katana\"},\n    {\"limb\":\"RIGHT_HAND\",\"task\":\"pistol\"}\n  ],\n  \"next\":[\n    {\"limb\":\"BOTH_HANDS\",\"task\":\"zombie\"}\n  ],\n  \"freed_before_use\":[]\n}\n\nCheck formatting: JSON only. Use double quotes.\n\nReturn that.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 289,
+      "completion_tokens": 486,
+      "total_tokens": 775,
+      "completion_tokens_details": {
+        "reasoning_tokens": 426
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557489.8239212,
+  "status": "ok"
+}
