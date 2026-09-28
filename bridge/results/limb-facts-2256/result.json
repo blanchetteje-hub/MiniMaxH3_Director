@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2256",
+  "kind": "llama_chat",
+  "started_at": 1790557449.8296363,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nOmar carries grocery bags in his left hand.\n\nNEXT MICRO-ACTION:\nOmar pulls open a heavy door with the left hand without shifting the bags.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-op0gp69ot5rf44ym9w8bw",
+    "object": "chat.completion",
+    "created": 1790557449,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Omar carries grocery bags in his left hand.\" So previous action occupies left hand with task \"carry\" or object? The instruction says use short lowercase object/task labels copied or normalized from the text. For carrying, maybe task is \"carry\". But also could be \"grocery_bags\"? They say object/task labels: copy or normalize from text. In example they used \"task\": e.g., \"carries grocery bags\" -> limb left hand and task \"carry\" or \"carrying_grocery_bags\"? The instruction says use short lowercase object/task labels copied or normalized from the text. So we can choose \"grocery_bags\". But it's an object, not a task. They say each occupied limb and the object/task occupying it at end of action. So for previous: limb LEFT_HAND, task \"carry\" or maybe \"carrying_grocery_bags\"? The phrase is \"carries grocery bags in his left hand.\" That indicates he holds them; so the task could be \"carry\". But they want short lowercase labels copied or normalized from text. Could use \"grocery_bags\". Let's decide: For previous, limb LEFT_HAND and task \"carrying_grocery_bags\" maybe? They said object/task labels. So we can choose \"grocery_bags\". That seems fine.\n\nNEXT: \"Omar pulls open a heavy door with the left hand without shifting the bags.\" He uses left hand to pull open heavy door. The action is pulling open heavy door. Task could be \"pull_open\" or \"open_door\"? They want short lowercase labels copied or normalized from text. So maybe \"heavy_door\". But it's an object: heavy door. Task: \"pull\". Let's choose task \"pull_heavy_door\".\n\nAlso, if NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use. The next action says he pulls open a heavy door with left hand without shifting the bags. That means he didn't shift the bags; so he didn't free them. So no freed_before_use.\n\nThus JSON: {\"previous\":[{\"limb\":\"LEFT_HAND\",\"task\":\"grocery_bags\"}],\"next\":[{\"limb\":\"LEFT_HAND\",\"task\":\"heavy_door\"}],\"freed_before_use\":[]}\n\nBut maybe they want \"carry\" as task? Let's read instruction again: For PREVIOUS, report each occupied limb and the object/task occupying it at end of action. So we need to list what occupies that limb: either an object or a task. In this case, left hand is carrying grocery bags; so it's holding them. The limb is used for \"carry\" but also holds \"grocery_bags\". Which one? They say object/task labels copied or normalized from text. Could be \"carrying_grocery_bags\"? But that's not exactly in the text.\n\nBetter to use \"grocery_bags\" as task label, because it's what he's carrying. For next: left hand pulls open heavy door; so limb used for \"pull_heavy_door\". That is a task? It's pulling open heavy door. So maybe \"heavy_door\".\n\nLet's choose tasks: previous: \"carry_grocery_bags\"? But they said short lowercase labels copied or normalized from the text. The phrase \"grocery bags\" appears in text; we can use that as label.\n\nThus:\n\nprevious: [{\"limb\":\"LEFT_HAND\",\"task\":\"grocery_bags\"}]\nnext: [{\"limb\":\"LEFT_HAND\",\"task\":\"heavy_door\"}]\n\nfreed_before_use: [] (since he didn't shift the bags).\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 288,
+      "completion_tokens": 768,
+      "total_tokens": 1056,
+      "completion_tokens_details": {
+        "reasoning_tokens": 755
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557459.9401424,
+  "status": "ok"
+}
