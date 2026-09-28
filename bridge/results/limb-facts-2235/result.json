@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2235",
+  "kind": "llama_chat",
+  "started_at": 1790557247.0506878,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nDax presses the brake with his right foot.\n\nNEXT MICRO-ACTION:\nDax eases pressure on the brake.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-sozvpu2fu3kt28xt411po",
+    "object": "chat.completion",
+    "created": 1790557247,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"RIGHT_FOOT\",\"task\":\"brake\"}],\"next\":[{\"limb\":\"RIGHT_FOOT\",\"task\":\"brake\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Dax presses the brake with his right foot.\" So occupied limb is RIGHT_FOOT, task is pressing? The object/task label should be short lowercase normalized from text. Likely \"brake\". So previous list has one entry: {\"limb\":\"RIGHT_FOOT\",\"task\":\"brake\"}.\n\nNEXT: \"Dax eases pressure on the brake.\" This action uses which limb? He eases pressure, likely same foot (right foot). But could be unspecified; but we assume right foot. The task is easing pressure on brake -> maybe \"brake\" again. So next list has one entry: {\"limb\":\"RIGHT_FOOT\",\"task\":\"brake\"}.\n\nFreed_before_use: If NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use. Does he release brake? \"Eases pressure on the brake\" implies reducing foot pressure but not releasing entirely; still pressing? He might be easing pressure while still on brake. So no freeing. Freed_before_use empty array.\n\nReturn JSON: {\"previous\":[{\"limb\":\"RIGHT_FOOT\",\"task\":\"brake\"}],\"next\":[{\"limb\":\"RIGHT_FOOT\",\"task\":\"brake\"}],\"freed_before_use\":[]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 281,
+      "completion_tokens": 323,
+      "total_tokens": 604,
+      "completion_tokens_details": {
+        "reasoning_tokens": 274
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557251.4160972,
+  "status": "ok"
+}
