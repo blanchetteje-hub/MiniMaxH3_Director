@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-v2-2299",
+  "kind": "llama_chat",
+  "started_at": 1790558050.3264282,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract only limb occupancy/use facts from two consecutive actions. Return JSON only. Do not decide conflict.\n\nFor PREVIOUS:\n- list each hand/foot explicitly occupied at the END of the action;\n- \"object\" must be the physical object or physical task occupying that limb.\n\nFor NEXT:\n- list each hand/foot explicitly required by the new action;\n- \"object\" must be the physical object that limb manipulates/holds/presses/uses.\n- If NEXT operates the SAME physical object already occupying that limb, repeat EXACTLY the same object label used in PREVIOUS. Example: previous object \"syringe\"; pressing its plunger => next object \"syringe\". Previous \"camera\"; pressing its shutter => next \"camera\". Previous \"wrench\"; tightening a bolt with it => next \"wrench\".\n- Do not use action verbs such as \"raise\", \"pull\", \"hold\", \"reach\", or \"clap\" as object labels. For a gesture with no object, use \"gesture\".\n- If NEXT explicitly releases, sets down, transfers, pockets, or repositions the prior object before using the limb for something else, list that limb in freed_before_use.\n\nAllowed limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nMechanic holds a wrench in the right hand.\n\nNEXT MICRO-ACTION:\nMechanic turns the wrench clockwise.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"object\":\"...\"}],\"next\":[{\"limb\":\"...\",\"object\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 1024,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-97xeobjcanrsg1qgrvq74",
+    "object": "chat.completion",
+    "created": 1790558050,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\n  \"previous\": [\n    {\n      \"limb\": \"RIGHT_HAND\",\n      \"object\": \"wrench\"\n    }\n  ],\n  \"next\": [\n    {\n      \"limb\": \"RIGHT_HAND\",\n      \"object\": \"wrench\"\n    }\n  ],\n  \"freed_before_use\": []\n}\n```\n",
+          "reasoning": "We need to extract limb occupancy/use facts from two consecutive actions. PREVIOUS: \"Mechanic holds a wrench in the right hand.\" So at end of action, RIGHT_HAND occupied by object \"wrench\". Next micro-action: \"Mechanic turns the wrench clockwise.\" That uses same physical object (wrench) with right hand. No release or reposition before use. So next limb usage: RIGHT_HAND using object \"wrench\" again. Freed_before_use empty.\n\nReturn JSON accordingly. Ensure format exactly as specified. Use array of objects for previous and next, each with limb and object keys. Freed_before_use list maybe empty string? Should be [] if none. Example: {\"previous\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"wrench\"}],\"next\":[{\"limb\":\"RIGHT_HAND\",\"object\":\"wrench\"}],\"freed_before_use\":[]}.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 405,
+      "completion_tokens": 254,
+      "total_tokens": 659,
+      "completion_tokens_details": {
+        "reasoning_tokens": 173
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790558053.8888795,
+  "status": "ok"
+}
