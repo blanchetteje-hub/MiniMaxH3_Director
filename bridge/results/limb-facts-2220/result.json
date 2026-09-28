@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2220",
+  "kind": "llama_chat",
+  "started_at": 1790557103.4501944,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nWizard grips a staff in both hands.\n\nNEXT MICRO-ACTION:\nWizard claps both hands together without releasing the staff.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ygrnm0haecedqnq6q9x20q",
+    "object": "chat.completion",
+    "created": 1790557103,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"grip_staff\"}],\"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"clap\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Wizard grips a staff in both hands.\" So occupied limbs at end of action: BOTH_HANDS, task: grip? The object is staff. Task label maybe 'grip' or just the object? They say use short lowercase object/task labels copied or normalized from text. For previous, report each occupied limb and the object/task occupying it at the end of the action.\n\nSo we have both hands gripping a staff. So task: grip? Or \"staff\"? The example says \"object/task\" maybe either. Let's choose 'grip' as task? But they say short lowercase labels copied or normalized from text. In previous, \"grips a staff\". So object is staff; task is grips? Might be both. They want each limb and the object/task occupying it at end of action. So for BOTH_HANDS: task could be 'staff'? Or 'grip'?\n\nLet's interpret as limb used to perform task on object. The limb occupies the object with a task. For example, if \"Wizard grips a staff in both hands\", then BOTH_HANDS are occupied by gripping a staff. So we can set task = 'grip', object = 'staff'. But they want one field: \"task\". They didn't ask for separate object and task fields; just limb and task. The task could be 'gripping_staff' or maybe 'staff'? Let's read instructions: \"Use short lowercase object/task labels copied or normalized from the text.\" So we can use either object or task label, but not both? It says each occupied limb and the object/task occupying it at the end of action. So likely they want a single string that indicates what the limb is doing with which object. For example \"grip_staff\" maybe.\n\nBut in previous examples (not given) we might see pattern: e.g., {\"limb\":\"LEFT_HAND\",\"task\":\"staff\"}? Or {\"limb\":\"BOTH_HANDS\",\"task\":\"grip_staff\"}?\n\nLet's decide to use 'grip' as task and 'staff' as object. But only one field \"task\". So maybe combine them: \"grip_staff\".\n\nSimilarly for next action: \"Wizard claps both hands together without releasing the staff.\" So limb required: BOTH_HANDS, task: clap? The staff remains held; no release. So we need to report each limb required and object/task that limb acts on. For clapping, the limbs are used to clap; they act on each other (hands). But also holding staff. They didn't mention releasing staff before using hands for clap. So freed_before_use empty.\n\nThus next: BOTH_HANDS with task 'clap' maybe? Or \"staff\" again? The limb acts on itself? Might be 'clap'. Use short lowercase label from text: \"claps\". So task = 'clap'.\n\nSo output:\n\n{\n  \"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"grip_staff\"}],\n  \"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"clap\"}],\n  \"freed_before_use\": []\n}\n\nBut freed_before_use: list limbs that free before using. None.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 281,
+      "completion_tokens": 713,
+      "total_tokens": 994,
+      "completion_tokens_details": {
+        "reasoning_tokens": 661
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557112.8465633,
+  "status": "ok"
+}
