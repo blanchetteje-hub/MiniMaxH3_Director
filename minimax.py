@@ -10448,17 +10448,15 @@ TEMPORAL ACTION OWNERSHIP: If CURRENT JOB assigns action X to THIS beat, require
 the candidate to narrate X as an event that happens now. Grammar that merely
 presupposes X is already complete is INVALID evidence for X. Examples of invalid
 evidence include "with X done", "with X slain", "after X was completed",
-"once X was finished", "X already lay dead", or any equivalent completed-state
+"once X was finished", "X was already complete", or any equivalent completed-state
 construction. Those phrases describe the result/state after X; they do not depict
 the assigned action occurring in this beat. Reject even when the completed state
 matches the desired result and even when later parts of CURRENT JOB are shown
 correctly. Accept only if the candidate also narrates the causative action itself
-(e.g. "Amy strikes the zombie and kills it") in this beat. If CURRENT JOB assigns
-a terminal action such as kill, destroy, defeat, finish, eliminate, or resolve,
-the candidate must begin that action on an active/intact-enough/unresolved target
-and visibly cause the terminal transition now. Attacking or manipulating a corpse,
-severed remnant, already-destroyed object, or already-resolved process is INVALID
-evidence for that newly assigned terminal action.
+in this beat. If CURRENT JOB assigns an irreversible terminal result, the
+candidate must begin with a target/process that has not already reached that
+result and visibly cause the transition now. Reapplying an already-satisfied
+terminal result is INVALID evidence for that newly assigned action.
 
 A prerequisite, approach, or partial progress is NOT completion of a later required result: if
 CURRENT JOB requires
