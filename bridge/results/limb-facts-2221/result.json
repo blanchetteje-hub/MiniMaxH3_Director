@@ -1,0 +1,55 @@
+{
+  "job_id": "limb-facts-2221",
+  "kind": "llama_chat",
+  "started_at": 1790557115.1585696,
+  "request": {
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract limb-use facts from two consecutive actions. Return JSON only. Do not judge conflict. Use only explicit text; do not invent releases or extra grip capacity.\nFor PREVIOUS, report each occupied limb and the object/task occupying it at the end of the action.\nFor NEXT, report each limb required for the new action and the object/task that limb acts on.\nIf NEXT explicitly frees/releases/sets down/transfers/repositions the previous object before using that limb, list that limb in freed_before_use.\nUse limb values LEFT_HAND, RIGHT_HAND, BOTH_HANDS, LEFT_FOOT, RIGHT_FOOT, BOTH_FEET, NONE.\nUse short lowercase object/task labels copied or normalized from the text."
+      },
+      {
+        "role": "user",
+        "content": "PREVIOUS MICRO-ACTION:\nPilot holds the yoke with both hands.\n\nNEXT MICRO-ACTION:\nPilot turns the yoke left.\n\nReturn {\"previous\":[{\"limb\":\"...\",\"task\":\"...\"}],\"next\":[{\"limb\":\"...\",\"task\":\"...\"}],\"freed_before_use\":[\"...\"]}."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 768,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-ofueje1q087lh2qo73ebc",
+    "object": "chat.completion",
+    "created": 1790557115,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"yoke\"}],\"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"yoke\"}],\"freed_before_use\":[]}",
+          "reasoning": "We need to extract limb-use facts from two consecutive actions. PREVIOUS: \"Pilot holds the yoke with both hands.\" So previous action occupies BOTH_HANDS, task is holding? The object/task label should be short lowercase normalized from text. Likely \"yoke\". Task could be \"hold\" or maybe just \"holding\"? They say use short lowercase object/task labels copied or normalized from the text. For PREVIOUS: limb: BOTH_HANDS; task: yoke (object). But they want each occupied limb and the object/task occupying it at end of action. So we list one entry: {\"limb\":\"BOTH_HANDS\",\"task\":\"yoke\"}.\n\nNEXT: \"Pilot turns the yoke left.\" This requires both hands? Turning yoke likely uses BOTH_HANDS. Task is turning? The object is yoke. They want limb required for new action and the object/task that limb acts on. So we list {\"limb\":\"BOTH_HANDS\",\"task\":\"yoke\"} again.\n\nfreed_before_use: If NEXT explicitly frees/releases/sets down/transfers/repositions previous object before using that limb, list that limb in freed_before_use. Here \"Pilot turns the yoke left.\" Does he release? He holds it already; turning doesn't free. So no freed limbs. But maybe if he had to set down? No.\n\nThus freed_before_use: [] or empty array. They want JSON only. Use keys previous, next, freed_before_use. For previous and next arrays of objects with limb and task fields. Freed_before_use is an array of strings (limb names). So output:\n\n{\n  \"previous\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"yoke\"}],\n  \"next\":[{\"limb\":\"BOTH_HANDS\",\"task\":\"yoke\"}],\n  \"freed_before_use\":[]\n}\n\nCheck limb values: LEFT_HAND, RIGHT_HAND, BOTH_HANDS, etc. Use uppercase as given.\n\nTask label: yoke. Good.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 278,
+      "completion_tokens": 462,
+      "total_tokens": 740,
+      "completion_tokens_details": {
+        "reasoning_tokens": 411
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790557121.364218,
+  "status": "ok"
+}
