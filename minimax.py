@@ -20791,6 +20791,106 @@ def request_continuity_opening_state(
     return fallback
 
 
+def _continuity_apply_authoritative_state_effects(
+    state,
+    assigned_state_effects,
+    barrier_binding=None,
+):
+    """Overlay source-owned typed end state onto prompt-derived continuity."""
+    result = copy.deepcopy(state) if isinstance(state, dict) else new_continuity_state()
+    subjects = result.setdefault("subjects", {})
+    if not isinstance(subjects, dict):
+        subjects = _continuity_subject_map(subjects)
+        result["subjects"] = subjects
+    environment = result.setdefault("environment", {})
+    if not isinstance(environment, dict):
+        environment = {}
+        result["environment"] = environment
+
+    try:
+        effects = _validate_state_effects(list(assigned_state_effects or []))
+    except (TypeError, ValueError):
+        return result
+
+    def subject_record(name):
+        key = next(
+            (
+                existing
+                for existing in subjects
+                if str(existing).casefold() == str(name).casefold()
+            ),
+            str(name),
+        )
+        record = subjects.get(key)
+        if not isinstance(record, dict):
+            record = {"name": str(name)}
+            subjects[key] = record
+        record.setdefault("position", "N/A")
+        record.setdefault("wardrobe", {})
+        record.setdefault("held_props", [])
+        record.setdefault("spatial_relationships", [])
+        return record
+
+    persistent_facts = []
+    existing_persistent = str(environment.get("persistent_state") or "").strip()
+    if existing_persistent and existing_persistent.upper() != "N/A":
+        persistent_facts.extend(
+            part.strip() for part in existing_persistent.split(";") if part.strip()
+        )
+
+    for effect in effects:
+        op = effect["op"]
+        if op == "set_location":
+            subject_record(effect["entity"])["position"] = effect["value"]
+        elif op == "set_containment":
+            record = subject_record(effect["entity"])
+            container = effect["container"]
+            if effect["value"] == "contained":
+                record["position"] = container
+                relation = f"inside {container}"
+                record["spatial_relationships"] = [
+                    item for item in record.get("spatial_relationships", [])
+                    if str(item).casefold() != f"outside {container}".casefold()
+                ]
+                if relation not in record["spatial_relationships"]:
+                    record["spatial_relationships"].append(relation)
+            else:
+                if str(record.get("position") or "").casefold() == container.casefold():
+                    record["position"] = f"outside {container}"
+                record["spatial_relationships"] = [
+                    item for item in record.get("spatial_relationships", [])
+                    if str(item).casefold() != f"inside {container}".casefold()
+                ]
+        elif op == "set_item_state":
+            record = subject_record(effect["owner"])
+            held = list(record.get("held_props") or [])
+            item = effect["entity"]
+            held = [value for value in held if str(value).casefold() != item.casefold()]
+            if effect["value"] in {"held", "equipped"}:
+                held.append(item)
+            record["held_props"] = held
+        elif op == "set_clothing":
+            record = subject_record(effect["entity"])
+            wardrobe = record.setdefault("wardrobe", {})
+            if isinstance(wardrobe, dict):
+                wardrobe[effect["slot"]] = effect["item"]
+        elif op == "set_barrier_state":
+            entity = effect["entity"]
+            if (
+                barrier_binding
+                and str(barrier_binding.get("entity", "")).casefold()
+                == str(entity).casefold()
+            ):
+                entity = f"{barrier_binding['destination']} {entity}"
+            persistent_facts.append(f"{entity} {effect['value']}")
+        elif op in {"set_object_state", "set_threat_state", "set_condition"}:
+            persistent_facts.append(f"{effect['entity']} {effect['value']}")
+
+    if persistent_facts:
+        environment["persistent_state"] = "; ".join(dict.fromkeys(persistent_facts))
+    return result
+
+
 # Run the single combined continuity extraction/reduction call.
 def request_combined_continuity(
     h3_prompt,
