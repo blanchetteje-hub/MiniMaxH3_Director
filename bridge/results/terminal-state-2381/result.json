@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-state-2381",
+  "kind": "llama_chat",
+  "started_at": 1790613816.1189504,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify one target state. Return JSON only. Do not judge overall story correctness."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe operator seals the last pressure hatch.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE: Hatch 4 was sealed earlier but has since been explicitly reopened.\n\nRAW SCENE\nAt 00:00 hatch 4 is open. The operator closes and seals it.\n\nMap the target condition immediately BEFORE the source-assigned action begins to the closest Python state:\nACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\nALREADY_TERMINAL = the exact assigned terminal outcome is already true before the action begins.\nUNSPECIFIED = SOURCE does not assign a terminal outcome, or the supplied facts do not establish either state.\nCompare meaning, not wording. Opening facts remain true unless RAW visibly changes them. Source-authorized opening facts win direct conflicts; rendered opening facts still apply where source state is silent. Do not invent reversal or restoration. Return only status."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-8fvkp9v65cxy6lrkwxfri",
+    "object": "chat.completion",
+    "created": 1790613816,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ALREADY_TERMINAL\"}",
+          "reasoning": "We need to classify one target state: \"The operator seals the last pressure hatch.\" The assigned source says that action occurs, but we want the target condition immediately before the source-assigned action begins.\n\nSo what is the target condition? It seems the target condition is \"Hatch 4 was sealed earlier but has since been explicitly reopened.\" Wait that's from AUTHORITATIVE OPENING STATE: SOURCE-AUTHORIZED CURRENT STATE: Hatch 4 was sealed earlier but has since been explicitly reopened. That indicates that before the action, hatch 4 is open (since it was reopened). The RAW SCENE says at 00:00 hatch 4 is open. Then operator closes and seals it.\n\nWe need to map target condition immediately BEFORE source-assigned action begins to closest Python state among ACTIVE_OR_UNRESOLVED, ALREADY_TERMINAL, UNSPECIFIED.\n\nThe assigned terminal outcome? \"Hatch 4 was sealed earlier but has since been explicitly reopened.\" The target condition is that hatch 4 is open. Is the assigned terminal outcome already true before the action? Yes: hatch 4 is open (explicitly reopened). So ALREADY_TERMINAL? Wait, we need to see what the assigned terminal outcome refers to. \"The operator seals the last pressure hatch\" means after action, hatch sealed. The target condition immediately before that action would be hatch not sealed (open). But the source-authorized opening state says it's open. So is that already true? Yes.\n\nThus ALREADY_TERMINAL: because the exact assigned terminal outcome is already true before the action begins? Wait \"assigned terminal outcome\" refers to what? The target condition? Actually we need to map the target condition immediately BEFORE the source-assigned action begins. That target condition is hatch 4 open. Is that already true? Yes, according to AUTHORITATIVE OPENING STATE and RAW SCENE.\n\nThus ALREADY_TERMINAL. But check definitions: ACTIVE_OR_UNRESOLVED = assigned terminal outcome not already true. ALREADY_TERMINAL = exact assigned terminal outcome already true before action begins. UNSPECIFIED if source does not assign a terminal outcome or facts don't establish either state.\n\nSo answer is \"ALREADY_TERMINAL\". Return JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 274,
+      "completion_tokens": 472,
+      "total_tokens": 746,
+      "completion_tokens_details": {
+        "reasoning_tokens": 453
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790613822.7251222,
+  "status": "ok"
+}
