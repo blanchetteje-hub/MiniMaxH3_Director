@@ -1,0 +1,57 @@
+{
+  "job_id": "terminal-state-2356",
+  "kind": "llama_chat",
+  "started_at": 1790613628.191728,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Classify one target state. Return JSON only. Do not judge overall story correctness."
+      },
+      {
+        "role": "user",
+        "content": "ASSIGNED SOURCE\nThe pilot shuts down the final engine.\n\nAUTHORITATIVE OPENING STATE\nSOURCE-AUTHORIZED CURRENT STATE: Engine B is running.\n\nRAW SCENE\nThe pilot reduces engine B to idle and shuts it down.\n\nMap the target condition immediately BEFORE the source-assigned action begins to the closest Python state:\nACTIVE_OR_UNRESOLVED = the assigned terminal outcome is not already true.\nALREADY_TERMINAL = the exact assigned terminal outcome is already true before the action begins.\nUNSPECIFIED = SOURCE does not assign a terminal outcome, or the supplied facts do not establish either state.\nCompare meaning, not wording. Opening facts remain true unless RAW visibly changes them. Source-authorized opening facts win direct conflicts; rendered opening facts still apply where source state is silent. Do not invent reversal or restoration. Return only status."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 512,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-2id872zj87aqcikuix4ph",
+    "object": "chat.completion",
+    "created": 1790613628,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"status\":\"ACTIVE_OR_UNRESOLVED\"}",
+          "reasoning": "We need to classify the target condition immediately before the source-assigned action begins.\n\nThe pilot shuts down the final engine. The assigned source: \"The pilot shuts down the final engine.\" So the action is shutting down the final engine. Which engine? Final engine likely Engine B (since only two engines). But we have opening state: Engine B is running. Raw scene says: The pilot reduces engine B to idle and shuts it down.\n\nWe need target condition immediately before source-assigned action begins. That means before the pilot shuts down the final engine, what is the status of Engine B? Opening facts: Engine B is running. RAW scene changes that by reducing to idle then shutting down. But we consider \"immediately before\" the shutdown action. So at that moment, Engine B has been reduced to idle but not yet shut down. Idle means it's still running (idle). The target condition likely refers to whether Engine B is running or not.\n\nWe need to map to one of three states: ACTIVE_OR_UNRESOLVED, ALREADY_TERMINAL, UNSPECIFIED.\n\nThe assigned terminal outcome? Source assigns \"shuts down the final engine.\" Terminal outcome: Engine B stops running. Is that already true before action begins? No, because it's still idle but not shut down. So it's not yet stopped. So ACTIVE_OR_UNRESOLVED applies (the assigned terminal outcome is not already true). But we need to check if there's any other nuance.\n\nThe target condition immediately BEFORE the source-assigned action: Engine B is running at idle. The opening state says Engine B is running. That matches. So it's active, not terminated. So ACTIVE_OR_UNRESOLVED.\n\nThus output JSON with status \"ACTIVE_OR_UNRESOLVED\".",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 260,
+      "completion_tokens": 373,
+      "total_tokens": 633,
+      "completion_tokens_details": {
+        "reasoning_tokens": 353
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790613633.5995374,
+  "status": "ok"
+}
