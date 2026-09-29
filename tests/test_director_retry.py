@@ -65,7 +65,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             [1, 2, 1],
         )
         self.assertIn(
-            "include every explicit required action/object/outcome",
+            "fix those exact completion failures without advancing into NEXT BEAT",
             request.call_args_list[1].args[0][-1]["content"],
         )
         self.assertTrue(payload["request1_result"]["beat_complete"])
@@ -132,7 +132,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertTrue(payload["request1_result"]["beat_complete"])
         retry_prompt = request.call_args_list[1].args[0][-1]["content"]
         self.assertIn("CURRENT BEAT", retry_prompt)
-        self.assertIn("Do not advance into NEXT BEAT", retry_prompt)
+        self.assertIn("without advancing into NEXT BEAT", retry_prompt)
 
     def test_request_two_result_does_not_contain_completion_metadata(self):
         parsed = minimax.parse_h3_formatter_result(formatter_response("[Shot 1] Mark waits."))
@@ -606,7 +606,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         # Python owns beat completion metadata; no semantic gates ran.
         self.assertNotIn("completed_beat_ids", payload["llm_result"])
         self.assertTrue(payload["request1_result"]["beat_complete"])
-        self.assertEqual(payload["raw_scene"], raw_scene)
+        self.assertEqual(
+            payload["raw_scene"],
+            director_response(raw_scene)["raw_scene"],
+        )
         self.assertIn(
             "enters—quietly in a white T-shirt",
             ask_llm.call_args_list[1].args[0][1]["content"],
@@ -771,25 +774,19 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         ask_llm.side_effect = [director_response(raw_scene)] + [invalid] * 10
 
-        with mock.patch("builtins.print") as printed:
-            payload = minimax.request_segment_llm(
-                segment_bundle(),
-                [],
-                "run-id",
-                {"source_sha256": "source-hash"},
-            )
+        with mock.patch("builtins.print"):
+            with self.assertRaisesRegex(
+                minimax.BeatGenerationError,
+                "could not preserve canonical timestamps",
+            ):
+                minimax.request_segment_llm(
+                    segment_bundle(),
+                    [],
+                    "run-id",
+                    {"source_sha256": "source-hash"},
+                )
 
         self.assertEqual(ask_llm.call_count, 11)
-        self.assertEqual(
-            payload["llm_result"]["detailed_description"],
-            invalid["detailed_description"],
-        )
-        self.assertIn(
-            "WARNING: Director Request 2 timestamp validation failed after 10 attempts",
-            "\n".join(
-                str(call.args[0]) for call in printed.call_args_list if call.args
-            ),
-        )
 
     @mock.patch("minimax.ask_llm")
     def test_segment_llm_uses_last_output_after_ten_formatter_failures(
