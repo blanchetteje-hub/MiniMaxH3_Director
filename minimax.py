@@ -17954,6 +17954,7 @@ def _director_opening_held_reacquire_errors(raw_scene, registry_state):
                     rf"grab(?:s|bed|bing)?)\s+"
                     rf"(?:a|an|the|her|his|their)?\s*"
                     rf"(?<![\w]){prop_pattern}(?![\w])"
+                    rf"(?:\s+(?:from|off|out\s+of)\s+[^.\n;]{{1,60}})?"
                     rf"|pick(?:s|ed|ing)?\s+up\s+"
                     rf"(?:a|an|the|her|his|their)?\s*"
                     rf"(?<![\w]){prop_pattern}(?![\w])"
