@@ -890,6 +890,43 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertTrue(any("follow-pronoun" in issue for issue in issues))
 
+    def test_opening_held_prop_cannot_be_reacquired_without_release(self):
+        registry = {
+            "subjects": {
+                "Amy": {
+                    "held_props": ["pistol", "katana"],
+                },
+            },
+        }
+        issues = minimax._director_opening_held_reacquire_errors(
+            (
+                "At 00:00.000, Amy holds a pistol and katana.\n"
+                "At 00:01.000, Amy pulls pistol from holster and aims it.\n"
+                "End continuity state: Amy holds pistol and katana."
+            ),
+            registry,
+        )
+        self.assertTrue(any("already begins the segment holding" in issue for issue in issues))
+
+    def test_opening_held_prop_can_be_reacquired_after_release(self):
+        registry = {
+            "subjects": {
+                "Amy": {
+                    "held_props": ["pistol"],
+                },
+            },
+        }
+        issues = minimax._director_opening_held_reacquire_errors(
+            (
+                "At 00:00.000, Amy holsters the pistol.\n"
+                "At 00:01.000, Amy draws the pistol from the holster.\n"
+                "End continuity state: Amy holds the pistol."
+            ),
+            registry,
+        )
+        self.assertEqual(issues, [])
+
+
     def test_deterministic_crossing_guard_allows_authorized_children(self):
         contracts = [{
             "destination": "basement",
