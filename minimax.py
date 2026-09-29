@@ -10395,6 +10395,86 @@ def _director_unauthorized_destination_crossing_errors(raw_scene, topology_contr
     return errors
 
 
+def _director_unassigned_external_end_errors(
+    raw_scene,
+    authoritative_opening_state,
+    assigned_state_effects,
+    subject_definitions="",
+):
+    """Reject explicit persistent outside relocation without a typed movement effect."""
+    end_match = _DIRECTOR_END_CONTINUITY_RE.search(str(raw_scene or ""))
+    if end_match is None:
+        return []
+    end_state = str(end_match.group("state") or "").strip()
+    if not re.search(r"(?i)\b(?:outside|outdoors|patio|porch|exterior)\b", end_state):
+        return []
+
+    try:
+        effects = _validate_state_effects(list(assigned_state_effects or []))
+    except (TypeError, ValueError):
+        effects = []
+    authorized = {
+        str(effect.get("entity") or "").casefold()
+        for effect in effects
+        if effect.get("op") in {"set_location", "set_containment"}
+    }
+
+    opening = _director_source_opening_state_json(authoritative_opening_state)
+    characters = opening.get("characters") if isinstance(opening, dict) else {}
+    if not isinstance(characters, dict):
+        characters = {}
+
+    try:
+        registry = parse_subject_registry(subject_definitions)
+    except (TypeError, ValueError):
+        registry = {}
+
+    names = [
+        str(name).strip()
+        for _sid, name, _record in _subject_registry_records(registry)
+        if str(name).strip()
+    ]
+    errors = []
+    clauses = [
+        clause.strip()
+        for clause in re.split(r"[.;]", end_state)
+        if clause.strip()
+    ]
+    for name in names:
+        key = name.casefold()
+        if key in authorized:
+            continue
+        opening_key = next(
+            (known for known in characters if str(known).casefold() == key),
+            None,
+        )
+        if opening_key is not None and isinstance(characters.get(opening_key), dict):
+            record = characters[opening_key]
+            opening_text = " ".join(
+                str(value or "")
+                for value in (record.get("location"), record.get("contained_in"))
+            )
+            if re.search(r"(?i)\b(?:outside|outdoors|patio|porch|exterior)\b", opening_text):
+                continue
+
+        name_pattern = rf"(?<![\w]){re.escape(name)}(?![\w])"
+        for clause in clauses:
+            if (
+                re.search(name_pattern, clause, re.IGNORECASE)
+                and re.search(
+                    r"(?i)\b(?:outside|outdoors|patio|porch|exterior)\b",
+                    clause,
+                )
+            ):
+                errors.append(
+                    f"{name} ends outside/external in RAW SCENE without a "
+                    "source-owned location/containment effect authorizing that "
+                    "persistent relocation."
+                )
+                break
+    return errors
+
+
 def _missing_named_director_subjects(
     current_beat,
     raw_scene,
@@ -27850,6 +27930,15 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 _director_wrong_bound_barrier_errors(
                     raw_scene,
                     request1_barrier_binding,
+                )
+            )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_unassigned_external_end_errors(
+                    raw_scene,
+                    bundle.get("opening_state", ""),
+                    bundle.get("assigned_state_effects", []),
+                    bundle.get("subject_definitions", ""),
                 )
             )
         missing_director_subjects = _missing_named_director_subjects(

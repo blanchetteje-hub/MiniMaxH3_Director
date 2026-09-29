@@ -1117,6 +1117,49 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 [],
             )
 
+    def test_unassigned_external_end_rejects_helper_following_outside(self):
+        opening = (
+            'SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n'
+            '{"characters":{"Amy":{"location":"home"},"Will":{"location":"basement"},'
+            '"Amber":{"location":"basement"}}}'
+        )
+        effects = [
+            {"op": "set_containment", "entity": "Will", "value": "free", "container": "basement"},
+            {"op": "set_containment", "entity": "Amber", "value": "free", "container": "basement"},
+        ]
+        subjects = (
+            "<Subject 1> is Amy, a woman.\n"
+            "<Subject 2> is Will, a boy.\n"
+            "<Subject 3> is Amber, a girl."
+        )
+        raw = (
+            "At 00:07.500, all three stand outside in sunlight.\n"
+            "End continuity state: Amy, Will, and Amber stand on the sunny patio outside the house."
+        )
+        issues = minimax._director_unassigned_external_end_errors(
+            raw, opening, effects, subjects
+        )
+        self.assertTrue(any(issue.startswith("Amy ends outside") for issue in issues))
+        self.assertFalse(any(issue.startswith("Will ends outside") for issue in issues))
+        self.assertFalse(any(issue.startswith("Amber ends outside") for issue in issues))
+
+    def test_authorized_external_end_is_allowed(self):
+        opening = (
+            'SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n'
+            '{"characters":{"Amy":{"location":"home"}}}'
+        )
+        effects = [
+            {"op": "set_location", "entity": "Amy", "value": "outside home"},
+        ]
+        raw = (
+            "At 00:05.000, Amy steps outside.\n"
+            "End continuity state: Amy stands outside the house."
+        )
+        issues = minimax._director_unassigned_external_end_errors(
+            raw, opening, effects, "<Subject 1> is Amy, a woman."
+        )
+        self.assertEqual(issues, [])
+
     def test_director_prompt_forbids_invented_structural_geography(self):
         prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
