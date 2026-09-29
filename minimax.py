@@ -865,66 +865,39 @@ _BEAT_ABBREVIATIONS = {
 # System prompts and parser patterns for Director and H3 formatting requests.
 # ------------------------------------------------------------
 
-DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are a minimalist movie editor expanding the CURRENT BEAT into timed micro-beats for a {segment_seconds}-second video segment.
+DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are the creative director for one {segment_seconds}-second video segment.
 
-AUTHORITY RULES
-- ASSIGNED SOURCE, when present, defines the work allowed now. CURRENT BEAT supplies staging but cannot remove source actions, results, or participant roles. Without ASSIGNED SOURCE, CURRENT BEAT defines the work.
-- NEXT BEAT is a forbidden boundary. Do not perform, begin, anticipate, foreshadow, cause, or show any result unique to NEXT BEAT.
-- OPENING CONTINUITY STATE defines what is already true at 00:00.000; it does not authorize a new event.
-- SUBJECT DEFINITIONS establish identity/appearance only.
-- Expand the current assignment only. Preserve source beneficiaries as beneficiaries, not spectators. Do not advance the story.
-- Local staging may not invent consequential persistent changes such as injury, death, destruction, new ownership/equipment, containment/release, barrier changes, location changes, or wardrobe identity changes unless CURRENT BEAT authorizes them.
-- If CURRENT BEAT assigns an irreversible terminal result to an entity or process, that target/process must not already satisfy that result at the start of this beat, and the beat must visibly cause the transition. Reapplying an already-satisfied terminal result does NOT satisfy a newly assigned terminal action. After the terminal transition, do not carry it forward as active unless CURRENT BEAT explicitly restores or restarts it.
-- If a subject is inside/behind a locked or sealed barrier, keep that containment true until CURRENT BEAT explicitly releases or moves them.
-- When people cross a doorway, hatch, gate, or other barrier, only the subjects explicitly named by ASSIGNED SOURCE/CURRENT BEAT as crossing may cross. Every other subject stays on the side where they started unless the source explicitly says they cross too. Moving, pushing, guiding, releasing, or letting other subjects through NEVER implies that the mover/helper follows them. If the barrier then closes or locks, show the two sides explicitly and keep the groups separated until a later beat reopens/releases them.
-- Barrier change is not barrier crossing. Opening, breaking, unlocking, or damaging a boundary does not move the actor through it unless ASSIGNED SOURCE/CURRENT BEAT also assigns entry/crossing.\n- Do not invent wardrobe changes. Any clothing specified in the beat must be part of the response.
+AUTHORITY — obey in this order
+1. ASSIGNED SOURCE says what must happen now.
+2. CURRENT BEAT is staging guidance for that source.
+3. OPENING CONTINUITY STATE says what is already true at 00:00.000.
+4. AUTHORITATIVE FINAL STATE CONTRACT, when supplied, must be true at the end.
+5. NEXT BEAT is forbidden; do not begin, reveal, cause, or foreshadow it.
 
-LOCAL STAGING
-- Be direct and concrete. No literary fluff, ornamental atmosphere, or explanatory prose.
-- Describe only externally depictable video/audio information. Do not write internal thoughts, inferred feelings, motivations, smell/taste/touch as subjective sensation, or other information H3 cannot portray. If emotion matters, show only an explicit visible action or expression supported by the beat/source.
-- Add only the minimum mundane micro-actions, ordinary props, incidental reactions, and short natural dialogue needed to make CURRENT BEAT visibly legible and complete.
-- Do NOT invent structural geography or a travel route. Stairs, hallways, corridors, extra doors, ladders, elevators, rooms, floors, tunnels, gates, passages, or other route-defining structures may appear only when established by ASSIGNED SOURCE, CURRENT BEAT, or OPENING CONTINUITY STATE. If the route to a named destination is unspecified, show the named subjects moving directly toward/through the established destination boundary without inventing how the building connects.
-- State materially important physical actions explicitly: who acts, what object is used, how it moves/changes hands/changes state, and the visible result when relevant. Avoid vague compression when the physical steps matter to H3.
-- A finite action in CURRENT BEAT is NOT complete merely because RAW SCENE shows the subject performing it. Unless CURRENT BEAT says it remains unfinished/interrupted, show its natural observable result or stable endpoint.
-- When an activity is for named people, show those people receiving or participating in the completed result when practical. `beat_complete=true` requires each named beneficiary to visibly receive or participate in the completed result when physically possible.
-- When completion ends use of an activity-only tool/appliance, leave it in a stable visible state when physically reasonable. Do NOT set down, unequip, holster, discard, or otherwise change a held/equipped readiness item merely because one action finished. Preserve held/equipped state unless ASSIGNED SOURCE/CURRENT BEAT explicitly changes it.
-- If CURRENT BEAT has multiple explicit actions, execute all of them.
-- Local staging may not invent consequential persistent changes beyond CURRENT BEAT.
-- When CURRENT BEAT introduces an unnamed but visually significant individual likely to persist, act, speak, fight, or matter to continuity, assign it a simple functional stable label formed from its role/type plus a number, such as Guard1 or Creature1, and reuse it consistently.
-- Do not assign Subject-style labels to crowds, collective groups, scenery, props, or incidental background figures.
-- Short dialogue may directly support CURRENT BEAT but may not introduce new facts or NEXT BEAT.
-- Registered speakers use their exact speaker ID and H3 dialogue form, for example: Amy (S1) says <d>[English]The eggs are ready.</d>. Do NOT put spoken words in bare single/double quotation marks. Never invent an (S#).
+DIRECT THE SCENE
+- Complete every action, object interaction, participant role, and visible result assigned to this segment.
+- Preserve established opening state unless ASSIGNED SOURCE/CURRENT BEAT or the FINAL STATE CONTRACT changes it.
+- Do not invent persistent changes: no new injury/death/destruction, ownership/equipment, containment/release, barrier state, wardrobe change, or story-location change.
+- Do not invent structural geography or travel routes. Use only established rooms, doors, stairs, halls, gates, passages, or other structures.
+- Only explicitly authorized subjects may cross a barrier. Helping or moving someone through does not imply the helper follows.
+- Preserve held/equipped readiness items unless the assignment explicitly changes them.
+- Use only externally visible/audible action. Keep prose concrete and concise. Short dialogue is allowed only when it supports CURRENT BEAT and adds no new facts.
+- Prefer names over ambiguous pronouns.
 
-MICRO-BEATS
-- First timestamp MUST be 00:00.000.
-- Use the canonical timestamp syntax exactly: "At 00:ss.mmm," with NO word "seconds".
-- Put each timestamp on a new line.
-- Use one discrete action/event per timestamp; camera movement may accompany it when needed.
-- Use as many timestamps as CURRENT BEAT needs; there is NO arbitrary maximum timestamp count.
-- Keep the final timestamp before the exact {segment_seconds}-second endpoint.
-- Use continuous camera movement liberally when it improves spatial clarity or reveals the next action: pan, orbit, track, tilt, push/pull, follow, or reframe. Prefer movement over cuts. Cuts are rare and should be used only when continuous movement would be impractical or confusing.
-- Keep spatial relationships explicit when important.
-- Prefer names over pronouns. Within one timestamp, use a pronoun only when exactly one person could reasonably be its referent; otherwise repeat the person's name.
-- For difficult irreversible separations, use separate timestamps when multiple visible stages are needed.
-- For continuation segments, avoid ending the final timed action on spoken dialogue when a visual handoff can follow.
-- Keep the END CONTINUITY STATE to one sentence, untimed, and nearly identical to the last visible state. Do not invent anything new there.
-- Be short and succinct; describe only visual/audio information.
+TIMED RAW SCENE
+- First timestamp is exactly "At 00:00.000,".
+- Put each timestamp on its own line using exactly "At 00:ss.mmm,".
+- Use one clear action/event per timestamp. Use enough timestamps to make the beat legible; keep the final timestamp before {segment_seconds} seconds.
+- Camera movement may clarify action; cuts should be rare.
+- End with one untimed sentence beginning "End continuity state:" that matches the last visible frame. Do not add new facts there.
 
 {story_segment_ending_rules}
 
-OUTPUT CONTRACT
-- Return one JSON object only:
-  {{"raw_scene": "...", "finite_activity_complete": true,
-  "named_beneficiaries_complete": true, "activity_tools_settled": true,
-  "beat_complete": true}}
-- raw_scene contains the complete timed scene plus one trailing "End continuity state:" sentence.
-- Set finite_activity_complete true only when every finite activity reaches its natural result/stable endpoint unless explicitly unfinished/interrupted.
-- Set named_beneficiaries_complete true only when named beneficiaries visibly receive/participate when physically possible.
-- Set activity_tools_settled true only when activity-only tools/appliances are in a stable visible state when physically reasonable; held/equipped readiness items must remain held/equipped unless CURRENT BEAT explicitly changes that state.
-- Set `beat_complete` true only when all three completion checks above are true and every explicit CURRENT BEAT action/object/outcome is visible.
-- Compress timing if needed. Never omit an explicit CURRENT BEAT requirement and never advance into NEXT BEAT.
-"""
+RETURN JSON ONLY
+{{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true}}
 
+Set the booleans true only when their named requirement is visibly satisfied. beat_complete is true only when the entire assigned segment is complete without entering NEXT BEAT.
+"""
 # Request 2 is a formatter/translator. Request 1 owns creative direction.
 H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a strict formatter/translator for the final MiniMax H3 prompt.
 
@@ -26937,6 +26910,20 @@ def build_director_preserved_barrier_state_contracts(
     return contracts
 
 
+def compare_director_barrier_state(contract, observed_state):
+    """Compare one observed barrier state to Python-owned final state."""
+    observed = str(observed_state or "").strip().upper()
+    expected = str((contract or {}).get("expected") or "").strip().upper()
+    if observed == "UNSPECIFIED" and bool((contract or {}).get("preserved")):
+        return ""
+    if observed != expected:
+        return (
+            f"{contract['barrier']} must end {contract['source_state']}, but RAW SCENE "
+            f"ended {observed.lower().replace('_', ' ')}."
+        )
+    return ""
+
+
 def build_director_barrier_state_messages(barrier, raw_scene):
     """Ask the local model only for one barrier's final visible state."""
     return [
@@ -27608,69 +27595,50 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         bundle.get("opening_state", ""),
         bundle.get("assigned_state_effects", []),
     )
-    if request1_topology_contracts and request1_base_messages:
-        topology_lines = []
+    if request1_base_messages:
+        final_state_lines = []
         for topology_contract in request1_topology_contracts:
             destination = topology_contract["destination"]
             for item in topology_contract["subjects"]:
-                if item["expected"] == "AT_DESTINATION":
-                    topology_lines.append(
-                        f"- {item['entity']} MUST end at {destination}."
-                    )
-                else:
-                    topology_lines.append(
-                        f"- {item['entity']} MUST NOT end at {destination}."
-                    )
-        request1_base_messages[-1] = dict(request1_base_messages[-1])
-        request1_base_messages[-1]["content"] = (
-            f"{request1_base_messages[-1].get('content', '')}\n\n"
-            "AUTHORITATIVE FINAL-SIDE CONTRACT — Python-derived from canonical "
-            "opening state and assigned typed effects; obey exactly:\n"
-            + "\n".join(topology_lines)
-            + "\nHelper/mover verbs do not override this contract. Only subjects "
-            "whose authoritative final-side contract is AT the destination may cross "
-            "into that destination during this beat."
-        )
+                relation = (
+                    f"IN {destination}"
+                    if item["expected"] == "AT_DESTINATION"
+                    else f"NOT IN {destination}"
+                )
+                final_state_lines.append(
+                    f"- {item['entity']}: {relation}."
+                )
+
+        for item in request1_barrier_state_contracts:
+            if item.get("preserved"):
+                final_state_lines.append(
+                    f"- {item['barrier']}: remains {str(item['source_state']).upper()} "
+                    "(already true; it need not be mentioned, but do not contradict it)."
+                )
+            else:
+                final_state_lines.append(
+                    f"- {item['barrier']}: must end {str(item['source_state']).upper()}."
+                )
+
         if request1_barrier_binding:
-            request1_base_messages[-1]["content"] += (
-                "\nAUTHORITATIVE BARRIER BINDING: the generic barrier named "
-                f"{request1_barrier_binding['entity']!r} is the boundary of "
-                f"{request1_barrier_binding['destination']!r} and ends "
-                f"{request1_barrier_binding['state']}. Do not reinterpret it as "
-                "an unrelated door/gate/hatch elsewhere in the scene."
+            final_state_lines.append(
+                f"- Barrier {request1_barrier_binding['entity']!r} is the boundary "
+                f"of {request1_barrier_binding['destination']!r}; do not reinterpret it."
             )
-    if request1_preserved_barrier_state_contracts and request1_base_messages:
-        preserved_lines = [
-            f"- {item['barrier']} begins {item['source_state']} and MUST end "
-            f"{item['source_state']} because no assigned typed effect changes it."
-            for item in request1_preserved_barrier_state_contracts
-        ]
-        request1_base_messages[-1] = dict(request1_base_messages[-1])
-        request1_base_messages[-1]["content"] = (
-            f"{request1_base_messages[-1].get('content', '')}\n\n"
-            "AUTHORITATIVE FINAL BARRIER STATE — Python-derived from canonical "
-            "opening state; obey exactly:\n"
-            + "\n".join(preserved_lines)
-            + "\nA release or crossing may temporarily open/unlock the boundary, "
-            "but restore its canonical state before this beat ends unless a typed "
-            "barrier effect explicitly changes the final state."
-        )
-    if request1_closed_boundary_contracts and request1_base_messages:
-        closed_lines = [
-            f"- {item['barrier']} begins {item['state']} and MUST NOT be traversed "
-            "in this beat."
-            for item in request1_closed_boundary_contracts
-        ]
-        request1_base_messages[-1] = dict(request1_base_messages[-1])
-        request1_base_messages[-1]["content"] = (
-            f"{request1_base_messages[-1].get('content', '')}\n\n"
-            "AUTHORITATIVE CLOSED-BOUNDARY CONTRACT — Python-derived from "
-            "canonical opening state and current typed effects; obey exactly:\n"
-            + "\n".join(closed_lines)
-            + "\nApproaching, striking, or acting near a boundary is allowed. "
-            "Do not show any subject crossing through it unless CURRENT BEAT's "
-            "typed effects authorize that boundary/release transition."
-        )
+
+        for item in request1_closed_boundary_contracts:
+            final_state_lines.append(
+                f"- {item['barrier']}: do not traverse this boundary in this beat."
+            )
+
+        if final_state_lines:
+            request1_base_messages[-1] = dict(request1_base_messages[-1])
+            request1_base_messages[-1]["content"] = (
+                f"{request1_base_messages[-1].get('content', '')}\n\n"
+                "AUTHORITATIVE FINAL STATE CONTRACT — Python-owned; obey exactly:\n"
+                + "\n".join(final_state_lines)
+            )
+
     request1_messages = request1_base_messages
     request1_result = None
     raw_scene = ""
@@ -28005,12 +27973,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                                 + str(error)
                             )
                             break
-                        if observed_state != state_contract["expected"]:
-                            barrier_state_issues.append(
-                                f"{state_contract['barrier']} must end "
-                                f"{state_contract['source_state']}, but RAW SCENE "
-                                f"ended {observed_state.lower().replace('_', ' ')}."
-                            )
+                        state_issue = compare_director_barrier_state(
+                            state_contract,
+                            observed_state,
+                        )
+                        if state_issue:
+                            barrier_state_issues.append(state_issue)
                             break
                 if (
                     not terminal_target_issue

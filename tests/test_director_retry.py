@@ -497,30 +497,40 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(parsed["subject_genders"], {"Amy": "female"})
 
-    def test_director_prompt_blocks_terminal_state_carryover(self):
+    def test_director_prompt_is_compact_creative_contract(self):
         prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
-            beat_number=1,
             story_segment_ending_rules="",
         )
-        self.assertIn(
-            "After the terminal transition, do not carry it forward as active",
-            prompt,
-        )
-        self.assertIn(
-            "unless CURRENT BEAT explicitly restores or restarts it",
-            prompt,
-        )
+        self.assertIn("You are the creative director", prompt)
+        self.assertIn("AUTHORITY — obey in this order", prompt)
+        self.assertIn("AUTHORITATIVE FINAL STATE CONTRACT", prompt)
+        self.assertIn("NEXT BEAT is forbidden", prompt)
+        self.assertIn("Do not invent structural geography or travel routes", prompt)
+        self.assertLess(len(prompt), 5000)
 
-    def test_director_prompt_preserves_locked_containment_handoff(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
-            segment_seconds=8,
-            story_segment_ending_rules="",
+    def test_preserved_barrier_unspecified_means_unchanged(self):
+        issue = minimax.compare_director_barrier_state(
+            {
+                "barrier": "kitchen door window",
+                "expected": "BROKEN",
+                "source_state": "broken",
+                "preserved": True,
+            },
+            "UNSPECIFIED",
         )
-        self.assertIn("inside/behind a locked or sealed barrier", prompt)
-        self.assertIn("keep that containment true", prompt)
-        self.assertIn("only the subjects explicitly named", prompt)
-        self.assertIn("helper follows", prompt)
+        self.assertEqual(issue, "")
+
+    def test_assigned_barrier_unspecified_still_fails(self):
+        issue = minimax.compare_director_barrier_state(
+            {
+                "barrier": "kitchen door window",
+                "expected": "BROKEN",
+                "source_state": "broken",
+            },
+            "UNSPECIFIED",
+        )
+        self.assertIn("must end broken", issue)
 
     def test_validation_prompt_checks_scope_creep_into_exact_next_beat(self):
         messages = minimax.build_director_continuity_validation_messages(
@@ -948,9 +958,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             segment_seconds=8,
             story_segment_ending_rules="",
         )
-        self.assertIn("Do NOT invent structural geography or a travel route", prompt)
-        self.assertIn("Stairs, hallways, corridors, extra doors", prompt)
-        self.assertIn("without inventing how the building connects", prompt)
+        self.assertIn("Do not invent structural geography or travel routes", prompt)
+        self.assertIn("Use only established rooms, doors, stairs, halls, gates, passages", prompt)
 
     def test_completion_prompt_rejects_invented_structural_geography(self):
         messages = minimax.build_director_raw_scene_completion_messages(

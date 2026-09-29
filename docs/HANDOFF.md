@@ -251,3 +251,11 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Root cause: `_director_opening_held_reacquire_errors` embedded `_DIRECTOR_HELD_REACQUIRE_RE.pattern`, which contained an inline `(?i)` flag, inside a larger regex that already had preceding tokens. Python rejects nested global flags away from pattern start.
 - Commits `9aa323f46297def8bacfb8c98bda41b460da7b1a` and `603b0e9d78c3c08316f2e3c1b679cde59b381661` split the reusable reacquire fragment into a flag-free string pattern and compile the standalone regex with `re.IGNORECASE`.
 - Commit `559cc68e686272eb6b3931cb6c3ebb43321490c3` makes `re.error` non-recoverable in the outer generation loop. Regex/programming defects now fail fast instead of restarting the same checkpoint forever.
+
+
+## 2026-09-29 — Request-1 KISS + preserved-state semantics
+
+- Preserved canonical state now follows the core state rule: if a barrier state is already established in the opening state and no typed effect changes it, a RAW-scene extractor result of `UNSPECIFIED` means "not restated" and does **not** override the canonical state. Explicitly assigned barrier transitions still require an observed matching result; `UNSPECIFIED` remains invalid for those.
+- Director Request 1 was reduced to a compact creative-director contract: ASSIGNED SOURCE -> CURRENT BEAT -> OPENING STATE -> Python-owned FINAL STATE CONTRACT -> NEXT BEAT boundary.
+- Python now appends one concise `AUTHORITATIVE FINAL STATE CONTRACT` covering final-side topology, barrier end states, barrier binding, and closed-boundary traversal constraints rather than several verbose prose blocks.
+- No Director 1B/state-repair stage was added. First evaluate the simpler creative call plus corrected deterministic state semantics.
