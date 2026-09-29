@@ -1075,6 +1075,26 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(issues, [])
 
 
+    def test_bound_generic_barrier_rejects_wrong_qualified_door(self):
+        binding = {"entity": "door", "destination": "basement", "state": "locked"}
+        issues = minimax._director_wrong_bound_barrier_errors(
+            "At 00:05.000, Amy slams the kitchen door shut.",
+            binding,
+        )
+        self.assertTrue(any("kitchen door" in issue for issue in issues))
+
+    def test_bound_generic_barrier_allows_destination_or_generic_door(self):
+        binding = {"entity": "door", "destination": "basement", "state": "locked"}
+        for raw_scene in (
+            "At 00:05.000, Amy slams the basement door shut.",
+            "At 00:05.000, Amy locks the door.",
+            "At 00:01.000, a zombie shatters the kitchen door window.",
+        ):
+            self.assertEqual(
+                minimax._director_wrong_bound_barrier_errors(raw_scene, binding),
+                [],
+            )
+
     def test_director_prompt_forbids_invented_structural_geography(self):
         prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,

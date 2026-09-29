@@ -17692,6 +17692,47 @@ def _director_prop_base_key(value):
     return words[0].casefold() if words else ""
 
 
+def _director_wrong_bound_barrier_errors(raw_scene, barrier_binding):
+    """Reject explicit state changes to a different qualified barrier.
+
+    When Python binds a generic barrier such as "door" to one destination,
+    an explicit action on "kitchen door", "garage door", etc. cannot satisfy
+    that destination-bound barrier change. Generic "the door" remains valid
+    because the binding supplies its identity.
+    """
+    if not isinstance(barrier_binding, dict):
+        return []
+    barrier = " ".join(str(barrier_binding.get("entity") or "").split()).casefold()
+    destination = " ".join(
+        str(barrier_binding.get("destination") or "").replace("_", " ").split()
+    ).casefold()
+    if barrier not in {"door", "gate", "hatch", "barrier"} or not destination:
+        return []
+
+    noun = re.escape(barrier)
+    pattern = re.compile(
+        rf"(?i)\b(?:slam(?:s|med|ming)?|clos(?:e|es|ed|ing)|"
+        rf"lock(?:s|ed|ing)?|unlock(?:s|ed|ing)?|open(?:s|ed|ing)?)\b"
+        rf"[^.\n;]{{0,40}}?\b(?:the\s+|a\s+|an\s+)?"
+        rf"(?P<label>[A-Za-z][A-Za-z0-9'_-]*(?:\s+[A-Za-z][A-Za-z0-9'_-]*){{0,3}}\s+{noun})\b"
+        rf"(?!\s+window\b)"
+    )
+    issues = []
+    for match in pattern.finditer(str(raw_scene or "")):
+        label = " ".join(match.group("label").replace("_", " ").split()).casefold()
+        words = label.split()
+        if words == [barrier]:
+            continue
+        qualifier = " ".join(words[:-1])
+        if destination in qualifier or qualifier in destination:
+            continue
+        issues.append(
+            f"RAW SCENE changes explicitly named barrier {label!r}, but Python "
+            f"binds generic {barrier!r} to the {destination!r} boundary."
+        )
+    return issues
+
+
 def _director_opening_held_reacquire_errors(raw_scene, registry_state):
     """Reject reacquiring an item Python already says is held at frame zero."""
     if not isinstance(registry_state, dict):
@@ -27724,6 +27765,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 _director_unauthorized_destination_crossing_errors(
                     raw_scene,
                     request1_topology_contracts,
+                )
+            )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_wrong_bound_barrier_errors(
+                    raw_scene,
+                    request1_barrier_binding,
                 )
             )
         missing_director_subjects = _missing_named_director_subjects(
