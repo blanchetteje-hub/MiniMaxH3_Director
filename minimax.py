@@ -17753,7 +17753,16 @@ def _director_opening_held_reacquire_errors(raw_scene, registry_state):
                     action_text,
                 ) is None:
                     continue
-                if _DIRECTOR_LIMB_RELEASE_RE.search(action_text):
+                prop_match = re.search(
+                    rf"(?i)(?<![\w]){prop_pattern}(?![\w])",
+                    action_text,
+                )
+                release_match = _DIRECTOR_LIMB_RELEASE_RE.search(action_text)
+                if (
+                    prop_match is not None
+                    and release_match is not None
+                    and release_match.start() < prop_match.start()
+                ):
                     released = True
                     continue
                 if released:
