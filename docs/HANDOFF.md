@@ -216,3 +216,10 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Commit `0f33cd7c7d02ffc2dd305adb618056b2dd1f3ef7` tightens only the existing participant-scope rule: collective crossing language such as `they`, `we`, `all`, or `the group` is invalid when it could include an unauthorized mover/helper; RAW must explicitly name authorized crossers.
 - Commit `1c8344e36f727a668a4660a891926ed5eb4debad` adds a regression assertion for that prompt rule.
 - Next checkpoint: rerun the targeted tests, then rerun Director-only acceptance against the frozen `acceptance-2451` plan. The expected Segment-2 repair is explicit wording such as `Will and Amber descend/enter the basement` while Amy remains outside.
+
+## 2026-09-28 — Director structural-geography tightening
+
+- The Segment-2 `They descend the kitchen stairs` wording in `acceptance-2465` was not present in the frozen beat plan; Request 1 invented `kitchen stairs` as local staging.
+- Commit `e92e4d8d51910a3a25cdb828ec933853165957a1` tightens the existing RAW Director prompt: do not invent structural geography/travel routes (stairs, hallways, corridors, extra doors, ladders, elevators, rooms, floors, tunnels, gates, passages). If a route is unspecified, move named subjects directly toward/through the established destination boundary without defining how the building connects.
+- The same commit tightens the existing Request-1 completion verifier to reject invented route-defining structures. This stays within the existing Director generate/verify retry loop; no new semantic stage was added.
+- Commit `c1c07ca7ee8338737de13e8e024c476551ad99a0` adds regression coverage for both prompt constraints.
