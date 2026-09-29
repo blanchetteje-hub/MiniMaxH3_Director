@@ -341,3 +341,13 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Existing topology validation only reasoned about the basement boundary, so Amy could remain correctly outside the basement while still being incorrectly relocated outside the house.
 - Commit `af12046bca490d1707f5bd2383b11cdc2a647a0c` adds a narrow deterministic end-state guard: if a known subject explicitly ends outside/on a porch/patio/exterior and no source-owned set_location/set_containment effect authorizes that persistent relocation, reject Request 1. Already-external subjects and explicitly authorized moves remain valid.
 - `tests-2504` and frozen-plan Director-only `acceptance-2505` are queued together.
+
+
+## 2026-09-29 — acceptance 2505 preserved containment
+
+- `tests-2504` passed 113/113 targeted tests plus 6 subtests.
+- `acceptance-2505` cleared Amy's unauthorized outside relocation in Segment 8.
+- Earliest remaining defect is Segment 7: Will and Amber are still canonically contained in the basement, but RAW stages them `through the broken kitchen door window` looking at the fight before their release beat. Prompt-derived continuity then incorrectly moves them out of the basement.
+- Existing topology guards only activate around typed destination transitions; they did not protect unchanged containment on a beat with no containment effect.
+- Commit `fa2769520c569be680fc880152fb39f00f37a41a` adds a deterministic preserved-containment guard: a subject canonically contained in a location cannot be visually staged elsewhere unless the current beat carries a source-owned set_location/set_containment effect for that subject. Explicitly keeping the subject in the container remains valid.
+- `tests-2506` and frozen-plan Director-only `acceptance-2507` are queued together.
