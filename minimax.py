@@ -18321,6 +18321,8 @@ def _salvage_h3_formatter_result(
         subject_definitions=subject_definitions,
     )
     fallback_text = str(fallback_text or "").strip()
+    if "\nEnd continuity state:" in fallback_text:
+        fallback_text = fallback_text.split("\nEnd continuity state:", 1)[0].rstrip()
     raw_output_text = ""
     if not isinstance(raw_result, dict):
         raw_output_text = str(raw_result or "").strip()
