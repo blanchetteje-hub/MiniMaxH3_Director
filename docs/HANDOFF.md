@@ -242,3 +242,12 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Earliest remaining production defect is Segment 4: RAW begins with Amy already holding pistol + katana, then later says she `pulls pistol from holster`, inventing a holster and reacquiring an item already held in canonical opening continuity.
 - Commit `57e4e078d88171f22e4f90fdbf2468f26bf478a5` extends the existing deterministic object-state gate to compare RAW against structured `registry_state.held_props`; an opening-held item cannot be reacquired unless RAW explicitly releases/stows it first.
 - Commit `7a7a4414158efcf1727279cfec4352b4d8a5bdfe` adds regression coverage for reject/allow cases.
+
+## 2026-09-29 — Segment 4 infinite restart root cause fixed
+
+- User supplied a live run showing Segment 4 repeatedly restarting with `global flags not at the start of the expression at position 38`; this was a Python regex exception, not an LLM stall.
+- `tests-2478` reproduced the same exception in `test_opening_held_prop_cannot_be_reacquired_without_release`.
+- Pending `acceptance-2479` was removed from the runtime queue; no new acceptance is queued until the regression suite is green.
+- Root cause: `_director_opening_held_reacquire_errors` embedded `_DIRECTOR_HELD_REACQUIRE_RE.pattern`, which contained an inline `(?i)` flag, inside a larger regex that already had preceding tokens. Python rejects nested global flags away from pattern start.
+- Commits `9aa323f46297def8bacfb8c98bda41b460da7b1a` and `603b0e9d78c3c08316f2e3c1b679cde59b381661` split the reusable reacquire fragment into a flag-free string pattern and compile the standalone regex with `re.IGNORECASE`.
+- Commit `559cc68e686272eb6b3931cb6c3ebb43321490c3` makes `re.error` non-recoverable in the outer generation loop. Regex/programming defects now fail fast instead of restarting the same checkpoint forever.
