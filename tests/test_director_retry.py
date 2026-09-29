@@ -875,6 +875,21 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertTrue(any("Amy" in issue for issue in issues))
 
+    def test_deterministic_crossing_guard_rejects_ambiguous_follow_pronoun(self):
+        contracts = [{
+            "destination": "basement",
+            "subjects": [
+                {"entity": "Amy", "expected": "NOT_AT_DESTINATION"},
+                {"entity": "Will", "expected": "AT_DESTINATION"},
+                {"entity": "Amber", "expected": "AT_DESTINATION"},
+            ],
+        }]
+        issues = minimax._director_unauthorized_destination_crossing_errors(
+            "At 00:00.000, Will and Amber step inside as she follows.",
+            contracts,
+        )
+        self.assertTrue(any("follow-pronoun" in issue for issue in issues))
+
     def test_deterministic_crossing_guard_allows_authorized_children(self):
         contracts = [{
             "destination": "basement",
