@@ -208,3 +208,11 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Do not treat later prompt-quality observations from 2461 as the next production target until the targeted regression suite is green again.
 - Next checkpoint: run the same targeted Director/formatter/prompt-generation tests. If green, run another Director-only acceptance against the frozen `acceptance-2451` plan and identify the earliest remaining real prompt defect.
 
+## 2026-09-28 — targeted baseline green; Segment 2 crossing ambiguity
+
+- `tests-2469` is green: 90/90 targeted tests passed (8 subtests passed).
+- Re-review of `acceptance-2465` found the earliest remaining production prompt defect in Segment 2. RAW used `They descend the kitchen stairs` after Amy grabbed Will and Amber, which can visually include Amy crossing into the basement even though the authoritative typed end state moves only Will and Amber there and leaves Amy outside to lock the door.
+- The independent completion verifier received the correct typed end state and participant-scope rule, but GPT-OSS 20B rationalized `They` as only Will and Amber and returned valid.
+- Commit `0f33cd7c7d02ffc2dd305adb618056b2dd1f3ef7` tightens only the existing participant-scope rule: collective crossing language such as `they`, `we`, `all`, or `the group` is invalid when it could include an unauthorized mover/helper; RAW must explicitly name authorized crossers.
+- Commit `1c8344e36f727a668a4660a891926ed5eb4debad` adds a regression assertion for that prompt rule.
+- Next checkpoint: rerun the targeted tests, then rerun Director-only acceptance against the frozen `acceptance-2451` plan. The expected Segment-2 repair is explicit wording such as `Will and Amber descend/enter the basement` while Amy remains outside.
