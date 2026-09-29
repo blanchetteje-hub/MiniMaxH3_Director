@@ -498,7 +498,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(parsed["subject_genders"], {"Amy": "female"})
 
     def test_director_prompt_blocks_terminal_state_carryover(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE_TEMPLATE.format(
             segment_seconds=8,
             beat_number=1,
             story_segment_ending_rules="",
@@ -840,6 +840,55 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(ask_llm.call_count, 11)
         self.assertEqual(payload["llm_result"]["detailed_description"], last_text)
         self.assertEqual(payload["llm_result"]["overall_soundscape"], "N/A")
+
+
+    def test_deterministic_route_guard_rejects_unestablished_stairs(self):
+        issues = minimax._director_unestablished_route_errors(
+            "At 00:00.000, Will and Amber rush down the kitchen stairs into the basement.",
+            assigned_source="Amy gets Will and Amber into the basement.",
+            current_beat="Amy moves Will and Amber into the basement.",
+            opening_state="Amy, Will, and Amber are in the kitchen.",
+        )
+        self.assertTrue(any("stairs" in issue for issue in issues))
+
+    def test_deterministic_route_guard_allows_established_stairs(self):
+        issues = minimax._director_unestablished_route_errors(
+            "At 00:00.000, Will and Amber rush down the stairs into the basement.",
+            assigned_source="The basement stairs are beside the kitchen.",
+            current_beat="Will and Amber enter the basement.",
+            opening_state="N/A",
+        )
+        self.assertEqual(issues, [])
+
+    def test_deterministic_crossing_guard_rejects_unauthorized_helper(self):
+        contracts = [{
+            "destination": "basement",
+            "subjects": [
+                {"entity": "Amy", "expected": "NOT_AT_DESTINATION"},
+                {"entity": "Will", "expected": "AT_DESTINATION"},
+                {"entity": "Amber", "expected": "AT_DESTINATION"},
+            ],
+        }]
+        issues = minimax._director_unauthorized_destination_crossing_errors(
+            "At 00:00.000, Amy, Will, and Amber rush into the basement.",
+            contracts,
+        )
+        self.assertTrue(any("Amy" in issue for issue in issues))
+
+    def test_deterministic_crossing_guard_allows_authorized_children(self):
+        contracts = [{
+            "destination": "basement",
+            "subjects": [
+                {"entity": "Amy", "expected": "NOT_AT_DESTINATION"},
+                {"entity": "Will", "expected": "AT_DESTINATION"},
+                {"entity": "Amber", "expected": "AT_DESTINATION"},
+            ],
+        }]
+        issues = minimax._director_unauthorized_destination_crossing_errors(
+            "At 00:00.000, Will and Amber rush into the basement while Amy stays outside.",
+            contracts,
+        )
+        self.assertEqual(issues, [])
 
 
     def test_director_prompt_forbids_invented_structural_geography(self):
