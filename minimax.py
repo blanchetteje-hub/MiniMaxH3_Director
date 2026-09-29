@@ -10337,6 +10337,76 @@ def _missing_named_job_subjects(beat_job, candidate_beat, subject_information=""
     return missing
 
 
+
+_DIRECTOR_ROUTE_STRUCTURE_TERMS = (
+    "stairs", "staircase", "stairwell", "hallway", "hallways", "corridor",
+    "corridors", "ladder", "ladders", "elevator", "elevators", "tunnel",
+    "tunnels", "passage", "passages", "gate", "gates",
+)
+
+_DIRECTOR_CROSSING_VERBS = (
+    "enter", "enters", "entered", "rush", "rushes", "rushed", "run", "runs",
+    "ran", "move", "moves", "moved", "go", "goes", "went", "step", "steps",
+    "stepped", "walk", "walks", "walked", "cross", "crosses", "crossed",
+    "descend", "descends", "descended",
+)
+
+
+def _director_unestablished_route_errors(
+    raw_scene,
+    assigned_source="",
+    current_beat="",
+    opening_state="",
+):
+    """Reject route-defining structures invented only by RAW SCENE."""
+    raw_text = str(raw_scene or "")
+    authority_text = "\\n".join(
+        str(value or "") for value in (assigned_source, current_beat, opening_state)
+    )
+    errors = []
+    for term in _DIRECTOR_ROUTE_STRUCTURE_TERMS:
+        pattern = rf"(?<![\\w]){re.escape(term)}(?![\\w])"
+        if re.search(pattern, raw_text, re.IGNORECASE) and not re.search(
+            pattern, authority_text, re.IGNORECASE
+        ):
+            errors.append(
+                f"RAW SCENE invented unestablished route structure {term!r}."
+            )
+    return errors
+
+
+def _director_unauthorized_destination_crossing_errors(raw_scene, topology_contracts):
+    """Reject explicit crossing by subjects whose typed contract keeps them out."""
+    raw_text = str(raw_scene or "")
+    errors = []
+    for contract in topology_contracts or []:
+        destination = str(contract.get("destination") or "").strip()
+        if not destination:
+            continue
+        destination_pattern = re.escape(destination)
+        for item in contract.get("subjects", []):
+            if item.get("expected") != "NOT_AT_DESTINATION":
+                continue
+            entity = str(item.get("entity") or "").strip()
+            if not entity:
+                continue
+            entity_pattern = re.escape(entity)
+            verbs = "|".join(re.escape(verb) for verb in _DIRECTOR_CROSSING_VERBS)
+            # Require the unauthorized subject, a movement verb, and an explicit
+            # movement preposition leading to the typed destination in one clause.
+            pattern = (
+                rf"(?i)(?<![\\w]){entity_pattern}(?![\\w])"
+                rf"[^.\\n;]{{0,160}}\\b(?:{verbs})\\b"
+                rf"[^.\\n;]{{0,120}}\\b(?:into|inside|through|to)\\s+(?:the\\s+)?"
+                rf"{destination_pattern}(?![\\w])"
+            )
+            if re.search(pattern, raw_text):
+                errors.append(
+                    f"{entity} is not authorized to cross into {destination} in this beat."
+                )
+    return errors
+
+
 def _missing_named_director_subjects(
     current_beat,
     raw_scene,
@@ -27458,8 +27528,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             "AUTHORITATIVE FINAL-SIDE CONTRACT — Python-derived from canonical "
             "opening state and assigned typed effects; obey exactly:\n"
             + "\n".join(topology_lines)
-            + "\nHelper/mover verbs do not override this contract. A subject may "
-            "temporarily cross only if its final side still matches the contract."
+            + "\nHelper/mover verbs do not override this contract. Only subjects "
+            "whose authoritative final-side contract is AT the destination may cross "
+            "into that destination during this beat."
         )
         if request1_barrier_binding:
             request1_base_messages[-1]["content"] += (
@@ -27539,6 +27610,22 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         if not structure_errors:
             structure_errors.extend(
                 _director_explicit_object_state_conflict_errors(raw_scene)
+            )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_unestablished_route_errors(
+                    raw_scene,
+                    bundle.get("assigned_source", ""),
+                    bundle.get("current_beat_text", ""),
+                    bundle.get("opening_state", ""),
+                )
+            )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_unauthorized_destination_crossing_errors(
+                    raw_scene,
+                    request1_topology_contracts,
+                )
             )
         missing_director_subjects = _missing_named_director_subjects(
             bundle.get("current_beat_text", ""),
