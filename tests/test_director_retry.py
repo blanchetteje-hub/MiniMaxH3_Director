@@ -1298,6 +1298,33 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             prompt,
         )
 
+    def test_director_prompt_does_not_reuse_terminal_target_for_new_target(self):
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
+            segment_seconds=8,
+            story_segment_ending_rules="",
+        )
+        self.assertIn(
+            "new, another, or incoming target",
+            prompt,
+        )
+
+    def test_completion_prompt_preserves_new_target_distinction(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "The operator repeatedly disables incoming drones.",
+            (
+                "At 00:00.000, the operator cuts an arm from the disabled drone on the floor.\n"
+                "End continuity state: the disabled drone remains on the floor."
+            ),
+            assigned_source="The operator repeatedly disables incoming drones.",
+            authoritative_opening_state="A disabled drone lies on the floor.",
+            assigned_state_effects=[],
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn(
+            "may not satisfy the action by reusing a target already dead, destroyed, or terminal",
+            prompt,
+        )
+
     def test_completion_prompt_rejects_unassigned_terminal_outcome(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Operator damages the machine's outer panel.",
