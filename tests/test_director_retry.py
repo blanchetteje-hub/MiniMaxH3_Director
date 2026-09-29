@@ -44,7 +44,7 @@ def director_response(raw_scene, beat_complete=True):
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_request_one_completion_contract_retries_same_segment(self):
-        formatted = formatter_response("[Shot 1] Mark completes the action.")
+        formatted = formatter_response("[Shot 1] At 00:00.000, Mark completes the action.")
         request = mock.Mock(side_effect=[
             director_response("Mark starts the action.", beat_complete=False),
             director_response("Mark completes the action.", beat_complete=True),
@@ -118,7 +118,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 "Amy opens the panel and retrieves the pistol, AR 15 rifle, and katana.",
                 beat_complete=True,
             ),
-            formatter_response("[Shot 1] Amy retrieves all three items."),
+            formatter_response("[Shot 1] At 00:00.000, Amy retrieves all three items."),
         ])
 
         with mock.patch("minimax.ask_llm", request):
@@ -212,7 +212,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         ask_llm.side_effect = [
             director_response("Alice walks over to the window."),
             formatter_response(
-                "[Shot 1] Alice (S1) walked over to the window."
+                "[Shot 1] At 00:00.000, Alice (S1) walked over to the window."
             ),
         ]
 
@@ -561,7 +561,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "environment without performing the active beat's listed events."
         )
         formatted = formatter_response(
-            "[Shot 1] Mark enters and reacts to the environment."
+            "[Shot 1] At 00:00.000, Mark enters and reacts to the environment."
         )
         # Even with the structured response format, LM Studio may return the
         # formatter object as JSON text rather than a decoded Python dict.
@@ -601,7 +601,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(
             payload["llm_result"]["detailed_description"],
-            "[Shot 1] Mark enters and reacts to the environment.",
+            "[Shot 1] At 00:00.000, Mark enters and reacts to the environment.",
         )
         # Python owns beat completion metadata; no semantic gates ran.
         self.assertNotIn("completed_beat_ids", payload["llm_result"])
@@ -638,7 +638,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "minimax.ask_llm",
             side_effect=[
                 director_response("A quiet scene."),
-                formatter_response("[Shot 1] ..."),
+                formatter_response("[Shot 1] At 00:00.000, ..."),
             ],
         ), mock.patch("builtins.print"):
             payload = minimax.request_segment_llm(
@@ -660,7 +660,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "non_diegetic_music": "N/A",
         }
         formatted = formatter_response(
-            "[Shot 1] Mark enters the room quietly."
+            "[Shot 1] At 00:00.000, Mark enters the room quietly."
         )
         ask_llm.side_effect = [
             director_response(raw_scene),
@@ -687,7 +687,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(
             payload["llm_result"]["detailed_description"],
-            "[Shot 1] Mark enters the room quietly.",
+            "[Shot 1] At 00:00.000, Mark enters the room quietly.",
         )
         self.assertEqual(payload["llm_result"]["overall_soundscape"], "Room tone.")
 
@@ -703,8 +703,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "Mark looks toward the window."
         )
         corrected = formatter_response(
-            "[Shot 1] Mark enters the room. At 00:00.000 seconds, "
-            "Mark enters. At 00:02.500 seconds, Mark looks toward the window."
+            "[Shot 1] Mark enters the room. At 00:00.000, "
+            "Mark enters. At 00:02.500, Mark looks toward the window."
         )
         ask_llm.side_effect = [
             director_response(raw_scene),
@@ -741,7 +741,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         raw_scene = "At 00:00.000, Mark enters the room."
         missing_timestamp = formatter_response("[Shot 1] Mark enters the room.")
         corrected = formatter_response(
-            "[Shot 1] At 00:00.000 seconds, Mark enters the room."
+            "[Shot 1] At 00:00.000, Mark enters the room."
         )
         ask_llm.side_effect = [director_response(raw_scene), missing_timestamp, corrected]
 
@@ -813,7 +813,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         # falling back to the raw scene for the missing description field.
 
         self.assertEqual(ask_llm.call_count, 11)
-        self.assertEqual(payload["llm_result"]["detailed_description"], raw_scene)
+        self.assertEqual(
+            payload["llm_result"]["detailed_description"],
+            "At 00:00.000, Mark enters the room quietly.",
+        )
         self.assertEqual(payload["llm_result"]["overall_soundscape"], "Room tone.")
         self.assertEqual(payload["llm_result"]["non_diegetic_music"], "N/A")
         self.assertNotIn("completed_beat_ids", payload["llm_result"])
@@ -825,7 +828,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         # The tenth and final attempt returns free-form text with no labeled
         #  fields; that text becomes the preserved description field.
         last_text = (
-            "[Shot 1] Mark enters the room quietly; the lighting dims slowly."
+            "[Shot 1] At 00:00.000, Mark enters the room quietly; the lighting dims slowly."
         )
         ask_llm.side_effect = [director_response(raw_scene)] + ["", last_text] * 5
 
