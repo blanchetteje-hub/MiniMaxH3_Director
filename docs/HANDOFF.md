@@ -267,3 +267,10 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - acceptance-2485 exposed the next earliest deterministic false positive: _director_opening_held_reacquire_errors treated phrases such as "pulls the trigger on her pistol" as reacquiring an already-held pistol because the regex allowed the prop to appear far after the reacquire verb.
 - The guard now requires the canonical held prop to be the direct object of pull/draw/retrieve/take/grab/pick-up. Ordinary use such as pulling a trigger, shooting with, or raising an already-held pistol is allowed.
 - Keep the KISS Request-1 prompt unchanged while measuring this deterministic fix.
+
+
+## 2026-09-29 — Crossing-route contract tightened
+
+- acceptance-2487 confirmed Segment 4 no longer exhausts retries after the held-prop fix; it cleared on attempt 2.
+- The earliest recurring failure moved to Segment 2: GPT-OSS 20B repeatedly invented basement stairs/hallways even though the compact Director prompt forbids unestablished route geometry.
+- Keep Request 1 compact. When Python has both a destination topology contract and a bound destination barrier, append one explicit route line: move authorized subjects directly through that destination boundary and do not invent stairs, hallways, corridors, or intermediate route geometry.

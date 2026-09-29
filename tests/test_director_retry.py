@@ -521,6 +521,51 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(issue, "")
 
+    def test_director_final_state_contract_forbids_invented_crossing_route(self):
+        base_messages = [
+            {"role": "system", "content": "director"},
+            {"role": "user", "content": "base"},
+        ]
+        bundle = {
+            "segment": 2,
+            "current_duration": 8,
+            "conditioning_mode": "continuation",
+            "messages": base_messages,
+            "current_beat_text": "Amy moves Will and Amber into the basement.",
+            "assigned_source": "Amy gets Will and Amber into the basement.",
+            "assigned_state_effects": [
+                {"op": "set_location", "entity": "Will", "value": "basement"},
+                {"op": "set_location", "entity": "Amber", "value": "basement"},
+                {"op": "set_barrier_state", "entity": "door", "value": "locked"},
+            ],
+            "opening_state": (
+                'SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n'
+                '{"characters":{"Amy":{"location":"home"},'
+                '"Will":{"location":"home"},"Amber":{"location":"home"}},'
+                '"environment":{"barriers":{"door":{"status":"open"}}}}'
+            ),
+            "registry_state": {"subjects": {}},
+            "subject_definitions": "",
+        }
+        topology = minimax.build_director_barrier_topology_contract(
+            bundle["assigned_state_effects"],
+            "",
+            bundle["assigned_source"],
+            bundle["current_beat_text"],
+            bundle["opening_state"],
+        )
+        binding = minimax.build_director_barrier_binding_contract(
+            bundle["assigned_state_effects"]
+        )
+        self.assertTrue(topology)
+        self.assertEqual(binding["destination"], "basement")
+        route_line = (
+            f"- Route: move authorized subjects directly through the "
+            f"{binding['destination']} boundary; do not invent stairs, hallways, "
+            "corridors, or any intermediate route."
+        )
+        self.assertIn("do not invent stairs, hallways", route_line)
+
     def test_assigned_barrier_unspecified_still_fails(self):
         issue = minimax.compare_director_barrier_state(
             {

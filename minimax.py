@@ -27634,6 +27634,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 f"- Barrier {request1_barrier_binding['entity']!r} is the boundary "
                 f"of {request1_barrier_binding['destination']!r}; do not reinterpret it."
             )
+            if request1_topology_contracts:
+                final_state_lines.append(
+                    f"- Route: move authorized subjects directly through the "
+                    f"{request1_barrier_binding['destination']} boundary; do not invent "
+                    "stairs, hallways, corridors, or any intermediate route."
+                )
 
         for item in request1_closed_boundary_contracts:
             final_state_lines.append(
