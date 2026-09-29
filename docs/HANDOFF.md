@@ -303,3 +303,12 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - The semantic completion verifier had the correct AUTHORITATIVE BARRIER BINDING but accepted the wrong explicitly qualified barrier. This responsibility is deterministic: when Python binds a generic barrier to one destination, an explicit state-changing action on a differently qualified same-type barrier is invalid.
 - Commit `abd8db92c351f8b77bbe3bdab15c0a36f6df1076` adds a narrow Python guard for this case. Generic `the door` and the destination-qualified barrier remain valid; actions on a nested window such as `kitchen door window` are not misclassified as door-state changes.
 - `tests-2495` is queued. If green, rerun the frozen-plan Director-only acceptance against `acceptance-2451`.
+
+
+## 2026-09-29 — acceptance 2497 prompt-continuity location drift
+
+- `tests-2496` passed 106/106 targeted tests plus 6 subtests.
+- `acceptance-2497` cleared the earlier Segment 2 concrete-action and wrong-bound-barrier defects. Segment 2 RAW now grabs Will and Amber, moves them through the basement door, then closes/locks the basement door.
+- The next earliest defect is prompt-derived continuity immediately after Segment 2: the continuity extractor invented `Amy.position = "outside kitchen doorway"` even though RAW never moves Amy outside and no source-owned location/containment effect authorizes that persistent spatial change. That invented position then contaminates Segments 3-6.
+- Commit `360990a7248fc7122306d08353a80a7bbf47cfa6` adds a narrow deterministic merge guard: a newly external/`outside` subject position cannot replace a known committed placement unless that subject has a source-owned `set_location` or `set_containment` effect. Ordinary internal room refinement remains allowed.
+- `tests-2498` and frozen-plan Director-only `acceptance-2499` are queued together to reduce bridge round-trips.
