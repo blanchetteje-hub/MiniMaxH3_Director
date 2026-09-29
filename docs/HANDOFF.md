@@ -392,7 +392,7 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 
 ## 2026-09-29 — Director Request 1 wording simplified for local gpt-oss 20B
 
-- Target runtime model remains `GPT-OSS-20B-Uncensored-HauhauCS-MXFP4-Balanced.gguf`.
+- Target runtime model remains `GPT-OSS-20B.gguf`.
 - The exact model card adds no special prompt syntax beyond being a gpt-oss 20B derivative. Keep using the runtime's gpt-oss/Harmony chat template.
 - Director Request 1 now uses short, literal, ordered rules: SOURCE -> CURRENT BEAT -> OPENING STATE -> END STATE RULES -> NEXT BEAT.
 - Removed abstract wording such as "authoritative final state contract", "persistent changes", and the blanket ban on invented structural geography from the creative call.
