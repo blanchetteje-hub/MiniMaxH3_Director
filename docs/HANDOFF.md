@@ -233,3 +233,12 @@ Do not reopen already-verified historical failures unless a fresh run actually r
   - reject an explicitly named subject with NOT_AT_DESTINATION topology when RAW states that subject moves into/through/to the typed destination.
 - These are deterministic lexical/state checks, not a new semantic pipeline. The existing local-LLM completion verifier remains for broader source completion.
 - Commit `ab8418996d8b887bc4f56b9a814a272f4d613d3a` adds focused regression tests and fixes the geography test to use `DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE`.
+
+## 2026-09-28 — Segment 2 cleared; Segment 4 opening-held prop contradiction
+
+- `tests-2476` is green: 94/94 targeted tests passed.
+- `acceptance-2477` finally clears Segment 2: no invented route geometry; Amy steps back, Will/Amber enter the basement, Amy remains on the kitchen side, and the basement door ends locked.
+- Segment 3 is acceptable.
+- Earliest remaining production defect is Segment 4: RAW begins with Amy already holding pistol + katana, then later says she `pulls pistol from holster`, inventing a holster and reacquiring an item already held in canonical opening continuity.
+- Commit `57e4e078d88171f22e4f90fdbf2468f26bf478a5` extends the existing deterministic object-state gate to compare RAW against structured `registry_state.held_props`; an opening-held item cannot be reacquired unless RAW explicitly releases/stows it first.
+- Commit `7a7a4414158efcf1727279cfec4352b4d8a5bdfe` adds regression coverage for reject/allow cases.
