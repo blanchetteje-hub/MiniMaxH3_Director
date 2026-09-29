@@ -1132,6 +1132,38 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("explicitly name only the authorized crossers", prompt)
 
 
+    def test_director_prompt_preserves_concrete_assigned_actions(self):
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
+            segment_seconds=8,
+            story_segment_ending_rules="",
+        )
+        self.assertIn(
+            "do not replace them with a materially different physical action",
+            prompt,
+        )
+
+    def test_completion_prompt_rejects_concrete_action_substitution(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "A parent grabs two children and rushes them into the shelter.",
+            (
+                "At 00:00.000, the parent lifts both children.\n"
+                "At 00:02.000, the parent carries them toward the shelter.\n"
+                "End continuity state: the children are inside the shelter."
+            ),
+            assigned_source=(
+                "A parent grabs two children and rushes them into the shelter."
+            ),
+            authoritative_opening_state=(
+                "The parent and both children begin outside the shelter."
+            ),
+            assigned_state_effects=[],
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn(
+            "may NOT replace a concrete SOURCE action or participant interaction",
+            prompt,
+        )
+
     def test_completion_prompt_rejects_unassigned_terminal_outcome(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Operator damages the machine's outer panel.",
