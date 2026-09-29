@@ -17756,7 +17756,16 @@ def _director_opening_held_reacquire_errors(raw_scene, registry_state):
                     rf")",
                     action_text,
                 )
-                if direct_reacquire:
+                sourced_lift_reacquire = re.search(
+                    rf"(?i)(?<![\w]){subject_pattern}(?![\w])"
+                    rf"[^.\n;]{{0,120}}\b(?:lift(?:s|ed|ing)?|"
+                    rf"rais(?:e|es|ed|ing))\s+"
+                    rf"(?:a|an|the|her|his|their)?\s*"
+                    rf"(?<![\w]){prop_pattern}(?![\w])"
+                    rf"[^.\n;]{{0,40}}\b(?:from|off|out\s+of)\b",
+                    action_text,
+                )
+                if direct_reacquire or sourced_lift_reacquire:
                     issues.append(
                         f"{timestamp}: {subject_name} already begins the segment "
                         f"holding {prop_key!r}; RAW SCENE cannot reacquire it "

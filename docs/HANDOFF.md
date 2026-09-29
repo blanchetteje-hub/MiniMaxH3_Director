@@ -274,3 +274,10 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - acceptance-2487 confirmed Segment 4 no longer exhausts retries after the held-prop fix; it cleared on attempt 2.
 - The earliest recurring failure moved to Segment 2: GPT-OSS 20B repeatedly invented basement stairs/hallways even though the compact Director prompt forbids unestablished route geometry.
 - Keep Request 1 compact. When Python has both a destination topology contract and a bound destination barrier, append one explicit route line: move authorized subjects directly through that destination boundary and do not invent stairs, hallways, corridors, or intermediate route geometry.
+
+
+## 2026-09-29 — Held-prop sourced-lift reacquisition
+
+- acceptance-2490 confirmed the explicit crossing-route contract: Segment 2 passed on its first Request-1 attempt with no invented stairs/hallways.
+- The next continuity hole appeared in Segment 4: RAW reacquired an already-held pistol via "lifts the pistol from a nearby table". The direct-object guard correctly ignored ordinary weapon use but did not yet treat lift/raise-from-source phrasing as acquisition.
+- Opening-held reacquisition now also rejects lift/raise of the held prop when followed by from/off/out of a source. Ordinary lift/raise-to-aim/use remains valid.

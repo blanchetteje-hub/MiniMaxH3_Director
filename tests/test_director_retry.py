@@ -994,6 +994,40 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 [],
             )
 
+    def test_opening_held_prop_lift_from_surface_is_rejected(self):
+        registry = {
+            "subjects": {
+                "Amy": {"held_props": ["pistol", "katana"]},
+            },
+        }
+        for raw_scene in (
+            "At 00:02.200, Amy lifts the pistol from a nearby table.",
+            "At 00:02.200, Amy raises her pistol off the counter.",
+        ):
+            issues = minimax._director_opening_held_reacquire_errors(
+                raw_scene,
+                registry,
+            )
+            self.assertTrue(any("pistol" in issue for issue in issues))
+
+    def test_opening_held_prop_raise_to_use_is_not_reacquisition(self):
+        registry = {
+            "subjects": {
+                "Amy": {"held_props": ["pistol", "katana"]},
+            },
+        }
+        for raw_scene in (
+            "At 00:02.200, Amy lifts her pistol toward the zombie.",
+            "At 00:02.200, Amy raises her pistol to eye level.",
+        ):
+            self.assertEqual(
+                minimax._director_opening_held_reacquire_errors(
+                    raw_scene,
+                    registry,
+                ),
+                [],
+            )
+
     def test_opening_held_prop_direct_reacquire_is_rejected(self):
         registry = {
             "subjects": {
