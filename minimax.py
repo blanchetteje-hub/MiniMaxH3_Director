@@ -17701,8 +17701,8 @@ def _director_object_state_transition_issue(previous, following, timestamp, next
 
 
 _DIRECTOR_HELD_REACQUIRE_PATTERN = (
-    r"\\b(?:pull(?:s|ed|ing)?|draw(?:s|n|ing)?|retriev(?:e|es|ed|ing)|"
-    r"take(?:s|n|ing)?|grab(?:s|bed|bing)?|pick(?:s|ed|ing)?\\s+up)\\b"
+    r"\b(?:pull(?:s|ed|ing)?|draw(?:s|n|ing)?|retriev(?:e|es|ed|ing)|"
+    r"take(?:s|n|ing)?|grab(?:s|bed|bing)?|pick(?:s|ed|ing)?\s+up)\b"
 )
 _DIRECTOR_HELD_REACQUIRE_RE = re.compile(
     _DIRECTOR_HELD_REACQUIRE_PATTERN,
