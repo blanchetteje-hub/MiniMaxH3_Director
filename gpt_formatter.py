@@ -60,8 +60,8 @@ _LOCAL_TIME = re.compile(
     r"(?:\s+seconds?)?\s*[,;:\-]?\s*"
 )
 _WRAPPED_LOCAL_TIME = re.compile(
-    r"(?i)[(\\[]\\s*(?P<timestamp>(?:At\\s+)?\\d{1,2}:\\d{2}"
-    r"(?:[.:]\\d{1,3})?(?:\\s+seconds?)?\\s*[,;:\\-]?)\\s*[)\\]]"
+    r"(?i)(?:\\(|\\[)\\s*(?P<timestamp>(?:At\\s+)?\\d{1,2}:\\d{2}"
+    r"(?:[.:]\\d{1,3})?(?:\\s+seconds?)?\\s*[,;:\\-]?)\\s*(?:\\)|\\])"
 )
 
 
