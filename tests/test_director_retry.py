@@ -536,6 +536,18 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "assigned_state_effects": [
                 {"op": "set_location", "entity": "Will", "value": "basement"},
                 {"op": "set_location", "entity": "Amber", "value": "basement"},
+                {
+                    "op": "set_containment",
+                    "entity": "Will",
+                    "container": "basement",
+                    "value": "contained",
+                },
+                {
+                    "op": "set_containment",
+                    "entity": "Amber",
+                    "container": "basement",
+                    "value": "contained",
+                },
                 {"op": "set_barrier_state", "entity": "door", "value": "locked"},
             ],
             "opening_state": (
