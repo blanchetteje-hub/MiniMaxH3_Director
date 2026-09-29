@@ -1028,6 +1028,19 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 [],
             )
 
+    def test_opening_held_prop_pronoun_requires_unique_holder(self):
+        state = {
+            "subjects": {
+                "Amy": {"held_props": ["pistol"]},
+                "Riley": {"held_props": ["pistol"]},
+            }
+        }
+        issues = minimax._director_opening_held_reacquire_errors(
+            "At 00:04.000, She pulls the pistol from her belt and fires.",
+            state,
+        )
+        self.assertEqual(issues, [])
+
     def test_opening_held_prop_pull_from_belt_reacquire_is_rejected(self):
         state = {
             "subjects": {

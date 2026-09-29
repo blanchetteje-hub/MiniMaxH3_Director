@@ -17935,13 +17935,10 @@ def _director_opening_held_reacquire_errors(raw_scene, registry_state):
             holder_names = holders_by_prop.get(prop_key, set())
             pronoun_pattern = ""
             if len(holder_names) == 1:
-                gender = str(record.get("gender") or "").casefold()
-                if gender in {"female", "woman", "girl"}:
-                    pronoun_pattern = r"|she"
-                elif gender in {"male", "man", "boy"}:
-                    pronoun_pattern = r"|he"
-                else:
-                    pronoun_pattern = r"|they"
+                # Exactly one opening-state Subject owns this held prop, so a
+                # third-person pronoun in the same micro-action is unambiguous
+                # even when minimal registry state omits gender metadata.
+                pronoun_pattern = r"|she|he|they"
             actor_pattern = rf"(?:{subject_pattern}{pronoun_pattern})"
             prop_pattern = re.escape(prop_key)
             for timestamp, action in actions:
