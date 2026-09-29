@@ -17742,12 +17742,21 @@ def _director_opening_held_reacquire_errors(raw_scene, registry_state):
                     # Once RAW explicitly releases/stows the opening-held item,
                     # later reacquisition is allowed.
                     continue
-                if re.search(
+                direct_reacquire = re.search(
                     rf"(?i)(?<![\w]){subject_pattern}(?![\w])"
-                    rf"[^.\n;]{{0,120}}{_DIRECTOR_HELD_REACQUIRE_PATTERN}"
-                    rf"[^.\n;]{{0,100}}(?<![\w]){prop_pattern}(?![\w])",
+                    rf"[^.\n;]{{0,120}}\b(?:"
+                    rf"(?:pull(?:s|ed|ing)?|draw(?:s|n|ing)?|"
+                    rf"retriev(?:e|es|ed|ing)|take(?:s|n|ing)?|"
+                    rf"grab(?:s|bed|bing)?)\s+"
+                    rf"(?:a|an|the|her|his|their)?\s*"
+                    rf"(?<![\w]){prop_pattern}(?![\w])"
+                    rf"|pick(?:s|ed|ing)?\s+up\s+"
+                    rf"(?:a|an|the|her|his|their)?\s*"
+                    rf"(?<![\w]){prop_pattern}(?![\w])"
+                    rf")",
                     action_text,
-                ):
+                )
+                if direct_reacquire:
                     issues.append(
                         f"{timestamp}: {subject_name} already begins the segment "
                         f"holding {prop_key!r}; RAW SCENE cannot reacquire it "

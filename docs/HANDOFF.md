@@ -259,3 +259,11 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Director Request 1 was reduced to a compact creative-director contract: ASSIGNED SOURCE -> CURRENT BEAT -> OPENING STATE -> Python-owned FINAL STATE CONTRACT -> NEXT BEAT boundary.
 - Python now appends one concise `AUTHORITATIVE FINAL STATE CONTRACT` covering final-side topology, barrier end states, barrier binding, and closed-boundary traversal constraints rather than several verbose prose blocks.
 - No Director 1B/state-repair stage was added. First evaluate the simpler creative call plus corrected deterministic state semantics.
+
+
+## 2026-09-29 — Held-prop use vs reacquisition
+
+- acceptance-2484 completed all 8 Director-only segments; preserved BROKEN/LOCKED barriers no longer fail when RAW omits them.
+- acceptance-2485 exposed the next earliest deterministic false positive: _director_opening_held_reacquire_errors treated phrases such as "pulls the trigger on her pistol" as reacquiring an already-held pistol because the regex allowed the prop to appear far after the reacquire verb.
+- The guard now requires the canonical held prop to be the direct object of pull/draw/retrieve/take/grab/pick-up. Ordinary use such as pulling a trigger, shooting with, or raising an already-held pistol is allowed.
+- Keep the KISS Request-1 prompt unchanged while measuring this deterministic fix.

@@ -918,6 +918,37 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertTrue(any("already begins the segment holding" in issue for issue in issues))
 
+    def test_opening_held_prop_use_is_not_reacquisition(self):
+        registry = {
+            "subjects": {
+                "Amy": {"held_props": ["pistol", "katana"]},
+            },
+        }
+        for raw_scene in (
+            "At 00:00.000, Amy pulls the trigger on her pistol and fires.",
+            "At 00:00.000, Amy shoots the zombie with her pistol.",
+            "At 00:00.000, Amy raises her pistol toward the zombie.",
+        ):
+            self.assertEqual(
+                minimax._director_opening_held_reacquire_errors(
+                    raw_scene,
+                    registry,
+                ),
+                [],
+            )
+
+    def test_opening_held_prop_direct_reacquire_is_rejected(self):
+        registry = {
+            "subjects": {
+                "Amy": {"held_props": ["pistol", "katana"]},
+            },
+        }
+        issues = minimax._director_opening_held_reacquire_errors(
+            "At 00:00.000, Amy pulls the pistol from a holster.",
+            registry,
+        )
+        self.assertTrue(any("pistol" in issue for issue in issues))
+
     def test_opening_held_prop_can_be_reacquired_after_release(self):
         registry = {
             "subjects": {
