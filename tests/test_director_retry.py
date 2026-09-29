@@ -842,6 +842,37 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(payload["llm_result"]["overall_soundscape"], "N/A")
 
 
+    def test_director_prompt_forbids_invented_structural_geography(self):
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM
+        self.assertIn("Do NOT invent structural geography or a travel route", prompt)
+        self.assertIn("Stairs, hallways, corridors, extra doors", prompt)
+        self.assertIn("without inventing how the building connects", prompt)
+
+    def test_completion_prompt_rejects_invented_structural_geography(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "Amy gets Will and Amber into the basement and locks the door.",
+            (
+                "At 00:00.000, Amy grabs Will and Amber.\n"
+                "At 00:01.000, Will and Amber descend the kitchen stairs.\n"
+                "At 00:02.000, Will and Amber enter the basement.\n"
+                "At 00:03.000, Amy locks the basement door.\n"
+                "End continuity state: Will and Amber are in the basement; Amy is outside."
+            ),
+            assigned_source=(
+                "Amy rushes Will and Amber to the basement, gets them inside, "
+                "and locks the door."
+            ),
+            authoritative_opening_state="Amy, Will, and Amber are in the kitchen.",
+            assigned_state_effects=[
+                {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+                {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
+            ],
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn("Reject invented structural geography", prompt)
+        self.assertIn("An unspecified route must remain unspecified", prompt)
+
+
     def test_completion_prompt_rejects_ambiguous_collective_crossing(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Amy moves Will and Amber into the basement and locks the door.",
