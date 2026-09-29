@@ -842,6 +842,30 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(payload["llm_result"]["overall_soundscape"], "N/A")
 
 
+    def test_completion_prompt_rejects_ambiguous_collective_crossing(self):
+        messages = minimax.build_director_raw_scene_completion_messages(
+            "Amy moves Will and Amber into the basement and locks the door.",
+            (
+                "At 00:00.000, Amy grabs Will and Amber.\n"
+                "At 00:01.000, They descend into the basement.\n"
+                "At 00:02.000, Amy locks the basement door.\n"
+                "End continuity state: Will and Amber are inside the basement; Amy is outside."
+            ),
+            assigned_source=(
+                "Amy rushes Will and Amber to the basement, gets them inside, "
+                "and locks the door."
+            ),
+            authoritative_opening_state="Amy, Will, and Amber are outside the basement.",
+            assigned_state_effects=[
+                {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+                {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
+            ],
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn('collective language such as "they"', prompt)
+        self.assertIn("explicitly name only the authorized crossers", prompt)
+
+
     def test_completion_prompt_rejects_unassigned_terminal_outcome(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Operator damages the machine's outer panel.",
