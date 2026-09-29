@@ -361,3 +361,12 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - The held-prop guard was subject-name anchored, so the production pronoun form `She pulls...` bypassed it even though equivalent `Amy pulls...` regressions passed.
 - Commit `1aa135386671a4c42764f570b07357ef034ae70d` broadened sourced pull phrasing; commit `9101c02d0fa451b89e327123ab1abd0564dce41f` fixes the actual production hole by allowing an unambiguous pronoun actor only when exactly one opening-state subject holds that prop.
 - `tests-2508` and frozen-plan Director-only `acceptance-2509` are queued together.
+
+
+## 2026-09-29 — tests 2508 pronoun regression correction
+
+- `tests-2508` was red: 116 passed, 1 failed, 6 subtests passed. The failing production-shaped regression was `She pulls the pistol from her belt`.
+- Root cause: pronoun matching required gender metadata, but the held-prop guard can receive minimal opening state containing only `held_props`. The production parser therefore still missed the exact pronoun form seen in acceptance 2507.
+- Commit `1e5d545a5d797d190e10188323ab68c5667fe39a` makes pronoun resolution depend only on uniqueness of the opening-state prop holder: if exactly one Subject holds that prop, `she/he/they` is accepted as an unambiguous actor; if multiple Subjects hold the same prop, pronouns are not used for deterministic rejection.
+- `acceptance-2509` is diagnostic only because the regression suite was red. It suggests the next issue may be Segment 8 failing to actually clear Will and Amber out of the house, but do not fix that until the held-prop regression is green.
+- `tests-2510` and frozen-plan Director-only `acceptance-2511` are queued.
