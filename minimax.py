@@ -17721,6 +17721,8 @@ def _director_wrong_bound_barrier_errors(raw_scene, barrier_binding):
     for match in pattern.finditer(str(raw_scene or "")):
         label = " ".join(match.group("label").replace("_", " ").split()).casefold()
         words = label.split()
+        if words and words[0] in {"a", "an", "the"}:
+            words = words[1:]
         if words == [barrier]:
             continue
         qualifier = " ".join(words[:-1])
