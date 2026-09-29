@@ -298,6 +298,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("merely labeling it for them or leaving it elsewhere is insufficient", normalized)
         self.assertIn("performance, lesson, or demonstration", normalized)
 
+
     def test_beat_generation_preserves_group_beneficiary_roles(self):
         phase = {
             "required_events": [
@@ -316,10 +317,8 @@ class ForwardBeatValidationTests(unittest.TestCase):
             current_phase=phase,
         )
         prompt = messages[1]["content"]
-        self.assertIn("person or group", prompt)
-        self.assertIn("beneficiaries rather than spectators", prompt)
         normalized = " ".join(prompt.split())
-        self.assertIn("Merely watching the work is not enough", normalized)
-
-if __name__ == "__main__":
-    unittest.main()
+        self.assertIn("show that person receive or use it", normalized)
+        self.assertIn("Watching does not count as receiving", normalized)
+        self.assertIn("performance, lesson, or demonstration", normalized)
+        self.assertNotIn("beneficiaries rather than spectators", normalized)

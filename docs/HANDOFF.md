@@ -400,3 +400,21 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Removed the deterministic unestablished-route rejection and the matching completion-verifier rule so harmless route detail is not accepted by the prompt and then rejected later.
 - Timing is now stated with a concrete number for each clip: the last timed action must be at or after 75% of the clip length and before the exact endpoint.
 
+## 2026-09-29 — ARC CREATE + BEAT CREATE simplified for Qwen/local 20–27B
+
+- Read the complete current \`docs/PROJECT_NOTES.md\` before changing prompts. Architecture remains unchanged: \`story.txt\` is narrative authority; Python owns arithmetic/bookkeeping/state application; local LLM calls should be short, concrete, and low-ambiguity.
+- Runtime evaluation is moving to an uncensored Qwen3.8-27B variant. Qwen's official guidance emphasizes correct chat-template role separation, and its function-calling guidance notes that simpler templates that rely less on the model staying on track are more reliable.
+- ARC CREATE was rewritten without changing its output schema or ARC validation/repair loop:
+  - system message now states only the stable job;
+  - user message has short SOURCE / SUBJECTS / BEAT COUNT / repeated-process sections;
+  - majority arithmetic is precomputed by Python and stated as concrete beat numbers rather than a prose allocation algorithm;
+  - state-effect argument ownership is now a short operation lookup list;
+  - JSON schema continues to enforce output shape/count.
+- BEAT CREATE was rewritten with the same style:
+  - ASSIGNED EVENT is stated as the beat authority and chapter source as context;
+  - barrier binding, closed-boundary, and final-state text is concrete rather than "canonical/authoritative physical constraints" prose;
+  - beneficiary rules explicitly distinguish food/consumable/hand-off receipt from repair/build/custom work that need not be delivered unless source says so;
+  - repeated-process and previous-beat rules remain, but use short direct wording.
+- No validator, repair prompt, semantic stage, state operation, or deterministic guard was removed.
+- Next checkpoint: run the focused ARC/Beat prompt regression suite, then compare fresh Qwen planning/beat-generation behavior before simplifying validators or repair prompts.
+

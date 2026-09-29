@@ -12299,6 +12299,7 @@ def _seed_known_beat_characters(state, macro_arc=None, subject_information=""):
 
 # Build the macro-arc planning prompt.
 
+
 def build_beat_arc_plan_messages(
     story,
     total_segments,
@@ -12307,36 +12308,34 @@ def build_beat_arc_plan_messages(
     phrase_exclusions=(),
     beat_instructions="",
 ):
-    """Build the small 24B ARC creation prompt."""
+    """Build the compact ARC creation prompt for a small local model."""
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
-    phrase_exclusions_text = format_phrase_exclusions_section(phrase_exclusions).strip()
-    majority_budget_text = "N/A"
+    phrase_exclusions_text = format_phrase_exclusions_section(
+        phrase_exclusions
+    ).strip()
+
+    majority_rule = "N/A"
     if re.search(r"\bmajority\b", str(story or ""), re.IGNORECASE):
         minimum_sequence_beats = int(total_segments) // 2 + 1
         maximum_outside_beats = int(total_segments) - minimum_sequence_beats
-        latest_sequence_start = maximum_outside_beats + 1
-        majority_budget_text = (
-            f"A strict majority of {int(total_segments)} beats means at least "
-            f"{minimum_sequence_beats} beats in the emphasized sequence and exactly "
-            f"{maximum_outside_beats} beats are available before/outside it. Use "
-            "this allocation procedure: "
-            f"(1) Beats 1-{maximum_outside_beats} must contain ALL source actions "
-            "that occur before the emphasized sequence. Bundle adjacent setup "
-            "actions across those beats at natural handoffs as needed; do not "
-            f"defer pre-sequence setup into Beat {latest_sequence_start}. "
-            f"(2) Beat {latest_sequence_start} starts the emphasized process itself "
-            "and every beat from there through the final beat must materially "
-            "perform that process. "
-            f"(3) Beat {int(total_segments)} must visibly perform the explicit "
-            "terminal action itself and may also contain its immediate resolution. "
-            f"No earlier beat may call its instance last, final, terminal, or otherwise "
-            f"exhaust the process reserved for Beat {int(total_segments)}. Do not make "
-            "the final beat aftermath-only by presupposing the terminal action already "
-            "happened. Preparation before the sequence does not count."
+        first_sequence_beat = maximum_outside_beats + 1
+        majority_rule = (
+            f"This story says one process is the majority. "
+            f"At least {minimum_sequence_beats} of {int(total_segments)} beats "
+            "must show that process.\n"
+            f"- Beats 1-{maximum_outside_beats} are the only beats available "
+            "before that process.\n"
+            f"- Beat {first_sequence_beat} starts the process.\n"
+            f"- Every beat from {first_sequence_beat} through "
+            f"{int(total_segments)} shows one concrete part of the process.\n"
+            f"- Beat {int(total_segments)} performs the source's final/terminal "
+            "instance and may also show its immediate result.\n"
+            f"- Do not end the process before Beat {int(total_segments)}. "
+            "Preparation does not count as the process."
         )
 
     correction_text = (
-        f"\nCORRECTION REQUIRED\n{str(correction).strip()}\n"
+        f"\nFIX THIS\n{str(correction).strip()}\n"
         if str(correction or "").strip()
         else ""
     )
@@ -12345,9 +12344,8 @@ def build_beat_arc_plan_messages(
         {
             "role": "system",
             "content": (
-                "Plan one source story into exactly one chronological required "
-                "clip job per global beat. Do not create phases or phase ranges. "
-                "Return JSON only."
+                "Create the story arc. Make exactly one event for each beat. "
+                "Keep story order. Do not add story events. Return JSON only."
             ),
         },
         {
@@ -12356,79 +12354,57 @@ def build_beat_arc_plan_messages(
 SOURCE STORY
 {story}
 
-DEFINED SUBJECTS
+KNOWN SUBJECTS
 {subject_text}
 
-EXPLICIT BEAT INSTRUCTIONS
+EXTRA BEAT RULES
 {str(beat_instructions or '').strip() or 'N/A'}
 
-TOTAL BEATS
+NUMBER OF BEATS
 {int(total_segments)}
 
-MAJORITY BUDGET
-{majority_budget_text}
+REPEATED PROCESS RULE
+{majority_rule}
 
-Rules:
-- Cover every explicit visible source action/state in source order.
-- Every global beat has exactly one required_event. A required_event is one
-  executable clip job; split long source chains at natural handoffs when the
-  beat budget allows, and bundle only adjacent actions when necessary.
-- When a finite source activity is assigned wholly to one beat, write that
-  required_event as the activity reaching a natural visible endpoint by the
-  end of the beat. Do not merely copy progressive/in-progress wording. The
-  endpoint may state the ordinary result directly implied by completing that
-  activity, but must not add a new plot event or outcome.
-- Preserve an explicit calm/ordinary baseline as its own beat before a sudden
-  inciting threat or change.
-- Honor explicit majority/most/half/briefly emphasis. When the source says a
-  process occupies the majority, allocate that process to the required numeric
-  majority of beats; do not compress the whole process into one or two summary
-  events merely because those events describe repeated activity. Do not
-  manufacture extra literal repetitions merely to satisfy emphasis.
-- Sparse repeated conflict/process material may use distinct coherent
-  source-authorized moments of that same process across the allocated beats,
-  but never add a new major plot, character, location, or outcome.
-- Python owns the deterministic dependency chain between consecutive beats.
-  Do not spend model output on dependency bookkeeping.
-- Every event must include state_effects. Use [] only when that event establishes
-  no persistent fact represented by a supported typed operation. Do not omit an
-  explicit persistent fact that the event establishes. For example, locking a
-  door requires set_barrier_state=locked; equipping a weapon requires
-  set_item_state=equipped; an explicitly blood-soaked house may use
-  set_condition=blood soaked.
-- state_effects contain only persistent facts directly established by that same
-  event. Use only set_location, set_item_state, set_barrier_state,
-  set_threat_state, set_object_state, set_containment, set_condition, and
-  set_clothing.
-- STATE EFFECT ARGUMENT OWNERSHIP: set_location.entity is the person/object
-  whose location changes and value is the destination; set_item_state.entity is
-  the item and owner is its person; set_barrier_state.entity is the barrier;
-  set_threat_state.entity is the specific threat/group whose lifecycle changes;
-  set_object_state.entity is the object; set_containment.entity is the person or
-  thing being contained/freed and container is the enclosing place;
-  set_condition.entity is the thing with the condition; set_clothing.entity is
-  the wearer and item is the garment. Never put the garment itself in
-  set_clothing.entity.
-- set_condition is for a persistent post-beat condition, never a temporary
-  activity or inferred feeling/state. Its meaningful value words must come from
-  the same event text.
-- Clothing must use set_clothing; never set_condition.
-- Return only an events array. Each event contains id, event, beat_number,
-  and state_effects. Python assigns the deterministic dependency chain.
-- beat_number must cover Beats 1-{int(total_segments)} exactly once. Do not
-  create phase numbers, phase ranges, phase summaries, or phase metadata;
-  Python owns that deterministic bookkeeping.
-- Do not return required_end_state; Python derives phase handoffs from the
-  authoritative required_event jobs.
+MAKE THE ARC
+- Make exactly {int(total_segments)} events, one for each beat 1-{int(total_segments)}.
+- Use the SOURCE STORY in order. Do not skip a visible story action.
+- Do not add a new major plot event, character, location, or outcome.
+- Each event is one clip-sized job. Split a long source chain at a natural
+  handoff when possible. Combine only neighboring source actions when needed.
+- If a finite task belongs to one beat, show it finishing in that beat.
+- If the story says an action/process is repeated or ongoing, show one concrete
+  part in each assigned beat. Do not end the whole process early.
+- Keep an explicit calm setup in its own beat before a sudden threat/change
+  when the beat budget allows.
+- Follow explicit words such as majority, most, half, briefly, repeatedly, or
+  throughout. Use different story-allowed instances when a repeated process
+  needs several beats.
+
+STATE EFFECTS
+Every event has state_effects.
+- Add a state effect only for a fact that is still true after the beat.
+- Use [] when the beat creates no persistent fact.
+- set_location: entity = the person/object that moved; value = destination.
+- set_item_state: entity = the item; owner = the person who has it.
+- set_barrier_state: entity = the door/gate/hatch/barrier.
+- set_threat_state: entity = the specific threat or threat group.
+- set_object_state: entity = the object.
+- set_containment: entity = the person/thing; container = the enclosing place.
+- set_condition: entity = the thing; value = a persistent visible condition.
+- set_clothing: entity = the wearer; item = the garment.
+- Do not use set_condition for a temporary action or feeling.
+- Clothing must use set_clothing, never set_condition.
+
+OUTPUT
+- Each event contains id, event, beat_number, and state_effects.
+- Do not return phases, dependencies, summaries, or required_end_state.
+  Python adds them.
 {correction_text}
 {phrase_exclusions_text}
-
-Return one JSON object with an events array containing exactly
-{int(total_segments)} required clip jobs.
 """.strip(),
         },
     ]
-
 
 def build_macro_arc_validation_messages(
     story,
@@ -15188,6 +15164,7 @@ def parse_story_beat_instructions(story):
 
 
 # Build beat generation messages.
+
 def build_beat_generation_messages(
     story,
     total_segments,
@@ -15204,12 +15181,7 @@ def build_beat_generation_messages(
     audit_correction="",
     phrase_exclusions=(),
 ):
-    """Build the deliberately small 24B Beat-creation prompt.
-
-    ARC already owns story allocation. Beat creation only turns this phase's
-    assigned required events into executable clip jobs; the frozen Beat
-    validator catches semantic mistakes afterward.
-    """
+    """Build the compact Beat-creation prompt for a small local model."""
     batch_start = 1 if batch_start is None else int(batch_start)
     batch_end = total_segments if batch_end is None else int(batch_end)
     batch_size = batch_end - batch_start + 1
@@ -15238,8 +15210,9 @@ def build_beat_generation_messages(
             )
             if barrier_binding:
                 barrier_binding_lines.append(
-                    f"{int(beat_number)}. {barrier_binding['entity']!r} is the "
-                    f"boundary of {barrier_binding['destination']!r}."
+                    f"{int(beat_number)}. {barrier_binding['entity']!r} means "
+                    f"the {barrier_binding['destination']} "
+                    f"{barrier_binding['entity']}."
                 )
             if isinstance(macro_arc, dict):
                 before_state = source_authorized_state_before_beat(
@@ -15248,16 +15221,20 @@ def build_beat_generation_messages(
                     subject_information=subject_information,
                 )
                 for contract in build_director_preserved_barrier_state_contracts(
-                    json.dumps(before_state, ensure_ascii=False, separators=(",", ":")),
+                    json.dumps(
+                        before_state,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ),
                     event.get("state_effects", []),
                 ):
                     preserved_barrier_lines.append(
-                        f"{int(beat_number)}. {contract['barrier']} begins "
+                        f"{int(beat_number)}. {contract['barrier']} starts "
                         f"{contract['source_state']} and must end "
-                        f"{contract['source_state']} unless this beat has an "
-                        "explicit barrier-state effect changing it; temporary "
-                        "opening/unlocking for an authorized crossing is allowed "
-                        "only if the opening state is restored by beat end."
+                        f"{contract['source_state']} unless this beat explicitly "
+                        "changes that barrier's final state. It may change "
+                        "temporarily for an allowed crossing, then restore it "
+                        "before the beat ends."
                     )
                 for contract in build_beat_closed_boundary_contracts(
                     before_state,
@@ -15265,40 +15242,35 @@ def build_beat_generation_messages(
                 ):
                     destination = contract.get("destination")
                     if destination:
-                        occupants = ", ".join(contract.get("occupants") or []) or "none listed"
+                        occupants = (
+                            ", ".join(contract.get("occupants") or [])
+                            or "none listed"
+                        )
                         closed_boundary_lines.append(
-                            f"{int(beat_number)}. {contract['barrier']} protects "
-                            f"{destination!r} and begins {contract['state']}; known "
-                            f"contained occupants: {occupants}; no person, creature, "
-                            "object, body part, or other physical thing may cross into "
-                            "or out of that destination unless this beat's typed effects "
-                            "authorize opening/release; while closed, outside entities "
-                            "cannot reach, grab, bite, strike, exchange objects with, "
-                            "retrieve/use an object located inside, or otherwise "
-                            "physically interact across the boundary with any occupant, "
-                            "prop, target, or other interior content; do not stage a "
-                            "required action/object inside the protected destination "
-                            "when its actor remains outside and no opening/release is "
-                            "authorized."
+                            f"{int(beat_number)}. {contract['barrier']} starts "
+                            f"{contract['state']} and blocks {destination}. "
+                            f"Inside {destination} now: {occupants}. Nothing "
+                            "crosses this barrier unless this beat's state "
+                            "effects allow the crossing. While it blocks the "
+                            "way, people on opposite sides cannot touch, pass "
+                            "objects, or use an object through it."
                         )
                     else:
                         closed_boundary_lines.append(
-                            f"{int(beat_number)}. {contract['barrier']} begins "
-                            f"{contract['state']}; do not cross it unless this "
-                            "beat's typed effects authorize the transition."
+                            f"{int(beat_number)}. {contract['barrier']} starts "
+                            f"{contract['state']}. Do not cross it unless this "
+                            "beat's state effects allow the crossing."
                         )
     required_events_text = (
         "\n".join(event_lines)
         if event_lines
-        else "N/A (invalid arc: this phase has no assigned required events)"
+        else "N/A (invalid arc: this chapter has no assigned events)"
     )
-
     barrier_bindings_text = (
         "\n".join(barrier_binding_lines)
         if barrier_binding_lines
         else "N/A"
     )
-
     closed_boundaries_text = (
         "\n".join(closed_boundary_lines)
         if closed_boundary_lines
@@ -15321,22 +15293,25 @@ def build_beat_generation_messages(
     supplemental_sections = []
     if correction:
         supplemental_sections.append(
-            "CORRECTION REQUIRED\n" + str(correction).strip()
+            "FIX THIS\n" + str(correction).strip()
         )
     if audit_correction:
         supplemental_sections.append(
-            "WHOLE-PLAN CORRECTION\n" + str(audit_correction).strip()
+            "WHOLE-PLAN FIX\n" + str(audit_correction).strip()
         )
     if beat_instructions:
         supplemental_sections.append(
-            "STORY BEAT INSTRUCTIONS (MANDATORY)\n" + str(beat_instructions).strip()
+            "EXTRA BEAT RULES\n" + str(beat_instructions).strip()
         )
-    phrase_exclusions_section = format_phrase_exclusions_section(phrase_exclusions)
+    phrase_exclusions_section = format_phrase_exclusions_section(
+        phrase_exclusions
+    )
     if phrase_exclusions_section:
         supplemental_sections.append(phrase_exclusions_section.strip())
     supplemental_text = (
         "\n\n" + "\n\n".join(supplemental_sections)
-        if supplemental_sections else ""
+        if supplemental_sections
+        else ""
     )
 
     response_shape = json.dumps(
@@ -15355,82 +15330,69 @@ def build_beat_generation_messages(
         {
             "role": "system",
             "content": (
-                "Turn required story events into simple executable video beats. "
-                "Return JSON only."
+                "Write the requested video beats from the assigned events. "
+                "One beat is one executable clip job. Return JSON only."
             ),
         },
         {
             "role": "user",
             "content": f"""
-SOURCE STORY:
+SOURCE FOR THIS CHAPTER
 {story}
 
-DEFINED SUBJECTS:
+KNOWN SUBJECTS
 {subject_text}
 
-REQUIRED EVENTS FOR REQUESTED BEATS {batch_start}-{batch_end}:
+ASSIGNED EVENTS {batch_start}-{batch_end}
 {required_events_text}
 
-PYTHON-OWNED BARRIER BINDINGS:
+BARRIER NAME RULES
 {barrier_bindings_text}
 
-PYTHON-OWNED CLOSED BOUNDARIES:
+CLOSED BARRIERS AT START
 {closed_boundaries_text}
 
-PYTHON-OWNED FINAL BARRIER STATES:
+BARRIER STATES REQUIRED AT END
 {preserved_barriers_text}
 
-Write exactly {batch_size} video beats, one per required event.
-
-Rules:
-- SOURCE STORY is context only. For each beat, perform ONLY that beat's listed
-  REQUIRED EVENT; do not pull later source-story events into the current beat.
-- Complete each required event visibly in its beat.
-- PYTHON-OWNED BARRIER BINDINGS resolve otherwise-generic barrier names in the
-  listed required event. Obey them exactly and do not substitute a different
-  nearby door/gate/hatch/barrier.
-- PYTHON-OWNED CLOSED BOUNDARIES are authoritative physical constraints from
-  canonical state before that beat. Do not move any person, creature, object,
-  body part, or other physical thing across one unless that beat's assigned
-  typed effects authorize opening/release.
-- PYTHON-OWNED FINAL BARRIER STATES are authoritative final-state constraints.
-  A release/crossing may temporarily open or unlock a listed barrier, but if no
-  typed barrier effect changes it, restore its listed opening state before the
-  beat ends.
-- For a finite activity, show a visible transition: include the assigned
-  activity itself, then show it finishing. Do not output only the activity
-  underway or only its after-state.
-- Preserve relationship roles from REQUIRED EVENT. If an activity or result is
-  for a person or group, keep them as beneficiaries rather than spectators. For
-  a finite prepared/consumable/hand-off result, visibly serve, deliver, or give
-  that result to the intended beneficiary when practical. Merely watching the
-  work is not enough unless watching/listening is itself the intended result,
-  such as a performance, lesson, or demonstration.
-- Do not start the next required event early.
-- If PREVIOUS BEAT is present, continue from it without repeating it.
-- When ARC intentionally assigns the same repeated/ongoing process to adjacent
-  beats, write a distinct concrete instance for this beat rather than copying
-  the previous beat or the required-event sentence verbatim. Preserve the same
-  story-level job, but vary the visible execution. Do not say last, final,
-  every, all, finished, or otherwise exhaust the repeated process unless the
-  assigned required event explicitly makes this the terminal instance.
-- One concise sentence per beat.
-- Each beat string begins with its exact global beat number and a period, and
-  beat_number matches that prefix.
-{supplemental_text}
-
-PREVIOUS BEAT:
+PREVIOUS BEAT
 {previous_context}
 
-Return:
+WRITE {batch_size} BEATS
+- Write one beat for each ASSIGNED EVENT.
+- SOURCE gives context. The ASSIGNED EVENT says what happens in this beat.
+  Do not pull a later story action into this beat.
+- Keep the same physical action and participant roles. Do not replace the
+  required action with a different action.
+- Finish a finite task in the same beat. Show the task happening and then
+  finishing; do not show only the work in progress or only the after-state.
+- Follow BARRIER NAME RULES exactly. Do not use a different nearby door, gate,
+  hatch, or barrier.
+- Follow CLOSED BARRIERS AT START. Nothing crosses a listed barrier unless this
+  beat's state effects allow the crossing.
+- Follow BARRIER STATES REQUIRED AT END. A barrier may change temporarily for
+  an allowed crossing, but it must end in the listed state unless this beat
+  explicitly changes that final state.
+- If the event makes food, a consumable, or a hand-off for someone, show that
+  person receive or use it. For a repair/build/custom job, finishing the work
+  is enough unless the event says to deliver it. Watching does not count as
+  receiving unless the event itself is a performance, lesson, or demonstration.
+- If PREVIOUS BEAT is present, continue from it without repeating it.
+- If adjacent beats use the same repeated/ongoing process, show a different
+  story-compatible instance in this beat. Do not say last, final, every, all,
+  or finished unless this ASSIGNED EVENT is the terminal instance.
+- Small staging details are okay. Do not add a new major plot event or outcome.
+- Use one concise sentence per beat.
+- Each beat string starts with its exact beat number and a period. beat_number
+  must match that number.
+{supplemental_text}
+
+RETURN
 {response_shape}
 """.strip(),
         },
     ]
 
-# Build beat instruction review messages.
-
-# Refuse an LLM request that dropped parsed subjects.txt information.
 def verify_subjects_in_beat_messages(messages, subject_information):
     """Refuse an LLM request that dropped parsed subjects.txt information."""
     subject_information = str(subject_information or "").strip()

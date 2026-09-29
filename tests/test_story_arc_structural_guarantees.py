@@ -166,6 +166,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         )
         self.assertNotIn("depends_on", event_properties)
 
+
     def test_arc_create_and_repair_keep_phase_arithmetic_out_of_the_llm(self):
         story = "Amy cooks breakfast. Then Amy opens the door."
         arc = make_arc([(1, 3, self.events)])
@@ -186,20 +187,22 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 )
             ).split()
         )
-        self.assertIn("Do not create phases or phase ranges", create_prompt)
-        self.assertIn("Python owns that deterministic bookkeeping", create_prompt)
         self.assertIn(
-            "finite source activity is assigned wholly to one beat",
+            "Do not return phases, dependencies, summaries, or required_end_state",
             create_prompt,
         )
-        self.assertIn("natural visible endpoint", create_prompt)
+        self.assertIn("Python adds them", create_prompt)
+        self.assertIn(
+            "If a finite task belongs to one beat, show it finishing in that beat",
+            create_prompt,
+        )
+        self.assertNotIn("STATE EFFECT ARGUMENT OWNERSHIP", create_prompt)
         self.assertIn("Do not create phases or phase ranges", repair_prompt)
         self.assertIn(
             "finite source activity assigned wholly to one beat",
             repair_prompt,
         )
         self.assertIn("natural visible endpoint", repair_prompt)
-        self.assertIn("Python owns the deterministic dependency chain", create_prompt)
         self.assertIn("Python assigns the deterministic dependency chain", repair_prompt)
         self.assertIn('"events":[', repair_prompt)
         schema = minimax.build_flat_arc_response_format(3)
@@ -210,6 +213,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertIn("executable clip job", event_schema["description"])
         self.assertIn("natural visible endpoint", event_schema["description"])
         self.assertIn("extended/repeated process", event_schema["description"])
+
 
     def test_arc_create_expands_explicit_majority_process_to_numeric_budget(self):
         story = (
@@ -222,10 +226,18 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 for message in minimax.build_beat_arc_plan_messages(story, 8)
             ).split()
         )
-        self.assertIn("allocate that process to the required numeric majority of beats", create_prompt)
-        self.assertIn("do not compress the whole process into one or two summary events", create_prompt)
-        self.assertIn("distinct coherent source-authorized moments", create_prompt)
-        self.assertIn("never add a new major plot, character, location, or outcome", create_prompt)
+        self.assertIn("At least 5 of 8 beats must show that process", create_prompt)
+        self.assertIn("Beat 4 starts the process", create_prompt)
+        self.assertIn(
+            "Every beat from 4 through 8 shows one concrete part of the process",
+            create_prompt,
+        )
+        self.assertIn("Do not end the process before Beat 8", create_prompt)
+        self.assertIn("different story-allowed instances", create_prompt)
+        self.assertIn(
+            "Do not add a new major plot event, character, location, or outcome",
+            create_prompt,
+        )
 
     def test_arc_validator_requires_explicit_source_timeline_coverage(self):
         story = (
@@ -310,6 +322,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             user_prompt,
         )
 
+
     def test_arc_prompts_keep_clothing_out_of_set_condition(self):
         story = "Amy wears a black tank top and cooks breakfast."
         arc = make_arc([(1, 3, self.events)])
@@ -338,11 +351,17 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             ).split()
         )
 
-        for prompt in (create_prompt, validate_prompt, repair_prompt):
+        self.assertIn("Clothing must use set_clothing, never set_condition", create_prompt)
+        self.assertIn("set_clothing: entity = the wearer; item = the garment", create_prompt)
+        for prompt in (validate_prompt, repair_prompt):
             self.assertIn("Clothing must use set_clothing", prompt)
             self.assertIn("set_condition", prompt)
             self.assertIn("set_clothing.entity is the wearer", prompt)
-            self.assertIn("Never put the garment itself in set_clothing.entity", prompt)
+            self.assertIn(
+                "Never put the garment itself in set_clothing.entity",
+                prompt,
+            )
+
 
     def test_arc_prompts_reject_inferred_internal_state_effects(self):
         story = "Amy cooks breakfast for Will and Amber."
@@ -359,12 +378,16 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 for message in minimax.build_macro_arc_validation_messages(story, arc)
             ).split()
         )
-        for prompt in (create_prompt, validate_prompt):
-            self.assertIn("state_effects", prompt)
-            self.assertIn("persistent facts directly established", prompt)
-            self.assertIn("set_condition", prompt)
-            self.assertRegex(prompt, r"temporary|inferred")
-            self.assertIn("set_clothing", prompt)
+        self.assertIn("state_effects", create_prompt)
+        self.assertIn("fact that is still true after the beat", create_prompt)
+        self.assertIn("Do not use set_condition for a temporary action or feeling", create_prompt)
+        self.assertIn("set_clothing", create_prompt)
+
+        self.assertIn("state_effects", validate_prompt)
+        self.assertIn("persistent facts directly established", validate_prompt)
+        self.assertIn("set_condition", validate_prompt)
+        self.assertRegex(validate_prompt, r"temporary|inferred")
+        self.assertIn("set_clothing", validate_prompt)
         self.assertIn("CHECK PERSISTENT STATE COVERAGE", validate_prompt)
         self.assertIn("persistent change or result", validate_prompt)
         self.assertIn("held/equipped objects", validate_prompt)
@@ -564,6 +587,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
         self.assertTrue(parsed["valid"])
         self.assertEqual(parsed["issues"], [])
 
+
     def test_majority_story_gets_exact_sequence_budget(self):
         story = "The majority of the film is Amy killing zombies."
         create_prompt = " ".join(
@@ -572,15 +596,13 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 for message in minimax.build_beat_arc_plan_messages(story, 8)
             ).split()
         )
-        self.assertIn("strict majority of 8 beats means at least 5 beats", create_prompt)
-        self.assertIn("exactly 3 beats are available before/outside it", create_prompt)
-        self.assertIn("Preparation before the sequence does not count", create_prompt)
-        self.assertIn("Beat 4 starts the emphasized process itself", create_prompt)
-        self.assertIn("Beats 1-3 must contain ALL source actions", create_prompt)
-        self.assertIn("do not defer pre-sequence setup into Beat 4", create_prompt)
-        self.assertIn("must visibly perform the explicit terminal action itself", create_prompt)
-        self.assertIn("No earlier beat may call its instance last, final, terminal", create_prompt)
-        self.assertIn("Do not make the final beat aftermath-only", create_prompt)
+        self.assertIn("At least 5 of 8 beats must show that process", create_prompt)
+        self.assertIn("Beats 1-3 are the only beats available before that process", create_prompt)
+        self.assertIn("Beat 4 starts the process", create_prompt)
+        self.assertIn("Every beat from 4 through 8 shows one concrete part", create_prompt)
+        self.assertIn("Beat 8 performs the source's final/terminal instance", create_prompt)
+        self.assertIn("Do not end the process before Beat 8", create_prompt)
+        self.assertIn("Preparation does not count as the process", create_prompt)
 
         arc = make_arc([(1, 3, self.events)])
         repair_prompt = " ".join(
@@ -768,6 +790,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 events,
             )
 
+
     def test_arc_planner_prefers_clip_scale_handoffs_when_budget_allows(self):
         normalized = " ".join(
             "\n".join(
@@ -779,9 +802,10 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 )
             ).split()
         )
-        self.assertIn("one executable clip job", normalized)
-        self.assertIn("split long source chains at natural handoffs", normalized)
-        self.assertIn("bundle only adjacent actions when necessary", normalized)
+        self.assertIn("one clip-sized job", normalized)
+        self.assertIn("Split a long source chain at a natural handoff", normalized)
+        self.assertIn("Combine only neighboring source actions when needed", normalized)
+
 
     def test_arc_planner_allows_coherent_setpieces_inside_authorized_process(self):
         story = (
@@ -794,8 +818,8 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 for message in minimax.build_beat_arc_plan_messages(story, 8)
             ).split()
         )
-        self.assertIn("distinct coherent source-authorized moments", create_prompt)
-        self.assertIn("never add a new major plot", create_prompt)
+        self.assertIn("different story-allowed instances", create_prompt)
+        self.assertIn("Do not add a new major plot event", create_prompt)
 
         validate_prompt = " ".join(
             "\n".join(
@@ -806,6 +830,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
             ).split()
         )
         self.assertIn("unsupported major plot events", validate_prompt)
+
 
     def test_arc_prompts_preserve_baseline_to_inciting_contrast(self):
         story = (
@@ -837,8 +862,8 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 for message in minimax.build_macro_arc_validation_messages(story, arc)
             ).split()
         )
-        self.assertIn("calm/ordinary baseline", plan_prompt)
-        self.assertIn("sudden inciting threat or change", plan_prompt)
+        self.assertIn("calm setup in its own beat", plan_prompt)
+        self.assertIn("before a sudden threat/change", plan_prompt)
         self.assertIn("ordinary baseline", validation_prompt)
         self.assertIn("sudden inciting threat/change", validation_prompt)
 
@@ -860,6 +885,7 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 minimax.LLM_INPUT_TOKEN_BUDGET,
             )
 
+
     def test_legacy_required_end_state_is_not_authoritative(self):
         arc = make_arc([(1, 3, self.events)])
         arc["phases"][0]["required_end_state"] = "Unsupported later event happens."
@@ -874,7 +900,8 @@ class StoryArcStructuralGuaranteeTests(unittest.TestCase):
                 for message in minimax.build_beat_arc_plan_messages("Amy acts.", 1)
             ).split()
         )
-        self.assertIn("Do not return required_end_state", create_prompt)
+        self.assertIn("required_end_state", create_prompt)
+        self.assertIn("Python adds them", create_prompt)
 
     def test_rejects_missing_immediate_dependency_but_accepts_extra_dependency(self):
         invalid = copy.deepcopy(self.events)
