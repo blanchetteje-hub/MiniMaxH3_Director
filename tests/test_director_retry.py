@@ -498,7 +498,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(parsed["subject_genders"], {"Amy": "female"})
 
     def test_director_prompt_blocks_terminal_state_carryover(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE_TEMPLATE.format(
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
             beat_number=1,
             story_segment_ending_rules="",
@@ -892,7 +892,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
 
     def test_director_prompt_forbids_invented_structural_geography(self):
-        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM
+        prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
+            segment_seconds=8,
+            story_segment_ending_rules="",
+        )
         self.assertIn("Do NOT invent structural geography or a travel route", prompt)
         self.assertIn("Stairs, hallways, corridors, extra doors", prompt)
         self.assertIn("without inventing how the building connects", prompt)
