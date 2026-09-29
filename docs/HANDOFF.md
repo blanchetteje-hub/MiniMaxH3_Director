@@ -389,3 +389,14 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - The held-prop gate now also rejects an opening-held prop ending on a belt/holster/sheath unless authoritative source explicitly assigns that stow. The focused regression uses the production Segment-4 katana case and an authorized-stow control.
 - Direct frozen-plan run `/tmp/amy-director-20260929-r6`, using `Amy.jpg`, cleared Segment 2 with an explicit door crossing and Segment 4 with both weapons still held. It was stopped at the earliest new clear defect in Segment 5: RAW began with pistol and katana occupying both hands, then said Amy lifted a severed arm `with both hands` without releasing either weapon. The end state still claimed both were held. The existing Request-1 structure gate now rejects this exact occupied-hands contradiction unless one opening-held prop is visibly released first. No LLM prompt or call was added. Evidence is preserved under `/tmp/amy-director-seg5-evidence-r6/`.
 - Next checkpoint: rerun the frozen-plan Director acceptance with `Amy.jpg` and review the earliest new real defect. Keep GPT-OSS 20B jobs narrow and use Python for typed-state and crossing invariants. Commit and push this handoff with the code changes to `gpt-arc-refresh`; do not add the untracked runtime `Amy.jpg`.
+
+## 2026-09-29 — Director Request 1 wording simplified for local gpt-oss 20B
+
+- Target runtime model remains `GPT-OSS-20B-Uncensored-HauhauCS-MXFP4-Balanced.gguf`.
+- The exact model card adds no special prompt syntax beyond being a gpt-oss 20B derivative. Keep using the runtime's gpt-oss/Harmony chat template.
+- Director Request 1 now uses short, literal, ordered rules: SOURCE -> CURRENT BEAT -> OPENING STATE -> END STATE RULES -> NEXT BEAT.
+- Removed abstract wording such as "authoritative final state contract", "persistent changes", and the blanket ban on invented structural geography from the creative call.
+- Harmless route details (for example, a short hall or stairs) are now allowed. The real invariants remain enforced: required destination, correct bound door/gate, which people cross, and required end state.
+- Removed the deterministic unestablished-route rejection and the matching completion-verifier rule so harmless route detail is not accepted by the prompt and then rejected later.
+- Timing is now stated with a concrete number for each clip: the last timed action must be at or after 75% of the clip length and before the exact endpoint.
+

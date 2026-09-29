@@ -508,14 +508,15 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_director_prompt_is_compact_creative_contract(self):
         prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
+            final_quarter_start=6,
             story_segment_ending_rules="",
         )
-        self.assertIn("You are the creative director", prompt)
-        self.assertIn("AUTHORITY — obey in this order", prompt)
-        self.assertIn("AUTHORITATIVE FINAL STATE CONTRACT", prompt)
-        self.assertIn("NEXT BEAT is forbidden", prompt)
-        self.assertIn("Do not invent structural geography or travel routes", prompt)
-        self.assertIn("final timed micro-beat must land in the final quarter", prompt)
+        self.assertIn("You are the director", prompt)
+        self.assertIn("READ IN THIS ORDER", prompt)
+        self.assertIn("END STATE RULES", prompt)
+        self.assertIn("NEXT BEAT: later. Do not show it now.", prompt)
+        self.assertIn("Small route details are okay", prompt)
+        self.assertIn("last timed action must be at or after 6 seconds", prompt)
         self.assertLess(len(prompt), 5000)
 
     def test_director_raw_scene_rejects_early_timeline_completion(self):
@@ -558,7 +559,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(issue, "")
 
-    def test_director_final_state_contract_forbids_invented_crossing_route(self):
+    def test_director_final_state_contract_allows_small_route_details(self):
         base_messages = [
             {"role": "system", "content": "director"},
             {"role": "user", "content": "base"},
@@ -609,11 +610,10 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertTrue(topology)
         self.assertEqual(binding["destination"], "basement")
         route_line = (
-            f"- Route: move authorized subjects directly through the "
-            f"{binding['destination']} boundary; do not invent stairs, hallways, "
-            "corridors, or any intermediate route."
+            f"- People entering {binding['destination']} must use that "
+            f"{binding['entity']}. Small route details are okay."
         )
-        self.assertIn("do not invent stairs, hallways", route_line)
+        self.assertIn("Small route details are okay", route_line)
 
     def test_assigned_barrier_unspecified_still_fails(self):
         issue = minimax.compare_director_barrier_state(
@@ -947,23 +947,16 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(payload["llm_result"]["overall_soundscape"], "N/A")
 
 
-    def test_deterministic_route_guard_rejects_unestablished_stairs(self):
-        issues = minimax._director_unestablished_route_errors(
-            "At 00:00.000, Will and Amber rush down the kitchen stairs into the basement.",
-            assigned_source="Amy gets Will and Amber into the basement.",
-            current_beat="Amy moves Will and Amber into the basement.",
-            opening_state="Amy, Will, and Amber are in the kitchen.",
+    def test_wrong_bound_guard_allows_small_route_details_with_correct_door(self):
+        binding = {"entity": "door", "destination": "basement", "state": "locked"}
+        raw = (
+            "At 00:04.000, Will and Amber run down a short hall and stairs, "
+            "then go through the basement door into the basement."
         )
-        self.assertTrue(any("stairs" in issue for issue in issues))
-
-    def test_deterministic_route_guard_allows_established_stairs(self):
-        issues = minimax._director_unestablished_route_errors(
-            "At 00:00.000, Will and Amber rush down the stairs into the basement.",
-            assigned_source="The basement stairs are beside the kitchen.",
-            current_beat="Will and Amber enter the basement.",
-            opening_state="N/A",
+        self.assertEqual(
+            minimax._director_wrong_bound_barrier_errors(raw, binding),
+            [],
         )
-        self.assertEqual(issues, [])
 
     def test_deterministic_crossing_guard_rejects_unauthorized_helper(self):
         contracts = [{
@@ -1414,15 +1407,17 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(issues, [])
 
-    def test_director_prompt_forbids_invented_structural_geography(self):
+    def test_director_prompt_allows_small_route_details(self):
         prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
+            final_quarter_start=6,
             story_segment_ending_rules="",
         )
-        self.assertIn("Do not invent structural geography or travel routes", prompt)
-        self.assertIn("Use only established rooms, doors, stairs, halls, gates, passages", prompt)
+        self.assertIn("Small route details are okay", prompt)
+        self.assertIn("You may add a hall, stairs, or a similar detail", prompt)
+        self.assertNotIn("Do not invent structural geography", prompt)
 
-    def test_completion_prompt_rejects_invented_structural_geography(self):
+    def test_completion_prompt_allows_small_route_details(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Amy gets Will and Amber into the basement and locks the door.",
             (
@@ -1443,8 +1438,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             ],
         )
         prompt = messages[-1]["content"]
-        self.assertIn("Reject invented structural geography", prompt)
-        self.assertIn("An unspecified route must remain unspecified", prompt)
+        self.assertIn("Small route details such as stairs or a hall are allowed", prompt)
+        self.assertNotIn("An unspecified route must remain unspecified", prompt)
 
 
     def test_completion_prompt_rejects_ambiguous_collective_crossing(self):
@@ -1474,10 +1469,11 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_director_prompt_preserves_concrete_assigned_actions(self):
         prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
+            final_quarter_start=6,
             story_segment_ending_rules="",
         )
         self.assertIn(
-            "do not replace them with a materially different physical action",
+            "Do not swap it for a different action",
             prompt,
         )
 
@@ -1506,6 +1502,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_director_prompt_does_not_reuse_terminal_target_for_new_target(self):
         prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
+            final_quarter_start=6,
             story_segment_ending_rules="",
         )
         self.assertIn(
