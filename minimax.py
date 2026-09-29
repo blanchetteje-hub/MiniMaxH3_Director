@@ -883,6 +883,7 @@ LOCAL STAGING
 - Be direct and concrete. No literary fluff, ornamental atmosphere, or explanatory prose.
 - Describe only externally depictable video/audio information. Do not write internal thoughts, inferred feelings, motivations, smell/taste/touch as subjective sensation, or other information H3 cannot portray. If emotion matters, show only an explicit visible action or expression supported by the beat/source.
 - Add only the minimum mundane micro-actions, ordinary props, incidental reactions, and short natural dialogue needed to make CURRENT BEAT visibly legible and complete.
+- Do NOT invent structural geography or a travel route. Stairs, hallways, corridors, extra doors, ladders, elevators, rooms, floors, tunnels, gates, passages, or other route-defining structures may appear only when established by ASSIGNED SOURCE, CURRENT BEAT, or OPENING CONTINUITY STATE. If the route to a named destination is unspecified, show the named subjects moving directly toward/through the established destination boundary without inventing how the building connects.
 - State materially important physical actions explicitly: who acts, what object is used, how it moves/changes hands/changes state, and the visible result when relevant. Avoid vague compression when the physical steps matter to H3.
 - A finite action in CURRENT BEAT is NOT complete merely because RAW SCENE shows the subject performing it. Unless CURRENT BEAT says it remains unfinished/interrupted, show its natural observable result or stable endpoint.
 - When an activity is for named people, show those people receiving or participating in the completed result when practical. `beat_complete=true` requires each named beneficiary to visibly receive or participate in the completed result when physically possible.
@@ -27079,7 +27080,8 @@ Check only completion and persistent-state compatibility:
 5. Preserve persistent facts already true in AUTHORITATIVE OPENING STATE unless SOURCE/CURRENT BEAT explicitly changes them. This includes held/equipped items, containment, barrier state, clothing, injuries, and other durable conditions. Reject dropping, losing, freeing, unlocking, removing, or otherwise changing such state as harmless staging.
 6. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.
 7. End continuity must agree with the last visible state in RAW SCENE. If RAW sets down, drops, removes, closes, opens, equips, unequips, enters, exits, or otherwise materially changes something, the End continuity state cannot claim the opposite unless RAW visibly changes it back.
-8. Ignore style, camera, future events, and harmless non-persistent staging. Do not invent extra source requirements.
+8. Reject invented structural geography or route-defining structures when they materially define how subjects move between established places. Stairs, hallways, corridors, extra doors, ladders, elevators, rooms, floors, tunnels, gates, or passages must already be established by SOURCE, DERIVED BEAT, or OPENING STATE. An unspecified route must remain unspecified.
+9. Ignore style, camera, future events, and harmless non-persistent staging. Do not invent extra source requirements.
 Return valid (boolean) and issue (short explanation if invalid, empty string otherwise)."""},
         ]
     return [
