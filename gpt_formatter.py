@@ -60,8 +60,9 @@ _LOCAL_TIME = re.compile(
     r"(?:\s+seconds?)?\s*[,;:\-]?\s*"
 )
 _WRAPPED_LOCAL_TIME = re.compile(
-    r"(?i)(?:\(|\[)\s*(?P<timestamp>(?:At\s+)?\d{1,2}:\d{2}"
-    r"(?:[.:]\d{1,3})?(?:\s+seconds?)?\s*[,;:\-]?)\s*(?:\)|\])"
+    r"(?i)(?:\(|\[)\s*(?:At\s+)?(?P<minutes>\d{1,2}):"
+    r"(?P<seconds>\d{2})(?:[.:](?P<fraction>\d{1,3}))?"
+    r"(?:\s+seconds?)?\s*[,;:\-]?\s*(?:\)|\])"
 )
 
 _ZERO_LOCAL_TIME = re.compile(
@@ -804,7 +805,11 @@ def _repair_shots(result: dict[str, Any], context: Mapping[str, Any]) -> None:
     # punctuation such as "(At 00:01.500, )" or "[At 00:01.500, ]".
     # Remove those model-specific wrappers before canonical time normalization.
     description = _WRAPPED_LOCAL_TIME.sub(
-        lambda match: match.group("timestamp").strip(),
+        lambda match: (
+            f"At {int(match.group('minutes')):02d}:"
+            f"{int(match.group('seconds')):02d}."
+            f"{(match.group('fraction') or '0').ljust(3, '0')} seconds, "
+        ),
         description,
     )
     number = _segment_number(context)
