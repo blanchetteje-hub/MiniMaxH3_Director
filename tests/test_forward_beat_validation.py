@@ -96,7 +96,10 @@ class ForwardBeatValidationTests(unittest.TestCase):
         )
         prompt = messages[1]["content"]
         self.assertIn("E. MATERIAL FIDELITY", prompt)
-        self.assertIn("firearm may shoot/strike but does not slash", prompt)
+        self.assertIn(
+            "one tool must not perform a distinct action that belongs to a different tool class",
+            prompt,
+        )
         self.assertIn("protected/non-hostile participant", prompt)
 
     def test_compact_validator_state_removes_noise_but_preserves_facts(self):
