@@ -850,7 +850,7 @@ def _repair_shots(result: dict[str, Any], context: Mapping[str, Any]) -> None:
         )
         description = _LOCAL_TIME.sub(_format_local_timestamp, description)
         description = re.sub(
-            r"(?i)\s+(?:At\s+)?00:00(?:[.:]0{1,3})?"
+            r"(?i)(?<!At)\s+(?:At\s+)?00:00(?:[.:]0{1,3})?"
             r"(?![.:]\d)"
             r"(?:\s+seconds?)?\s*,?\s*",
             " ",
