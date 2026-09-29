@@ -17699,6 +17699,78 @@ def _director_object_state_transition_issue(previous, following, timestamp, next
     )
 
 
+
+_DIRECTOR_HELD_REACQUIRE_RE = re.compile(
+    r"(?i)\b(?:pull(?:s|ed|ing)?|draw(?:s|n|ing)?|retriev(?:e|es|ed|ing)|"
+    r"take(?:s|n|ing)?|grab(?:s|bed|bing)?|pick(?:s|ed|ing)?\s+up)\b"
+)
+
+
+def _director_prop_base_key(value):
+    """Return a conservative leading object key for a canonical held prop."""
+    words = re.findall(r"[A-Za-z0-9'-]+", str(value or ""))
+    while words and words[0].casefold() in {"a", "an", "the", "her", "his", "their"}:
+        words.pop(0)
+    return words[0].casefold() if words else ""
+
+
+def _director_opening_held_reacquire_errors(raw_scene, registry_state):
+    """Reject reacquiring an item Python already says is held at frame zero."""
+    if not isinstance(registry_state, dict):
+        return []
+    subjects = registry_state.get("subjects")
+    if not isinstance(subjects, dict):
+        return []
+
+    raw_text = str(raw_scene or "")
+    actions = list(
+        _director_timed_action_map(
+            _canonicalize_director_timestamps(raw_text)
+        ).items()
+    )
+    issues = []
+    for subject_name, record in subjects.items():
+        if not isinstance(record, dict):
+            continue
+        held_props = record.get("held_props")
+        if not isinstance(held_props, list):
+            continue
+        for held_prop in held_props:
+            prop_key = _director_prop_base_key(held_prop)
+            if not prop_key:
+                continue
+            released = False
+            subject_pattern = re.escape(str(subject_name))
+            prop_pattern = re.escape(prop_key)
+            for timestamp, action in actions:
+                action_text = str(action or "")
+                if re.search(
+                    rf"(?i)(?<![\w]){prop_pattern}(?![\w])",
+                    action_text,
+                ) is None:
+                    continue
+                if _DIRECTOR_LIMB_RELEASE_RE.search(action_text):
+                    released = True
+                    continue
+                if released:
+                    # Once RAW explicitly releases/stows the opening-held item,
+                    # later reacquisition is allowed.
+                    continue
+                if re.search(
+                    rf"(?i)(?<![\w]){subject_pattern}(?![\w])"
+                    rf"[^.\n;]{{0,120}}{_DIRECTOR_HELD_REACQUIRE_RE.pattern}"
+                    rf"[^.\n;]{{0,100}}(?<![\w]){prop_pattern}(?![\w])",
+                    action_text,
+                ):
+                    issues.append(
+                        f"{timestamp}: {subject_name} already begins the segment "
+                        f"holding {prop_key!r}; RAW SCENE cannot reacquire it "
+                        "without an explicit prior release/stow transition."
+                    )
+                    break
+    return issues
+
+
 def _director_explicit_object_state_conflict_errors(raw_scene):
     """Reject explicit adjacent/end-state set-down -> held-again contradictions."""
     canonical = _canonicalize_director_timestamps(raw_scene)
@@ -27624,6 +27696,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         if not structure_errors:
             structure_errors.extend(
                 _director_explicit_object_state_conflict_errors(raw_scene)
+            )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_opening_held_reacquire_errors(
+                    raw_scene,
+                    bundle.get("registry_state"),
+                )
             )
         if not structure_errors:
             structure_errors.extend(
