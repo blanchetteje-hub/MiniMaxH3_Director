@@ -10384,6 +10384,20 @@ def _director_unauthorized_destination_crossing_errors(raw_scene, topology_contr
         if not destination:
             continue
         destination_pattern = re.escape(destination)
+        unauthorized = [
+            str(item.get("entity") or "").strip()
+            for item in contract.get("subjects", [])
+            if item.get("expected") == "NOT_AT_DESTINATION"
+            and str(item.get("entity") or "").strip()
+        ]
+        if unauthorized and re.search(
+            r"(?i)\bas\s+(?:he|she|they)\s+follows?\b",
+            raw_text,
+        ):
+            errors.append(
+                "RAW SCENE uses an ambiguous follow-pronoun for a destination "
+                "crossing; explicitly name only authorized crossers."
+            )
         for item in contract.get("subjects", []):
             if item.get("expected") != "NOT_AT_DESTINATION":
                 continue
