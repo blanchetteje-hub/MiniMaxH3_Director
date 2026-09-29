@@ -21227,6 +21227,7 @@ def _continuity_apply_authoritative_state_effects(
     state,
     assigned_state_effects,
     barrier_binding=None,
+    committed_state=None,
 ):
     """Overlay source-owned typed end state onto prompt-derived continuity."""
     result = copy.deepcopy(state) if isinstance(state, dict) else new_continuity_state()
@@ -21243,6 +21244,62 @@ def _continuity_apply_authoritative_state_effects(
         effects = _validate_state_effects(list(assigned_state_effects or []))
     except (TypeError, ValueError):
         return result
+
+    # A newly external/outside subject position is a persistent spatial change,
+    # not ordinary room-level staging. If source-owned typed effects do not
+    # authorize location/containment movement for that subject, preserve the
+    # previously committed placement instead of accepting an LLM-invented exit.
+    spatially_changed = {
+        str(effect.get("entity") or "").casefold()
+        for effect in effects
+        if effect.get("op") in {"set_location", "set_containment"}
+    }
+    committed_subjects = (
+        _continuity_subject_map(committed_state.get("subjects"))
+        if isinstance(committed_state, dict)
+        else {}
+    )
+    for name, record in list(subjects.items()):
+        if not isinstance(record, dict):
+            continue
+        if str(name).casefold() in spatially_changed:
+            continue
+        proposed = " ".join(str(record.get("position") or "").split())
+        if not re.search(r"(?i)\boutside\b", proposed):
+            continue
+        previous_key = next(
+            (
+                key for key in committed_subjects
+                if str(key).casefold() == str(name).casefold()
+            ),
+            None,
+        )
+        previous = (
+            committed_subjects.get(previous_key)
+            if previous_key is not None
+            else None
+        )
+        if not isinstance(previous, dict):
+            continue
+        previous_position = " ".join(str(previous.get("position") or "").split())
+        if (
+            not previous_position
+            or previous_position.upper() == "N/A"
+            or re.search(r"(?i)\boutside\b", previous_position)
+        ):
+            continue
+        record["position"] = previous_position
+        for field in ("topology",):
+            value = str(record.get(field) or "")
+            if re.search(r"(?i)\boutside\b", value):
+                record[field] = previous.get(field, "N/A")
+        relationships = record.get("spatial_relationships")
+        if isinstance(relationships, list):
+            record["spatial_relationships"] = [
+                value
+                for value in relationships
+                if not re.search(r"(?i)\boutside\b", str(value))
+            ]
 
     def subject_record(name):
         key = next(
@@ -21498,6 +21555,7 @@ def request_combined_continuity(
         reduced_state,
         assigned_state_effects,
         barrier_binding=barrier_binding,
+        committed_state=committed_state,
     )
     _print_continuity_phase_result(1, "COMBINED CONTINUITY", reduced_state)
 

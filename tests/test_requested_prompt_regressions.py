@@ -359,6 +359,72 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         self.assertIn('"flag": false', user_prompt)
         self.assertIn('"count": 0', user_prompt)
 
+    def test_unassigned_prompt_exit_preserves_committed_position(self):
+        committed = {
+            "version": 5,
+            "subjects": {
+                "Amy": {
+                    "name": "Amy",
+                    "position": "home",
+                    "topology": "N/A",
+                    "spatial_relationships": [],
+                }
+            },
+        }
+        prompt_state = {
+            "version": 5,
+            "subjects": {
+                "Amy": {
+                    "name": "Amy",
+                    "position": "outside kitchen doorway",
+                    "topology": "outside kitchen doorway",
+                    "spatial_relationships": ["outside kitchen doorway"],
+                }
+            },
+        }
+        merged = minimax._continuity_apply_authoritative_state_effects(
+            prompt_state,
+            [],
+            committed_state=committed,
+        )
+        self.assertEqual(merged["subjects"]["Amy"]["position"], "home")
+        self.assertNotIn(
+            "outside",
+            str(merged["subjects"]["Amy"].get("topology", "")).casefold(),
+        )
+
+    def test_unassigned_internal_room_refinement_is_allowed(self):
+        committed = {
+            "version": 5,
+            "subjects": {"Amy": {"name": "Amy", "position": "kitchen"}},
+        }
+        prompt_state = {
+            "version": 5,
+            "subjects": {"Amy": {"name": "Amy", "position": "living room"}},
+        }
+        merged = minimax._continuity_apply_authoritative_state_effects(
+            prompt_state,
+            [],
+            committed_state=committed,
+        )
+        self.assertEqual(merged["subjects"]["Amy"]["position"], "living room")
+
+    def test_authorized_location_effect_allows_outside_position(self):
+        committed = {
+            "version": 5,
+            "subjects": {"Amy": {"name": "Amy", "position": "home"}},
+        }
+        prompt_state = {
+            "version": 5,
+            "subjects": {"Amy": {"name": "Amy", "position": "outside home"}},
+        }
+        merged = minimax._continuity_apply_authoritative_state_effects(
+            prompt_state,
+            [{"op": "set_location", "entity": "Amy", "value": "outside home"}],
+            committed_state=committed,
+        )
+        self.assertEqual(merged["subjects"]["Amy"]["position"], "outside home")
+
     def test_authoritative_containment_clears_stale_cross_location_relationships(self):
         state = {
             "version": 5,
