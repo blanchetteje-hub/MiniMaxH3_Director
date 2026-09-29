@@ -223,3 +223,13 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Commit `e92e4d8d51910a3a25cdb828ec933853165957a1` tightens the existing RAW Director prompt: do not invent structural geography/travel routes (stairs, hallways, corridors, extra doors, ladders, elevators, rooms, floors, tunnels, gates, passages). If a route is unspecified, move named subjects directly toward/through the established destination boundary without defining how the building connects.
 - The same commit tightens the existing Request-1 completion verifier to reject invented route-defining structures. This stays within the existing Director generate/verify retry loop; no new semantic stage was added.
 - Commit `c1c07ca7ee8338737de13e8e024c476551ad99a0` adds regression coverage for both prompt constraints.
+
+## 2026-09-28 — deterministic Director route/crossing guards
+
+- `acceptance-2473` proved the 20B model can ignore explicit semantic rules: it generated `Amy, Will, and Amber rush down the kitchen stairs into the basement`, then the independent verifier incorrectly rationalized that only Will and Amber crossed.
+- Root cause included a contradictory Python-added final-side note allowing temporary unauthorized crossing if the subject returned before the end. That loophole was removed.
+- Commit `67b07da70d7ac6e89ac076ab8892212703b15b6d` adds deterministic Request-1 guards inside the existing acceptance gate:
+  - reject route-defining structures that appear in RAW but are absent from source/beat/opening continuity;
+  - reject an explicitly named subject with NOT_AT_DESTINATION topology when RAW states that subject moves into/through/to the typed destination.
+- These are deterministic lexical/state checks, not a new semantic pipeline. The existing local-LLM completion verifier remains for broader source completion.
+- Commit `ab8418996d8b887bc4f56b9a814a272f4d613d3a` adds focused regression tests and fixes the geography test to use `DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE`.
