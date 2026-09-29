@@ -10323,7 +10323,7 @@ _DIRECTOR_CROSSING_VERBS = (
     "enter", "enters", "entered", "rush", "rushes", "rushed", "run", "runs",
     "ran", "move", "moves", "moved", "go", "goes", "went", "step", "steps",
     "stepped", "walk", "walks", "walked", "cross", "crosses", "crossed",
-    "descend", "descends", "descended",
+    "descend", "descends", "descended", "dash", "dashes", "dashed",
 )
 
 
@@ -10366,7 +10366,7 @@ def _director_unauthorized_destination_crossing_errors(raw_scene, topology_contr
             and str(item.get("entity") or "").strip()
         ]
         if unauthorized and re.search(
-            r"(?i)\bas\s+(?:he|she|they)\s+follows?\b",
+            r"(?i)\b(?:as|while)\s+(?:he|she|they)\s+follows?\b",
             raw_text,
         ):
             errors.append(
@@ -10393,6 +10393,95 @@ def _director_unauthorized_destination_crossing_errors(raw_scene, topology_contr
                 errors.append(
                     f"{entity} is not authorized to cross into {destination} in this beat."
                 )
+                continue
+            # "Will enters the basement while Amy follows behind" assigns
+            # the same crossing to Amy without repeating the destination.
+            follow_pattern = (
+                rf"(?i)\b(?:enter|enters|entered|step|steps|stepped|"
+                rf"move|moves|moved|rush|rushes|rushed)\s+"
+                rf"(?:(?:into|inside|through|to)\s+)?(?:the\s+)?"
+                rf"{destination_pattern}(?![\w])"
+                rf"[^.\n;]{{0,80}}\b(?:as|while)\s+"
+                rf"{entity_pattern}\s+follows?\b"
+            )
+            if re.search(follow_pattern, raw_text):
+                errors.append(
+                    f"{entity} is not authorized to follow others into {destination} in this beat."
+                )
+                continue
+            # Leaving the destination also proves an unauthorized crossing
+            # occurred earlier, even if the final state puts the subject out.
+            exit_pattern = (
+                rf"(?i)(?<![\w]){entity_pattern}(?![\w])"
+                rf"[^.\n;]{{0,80}}\b(?:exits?|leaves?|steps?\s+out\s+of|"
+                rf"emerges?\s+from)\s+(?:the\s+)?"
+                rf"{destination_pattern}(?![\w])"
+            )
+            if re.search(exit_pattern, raw_text):
+                errors.append(
+                    f"{entity} is not authorized to exit {destination} in this beat."
+                )
+    return errors
+
+
+def _director_missing_containment_crossing_errors(
+    raw_scene, assigned_state_effects, authoritative_opening_state
+):
+    """Require the timed scene to show each newly assigned containment crossing."""
+    try:
+        effects = _validate_state_effects(list(assigned_state_effects or []))
+    except (TypeError, ValueError):
+        return []
+    end_match = _DIRECTOR_END_CONTINUITY_RE.search(str(raw_scene or ""))
+    timed_scene = str(raw_scene or "")[:end_match.start()] if end_match else str(raw_scene or "")
+    clauses = [part.strip() for part in re.split(r"[.;\n]", timed_scene) if part.strip()]
+    errors = []
+    for effect in effects:
+        if effect.get("op") != "set_containment" or effect.get("value") != "contained":
+            continue
+        entity = str(effect.get("entity") or "").strip()
+        destination = str(effect.get("container") or "").strip()
+        if not entity or not destination:
+            continue
+        if _director_opening_relation_to_destination(
+            authoritative_opening_state, entity, destination
+        ) is True:
+            continue
+        subject = rf"(?<![\w]){re.escape(entity)}(?![\w])"
+        place = re.escape(destination)
+        crossing_path = (
+            rf"(?:\b(?:into|inside)\s+(?:the\s+)?{place}"
+            rf"(?!\s+(?:door|doorway)\b)|"
+            rf"\bthrough\s+(?:the\s+)?(?:{place}\s+)?(?:door|doorway)\b|"
+            rf"\benter(?:s|ed)?\s+(?:the\s+)?{place}\b)"
+        )
+        movement = (
+            r"\b(?:enter(?:s|ed)?|step(?:s|ped)?|walk(?:s|ed)?|"
+            r"run(?:s|ning)?|ran|rush(?:es|ed)?|dash(?:es|ed)?|"
+            r"move(?:s|d)?|go(?:es|ne)?|descend(?:s|ed)?|cross(?:es|ed)?)\b"
+        )
+        causative = r"\b(?:push(?:es|ed)?|pull(?:s|ed)?|guid(?:e|es|ed)|usher(?:s|ed)?)\b"
+        crossed = any(
+            re.search(
+                rf"(?i){subject}[^.;\n]{{0,90}}{movement}[^.;\n]{{0,90}}{crossing_path}",
+                clause,
+            )
+            or re.search(
+                rf"(?i){causative}[^.;\n]{{0,80}}{subject}[^.;\n]{{0,90}}{crossing_path}",
+                clause,
+            )
+            or re.search(
+                rf"(?i){subject}[^.;\n]{{0,90}}\benter(?:s|ed)?\s+"
+                rf"(?:the\s+)?{place}\b",
+                clause,
+            )
+            for clause in clauses
+        )
+        if not crossed:
+            errors.append(
+                f"{entity} must visibly cross into {destination} in a timed action; "
+                "an end-state assertion or approach to the boundary is insufficient."
+            )
     return errors
 
 
@@ -10476,6 +10565,12 @@ def _director_unassigned_external_end_errors(
         effects = _validate_state_effects(list(assigned_state_effects or []))
     except (TypeError, ValueError):
         effects = []
+    containment_destinations = {
+        " ".join(str(effect.get("container") or "").split())
+        for effect in effects
+        if effect.get("op") == "set_containment"
+        and str(effect.get("container") or "").strip()
+    }
     authorized = {
         str(effect.get("entity") or "").casefold()
         for effect in effects
@@ -10522,11 +10617,27 @@ def _director_unassigned_external_end_errors(
 
         name_pattern = rf"(?<![\w]){re.escape(name)}(?![\w])"
         for clause in clauses:
+            exterior_clause = clause
+            for destination in containment_destinations:
+                # Outside a named containment boundary is still inside the
+                # broader location; it does not mean outdoors.
+                exterior_clause = re.sub(
+                    rf"(?i)\boutside\s+(?:the\s+)?{re.escape(destination)}"
+                    rf"(?:\s+(?:door|doorway|entry))?\b",
+                    "",
+                    exterior_clause,
+                )
+            exterior_clause = re.sub(
+                r"(?i)\boutside\s+(?:the\s+)?[\w-]+\s+"
+                r"(?:door|doorway|entry)\b",
+                "",
+                exterior_clause,
+            )
             if (
                 re.search(name_pattern, clause, re.IGNORECASE)
                 and re.search(
                     r"(?i)\b(?:outside|outdoors|patio|porch|exterior)\b",
-                    clause,
+                    exterior_clause,
                 )
             ):
                 errors.append(
@@ -17881,6 +17992,10 @@ def _director_wrong_bound_barrier_errors(raw_scene, barrier_binding):
         rf"(?P<label>[A-Za-z][A-Za-z0-9'_-]*(?:\s+[A-Za-z][A-Za-z0-9'_-]*){{0,3}}\s+(?:{noun}|doorway))\b"
         rf"[^.\n;]{{0,50}}?\b(?:into|to)\s+(?:the\s+)?{re.escape(destination)}\b"
     )
+    wrong_aperture_pattern = re.compile(
+        rf"(?i)\b(?:through|via|across)\b[^.\n;]{{0,50}}?\bwindow\b"
+        rf"[^.\n;]{{0,50}}?\b(?:into|to)\s+(?:the\s+)?{re.escape(destination)}\b"
+    )
     issues = []
     for match in pattern.finditer(str(raw_scene or "")):
         label = " ".join(match.group("label").replace("_", " ").split()).casefold()
@@ -17908,6 +18023,11 @@ def _director_wrong_bound_barrier_errors(raw_scene, barrier_binding):
                 f"named boundary {label!r}, but Python binds the destination "
                 f"boundary to generic {barrier!r}."
             )
+    if wrong_aperture_pattern.search(str(raw_scene or "")):
+        issues.append(
+            f"RAW SCENE routes subjects into {destination!r} through a window, "
+            f"but Python binds the destination boundary to generic {barrier!r}."
+        )
     return issues
 
 
@@ -18011,6 +18131,102 @@ def _director_opening_held_reacquire_errors(raw_scene, registry_state):
                     )
                     break
     return issues
+
+
+def _director_opening_held_unassigned_stow_errors(
+    raw_scene, registry_state, assigned_source
+):
+    """Reject an opening-held prop ending on a belt without source authority."""
+    if not assigned_source or not isinstance(registry_state, dict):
+        return []
+    subjects = registry_state.get("subjects")
+    if not isinstance(subjects, dict):
+        return []
+    end_match = _DIRECTOR_END_CONTINUITY_RE.search(str(raw_scene or ""))
+    if end_match is None:
+        return []
+    end_state = str(end_match.group("state") or "")
+    holders_by_prop = {}
+    for name, record in subjects.items():
+        if not isinstance(record, dict):
+            continue
+        for prop in record.get("held_props") or []:
+            key = _director_prop_base_key(prop)
+            if key:
+                holders_by_prop.setdefault(key, set()).add(str(name))
+    issues = []
+    for prop, holders in holders_by_prop.items():
+        if len(holders) != 1:
+            continue
+        stowed = re.search(
+            rf"(?i)\b{re.escape(prop)}\b[^.;]{{0,40}}\b"
+            rf"(?:hanging\s+)?(?:on|at|from|in|attached\s+to)\s+"
+            rf"(?:(?:her|his|their|a|the)\s+)?(?:belt|holster|sheath)\b",
+            end_state,
+        )
+        if stowed is None:
+            continue
+        if any(
+            other != prop
+            and re.search(rf"(?i)\b{re.escape(other)}\b", stowed.group(0)[len(prop):])
+            for other in holders_by_prop
+        ):
+            continue
+        if re.search(
+            rf"(?i)\b{re.escape(prop)}\b[^.;]{{0,70}}\b"
+            rf"(?:belt|holster|sheath|stow(?:s|ed|ing)?)\b",
+            str(assigned_source),
+        ):
+            continue
+        holder = next(iter(holders))
+        issues.append(
+            f"{holder} begins holding {prop!r}, but RAW SCENE ends with it "
+            "stowed without a source-owned transition."
+        )
+    return issues
+
+
+def _director_occupied_hands_errors(raw_scene, registry_state):
+    """Reject a named two-hand action while both opening-held props remain held."""
+    if not isinstance(registry_state, dict):
+        return []
+    subjects = registry_state.get("subjects")
+    if not isinstance(subjects, dict):
+        return []
+    timed_scene = str(raw_scene or "").split("End continuity state:", 1)[0]
+    errors = []
+    for name, record in subjects.items():
+        if not isinstance(record, dict):
+            continue
+        props = {
+            _director_prop_base_key(value)
+            for value in record.get("held_props") or []
+        } - {""}
+        if len(props) < 2:
+            continue
+        actor = rf"(?<![\w]){re.escape(str(name))}(?![\w])"
+        for match in re.finditer(r"(?i)\bwith\s+both\s+hands\b", timed_scene):
+            current_action = timed_scene[:match.start()].rsplit("\n", 1)[-1]
+            if not re.search(actor, current_action, re.IGNORECASE):
+                continue
+            prior = timed_scene[:match.start()]
+            released = any(
+                re.search(
+                    rf"(?i)\b(?:drop(?:s|ped)?|release(?:s|d)?|"
+                    rf"set(?:s)?\s+down|put(?:s)?\s+down|"
+                    rf"holster(?:s|ed)?|sheath(?:e|es|ed)?)\s+"
+                    rf"(?:the\s+|her\s+|his\s+)?{re.escape(prop)}\b",
+                    prior,
+                )
+                for prop in props
+            )
+            if not released:
+                errors.append(
+                    f"{name} begins holding two props and cannot use both hands "
+                    "for another object without visibly releasing one first."
+                )
+                break
+    return errors
 
 
 def _director_explicit_object_state_conflict_errors(raw_scene):
@@ -28007,6 +28223,21 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             )
         if not structure_errors:
             structure_errors.extend(
+                _director_opening_held_unassigned_stow_errors(
+                    raw_scene,
+                    bundle.get("registry_state"),
+                    bundle.get("assigned_source", ""),
+                )
+            )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_occupied_hands_errors(
+                    raw_scene,
+                    bundle.get("registry_state"),
+                )
+            )
+        if not structure_errors:
+            structure_errors.extend(
                 _director_unestablished_route_errors(
                     raw_scene,
                     bundle.get("assigned_source", ""),
@@ -28019,6 +28250,14 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 _director_unauthorized_destination_crossing_errors(
                     raw_scene,
                     request1_topology_contracts,
+                )
+            )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_missing_containment_crossing_errors(
+                    raw_scene,
+                    bundle.get("assigned_state_effects", []),
+                    bundle.get("opening_state", ""),
                 )
             )
         if not structure_errors:

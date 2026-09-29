@@ -1,5 +1,6 @@
 import unittest
 import json
+import re
 from unittest import mock
 
 import minimax
@@ -18,6 +19,11 @@ def segment_bundle():
 
 def formatter_response(description):
     """A Request 2 H3 formatter reply with the required response fields."""
+    description = str(description)
+    if re.search(r"At 00:\d\d\.\d{3},", description) and not re.search(
+        r"At 00:0[4-9]\.\d{3},", description
+    ):
+        description += " At 00:04.500, The action settles into its final visible state."
     return {
         "subject_genders": {},
         "detailed_description": description,
@@ -31,6 +37,8 @@ def director_response(raw_scene, beat_complete=True):
     scene = str(raw_scene).strip()
     if not scene.startswith("At "):
         scene = "At 00:00.000, " + scene
+    if not re.search(r"At 00:0[4-9]\.\d{1,3},", scene):
+        scene += "\nAt 00:04.500, The action settles into its final visible state."
     if "End continuity state:" not in scene:
         scene += "\nEnd continuity state: The described action has reached its final visible state."
     return {
@@ -697,7 +705,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(
             payload["llm_result"]["detailed_description"],
-            "[Shot 1] At 00:00.000, Mark enters and reacts to the environment.",
+            formatted["detailed_description"],
         )
         # Python owns beat completion metadata; no semantic gates ran.
         self.assertNotIn("completed_beat_ids", payload["llm_result"])
@@ -786,7 +794,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertEqual(
             payload["llm_result"]["detailed_description"],
-            "[Shot 1] At 00:00.000, Mark enters the room quietly.",
+            formatted["detailed_description"],
         )
         self.assertEqual(payload["llm_result"]["overall_soundscape"], "Room tone.")
 
@@ -908,7 +916,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertEqual(ask_llm.call_count, 11)
         self.assertEqual(
             payload["llm_result"]["detailed_description"],
-            "At 00:00.000, Mark enters the room quietly.",
+            director_response(raw_scene)["raw_scene"].split("End continuity state:")[0].strip().replace("\n", " "),
         )
         self.assertEqual(payload["llm_result"]["overall_soundscape"], "Room tone.")
         self.assertEqual(payload["llm_result"]["non_diegetic_music"], "N/A")
@@ -921,7 +929,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         # The tenth and final attempt returns free-form text with no labeled
         #  fields; that text becomes the preserved description field.
         last_text = (
-            "[Shot 1] At 00:00.000, Mark enters the room quietly; the lighting dims slowly."
+            "[Shot 1] At 00:00.000, Mark enters the room quietly; the lighting dims slowly. "
+            "At 00:04.500, The action settles into its final visible state."
         )
         ask_llm.side_effect = [director_response(raw_scene)] + ["", last_text] * 5
 
@@ -985,6 +994,131 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             contracts,
         )
         self.assertTrue(any("follow-pronoun" in issue for issue in issues))
+
+    def test_deterministic_crossing_guard_rejects_following_into_destination(self):
+        contracts = [{
+            "destination": "basement",
+            "subjects": [
+                {"entity": "Amy", "expected": "NOT_AT_DESTINATION"},
+                {"entity": "Will", "expected": "AT_DESTINATION"},
+                {"entity": "Amber", "expected": "AT_DESTINATION"},
+            ],
+        }]
+        raw = (
+            "At 00:04.000, Will and Amber enter the basement while Amy follows closely behind.\n"
+            "At 00:05.200, Amy locks the basement door.\n"
+            "At 00:07.700, Amy steps out of the basement."
+        )
+        issues = minimax._director_unauthorized_destination_crossing_errors(
+            raw, contracts
+        )
+        self.assertTrue(any("Amy is not authorized to follow" in issue for issue in issues))
+
+    def test_deterministic_crossing_guard_allows_staying_outside_destination(self):
+        contracts = [{
+            "destination": "basement",
+            "subjects": [
+                {"entity": "Amy", "expected": "NOT_AT_DESTINATION"},
+                {"entity": "Will", "expected": "AT_DESTINATION"},
+                {"entity": "Amber", "expected": "AT_DESTINATION"},
+            ],
+        }]
+        raw = (
+            "At 00:04.000, Will and Amber enter the basement while Amy remains outside.\n"
+            "At 00:05.200, Amy locks the basement door."
+        )
+        self.assertEqual(
+            minimax._director_unauthorized_destination_crossing_errors(raw, contracts),
+            [],
+        )
+
+    def test_deterministic_crossing_guard_rejects_unauthorized_dash(self):
+        contracts = [{
+            "destination": "basement",
+            "subjects": [
+                {"entity": "Amy", "expected": "NOT_AT_DESTINATION"},
+                {"entity": "Will", "expected": "AT_DESTINATION"},
+                {"entity": "Amber", "expected": "AT_DESTINATION"},
+            ],
+        }]
+        raw = "At 00:04.000, Amy and the kids dash through the broken window into the basement."
+        issues = minimax._director_unauthorized_destination_crossing_errors(raw, contracts)
+        self.assertTrue(any("Amy is not authorized to cross" in issue for issue in issues))
+
+    def test_containment_crossing_requires_visible_entry_not_just_final_state(self):
+        opening = (
+            'SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n'
+            '{"characters":{"Will":{"location":"kitchen"},'
+            '"Amber":{"location":"kitchen"}}}'
+        )
+        effects = [
+            {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+            {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
+        ]
+        raw = (
+            "At 00:03.000, Amy pushes them into the basement door.\n"
+            "At 00:04.000, Will and Amber reach the basement door; Amy shuts it.\n"
+            "End continuity state: Will and Amber are inside the basement."
+        )
+        issues = minimax._director_missing_containment_crossing_errors(raw, effects, opening)
+        self.assertTrue(any(issue.startswith("Will must visibly cross") for issue in issues))
+        self.assertTrue(any(issue.startswith("Amber must visibly cross") for issue in issues))
+
+    def test_containment_crossing_accepts_named_entry(self):
+        effects = [
+            {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+            {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
+        ]
+        raw = (
+            "At 00:04.000, Will and Amber step into the basement through its door.\n"
+            "End continuity state: Will and Amber are inside the basement."
+        )
+        self.assertEqual(
+            minimax._director_missing_containment_crossing_errors(raw, effects, ""),
+            [],
+        )
+
+    def test_opening_held_prop_cannot_end_unassigned_on_belt(self):
+        registry = {"subjects": {"Amy": {"held_props": ["pistol", "katana"]}}}
+        raw = (
+            "At 00:00.000, Amy swings her katana and fires her pistol.\n"
+            "At 00:07.000, Amy stands with the katana hanging on her belt.\n"
+            "End continuity state: Amy holds a pistol with a katana on her belt."
+        )
+        issues = minimax._director_opening_held_unassigned_stow_errors(
+            raw, registry, "Amy cuts the target with the katana and fires the pistol."
+        )
+        self.assertTrue(any("katana" in issue for issue in issues))
+        self.assertFalse(any("pistol" in issue for issue in issues))
+
+    def test_opening_held_prop_may_be_stowed_when_source_assigns_it(self):
+        registry = {"subjects": {"Amy": {"held_props": ["katana"]}}}
+        raw = (
+            "At 00:06.000, Amy places the katana on her belt.\n"
+            "End continuity state: Amy stands with the katana on her belt."
+        )
+        self.assertEqual(
+            minimax._director_opening_held_unassigned_stow_errors(
+                raw, registry, "Amy clips the katana to her belt."
+            ),
+            [],
+        )
+
+    def test_both_hands_action_requires_release_of_opening_held_prop(self):
+        registry = {"subjects": {"Amy": {"held_props": ["pistol", "katana"]}}}
+        raw = (
+            "At 00:00.000, Amy holds a pistol and katana.\n"
+            "At 00:04.000, Amy lifts the arm with both hands and throws it away.\n"
+            "End continuity state: Amy holds both weapons."
+        )
+        issues = minimax._director_occupied_hands_errors(raw, registry)
+        self.assertTrue(any("cannot use both hands" in issue for issue in issues))
+
+        released = raw.replace(
+            "At 00:04.000, Amy lifts",
+            "At 00:03.000, Amy sets down the pistol.\nAt 00:04.000, Amy lifts",
+        )
+        self.assertEqual(minimax._director_occupied_hands_errors(released, registry), [])
 
     def test_opening_held_prop_cannot_be_reacquired_without_release(self):
         registry = {
@@ -1173,6 +1307,12 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 [],
             )
 
+    def test_bound_basement_door_rejects_window_route_into_basement(self):
+        binding = {"entity": "door", "destination": "basement", "state": "locked"}
+        raw = "At 00:04.000, Amy and the kids dash through the broken window into the basement."
+        issues = minimax._director_wrong_bound_barrier_errors(raw, binding)
+        self.assertTrue(any("through a window" in issue for issue in issues))
+
     def test_preserved_containment_rejects_visual_relocation(self):
         opening = (
             'SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n'
@@ -1233,6 +1373,29 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertTrue(any(issue.startswith("Amy ends outside") for issue in issues))
         self.assertFalse(any(issue.startswith("Will ends outside") for issue in issues))
         self.assertFalse(any(issue.startswith("Amber ends outside") for issue in issues))
+
+    def test_unassigned_external_end_allows_outside_containment_boundary(self):
+        opening = (
+            'SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n'
+            '{"characters":{"Amy":{"location":"home"}}}'
+        )
+        effects = [
+            {"op": "set_containment", "entity": "Will", "value": "contained", "container": "basement"},
+            {"op": "set_containment", "entity": "Amber", "value": "contained", "container": "basement"},
+        ]
+        subjects = "<Subject 1> is Amy, a woman."
+        for ending in (
+            "Amy is outside the basement; Will and Amber are inside.",
+            "Amy stands outside the basement door while Will and Amber are inside.",
+            "Amy stands outside the kitchen doorway beside the basement door.",
+        ):
+            raw = "At 00:07.000, Amy locks the basement door.\nEnd continuity state: " + ending
+            self.assertEqual(
+                minimax._director_unassigned_external_end_errors(
+                    raw, opening, effects, subjects
+                ),
+                [],
+            )
 
     def test_authorized_external_end_is_allowed(self):
         opening = (
