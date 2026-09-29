@@ -27563,11 +27563,16 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         current_beat_for_completion = str(
             bundle.get("current_beat_text") or ""
         ).strip()
-        # Legacy callers without beat text retain structural/self-completion
-        # validation; there is no semantic assignment for the verifier to judge.
+        assigned_source_for_completion = str(
+            bundle.get("assigned_source") or ""
+        ).strip()
+        # Legacy/unit callers without authoritative source retain the structural
+        # and self-reported completion checks. The independent semantic verifier
+        # is source-authority based and must not invent authority from derived beat
+        # prose alone.
         if (
             completion_checks_pass
-            and not current_beat_for_completion
+            and (not current_beat_for_completion or not assigned_source_for_completion)
             and raw_scene.strip()
             and raw_scene != "N/A"
             and not structure_errors
@@ -27576,6 +27581,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         if (
             completion_checks_pass
             and current_beat_for_completion
+            and assigned_source_for_completion
             and raw_scene.strip()
             and raw_scene != "N/A"
             and not structure_errors
