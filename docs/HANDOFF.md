@@ -294,3 +294,12 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - The existing Request-1 completion verifier required source actions to occur but did not explicitly forbid replacing one concrete source action/participant interaction with a materially different physical action.
 - Commit `fd436b0791c59b01eed69fec95d710d63869a1b8` adds one compact source-fidelity sentence to Request 1 and its existing independent completion verifier. No new LLM call or semantic stage was added.
 - `tests-2493` is queued. If green, rerun the frozen-plan Director-only acceptance against `acceptance-2451`. Do not address the later Segment-7 kitchen/living-room teleport until this earlier Segment-2 defect is cleared.
+
+
+## 2026-09-29 — acceptance 2494 barrier identity
+
+- `acceptance-2494` confirmed the Segment 2 concrete-action substitution fix: Amy now grabs Will and Amber rather than lifting/carrying them.
+- The next earliest defect is still Segment 2: RAW conflated the broken kitchen entry door with the basement boundary. It explicitly pushed the children toward/through the broken door, then `slams the kitchen door shut` and locks it even though Python's generic `door` effect is bound to the basement destination.
+- The semantic completion verifier had the correct AUTHORITATIVE BARRIER BINDING but accepted the wrong explicitly qualified barrier. This responsibility is deterministic: when Python binds a generic barrier to one destination, an explicit state-changing action on a differently qualified same-type barrier is invalid.
+- Commit `abd8db92c351f8b77bbe3bdab15c0a36f6df1076` adds a narrow Python guard for this case. Generic `the door` and the destination-qualified barrier remain valid; actions on a nested window such as `kitchen door window` are not misclassified as door-state changes.
+- `tests-2495` is queued. If green, rerun the frozen-plan Director-only acceptance against `acceptance-2451`.
