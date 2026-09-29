@@ -17700,9 +17700,13 @@ def _director_object_state_transition_issue(previous, following, timestamp, next
 
 
 
+_DIRECTOR_HELD_REACQUIRE_PATTERN = (
+    r"\\b(?:pull(?:s|ed|ing)?|draw(?:s|n|ing)?|retriev(?:e|es|ed|ing)|"
+    r"take(?:s|n|ing)?|grab(?:s|bed|bing)?|pick(?:s|ed|ing)?\\s+up)\\b"
+)
 _DIRECTOR_HELD_REACQUIRE_RE = re.compile(
-    r"(?i)\b(?:pull(?:s|ed|ing)?|draw(?:s|n|ing)?|retriev(?:e|es|ed|ing)|"
-    r"take(?:s|n|ing)?|grab(?:s|bed|bing)?|pick(?:s|ed|ing)?\s+up)\b"
+    _DIRECTOR_HELD_REACQUIRE_PATTERN,
+    re.IGNORECASE,
 )
 
 
@@ -17758,7 +17762,7 @@ def _director_opening_held_reacquire_errors(raw_scene, registry_state):
                     continue
                 if re.search(
                     rf"(?i)(?<![\w]){subject_pattern}(?![\w])"
-                    rf"[^.\n;]{{0,120}}{_DIRECTOR_HELD_REACQUIRE_RE.pattern}"
+                    rf"[^.\n;]{{0,120}}{_DIRECTOR_HELD_REACQUIRE_PATTERN}"
                     rf"[^.\n;]{{0,100}}(?<![\w]){prop_pattern}(?![\w])",
                     action_text,
                 ):
