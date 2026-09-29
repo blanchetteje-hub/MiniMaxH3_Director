@@ -17717,6 +17717,12 @@ def _director_wrong_bound_barrier_errors(raw_scene, barrier_binding):
         rf"(?P<label>[A-Za-z][A-Za-z0-9'_-]*(?:\s+[A-Za-z][A-Za-z0-9'_-]*){{0,3}}\s+{noun})\b"
         rf"(?!\s+window\b)"
     )
+    crossing_pattern = re.compile(
+        rf"(?i)\b(?:through|via|across)\b"
+        rf"[^.\n;]{{0,30}}?\b(?:the\s+|a\s+|an\s+)?"
+        rf"(?P<label>[A-Za-z][A-Za-z0-9'_-]*(?:\s+[A-Za-z][A-Za-z0-9'_-]*){{0,3}}\s+(?:{noun}|doorway))\b"
+        rf"[^.\n;]{{0,50}}?\b(?:into|to)\s+(?:the\s+)?{re.escape(destination)}\b"
+    )
     issues = []
     for match in pattern.finditer(str(raw_scene or "")):
         label = " ".join(match.group("label").replace("_", " ").split()).casefold()
@@ -17732,6 +17738,18 @@ def _director_wrong_bound_barrier_errors(raw_scene, barrier_binding):
             f"RAW SCENE changes explicitly named barrier {label!r}, but Python "
             f"binds generic {barrier!r} to the {destination!r} boundary."
         )
+    for match in crossing_pattern.finditer(str(raw_scene or "")):
+        label = " ".join(match.group("label").replace("_", " ").split()).casefold()
+        words = label.split()
+        if words and words[0] in {"a", "an", "the"}:
+            words = words[1:]
+        qualifier = " ".join(words[:-1])
+        if qualifier and destination not in qualifier and qualifier not in destination:
+            issues.append(
+                f"RAW SCENE routes subjects into {destination!r} through explicitly "
+                f"named boundary {label!r}, but Python binds the destination "
+                f"boundary to generic {barrier!r}."
+            )
     return issues
 
 

@@ -1083,6 +1083,14 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         )
         self.assertTrue(any("kitchen door" in issue for issue in issues))
 
+    def test_bound_generic_barrier_rejects_wrong_crossing_doorway(self):
+        binding = {"entity": "door", "destination": "basement", "state": "locked"}
+        issues = minimax._director_wrong_bound_barrier_errors(
+            "At 00:02.000, they sprint through the broken kitchen doorway directly into the basement.",
+            binding,
+        )
+        self.assertTrue(any("kitchen doorway" in issue for issue in issues))
+
     def test_bound_generic_barrier_allows_destination_or_generic_door(self):
         binding = {"entity": "door", "destination": "basement", "state": "locked"}
         for raw_scene in (
