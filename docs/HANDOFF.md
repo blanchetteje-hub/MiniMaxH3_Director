@@ -351,3 +351,13 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Existing topology guards only activate around typed destination transitions; they did not protect unchanged containment on a beat with no containment effect.
 - Commit `fa2769520c569be680fc880152fb39f00f37a41a` adds a deterministic preserved-containment guard: a subject canonically contained in a location cannot be visually staged elsewhere unless the current beat carries a source-owned set_location/set_containment effect for that subject. Explicitly keeping the subject in the container remains valid.
 - `tests-2506` and frozen-plan Director-only `acceptance-2507` are queued together.
+
+
+## 2026-09-29 — acceptance 2507 pronoun held-prop reacquisition
+
+- `tests-2506` passed 116/116 targeted tests plus 6 subtests.
+- `acceptance-2507` cleared the Segment 7 preserved-containment leak; Will and Amber now remain in the basement until their release beat.
+- Earliest remaining defect is Segment 4: RAW begins with Amy already holding pistol + katana, then says `She pulls the pistol from her belt` before firing. This is another held-prop reacquisition.
+- The held-prop guard was subject-name anchored, so the production pronoun form `She pulls...` bypassed it even though equivalent `Amy pulls...` regressions passed.
+- Commit `1aa135386671a4c42764f570b07357ef034ae70d` broadened sourced pull phrasing; commit `9101c02d0fa451b89e327123ab1abd0564dce41f` fixes the actual production hole by allowing an unambiguous pronoun actor only when exactly one opening-state subject holds that prop.
+- `tests-2508` and frozen-plan Director-only `acceptance-2509` are queued together.
