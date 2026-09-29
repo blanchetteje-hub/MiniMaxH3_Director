@@ -322,3 +322,12 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Existing deterministic bound-barrier guard covered wrong qualified barrier state changes, but not wrong qualified barriers used as the crossing route into the bound destination.
 - Commit `0a735335cdefb2a65d2b7bb844413912b9d952ea` extends the same narrow Python guard to reject `through/via/across <wrong qualified door/doorway> ... into <destination>` when Python binds the generic barrier to that destination.
 - `tests-2500` and frozen-plan Director-only `acceptance-2501` are queued together.
+
+
+## 2026-09-29 — acceptance 2501 pull-out reacquisition
+
+- `tests-2500` passed 110/110 targeted tests plus 6 subtests.
+- `acceptance-2501` cleared the Segment 2 wrong-bound crossing-route defect.
+- Earliest remaining defect moved to Segment 4: Segment 3 leaves Amy holding pistol + katana, but Segment 4 says `Amy pulls out her pistol` before firing. The held-prop deterministic guard already rejected direct reacquisition forms but missed the phrasal verb `pulls out <prop>`.
+- Commit `940ed4ccd792ba97d67543ce3e9d15554796460e` extends the existing held-prop guard to cover `pull/pulls/pulled/pulling out <held prop>` without changing Director semantics or adding a new LLM stage.
+- `tests-2502` and frozen-plan Director-only `acceptance-2503` are queued together.
