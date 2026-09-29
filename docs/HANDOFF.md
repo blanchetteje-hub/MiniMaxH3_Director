@@ -281,3 +281,7 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - acceptance-2490 confirmed the explicit crossing-route contract: Segment 2 passed on its first Request-1 attempt with no invented stairs/hallways.
 - The next continuity hole appeared in Segment 4: RAW reacquired an already-held pistol via "lifts the pistol from a nearby table". The direct-object guard correctly ignored ordinary weapon use but did not yet treat lift/raise-from-source phrasing as acquisition.
 - Opening-held reacquisition now also rejects lift/raise of the held prop when followed by from/off/out of a source. Ordinary lift/raise-to-aim/use remains valid.
+
+- `tests-2491` passed 102/102 targeted tests (plus 6 subtests), including the new sourced-lift regression.
+- `acceptance-2492` is queued as the next frozen-plan Director-only acceptance using `director_plan_job: "acceptance-2451"`.
+- Relevant production fix: `27922a035998c14f6d4826707ad61091f59ab5c6`.
