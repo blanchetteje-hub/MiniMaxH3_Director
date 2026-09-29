@@ -10365,7 +10365,7 @@ def _director_unestablished_route_errors(
     )
     errors = []
     for term in _DIRECTOR_ROUTE_STRUCTURE_TERMS:
-        pattern = rf"(?<![\\w]){re.escape(term)}(?![\\w])"
+        pattern = rf"(?<![\w]){re.escape(term)}(?![\w])"
         if re.search(pattern, raw_text, re.IGNORECASE) and not re.search(
             pattern, authority_text, re.IGNORECASE
         ):
@@ -10395,10 +10395,10 @@ def _director_unauthorized_destination_crossing_errors(raw_scene, topology_contr
             # Require the unauthorized subject, a movement verb, and an explicit
             # movement preposition leading to the typed destination in one clause.
             pattern = (
-                rf"(?i)(?<![\\w]){entity_pattern}(?![\\w])"
-                rf"[^.\\n;]{{0,160}}\\b(?:{verbs})\\b"
-                rf"[^.\\n;]{{0,120}}\\b(?:into|inside|through|to)\\s+(?:the\\s+)?"
-                rf"{destination_pattern}(?![\\w])"
+                rf"(?i)(?<![\w]){entity_pattern}(?![\w])"
+                rf"[^.\n;]{{0,160}}\b(?:{verbs})\b"
+                rf"[^.\n;]{{0,120}}\b(?:into|inside|through|to)\s+(?:the\s+)?"
+                rf"{destination_pattern}(?![\w])"
             )
             if re.search(pattern, raw_text):
                 errors.append(
