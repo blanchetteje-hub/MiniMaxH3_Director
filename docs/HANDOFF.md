@@ -331,3 +331,13 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Earliest remaining defect moved to Segment 4: Segment 3 leaves Amy holding pistol + katana, but Segment 4 says `Amy pulls out her pistol` before firing. The held-prop deterministic guard already rejected direct reacquisition forms but missed the phrasal verb `pulls out <prop>`.
 - Commit `940ed4ccd792ba97d67543ce3e9d15554796460e` extends the existing held-prop guard to cover `pull/pulls/pulled/pulling out <held prop>` without changing Director semantics or adding a new LLM stage.
 - `tests-2502` and frozen-plan Director-only `acceptance-2503` are queued together.
+
+
+## 2026-09-29 — acceptance 2503 unassigned external relocation
+
+- `tests-2502` passed 111/111 targeted tests plus 6 subtests.
+- `acceptance-2503` cleared the Segment 4 `pulls out her pistol` reacquisition defect.
+- Segments 1-7 are now materially clean enough to advance. Earliest remaining defect is Segment 8: RAW moves Amy outside with Will and Amber and ends with all three on a sunny patio, but only Will and Amber have source-owned movement/containment effects for the escape.
+- Existing topology validation only reasoned about the basement boundary, so Amy could remain correctly outside the basement while still being incorrectly relocated outside the house.
+- Commit `af12046bca490d1707f5bd2383b11cdc2a647a0c` adds a narrow deterministic end-state guard: if a known subject explicitly ends outside/on a porch/patio/exterior and no source-owned set_location/set_containment effect authorizes that persistent relocation, reject Request 1. Already-external subjects and explicitly authorized moves remain valid.
+- `tests-2504` and frozen-plan Director-only `acceptance-2505` are queued together.
