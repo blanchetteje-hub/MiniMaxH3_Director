@@ -312,3 +312,13 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - The next earliest defect is prompt-derived continuity immediately after Segment 2: the continuity extractor invented `Amy.position = "outside kitchen doorway"` even though RAW never moves Amy outside and no source-owned location/containment effect authorizes that persistent spatial change. That invented position then contaminates Segments 3-6.
 - Commit `360990a7248fc7122306d08353a80a7bbf47cfa6` adds a narrow deterministic merge guard: a newly external/`outside` subject position cannot replace a known committed placement unless that subject has a source-owned `set_location` or `set_containment` effect. Ordinary internal room refinement remains allowed.
 - `tests-2498` and frozen-plan Director-only `acceptance-2499` are queued together to reduce bridge round-trips.
+
+
+## 2026-09-29 — acceptance 2499 wrong-bound crossing route
+
+- `tests-2498` passed 109/109 targeted tests plus 6 subtests.
+- `acceptance-2499` confirmed the prompt-continuity outside-location corruption is cleared; Amy no longer gets pushed outside the house after Segment 2.
+- Earliest remaining defect is still Segment 2: RAW says `They sprint through the broken kitchen doorway directly into the basement`. This incorrectly uses the kitchen entry boundary as the basement crossing route even though the scene separately has a basement door.
+- Existing deterministic bound-barrier guard covered wrong qualified barrier state changes, but not wrong qualified barriers used as the crossing route into the bound destination.
+- Commit `0a735335cdefb2a65d2b7bb844413912b9d952ea` extends the same narrow Python guard to reject `through/via/across <wrong qualified door/doorway> ... into <destination>` when Python binds the generic barrier to that destination.
+- `tests-2500` and frozen-plan Director-only `acceptance-2501` are queued together.
