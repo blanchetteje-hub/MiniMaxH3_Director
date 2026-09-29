@@ -198,3 +198,13 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Rather than add another semantic pipeline/call, the existing independent Request-1 completion validator now explicitly rejects stronger terminal outcomes when SOURCE authorizes only non-terminal injury/damage/change.
 - `tests/test_director_retry.py` fixtures were also updated to emit structurally valid timed RAW SCENEs with a trailing `End continuity state:`, matching the current production Request-1 contract instead of failing for obsolete fixture shape.
 - Relevant commits: `fcf95ee5116ae698735f0c214b9d8cdf14565a21`, `f7f0ad4a8dd5bbd1e17cc955d7d0e6cbe534a653`.
+
+## 2026-09-28 — acceptance 2461 + regression cleanup
+
+- `tests-2460` exposed 13 failures (79 passed). Most Director failures were not independent production defects: legacy unit-test bundles supplied derived beat text but no authoritative `assigned_source`, while the newer independent completion verifier still made an extra semantic LLM call. That exhausted mocked response queues and obscured the formatter failures.
+- Commit `2e08b3acb708cf0af85a94ab4a32f1978b7e3bf4` fixes the GPT-only wrapped-local-timestamp regex. The previous raw regex still contained literal double escapes and failed to unwrap `(At ... )` / `[At ... ]` reliably.
+- Commit `2545ab269bd4df67aa928b95e1dd029a44660542` makes the independent Request-1 semantic completion verifier explicitly source-authority based: it runs only when both CURRENT BEAT and authoritative `assigned_source` are present. Legacy/unit callers without source retain structural + self-reported completion checks; production Director bundles continue through the independent verifier.
+- `acceptance-2461` completed all 8 frozen-plan Director segments. The Segment-5 unassigned terminal outcome from 2459 did not recur, confirming the terminal-scope prompt fix moved the failure downstream.
+- Do not treat later prompt-quality observations from 2461 as the next production target until the targeted regression suite is green again.
+- Next checkpoint: run the same targeted Director/formatter/prompt-generation tests. If green, run another Director-only acceptance against the frozen `acceptance-2451` plan and identify the earliest remaining real prompt defect.
+
