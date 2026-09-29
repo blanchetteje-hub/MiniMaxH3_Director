@@ -889,7 +889,7 @@ DIRECT THE SCENE
 TIMED RAW SCENE
 - First timestamp is exactly "At 00:00.000,".
 - Put each timestamp on its own line using exactly "At 00:ss.mmm,".
-- Use one clear action/event per timestamp. Use enough timestamps to make the beat legible; keep the final timestamp before {segment_seconds} seconds.
+- Use one clear action/event per timestamp. Pace the scene across the full clip: the final timed micro-beat must land in the final quarter of the segment and before {segment_seconds} seconds.
 - Camera movement may clarify action; cuts should be rare.
 - End with one untimed sentence beginning "End continuity state:" that matches the last visible frame. Do not add new facts there.
 
@@ -17432,7 +17432,8 @@ def _director_raw_scene_structure_errors(raw_scene, segment_seconds=None):
     if not ending_state:
         return ["End continuity state must be non-empty."]
     timed_scene = text_value[:marker.start()]
-    if not _director_timestamps(timed_scene):
+    timestamps = _director_timestamps(timed_scene)
+    if not timestamps:
         return ["RAW SCENE must contain at least one timed micro-beat before the end state."]
     range_errors = _director_timestamp_range_errors(
         timed_scene,
@@ -17440,6 +17441,20 @@ def _director_raw_scene_structure_errors(raw_scene, segment_seconds=None):
     )
     if range_errors:
         return range_errors
+    try:
+        duration = float(segment_seconds) if segment_seconds is not None else None
+    except (TypeError, ValueError):
+        duration = None
+    if duration is not None and math.isfinite(duration) and duration > 0:
+        last_seconds, last_milliseconds = timestamps[-1]
+        last_time = last_seconds + (last_milliseconds / 1000.0)
+        coverage_floor = duration * 0.75
+        if last_time < coverage_floor:
+            return [
+                f"RAW SCENE ends its timed action at {last_time:g}s, too early for "
+                f"a {duration:g}-second segment; the final timed micro-beat must "
+                f"land in the final quarter (at or after {coverage_floor:g}s)."
+            ]
     if _DIRECTOR_TIMESTAMP_RE.search(ending_state):
         return ["End continuity state must be the trailing untimed final-frame statement."]
     return []

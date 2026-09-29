@@ -507,7 +507,36 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("AUTHORITATIVE FINAL STATE CONTRACT", prompt)
         self.assertIn("NEXT BEAT is forbidden", prompt)
         self.assertIn("Do not invent structural geography or travel routes", prompt)
+        self.assertIn("final timed micro-beat must land in the final quarter", prompt)
         self.assertLess(len(prompt), 5000)
+
+    def test_director_raw_scene_rejects_early_timeline_completion(self):
+        raw_scene = (
+            "At 00:00.000, Alex reaches for the latch.\n"
+            "At 00:01.300, Alex closes the hatch.\n"
+            "End continuity state: Alex stands beside the closed hatch."
+        )
+        errors = minimax._director_raw_scene_structure_errors(
+            raw_scene,
+            segment_seconds=8,
+        )
+        self.assertTrue(errors)
+        self.assertIn("too early", errors[0])
+        self.assertIn("at or after 6s", errors[0])
+
+    def test_director_raw_scene_accepts_final_quarter_timeline(self):
+        raw_scene = (
+            "At 00:00.000, Alex reaches for the latch.\n"
+            "At 00:06.200, Alex closes the hatch.\n"
+            "End continuity state: Alex stands beside the closed hatch."
+        )
+        self.assertEqual(
+            minimax._director_raw_scene_structure_errors(
+                raw_scene,
+                segment_seconds=8,
+            ),
+            [],
+        )
 
     def test_preserved_barrier_unspecified_means_unchanged(self):
         issue = minimax.compare_director_barrier_state(

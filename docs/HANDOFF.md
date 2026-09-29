@@ -370,3 +370,11 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Commit `1e5d545a5d797d190e10188323ab68c5667fe39a` makes pronoun resolution depend only on uniqueness of the opening-state prop holder: if exactly one Subject holds that prop, `she/he/they` is accepted as an unambiguous actor; if multiple Subjects hold the same prop, pronouns are not used for deterministic rejection.
 - `acceptance-2509` is diagnostic only because the regression suite was red. It suggests the next issue may be Segment 8 failing to actually clear Will and Amber out of the house, but do not fix that until the held-prop regression is green.
 - `tests-2510` and frozen-plan Director-only `acceptance-2511` are queued.
+## 2026-09-29 — Director RAW timing must use the clip window
+
+- A fresh Director RAW scene for an 8-second Segment 2 completed all timed action by 00:01.300. The existing contract only required the final timestamp to be before the segment endpoint, so this was structurally accepted.
+- Fix: Request 1 now explicitly paces timed action across the full clip, and Python deterministically rejects RAW scenes whose final timed micro-beat occurs before the final quarter of the segment. For an 8-second clip, the last timed action must be at or after 6.0 seconds and still before 8.0 seconds.
+- This remains inside the existing Director Request-1 structure gate; no new LLM stage or semantic pipeline was added.
+- Added focused regressions for rejecting a 1.3-second ending in an 8-second clip and accepting a 6.2-second ending.
+- Next checkpoint: run the focused Director regression suite, then a fresh Director-only acceptance using the frozen plan and verify Segment 2 uses the full 8-second timing window.
+
