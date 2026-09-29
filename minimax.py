@@ -10395,6 +10395,68 @@ def _director_unauthorized_destination_crossing_errors(raw_scene, topology_contr
     return errors
 
 
+def _director_preserved_containment_errors(
+    raw_scene,
+    authoritative_opening_state,
+    assigned_state_effects,
+):
+    """Reject visual relocation of subjects still canonically contained."""
+    opening = _director_source_opening_state_json(authoritative_opening_state)
+    characters = opening.get("characters") if isinstance(opening, dict) else {}
+    if not isinstance(characters, dict):
+        return []
+
+    try:
+        effects = _validate_state_effects(list(assigned_state_effects or []))
+    except (TypeError, ValueError):
+        effects = []
+    moved = {
+        str(effect.get("entity") or "").casefold()
+        for effect in effects
+        if effect.get("op") in {"set_location", "set_containment"}
+    }
+
+    visual_terms = re.compile(
+        r"(?i)\b(?:stand(?:s|ing)?|sit(?:s|ting)?|look(?:s|ing)?|watch(?:es|ing)?|"
+        r"visible|appear(?:s|ing)?|step(?:s|ped|ping)?|walk(?:s|ed|ing)?|"
+        r"run(?:s|ning)?|rush(?:es|ed|ing)?|move(?:s|d|ing)?|"
+        r"behind|beside|near|outside|inside|through|at)\b"
+    )
+    clauses = [
+        clause.strip()
+        for clause in re.split(r"[.;\n]", str(raw_scene or ""))
+        if clause.strip()
+    ]
+    errors = []
+    for entity, record in characters.items():
+        if not isinstance(record, dict):
+            continue
+        containment = str(record.get("containment") or "").casefold()
+        container = " ".join(
+            str(record.get("contained_in") or "").replace("_", " ").split()
+        ).strip()
+        if containment != "contained" or not container:
+            continue
+        if str(entity).casefold() in moved:
+            continue
+        entity_pattern = rf"(?<![\w]){re.escape(str(entity))}(?![\w])"
+        container_pattern = rf"(?<![\w]){re.escape(container)}(?![\w])"
+        for clause in clauses:
+            if not re.search(entity_pattern, clause, re.IGNORECASE):
+                continue
+            if re.search(container_pattern, clause, re.IGNORECASE):
+                continue
+            if not visual_terms.search(clause):
+                continue
+            errors.append(
+                f"{entity} is canonically contained in {container!r} and cannot "
+                "be visually staged elsewhere without a source-owned movement/"
+                "containment effect."
+            )
+            break
+    return errors
+
+
 def _director_unassigned_external_end_errors(
     raw_scene,
     authoritative_opening_state,
@@ -27939,6 +28001,14 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     bundle.get("opening_state", ""),
                     bundle.get("assigned_state_effects", []),
                     bundle.get("subject_definitions", ""),
+                )
+            )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_preserved_containment_errors(
+                    raw_scene,
+                    bundle.get("opening_state", ""),
+                    bundle.get("assigned_state_effects", []),
                 )
             )
         missing_director_subjects = _missing_named_director_subjects(

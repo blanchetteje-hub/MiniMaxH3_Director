@@ -1117,6 +1117,41 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 [],
             )
 
+    def test_preserved_containment_rejects_visual_relocation(self):
+        opening = (
+            'SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n'
+            '{"characters":{"Will":{"containment":"contained","contained_in":"basement"},'
+            '"Amber":{"containment":"contained","contained_in":"basement"}}}'
+        )
+        raw = (
+            "At 00:06.000, through the broken kitchen door window, "
+            "Will and Amber look up at the scene."
+        )
+        issues = minimax._director_preserved_containment_errors(raw, opening, [])
+        self.assertTrue(any(issue.startswith("Will is canonically contained") for issue in issues))
+        self.assertTrue(any(issue.startswith("Amber is canonically contained") for issue in issues))
+
+    def test_preserved_containment_allows_subject_still_in_container(self):
+        opening = (
+            'SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n'
+            '{"characters":{"Will":{"containment":"contained","contained_in":"basement"}}}'
+        )
+        raw = "At 00:06.000, Will stands inside the basement looking toward the door."
+        issues = minimax._director_preserved_containment_errors(raw, opening, [])
+        self.assertEqual(issues, [])
+
+    def test_preserved_containment_allows_explicit_release_effect(self):
+        opening = (
+            'SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n'
+            '{"characters":{"Will":{"containment":"contained","contained_in":"basement"}}}'
+        )
+        effects = [
+            {"op":"set_containment","entity":"Will","value":"free","container":"basement"}
+        ]
+        raw = "At 00:04.000, Will steps into the living room."
+        issues = minimax._director_preserved_containment_errors(raw, opening, effects)
+        self.assertEqual(issues, [])
+
     def test_unassigned_external_end_rejects_helper_following_outside(self):
         opening = (
             'SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n'
