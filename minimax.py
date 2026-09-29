@@ -17909,6 +17909,15 @@ def _director_opening_held_reacquire_errors(raw_scene, registry_state):
             _canonicalize_director_timestamps(raw_text)
         ).items()
     )
+    holders_by_prop = {}
+    for holder_name, holder_record in subjects.items():
+        if not isinstance(holder_record, dict):
+            continue
+        for value in holder_record.get("held_props") or []:
+            key = _director_prop_base_key(value)
+            if key:
+                holders_by_prop.setdefault(key, set()).add(str(holder_name).casefold())
+
     issues = []
     for subject_name, record in subjects.items():
         if not isinstance(record, dict):
@@ -17922,6 +17931,17 @@ def _director_opening_held_reacquire_errors(raw_scene, registry_state):
                 continue
             released = False
             subject_pattern = re.escape(str(subject_name))
+            holder_names = holders_by_prop.get(prop_key, set())
+            pronoun_pattern = ""
+            if len(holder_names) == 1:
+                gender = str(record.get("gender") or "").casefold()
+                if gender in {"female", "woman", "girl"}:
+                    pronoun_pattern = r"|she"
+                elif gender in {"male", "man", "boy"}:
+                    pronoun_pattern = r"|he"
+                else:
+                    pronoun_pattern = r"|they"
+            actor_pattern = rf"(?:{subject_pattern}{pronoun_pattern})"
             prop_pattern = re.escape(prop_key)
             for timestamp, action in actions:
                 action_text = str(action or "")
@@ -17947,7 +17967,7 @@ def _director_opening_held_reacquire_errors(raw_scene, registry_state):
                     # later reacquisition is allowed.
                     continue
                 direct_reacquire = re.search(
-                    rf"(?i)(?<![\w]){subject_pattern}(?![\w])"
+                    rf"(?i)(?<![\w]){actor_pattern}(?![\w])"
                     rf"[^.\n;]{{0,120}}\b(?:"
                     rf"(?:pull(?:s|ed|ing)?(?:\s+out)?|draw(?:s|n|ing)?|"
                     rf"retriev(?:e|es|ed|ing)|take(?:s|n|ing)?|"

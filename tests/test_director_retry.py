@@ -1037,7 +1037,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             }
         }
         issues = minimax._director_opening_held_reacquire_errors(
-            "At 00:04.000, Amy pulls the pistol from her belt and fires.",
+            "At 00:04.000, She pulls the pistol from her belt and fires.",
             state,
         )
         self.assertTrue(any("already begins the segment holding" in issue for issue in issues))
