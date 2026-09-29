@@ -30403,6 +30403,11 @@ def main():
             raise
         except KeyboardInterrupt:
             raise
+        except re.error:
+            # A malformed Python regex is a deterministic programming defect,
+            # not a recoverable generation/content failure. Retrying the same
+            # checkpoint can never repair it and otherwise loops forever.
+            raise
         except SystemExit as error:
             # Explicit successful exits such as --help remain user-controlled.
             if getattr(error, "code", 0) in (0, None):
