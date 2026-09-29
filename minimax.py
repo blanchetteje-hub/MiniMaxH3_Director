@@ -17807,7 +17807,7 @@ def _director_opening_held_reacquire_errors(raw_scene, registry_state):
                 direct_reacquire = re.search(
                     rf"(?i)(?<![\w]){subject_pattern}(?![\w])"
                     rf"[^.\n;]{{0,120}}\b(?:"
-                    rf"(?:pull(?:s|ed|ing)?|draw(?:s|n|ing)?|"
+                    rf"(?:pull(?:s|ed|ing)?(?:\s+out)?|draw(?:s|n|ing)?|"
                     rf"retriev(?:e|es|ed|ing)|take(?:s|n|ing)?|"
                     rf"grab(?:s|bed|bing)?)\s+"
                     rf"(?:a|an|the|her|his|their)?\s*"

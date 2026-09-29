@@ -1028,6 +1028,20 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 [],
             )
 
+    def test_opening_held_prop_pull_out_reacquire_is_rejected(self):
+        state = {
+            "subjects": {
+                "Amy": {
+                    "held_props": ["pistol"],
+                }
+            }
+        }
+        issues = minimax._director_opening_held_reacquire_errors(
+            "At 00:04.000, Amy pulls out her pistol and aims at the body.",
+            state,
+        )
+        self.assertTrue(any("already begins the segment holding" in issue for issue in issues))
+
     def test_opening_held_prop_direct_reacquire_is_rejected(self):
         registry = {
             "subjects": {
