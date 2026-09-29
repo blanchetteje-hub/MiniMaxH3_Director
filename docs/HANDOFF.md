@@ -285,3 +285,12 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - `tests-2491` passed 102/102 targeted tests (plus 6 subtests), including the new sourced-lift regression.
 - `acceptance-2492` is queued as the next frozen-plan Director-only acceptance using `director_plan_job: "acceptance-2451"`.
 - Relevant production fix: `27922a035998c14f6d4826707ad61091f59ab5c6`.
+
+
+## 2026-09-29 — acceptance 2492 concrete-action fidelity
+
+- `acceptance-2492` completed all 8 frozen-plan Director segments and confirmed the opening-held sourced-lift fix: Segment 4 no longer reacquired the pistol from an invented surface.
+- The earliest remaining real production defect moved earlier to Segment 2. Assigned source/beat requires Amy to grab Will and Amber and rush them to the basement, but RAW substituted `Amy lifts Will and Amber` / carries them. This is a material physical-action substitution, not harmless staging.
+- The existing Request-1 completion verifier required source actions to occur but did not explicitly forbid replacing one concrete source action/participant interaction with a materially different physical action.
+- Commit `fd436b0791c59b01eed69fec95d710d63869a1b8` adds one compact source-fidelity sentence to Request 1 and its existing independent completion verifier. No new LLM call or semantic stage was added.
+- `tests-2493` is queued. If green, rerun the frozen-plan Director-only acceptance against `acceptance-2451`. Do not address the later Segment-7 kitchen/living-room teleport until this earlier Segment-2 defect is cleared.
