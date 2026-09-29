@@ -1,0 +1,36 @@
+{
+  "job_id": "acceptance-2513",
+  "kind": "run_acceptance",
+  "started_at": 1790725340.8077245,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--director-plan-dir",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\.director_plan_input"
+    ],
+    "returncode": 130,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 64 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999 --director-only\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-lyp5_470\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260929-194222\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nDirector-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.\nPrompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.\n\n================================================================\nH3 AUTOMATED DIRECTOR\n================================================================\nSegment length:       8 seconds\nTotal story length:   64 seconds\nTotal segments:       8\nStarting segment:     1\nInitial megapixels:   0.5\nSteps:                6\nVisual Continuity:    disabled (prompt-generation test)\nStitch trim:          2 frames after segment 1\nRetention analysis:   disabled\nPrompt generation test: enabled\nFormatter:            gpt\nGlobal LoRAs:         0\nAuto refresh:         chapter starts at segment(s) 7\nVision continuity:    disabled (prompt-generation test)\nDirector prompting:    2-stage raw scene -> H3 formatter\nStory beats:          8\nPersistent state:     generation_state.json\n================================================================\nImage C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg decoded and verified.\nWARNING: Image 0.png for reference slot 2 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 3 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 4 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 5 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 6 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nPrompt-only setup validation passed.\n\n================================================================\nSEGMENT 1/8 (8 seconds)\n================================================================\nEstimated LLM input context: 1068/4500 tokens (recent exact segments: 0)\nSegment 1 Director continuity source: initial\n\nEmergency stop requested; exiting immediately.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260929-194222\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6, 7, 8]. Include run.log for diagnosis.\nMiniMax exited with code 130; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790725342.4876497,
+    "finished_at": 1790725347.8758154,
+    "artifacts": {
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "story_arc.json": "files\\story_arc.json",
+      "beats.txt": "files\\beats.txt",
+      "source_result_dir": "tests\\acceptance\\results\\amy_zombie_house-20260929-194222",
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1790725347.9506333,
+  "status": "ok"
+}
