@@ -906,6 +906,8 @@ TIMED RAW SCENE
 - First timestamp is exactly "At 00:00.000,".
 - Put each timestamp on its own line using exactly "At 00:ss.mmm,".
 - Use one clear action/event per timestamp. Pace the scene across the full clip: the final timed micro-beat must land in the final quarter of the segment and before {segment_seconds} seconds.
+- Every timestamp must advance visible action. Do not spend a timed micro-beat merely restating unchanged continuity such as a door staying locked or a window remaining broken; unchanged facts belong only in End continuity state.
+- For item retrieval, use ordinary physical verbs such as take, remove, pull out, or pick up. Do not say an item is "released from" a cache, arsenal, container, holster, or sheath unless SOURCE explicitly assigns a release action.
 - Camera movement may clarify action; cuts should be rare.
 - End with one untimed sentence beginning "End continuity state:" that matches the last visible frame. Do not add new facts there.
 
@@ -13775,6 +13777,7 @@ def _typed_state_effect_json_schema():
 def build_source_unit_state_effect_messages(
     source_unit_text,
     subject_information="",
+    reference_context="",
 ):
     """Build one narrow persistent-state extraction request."""
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
@@ -13792,10 +13795,17 @@ def build_source_unit_state_effect_messages(
 SOURCE UNIT:
 {str(source_unit_text or '').strip()}
 
+PREVIOUS SOURCE CONTEXT — REFERENCE ONLY:
+{str(reference_context or 'N/A').strip()}
+
 DEFINED SUBJECTS:
 {subject_text}
 
 Extract only persistent post-unit facts explicitly established by SOURCE UNIT.
+Use PREVIOUS SOURCE CONTEXT only to resolve pronouns or anaphoric references in
+SOURCE UNIT such as "she", "it", "them", "the weapons", "the tools", or similar
+references. Never extract a state merely because it appears in PREVIOUS SOURCE
+CONTEXT.
 Activity alone never creates state. Do not infer results from testing, using,
 handling, replacing, attacking, moving through, or other ordinary actions unless
 SOURCE UNIT explicitly states the post-state.
@@ -13805,7 +13815,11 @@ Apply these rules in order:
 1. set_location only when SOURCE UNIT explicitly puts an entity at/in/to a named
    destination. Do not use it for "out of X" when no destination is named.
 2. set_item_state only for explicit possession/equipment results: stored, held,
-   equipped, dropped, or lost.
+   equipped, dropped, or lost. Item-state meanings are exact: held = physically
+   in a hand; equipped = worn/holstered/sheathed/slung on the person and NOT in
+   a hand; stored = put away and not ready in-hand. When SOURCE UNIT says an
+   anaphoric group such as "the weapons", use PREVIOUS SOURCE CONTEXT to resolve
+   the named items, then emit one effect per resolved item.
 3. set_barrier_state only for an explicitly named barrier explicitly opened,
    closed, locked, unlocked, blocked, broken, or destroyed.
 4. set_threat_state only for an explicit lifecycle result: incapacitated, dead,
@@ -13937,12 +13951,21 @@ def extract_source_span_state_effects(
 ):
     """Extract persistent state per authoritative source unit with local repair."""
     effects_by_unit = {}
-    for unit in plan.source_units:
+    source_units = list(plan.source_units)
+    for unit_index, unit in enumerate(source_units):
+        # Recent prior source is reference-only. It exists solely so tiny local
+        # extractors can resolve "she", "it", "them", "the weapons", etc.
+        reference_context = " ".join(
+            str(previous.text or "").strip()
+            for previous in source_units[max(0, unit_index - 3):unit_index]
+            if str(previous.text or "").strip()
+        )
         last_error = None
         for attempt in range(1, BEAT_RETRY_ATTEMPTS + 1):
             messages = build_source_unit_state_effect_messages(
                 unit.text,
                 subject_information=subject_information,
+                reference_context=reference_context,
             )
             if last_error is not None:
                 messages[-1]["content"] += (
@@ -17525,6 +17548,110 @@ def _director_timestamp_range_errors(value, segment_seconds=None):
     return errors
 
 
+def build_director_item_state_contract(registry_state, assigned_state_effects=None):
+    """Return deterministic held/equipped/stored item-state instructions."""
+    lines = []
+    state = registry_state if isinstance(registry_state, dict) else {}
+    for owner, record in (state.get("characters") or {}).items():
+        if not isinstance(record, dict):
+            continue
+        for item in record.get("held_objects", []) or []:
+            lines.append(
+                f"- START: {owner} HOLDS {item} in a hand."
+            )
+        for item in record.get("equipped_objects", []) or []:
+            lines.append(
+                f"- START: {owner} has {item} EQUIPPED on the person; it is NOT held in a hand."
+            )
+        for item in record.get("stored_objects", []) or []:
+            lines.append(
+                f"- START: {owner} has {item} STORED; it is not held or equipped."
+            )
+
+    try:
+        effects = _validate_state_effects(list(assigned_state_effects or []))
+    except (TypeError, ValueError):
+        effects = []
+    for effect in effects:
+        if effect.get("op") != "set_item_state":
+            continue
+        owner = effect["owner"]
+        item = effect["entity"]
+        value = effect["value"]
+        if value == "held":
+            lines.append(
+                f"- END: {owner} must HOLD {item} in a hand."
+            )
+        elif value == "equipped":
+            lines.append(
+                f"- END: {owner} must have {item} EQUIPPED on the person, not held in a hand."
+            )
+        elif value == "stored":
+            lines.append(
+                f"- END: {owner} must have {item} STORED, not held or equipped."
+            )
+        else:
+            lines.append(
+                f"- END: {owner} must NOT retain {item}; item state is {value.upper()}."
+            )
+    return lines
+
+
+_DIRECTOR_STATE_ONLY_RE = re.compile(
+    r"(?i)\b(?:remains?|stays?|is\s+still|are\s+still)\b"
+)
+_DIRECTOR_PERSISTENT_STATE_WORD_RE = re.compile(
+    r"(?i)\b(?:broken|locked|unlocked|open|closed|blocked|destroyed|"
+    r"contained|free|equipped|stored|held|damaged|intact|dead|removed)\b"
+)
+_DIRECTOR_ACTION_WORD_RE = re.compile(
+    r"(?i)\b(?:move|moves|moved|walk|walks|run|runs|rush|rushes|turn|turns|"
+    r"reach|reaches|grab|grabs|take|takes|pull|pulls|push|pushes|place|places|"
+    r"set|sets|open|opens|close|closes|lock|locks|break|breaks|strike|strikes|"
+    r"shoot|shoots|fire|fires|aim|aims|swing|swings|stir|stirs|cook|cooks|"
+    r"plate|plates|enter|enters|exit|exits|draw|draws|holster|holsters|"
+    r"sheath|sheathes|equip|equips|retrieve|retrieves|pick|picks|step|steps)\b"
+)
+
+
+def _director_timed_state_restatement_errors(raw_scene):
+    """Reject timed lines used only to repeat unchanged persistent state."""
+    errors = []
+    for line in str(raw_scene or "").splitlines():
+        if not _DIRECTOR_TIMESTAMP_RE.search(line):
+            continue
+        body = _DIRECTOR_TIMESTAMP_RE.sub("", line, count=1)
+        if (
+            _DIRECTOR_STATE_ONLY_RE.search(body)
+            and _DIRECTOR_PERSISTENT_STATE_WORD_RE.search(body)
+            and not _DIRECTOR_ACTION_WORD_RE.search(body)
+        ):
+            errors.append(
+                "Timed micro-beats must contain a new visible action/event, not "
+                "only restate unchanged continuity; put unchanged state only in "
+                "the untimed End continuity state."
+            )
+    return errors
+
+
+def _director_unassigned_release_from_storage_errors(raw_scene, assigned_source):
+    """Reject awkward release-from-storage wording on retrieval/equipment beats."""
+    source = str(assigned_source or "")
+    if not (_RETRIEVAL_PATTERN.search(source) or _EQUIP_PATTERN.search(source)):
+        return []
+    if re.search(r"(?i)\breleas(?:e|es|ed|ing)\b", source):
+        return []
+    if re.search(
+        r"(?i)\breleas(?:e|es|ed|ing)\b[^.\n]{0,100}\bfrom\b",
+        str(raw_scene or ""),
+    ):
+        return [
+            "RAW SCENE uses 'release ... from ...' for an item retrieval/equipment "
+            "action not assigned by SOURCE; use an ordinary physical retrieval verb."
+        ]
+    return []
+
+
 def _director_raw_scene_structure_errors(raw_scene, segment_seconds=None):
     """Return deterministic Request-1 structure errors."""
     text_value = str(raw_scene or "").strip()
@@ -17569,6 +17696,9 @@ def _director_raw_scene_structure_errors(raw_scene, segment_seconds=None):
             ]
     if _DIRECTOR_TIMESTAMP_RE.search(ending_state):
         return ["End continuity state must be the trailing untimed final-frame statement."]
+    state_restatement_errors = _director_timed_state_restatement_errors(timed_scene)
+    if state_restatement_errors:
+        return state_restatement_errors
     return []
 
 
@@ -21712,6 +21842,44 @@ def _continuity_apply_authoritative_state_effects(
                 if not re.search(r"(?i)\boutside\b", str(value))
             ]
 
+    # Persistent inventory is Python-owned. Prompt-derived continuity may not
+    # promote a newly visible tray/plate/tool into durable held state unless a
+    # typed item effect authorizes it. Existing held state survives until a typed
+    # effect changes it.
+    committed_held = {}
+    for committed_name, committed_record in committed_subjects.items():
+        if isinstance(committed_record, dict):
+            committed_held[str(committed_name).casefold()] = {
+                str(value).casefold(): value
+                for value in (committed_record.get("held_props") or [])
+                if str(value).strip()
+            }
+    assigned_held = {}
+    assigned_nonheld = {}
+    for effect in effects:
+        if effect.get("op") != "set_item_state":
+            continue
+        owner_key = str(effect.get("owner") or "").casefold()
+        item_key = str(effect.get("entity") or "").casefold()
+        if effect.get("value") == "held":
+            assigned_held.setdefault(owner_key, {})[item_key] = effect["entity"]
+        else:
+            assigned_nonheld.setdefault(owner_key, set()).add(item_key)
+
+    for subject_name, record in list(subjects.items()):
+        if not isinstance(record, dict):
+            continue
+        owner_key = str(subject_name).casefold()
+        allowed = dict(committed_held.get(owner_key, {}))
+        allowed.update(assigned_held.get(owner_key, {}))
+        blocked = assigned_nonheld.get(owner_key, set())
+        record["held_props"] = [
+            value
+            for value in (record.get("held_props") or [])
+            if str(value).casefold() in allowed
+            and str(value).casefold() not in blocked
+        ]
+
     def subject_record(name):
         key = next(
             (
@@ -21773,8 +21941,10 @@ def _continuity_apply_authoritative_state_effects(
             held = list(record.get("held_props") or [])
             item = effect["entity"]
             held = [value for value in held if str(value).casefold() != item.casefold()]
-            if effect["value"] in {"held", "equipped"}:
+            if effect["value"] == "held":
                 held.append(item)
+            # equipped/stored/dropped/lost are deliberately NOT represented as
+            # held_props. Canonical beat state preserves those exact item modes.
             record["held_props"] = held
         elif op == "set_clothing":
             record = subject_record(effect["entity"])
@@ -28176,6 +28346,20 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 + "\n".join(final_state_lines)
             )
 
+    request1_item_state_lines = build_director_item_state_contract(
+        bundle.get("registry_state"),
+        bundle.get("assigned_state_effects", []),
+    )
+    if request1_item_state_lines and request1_base_messages:
+        request1_base_messages[-1] = dict(request1_base_messages[-1])
+        request1_base_messages[-1]["content"] = (
+            f"{request1_base_messages[-1].get('content', '')}\n\n"
+            "CANONICAL ITEM STATE — Python-owned; obey exact meanings:\n"
+            + "\n".join(request1_item_state_lines)
+            + "\nHELD means physically in a hand. EQUIPPED means worn/holstered/"
+              "sheathed/slung on the person and not in a hand. STORED means put away."
+        )
+
     request1_messages = request1_base_messages
     request1_result = None
     raw_scene = ""
@@ -28235,6 +28419,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 _director_occupied_hands_errors(
                     raw_scene,
                     bundle.get("registry_state"),
+                )
+            )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_unassigned_release_from_storage_errors(
+                    raw_scene,
+                    bundle.get("assigned_source", ""),
                 )
             )
         if not structure_errors:
