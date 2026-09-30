@@ -1307,5 +1307,48 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         self.assertIn("ordinary physical retrieval verb", issues[0])
 
 
+    def test_equipped_item_cannot_end_held_in_hand(self):
+        raw = (
+            "At 00:00.000, Amy pulls the katana from storage.\n"
+            "At 00:03.000, Amy straps the katana to her waist.\n"
+            "At 00:06.000, Amy grips the katana in her right hand.\n"
+            "End continuity state: Amy holds the katana."
+        )
+        issues = minimax._director_assigned_item_state_errors(
+            raw,
+            [
+                {
+                    "op": "set_item_state",
+                    "entity": "katana",
+                    "owner": "Amy",
+                    "value": "equipped",
+                }
+            ],
+        )
+        self.assertTrue(issues)
+        self.assertIn("requires EQUIPPED", issues[0])
+
+    def test_held_item_cannot_end_stowed(self):
+        raw = (
+            "At 00:00.000, Amy picks up the pistol.\n"
+            "At 00:03.000, Amy holds the pistol in her right hand.\n"
+            "At 00:06.000, Amy holsters the pistol at her waist.\n"
+            "End continuity state: the pistol is holstered."
+        )
+        issues = minimax._director_assigned_item_state_errors(
+            raw,
+            [
+                {
+                    "op": "set_item_state",
+                    "entity": "pistol",
+                    "owner": "Amy",
+                    "value": "held",
+                }
+            ],
+        )
+        self.assertTrue(issues)
+        self.assertIn("requires HELD", issues[0])
+
+
 if __name__ == "__main__":
     unittest.main()
