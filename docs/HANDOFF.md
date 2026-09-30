@@ -429,3 +429,12 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Relevant commits: `f25b3ec522fec2226eaded7a95374af9fdfc2da9`, `7589afc0cc015324216cc8c1b913f6b17bdd7109`, `35bb5276053276ab2c584e985f066eca60ff4c80`, `032a2c5a65e68f1dea156fce86ee266fa7d39ce3`.
 - Next checkpoint: rerun the corrected regression suite. Then restart the bridge from the updated branch before queueing/running the full Qwen acceptance; a bridge process started before `35bb5276` still has the old in-memory GPT-only gate.
 
+## 2026-09-29 — Beat retry now performs an actual repair
+
+- Qwen at temperature 0 exposed a retry-contract bug: after a finite-endpoint rejection, the retry path regenerated Beat 1 from essentially the same one-beat creation prompt. Deterministic decoding therefore returned the same incomplete beat repeatedly.
+- Keep temperature 0. The problem is prompt state, not sampling.
+- The existing retry call now receives the rejected candidate text in addition to the exact validator/extractor issue. The repair instruction explicitly says to keep the assigned event/story meaning, change only what is needed to fix that issue, and not return the rejected wording unchanged.
+- This restores the intended BEATS CREATE -> VALIDATE -> REPAIR -> VALIDATE behavior without adding another LLM stage or weakening finite-endpoint validation.
+- Added a focused regression proving the rejected candidate and concrete failure are passed into the repair callback.
+- Next checkpoint: run the focused Beat validation regressions, then rerun the Qwen planning/beat path. Beat 1 should be repaired from an ongoing cooking action into a visibly completed endpoint instead of repeating the same candidate.
+

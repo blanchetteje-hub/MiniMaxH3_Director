@@ -11796,6 +11796,7 @@ def _run_forward_beat_validation(
                                 correction=retry_feedback,
                                 current_phase=phase,
                                 next_beat_job=next_job,
+                                rejected_candidate=candidate,
                             )
                         ).strip()
                         regenerate_candidate = False
@@ -16734,12 +16735,19 @@ def generate_beats_from_story(
         correction,
         current_phase,
         next_beat_job=None,
+        rejected_candidate=None,
     ):
         """Regenerate one rejected beat using the existing beat prompt path."""
+        rejected_text = " ".join(
+            str(rejected_candidate or "").split()
+        ).strip()
         correction_text = (
-            f"The candidate for Beat {beat_number} failed validation.\n"
-            f"Concrete feedback: {str(correction or '').strip()}\n"
-            f"Generate a replacement for Beat {beat_number} only."
+            f"REPAIR BEAT {beat_number}.\n"
+            f"REJECTED BEAT: {rejected_text or 'N/A'}\n"
+            f"PROBLEM TO FIX: {str(correction or '').strip()}\n"
+            "Keep the assigned event and story meaning. Change only what is needed "
+            "to fix the problem. Do not return the rejected beat unchanged. "
+            f"Return Beat {beat_number} only."
         )
         messages = build_beat_generation_messages(
             phase_authoritative_source(current_phase, story),

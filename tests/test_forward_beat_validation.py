@@ -195,8 +195,11 @@ class ForwardBeatValidationTests(unittest.TestCase):
             validation_states.append(json.loads(state_text))
             return next(responses)
 
+        repairs = []
+
         def repair(**kwargs):
             candidates.append(kwargs["beat_number"])
+            repairs.append(kwargs)
             return "Operator opens the primary barrier."
 
         with tempfile.TemporaryDirectory() as directory:
@@ -213,6 +216,14 @@ class ForwardBeatValidationTests(unittest.TestCase):
 
         self.assertEqual(result, ["Operator opens the primary barrier."])
         self.assertEqual(candidates, [1])
+        self.assertEqual(
+            repairs[0]["rejected_candidate"],
+            "Operator approaches the primary barrier.",
+        )
+        self.assertIn(
+            "does not perform the current action",
+            repairs[0]["correction"],
+        )
         self.assertEqual(validation_states[0], validation_states[1])
 
     def test_valid_beat_commits_assigned_effects_after_validation(self):
