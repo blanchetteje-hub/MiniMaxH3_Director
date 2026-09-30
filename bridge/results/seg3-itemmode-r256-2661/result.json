@@ -1,0 +1,58 @@
+{
+  "job_id": "seg3-itemmode-r256-2661",
+  "kind": "llama_chat",
+  "started_at": 1790752598.4969106,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the creative director for one 8-second video segment.\n\nAUTHORITY — obey in this order\n1. ASSIGNED SOURCE says what must happen now.\n2. CURRENT BEAT is staging guidance for that source.\n3. OPENING CONTINUITY STATE says what is already true at 00:00.000.\n4. AUTHORITATIVE FINAL STATE CONTRACT, when supplied, must be true at the end.\n5. NEXT BEAT is forbidden; do not begin, reveal, cause, or foreshadow it.\n\nDIRECT THE SCENE\n- Complete every action, object interaction, participant role, and visible result assigned to this segment.\n- Preserve concrete assigned actions and interactions; do not replace them with a materially different physical action.\n- Preserve established opening state unless ASSIGNED SOURCE/CURRENT BEAT or the FINAL STATE CONTRACT changes it.\n- Do not invent persistent changes: no new injury/death/destruction, ownership/equipment, containment/release, barrier state, wardrobe change, or story-location change.\n- Preserve held/equipped readiness items unless the assignment explicitly changes them.\n- Use only externally visible/audible action. Keep prose concrete and concise.\n- Prefer names over ambiguous pronouns.\n\nTIMED RAW SCENE\n- First timestamp is exactly \"At 00:00.000,\".\n- Put each timestamp on its own line using exactly \"At 00:ss.mmm,\".\n- Use one clear action/event per timestamp. Pace the scene across the full clip: the final timed micro-beat must land at or after 6.0 seconds and before 8 seconds.\n- Every timestamp must advance visible action. Do not spend a timed micro-beat merely restating unchanged continuity.\n- For item retrieval, use ordinary physical verbs such as take, remove, pull out, or pick up. Do not say an item is \"released from\" a cache, arsenal, container, holster, or sheath unless SOURCE explicitly assigns a release action.\n- End with one untimed sentence beginning \"End continuity state:\" that matches the last visible frame. Do not add new facts there.\n\nRETURN JSON ONLY\n{\"raw_scene\":\"...\",\"finite_activity_complete\":true,\"named_beneficiaries_complete\":true,\"activity_tools_settled\":true,\"beat_complete\":true}"
+      },
+      {
+        "role": "user",
+        "content": "SUBJECT DEFINITIONS:\n<Subject 1> is Amy, a woman shown in <Picture 1>.\n\nASSIGNED SOURCE — authoritative work for this segment:\nShe retrieves a hidden arsenal of a pistol and katana from beneath the floorboards and equips both weapons.\n\nCURRENT BEAT — EXECUTE ONLY THIS:\nAmy retrieves a hidden arsenal of a pistol and katana from beneath the floorboards and equips both weapons.\n\nNEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\nAmy fights zombies.\n\nCONTINUITY STATE:\nAmy stands in the kitchen wearing a black tank top and denim jeans. Will and Amber are inside the basement. The kitchen door window is broken. The basement door is locked.\n\nAUTHORITATIVE FINAL STATE CONTRACT — Python-owned; obey exactly:\n- kitchen door window: remains BROKEN.\n- basement door: remains LOCKED.\n- END: Amy must have pistol EQUIPPED on the person, not held in a hand.\n- END: Amy must have katana EQUIPPED on the person, not held in a hand.\n\nCANONICAL ITEM STATE — Python-owned; obey exact meanings:\n- END: Amy must have pistol EQUIPPED on the person, not held in a hand.\n- END: Amy must have katana EQUIPPED on the person, not held in a hand.\nHELD means physically in a hand. EQUIPPED means worn/holstered/sheathed/slung on the person and not in a hand. STORED means put away."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.7,
+    "top_p": 0.8,
+    "top_k": 20,
+    "min_p": 0,
+    "max_tokens": 900,
+    "seed": 60,
+    "repeat_penalty": 1,
+    "presence_penalty": 1.5
+  },
+  "response": {
+    "id": "chatcmpl-52jicyceklno9nhdklg69",
+    "object": "chat.completion",
+    "created": 1790752598,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"raw_scene\":\"At 00:00.000, Amy lifts a wooden floorboard in the kitchen, revealing a hidden compartment beneath.\\nAt 00:01.500, Amy pulls out a pistol from the compartment and places it on her belt, holstered at her waist.\\nAt 00:03.000, Amy slides a katana from its sheath into a scabbard attached to her thigh, securing it in place.\\nAt 00:04.500, Amy adjusts the pistol's strap so it rests against her side, ensuring it is worn and not held.\\nAt 00:06.000, Amy stands upright, with both the pistol holstered on her belt and the katana sheathed at her hip, ready for action.\",\"finite_activity_complete\":true,\"named_beneficiaries_complete\":true,\"activity_tools_settled\":true,\"beat_complete\":true}",
+          "reasoning": "We need to create 8-second segment with assigned source: \"She retrieves a hidden arsenal of a pistol and katana from beneath the floorboards and equips both weapons.\" Amy is standing in kitchen wearing black tank top denim jeans. Floorboards? She needs to retrieve hidden arsenal from beneath floorboards.\n\nWe need to produce timed raw scene with timestamps at 00:00.000 etc. Each timestamp on its own line \"At 00:ss.mmm,\". We need one clear action/event per timestamp. Pace across full clip: final timed micro-beat must land at or after 6.0 seconds and before 8 seconds. So we need maybe 7 timestamps? Starting at 00:00.000, then maybe 00:01.500, 00:03.000, 00:04.500, 00:06.000. That would be 5 micro-beats. But we can have more. At least final must be after 6.0 and before 8.\n\nWe need to ensure the final state: pistol and katana equipped on Amy (not held). Means she has them on her person: maybe holstered on belt, katana sheathed on hip or waist. She stands in kitchen; floorboards are visible",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 841,
+      "completion_tokens": 450,
+      "total_tokens": 1291,
+      "completion_tokens_details": {
+        "reasoning_tokens": 256
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790752604.4776652,
+  "status": "ok"
+}
