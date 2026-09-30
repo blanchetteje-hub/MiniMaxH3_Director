@@ -1,0 +1,7 @@
+{
+  "kind": "run_acceptance",
+  "job_id": "acceptance-2521-qwen-full",
+  "code_branch": "gpt-arc-refresh",
+  "model": "qwen",
+  "timeout_seconds": 3600
+}
