@@ -1202,5 +1202,110 @@ class RequestedPromptRegressionTests(unittest.TestCase):
 
 
 
+    def test_source_state_extractor_gets_prior_context_for_anaphora_only(self):
+        messages = minimax.build_source_unit_state_effect_messages(
+            "She equips the weapons.",
+            subject_information=(
+                "<Subject 1> is Amy, an adult woman. "
+                "<Subject 2> is Will, a child."
+            ),
+            reference_context=(
+                "Amy retrieves her hidden arsenal consisting of a pistol and a katana."
+            ),
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn("PREVIOUS SOURCE CONTEXT", prompt)
+        self.assertIn("pistol and a katana", prompt)
+        self.assertIn('"the weapons"', prompt)
+        self.assertIn("reference only", prompt.casefold())
+
+    def test_equipped_item_is_not_projected_as_held_prop(self):
+        state = {
+            "subjects": {
+                "Amy": {
+                    "name": "Amy",
+                    "held_props": ["pancake tray"],
+                }
+            },
+            "environment": {"location": "home", "persistent_state": "N/A"},
+        }
+        committed = {
+            "subjects": {
+                "Amy": {
+                    "name": "Amy",
+                    "held_props": [],
+                }
+            },
+            "environment": {"location": "home", "persistent_state": "N/A"},
+        }
+        result = minimax._continuity_apply_authoritative_state_effects(
+            state,
+            [
+                {
+                    "op": "set_item_state",
+                    "entity": "katana",
+                    "owner": "Amy",
+                    "value": "equipped",
+                }
+            ],
+            committed_state=committed,
+        )
+        self.assertEqual(result["subjects"]["Amy"]["held_props"], [])
+
+    def test_held_item_is_projected_as_held_prop(self):
+        state = {
+            "subjects": {"Amy": {"name": "Amy", "held_props": []}},
+            "environment": {"location": "home", "persistent_state": "N/A"},
+        }
+        result = minimax._continuity_apply_authoritative_state_effects(
+            state,
+            [
+                {
+                    "op": "set_item_state",
+                    "entity": "pistol",
+                    "owner": "Amy",
+                    "value": "held",
+                }
+            ],
+            committed_state=state,
+        )
+        self.assertEqual(result["subjects"]["Amy"]["held_props"], ["pistol"])
+
+    def test_director_item_contract_preserves_held_equipped_stored_distinction(self):
+        registry = minimax.new_beat_canonical_state()
+        registry["characters"]["Amy"] = {
+            "held_objects": ["pistol"],
+            "equipped_objects": ["katana"],
+            "stored_objects": ["flashlight"],
+        }
+        lines = minimax.build_director_item_state_contract(registry, [])
+        text = "\n".join(lines)
+        self.assertIn("HOLDS pistol in a hand", text)
+        self.assertIn("katana EQUIPPED on the person; it is NOT held in a hand", text)
+        self.assertIn("flashlight STORED", text)
+
+    def test_timed_state_only_restatement_is_rejected(self):
+        raw = (
+            "At 00:00.000, Amy turns toward the doorway.\n"
+            "At 00:06.900, the kitchen window remains broken; the basement door stays locked.\n"
+            "End continuity state: the kitchen window is broken and the basement door is locked."
+        )
+        issues = minimax._director_raw_scene_structure_errors(raw, segment_seconds=8)
+        self.assertTrue(issues)
+        self.assertIn("not only restate unchanged continuity", issues[0])
+
+    def test_release_from_arsenal_is_rejected_on_retrieval_beat(self):
+        issues = minimax._director_unassigned_release_from_storage_errors(
+            (
+                "At 00:00.000, Amy pulls open the hidden arsenal.\n"
+                "At 00:02.000, Amy releases a pistol from the hidden arsenal.\n"
+                "End continuity state: Amy has the pistol."
+            ),
+            "Amy retrieves a pistol from her hidden arsenal and equips it.",
+        )
+        self.assertTrue(issues)
+        self.assertIn("ordinary physical retrieval verb", issues[0])
+
+
 if __name__ == "__main__":
     unittest.main()
