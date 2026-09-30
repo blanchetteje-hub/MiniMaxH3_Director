@@ -35,6 +35,7 @@ DEFAULT_POLL_SECONDS = 2.0
 DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 DEFAULT_CODE_BRANCH = "gpt-arc-refresh"
 ACCEPTANCE_MODEL = "gpt"
+ACCEPTANCE_MODELS = {"gpt", "mistral", "qwen"}
 ACCEPTANCE_CODE_BRANCH = "gpt-arc-refresh"
 DEFAULT_EXEC_WORKTREE_NAME = ".chatgpt_exec_worktree"
 
@@ -772,10 +773,10 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
             f"got {code_branch!r}."
         )
     model = str(job.get("model") or ACCEPTANCE_MODEL).strip()
-    if model != ACCEPTANCE_MODEL:
+    if model not in ACCEPTANCE_MODELS:
         raise ValueError(
-            f"Acceptance jobs must use the {ACCEPTANCE_MODEL!r} baseline; "
-            f"got {model!r}."
+            "Acceptance jobs must use a supported formatter model "
+            f"{sorted(ACCEPTANCE_MODELS)!r}; got {model!r}."
         )
 
     exec_root = ensure_exec_worktree(source_root, code_branch)
