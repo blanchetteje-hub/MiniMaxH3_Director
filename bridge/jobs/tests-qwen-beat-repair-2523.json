@@ -1,0 +1,11 @@
+{
+  "kind": "run_tests",
+  "job_id": "tests-qwen-beat-repair-2523",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_forward_beat_validation.py",
+    "tests/test_beat_retry_hierarchy.py",
+    "tests/test_beat_plan_repair_orchestration.py"
+  ],
+  "timeout_seconds": 1200
+}
