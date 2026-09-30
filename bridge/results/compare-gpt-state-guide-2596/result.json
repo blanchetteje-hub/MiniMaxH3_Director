@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-gpt-state-guide-2596",
+  "kind": "llama_chat",
+  "started_at": 1790749343.802203,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nMara guides Jonah into the shelter and closes the hatch.\n\nDEFINED SUBJECTS:\nMara = adult; Jonah = child\n\nFor movement/containment, assign state to the entity whose FINAL place actually changes, not to the actor/helper causing the movement. If A guides B into X, emit B -> X only unless the source separately says A also enters or remains in X.\nReturn one JSON object with exactly one key: state_effects."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 43,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-440gx9tnj09dvfci08iu8v",
+    "object": "chat.completion",
+    "created": 1790749343,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"state_effects\":[\"Jonah -> shelter\",\"hatch -> closed\"]}",
+          "reasoning": "We need to extract explicit persistent post-unit state only. The source unit: \"Mara guides Jonah into the shelter and closes the hatch.\" Defined subjects: Mara adult; Jonah child.\n\nMovement/containment rule: assign state to entity whose final place actually changes, not actor/helper causing movement. If A guides B into X, emit B -> X unless source separately says A also enters or remains in X.\n\nSo we have Jonah moves into shelter. So state effect: Jonah -> shelter. Also Mara closes hatch; that might be a state change? The hatch is closed. But the rule about movement/containment only for place changes. Closing hatch is an action on hatch, not a place change. We need explicit persistent post-unit state only. So we should include state of Jonah being in shelter. Possibly also state of hatch being closed. But \"state\" refers to entity's location? The instruction: Extract explicit persistent post-unit state only. Not infer from activity. So we have explicit statement that Mara guides Jonah into the shelter and closes the hatch. That implies Jonah is now in shelter, and hatch is closed. So two states: Jonah -> shelter; hatch -> closed.\n\nBut \"state_effects\" key should contain array? The example says return one JSON object with exactly one key: state_effects. Likely value is an array of strings or objects. We need to decide format. Probably list of \"entity -> location/state\". Let's produce array of strings: [\"Jonah -> shelter\", \"hatch -> closed\"].\n\nBut check rule: For movement/containment, assign state to entity whose final place actually changes. So Jonah -> shelter. Also maybe Mara remains in her original place? Not mentioned. So only Jonah's place changed. The hatch is not a place but a state of being closed. That might be included as \"hatch -> closed\". It's explicit.\n\nThus output: {\"state_effects\": [\"Jonah -> shelter\", \"hatch -> closed\"]}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 185,
+      "completion_tokens": 427,
+      "total_tokens": 612,
+      "completion_tokens_details": {
+        "reasoning_tokens": 401
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749349.5486567,
+  "status": "ok"
+}
