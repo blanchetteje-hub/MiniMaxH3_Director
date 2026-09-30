@@ -1,0 +1,24 @@
+{
+  "kind": "llama_chat",
+  "job_id": "compare-qwen-state-guide-2612",
+  "model": "qwen",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nMara guides Jonah into the shelter and closes the hatch.\n\nDEFINED SUBJECTS:\nMara = adult; Jonah = child\n\nFor movement/containment, assign state to the entity whose FINAL place actually changes, not to the actor/helper causing the movement. If A guides B into X, emit B -> X only unless the source separately says A also enters or remains in X.\nReturn one JSON object with exactly one key: state_effects."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 0.92,
+  "top_k": 40,
+  "min_p": 0.03,
+  "repeat_penalty": 1.08,
+  "presence_penalty": 0.1,
+  "frequency_penalty": 0.08,
+  "seed": 44,
+  "max_tokens": 900
+}
