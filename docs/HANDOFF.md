@@ -490,3 +490,26 @@ Do not reopen already-verified historical failures unless a fresh run actually r
   - legacy/unit callers without authoritative source retain the old self-report behavior.
 - This keeps KISS responsibility separation: Request 1 creates; narrow validators validate.
 - Replacement full Qwen acceptance queued as `2528`.
+
+
+## 2026-09-30 — Director prompt rollback + typed inventory ownership
+
+- Qwen evaluation regressed Director reliability; GPT-OSS-20B was restored for the current acceptance path. Model size alone is not treated as an upgrade.
+- Restoring the pre-simplification Director Request-1 prompt contract materially improved runtime behavior: the next run advanced past Segment 2. Prompt rollback commit: `4a17d724c13eda496fbbfa521addaf7994e425e9`.
+- New Segment-3 defects exposed a typed-inventory ownership bug:
+  - canonical beat state already distinguishes `held_objects`, `equipped_objects`, and `stored_objects`;
+  - continuity projection incorrectly collapsed both `held` and `equipped` into `held_props`, which could make a sheathed/holstered item appear hand-held;
+  - prompt-derived continuity could also promote incidental serving props (for example a pancake tray) into durable held state without a typed `set_item_state`.
+- Commit `9bfec85000b78301ea3695c03af09b11f6b80477` makes persistent inventory Python-owned:
+  - newly visible held props persist only when typed state authorizes `held`;
+  - `equipped` is not represented as hand-held;
+  - Director Request 1 receives a deterministic canonical item-state contract with exact meanings for HELD / EQUIPPED / STORED;
+  - timed micro-beats that merely restate unchanged state (for example “window remains broken; door stays locked”) are rejected;
+  - retrieval/equipment beats reject unassigned awkward `release ... from ...` wording.
+- Source-unit state extraction now receives recent prior source text as REFERENCE ONLY so tiny extractors can resolve anaphora such as “She equips the weapons” back to named items in the preceding source. State is still extracted only from the current source unit.
+- Commit `94f69ff14f40723f31aa085882eec6dcd100427c` adds a deterministic carry-mode guard: an item assigned `equipped` cannot end held in-hand, and an item assigned `held` cannot end holstered/sheathed/stowed.
+- Regressions: `86bf439e2cfb949263e87ee1b24573130e598759`, `da57820a2fb2e91579142152c0b04bbba4d09624`.
+- Pending verification:
+  - `tests-2620-typed-inventory`
+  - GPT item-anaphora probes `2621-2640`
+- Next checkpoint: verify those tests/probes. If green, rerun GPT acceptance on current head and inspect Segment 3 first for (1) pistol/katana typed effects, (2) no pancake-tray carryover, (3) no held/equipped contradiction, and (4) no timed continuity-only filler.
