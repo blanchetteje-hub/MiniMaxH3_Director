@@ -81,5 +81,33 @@ class SimplifiedPromptRegressionTests(unittest.TestCase):
             self.assertIn(label, system)
 
 
+    def test_beat_validator_rejects_aftermath_only_finite_action(self):
+        messages = minimax.build_beat_validation_messages(
+            previous_final_beat="None",
+            current_state={},
+            beat_job="Amy is cooking breakfast for her kids.",
+            next_beat_job="A zombie attacks.",
+            candidate_beat="Amy is in the kitchen having finished cooking breakfast.",
+            state_effects=[],
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn('"having finished X"', prompt)
+        self.assertIn("must show that activity occurring in THIS beat", prompt)
+
+    def test_director_rules_require_visible_action_not_static_aftermath(self):
+        rules = minimax.build_director_rules(
+            8, 8, 1, SUBJECTS, 1,
+            conditioning_mode="initial",
+        )
+        self.assertIn(
+            "Complete every action, object interaction, participant role, and visible result",
+            rules,
+        )
+        self.assertIn(
+            "do not replace an assigned action with a static aftermath",
+            rules,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
