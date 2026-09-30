@@ -1391,19 +1391,52 @@ as blocking acceptance gates.
 
 
 
-## Canonical character facts (2026-09-30)
+## Configurable canonical character facts (2026-09-30)
 
-Before ARC/BEAT planning, establish a small persisted character canon.
+Before ARC/BEAT planning, establish user-selected stable character facts once.
 
-Current scope:
-- age
-- baseline clothing
+Configuration:
+- `canonical_data.txt` is user-editable and defines which character facts are canonicalized.
+- Initial contents: `age, clothing, gender`.
+- Field parsing is generic. Comma- or newline-separated labels are normalized to machine keys, so adding a later field such as `hair color` becomes `hair_color` without a code change.
+- `name` is reserved because it is always the character identifier.
 
-Rules:
-- Explicit story facts win.
-- Explicit \`subjects.txt\` facts win over inference.
-- Missing values are inferred once by the local LLM, then frozen in \`character_canon.json\`.
-- The canon file is invalidated when story text or \`subjects.txt\` changes.
-- Canonical clothing is the base outfit; later dirt/damage/substances are continuity state.
-- ARC CREATE, ARC VALIDATE, and BEAT CREATE receive canonical character facts as context, not as schedulable story events.
-- Keep this layer small. Add other canonical domains only after concrete failures show they are needed.
+Canonicalization rules:
+- Explicit `story.txt` facts win.
+- Explicit `subjects.txt` facts win over inference.
+- Missing configured values are chosen once by the local LLM, then frozen in `character_canon.json`.
+- `character_canon.json` stores the configured field list plus the resulting values.
+- The canon hash includes story text, `subjects.txt`, and the configured canonical field list. Changing any of them invalidates and regenerates the canon.
+- Canonical clothing is the baseline outfit; later dirt/damage/substances/wetness are continuity state rather than a new baseline.
+- Python owns and reuses the resulting canonical values deterministically. Later calls receive those exact facts rather than independently re-inventing them.
+- ARC planning/validation may receive canonical facts as context.
+- BEAT CREATE receives them under `CHARACTER FACTS`.
+- Director Request 1 receives the canonical starting facts on Segment 1. It establishes applicable identity/appearance facts for characters already present in that segment; it must not introduce a future character merely to display canon.
+
+### Beat CREATE prompt contract
+
+Beat CREATE is a creative expansion call. Its normal prompt contains:
+- `SOURCE FILM`: authoritative source span for the current chapter;
+- `KNOWN SUBJECTS`: known character names;
+- `CHARACTER FACTS`: persisted configured canon;
+- `ASSIGNED EVENTS`: the exact event(s) owned by each requested beat;
+- `PREVIOUS BEAT` only when an actual previous beat exists;
+- repair/user-specific sections only when actually applicable.
+
+Do not emit empty/N/A barrier sections merely because deterministic state machinery exists elsewhere. The normal creative prompt deliberately stays small.
+
+Core Beat CREATE rules:
+- one beat per assigned event;
+- source gives context; assigned event says what happens now;
+- canonical character facts are context and should not be restated unless they change;
+- no later story action may be pulled forward;
+- preserve the assigned physical action and participant roles;
+- finite work must visibly happen and finish within the beat;
+- repeated/ongoing processes become different story-compatible instances;
+- creativity is expected where source detail is unspecified, but major plot events/outcomes may not be invented;
+- one to two concise sentences per beat;
+- maintain spatial awareness;
+- prefer names over pronouns to reduce participant ambiguity.
+
+This prompt supersedes the older Beat CREATE contract that injected barrier-name, closed-boundary, preserved-barrier, and beneficiary-specific prose into every generation request.
+
