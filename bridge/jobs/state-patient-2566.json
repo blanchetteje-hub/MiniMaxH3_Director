@@ -1,0 +1,18 @@
+{
+  "kind": "llama_chat",
+  "job_id": "state-patient-2566",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nJon puts Priya inside the safe room and remains in the hallway.\n\nDEFINED SUBJECTS:\nJon = adult; Priya = adult\n\nExtract only persistent post-unit facts explicitly established by SOURCE UNIT.\nFor movement/containment, assign state to the entity whose FINAL place actually changes, not to the actor/helper causing the movement. If A leads, rushes, gets, puts, sends, guides, carries, or moves B into X, emit B -> X only. Do NOT emit A -> X unless SOURCE UNIT separately says A also enters or remains in X. Example: \"A gets B inside the shelter, then locks the door\" means B is inside/contained; A is not inside merely because A performed the action.\nWhen the moved entity is explicitly put into/inside a named enclosed place, emit BOTH set_location to that place and set_containment=contained.\nReturn one JSON object with exactly one key: state_effects."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 1,
+  "seed": 42,
+  "max_tokens": 300
+}
