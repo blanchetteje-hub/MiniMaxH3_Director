@@ -8378,6 +8378,11 @@ def ask_llm(
         reasoning_effort = CREATIVE_REASONING_EFFORT
         thinking_budget_tokens = CREATIVE_REASONING_BUDGET_TOKENS
         enable_thinking = True
+        # These are server-launch/legacy provider settings, not part of the
+        # llama.cpp OpenAI request contract used for the creative profile.
+        thinking = None
+        chat_template = None
+        jinja = None
     elif history_purpose in DETERMINISTIC_LLM_PURPOSES:
         temperature = 0
         seed = BENCHMARK_SEED
