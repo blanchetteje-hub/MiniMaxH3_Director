@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-qwen-director-zombie-2613",
+  "kind": "llama_chat",
+  "started_at": 1790749411.2338119,
+  "request": {
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the creative director for one 8-second action-film clip. Complete every assigned action, object interaction, participant role, and visible result. Use concrete visible motion, not static summary poses. Return only timed micro-beats from 00:00.000 through at least 00:06.000."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A zombie breaks the kitchen door window. Amy sees the danger, rushes Will and Amber to the basement, gets them inside, and locks the door. OPENING: Amy, Will, and Amber are in the kitchen. END STATE: Will and Amber are inside the basement; Amy remains outside; basement door is locked."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 44,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-6lubwhg9a43rq214ejnsmr",
+    "object": "chat.completion",
+    "created": 1790749411,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "**00:00.000 – 00:00.500**  \n- A zombie lunges from the kitchen doorway, slamming its hand into the window frame; glass shatters in a spray of shards that clatter onto the floor.\n\n**00:00.501 – 00:01.200**  \n- Amy jumps straight up, her eyes widening as pieces of glass fly past her face; she looks toward the basement door with a sharp nod.\n\n**00:01.201 – 00:01.800**  \n- Will and Amber freeze mid‑step, then both tilt their heads toward Amy, eyes wide, and give a quick, affirmative nod.\n\n**00:01.801 – 00:02.400**  \n- Amy grabs Will’s forearm with a firm grip; she pulls him forward, while Amber follows her just behind, shuffling her feet in a hurry.\n\n**00:02.401 – 00:03.000**  \n- The trio sprints down the kitchen stairs; their footsteps echo off the wooden boards as they rush past the shattered window.\n\n**00:03.001 – 00:03.500**  \n- Amy pushes the basement door open with a shoulder swing, the metal hinges creaking loudly.\n\n**00:03.501 – 00:04.200**  \n- Will and Amber step into the dim basement; their flashlights sweep across dusty floorboards, catching motes of dust in the beam.\n\n**00:04.201 – 00:05.000**  \n- Amy pulls the heavy metal latch toward her shoulder, slamming it shut behind them with a decisive click.\n\n**00:05.001 – 00:05.500**  \n- She presses the lock button on the door",
+          "reasoning": "We need to produce timed micro-beats from 00:00.000 through at least 00:06.000 for an 8-second action-film clip. We have a scenario: Zombie breaks kitchen door window, Amy sees danger, rushes Will and Amber to the basement, gets them inside, locks the door. Opening: Amy, Will, Amber in kitchen. End state: Will and Amber inside basement; Amy remains outside; basement door locked.\n\nWe need concrete visible motion micro-beats. Each beat likely with a timestamp and description of action. We need at least 00:06.000. The clip is 8 seconds long, so we can go to 00:08.000 or beyond. Provide beats from start to end.\n\nWe should include the zombie breaking window, Amy noticing, she runs, Will and Amber follow, basement door, Amy opens it, they enter, she locks. Also maybe the basement door being locked behind them.\n\nLet's craft micro-beats:\n\n00:00.000 - 00:00.500: Zombie (large, ragged) lunges at kitchen door window from outside, smashing glass with a thud.\n00:00.501 - 00:01.200: Amy jumps up, eyes widen as shards fly; she looks toward the basement door.\n00:01.201 - 00:01.800: Will and Amber freeze, then nod to Amy.\n00:01.801 - 00:02.400: Amy grabs Will's arm, pulls him toward the basement door; Amber follows behind her.\n00:02.401 - 00:03.000: They sprint down the kitchen stairs, footfalls echoing.\n00:03.001 - 00:03.500: Amy pushes open the basement door with a quick swing of her shoulder.\n00:03.501 - 00:04.200: Will and Amber step into the dim basement; dust motes swirl in the beam of their flashlights.\n00:04.201 - 00:05.000: Amy pulls the heavy metal latch, slamming it shut behind them.\n00:05.001 - 00:05.500: She presses the lock button; a click echoes as the door locks.\n00:05.501 - 00:06.000: Amy steps back, looks over her shoulder at the kitchen where the zombie is still smashing; she holds her hand out to Will and Amber.\n\nWe need to be concrete visible motion. Maybe include some more subtle details like shaking, etc.\n\nLet's produce final answer with micro-beats.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 203,
+      "completion_tokens": 900,
+      "total_tokens": 1103,
+      "completion_tokens_details": {
+        "reasoning_tokens": 529
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749423.2450106,
+  "status": "ok"
+}
