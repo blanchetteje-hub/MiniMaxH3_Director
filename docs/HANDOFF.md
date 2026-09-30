@@ -522,3 +522,46 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - GPT-OSS item-anaphora probes `2621-2640` were 20/20 correct. Each resolved the pronoun owner and the prior-source grouped item reference, then emitted one `set_item_state(..., value=equipped)` effect per resolved item.
 - This validates the current source-unit extraction design: prior source is REFERENCE ONLY for pronoun/anaphora resolution; persistent state still comes only from the current source unit.
 - Next checkpoint: rerun the focused typed-inventory tests on current head. If green, run a fresh GPT acceptance and inspect the earliest real runtime defect, starting at Segment 3 for pistol/katana item states, pancake-tray carryover, held/equipped contradictions, and timed continuity-only filler.
+
+## 2026-09-30 — Director baseline reset: generate first, promote rules from evidence
+
+This section supersedes older Director-specific guidance that treated typed state,
+barrier topology, terminal-target state, item carry mode, or completion extractors
+as blocking acceptance gates.
+
+- ARC and BEATS are unchanged. Their CREATE -> VALIDATE -> REPAIR -> VALIDATE loops
+  remain the semantic planning authority.
+- Director Request 1 is now a minimal creative stage:
+  - ASSIGNED SOURCE is story authority;
+  - CURRENT BEAT is the scene to stage now;
+  - OPENING CONTINUITY is advisory frame-0 context;
+  - a broad/generic continuity summary may not override a concrete CURRENT BEAT;
+  - NEXT BEAT is only the boundary.
+- Request 1 no longer receives Python-generated final-state contracts, barrier
+  contracts, or HELD/EQUIPPED/STORED item instructions.
+- Request 1 structured output is now creation-only: \`{"raw_scene":"..."}\`.
+  Model-owned completion booleans were removed from the production schema.
+- Existing deterministic Director checks are retained as diagnostics only.
+  Hand conflicts, item-state contradictions, missing subjects, topology/crossing,
+  barrier binding, containment, early timing, and End-continuity structure may emit
+  warnings but do not trigger regeneration.
+- Independent completion, terminal-target, barrier-side, barrier-traversal, and
+  barrier-state LLM checks are no longer called from the Director generation path.
+  Keep the helper code for experiments/regressions until evidence shows whether any
+  narrow check deserves promotion back to a blocker.
+- Request 2 remains a formatter/translator. Malformed formatter responses may retry
+  up to three times; timestamp correspondence/syntax problems are diagnostic only
+  after deterministic normalization and do not block the run.
+- Director content failures must not invalidate a valid ARC/beat plan. Recovery
+  resumes from the last committed segment/checkpoint and retains planning.
+- Development method from this checkpoint:
+  1. generate the complete prompt set whenever transport/parser output is usable;
+  2. compare all prompts to gold;
+  3. collect concrete recurring failures;
+  4. add the smallest generic rule only when full-run evidence shows it is needed;
+  5. never add a rule merely to make internal state more formally complete.
+- Gold-prompt principle: optimize for story-visible continuity needed by the next
+  clip, not a perfectly normalized world-state ontology. Refresh segments may
+  restate important visible state more strongly; append segments should lean on
+  video continuity and only concise relevant state.
+
