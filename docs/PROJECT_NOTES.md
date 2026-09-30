@@ -24,6 +24,24 @@ The pipeline is disposable. Any intermediate representation, LLM call, validator
 
 When an intermediate artifact disagrees with `story.txt`, change the artifact, not the story.
 
+
+### Creativity fills unspecified story space
+
+Creativity is part of the local LLM's job, not a failure mode.
+
+The source story defines what is true and what must happen. It does **not** need to specify every concrete staging, location detail, prop placement, motion, visual choice, or action implementation needed to turn a short story synopsis into a film.
+
+When `story.txt` leaves a detail unspecified, the LLM should invent a plausible, cinematic, story-compatible answer. For example, if the source says a character retrieves a hidden arsenal but does not say where it is hidden, the LLM is expected to choose a concrete hiding place. That invented detail is desirable so long as it does not contradict source facts, canonical facts, established continuity, or a later required event.
+
+The governing distinction is:
+
+- **Creative elaboration:** fills an unspecified blank while preserving the source story. This is encouraged.
+- **Story alteration:** contradicts, replaces, skips, preempts, or materially changes an explicit source/canonical fact or required event. This is prohibited.
+
+Do not reject a beat, Director scene, or H3 prompt merely because it contains a detail that was not literally stated in `story.txt`. Ask instead whether the detail is compatible with all established authority and helps concretely realize the film.
+
+The project goal is to expand paragraph-scale through multi-page stories into fully staged films. The LLM therefore must supply missing cinematic detail rather than mechanically paraphrasing the source.
+
 ## Development doctrine
 
 1. Optimize for the gold prompts, not for preserving the current pipeline.
