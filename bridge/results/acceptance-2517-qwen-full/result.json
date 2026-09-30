@@ -1,0 +1,7 @@
+{
+  "job_id": "acceptance-2517-qwen-full",
+  "status": "error",
+  "error_type": "ValueError",
+  "error": "Acceptance jobs must use the 'gpt' baseline; got 'qwen'.",
+  "finished_at": 1790726670.973968
+}
