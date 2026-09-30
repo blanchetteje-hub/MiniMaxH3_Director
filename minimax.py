@@ -5554,7 +5554,7 @@ def parse_canonical_data_fields(raw_fields):
     """Return normalized canonical character fields from user-editable text."""
     fields = []
     seen = set()
-    for raw_field in re.split(r"[,\\r\\n]+", str(raw_fields or "")):
+    for raw_field in re.split(r"[,\r\n]+", str(raw_fields or "")):
         raw_field = raw_field.strip()
         if not raw_field or raw_field.startswith("#"):
             continue
