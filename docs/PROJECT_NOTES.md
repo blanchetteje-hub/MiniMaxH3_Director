@@ -1301,3 +1301,46 @@ Support a two-phase unattended workflow for long runs:
 - `generated_prompts.txt` is the render handoff contract. It must contain enough per-segment/run metadata to preserve the same initial/append/refresh workflow selection and reference/continuity behavior as a normal run.
 - Save prompt records incrementally so a long LLM phase can recover without losing already-finalized work.
 - On recovery, do not regenerate the beat plan if the existing prompt prefix and generation checkpoint are reusable.
+
+## 2026-09-30 — Director baseline reset: generate first, promote rules from evidence
+
+This section supersedes older Director-specific guidance that treated typed state,
+barrier topology, terminal-target state, item carry mode, or completion extractors
+as blocking acceptance gates.
+
+- ARC and BEATS are unchanged. Their CREATE -> VALIDATE -> REPAIR -> VALIDATE loops
+  remain the semantic planning authority.
+- Director Request 1 is now a minimal creative stage:
+  - ASSIGNED SOURCE is story authority;
+  - CURRENT BEAT is the scene to stage now;
+  - OPENING CONTINUITY is advisory frame-0 context;
+  - a broad/generic continuity summary may not override a concrete CURRENT BEAT;
+  - NEXT BEAT is only the boundary.
+- Request 1 no longer receives Python-generated final-state contracts, barrier
+  contracts, or HELD/EQUIPPED/STORED item instructions.
+- Request 1 structured output is now creation-only: \`{"raw_scene":"..."}\`.
+  Model-owned completion booleans were removed from the production schema.
+- Existing deterministic Director checks are retained as diagnostics only.
+  Hand conflicts, item-state contradictions, missing subjects, topology/crossing,
+  barrier binding, containment, early timing, and End-continuity structure may emit
+  warnings but do not trigger regeneration.
+- Independent completion, terminal-target, barrier-side, barrier-traversal, and
+  barrier-state LLM checks are no longer called from the Director generation path.
+  Keep the helper code for experiments/regressions until evidence shows whether any
+  narrow check deserves promotion back to a blocker.
+- Request 2 remains a formatter/translator. Malformed formatter responses may retry
+  up to three times; timestamp correspondence/syntax problems are diagnostic only
+  after deterministic normalization and do not block the run.
+- Director content failures must not invalidate a valid ARC/beat plan. Recovery
+  resumes from the last committed segment/checkpoint and retains planning.
+- Development method from this checkpoint:
+  1. generate the complete prompt set whenever transport/parser output is usable;
+  2. compare all prompts to gold;
+  3. collect concrete recurring failures;
+  4. add the smallest generic rule only when full-run evidence shows it is needed;
+  5. never add a rule merely to make internal state more formally complete.
+- Gold-prompt principle: optimize for story-visible continuity needed by the next
+  clip, not a perfectly normalized world-state ontology. Refresh segments may
+  restate important visible state more strongly; append segments should lean on
+  video continuity and only concise relevant state.
+
