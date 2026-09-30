@@ -278,12 +278,12 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
                 state_path=str(state_path),
             )
 
-        next_job = self._prompt_section(
+        reserved_later = self._prompt_section(
             calls[0],
-            "NEXT JOB\n",
+            "RESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\n",
             "\n\nSTATE EFFECTS IF VALID",
         )
-        self.assertEqual(next_job, "Amy continues the authorized process.")
+        self.assertEqual(reserved_later, "Amy continues the authorized process.")
 
     def test_accepted_required_event_is_committed_at_phase_boundary(self):
         macro_arc = self._required_event_arc(event_count=1, state_effects={
