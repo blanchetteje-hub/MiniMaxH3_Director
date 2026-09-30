@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-gpt-director-zombie-2593",
+  "kind": "llama_chat",
+  "started_at": 1790749265.3074954,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the creative director for one 8-second action-film clip. Complete every assigned action, object interaction, participant role, and visible result. Use concrete visible motion, not static summary poses. Return only timed micro-beats from 00:00.000 through at least 00:06.000."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A zombie breaks the kitchen door window. Amy sees the danger, rushes Will and Amber to the basement, gets them inside, and locks the door. OPENING: Amy, Will, and Amber are in the kitchen. END STATE: Will and Amber are inside the basement; Amy remains outside; basement door is locked."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-7rj2es41ijlpdu0y1z55z",
+    "object": "chat.completion",
+    "created": 1790749265,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to produce timed micro-beats from 00:00.000 through at least 00:06.000, describing action-film clip. We have a scenario: zombie breaks kitchen door window. Amy sees danger, rushes Will and Amber to basement, gets them inside, locks door. Opening: Amy, Will, Amber in kitchen. End state: Will and Amber in basement; Amy outside; basement door locked.\n\nWe need concrete visible motion micro-beats. Each beat is a line with timestamp and description. Let's create beats every 0.5 seconds maybe? At least until 6 sec. We'll show the sequence: zombie appears, breaks window, Amy sees, runs to Will/Amber, they follow, go to basement door, Amy locks it.\n\nWe need micro-beats like:\n\n00:00.000 - Zombie (brownish undead) shuffles into kitchen, eyes on door.\n00:00.200 - Zombie slams its bony hand against window glass, cracks appear.\n... etc.\n\nLet's produce maybe beats every 0.3 sec until 6 sec? But at least 20 beats. We'll keep micro-beats visible motion.\n\nImportant: \"Return only timed micro-beats from 00:00.000 through at least 00:06.000.\" So list lines with timestamps and description, no extra text.\n\nLet's craft:\n\n00:00.000 - Zombie looms at kitchen doorway, eyes flicking toward window.\n00:00.200 - Window glass shatters as zombie slams a bony arm against it.\n00:00.400 - Glass fragments scatter across the floor; a spray of dust rises.\n00:00.600 - Amy's eyes widen in alarm as she spots the broken window.\n00:00.800 - Will turns, hearing a groan, and glances at Amy.\n00:01.000 - Amber squints through the cracked glass, seeing the zombie.\n00:01.200 - Amy grabs Will's shoulder; both pull him toward the kitchen counter.\n00:01.400 - Amber backs up, clutching a plastic bowl like a shield.\n00:01.600 - Amy strides toward the basement door, pushing past Will and Amber.\n00:01.800 - Will shouts, \"Basement!\" as Amy pushes the door open with her hand.\n00:02.000 - Amy leads Will and Amber into the dimly lit basement stairs.\n00:02.200 - They scramble down a rickety set of steps, feet echoing.\n00:02.400 - Amy reaches the basement door; she slides it shut behind them.\n00:02.600 - She pulls the lock lever, turning it clockwise with a click.\n00:02.800 - Will and Amber pause at the threshold, breathing hard.\n00:03.000 - Amy steps back, eyes scanning the kitchen for the zombie.\n00:03.200 - The zombie shuffles closer to the broken window, groaning louder.\n00:03.400 - Amy holds out her hand, fingers curled around a flashlight.\n00:03.600 - She flicks it on; beam cuts through dust toward the doorway.\n00:03.800 - Will and Amber stare at the beam, relief flickering in their eyes.\n00:04.000 - Amy points to the basement door; they nod, ready to move.\n00:04.200 - The zombie lunges at the kitchen window, glass shards flying.\n00:04.400 - Amy steps forward, pushing Will and Amber into the basement again.\n00:04.600 - She slams the door with a forceful thud, sealing it tight.\n00:04.800 - Basement door shudders as the zombie tries to pry it open.\n00:05.000 - Amy holds her breath; the lock remains firm.\n00:05.200 - Will and Amber breathe out, their faces calm in the basement light.\n00:05.400 - Amy steps back, eyes on the kitchen; she smiles at their safety.\n00:05.600 - The zombie groans, frustrated by the sealed door.\n00:05.800 - Amy raises her hand to signal Will and Amber to stay inside.\n00:06.000 - She looks toward the basement door, ready for the next move.\n\nWe have up to 6.0 sec inclusive. Good. Let's output.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 203,
+      "completion_tokens": 900,
+      "total_tokens": 1103,
+      "completion_tokens_details": {
+        "reasoning_tokens": 896
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749277.2196,
+  "status": "ok"
+}
