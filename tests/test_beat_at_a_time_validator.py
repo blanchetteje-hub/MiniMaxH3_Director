@@ -208,7 +208,7 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         self.assertEqual(
             [
                 self._prompt_section(
-                    call[0], "CURRENT JOB\n", "\n\nNEXT JOB"
+                    call[0], "CURRENT JOB\n", "\n\nRESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT"
                 )
                 for call in calls
             ],
@@ -217,7 +217,7 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         self.assertEqual(
             [
                 self._prompt_section(
-                    call[0], "NEXT JOB\n", "\n\nSTATE EFFECTS IF VALID"
+                    call[0], "RESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT\n", "\n\nSTATE EFFECTS IF VALID"
                 )
                 for call in calls
             ],
@@ -354,6 +354,11 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         snapshots = []
 
         def validator(messages, **kwargs):
+            purpose = kwargs.get("history_metadata", {}).get("purpose")
+            if purpose == "beat_finite_endpoint_extract":
+                return {"status": "COMPLETE"}
+            if purpose == "beat_coherence_validation":
+                return {"valid": True, "issue": ""}
             prompt = messages[1]["content"]
             state = json.loads(
                 self._prompt_section(
@@ -432,6 +437,11 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         states = []
 
         def validator(messages, **kwargs):
+            purpose = kwargs.get("history_metadata", {}).get("purpose")
+            if purpose == "beat_finite_endpoint_extract":
+                return {"status": "COMPLETE"}
+            if purpose == "beat_coherence_validation":
+                return {"valid": True, "issue": ""}
             states.append(json.loads(
                 self._prompt_section(
                     messages,
@@ -640,6 +650,11 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             return "Amy opens the basement door."
 
         def validator(messages, **kwargs):
+            purpose = kwargs.get("history_metadata", {}).get("purpose")
+            if purpose == "beat_finite_endpoint_extract":
+                return {"status": "COMPLETE"}
+            if purpose == "beat_coherence_validation":
+                return {"valid": True, "issue": ""}
             state_start = messages[1]["content"].split(
                 "CURRENT STATE\n", 1
             )[1].split("\n\nCURRENT JOB", 1)[0]
