@@ -1,0 +1,6 @@
+{
+  "kind": "run_acceptance",
+  "job_id": "acceptance-2528-qwen-full",
+  "code_branch": "gpt-arc-refresh",
+  "model": "qwen"
+}
