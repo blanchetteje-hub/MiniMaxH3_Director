@@ -1,0 +1,63 @@
+{
+  "job_id": "qwen-director-newprompt-2540",
+  "kind": "llama_chat",
+  "started_at": 1790732111.4894774,
+  "request": {
+    "model": "qwen3.8-27b-obliterated@q3_k_m",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the director for one 8-second video clip.\n\nREAD IN THIS ORDER\n1. SOURCE: what must happen now.\n2. CURRENT BEAT: how to show the SOURCE. Do not let it change the SOURCE.\n3. OPENING STATE: what is already true when the clip starts.\n4. END STATE RULES: what must be true when the clip ends.\n5. NEXT BEAT: later. Do not show it now.\n\nMAKE THE SCENE\n- Show every action and result required by the SOURCE.\n- Keep the SOURCE's kind of action. Do not swap it for a different action.\n- Keep facts from OPENING STATE unless SOURCE, CURRENT BEAT, or END STATE RULES change them.\n- Do not add a new lasting change unless SOURCE, CURRENT BEAT, or END STATE RULES call for it.\n- Write only what a camera or microphone can show. No thoughts or explanations.\n- Use names when a pronoun could be unclear.\n\nTIME\n- First timestamp is exactly \"At 00:00.000,\".\n- Put each timestamp on its own line. Use exactly \"At 00:ss.mmm,\".\n- Put one clear action or event at each time.\n- Use most of the clip. The last timed action must be at or after 6 seconds and before 8 seconds.\n- End with one untimed sentence that starts \"End continuity state:\". It must match the last visible frame. Do not add new facts there."
+      },
+      {
+        "role": "user",
+        "content": "SUBJECT DEFINITIONS:\nAmy is an adult woman. Will and Amber are Amy's young children.\n\nSOURCE — MUST HAPPEN NOW:\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\n\nCURRENT BEAT — SHOW THIS NOW:\nAmy is at home wearing a tight black tank top and denim jeans having finished cooking breakfast for her young kids.\n\nNEXT BEAT — LATER. DO NOT SHOW IT:\nA zombie breaks the kitchen door window and Amy rushes Will and Amber to the basement.\n\nOPENING STATE — TRUE AT START:\nAmy, Will, and Amber are at home. No danger has started.\n\nReturn only the timed RAW SCENE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-ddrz3jpinlcz2dc9ymn7hb",
+    "object": "chat.completion",
+    "created": 1790732111,
+    "model": "qwen3.8-27b-obliterated@q3_k_m",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "\n\nAt 00:00.000, Amy is standing in the kitchen of her home, wearing a tight black tank top and denim jeans, with plates of cooked breakfast food arranged on the counter before her.\nAt 00:01.500, Amy looks down at the prepared meals, confirming that the cooking for her children is complete.\nAt 00:03.000, Will and Amber are seated at the kitchen table, facing the plates of food.\nAt 00:04.500, Amy remains standing near the counter, with no further movement or activity visible.\nAt 00:06.500, the scene is still, with Amy, Will, and Amber remaining in their positions at home.\nEnd continuity state: Amy, Will, and Amber are at home; breakfast has been cooked and served; no danger has started.",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 488,
+      "completion_tokens": 194,
+      "total_tokens": 682,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {
+      "total_draft_tokens_count": 207,
+      "accepted_draft_tokens_count": 125,
+      "rejected_draft_tokens_count": 82
+    },
+    "system_fingerprint": "qwen3.8-27b-obliterated@q3_k_m"
+  },
+  "finished_at": 1790732121.4087107,
+  "status": "ok"
+}
