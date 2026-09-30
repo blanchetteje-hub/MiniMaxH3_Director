@@ -881,47 +881,40 @@ _BEAT_ABBREVIATIONS = {
 # System prompts and parser patterns for Director and H3 formatting requests.
 # ------------------------------------------------------------
 
-DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are the director for one {segment_seconds}-second video clip.
+DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are the creative director for one {segment_seconds}-second video segment.
 
-READ IN THIS ORDER
-1. SOURCE: what must happen now.
-2. CURRENT BEAT: how to show the SOURCE. Do not let it change the SOURCE.
-3. OPENING STATE: what is already true when the clip starts.
-4. END STATE RULES: what must be true when the clip ends.
-5. NEXT BEAT: later. Do not show it now.
+AUTHORITY — obey in this order
+1. ASSIGNED SOURCE says what must happen now.
+2. CURRENT BEAT is staging guidance for that source.
+3. OPENING CONTINUITY STATE says what is already true at 00:00.000.
+4. AUTHORITATIVE FINAL STATE CONTRACT, when supplied, must be true at the end.
+5. NEXT BEAT is forbidden; do not begin, reveal, cause, or foreshadow it.
 
-MAKE THE SCENE
-- Complete every action, object interaction, participant role, and visible result required by the SOURCE.
-- Show the required action happening on screen; do not replace an assigned action with a static aftermath that merely says it is already finished.
-- Keep the SOURCE's kind of action. Do not swap it for a different action.
-- If CURRENT BEAT says new, another, or incoming target, use a different target. Do not reuse one already dead, destroyed, or out of action.
-- Keep facts from OPENING STATE unless SOURCE, CURRENT BEAT, or END STATE RULES change them.
-- Do not add a new lasting change unless SOURCE, CURRENT BEAT, or END STATE RULES call for it. This includes death, injury, damage, who has an item, who is trapped or free, door or gate state, clothing, and main story location.
-- Small route details are okay. You may add a hall, stairs, or a similar detail. Do not change the required door or gate, destination, who crosses, or where people end.
-- If only some people should go through a door, gate, hatch, or other opening, only those people go through. A helper does not follow unless the rules say so.
-- If someone starts holding or wearing an item, keep it that way unless the rules change it.
-- Write only what a camera or microphone can show. No thoughts or explanations.
-- Short dialogue is okay if it helps this beat. Do not add new story facts.
-- Use names when a pronoun could be unclear.
+DIRECT THE SCENE
+- Complete every action, object interaction, participant role, and visible result assigned to this segment.
+- Preserve concrete assigned actions and interactions; do not replace them with a materially different physical action.
+- When CURRENT BEAT distinguishes a new, another, or incoming target, do not reuse an already terminal target from OPENING CONTINUITY STATE.
+- Preserve established opening state unless ASSIGNED SOURCE/CURRENT BEAT or the FINAL STATE CONTRACT changes it.
+- Do not invent persistent changes: no new injury/death/destruction, ownership/equipment, containment/release, barrier state, wardrobe change, or story-location change.
+- Do not invent structural geography or travel routes. Use only established rooms, doors, stairs, halls, gates, passages, or other structures.
+- Only explicitly authorized subjects may cross a barrier. Helping or moving someone through does not imply the helper follows.
+- Preserve held/equipped readiness items unless the assignment explicitly changes them.
+- Use only externally visible/audible action. Keep prose concrete and concise. Short dialogue is allowed only when it supports CURRENT BEAT and adds no new facts.
+- Prefer names over ambiguous pronouns.
 
-TIME
+TIMED RAW SCENE
 - First timestamp is exactly "At 00:00.000,".
-- Put each timestamp on its own line. Use exactly "At 00:ss.mmm,".
-- Put one clear action or event at each time.
-- Use most of the clip. The last timed action must be at or after {final_quarter_start} seconds and before {segment_seconds} seconds.
-- Camera movement is okay when it helps show the action. Use cuts rarely.
-- End with one untimed sentence that starts "End continuity state:". It must match the last visible frame. Do not add new facts there.
+- Put each timestamp on its own line using exactly "At 00:ss.mmm,".
+- Use one clear action/event per timestamp. Pace the scene across the full clip: the final timed micro-beat must land in the final quarter of the segment and before {segment_seconds} seconds.
+- Camera movement may clarify action; cuts should be rare.
+- End with one untimed sentence beginning "End continuity state:" that matches the last visible frame. Do not add new facts there.
 
 {story_segment_ending_rules}
 
 RETURN JSON ONLY
 {{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true}}
 
-Set each value to true only when:
-- finite_activity_complete: every action that should finish has finished.
-- named_beneficiaries_complete: each named person who should receive or take part in the result has done so.
-- activity_tools_settled: tools used only for this action are left in a normal end state.
-- beat_complete: everything required now is done, and NEXT BEAT has not started.
+Set the booleans true only when their named requirement is visibly satisfied. beat_complete is true only when the entire assigned segment is complete without entering NEXT BEAT.
 """
 # Request 2 is a formatter/translator. Request 1 owns creative direction.
 H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a strict formatter/translator for the final MiniMax H3 prompt.
@@ -17332,18 +17325,25 @@ def is_hard_cut_segment(segment_number):
 
 # Return the deterministic ending-frame contract for one story segment.
 def build_story_segment_ending_rules(is_final_story_segment):
-    """Return the simple ending rule for one story segment."""
+    """Return the deterministic ending-frame contract for one story segment."""
 
     if bool(is_final_story_segment):
         return (
-            "ENDING: This is the last story segment. Use the ending asked for by "
-            "SOURCE or CURRENT BEAT. A blackout is allowed only if they ask for it."
+            "STORY SEGMENT ENDING: This is the final story segment. The nonfinal "
+            "handoff-frame restrictions do not apply. Preserve any ending the "
+            "assigned beat explicitly requires, including an explicitly assigned "
+            "blackout."
         )
     return (
-        "ENDING: Another segment comes next. Do not end on black, white, a fade, "
-        "a title or credits card, an empty frame, or a fully blocked lens unless "
-        "SOURCE or CURRENT BEAT asks for it. End on a normal frame that can "
-        "continue into the next segment."
+        "NONFINAL STORY SEGMENT — HANDOFF-FRAME PROTECTION: This segment has a "
+        "following segment, so do not invent or use a cut to black, cut to white, "
+        "fade to black, fade to white, empty transitional frame, title card, "
+        "credits, abstract transition, full lens obstruction (a completely obscured "
+        "lens), or deliberate blackout as the ending. These restrictions do not "
+        "apply when the assigned beat explicitly requires that exact visual event. "
+        "End on a useful physical "
+        "continuation state containing the relevant subject and environment whenever "
+        "reasonably possible."
     )
 
 
@@ -22297,20 +22297,20 @@ def build_generation_messages(
 
     assigned_source = director_assigned_source(current_phase, current_segment)
     source_block = (
-        "SOURCE — MUST HAPPEN NOW:\n"
+        "ASSIGNED SOURCE — authoritative work for this segment:\n"
         + assigned_source + "\n\n"
         if assigned_source else ""
     )
     user_content = f"""SUBJECT DEFINITIONS:
 {subject_text}
 
-{source_block}CURRENT BEAT — SHOW THIS NOW:
+{source_block}CURRENT BEAT — EXECUTE ONLY THIS:
 {current_beat_text}
 
-NEXT BEAT — LATER. DO NOT SHOW IT:
+NEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:
 {next_beat_text}
 
-OPENING STATE — TRUE AT START:
+CONTINUITY STATE:
 {continuity_text}
 {phrase_exclusion_block}
 {dialogue_block}"""
@@ -27767,7 +27767,7 @@ Check only completion and persistent-state compatibility:
 5. Preserve persistent facts already true in AUTHORITATIVE OPENING STATE unless SOURCE/CURRENT BEAT explicitly changes them. This includes held/equipped items, containment, barrier state, clothing, injuries, and other durable conditions. Reject dropping, losing, freeing, unlocking, removing, or otherwise changing such state as harmless staging.
 6. Attempts and progress do not prove completion. Honor an explicitly ongoing or interrupted source activity; do not force it to finish.
 7. End continuity must agree with the last visible state in RAW SCENE. If RAW sets down, drops, removes, closes, opens, equips, unequips, enters, exits, or otherwise materially changes something, the End continuity state cannot claim the opposite unless RAW visibly changes it back.
-8. Small route details such as stairs or a hall are allowed. Do not fail them unless they break another rule above.
+8. Reject invented structural geography or route-defining structures when they materially define how subjects move between established places. Stairs, hallways, corridors, extra doors, ladders, elevators, rooms, floors, tunnels, gates, or passages must already be established by SOURCE, DERIVED BEAT, or OPENING STATE. An unspecified route must remain unspecified.
 9. Ignore style, camera, future events, and harmless non-persistent staging. Do not invent extra source requirements.
 Return valid (boolean) and issue (short explanation if invalid, empty string otherwise)."""},
         ]
@@ -28143,36 +28143,36 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         for item in request1_barrier_state_contracts:
             if item.get("preserved"):
                 final_state_lines.append(
-                    f"- {item['barrier']}: starts {str(item['source_state']).upper()} "
-                    f"and ends {str(item['source_state']).upper()}."
+                    f"- {item['barrier']}: remains {str(item['source_state']).upper()} "
+                    "(already true; it need not be mentioned, but do not contradict it)."
                 )
             else:
                 final_state_lines.append(
-                    f"- {item['barrier']}: {str(item['source_state']).upper()} at end."
+                    f"- {item['barrier']}: must end {str(item['source_state']).upper()}."
                 )
 
         if request1_barrier_binding:
             final_state_lines.append(
-                f"- {request1_barrier_binding['entity']!r} means the "
-                f"{request1_barrier_binding['destination']} "
-                f"{request1_barrier_binding['entity']}."
+                f"- Barrier {request1_barrier_binding['entity']!r} is the boundary "
+                f"of {request1_barrier_binding['destination']!r}; do not reinterpret it."
             )
             if request1_topology_contracts:
                 final_state_lines.append(
-                    f"- People entering {request1_barrier_binding['destination']} must use "
-                    f"that {request1_barrier_binding['entity']}. Small route details are okay."
+                    f"- Route: move authorized subjects directly through the "
+                    f"{request1_barrier_binding['destination']} boundary; do not invent "
+                    "stairs, hallways, corridors, or any intermediate route."
                 )
 
         for item in request1_closed_boundary_contracts:
             final_state_lines.append(
-                f"- {item['barrier']}: nobody goes through it in this beat."
+                f"- {item['barrier']}: do not traverse this boundary in this beat."
             )
 
         if final_state_lines:
             request1_base_messages[-1] = dict(request1_base_messages[-1])
             request1_base_messages[-1]["content"] = (
                 f"{request1_base_messages[-1].get('content', '')}\n\n"
-                "END STATE RULES — MUST BE TRUE AT END:\n"
+                "AUTHORITATIVE FINAL STATE CONTRACT — Python-owned; obey exactly:\n"
                 + "\n".join(final_state_lines)
             )
 
