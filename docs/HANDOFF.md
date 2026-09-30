@@ -578,3 +578,28 @@ as blocking acceptance gates.
 - Beats 1-4 are not automatically promoted to gold; the next task is to rebuild and validate the complete eight-beat plan against the locked gold story behavior.
 - A concise reference list of the locked gold beats is now stored in \`docs/GOLD_BEATS.md\`.
 - Next checkpoint: focus on ARC/BEATS output until all eight generated beats preserve story order, containment, actor/location ownership, and end-state continuity. Only then freeze the plan again for Director-only testing.
+
+
+## 2026-09-30 — Canonical character profiles before ARC/BEATS
+
+- Active focus remains upstream on BEAT-plan correctness.
+- New rule: stable main-character facts are established once before ARC/BEAT generation rather than being re-invented in later beats or Director prompts.
+- Initial canonical fields are intentionally small: \`age\` and baseline \`clothing\`.
+- New persisted file: \`character_canon.json\`.
+  - keyed to a SHA-256 of the current story text plus \`subjects.txt\`;
+  - reused unchanged while those inputs match;
+  - automatically regenerated when either source changes.
+- Canonicalization precedence:
+  1. explicit facts in the story;
+  2. explicit facts already present in \`subjects.txt\`;
+  3. only genuinely missing values are inferred once by the local LLM.
+- The canonicalizer receives both the synopsis and existing subject definitions. This prevents it from inventing a new age/clothing value when the user has already supplied one elsewhere.
+- Canonical clothing means the baseline outfit only. Temporary later state such as dirt, blood, bile, damage, wetness, etc. remains continuity state and does not replace the baseline outfit.
+- ARC CREATE, ARC VALIDATE, and BEAT CREATE now receive a separate \`CANONICAL CHARACTER FACTS\` section. These facts are context/canon, not story events to schedule.
+- Current character-canon prompt is deliberately simple and based on the proven local test:
+  - system: establish factual canonical film information; return succinct JSON;
+  - output: \`{"characters":[{"name":"...","age":"...","clothing":"..."}]}\`.
+- This is the first canonical-data layer. Do not generalize to locations/props/etc. until observed failures justify it.
+- Commits:
+  - \`fc1f964e4320f5f52cf1ee0d4753daf343a96334\` implementation
+  - \`b9cafa809408573479d0635b4e2bb2b0b9cc75db\` focused regressions
