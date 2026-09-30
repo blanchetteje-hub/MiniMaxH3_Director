@@ -411,10 +411,10 @@ def test_local_relation_prompt_distinguishes_trigger_completion_from_followup_wo
     )
     prompt = build_local_relation_messages(units[0], units[1])[-1]["content"]
 
-    assert "explicitly introduces a problem, danger, alarm, or request" in prompt
-    assert "Mere opportunity, access, or readiness is not a trigger" in prompt
-    assert "a tool used on another target does not qualify" in prompt
-    assert "later test, inspection, transport, repair" in prompt
+    assert "LEFT itself introduces a new problem, danger, alarm, or request" in prompt
+    assert "Shared earlier danger, purpose, opportunity, access, or readiness is not enough" in prompt
+    assert "The LEFT object itself must be what RIGHT acts on" in prompt
+    assert "Testing, calibrating, inspecting, transporting" in prompt
 
 
 def test_local_relation_parser_and_grouping_keep_repeatables_isolated():
