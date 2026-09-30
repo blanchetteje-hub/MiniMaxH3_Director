@@ -1,0 +1,58 @@
+{
+  "job_id": "seg3-itemmode-gpt-2649",
+  "kind": "llama_chat",
+  "started_at": 1790752103.8210588,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the creative director for one 8-second video segment.\n\nAUTHORITY — obey in this order\n1. ASSIGNED SOURCE says what must happen now.\n2. CURRENT BEAT is staging guidance for that source.\n3. OPENING CONTINUITY STATE says what is already true at 00:00.000.\n4. AUTHORITATIVE FINAL STATE CONTRACT, when supplied, must be true at the end.\n5. NEXT BEAT is forbidden; do not begin, reveal, cause, or foreshadow it.\n\nDIRECT THE SCENE\n- Complete every action, object interaction, participant role, and visible result assigned to this segment.\n- Preserve concrete assigned actions and interactions; do not replace them with a materially different physical action.\n- Preserve established opening state unless ASSIGNED SOURCE/CURRENT BEAT or the FINAL STATE CONTRACT changes it.\n- Do not invent persistent changes: no new injury/death/destruction, ownership/equipment, containment/release, barrier state, wardrobe change, or story-location change.\n- Preserve held/equipped readiness items unless the assignment explicitly changes them.\n- Use only externally visible/audible action. Keep prose concrete and concise.\n- Prefer names over ambiguous pronouns.\n\nTIMED RAW SCENE\n- First timestamp is exactly \"At 00:00.000,\".\n- Put each timestamp on its own line using exactly \"At 00:ss.mmm,\".\n- Use one clear action/event per timestamp. Pace the scene across the full clip: the final timed micro-beat must land at or after 6.0 seconds and before 8 seconds.\n- Every timestamp must advance visible action. Do not spend a timed micro-beat merely restating unchanged continuity.\n- For item retrieval, use ordinary physical verbs such as take, remove, pull out, or pick up. Do not say an item is \"released from\" a cache, arsenal, container, holster, or sheath unless SOURCE explicitly assigns a release action.\n- End with one untimed sentence beginning \"End continuity state:\" that matches the last visible frame. Do not add new facts there.\n\nRETURN JSON ONLY\n{\"raw_scene\":\"...\",\"finite_activity_complete\":true,\"named_beneficiaries_complete\":true,\"activity_tools_settled\":true,\"beat_complete\":true}"
+      },
+      {
+        "role": "user",
+        "content": "SUBJECT DEFINITIONS:\n<Subject 1> is Amy, a woman shown in <Picture 1>.\n\nASSIGNED SOURCE — authoritative work for this segment:\nShe retrieves a hidden arsenal of a pistol and katana from beneath the floorboards and equips both weapons.\n\nCURRENT BEAT — EXECUTE ONLY THIS:\nAmy retrieves a hidden arsenal of a pistol and katana from beneath the floorboards and equips both weapons.\n\nNEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\nAmy fights zombies.\n\nCONTINUITY STATE:\nAmy stands in the kitchen wearing a black tank top and denim jeans. Will and Amber are inside the basement. The kitchen door window is broken. The basement door is locked.\n\nAUTHORITATIVE FINAL STATE CONTRACT — Python-owned; obey exactly:\n- kitchen door window: remains BROKEN.\n- basement door: remains LOCKED.\n- END: Amy must have pistol EQUIPPED on the person, not held in a hand.\n- END: Amy must have katana EQUIPPED on the person, not held in a hand.\n\nCANONICAL ITEM STATE — Python-owned; obey exact meanings:\n- END: Amy must have pistol EQUIPPED on the person, not held in a hand.\n- END: Amy must have katana EQUIPPED on the person, not held in a hand.\nHELD means physically in a hand. EQUIPPED means worn/holstered/sheathed/slung on the person and not in a hand. STORED means put away."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.7,
+    "top_p": 0.8,
+    "top_k": 20,
+    "min_p": 0,
+    "max_tokens": 900,
+    "seed": 48,
+    "repeat_penalty": 1,
+    "presence_penalty": 1.5
+  },
+  "response": {
+    "id": "chatcmpl-nmacuee2kvjtpdvp6xdan",
+    "object": "chat.completion",
+    "created": 1790752103,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"raw_scene\":\"At 00:00.000, Amy pulls down the lower left floorboard of the kitchen floor.\\nAt 00:01.200, she sees a pistol and a katana hidden beneath the boards.\\nAt 00:02.400, she takes the pistol from the floorboards.\\nAt 00:03.600, she slings the pistol onto her hip, equipping it",
+          "reasoning": "We need to produce JSON with raw_scene string containing timed micro-beats. Each timestamp: \"At 00:ss.mmm,\". The first at 00:00.000. We need to cover from 0 to between 6 and 8 seconds, final at or after 6s before 8s. Provide one event per timestamp.\n\nWe must only execute assigned source: Amy retrieves hidden arsenal of pistol and katana from beneath floorboards and equips both weapons. The current beat: that. So we need to show retrieval and equipping.\n\nContinuity: Amy stands in kitchen wearing black tank top and denim jeans. Kitchen door window broken, basement door locked. No other changes.\n\nFinal state: She must have pistol equipped on person (not held). Katana equipped on person (not held). Both not broken or locked. The weapons are equipped.\n\nWe need to maintain that at end of segment, she has them equipped.\n\nSo we need to show Amy reaching under floorboards, pulling out pistol and katana, then equipping both. She might holster pistol on waist, sheath katana on hip or side. But must be visible as equipped, not held.\n\nAlso, \"floorboards\" are beneath. So action: Amy pulls down a floorboard, retrieves weapons, puts them in position. Then equip.\n\nSequence: 00:00.000 - Amy pulls down lower left floorboard. 00:01.200 - She sees pistol and katana. 00:02.400 - She picks up pistol. 00:03.600 - She slings pistol onto her hip. 00:04.800 - She picks up katana. 00:06.000 - She sheaths katana on her side.\n\nNeed to end at or after 6s and before 8s; we have last event at 06.000 which is fine. Ensure final state: pistol equipped on hip, katana sheathed on side. Both not held.\n\nAlso need to preserve that kitchen door window remains broken, basement door locked. No changes to those.\n\nAt 00:04.800 maybe after picking up katana, but we can equip at 06.000.\n\nLet's craft timestamps:\n\nAt 00:00.000, Amy pulls down the lower left floorboard of the kitchen floor. (This reveals weapons.)\n\nAt 00:01.200, she sees a pistol and a katana hidden beneath the boards.\n\nAt 00:02.400, she takes the pistol from the floorboards.\n\nAt 00:03.600, she slings the pistol onto her hip, equipping it on her person.\n\nAt 00:04.800, she pulls the katana from the floorboards.\n\nAt 00:06.000, she sheathes the katana on her side, equipping it on her person.\n\nCheck final state: both equipped.\n\nAlso ensure not to mention held. Pistol slung onto hip not held. Katana sheathed not held.\n\nNow produce JSON:\n\n{\"raw_scene\":\"At 00:00.000, Amy pulls down the lower left floorboard of the kitchen floor.\\nAt 00:01.200, she sees a pistol and a katana hidden beneath the boards.\\nAt 00:02.400, she takes the pistol from the floorboards.\\nAt 00:03.600, she slings the pistol onto her hip, equipping it on her person.\\nAt 00:04.800, she pulls the katana from the floorboards.\\nAt 00:06.000, she sheathes the katana on her side, equipping it on her person.\",\"finite_activity_complete\":true,\"named_beneficiaries_complete\":true,\"activity_tools_settled\":true,\"beat_complete\":true}\n\nCheck formatting: JSON keys double quotes. raw_scene string contains newline characters \\n. Ensure no trailing spaces.\n\nReturn only JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 841,
+      "completion_tokens": 900,
+      "total_tokens": 1741,
+      "completion_tokens_details": {
+        "reasoning_tokens": 805
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790752115.8220124,
+  "status": "ok"
+}
