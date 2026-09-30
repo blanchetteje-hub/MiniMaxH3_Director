@@ -513,3 +513,12 @@ Do not reopen already-verified historical failures unless a fresh run actually r
   - `tests-2620-typed-inventory`
   - GPT item-anaphora probes `2621-2640`
 - Next checkpoint: verify those tests/probes. If green, rerun GPT acceptance on current head and inspect Segment 3 first for (1) pistol/katana typed effects, (2) no pancake-tray carryover, (3) no held/equipped contradiction, and (4) no timed continuity-only filler.
+
+
+## 2026-09-30 — typed-inventory verification checkpoint
+
+- `tests-2620-typed-inventory` ran 85 targeted tests plus 6 subtests. Result: 84 passed, 1 failed; the only failure was a stale regression expecting an incidental `pancake` prop to survive an authoritative move. Under the new typed-inventory ownership rule, untyped prompt-derived held props must be cleared rather than persist.
+- Updated that stale assertion in commit `18dfc6f843a3b4dcf846d7cbaea693bb27f73807` to expect no persisted held prop.
+- GPT-OSS item-anaphora probes `2621-2640` were 20/20 correct. Each resolved the pronoun owner and the prior-source grouped item reference, then emitted one `set_item_state(..., value=equipped)` effect per resolved item.
+- This validates the current source-unit extraction design: prior source is REFERENCE ONLY for pronoun/anaphora resolution; persistent state still comes only from the current source unit.
+- Next checkpoint: rerun the focused typed-inventory tests on current head. If green, run a fresh GPT acceptance and inspect the earliest real runtime defect, starting at Segment 3 for pistol/katana item states, pancake-tray carryover, held/equipped contradictions, and timed continuity-only filler.
