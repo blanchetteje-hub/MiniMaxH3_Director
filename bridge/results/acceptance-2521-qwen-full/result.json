@@ -1,0 +1,33 @@
+{
+  "job_id": "acceptance-2521-qwen-full",
+  "kind": "run_acceptance",
+  "started_at": 1790728265.2796724,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "qwen"
+    ],
+    "returncode": 130,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 64 0.5 --test-prompt-generation --vision-continuity 0 --model qwen --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-3_wzqlds\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260929-203106\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nCould not read C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-3_wzqlds\\repo\\beats.txt (Required file not found: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-3_wzqlds\\repo\\beats.txt); regenerating the beat plan.\nAsking LM Studio to replace C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-3_wzqlds\\repo\\beats.txt with 8 creative story beats.\n\n=== Source-span planning attempt 1/10 ===\nSource-span planner produced 2 chapter(s): chapter 1=6 beats, chapter 2=2 beats\nSaved story arc to C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-3_wzqlds\\repo\\story_arc.json.\nGenerating macro phase 1 (6 beats, global beats 1-6 of 8).\nRequesting beats for phase 1 (attempt 1/10).\nAccepted macro phase 1; collected 6/8 beats.\nGenerating macro phase 2 (2 beats, global beats 7-8 of 8).\nRequesting beats for phase 2 (attempt 1/10).\nAccepted macro phase 2; collected 8/8 beats.\nBeat 1 jobs: current=E1 - Amy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.; next=E2 - Suddenly, a zombie breaks the kitchen door window and Amy sees the danger. She rushes her kids to the basement, gets them inside, and then locks the door.; completed before=none; pending before=E1, E2, E3, E4, E5, E6, E7, E8\nValidating Beat 1 (attempt 1/10) with the single beat validator.\nBeat 1 validation attempt 1/10: VALID; issue: none\nBeat 1 finite-endpoint attempt 1/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.\nValidating Beat 1 (attempt 2/10) with the single beat validator.\nBeat 1 validation attempt 2/10: VALID; issue: none\nBeat 1 finite-endpoint attempt 2/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.\nValidating Beat 1 (attempt 3/10) with the single beat validator.\nBeat 1 validation attempt 3/10: VALID; issue: none\nBeat 1 finite-endpoint attempt 3/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.\nValidating Beat 1 (attempt 4/10) with the single beat validator.\nBeat 1 validation attempt 4/10: VALID; issue: none\nBeat 1 finite-endpoint attempt 4/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.\nValidating Beat 1 (attempt 5/10) with the single beat validator.\nBeat 1 validation attempt 5/10: VALID; issue: none\nBeat 1 finite-endpoint attempt 5/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.\nValidating Beat 1 (attempt 6/10) with the single beat validator.\nBeat 1 validation attempt 6/10: VALID; issue: none\nBeat 1 finite-endpoint attempt 6/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.\nValidating Beat 1 (attempt 7/10) with the single beat validator.\nBeat 1 validation attempt 7/10: VALID; issue: none\nBeat 1 finite-endpoint attempt 7/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.\nValidating Beat 1 (attempt 8/10) with the single beat validator.\nBeat 1 validation attempt 8/10: VALID; issue: none\n\nEmergency stop requested; exiting immediately.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20260929-203106\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6, 7, 8]. Include run.log for diagnosis.\nMiniMax exited with code 130; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790728266.5048876,
+    "finished_at": 1790728415.089038,
+    "artifacts": {
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "story_arc.json": "files\\story_arc.json",
+      "source_result_dir": "tests\\acceptance\\results\\amy_zombie_house-20260929-203106",
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1790728415.1633692,
+  "status": "ok"
+}
