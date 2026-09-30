@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-qwen-finite-cooking-2610",
+  "kind": "llama_chat",
+  "started_at": 1790749449.9863997,
+  "request": {
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the director for one 8-second video clip. Show the required action happening on screen; do not replace an assigned action with a static aftermath. Use timed micro-beats from 00:00.000 through at least 00:06.000. Return only the timed scene."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Amy is at home cooking breakfast for her young kids. CURRENT BEAT: Amy cooks breakfast and finishes the meal. NEXT BEAT: danger begins later; do not show it."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 44,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-lo6rngtofviru51odlkyhp",
+    "object": "chat.completion",
+    "created": 1790749449,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "00:00.000‑00:01.200 Amy cracks eggs into a bowl.  \n00:01.200‑00:02.400 Amy adds milk and whiskes the mixture.  \n00:02.400‑00:03.600 Amy heats a skillet, melts butter.  \n00:03.600‑00:04.800 Amy pours batter onto skillet, flips pancakes.  \n00:04.800‑00:05.400 Amy plates pancakes with syrup and berries.  \n00:05.400‑00:06.000 Amy lifts the plate to her kids and smiles.",
+          "reasoning": "We need to produce a 8-second video clip with timed micro-beats from 00:00.000 through at least 00:06.000 showing Amy cooking breakfast and finishing the meal. Danger starts later, but we don't show it. So we just show action of cooking breakfast and finishing meal.\n\nWe need to show the required action happening on screen; not replace with static aftermath. Use timed micro-beats from 00:00.000 through at least 00:06.000. Return only the timed scene.\n\nSo we produce a script like:\n\n00:00.000-00:01.500 Amy pours milk into a bowl.\n00:01.500-00:02.500 Amy whiskes eggs.\n... etc until 00:06.000.\n\nWe need to show finishing the meal at around 00:05 maybe. The beat ends at 00:06.000. So we can do:\n\n00:00.000-00:01.200 Amy cracks eggs into a bowl.\n00:01.200-00:02.400 Amy adds milk and whisking.\n00:02.400-00:03.600 Amy heats a skillet, pours butter.\n00:03.600-00:04.800 Amy flips pancakes.\n00:04.800-00:05.400 Amy plates pancakes with syrup.\n00:05.400-00:06.000 Amy smiles and lifts the plate.\n\nWe should show finishing meal at 00:05.4-06.0. Danger starts later not shown.\n\nReturn only timed scene. So output lines like:\n\n00:00.000-00:01.200 Amy cracks eggs into a bowl.\n...\n\nLet's produce micro-beats maybe 0.5 sec increments? Not necessary, but we need at least from 0 to 6 seconds.\n\nWe should show the required action happening on screen; not static aftermath. So each beat shows action. Danger is later. So we don't show danger.\n\nWe'll output:\n\n00:00.000-00:01.200 Amy cracks eggs into a bowl.\n00:01.200-00:02.400 Amy adds milk and whisking the mixture.\n00:02.400-00:03.600 Amy heats a skillet, melts butter.\n00:03.600-00:04.800 Amy pours batter onto skillet, flips pancakes.\n00:04.800-00:05.400 Amy plates pancakes with syrup and berries.\n00:05.400-00:06.000 Amy lifts the plate to her kids and smiles.\n\nThat covers 6 seconds. Danger begins later not shown. Good.\n\nReturn only timed scene. So no extra text.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 171,
+      "completion_tokens": 681,
+      "total_tokens": 852,
+      "completion_tokens_details": {
+        "reasoning_tokens": 549
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749458.8695116,
+  "status": "ok"
+}
