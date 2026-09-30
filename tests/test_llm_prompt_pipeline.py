@@ -584,22 +584,18 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("Amber", state_text)
         self.assertIn("basement", state_text)
 
-    def test_director_prompt_requires_explicit_barrier_blocking(self):
+
+    def test_director_prompt_keeps_state_advisory_and_beat_authoritative(self):
         rules = minimax.build_director_rules(
-            64,
-            8,
-            8,
-            "",
-            2,
+            64, 8, 8, "", 2,
             conditioning_mode="continuation",
             is_final_story_segment=False,
         )
         normalized = " ".join(rules.split())
-        self.assertIn("only the subjects explicitly named", normalized)
-        self.assertIn("Every other subject stays on the side where they started", normalized)
-        self.assertIn("NEVER implies that the mover/helper follows them", normalized)
-        self.assertIn("keep the groups separated", normalized)
-
+        self.assertIn("CURRENT BEAT is the scene to stage", normalized)
+        self.assertIn("broad or generic continuity summary conflicts", normalized)
+        self.assertIn("CURRENT BEAT wins", normalized)
+        self.assertNotIn("Only explicitly authorized subjects may cross a barrier", normalized)
     def test_completion_prompt_protects_authoritative_persistent_state(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Amy defeats one attacker with the katana.",
@@ -616,25 +612,19 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("held/equipped items", prompt)
         self.assertIn("Reject dropping, losing, freeing, unlocking, removing", prompt)
 
-    def test_director_prompt_locks_h3_visual_writing_discipline(self):
+
+    def test_director_prompt_is_minimal_scene_contract(self):
         rules = minimax.build_director_rules(
-            64,
-            8,
-            8,
-            "",
-            3,
+            64, 8, 8, "", 3,
             conditioning_mode="continuation",
             is_final_story_segment=False,
         )
         normalized = " ".join(rules.split())
-        self.assertIn("No literary fluff", normalized)
-        self.assertIn("externally depictable video/audio information", normalized)
-        self.assertIn("internal thoughts", normalized)
-        self.assertIn("State materially important physical actions explicitly", normalized)
-        self.assertIn("Use continuous camera movement liberally", normalized)
-        self.assertIn("Cuts are rare", normalized)
-        self.assertIn("use a pronoun only when exactly one person", normalized)
-
+        self.assertIn("concrete visible/audible action", normalized)
+        self.assertIn("natural physical staging", normalized)
+        self.assertIn("Camera movement may clarify action", normalized)
+        self.assertIn("NEXT BEAT is boundary context only", normalized)
+        self.assertNotIn("Do not invent persistent changes", normalized)
     def test_completion_prompt_disallows_implicit_mover_barrier_crossing(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Mara guides Eli and Noor into the shelter and locks the door.",
@@ -1314,16 +1304,16 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("already-dead corpse", prompt)
         self.assertIn("does not satisfy the source action", prompt)
 
-    def test_director_generation_requires_terminal_transition_from_unresolved_target(self):
+
+    def test_director_prompt_does_not_encode_terminal_state_machine(self):
         rules = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
             story_segment_ending_rules="",
         )
         normalized = " ".join(rules.split())
-        self.assertIn("active, intact enough to resolve, or otherwise unresolved", normalized)
-        self.assertIn("already-dead corpse", normalized)
-        self.assertIn("does NOT satisfy a newly assigned terminal action", normalized)
-
+        self.assertNotIn("already-dead corpse", normalized)
+        self.assertNotIn("terminal target", normalized.casefold())
+        self.assertIn("CURRENT BEAT wins", normalized)
     def test_completion_prompt_requires_assigned_action_to_happen_now(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Mara cooks breakfast for Eli.",
@@ -1366,20 +1356,17 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("Preserve persistent facts already true", prompt)
         self.assertIn("End continuity must agree with the last visible state", prompt)
 
-    def test_director_prompt_does_not_force_readiness_item_setdown(self):
+
+    def test_director_prompt_does_not_encode_item_carry_modes(self):
         rules = minimax.build_director_rules(
-            64,
-            8,
-            8,
-            "",
-            4,
+            64, 8, 8, "", 4,
             conditioning_mode="continuation",
             is_final_story_segment=False,
         )
         normalized = " ".join(rules.split())
-        self.assertIn("Do NOT set down, unequip, holster, discard", normalized)
-        self.assertIn("Preserve held/equipped state", normalized)
-
+        self.assertNotIn("HELD means", normalized)
+        self.assertNotIn("Preserve held/equipped", normalized)
+        self.assertNotIn("holster, discard", normalized)
     def test_completion_prompt_requires_named_beneficiaries_and_final_result(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "The cook serves breakfast to Mira and Jon.",
@@ -1410,103 +1397,29 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
 
 
 class DirectorPromptCallContractTests(unittest.TestCase):
-    def test_director_allows_only_controlled_local_staging(self):
+
+    def test_director_uses_baseline_creation_contract(self):
         rules = minimax.build_director_rules(
-            8,
-            4,
-            1,
-            SUBJECTS,
-            2,
+            8, 4, 1, SUBJECTS, 2,
         )
+        normalized = " ".join(rules.split())
+        self.assertIn("ASSIGNED SOURCE is the story authority", normalized)
+        self.assertIn("CURRENT BEAT is the scene to stage", normalized)
+        self.assertIn("Harmless local route or prop details are allowed", normalized)
+        self.assertIn('RETURN JSON ONLY {"raw_scene":"..."}', normalized)
+        self.assertNotIn("finite_activity_complete", normalized)
+        self.assertNotIn("final quarter", normalized)
 
-        self.assertIn("LOCAL STAGING", rules)
-        self.assertIn(
-            "A finite action in CURRENT BEAT is NOT complete merely because RAW SCENE "
-            "shows the subject performing it",
-            rules,
-        )
-        self.assertIn(
-            "beat_complete=true` requires each named beneficiary to visibly receive "
-            "or participate in the completed result",
-            rules,
-        )
-        self.assertIn(
-            "leave it in a stable visible state when physically reasonable",
-            rules,
-        )
-        self.assertIn(
-            "Do NOT set down, unequip, holster, discard",
-            rules,
-        )
-        self.assertIn('"finite_activity_complete": true', rules)
-        self.assertIn('"named_beneficiaries_complete": true', rules)
-        self.assertIn('"activity_tools_settled": true', rules)
-        self.assertIn(
-            "Set `beat_complete` true only when all three completion checks above are true",
-            rules,
-        )
-        self.assertIn(
-            "Local staging may not invent consequential persistent changes",
-            rules,
-        )
-        self.assertIn(
-            "assign it a simple functional stable label formed from its role/type "
-            "plus a number",
-            rules,
-        )
-        self.assertIn(
-            "Do not assign Subject-style labels to crowds, collective groups",
-            rules,
-        )
-        self.assertIn("NEXT BEAT is a forbidden boundary", rules)
-        self.assertIn(
-            'Use the canonical timestamp syntax exactly: "At 00:ss.mmm,"',
-            rules,
-        )
-        self.assertIn("NO arbitrary maximum timestamp count", rules)
-        self.assertNotIn("Create between", rules)
-        self.assertNotIn("At 00:ss.mmm seconds", rules)
-
-    def test_director_response_schema_carries_completion_contract(self):
+    def test_director_response_schema_contains_raw_scene_only(self):
         schema = minimax.DIRECTOR_RAW_SCENE_RESPONSE_FORMAT[
             "json_schema"
         ]["schema"]
-        properties = schema["properties"]
+        self.assertEqual(set(schema["properties"]), {"raw_scene"})
+        self.assertEqual(schema["required"], ["raw_scene"])
         self.assertIn(
-            "natural visible endpoint",
-            properties["raw_scene"]["description"],
+            "CURRENT BEAT",
+            schema["properties"]["raw_scene"]["description"],
         )
-        self.assertIn(
-            "every finite activity",
-            properties["finite_activity_complete"]["description"],
-        )
-        self.assertIn(
-            "every named person",
-            properties["named_beneficiaries_complete"]["description"],
-        )
-        self.assertIn(
-            "activity-only tools/appliances",
-            properties["activity_tools_settled"]["description"],
-        )
-        self.assertIn(
-            "held/equipped readiness item",
-            properties["activity_tools_settled"]["description"],
-        )
-        self.assertIn(
-            "finite_activity_complete",
-            properties["beat_complete"]["description"],
-        )
-        self.assertEqual(
-            schema["required"],
-            [
-                "raw_scene",
-                "finite_activity_complete",
-                "named_beneficiaries_complete",
-                "activity_tools_settled",
-                "beat_complete",
-            ],
-        )
-
     def test_formatter_music_rule_matches_locked_gold_modes(self):
         initial = minimax.build_h3_formatter_messages(
             "At 00:00.000, Amy cooks breakfast.",
@@ -2049,23 +1962,12 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "I2VA",
         )
 
-    def test_request_segment_llm_retries_missing_end_continuity_state(self):
+
+    def test_request_segment_llm_accepts_missing_end_continuity_state(self):
         request = Mock(side_effect=[
+            {"raw_scene": "At 00:00.000, Mark crosses the room."},
             {
-                "raw_scene": "At 00:00.000, Mark crosses the room.",
-                "beat_complete": True,
-            },
-            {
-                "raw_scene": (
-                    "At 00:00.000, Mark crosses the room.\n"
-                    "End continuity state: Mark stands across the room."
-                ),
-                "beat_complete": True,
-            },
-            {
-                "detailed_description": (
-                    "[Shot 1] At 00:00.000, Mark crosses the room."
-                ),
+                "detailed_description": "[Shot 1] At 00:00.000, Mark crosses the room.",
                 "overall_soundscape": "Footsteps.",
                 "non_diegetic_music": "N/A",
             },
@@ -2082,57 +1984,30 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "phrase_exclusions": [],
         }
 
-        with patch("minimax.ask_llm", request):
+        with patch("minimax.ask_llm", request), patch("builtins.print"):
             payload = minimax.request_segment_llm(
-                bundle,
-                [],
-                "run-1",
-                {"source_sha256": "source-1"},
+                bundle, [], "run-1", {"source_sha256": "source-1"}
             )
 
-        self.assertEqual(request.call_count, 3)
-        retry_user = request.call_args_list[1].args[0][-1]["content"]
-        self.assertIn("RAW SCENE STRUCTURE ERROR", retry_user)
-        self.assertIn("End continuity state", retry_user)
-        self.assertTrue(payload["request1_result"]["beat_complete"])
-        self.assertIn(
-            "End continuity state: Mark stands across the room.",
-            payload["raw_scene"],
-        )
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(payload["raw_scene"], "At 00:00.000, Mark crosses the room.")
 
-    def test_request_segment_llm_retries_failed_completion_check(self):
+    def test_request_segment_llm_ignores_request1_completion_self_report(self):
+        scene = (
+            "At 00:00.000, Amy cooks breakfast.\n"
+            "End continuity state: Amy remains at the stove."
+        )
         request = Mock(side_effect=[
             {
-                "raw_scene": (
-                    "At 00:00.000, Amy cooks breakfast.\n"
-                    "End continuity state: Amy remains at the stove."
-                ),
-                "finite_activity_complete": True,
+                "raw_scene": scene,
+                "finite_activity_complete": False,
                 "named_beneficiaries_complete": False,
                 "activity_tools_settled": False,
-                "beat_complete": True,
+                "beat_complete": False,
             },
-            {
-                "raw_scene": (
-                    "At 00:00.000, Amy cooks breakfast.\n"
-                    "At 00:02.000, Amy serves Will and Amber.\n"
-                    "At 00:03.500, Amy turns off the stove and sets down the pan.\n"
-                    "End continuity state: Amy stands beside Will and Amber with "
-                    "breakfast served and the stove off."
-                ),
-                "finite_activity_complete": True,
-                "named_beneficiaries_complete": True,
-                "activity_tools_settled": True,
-                "beat_complete": True,
-            },
-            {"valid": True, "issue": ""},
             {
                 "subject_genders": {},
-                "detailed_description": (
-                    "[Shot 1] At 00:00.000, Amy cooks breakfast. "
-                    "At 00:02.000, Amy serves Will and Amber. "
-                    "At 00:03.500, Amy turns off the stove and sets down the pan."
-                ),
+                "detailed_description": "[Shot 1] At 00:00.000, Amy cooks breakfast.",
                 "overall_soundscape": "Kitchen sounds.",
                 "non_diegetic_music": "Quiet underscore.",
             },
@@ -2144,70 +2019,48 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "current_duration": 4,
             "conditioning_mode": "initial",
             "opening_state": "",
-            "subject_definitions": (
-                "<Subject 1> is Amy.\n"
-                "<Subject 2> is Will.\n"
-                "<Subject 3> is Amber."
-            ),
             "messages": [{"role": "user", "content": "Director input."}],
-            "opening_state_sha256": "hash-1",
-            "dialogue_exclusions": [],
-            "phrase_exclusions": [],
         }
 
-        with patch("minimax.ask_llm", request):
-            payload = minimax.request_segment_llm(
-                bundle,
-                [],
-                "run-1",
-                {"source_sha256": "source-1"},
-            )
+        with patch("minimax.ask_llm", request), patch("builtins.print"):
+            payload = minimax.request_segment_llm(bundle, [], "run-1", {})
 
-        self.assertEqual(request.call_count, 4)
-        retry_user = request.call_args_list[1].args[0][-1]["content"]
-        self.assertIn("REQUEST 1 COMPLETION ERROR", retry_user)
-        self.assertIn("named beneficiary requirement", retry_user)
-        self.assertIn("tool/appliance", retry_user)
-        self.assertTrue(payload["request1_result"]["finite_activity_complete"])
-        self.assertTrue(payload["request1_result"]["named_beneficiaries_complete"])
-        self.assertTrue(payload["request1_result"]["activity_tools_settled"])
-        self.assertTrue(payload["request1_result"]["beat_complete"])
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(payload["raw_scene"], scene)
 
-    def test_independent_completion_rejection_retries_before_formatting(self):
+    def test_independent_completion_validator_is_not_in_generation_path(self):
         scene = "At 00:00.000, Mira serves tea.\nEnd continuity state: Tea is served."
         request = Mock(side_effect=[
-            {"raw_scene": scene, "beat_complete": True},
-            {"valid": False, "issue": "Oren has not received tea."},
-            {"raw_scene": scene, "beat_complete": True},
-            {"valid": True, "issue": ""},
-            {"detailed_description": "[Shot 1] At 00:00.000, Mira serves tea.",
-             "overall_soundscape": "Cups clink.", "non_diegetic_music": "N/A"},
+            {"raw_scene": scene},
+            {
+                "subject_genders": {},
+                "detailed_description": "[Shot 1] At 00:00.000, Mira serves tea.",
+                "overall_soundscape": "Cups clink.",
+                "non_diegetic_music": "N/A",
+            },
         ])
         bundle = {
-            "segment": 1, "active_beat_id": 1, "current_duration": 4,
+            "segment": 1,
+            "active_beat_id": 1,
+            "current_duration": 4,
             "current_beat_text": "Mira serves tea to Oren.",
             "assigned_source": "Mira makes tea for Oren.",
-            "conditioning_mode": "initial", "opening_state": "",
+            "conditioning_mode": "initial",
+            "opening_state": "",
             "messages": [{"role": "user", "content": "Direct the current beat."}],
         }
-        with patch("minimax.ask_llm", request):
+        with patch("minimax.ask_llm", request), patch("builtins.print"):
             minimax.request_segment_llm(bundle, [], "test", {})
-        purposes = [c.kwargs["history_metadata"]["purpose"]
-                    for c in request.call_args_list]
-        self.assertEqual(purposes, [
-            "director_raw_scene", "director_raw_scene_completion",
-            "director_raw_scene", "director_raw_scene_completion",
-            "director_h3_formatter",
-        ])
-        self.assertIn("Oren has not received tea.",
-                      request.call_args_list[2].args[0][-1]["content"])
-        self.assertTrue(request.call_args_list[1].kwargs[
-            "history_metadata"]["use_beat_validation_settings"])
-        self.assertIn("Mira makes tea for Oren.",
-                      request.call_args_list[1].args[0][1]["content"])
+        purposes = [
+            call.kwargs["history_metadata"]["purpose"]
+            for call in request.call_args_list
+        ]
+        self.assertEqual(
+            purposes,
+            ["director_raw_scene", "director_h3_formatter"],
+        )
 
-
-    def test_request_segment_llm_retries_when_named_subjects_are_dropped(self):
+    def test_request_segment_llm_reports_dropped_subjects_without_retrying(self):
         subjects = (
             "<Subject 1> is Amy, referenced in <Picture 1>.\n"
             "<Subject 2> is Will, a 10-year-old boy.\n"
@@ -2218,26 +2071,13 @@ class DirectorPromptCallContractTests(unittest.TestCase):
                 "raw_scene": (
                     "At 00:00.000, Amy opens the basement door.\n"
                     "End continuity state: Amy stands beside the open basement door."
-                ),
-                "beat_complete": True,
+                )
             },
-            {
-                "raw_scene": (
-                    "At 00:00.000, Amy opens the basement door.\n"
-                    "At 00:02.000, Will and Amber step out beside Amy.\n"
-                    "End continuity state: Amy stands with Will and Amber outside the basement."
-                ),
-                "beat_complete": True,
-            },
-            {"valid": True, "issue": ""},
             {
                 "subject_genders": {},
-                "detailed_description": (
-                    "[Shot 1] At 00:00.000, Amy opens the basement door. "
-                    "At 00:02.000, Will and Amber step out beside Amy."
-                ),
-                "overall_soundscape": "Door opening and footsteps.",
-                "non_diegetic_music": "Quiet underscore.",
+                "detailed_description": "[Shot 1] At 00:00.000, Amy opens the basement door.",
+                "overall_soundscape": "Door opening.",
+                "non_diegetic_music": "N/A",
             },
         ])
         bundle = {
@@ -2249,26 +2089,20 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "opening_state": "",
             "subject_definitions": subjects,
             "messages": [{"role": "user", "content": "Director input."}],
-            "opening_state_sha256": "hash-8",
-            "dialogue_exclusions": [],
-            "phrase_exclusions": [],
         }
 
-        with patch("minimax.ask_llm", request):
-            payload = minimax.request_segment_llm(
-                bundle,
-                [],
-                "run-8",
-                {"source_sha256": "source-8"},
-            )
+        with patch("minimax.ask_llm", request), patch("builtins.print") as printed:
+            payload = minimax.request_segment_llm(bundle, [], "run-8", {})
 
-        self.assertEqual(request.call_count, 4)
-        retry_user = request.call_args_list[1].args[0][-1]["content"]
-        self.assertIn("RAW SCENE dropped named Subject(s)", retry_user)
-        self.assertIn("Will", retry_user)
-        self.assertIn("Amber", retry_user)
-        self.assertIn("Will and Amber step out", payload["raw_scene"])
-
+        self.assertEqual(request.call_count, 2)
+        self.assertIn("Amy opens the basement door", payload["raw_scene"])
+        output = "\n".join(
+            " ".join(str(arg) for arg in call.args)
+            for call in printed.call_args_list
+        )
+        self.assertIn("non-blocking", output)
+        self.assertIn("Will", output)
+        self.assertIn("Amber", output)
     def test_director_raw_scene_structure_requires_trailing_end_state(self):
         self.assertTrue(
             minimax._director_raw_scene_structure_errors(
