@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-qwen-director-zombie-2609",
+  "kind": "llama_chat",
+  "started_at": 1790749396.336741,
+  "request": {
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the creative director for one 8-second action-film clip. Complete every assigned action, object interaction, participant role, and visible result. Use concrete visible motion, not static summary poses. Return only timed micro-beats from 00:00.000 through at least 00:06.000."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A zombie breaks the kitchen door window. Amy sees the danger, rushes Will and Amber to the basement, gets them inside, and locks the door. OPENING: Amy, Will, and Amber are in the kitchen. END STATE: Will and Amber are inside the basement; Amy remains outside; basement door is locked."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 43,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-v3owy294srs1letxxmx6k",
+    "object": "chat.completion",
+    "created": 1790749396,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to produce a timed micro-beats sequence for an 8-second action-film clip. Must include every assigned action, object interaction, participant role, visible result. Concrete visible motion, not static summary poses.\n\nWe have a scenario: A zombie breaks the kitchen door window. Amy sees danger, rushes Will and Amber to basement, gets them inside, locks door. Opening: Amy, Will, Amber in kitchen. End state: Will and Amber inside basement; Amy remains outside; basement door locked.\n\nNeed micro-beats from 00:00.000 through at least 00:06.000. Each beat includes actions, interactions, roles, visible results. Provide only timed micro-beats.\n\nWe need to think of the beats in order.\n\nTime stamps maybe like 00:00.000 - 00:01.500 etc.\n\nWe need to show the zombie breaking window, Amy's reaction, rushing, Will and Amber moving, basement door opening, locking.\n\nLet's create beats:\n\n- 00:00.000 - Zombie (a tall, rotting figure) lunges at kitchen door window.\n- 00:00.200 - Window shatters; glass flies across the kitchen.\n- 00:00.400 - Amy looks up from chopping vegetables, eyes widen.\n- 00:00.600 - Amy jumps back, grabs Will's hand.\n- 00:00.800 - Amy pulls Will toward the basement door.\n- 00:01.000 - Amber turns to look, then follows Amy.\n- 00:01.200 - Amy pushes Will and Amber into the kitchen doorway.\n- 00:01.400 - Amy slams the basement door, knocking it closed.\n- 00:01.600 - Will and Amber step inside; Amy steps back outside.\n- 00:01.800 - Amy reaches for the lock on the basement door.\n- 00:02.000 - She turns the key; click sound as latch engages.\n- 00:02.200 - Amy backs away, still looking at zombie outside.\n\nBut need to show that zombie is outside? The zombie broke window; maybe it's outside already? We should show it moving toward kitchen door after break.\n\nAlso need to include \"Amy sees danger\" earlier.\n\nLet's refine:\n\n0.000 Zombie's arm extends toward kitchen door.\n0.100 Window cracks, glass shards fly.\n0.150 Amy looks up from chopping.\n0.200 Amy eyes widen; she jumps back.\n0.250 Amy grabs Will's hand; Will startled.\n0.300 Amy pulls Will toward basement door.\n0.350 Amber turns; sees zombie; follows Amy.\n0.400 Amy pushes Will and Amber into kitchen doorway.\n0.450 Amy slams basement door shut.\n0.500 Basement door hits floor; thud.\n0.550 Will and Amber step inside; Amy steps back outside.\n0.600 Amy reaches for lock on basement door.\n0.650 She turns key; click sound.\n0.700 Amy looks at zombie through window.\n\nWe need to include visible results: glass shards, door closing, latch engaging.\n\nAlso each beat includes participant roles, object interactions.\n\nTime stamps maybe 00:00.000 etc.\n\nLet's produce micro-beats list from 00:00.000 to at least 00:06.000. But we only need up to 6 seconds; but can go beyond.\n\nThe beats above are within 0.7 sec. Need more beats until 6 sec maybe show zombie approaching, Will and Amber inside, Amy outside.\n\nAdd:\n\n0.800 Zombie steps through broken window, shuffling toward kitchen.\n0.900 Amy sees zombie; she pushes Will and Amber into basement door again? Actually they already in basement.\nBut we can show them inside: Will and Amber look back at Amy as she locks the door.\n\n1.000 Amy slams lock; latch clicks.\n1.100 Zombie's head peeks through window, eyes glowing.\n1.200 Amy stands on kitchen floor, watching zombie.\n1.300 Will pushes a chair into basement doorway to block.\n1.400 Amber pulls a flashlight from her bag.\n1.500 Amy holds the key in hand.\n\nWe need to show end state: Will and Amber inside basement; Amy outside; door locked.\n\nWe can finish at 6 sec.\n\nLet's produce beats up to 00:06.000 with visible actions",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 203,
+      "completion_tokens": 900,
+      "total_tokens": 1103,
+      "completion_tokens_details": {
+        "reasoning_tokens": 897
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749408.5194273,
+  "status": "ok"
+}
