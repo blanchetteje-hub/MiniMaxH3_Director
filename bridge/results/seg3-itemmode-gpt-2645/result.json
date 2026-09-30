@@ -1,0 +1,58 @@
+{
+  "job_id": "seg3-itemmode-gpt-2645",
+  "kind": "llama_chat",
+  "started_at": 1790752047.9404514,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the creative director for one 8-second video segment.\n\nAUTHORITY — obey in this order\n1. ASSIGNED SOURCE says what must happen now.\n2. CURRENT BEAT is staging guidance for that source.\n3. OPENING CONTINUITY STATE says what is already true at 00:00.000.\n4. AUTHORITATIVE FINAL STATE CONTRACT, when supplied, must be true at the end.\n5. NEXT BEAT is forbidden; do not begin, reveal, cause, or foreshadow it.\n\nDIRECT THE SCENE\n- Complete every action, object interaction, participant role, and visible result assigned to this segment.\n- Preserve concrete assigned actions and interactions; do not replace them with a materially different physical action.\n- Preserve established opening state unless ASSIGNED SOURCE/CURRENT BEAT or the FINAL STATE CONTRACT changes it.\n- Do not invent persistent changes: no new injury/death/destruction, ownership/equipment, containment/release, barrier state, wardrobe change, or story-location change.\n- Preserve held/equipped readiness items unless the assignment explicitly changes them.\n- Use only externally visible/audible action. Keep prose concrete and concise.\n- Prefer names over ambiguous pronouns.\n\nTIMED RAW SCENE\n- First timestamp is exactly \"At 00:00.000,\".\n- Put each timestamp on its own line using exactly \"At 00:ss.mmm,\".\n- Use one clear action/event per timestamp. Pace the scene across the full clip: the final timed micro-beat must land at or after 6.0 seconds and before 8 seconds.\n- Every timestamp must advance visible action. Do not spend a timed micro-beat merely restating unchanged continuity.\n- For item retrieval, use ordinary physical verbs such as take, remove, pull out, or pick up. Do not say an item is \"released from\" a cache, arsenal, container, holster, or sheath unless SOURCE explicitly assigns a release action.\n- End with one untimed sentence beginning \"End continuity state:\" that matches the last visible frame. Do not add new facts there.\n\nRETURN JSON ONLY\n{\"raw_scene\":\"...\",\"finite_activity_complete\":true,\"named_beneficiaries_complete\":true,\"activity_tools_settled\":true,\"beat_complete\":true}"
+      },
+      {
+        "role": "user",
+        "content": "SUBJECT DEFINITIONS:\n<Subject 1> is Amy, a woman shown in <Picture 1>.\n\nASSIGNED SOURCE — authoritative work for this segment:\nShe retrieves a hidden arsenal of a pistol and katana from beneath the floorboards and equips both weapons.\n\nCURRENT BEAT — EXECUTE ONLY THIS:\nAmy retrieves a hidden arsenal of a pistol and katana from beneath the floorboards and equips both weapons.\n\nNEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\nAmy fights zombies.\n\nCONTINUITY STATE:\nAmy stands in the kitchen wearing a black tank top and denim jeans. Will and Amber are inside the basement. The kitchen door window is broken. The basement door is locked.\n\nAUTHORITATIVE FINAL STATE CONTRACT — Python-owned; obey exactly:\n- kitchen door window: remains BROKEN.\n- basement door: remains LOCKED.\n- END: Amy must have pistol EQUIPPED on the person, not held in a hand.\n- END: Amy must have katana EQUIPPED on the person, not held in a hand.\n\nCANONICAL ITEM STATE — Python-owned; obey exact meanings:\n- END: Amy must have pistol EQUIPPED on the person, not held in a hand.\n- END: Amy must have katana EQUIPPED on the person, not held in a hand.\nHELD means physically in a hand. EQUIPPED means worn/holstered/sheathed/slung on the person and not in a hand. STORED means put away."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.7,
+    "top_p": 0.8,
+    "top_k": 20,
+    "min_p": 0,
+    "max_tokens": 900,
+    "seed": 44,
+    "repeat_penalty": 1,
+    "presence_penalty": 1.5
+  },
+  "response": {
+    "id": "chatcmpl-qq9807bw5f8z3p1brh4ib",
+    "object": "chat.completion",
+    "created": 1790752047,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"raw_scene\":\"At 00:00.000, Amy steps onto the kitchen floorboards.\\nAt 00:01.",
+          "reasoning": "We need to produce JSON only with fields raw_scene string, finite_activity_complete true, named_beneficiaries_complete true, activity_tools_settled true, beat_complete true.\n\nWe must follow instructions: At 00:00.000 etc. The segment is 8 seconds. We need timestamps each second? They say first timestamp exactly \"At 00:00.000,\". Each timestamp on its own line using exactly \"At 00:ss.mmm,\". One clear action/event per timestamp. Pace across full clip: final timed micro-beat must land at or after 6.0 seconds and before 8 seconds.\n\nWe need to show Amy retrieving hidden arsenal from beneath floorboards and equipping both weapons. She stands in kitchen wearing black tank top and denim jeans. The kitchen door window is broken, basement door locked. After retrieval she equips pistol on person (holstered?) and katana she slashes? Equipped means worn/holstered/sheathed/slung on the person not held in hand.\n\nSo we need to show: at 00:00.000 Amy steps onto floorboard area; 00:01.500 she pulls out pistol from hidden storage; 00:02.000 she holsters pistol (equips). 00:03.500 she pulls katana; 00:04.000 she sheathes katana (equips). End continuity state: Amy has pistol equipped on her person, not held in hand; katana equipped on her person, not held in hand; kitchen door window remains broken; basement door locked.\n\nAlso ensure no new injuries etc. Use only visible action. The final timestamp must be at or after 6.0 seconds and before 8 seconds. We have up to 4 timestamps: maybe add another at 00:06.000 just to meet that requirement, maybe a small action like Amy looks at the basement door? But no new items. Maybe she stands with both weapons on her person.\n\nLet's produce 5 timestamps: 00:00.000, 00:01.500, 00:02.500, 00:04.000, 00:06.000. Each action distinct.\n\nAction list:\n00:00.000 Amy steps onto kitchen floorboards.\n00:01.500 Amy pulls a pistol from beneath the floorboards.\n00:02.500 Amy holsters the pistol on her hip.\n00:04.000 Amy pulls a katana from beneath the floorboards.\n00:06.000 Amy sheaths the katana on her back.\n\nNeed to mention \"equips both weapons\" - we do that by holstering and sheathing.\n\nWe need to ensure final state: pistol equipped, katana equipped. Good.\n\nAlso keep continuity: kitchen door window remains broken; basement door locked. No change.\n\nNow produce JSON:\n\n{\n  \"raw_scene\":\"At 00:00.000, Amy steps onto the kitchen floorboards.\\nAt 00:01.500, Amy pulls a pistol from beneath the floorboards.\\nAt 00:02.500, Amy holsters the pistol on her hip.\\nAt 00:04.000, Amy pulls a katana from beneath the floorboards.\\nAt 00:06.000, Amy sheaths the katana on her back.\\nEnd continuity state: Amy has pistol equipped on her person, not held in a hand; katana equipped on her person, not held in a hand; kitchen door window remains BROKEN; basement door remains LOCKED.\",\n  \"finite_activity_complete\":true,\n  \"named_beneficiaries_complete\":true,\n  \"activity_tools_settled\":true,\n  \"beat_complete\":true\n}\n\nCheck: Each timestamp exactly \"At 00:ss.mmm,\". We have 00:00.000, 00:01.500, 00:02.500, 00:04.000, 00:06.000. Good.\n\nOne clear action per timestamp. Yes.\n\nFinal continuity sentence matches last visible frame? Last frame at 00:06.000 shows Amy sheaths katana on her back. The state: pistol equipped, katana equipped. Good.\n\nReturn JSON only.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 841,
+      "completion_tokens": 900,
+      "total_tokens": 1741,
+      "completion_tokens_details": {
+        "reasoning_tokens": 864
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790752059.809507,
+  "status": "ok"
+}
