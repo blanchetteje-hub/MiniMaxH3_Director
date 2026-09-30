@@ -104,7 +104,11 @@ class SimplifiedPromptRegressionTests(unittest.TestCase):
             rules,
         )
         self.assertIn(
-            "do not replace an assigned action with a static aftermath",
+            "Preserve concrete assigned actions and interactions",
+            rules,
+        )
+        self.assertIn(
+            "You are the creative director",
             rules,
         )
 
