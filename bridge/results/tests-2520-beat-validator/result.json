@@ -1,0 +1,26 @@
+{
+  "job_id": "tests-2520-beat-validator",
+  "kind": "run_tests",
+  "started_at": 1790726973.0255466,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_beat_at_a_time_validator.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_gpt-arc-refresh\nconfigfile: pytest.ini\ncollecting ... collected 14 items\n\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_accepted_required_event_is_committed_at_phase_boundary PASSED [  7%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_four_event_arc_carries_canonical_facts_into_each_next_snapshot PASSED [ 14%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_malformed_validator_response_is_not_repaired PASSED [ 21%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_nested_required_event_state_effect_persists_into_next_beat PASSED [ 28%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_phase_retry_prefix_truncation_discards_failed_and_later_phases PASSED [ 35%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_python_detects_named_subject_dropped_from_assigned_job PASSED [ 42%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_rejected_candidate_does_not_change_completed_pending_state_or_history PASSED [ 50%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_rejected_candidate_does_not_contaminate_state PASSED [ 57%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_rejected_candidate_regenerates_same_beat PASSED [ 64%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_repeated_process_does_not_invent_distinct_next_job PASSED [ 71%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_required_events_map_each_beat_to_its_event_job_and_next_job PASSED [ 78%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_revised_beat_becomes_previous_final_beat_for_next_validation PASSED [ 85%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_valid_commits_all_assigned_events_without_second_semantic_check PASSED [ 92%]\ntests/test_beat_at_a_time_validator.py::BeatAtATimeValidatorTests::test_validator_treats_named_beneficiaries_as_material PASSED [100%]\n\n============================= 14 passed in 2.84s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790726974.2921853,
+    "finished_at": 1790726977.8784664
+  },
+  "finished_at": 1790726977.8784664,
+  "status": "ok"
+}
