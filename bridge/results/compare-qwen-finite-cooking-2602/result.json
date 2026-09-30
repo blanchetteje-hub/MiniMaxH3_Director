@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-qwen-finite-cooking-2602",
+  "kind": "llama_chat",
+  "started_at": 1790749426.0348978,
+  "request": {
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the director for one 8-second video clip. Show the required action happening on screen; do not replace an assigned action with a static aftermath. Use timed micro-beats from 00:00.000 through at least 00:06.000. Return only the timed scene."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Amy is at home cooking breakfast for her young kids. CURRENT BEAT: Amy cooks breakfast and finishes the meal. NEXT BEAT: danger begins later; do not show it."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-potxxbu9ctyyrrhni3py",
+    "object": "chat.completion",
+    "created": 1790749426,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "**00:00.000‑00:01.200** – Amy stands at the stove, whisking pancake batter in a bowl.  \n**00:01.200‑00:02.400** – She ladles a golden swirl of batter onto the hot skillet; pancakes begin to bubble and lift.  \n**00:02.400‑00:03.600** – Amy flips one pancake with a spatula, revealing a perfectly browned underside.  \n**00:03.600‑00:04.800** – She adds a pat of butter to the skillet, letting it melt over the sizzling pancakes.  \n**00:04.800‑00:06.000** – Amy plates the fluffy pancakes on a plate, drizzles maple syrup and places a side of scrambled eggs; her young kids rush in, eager for breakfast.",
+          "reasoning": "We need to produce a timed micro-beats sequence from 00:00.000 through at least 00:06.000 showing Amy cooking breakfast for her kids, finishing the meal. We should not show the danger that comes later. So we have to show the action: Amy cooks breakfast and finishes meal. The beat is \"Amy cooks breakfast and finishes the meal\". So maybe a sequence of micro-beats: 00:00-00:01: Amy starts cooking; 00:01-00:02: She flips pancakes; 00:02-00:03: She adds butter; 00:03-00:04: She plates breakfast; 00:04-00:05: Kids arrive; 00:05-00:06: They eat. Then maybe finish meal at 00:06.\n\nWe need to show the required action happening on screen, not static aftermath. So micro-beats like \"Amy flips pancake\" etc. Let's create a list with times.\n\nAt least until 00:06.000. We can go up to 00:07 perhaps. But at least 00:06.000. We'll display each beat in the format:\n\n00:00.000-00:01.000 Amy starts cooking breakfast (stirs batter on stove).\n00:01.000-00:02.000 Amy pours batter onto skillet, pancakes sizzle.\n... etc.\n\nWe need to show \"cooks breakfast and finishes meal\". So the final beat at 00:06.000 could be kids eating or finishing meal.\n\nLet's produce a timed scene with micro-beats. Use times like 00:00.000-00:01.500 etc.\n\nWe'll output only the timed scene.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 171,
+      "completion_tokens": 537,
+      "total_tokens": 708,
+      "completion_tokens_details": {
+        "reasoning_tokens": 354
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749433.2481906,
+  "status": "ok"
+}
