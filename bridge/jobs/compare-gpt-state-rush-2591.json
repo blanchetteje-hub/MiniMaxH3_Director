@@ -1,0 +1,24 @@
+{
+  "kind": "llama_chat",
+  "job_id": "compare-gpt-state-rush-2591",
+  "model": "gpt",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nMara rushes Jonah to the shelter, gets him inside, and then locks the door.\n\nDEFINED SUBJECTS:\nMara = adult; Jonah = child\n\nFor movement/containment, assign state to the entity whose FINAL place actually changes, not to the actor/helper causing the movement. If A gets B inside X, emit B -> X only. Do NOT emit A -> X unless the source separately says A enters or remains in X.\nReturn one JSON object with exactly one key: state_effects."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 0.92,
+  "top_k": 40,
+  "min_p": 0.03,
+  "repeat_penalty": 1.08,
+  "presence_penalty": 0.1,
+  "frequency_penalty": 0.08,
+  "seed": 42,
+  "max_tokens": 900
+}
