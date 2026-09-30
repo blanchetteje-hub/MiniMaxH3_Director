@@ -633,3 +633,49 @@ as blocking acceptance gates.
   - `6139f0875aa99b54b6c46d6a05dedf145149d92e` — updated Beat CREATE regression
 - Next checkpoint: run the focused test suite, then generate a fresh Amy beat plan and inspect the exact Beat CREATE prompt/output before doing more Director tuning.
 
+## 2026-09-30 — hard sampling split + beat-only optimization phase
+
+- LLM routing is now responsibility-based and defaults to deterministic behavior.
+- Explicit creative allowlist:
+  - `character_canon`
+  - `macro_arc_create`
+  - `macro_arc_repair`
+  - `macro_arc_majority_tail_repair`
+  - `beat_generation` (including single-beat repair/regeneration)
+  - `director_raw_scene`
+- Creative request profile:
+  - temperature `0.8`
+  - top_p `0.95`
+  - top_k `0`
+  - min_p `0.05`
+  - repeat_penalty `1.15`
+  - seed `42`
+  - `reasoning_effort="high"`
+  - `thinking_budget_tokens=1024`
+  - `chat_template_kwargs.enable_thinking=true`
+- Every non-creative `ask_llm` call now forces temperature `0` and seed `42`, including unlabeled/new calls. This prevents validators/extractors from accidentally sampling because a caller forgot metadata.
+- The direct visual end-state LLM path was also changed from temperature `0.10` to `0`, seed `42`, repeat penalty `1.15`.
+- `--deterministic` is not sent in request JSON because llama.cpp implements it as a process-level flag. The llama-server hosting deterministic calls must be launched with it.
+- Server-only/native settings remain outside request JSON. Current expected runtime includes 8192 context, flash attention, Jinja, port 1234, cache RAM 32768, seed 42, `-np 1`, and the reasoning-budget exhaustion message.
+- Do not pin `--reasoning-budget 1024` globally if using per-request routing; creative calls now send `thinking_budget_tokens=1024`.
+- Commits:
+  - `a31dab19a5f6cad888a6506445f8204e3448305f` — responsibility-based sampling/reasoning routing
+  - `13bba833bd43673b928839b133f0c3c3d5f5664d` — keep creative reasoning controls request-native
+  - `814969404dff9a78f600b24d7d2382179def4d35` — deterministic default + visual extractor temp 0
+  - `73fbba2747aac5dc706548027736ca67352c9e41` — routing regressions
+  - `fce8913ace62349baa92ff945b50cdee1ed0ad41` — project policy documentation
+
+### Active development scope
+
+The sole optimization target is now **beat generation**.
+
+Process:
+1. generate beats;
+2. analyze the earliest incorrect beat/artifact;
+3. repair the smallest responsible prompt/validator/state handoff;
+4. regenerate and compare again.
+
+Do not tune Director prompts during this phase. Director quality is downstream of beat quality.
+
+Barrier/state information will be reintroduced only when a concrete beat failure demonstrates that one specific fact is needed. Add the minimum necessary fact/rule; do not restore the previous broad barrier blocks.
+
