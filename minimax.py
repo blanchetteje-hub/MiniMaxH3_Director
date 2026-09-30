@@ -154,6 +154,8 @@ APPEND_SYSTEM_PROMPT_FILE = os.path.join(SCRIPT_DIR, "append_system_prompt.txt")
 
 SUBJECT_DEFINITIONS_FILE = os.path.join(SCRIPT_DIR, "subjects.txt")
 
+CANONICAL_DATA_FILE = os.path.join(SCRIPT_DIR, "canonical_data.txt")
+
 CHARACTER_CANON_FILE = os.path.join(SCRIPT_DIR, "character_canon.json")
 
 GENERATION_STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
@@ -842,6 +844,7 @@ JOB
 - ASSIGNED SOURCE is the story authority for what happens now.
 - CURRENT BEAT is the scene to stage in this clip.
 - OPENING CONTINUITY STATE is helpful frame-0 context. Keep concrete relevant facts, but if a broad or generic continuity summary conflicts with CURRENT BEAT, CURRENT BEAT wins.
+- CANONICAL STARTING CHARACTER FACTS, when provided, are authoritative identity/appearance facts. Establish applicable visible facts for characters already present in CURRENT BEAT or ASSIGNED SOURCE; never introduce a character only to show a canonical fact.
 - NEXT BEAT is boundary context only. Do not begin it.
 
 WRITE THE SCENE
@@ -5547,19 +5550,84 @@ def reset_generation_state_subjects_for_new_phase(
 
 # Render parsed subject names and descriptive prose for beat planning.
 
-def build_character_canon_messages(story, subject_definitions=""):
-    """Build the one-time canonical character profile request."""
+def parse_canonical_data_fields(raw_fields):
+    """Return normalized canonical character fields from user-editable text."""
+    fields = []
+    seen = set()
+    for raw_field in re.split(r"[,\\r\\n]+", str(raw_fields or "")):
+        raw_field = raw_field.strip()
+        if not raw_field or raw_field.startswith("#"):
+            continue
+        field = re.sub(r"[^a-z0-9]+", "_", raw_field.casefold()).strip("_")
+        if not field:
+            continue
+        if field == "name":
+            raise ValueError(
+                "canonical_data.txt must not include reserved field 'name'."
+            )
+        if not re.fullmatch(r"[a-z][a-z0-9_]*", field):
+            raise ValueError(
+                f"Invalid canonical data field {raw_field!r}; use words, "
+                "numbers, spaces, hyphens, or underscores."
+            )
+        if field not in seen:
+            seen.add(field)
+            fields.append(field)
+    if not fields:
+        raise ValueError(
+            "canonical_data.txt must define at least one canonical character field."
+        )
+    return tuple(fields)
+
+
+def load_canonical_data_fields(path=CANONICAL_DATA_FILE):
+    """Load the user-selected canonical character fields."""
+    return parse_canonical_data_fields(load_text_file(path, required=True))
+
+
+def _resolve_canonical_fields(canonical_fields=None):
+    if canonical_fields is None:
+        return load_canonical_data_fields()
+    if isinstance(canonical_fields, str):
+        return parse_canonical_data_fields(canonical_fields)
+    return parse_canonical_data_fields(",".join(str(field) for field in canonical_fields))
+
+
+def build_character_canon_messages(
+    story,
+    subject_definitions="",
+    canonical_fields=None,
+):
+    """Build the one-time, file-driven canonical character profile request."""
+    fields = _resolve_canonical_fields(canonical_fields)
+    field_lines = "\n".join(
+        f"- {field.replace('_', ' ')}" for field in fields
+    )
+    example_record = {"name": "Name"}
+    example_record.update({field: "value" for field in fields})
+    special_rules = []
+    if "clothing" in fields:
+        special_rules.append(
+            "- Clothing means the character's baseline outfit, not temporary "
+            "dirt, blood, damage, wetness, or another later condition."
+        )
+    special_rules_text = (
+        "\n" + "\n".join(special_rules)
+        if special_rules else ""
+    )
     return [
         {
             "role": "system",
             "content": (
                 "You are establishing factual information that will be considered "
-                "canonical in a film. Return succinct results in JSON."
+                "canonical in a film. Only return what is asked for by the user. "
+                "Return succinct results in JSON."
             ),
         },
         {
             "role": "user",
-            "content": f"""Establish canonical clothing and age for all main characters.
+            "content": f"""Establish these canonical facts for all main characters:
+{field_lines}
 
 FILM SYNOPSIS
 {str(story or '').strip()}
@@ -5570,21 +5638,27 @@ EXISTING SUBJECT FACTS
 RULES
 - Explicit facts in the synopsis or EXISTING SUBJECT FACTS are authoritative.
   Copy them; do not replace them with an inference.
-- When age or clothing is not explicitly defined, choose one reasonable value
+- When a requested fact is not explicitly defined, choose one reasonable value
   from the story context. That value becomes canonical and must not vary later.
-- Clothing means the character's baseline outfit, not temporary dirt, blood,
-  damage, wetness, or other later condition.
 - Include every named main character.
-- Keep clothing concise and concrete.
+- Keep values concise and concrete.{special_rules_text}
 - Return only JSON in this shape:
-  {{"characters":[{{"name":"Name","age":"value","clothing":"value"}}]}}
+  {json.dumps({"characters": [example_record]}, ensure_ascii=False)}
 """.strip(),
         },
     ]
 
 
-def build_character_canon_response_format():
-    """Return the strict schema for canonical character profiles."""
+def build_character_canon_response_format(canonical_fields=None):
+    """Return the strict schema for the configured canonical character fields."""
+    fields = _resolve_canonical_fields(canonical_fields)
+    properties = {
+        "name": {"type": "string", "minLength": 1},
+    }
+    properties.update({
+        field: {"type": "string", "minLength": 1}
+        for field in fields
+    })
     return {
         "type": "json_schema",
         "json_schema": {
@@ -5598,12 +5672,8 @@ def build_character_canon_response_format():
                         "minItems": 1,
                         "items": {
                             "type": "object",
-                            "properties": {
-                                "name": {"type": "string", "minLength": 1},
-                                "age": {"type": "string", "minLength": 1},
-                                "clothing": {"type": "string", "minLength": 1},
-                            },
-                            "required": ["name", "age", "clothing"],
+                            "properties": properties,
+                            "required": ["name", *fields],
                             "additionalProperties": False,
                         },
                     }
@@ -5615,8 +5685,9 @@ def build_character_canon_response_format():
     }
 
 
-def parse_character_canon_result(raw_result):
-    """Validate and normalize one canonical character-profile response."""
+def parse_character_canon_result(raw_result, canonical_fields=None):
+    """Validate and normalize a configured canonical character-profile response."""
+    fields = _resolve_canonical_fields(canonical_fields)
     candidate = raw_result
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
@@ -5625,16 +5696,18 @@ def parse_character_canon_result(raw_result):
     raw_characters = candidate.get("characters")
     if not isinstance(raw_characters, list) or not raw_characters:
         raise ValueError("Character canon requires at least one character.")
+    expected_keys = {"name", *fields}
     characters = []
     seen = set()
     for item in raw_characters:
-        if not isinstance(item, dict) or set(item) != {"name", "age", "clothing"}:
+        if not isinstance(item, dict) or set(item) != expected_keys:
             raise ValueError(
-                "Each canonical character requires only name, age, and clothing."
+                "Each canonical character must contain exactly name plus the "
+                "fields configured in canonical_data.txt."
             )
         record = {
             key: " ".join(str(item.get(key) or "").split()).strip()
-            for key in ("name", "age", "clothing")
+            for key in ("name", *fields)
         }
         if not all(record.values()):
             raise ValueError("Canonical character fields must be non-empty.")
@@ -5643,24 +5716,46 @@ def parse_character_canon_result(raw_result):
             raise ValueError(f"Duplicate canonical character: {record['name']}")
         seen.add(key)
         characters.append(record)
-    return {"characters": characters}
+    return {"fields": list(fields), "characters": characters}
 
 
-def _character_canon_source_hash(story, subject_definitions=""):
+def _character_canon_source_hash(
+    story,
+    subject_definitions="",
+    canonical_fields=None,
+):
+    fields = _resolve_canonical_fields(canonical_fields)
     payload = (
         str(story or "").strip()
         + "\n\nSUBJECTS\n"
         + str(subject_definitions or "").strip()
+        + "\n\nCANONICAL FIELDS\n"
+        + ",".join(fields)
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def save_character_canon(canon, source_hash, path=CHARACTER_CANON_FILE):
+def save_character_canon(
+    canon,
+    source_hash,
+    path=CHARACTER_CANON_FILE,
+    canonical_fields=None,
+):
     """Atomically persist one source-bound canonical character profile."""
+    fields = _resolve_canonical_fields(
+        canonical_fields
+        if canonical_fields is not None
+        else canon.get("fields")
+    )
+    parsed = parse_character_canon_result(
+        {"characters": canon["characters"]},
+        canonical_fields=fields,
+    )
     payload = {
-        "version": 1,
+        "version": 2,
         "source_sha256": str(source_hash),
-        "characters": copy.deepcopy(canon["characters"]),
+        "fields": list(fields),
+        "characters": copy.deepcopy(parsed["characters"]),
     }
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
@@ -5685,26 +5780,35 @@ def load_or_generate_character_canon(
     subject_definitions="",
     *,
     path=CHARACTER_CANON_FILE,
+    canonical_fields=None,
     llm_request=None,
     history_metadata=None,
 ):
-    """Reuse source-matched canon or establish it once before planning."""
-    expected_hash = _character_canon_source_hash(story, subject_definitions)
+    """Reuse source-matched canon or establish configured facts once."""
+    fields = _resolve_canonical_fields(canonical_fields)
+    expected_hash = _character_canon_source_hash(
+        story,
+        subject_definitions,
+        canonical_fields=fields,
+    )
     raw = load_text_file(path, required=False)
     if raw:
         try:
             payload = json.loads(raw)
             if (
                 isinstance(payload, dict)
-                and payload.get("version") == 1
+                and payload.get("version") == 2
                 and payload.get("source_sha256") == expected_hash
+                and payload.get("fields") == list(fields)
             ):
                 parsed = parse_character_canon_result(
-                    {"characters": payload.get("characters")}
+                    {"characters": payload.get("characters")},
+                    canonical_fields=fields,
                 )
                 return {
-                    "version": 1,
+                    "version": 2,
                     "source_sha256": expected_hash,
+                    "fields": list(fields),
                     "characters": parsed["characters"],
                 }
         except (ValueError, json.JSONDecodeError):
@@ -5717,33 +5821,58 @@ def load_or_generate_character_canon(
     if llm_request is None:
         llm_request = ask_llm
     raw_result = llm_request(
-        build_character_canon_messages(story, subject_definitions),
-        response_format=build_character_canon_response_format(),
+        build_character_canon_messages(
+            story,
+            subject_definitions,
+            canonical_fields=fields,
+        ),
+        response_format=build_character_canon_response_format(fields),
         history_metadata={
             **(history_metadata or {}),
             "purpose": "character_canon",
         },
         **ARC_LLM_SAMPLING_PARAMETERS,
     )
-    canon = parse_character_canon_result(raw_result)
-    return save_character_canon(canon, expected_hash, path=path)
+    canon = parse_character_canon_result(
+        raw_result,
+        canonical_fields=fields,
+    )
+    return save_character_canon(
+        canon,
+        expected_hash,
+        path=path,
+        canonical_fields=fields,
+    )
 
 
 def format_character_canon_for_beats(canon):
-    """Render canonical character facts for ARC/BEAT prompts."""
+    """Render configured canonical character facts for planning/directing prompts."""
     if not isinstance(canon, dict):
         return ""
+    fields = tuple(canon.get("fields") or ())
+    if not fields:
+        first = next(
+            (
+                record for record in canon.get("characters", [])
+                if isinstance(record, dict)
+            ),
+            {},
+        )
+        fields = tuple(key for key in first if key != "name")
     lines = []
     for record in canon.get("characters", []):
         if not isinstance(record, dict):
             continue
         name = " ".join(str(record.get("name") or "").split()).strip()
-        age = " ".join(str(record.get("age") or "").split()).strip()
-        clothing = " ".join(str(record.get("clothing") or "").split()).strip()
-        if name and age and clothing:
-            lines.append(
-                f"- {name} canonical age: {age}; canonical clothing: {clothing}."
-            )
+        facts = []
+        for field in fields:
+            value = " ".join(str(record.get(field) or "").split()).strip()
+            if value:
+                facts.append(
+                    f"canonical {field.replace('_', ' ')}: {value}"
+                )
+        if name and facts:
+            lines.append(f"- {name} " + "; ".join(facts) + ".")
     return "\n".join(lines)
 
 
@@ -5751,9 +5880,8 @@ def _canonical_character_facts_from_subject_information(subject_information):
     return "\n".join(
         line.strip()
         for line in str(subject_information or "").splitlines()
-        if " canonical age:" in line and "canonical clothing:" in line
+        if line.strip().startswith("- ") and " canonical " in line
     ).strip()
-
 
 def format_beat_generation_subjects(subject_definitions):
     """Render parsed subject names and descriptive prose for beat planning."""
@@ -15527,24 +15655,21 @@ def build_beat_generation_messages(
     audit_correction="",
     phrase_exclusions=(),
 ):
-    """Build the compact Beat-creation prompt for a small local model."""
+    """Build the compact creative Beat-generation prompt."""
+    del end_boundary_beat, macro_arc
     batch_start = 1 if batch_start is None else int(batch_start)
     batch_end = total_segments if batch_end is None else int(batch_end)
     batch_size = batch_end - batch_start + 1
     previous_beats = list(previous_beats or [])
     current_phase = current_phase or {}
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
-    canonical_character_facts = (
+    character_facts = (
         _canonical_character_facts_from_subject_information(subject_information)
         or "N/A"
     )
 
-    required_events = current_phase.get("required_events", [])
     event_lines = []
-    barrier_binding_lines = []
-    closed_boundary_lines = []
-    preserved_barrier_lines = []
-    for event in required_events:
+    for event in current_phase.get("required_events", []):
         if not isinstance(event, dict):
             continue
         beat_number = event.get("beat_number")
@@ -15555,90 +15680,20 @@ def build_beat_generation_messages(
             and event_text
         ):
             event_lines.append(f"{int(beat_number)}. {event_text}")
-            barrier_binding = build_director_barrier_binding_contract(
-                event.get("state_effects", [])
-            )
-            if barrier_binding:
-                barrier_binding_lines.append(
-                    f"{int(beat_number)}. {barrier_binding['entity']!r} means "
-                    f"the {barrier_binding['destination']} "
-                    f"{barrier_binding['entity']}."
-                )
-            if isinstance(macro_arc, dict):
-                before_state = source_authorized_state_before_beat(
-                    macro_arc,
-                    int(beat_number),
-                    subject_information=subject_information,
-                )
-                for contract in build_director_preserved_barrier_state_contracts(
-                    json.dumps(
-                        before_state,
-                        ensure_ascii=False,
-                        separators=(",", ":"),
-                    ),
-                    event.get("state_effects", []),
-                ):
-                    preserved_barrier_lines.append(
-                        f"{int(beat_number)}. {contract['barrier']} starts "
-                        f"{contract['source_state']} and must end "
-                        f"{contract['source_state']} unless this beat explicitly "
-                        "changes that barrier's final state. It may change "
-                        "temporarily for an allowed crossing, then restore it "
-                        "before the beat ends."
-                    )
-                for contract in build_beat_closed_boundary_contracts(
-                    before_state,
-                    event.get("state_effects", []),
-                ):
-                    destination = contract.get("destination")
-                    if destination:
-                        occupants = (
-                            ", ".join(contract.get("occupants") or [])
-                            or "none listed"
-                        )
-                        closed_boundary_lines.append(
-                            f"{int(beat_number)}. {contract['barrier']} starts "
-                            f"{contract['state']} and blocks {destination}. "
-                            f"Inside {destination} now: {occupants}. Nothing "
-                            "crosses this barrier unless this beat's state "
-                            "effects allow the crossing. While it blocks the "
-                            "way, people on opposite sides cannot touch, pass "
-                            "objects, or use an object through it."
-                        )
-                    else:
-                        closed_boundary_lines.append(
-                            f"{int(beat_number)}. {contract['barrier']} starts "
-                            f"{contract['state']}. Do not cross it unless this "
-                            "beat's state effects allow the crossing."
-                        )
-    required_events_text = (
+    parsed_events = (
         "\n".join(event_lines)
         if event_lines
         else "N/A (invalid arc: this chapter has no assigned events)"
     )
-    barrier_bindings_text = (
-        "\n".join(barrier_binding_lines)
-        if barrier_binding_lines
-        else "N/A"
-    )
-    closed_boundaries_text = (
-        "\n".join(closed_boundary_lines)
-        if closed_boundary_lines
-        else "N/A"
-    )
-    preserved_barriers_text = (
-        "\n".join(preserved_barrier_lines)
-        if preserved_barrier_lines
-        else "N/A"
-    )
 
     if previous_phase_final_beat is None and previous_beats:
         previous_phase_final_beat = previous_beats[-1]
-    previous_context = (
-        f"{batch_start - 1}. {previous_phase_final_beat}"
-        if previous_phase_final_beat is not None and batch_start > 1
-        else "N/A"
-    )
+    previous_block = ""
+    if previous_phase_final_beat is not None and batch_start > 1:
+        previous_block = (
+            "\n\nPREVIOUS BEAT\n"
+            f"{batch_start - 1}. {previous_phase_final_beat}"
+        )
 
     supplemental_sections = []
     if correction:
@@ -15686,58 +15741,35 @@ def build_beat_generation_messages(
         },
         {
             "role": "user",
-            "content": f"""
-SOURCE FOR THIS CHAPTER
+            "content": f"""SOURCE FILM
 {story}
 
 KNOWN SUBJECTS
 {subject_text}
 
-CANONICAL CHARACTER FACTS
-{canonical_character_facts}
+CHARACTER FACTS
+{character_facts}
 
 ASSIGNED EVENTS {batch_start}-{batch_end}
-{required_events_text}
-
-BARRIER NAME RULES
-{barrier_bindings_text}
-
-CLOSED BARRIERS AT START
-{closed_boundaries_text}
-
-BARRIER STATES REQUIRED AT END
-{preserved_barriers_text}
-
-PREVIOUS BEAT
-{previous_context}
+{parsed_events}{previous_block}
 
 WRITE {batch_size} BEATS
-- Write one beat for each ASSIGNED EVENT.
-- SOURCE gives context. The ASSIGNED EVENT says what happens in this beat.
-  Do not pull a later story action into this beat.
-- Keep the same physical action and participant roles. Do not replace the
-  required action with a different action.
-- Finish a finite task in the same beat. Show the task happening and then
-  finishing; do not show only the work in progress or only the after-state.
-- Follow BARRIER NAME RULES exactly. Do not use a different nearby door, gate,
-  hatch, or barrier.
-- Follow CLOSED BARRIERS AT START. Nothing crosses a listed barrier unless this
-  beat's state effects allow the crossing.
-- Follow BARRIER STATES REQUIRED AT END. A barrier may change temporarily for
-  an allowed crossing, but it must end in the listed state unless this beat
-  explicitly changes that final state.
-- If the event makes food, a consumable, or a hand-off for someone, show that
-  person receive or use it. For a repair/build/custom job, finishing the work
-  is enough unless the event says to deliver it. Watching does not count as
-  receiving unless the event itself is a performance, lesson, or demonstration.
-- If PREVIOUS BEAT is present, continue from it without repeating it.
-- If adjacent beats use the same repeated/ongoing process, show a different
-  story-compatible instance in this beat. Do not say last, final, every, all,
-  or finished unless this ASSIGNED EVENT is the terminal instance.
-- Small staging details are okay. Do not add a new major plot event or outcome.
-- Use one concise sentence per beat.
-- Each beat string starts with its exact beat number and a period. beat_number
-  must match that number.
+
+Write one beat for each ASSIGNED EVENT.
+SOURCE FILM gives context. The ASSIGNED EVENT says what happens in this beat.
+
+CHARACTER FACTS gives context, don't state them unless something changes in the beats. Example: "Lily's dress tore."
+Do not pull a later story action into this beat.
+Keep the same physical action and participant roles. Do not replace the
+required action with a different action.
+Finish a finite task in the same beat. Show the task happening and then
+finishing; do not show only the work in progress or only the after-state.
+If PREVIOUS BEAT is present, continue from it without repeating it.
+If adjacent beats use the same repeated/ongoing process, show a different story-compatible instance in this beat. Do not say last, final, every, all, or finished unless this ASSIGNED EVENT is the terminal instance.
+Be creative where needed, but do not add a new major plot event or outcome.
+Use one to two concise sentence(s) per beat.
+Keep spatial awareness at all times.
+Avoid pronouns, use names. Example: "Jeff brought Frank and Bill to the field and left Frank and Bill there as he left."
 {supplemental_text}
 
 RETURN
@@ -22774,6 +22806,7 @@ def build_generation_messages(
     dialogue_exclusions=(),
     current_phase=None,
     phrase_exclusions=(),
+    canonical_character_facts="",
 ):
     """Build Request 1 of the two-stage Director micro-prompt pipeline."""
     del completed_beat_ids, recent_results, total_segments, total_length
@@ -22792,6 +22825,13 @@ def build_generation_messages(
     ) or "N/A"
 
     subject_text = str(subject_definitions or "").strip() or "N/A"
+    canonical_starting_block = ""
+    if int(current_segment) == 1 and str(canonical_character_facts or "").strip():
+        canonical_starting_block = (
+            "\n\nCANONICAL STARTING CHARACTER FACTS — ESTABLISH THESE "
+            "FOR CHARACTERS PRESENT IN THIS SEGMENT:\n"
+            + str(canonical_character_facts).strip()
+        )
     dialogue_exclusion_text = format_dialogue_exclusion_instruction(
         dialogue_exclusions
     )
@@ -22816,7 +22856,7 @@ def build_generation_messages(
         if assigned_source else ""
     )
     user_content = f"""SUBJECT DEFINITIONS:
-{subject_text}
+{subject_text}{canonical_starting_block}
 
 {source_block}CURRENT BEAT — EXECUTE ONLY THIS:
 {current_beat_text}
@@ -29713,6 +29753,7 @@ def _run_main(
             dialogue_exclusions=dialogue_exclusions,
             current_phase=current_phase,
             phrase_exclusions=phrase_exclusions,
+            canonical_character_facts=canonical_character_facts,
         )
         return {
             "segment": segment_number,
