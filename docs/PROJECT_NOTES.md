@@ -1344,3 +1344,21 @@ as blocking acceptance gates.
   restate important visible state more strongly; append segments should lean on
   video continuity and only concise relevant state.
 
+
+
+## Canonical character facts (2026-09-30)
+
+Before ARC/BEAT planning, establish a small persisted character canon.
+
+Current scope:
+- age
+- baseline clothing
+
+Rules:
+- Explicit story facts win.
+- Explicit \`subjects.txt\` facts win over inference.
+- Missing values are inferred once by the local LLM, then frozen in \`character_canon.json\`.
+- The canon file is invalidated when story text or \`subjects.txt\` changes.
+- Canonical clothing is the base outfit; later dirt/damage/substances are continuity state.
+- ARC CREATE, ARC VALIDATE, and BEAT CREATE receive canonical character facts as context, not as schedulable story events.
+- Keep this layer small. Add other canonical domains only after concrete failures show they are needed.
