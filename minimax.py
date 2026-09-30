@@ -8383,7 +8383,10 @@ def ask_llm(
         thinking = None
         chat_template = None
         jinja = None
-    elif history_purpose in DETERMINISTIC_LLM_PURPOSES:
+    else:
+        # Deterministic is the safe default. Only the explicit creative
+        # allowlist above may sample. This also protects new validators or
+        # extractors whose caller forgets to label a purpose.
         temperature = 0
         seed = BENCHMARK_SEED
 
@@ -25698,7 +25701,9 @@ def ask_vision_model(
             {"role": "system", "content": VISUAL_END_STATE_SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
         ],
-        "temperature": 0.10,
+        "temperature": 0,
+        "seed": BENCHMARK_SEED,
+        "repeat_penalty": 1.15,
         "max_tokens": VISION_REQUEST_MAX_TOKENS,
     }
     if VISION_MODEL:
