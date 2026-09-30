@@ -1350,5 +1350,61 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         self.assertIn("requires HELD", issues[0])
 
 
+    def test_source_state_rejects_unresolved_generic_inventory_group(self):
+        with self.assertRaisesRegex(ValueError, "must name each concrete item"):
+            minimax.parse_source_unit_state_effects(
+                {
+                    "state_effects": [
+                        {
+                            "op": "set_item_state",
+                            "entity": "weapons",
+                            "owner": "Amy",
+                            "value": "equipped",
+                        }
+                    ]
+                },
+                "She equips the weapons.",
+            )
+
+    def test_beat_rejects_unassigned_preserved_barrier_mutation(self):
+        state = minimax.new_beat_canonical_state()
+        state["characters"]["Will"] = {
+            "location": "basement",
+            "containment": "contained",
+            "contained_in": "basement",
+            "accessible": False,
+        }
+        state["environment"]["barriers"]["door"] = {"status": "locked"}
+        issues = minimax._beat_unassigned_barrier_end_state_errors(
+            state,
+            [],
+            (
+                "Amy shoots the lock on the basement door with her pistol, "
+                "unlocking it, and a zombie pushes through."
+            ),
+        )
+        self.assertTrue(issues)
+        self.assertIn("without an assigned set_barrier_state effect", issues[0])
+
+    def test_beat_allows_temporary_barrier_change_when_original_state_restored(self):
+        state = minimax.new_beat_canonical_state()
+        state["characters"]["Will"] = {
+            "location": "basement",
+            "containment": "contained",
+            "contained_in": "basement",
+            "accessible": False,
+        }
+        state["environment"]["barriers"]["door"] = {"status": "locked"}
+        issues = minimax._beat_unassigned_barrier_end_state_errors(
+            state,
+            [],
+            (
+                "Amy unlocks the basement door, checks the threshold, "
+                "then locks the basement door again."
+            ),
+        )
+        self.assertEqual(issues, [])
+
+
 if __name__ == "__main__":
     unittest.main()
