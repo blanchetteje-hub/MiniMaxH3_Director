@@ -361,6 +361,22 @@ BEAT_LLM_SAMPLING_PARAMETERS = {
     "seed": BENCHMARK_SEED,
 }
 
+QWEN_DIRECTOR_SAMPLING_PARAMETERS = {
+    # Director Request 1 is the creative staging call. Qwen became overly
+    # literal/static at the formatter default temperature of 0.15, so give
+    # only this call moderate sampling freedom. Deterministic validators,
+    # extractors, ARC work, and formatter/translation calls keep their own
+    # existing profiles.
+    "temperature": 0.50,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "presence_penalty": 0.10,
+    "frequency_penalty": 0.08,
+    "repeat_penalty": 1.08,
+    "seed": BENCHMARK_SEED,
+}
+
 CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
     "MINIMAX_CONTINUITY_STRICT", "1"
 ).strip().lower() not in {"0", "false", "no", "off"}
@@ -1525,6 +1541,14 @@ def configure_formatter(model):
 def _active_formatter_llm_settings():
     """Return a copy of the active formatter's LLM settings."""
     return dict(getattr(ACTIVE_FORMATTER, "DEFAULT_LLM_SETTINGS", {}))
+
+
+def _active_director_llm_settings():
+    """Return sampling settings for the creative Director Request 1 call."""
+    settings = _active_formatter_llm_settings()
+    if isinstance(ACTIVE_FORMATTER, QwenFormatter):
+        settings.update(QWEN_DIRECTOR_SAMPLING_PARAMETERS)
+    return settings
 
 
 def _active_beat_validation_settings():
@@ -28150,7 +28174,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             request1_messages,
             response_format=DIRECTOR_RAW_SCENE_RESPONSE_FORMAT,
             history_metadata=request1_metadata,
-            **_active_formatter_llm_settings(),
+            **_active_director_llm_settings(),
         )
         request1_result = _parse_director_raw_scene_result(raw_scene_result)
         raw_scene = request1_result["raw_scene"]
