@@ -1,0 +1,63 @@
+{
+  "job_id": "qwen-director-oldprompt-2536",
+  "kind": "llama_chat",
+  "started_at": 1790732248.6437142,
+  "request": {
+    "model": "qwen3.8-27b-obliterated@q3_k_m",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the creative director for one 8-second video segment.\n\nAUTHORITY — obey in this order\n1. ASSIGNED SOURCE says what must happen now.\n2. CURRENT BEAT is staging guidance for that source.\n3. OPENING CONTINUITY STATE says what is already true at 00:00.000.\n4. AUTHORITATIVE FINAL STATE CONTRACT, when supplied, must be true at the end.\n5. NEXT BEAT is forbidden; do not begin, reveal, cause, or foreshadow it.\n\nDIRECT THE SCENE\n- Complete every action, object interaction, participant role, and visible result assigned to this segment.\n- Preserve concrete assigned actions and interactions; do not replace them with a materially different physical action.\n- Preserve established opening state unless ASSIGNED SOURCE/CURRENT BEAT or the FINAL STATE CONTRACT changes it.\n- Do not invent persistent changes.\n- Use only externally visible/audible action. Keep prose concrete and concise.\n- Prefer names over ambiguous pronouns.\n\nTIMED RAW SCENE\n- First timestamp is exactly \"At 00:00.000,\".\n- Put each timestamp on its own line using exactly \"At 00:ss.mmm,\".\n- Use one clear action/event per timestamp. Pace the scene across the full clip: the final timed micro-beat must land in the final quarter of the segment and before 8 seconds.\n- End with one untimed sentence beginning \"End continuity state:\" that matches the last visible frame. Do not add new facts there."
+      },
+      {
+        "role": "user",
+        "content": "SUBJECT DEFINITIONS:\nAmy is an adult woman. Will and Amber are Amy's young children.\n\nSOURCE — MUST HAPPEN NOW:\nAmy is at home on a normal day, wearing a tight, black tank top and denim jeans, cooking breakfast for her young kids.\n\nCURRENT BEAT — SHOW THIS NOW:\nAmy is at home wearing a tight black tank top and denim jeans having finished cooking breakfast for her young kids.\n\nNEXT BEAT — LATER. DO NOT SHOW IT:\nA zombie breaks the kitchen door window and Amy rushes Will and Amber to the basement.\n\nOPENING STATE — TRUE AT START:\nAmy, Will, and Amber are at home. No danger has started.\n\nReturn only the timed RAW SCENE."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 48,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-mdw3mx354u9frhoo6kohb",
+    "object": "chat.completion",
+    "created": 1790732248,
+    "model": "qwen3.8-27b-obliterated@q3_k_m",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "\n\nAt 00:00.000, Amy stands in a sunlit kitchen wearing a tight black tank top and denim jeans, with plates of cooked breakfast food arranged on the counter before her.\nAt 00:01.500, Amy places a final dish of eggs onto the table, completing the meal.\nAt 00:03.000, Amy wipes her hands on a towel and rests her arms on the edge of the table.\nAt 00:04.500, Amy looks toward the children's area with a calm expression.\nAt 00:06.000, Amy stands still, having finished cooking breakfast for her young kids.\nEnd continuity state: Amy is at home wearing a tight black tank top and denim jeans having finished cooking breakfast for her young kids.",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 497,
+      "completion_tokens": 181,
+      "total_tokens": 678,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {
+      "total_draft_tokens_count": 189,
+      "accepted_draft_tokens_count": 118,
+      "rejected_draft_tokens_count": 71
+    },
+    "system_fingerprint": "qwen3.8-27b-obliterated@q3_k_m"
+  },
+  "finished_at": 1790732256.2456176,
+  "status": "ok"
+}
