@@ -477,3 +477,16 @@ Do not reopen already-verified historical failures unless a fresh run actually r
   - if A leads/gets/puts B into X, B may receive the effect; A receives it only when source separately says A enters/remains in X.
 - This is an existing ARC semantic responsibility; no new LLM stage or Director workaround was added.
 - Next checkpoint: pull `gpt-arc-refresh` and rerun the full Qwen acceptance. Verify E2 no longer places Amy inside the basement, then see whether Segment 2 advances under the new Qwen Director sampling profile.
+
+
+## 2026-09-29 — Request 1 self-validation removed from production gating
+
+- Qwen acceptance `2527` stalled at Segment 1: Director Request 1 failed its 5-attempt local budget before the independent source-based completion validator could meaningfully own the decision.
+- Root cause: the creative Request 1 response still carried four model-owned completion booleans (`finite_activity_complete`, `named_beneficiaries_complete`, `activity_tools_settled`, `beat_complete`) and production logic required all four to be true before invoking the independent completion validator.
+- Commit `ad656a0fe04fb36253d1648046c5042313051df3` changes production behavior when authoritative source is available:
+  - Request 1 still returns the legacy/self-report fields for compatibility;
+  - those self-reported booleans no longer gate or fail production acceptance;
+  - the existing narrow source-based completion validator owns completion;
+  - legacy/unit callers without authoritative source retain the old self-report behavior.
+- This keeps KISS responsibility separation: Request 1 creates; narrow validators validate.
+- Replacement full Qwen acceptance queued as `2528`.
