@@ -313,7 +313,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("performance, lesson, or demonstration", normalized)
 
 
-    def test_beat_generation_preserves_group_beneficiary_roles(self):
+    def test_beat_generation_uses_compact_creative_prompt(self):
         phase = {
             "required_events": [
                 {
@@ -332,7 +332,10 @@ class ForwardBeatValidationTests(unittest.TestCase):
         )
         prompt = messages[1]["content"]
         normalized = " ".join(prompt.split())
-        self.assertIn("show that person receive or use it", normalized)
-        self.assertIn("Watching does not count as receiving", normalized)
-        self.assertIn("performance, lesson, or demonstration", normalized)
-        self.assertNotIn("beneficiaries rather than spectators", normalized)
+        self.assertIn("SOURCE FILM", prompt)
+        self.assertIn("ASSIGNED EVENTS 1-1", prompt)
+        self.assertIn("Be creative where needed", normalized)
+        self.assertIn("Keep spatial awareness at all times", normalized)
+        self.assertIn("Avoid pronouns, use names", normalized)
+        self.assertNotIn("BARRIER NAME RULES", prompt)
+        self.assertNotIn("show that person receive or use it", normalized)
