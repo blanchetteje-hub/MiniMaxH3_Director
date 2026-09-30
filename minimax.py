@@ -28597,13 +28597,26 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         phrase_exclusions=bundle.get("phrase_exclusions", ()),
         conditioning_mode=conditioning_mode,
     )
-    _verify_authoritative_opening_state_handoff(
-        formatter_messages,
-        h3_opening_summary
-        or bundle.get("h3_opening_summary")
-        or "",
-        segment_number,
-    )
+    try:
+        _verify_authoritative_opening_state_handoff(
+            formatter_messages,
+            h3_opening_summary
+            or bundle.get("h3_opening_summary")
+            or "",
+            segment_number,
+        )
+    except Exception as error:
+        print(
+            f"Director Request 2 opening-state handoff diagnostic for Segment "
+            f"{segment_number} (non-blocking): {error}",
+            flush=True,
+        )
+
+    print()
+    print("=" * 64)
+    print(f"DIRECTOR REQUEST 2 START - SEGMENT {segment_number}")
+    print("=" * 64)
+
     request2_metadata = {
         "run_id": run_id,
         "source_sha256": (run_config or {}).get("source_sha256"),
@@ -30755,6 +30768,15 @@ def _checkpoint_recovery_resume_segment(path=GENERATION_STATE_FILE):
 # Run the command-line application under a persistent recovery supervisor.
 def main():
     recovery_resume_segment = None
+    normalized_args = set(normalize_command_line(sys.argv[1:]))
+    fail_fast_generation = bool(
+        normalized_args.intersection({
+            "--test-prompt-generation",
+            "--generate-prompts",
+            "--director-only",
+            "--generate-beats",
+        })
+    )
     while True:
         checkpoint_signature_before = _checkpoint_file_signature()
         try:
@@ -30804,6 +30826,16 @@ def main():
             )
             time.sleep(1)
         except Exception as error:
+            if fail_fast_generation:
+                print(
+                    f"FATAL: prompt-generation run stopped at first real failure: "
+                    f"{type(error).__name__}: {error}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                traceback.print_exc()
+                raise
+
             checkpoint_signature_after = _checkpoint_file_signature()
             if (
                 checkpoint_signature_after is not None
