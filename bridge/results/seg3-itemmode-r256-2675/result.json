@@ -1,0 +1,58 @@
+{
+  "job_id": "seg3-itemmode-r256-2675",
+  "kind": "llama_chat",
+  "started_at": 1790752781.1697912,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the creative director for one 8-second video segment.\n\nAUTHORITY — obey in this order\n1. ASSIGNED SOURCE says what must happen now.\n2. CURRENT BEAT is staging guidance for that source.\n3. OPENING CONTINUITY STATE says what is already true at 00:00.000.\n4. AUTHORITATIVE FINAL STATE CONTRACT, when supplied, must be true at the end.\n5. NEXT BEAT is forbidden; do not begin, reveal, cause, or foreshadow it.\n\nDIRECT THE SCENE\n- Complete every action, object interaction, participant role, and visible result assigned to this segment.\n- Preserve concrete assigned actions and interactions; do not replace them with a materially different physical action.\n- Preserve established opening state unless ASSIGNED SOURCE/CURRENT BEAT or the FINAL STATE CONTRACT changes it.\n- Do not invent persistent changes: no new injury/death/destruction, ownership/equipment, containment/release, barrier state, wardrobe change, or story-location change.\n- Preserve held/equipped readiness items unless the assignment explicitly changes them.\n- Use only externally visible/audible action. Keep prose concrete and concise.\n- Prefer names over ambiguous pronouns.\n\nTIMED RAW SCENE\n- First timestamp is exactly \"At 00:00.000,\".\n- Put each timestamp on its own line using exactly \"At 00:ss.mmm,\".\n- Use one clear action/event per timestamp. Pace the scene across the full clip: the final timed micro-beat must land at or after 6.0 seconds and before 8 seconds.\n- Every timestamp must advance visible action. Do not spend a timed micro-beat merely restating unchanged continuity.\n- For item retrieval, use ordinary physical verbs such as take, remove, pull out, or pick up. Do not say an item is \"released from\" a cache, arsenal, container, holster, or sheath unless SOURCE explicitly assigns a release action.\n- End with one untimed sentence beginning \"End continuity state:\" that matches the last visible frame. Do not add new facts there.\n\nRETURN JSON ONLY\n{\"raw_scene\":\"...\",\"finite_activity_complete\":true,\"named_beneficiaries_complete\":true,\"activity_tools_settled\":true,\"beat_complete\":true}"
+      },
+      {
+        "role": "user",
+        "content": "SUBJECT DEFINITIONS:\n<Subject 1> is Amy, a woman shown in <Picture 1>.\n\nASSIGNED SOURCE — authoritative work for this segment:\nShe retrieves a hidden arsenal of a pistol and katana from beneath the floorboards and equips both weapons.\n\nCURRENT BEAT — EXECUTE ONLY THIS:\nAmy retrieves a hidden arsenal of a pistol and katana from beneath the floorboards and equips both weapons.\n\nNEXT BEAT — BOUNDARY ONLY, DO NOT INCLUDE ANY PART OF IT:\nAmy fights zombies.\n\nCONTINUITY STATE:\nAmy stands in the kitchen wearing a black tank top and denim jeans. Will and Amber are inside the basement. The kitchen door window is broken. The basement door is locked.\n\nAUTHORITATIVE FINAL STATE CONTRACT — Python-owned; obey exactly:\n- kitchen door window: remains BROKEN.\n- basement door: remains LOCKED.\n- END: Amy must have pistol EQUIPPED on the person, not held in a hand.\n- END: Amy must have katana EQUIPPED on the person, not held in a hand.\n\nCANONICAL ITEM STATE — Python-owned; obey exact meanings:\n- END: Amy must have pistol EQUIPPED on the person, not held in a hand.\n- END: Amy must have katana EQUIPPED on the person, not held in a hand.\nHELD means physically in a hand. EQUIPPED means worn/holstered/sheathed/slung on the person and not in a hand. STORED means put away."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.7,
+    "top_p": 0.8,
+    "top_k": 20,
+    "min_p": 0,
+    "max_tokens": 900,
+    "seed": 74,
+    "repeat_penalty": 1,
+    "presence_penalty": 1.5
+  },
+  "response": {
+    "id": "chatcmpl-0fupsjtk32ib3pqebqj3zcw",
+    "object": "chat.completion",
+    "created": 1790752781,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "reasoning": "We need to produce JSON with raw_scene string containing timestamps from 00:00.000 onward, each timestamp with action. Must be 8-second segment; final timestamp between 6.0 and 8.0 seconds. Also after the timed micro-beats we end with untimed sentence starting \"End continuity state:\" that matches last visible frame.\n\nContinuity: Amy stands in kitchen wearing black tank top and denim jeans. Kitchen door window broken, basement door locked. She will retrieve hidden arsenal of pistol and katana from beneath floorboards and equip both weapons. She must equip them on person, not held in hand. So she must put pistol on her hip? She could holster it; we can say \"Amy slides a pistol into a belt holster\" (equipped). For katana, she can sheath it on her waist or shoulder.\n\nWe need to show retrieval from beneath floorboards: maybe she lifts floorboard, pulls out weapons. Then equip them.\n\nWe have 8 seconds; each timestamp should be spaced roughly evenly but not too many. We need at least one action per timestamp. Let's plan 7 timestamps: at 00:00.000, 00:01.000, 00:02.000, 00:03Let's design:\n\nAt 00:00.000, Amy lifts the floorboard with left hand (maybe she stands and lifts). At 00:01.000, she pulls out pistol from under board. At 00:02.000, she pulls out katana from under board. At 00:03.000, she slides pistol into belt holster. At 00:04.000, she sheathes katana on waist. At 00:05.000, she stands with weapons equipped. At 00:06.500, maybe slight adjustment? Actually we need final timestamp at or after 6.0 seconds and before 8 seconds. So 00:06.500 fine. Then end continuity sentence.\n\nLet's check each action: \"Amy lifts the floorboard\" shows retrieval start. \"She pulls out a pistol from beneath the floorboards.\" Good. \"She pulls out a katana from beneath the floorboards.\" Good. \"She slides the pistol into a belt holster on her hip.\" Good, equipping pistol. \"She sheathes the katana on her waist.\" Good, equipping katana. \"Amy stands with both weapons equipped.\" Good. At 00:06.500 maybe she adjusts stance. ButWe need each timestamp to advance visible action; no repeated unchanged. So we should not have two timestamps with same state.\n\nLet's craft:\n\nAt 00:00.000, Amy lifts the top floorboard in kitchen.\nAt 00:01.000, a pistol emerges from beneath the board.\nAt 00:02.000, a katana emerges from beneath the board.\nAt 00:03.000, Amy slides the pistol into her belt holster on her hip.\nAt 00:04.000, Amy sheaths the katana on her waist.\nAt 00:05.500, Amy stands with pistol holstered and katana sheathed.\nAt 00:06.500, Amy gives a slight nod, ready.\n\nThen End continuity state: etc. The final visible frame is at 00:06.500: Amy standing with pistol holstered on hip, katana sheathed on waist. Kitchen door window broken, basement door locked. She stands in kitchen wearing black tank top and denim jeans.\n\nLet's produce JSON:\n\n{\n\"raw_scene\":\"At 00:00.000, Amy lifts the top floorboard in the kitchen.\\nAt 00:01.000, a pistol emerges from beneath the board.\\nAt We need to ensure raw_scene string contains each line separated by newline. Also we need to include the final untimed sentence after the last timestamp. That sentence should start \"End continuity state:\" and match last visible frame.\n\nSo raw_scene:\n\nAt 00:00.000, Amy lifts the top floorboard in the kitchen.\nAt 00:01.000, a pistol emerges from beneath the board.\nAt 00:02.000, a katana emerges from beneath the board.\nAt 00:03.000, Amy slides the pistol",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 841,
+      "completion_tokens": 900,
+      "total_tokens": 1741,
+      "completion_tokens_details": {
+        "reasoning_tokens": 879
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790752792.971033,
+  "status": "ok"
+}
