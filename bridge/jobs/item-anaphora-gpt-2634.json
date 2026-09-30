@@ -1,0 +1,22 @@
+{
+  "kind": "llama_chat",
+  "job_id": "item-anaphora-gpt-2634",
+  "model": "gpt",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE UNIT:\nHe equips the gear.\n\nPREVIOUS SOURCE CONTEXT — REFERENCE ONLY:\nDerek retrieves a sword and a shield from the rack.\n\nDEFINED SUBJECTS:\nTara = adult; Noah = adult; Ava = adult; Derek = adult; Mina = adult; Cal = adult; Iris = adult; Leo = adult; Rhea = adult; Ben = adult\n\nExtract only persistent post-unit facts explicitly established by SOURCE UNIT.\nUse PREVIOUS SOURCE CONTEXT only to resolve pronouns or anaphoric references in SOURCE UNIT. Never extract a state merely because it appears in PREVIOUS SOURCE CONTEXT.\nset_item_state only for explicit possession/equipment results. Item-state meanings are exact: held = physically in a hand; equipped = worn/holstered/sheathed/slung on the person and NOT in a hand; stored = put away and not ready in-hand. When SOURCE UNIT says an anaphoric group such as \"the weapons\", use PREVIOUS SOURCE CONTEXT to resolve the named items, then emit one effect per resolved item.\nUse shape {\"op\":\"set_item_state\",\"entity\":\"...\",\"owner\":\"...\",\"value\":\"stored|held|equipped|dropped|lost\"}.\nReturn one JSON object with exactly one key: state_effects."
+    }
+  ],
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 0,
+  "min_p": 0,
+  "repeat_penalty": 1.15,
+  "seed": 42,
+  "max_tokens": 500
+}
