@@ -343,43 +343,59 @@ QWEN38_27B_SETTINGS = {
     "stream": False,
 }
 
-ARC_LLM_SAMPLING_PARAMETERS = {
-    "temperature": 0,
+CREATIVE_LLM_SAMPLING_PARAMETERS = {
+    "temperature": 0.8,
     "top_p": 0.95,
     "top_k": 0,
-    "min_p": 0.0,
+    "min_p": 0.05,
     "presence_penalty": 0.0,
     "frequency_penalty": 0.0,
     "repeat_penalty": 1.15,
     "seed": BENCHMARK_SEED,
 }
 
-BEAT_LLM_SAMPLING_PARAMETERS = {
-    "temperature": 0.65,
-    "top_p": 0.90,
-    "top_k": 20,
-    "min_p": 0.05,
-    "presence_penalty": 0.15,
-    "frequency_penalty": 0.15,
-    "repeat_penalty": 1.15,
-    "seed": BENCHMARK_SEED,
-}
+# These purpose names own creative expansion/restaging. Repair calls that rewrite
+# ARC/BEAT artifacts stay creative because they must solve the same story problem,
+# not merely classify it.
+CREATIVE_LLM_PURPOSES = frozenset({
+    "character_canon",
+    "macro_arc_create",
+    "macro_arc_repair",
+    "macro_arc_majority_tail_repair",
+    "beat_generation",
+    "director_raw_scene",
+})
 
-QWEN_DIRECTOR_SAMPLING_PARAMETERS = {
-    # Director Request 1 is the creative staging call. Qwen became overly
-    # literal/static at the formatter default temperature of 0.15, so give
-    # only this call moderate sampling freedom. Deterministic validators,
-    # extractors, ARC work, and formatter/translation calls keep their own
-    # existing profiles.
-    "temperature": 0.50,
-    "top_p": 0.92,
-    "top_k": 40,
-    "min_p": 0.03,
-    "presence_penalty": 0.10,
-    "frequency_penalty": 0.08,
-    "repeat_penalty": 1.08,
-    "seed": BENCHMARK_SEED,
-}
+# Observation, extraction, validation, translation, and schema repair must not
+# sample creatively. --deterministic itself is a llama-server process flag and
+# therefore cannot be toggled per request; production llama-server should be
+# launched with that flag for both creative and deterministic calls.
+DETERMINISTIC_LLM_PURPOSES = frozenset({
+    "beat_coherence_validation",
+    "beat_destination_presence_extract",
+    "beat_finite_endpoint_extract",
+    "beat_instruction_review",
+    "beat_validation",
+    "combined_continuity",
+    "continuity_attachment_extract",
+    "continuity_combined_reduced_state",
+    "continuity_phase_2_h3_opening",
+    "director_h3_formatter",
+    "final_h3_action_preservation",
+    "json_repair",
+    "macro_arc_majority_validate",
+    "macro_arc_validate",
+    "source_unit_state_effects",
+    "subject_continuity",
+    "visual_end_state",
+})
+
+ARC_LLM_SAMPLING_PARAMETERS = dict(CREATIVE_LLM_SAMPLING_PARAMETERS)
+BEAT_LLM_SAMPLING_PARAMETERS = dict(CREATIVE_LLM_SAMPLING_PARAMETERS)
+QWEN_DIRECTOR_SAMPLING_PARAMETERS = dict(CREATIVE_LLM_SAMPLING_PARAMETERS)
+
+CREATIVE_REASONING_EFFORT = "high"
+CREATIVE_REASONING_BUDGET_TOKENS = 1024
 
 CONTINUITY_REJECT_UNEVIDENCED_STRUCTURAL_CHANGES = os.environ.get(
     "MINIMAX_CONTINUITY_STRICT", "1"
@@ -8267,6 +8283,9 @@ def ask_llm(
     thinking=None,
     chat_template=None,
     jinja=None,
+    reasoning_effort=None,
+    thinking_budget_tokens=None,
+    enable_thinking=None,
     max_tokens=8192,
     parse_json_response=None,
 ):
@@ -8342,6 +8361,27 @@ def ask_llm(
             jinja = formatter_settings.get("jinja")
     elif temperature is None:
         temperature = 0.35
+
+    # Responsibility-based routing is authoritative over legacy caller profiles.
+    # Creative calls share one tuned sampling/reasoning profile. Deterministic
+    # calls force greedy temperature-0 behavior. Numerical --deterministic mode
+    # is configured on llama-server itself, not in this request body.
+    if history_purpose in CREATIVE_LLM_PURPOSES:
+        temperature = CREATIVE_LLM_SAMPLING_PARAMETERS["temperature"]
+        top_p = CREATIVE_LLM_SAMPLING_PARAMETERS["top_p"]
+        top_k = CREATIVE_LLM_SAMPLING_PARAMETERS["top_k"]
+        min_p = CREATIVE_LLM_SAMPLING_PARAMETERS["min_p"]
+        presence_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["presence_penalty"]
+        frequency_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["frequency_penalty"]
+        repeat_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["repeat_penalty"]
+        seed = CREATIVE_LLM_SAMPLING_PARAMETERS["seed"]
+        reasoning_effort = CREATIVE_REASONING_EFFORT
+        thinking_budget_tokens = CREATIVE_REASONING_BUDGET_TOKENS
+        enable_thinking = True
+    elif history_purpose in DETERMINISTIC_LLM_PURPOSES:
+        temperature = 0
+        seed = BENCHMARK_SEED
+
     beat_history_purposes = {
         "macro_arc_create",
         "macro_arc_validate",
@@ -8389,18 +8429,14 @@ def ask_llm(
                     if value is not None
                 }
             )
+            chat_template_kwargs = {}
             if use_beat_validation_settings:
-                # Match tests/LLM/llama_client.py exactly for benchmarked
-                # validator transport. Qwen disables reasoning through the
-                # standard llama.cpp chat-template kwargs; chat_template/jinja
-                # are server-launch concerns and are not sent per request.
+                # Preserve benchmarked Qwen validator behavior.
                 if (
                     isinstance(ACTIVE_FORMATTER, QwenFormatter)
                     and thinking in (False, "off")
                 ):
-                    request_payload["chat_template_kwargs"] = {
-                        "enable_thinking": False
-                    }
+                    chat_template_kwargs["enable_thinking"] = False
             else:
                 optional_prompt_settings = {
                     "thinking": thinking,
@@ -8414,6 +8450,17 @@ def ask_llm(
                         if value is not None
                     }
                 )
+
+            if enable_thinking is not None:
+                chat_template_kwargs["enable_thinking"] = bool(enable_thinking)
+            if chat_template_kwargs:
+                request_payload["chat_template_kwargs"] = chat_template_kwargs
+            if reasoning_effort is not None:
+                request_payload["reasoning_effort"] = str(reasoning_effort)
+            if thinking_budget_tokens is not None:
+                request_payload["thinking_budget_tokens"] = int(
+                    thinking_budget_tokens
+                )
             sampling_metadata = {
                 name: request_payload[name]
                 for name in (
@@ -8424,6 +8471,8 @@ def ask_llm(
                     "presence_penalty",
                     "frequency_penalty",
                     "repeat_penalty",
+                    "reasoning_effort",
+                    "thinking_budget_tokens",
                 )
                 if name in request_payload
             }
