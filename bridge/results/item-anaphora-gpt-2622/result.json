@@ -1,0 +1,57 @@
+{
+  "job_id": "item-anaphora-gpt-2622",
+  "kind": "llama_chat",
+  "started_at": 1790749520.7290328,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nShe equips the weapons.\n\nPREVIOUS SOURCE CONTEXT — REFERENCE ONLY:\nMara takes a revolver and a machete from the cabinet.\n\nDEFINED SUBJECTS:\nAmy = adult; Mara = adult; Jon = adult; Priya = adult; Owen = adult; Lena = adult; Marcus = adult; Nora = adult; Eli = adult; Sana = adult\n\nExtract only persistent post-unit facts explicitly established by SOURCE UNIT.\nUse PREVIOUS SOURCE CONTEXT only to resolve pronouns or anaphoric references in SOURCE UNIT such as \"she\", \"it\", \"them\", \"the weapons\", \"the tools\", or similar references. Never extract a state merely because it appears in PREVIOUS SOURCE CONTEXT.\nset_item_state only for explicit possession/equipment results. Item-state meanings are exact: held = physically in a hand; equipped = worn/holstered/sheathed/slung on the person and NOT in a hand; stored = put away and not ready in-hand. When SOURCE UNIT says an anaphoric group such as \"the weapons\", use PREVIOUS SOURCE CONTEXT to resolve the named items, then emit one effect per resolved item.\nUse shape {\"op\":\"set_item_state\",\"entity\":\"...\",\"owner\":\"...\",\"value\":\"stored|held|equipped|dropped|lost\"}.\nReturn one JSON object with exactly one key: state_effects."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0,
+    "max_tokens": 500,
+    "seed": 42,
+    "repeat_penalty": 1.15
+  },
+  "response": {
+    "id": "chatcmpl-j33pr51c8qchss6j6inpe",
+    "object": "chat.completion",
+    "created": 1790749520,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"state_effects\":[{\"op\":\"set_item_state\",\"entity\":\"revolver\",\"owner\":\"Mara\",\"value\":\"equipped\"},{\"op\":\"set_item_state\",\"entity\":\"machete\",\"owner\":\"Mara\",\"value\":\"equipped\"}]}",
+          "reasoning": "We need to extract persistent post-unit facts from SOURCE UNIT \"She equips the weapons.\" The pronoun she refers to a subject resolved via previous context. Previous source context: \"Mara takes a revolver and a machete from the cabinet.\"\n\nSo we have Mara taking a revolver and a machete from the cabinet. That means that before this unit, Mara had possession of those items? Actually \"takes\" implies she picks them up; but not necessarily equipped. The previous context says she took them out of the cabinet. So they are now in her hand or maybe held.\n\nNow SOURCE UNIT: She equips the weapons. So we need to set_item_state for each weapon (revolver, machete). They become \"equipped\". Owner is Mara. Items: revolver and machete. The state effect: {\"op\":\"set_item_state\",\"entity\":\"revolver\",\"owner\":\"Mara\",\"value\":\"equipped\"}; same for machete.\n\nReturn JSON with key state_effects containing array of these objects? It says Return one JSON object with exactly one key: state_effects. So value should be an array of the effects. Let's produce:\n\n{\n  \"state_effects\": [\n    {\"op\":\"set_item_state\",\"entity\":\"revolver\",\"owner\":\"Mara\",\"value\":\"equipped\"},\n    {\"op\":\"set_item_state\",\"entity\":\"machete\",\"owner\":\"Mara\",\"value\":\"equipped\"}\n  ]\n}\n\nCheck: The entity names are exactly as items. Good.\n\nReturn only JSON.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 373,
+      "completion_tokens": 368,
+      "total_tokens": 741,
+      "completion_tokens_details": {
+        "reasoning_tokens": 308
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749526.5197918,
+  "status": "ok"
+}
