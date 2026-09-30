@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-gpt-state-rush-2591",
+  "kind": "llama_chat",
+  "started_at": 1790749360.427936,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nMara rushes Jonah to the shelter, gets him inside, and then locks the door.\n\nDEFINED SUBJECTS:\nMara = adult; Jonah = child\n\nFor movement/containment, assign state to the entity whose FINAL place actually changes, not to the actor/helper causing the movement. If A gets B inside X, emit B -> X only. Do NOT emit A -> X unless the source separately says A enters or remains in X.\nReturn one JSON object with exactly one key: state_effects."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-p1gkmpu8yny5mxt5bee4b",
+    "object": "chat.completion",
+    "created": 1790749360,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"state_effects\":[\"Jonah in Shelter\",\"Door locked\"]}",
+          "reasoning": "We need to extract explicit persistent post-unit state only. The unit: \"Mara rushes Jonah to the shelter, gets him inside, and then locks the door.\"\n\nSubjects: Mara adult; Jonah child.\n\nMovement/containment: assign state to entity whose final place changes. So Jonah moves into shelter. So we emit Jonah -> Shelter. Also lock door? That is a state effect on door: Door locked. But subject? The door is not defined as subject but it's an object. We can include state of door: door -> locked. But the instruction says \"state_effects\" key with array? It says return one JSON object with exactly one key: state_effects. So value likely list of effects.\n\nWe need to extract explicit persistent post-unit state only, no inference from activity. The movement is explicit: Jonah inside shelter. Door locked is explicit. Also Mara remains outside? Not specified that she moves into shelter; she rushes him to the shelter and gets him inside, but doesn't say she enters. So we don't emit Mara -> Shelter.\n\nThus state_effects: [\"Jonah in Shelter\", \"Door locked\"] maybe format as objects? The instruction didn't specify format of each effect. But likely simple string representation. Let's produce array of strings.\n\nReturn JSON: {\"state_effects\": [\"Jonah in Shelter\", \"Door locked\"]}",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 198,
+      "completion_tokens": 298,
+      "total_tokens": 496,
+      "completion_tokens_details": {
+        "reasoning_tokens": 274
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749364.6708605,
+  "status": "ok"
+}
