@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-gpt-finite-cooking-2590",
+  "kind": "llama_chat",
+  "started_at": 1790749307.1967885,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the director for one 8-second video clip. Show the required action happening on screen; do not replace an assigned action with a static aftermath. Use timed micro-beats from 00:00.000 through at least 00:06.000. Return only the timed scene."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Amy is at home cooking breakfast for her young kids. CURRENT BEAT: Amy cooks breakfast and finishes the meal. NEXT BEAT: danger begins later; do not show it."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-8uhv3ksef3jktp65n5gmp",
+    "object": "chat.completion",
+    "created": 1790749307,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "00:00.000 – Amy places a skillet on the burner, greases it with butter.  \n00:01.500 – She cracks two eggs into a bowl, whisking them lightly.  \n00:02.700 – Amy pours the eggs into the skillet; sizzling starts and aroma fills the kitchen.  \n00:04.200 – She flips the omelette, folds in cheese and diced veggies, then plates it with toast.  \n00:05.400 – Kids rush into the kitchen, eyes wide as they spot the finished breakfast.  \n00:06.000 – Amy smiles at her kids, setting a spoonful of omelette on each plate.  \n00:07.200 – The kids take their first bites, laughter echoing around the table.  \n00:08.000 – Amy watches them eat happily, content with a job well done.",
+          "reasoning": "We need to produce a timed micro-beats sequence from 00:00.000 through at least 00:06.000 showing Amy cooking breakfast for her kids, finishing the meal. Then next beat is danger begins later but we don't show it.\n\nSo we need to give timed scene with actions, like \"Amy cracks eggs\", etc. Use micro-beats format maybe like:\n\n00:00.000 - Amy stands at stove...\n00:01.200 - She cracks an egg...\n...\n\nWe need at least 6 seconds. We can do 8-second clip as director says. Provide only timed scene.\n\nLet's craft something like:\n\n00:00.000 – Amy places a skillet on the burner, greases it with butter.\n00:01.500 – She cracks two eggs into a bowl, whisking them lightly.\n00:02.700 – Amy pours the eggs into the skillet, sizzling starts.\n00:04.200 – She flips the omelette, folds in cheese and diced veggies.\n00:05.400 – The omelette is plated; she sets it on a plate with toast.\n00:06.000 – Kids rush in, excited to eat.\n\nThat covers up to 6 sec. We can extend to 8 seconds: 07.200 kids take bites. 08.000 Amy smiles.\n\nWe need micro-beats from 00:00.000 through at least 00:06.000. So we provide until maybe 08.000. Should be fine.\n\nReturn only the timed scene. No extra commentary.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 171,
+      "completion_tokens": 502,
+      "total_tokens": 673,
+      "completion_tokens_details": {
+        "reasoning_tokens": 316
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749314.117421,
+  "status": "ok"
+}
