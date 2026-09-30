@@ -438,3 +438,11 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Added a focused regression proving the rejected candidate and concrete failure are passed into the repair callback.
 - Next checkpoint: run the focused Beat validation regressions, then rerun the Qwen planning/beat path. Beat 1 should be repaired from an ongoing cooking action into a visibly completed endpoint instead of repeating the same candidate.
 
+## 2026-09-29 — Qwen finite-endpoint repair wording made procedural
+
+- Acceptance `2521` developer logs proved the Beat repair plumbing works: Qwen receives the rejected Beat 1 text and the exact finite-endpoint failure on every retry.
+- Qwen nevertheless returned the rejected sentence verbatim at temperature 0. This is a prompt-comprehension failure, not a parser or sampling failure.
+- The phrase "observable completion endpoint" was too abstract for this model. Finite-endpoint repair now adds one concrete procedural rule: rewrite the same finite activity so it visibly finishes inside the beat, state the ordinary completed result, do not leave progressive/in-progress wording, and do not advance into the next story event.
+- Temperature remains 0. No validator rule was weakened and no new semantic stage was added.
+- The same `2521` logs also exposed a separate upstream state issue: later Beat CREATE prompts incorrectly say Amy is inside the locked basement. Do not conflate that with the finite-endpoint loop; inspect source-unit state extraction after Beat 1 repair advances.
+

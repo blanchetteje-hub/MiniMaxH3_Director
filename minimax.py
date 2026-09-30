@@ -16741,10 +16741,21 @@ def generate_beats_from_story(
         rejected_text = " ".join(
             str(rejected_candidate or "").split()
         ).strip()
+        correction_detail = str(correction or "").strip()
+        repair_rule = ""
+        if "finite assigned activity is still underway" in correction_detail.casefold():
+            repair_rule = (
+                "\nREQUIRED FIX: Rewrite the same finite activity so it visibly "
+                "finishes inside this beat. State the ordinary completed result of "
+                "that activity. Do not leave the activity merely in progress or use "
+                "progressive wording such as 'is doing' or 'continues doing'. "
+                "Do not advance into the next story event."
+            )
         correction_text = (
             f"REPAIR BEAT {beat_number}.\n"
             f"REJECTED BEAT: {rejected_text or 'N/A'}\n"
-            f"PROBLEM TO FIX: {str(correction or '').strip()}\n"
+            f"PROBLEM TO FIX: {correction_detail}"
+            f"{repair_rule}\n"
             "Keep the assigned event and story meaning. Change only what is needed "
             "to fix the problem. Do not return the rejected beat unchanged. "
             f"Return Beat {beat_number} only."
