@@ -39,9 +39,9 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             candidate_beat="Amy cooks breakfast.",
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("Named relational participants are material", prompt)
+        self.assertIn("Relational roles are material", prompt)
         self.assertIn(
-            "Reject a solo rewrite that drops named beneficiaries or participants",
+            "Reject a rewrite that changes or drops a required beneficiary/ participant",
             prompt,
         )
         self.assertIn(
@@ -81,6 +81,11 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         calls = []
 
         def llm_request(messages, **kwargs):
+            purpose = kwargs.get("history_metadata", {}).get("purpose")
+            if purpose == "beat_finite_endpoint_extract":
+                return {"status": "COMPLETE"}
+            if purpose == "beat_coherence_validation":
+                return {"valid": True, "issue": ""}
             calls.append((messages, kwargs))
             response = (
                 validator(messages, **kwargs)
@@ -228,6 +233,11 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
         calls = []
 
         def validator(messages, **kwargs):
+            purpose = kwargs.get("history_metadata", {}).get("purpose")
+            if purpose == "beat_finite_endpoint_extract":
+                return {"status": "NOT_APPLICABLE"}
+            if purpose == "beat_coherence_validation":
+                return {"valid": True, "issue": ""}
             calls.append(messages)
             return {"valid": True, "issue": ""}
 
