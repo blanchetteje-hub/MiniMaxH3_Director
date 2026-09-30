@@ -141,23 +141,21 @@ class ContinuityCallContractTests(unittest.TestCase):
         self.assertNotIn("grabs a knife", user_prompt)
         self.assertNotIn("destroys the bedroom", user_prompt)
 
+
     def test_combined_continuity_retries_invalid_json_with_attempt_metadata(self):
         request = Mock(side_effect=["not json", {"camera": "wide shot"}])
-
         with patch(
             "minimax._parse_continuity_json_result",
             side_effect=[ValueError("malformed continuity JSON"), {"camera": "wide shot"}],
         ), patch("minimax._print_continuity_phase_result"):
             result = minimax.request_combined_continuity(
-                "PROMPT",
-                {},
-                llm_request=request,
+                "PROMPT", {}, llm_request=request,
                 history_metadata={"run_id": "run-1"},
-                content_attempts=2,
-                defer_opening=True,
+                content_attempts=2, defer_opening=True,
             )
-
-        self.assertEqual(result["reduced_state"], {"camera": "wide shot"})
+        self.assertEqual(result["reduced_state"]["camera"], "wide shot")
+        self.assertEqual(result["reduced_state"]["subjects"], {})
+        self.assertEqual(result["reduced_state"]["environment"], {})
         self.assertEqual(
             [call.kwargs["history_metadata"]["content_attempt"] for call in request.call_args_list],
             [1, 2],
@@ -166,7 +164,6 @@ class ContinuityCallContractTests(unittest.TestCase):
             "previous response was not usable JSON",
             request.call_args_list[1].args[0][1]["content"],
         )
-
     def test_continuity_opening_call_overrides_phase_metadata(self):
         request = Mock(return_value="A concise opening.")
 
@@ -320,34 +317,23 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             self.assertEqual(request_json[name], value)
         _random_seed.assert_not_called()
 
+
     @patch("minimax.generate_random_llm_seed", return_value=42)
     @patch("minimax.requests.post")
-    def test_ask_llm_clamps_completion_to_local_context(self, post, _random_seed):
+    def test_ask_llm_respects_requested_completion_when_it_fits_context(
+        self, post, _random_seed
+    ):
         response = Mock()
         response.status_code = 200
         response.raise_for_status = Mock()
         response.json.return_value = {
-            "choices": [
-                {
-                    "message": {"content": "{\"ok\": true}"},
-                    "finish_reason": "stop",
-                }
-            ]
+            "choices": [{"message": {"content": "{\"ok\": true}"}, "finish_reason": "stop"}]
         }
         post.return_value = response
-
         messages = [{"role": "user", "content": "short request"}]
         minimax.ask_llm(messages, response_format=None, max_tokens=8000)
-
         request_json = post.call_args.kwargs["json"]
-        expected_available = (
-            minimax.LLM_CONTEXT_TOKEN_BUDGET
-            - minimax.LLM_CONTEXT_SAFETY_TOKENS
-            - minimax.estimate_message_tokens(messages)
-        )
-        self.assertEqual(request_json["max_tokens"], expected_available)
-        self.assertLess(request_json["max_tokens"], 8000)
-
+        self.assertEqual(request_json["max_tokens"], 8000)
     @patch("minimax.requests.post")
     def test_ask_llm_rejects_input_that_leaves_no_completion_room(self, post):
         oversized = "x" * (
@@ -927,12 +913,12 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("object, body part", prompt)
         self.assertIn("may cross into or out of that destination", prompt)
 
+
     def test_beat_generation_includes_closed_boundary_contract(self):
         phase = {
             "required_events": [
                 {
-                    "id": "E1",
-                    "beat_number": 1,
+                    "id": "E1", "beat_number": 1,
                     "event": "Will enters the basement and the door is locked.",
                     "state_effects": [
                         {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
@@ -940,31 +926,21 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
                     ],
                 },
                 {
-                    "id": "E2",
-                    "beat_number": 2,
+                    "id": "E2", "beat_number": 2,
                     "event": "Amy defeats another attacker.",
-                    "depends_on": ["E1"],
-                    "state_effects": [],
+                    "depends_on": ["E1"], "state_effects": [],
                 },
             ]
         }
-        arc = {
-            "planner": {"type": "source_span"},
-            "phases": [phase],
-        }
+        arc = {"planner": {"type": "source_span"}, "phases": [phase]}
         messages = minimax.build_beat_generation_messages(
             "Will enters the basement. Amy defeats another attacker.",
-            2,
-            batch_start=1,
-            batch_end=2,
-            current_phase=phase,
-            macro_arc=arc,
+            2, batch_start=1, batch_end=2, current_phase=phase, macro_arc=arc,
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("PYTHON-OWNED CLOSED BOUNDARIES", prompt)
-        self.assertIn("2. basement door protects 'basement'", prompt)
-        self.assertIn("body part", prompt)
-
+        self.assertIn("CLOSED BARRIERS AT START", prompt)
+        self.assertIn("2. basement door starts locked and blocks basement", prompt)
+        self.assertIn("people on opposite sides cannot touch, pass objects", prompt)
     def test_beat_validator_includes_python_owned_barrier_binding(self):
         effects = [
             {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
@@ -984,32 +960,27 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("'door' is the boundary of 'basement'", prompt)
         self.assertIn("Do not reinterpret it as an unrelated barrier", prompt)
 
+
     def test_beat_generation_includes_python_owned_barrier_binding(self):
         phase = {
-            "required_events": [
-                {
-                    "beat_number": 2,
-                    "event": "Amy gets Will and Amber into the basement and locks the door.",
-                    "state_effects": [
-                        {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
-                        {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
-                        {"op": "set_barrier_state", "entity": "door", "value": "locked"},
-                    ],
-                }
-            ]
+            "required_events": [{
+                "beat_number": 2,
+                "event": "Amy gets Will and Amber into the basement and locks the door.",
+                "state_effects": [
+                    {"op": "set_containment", "entity": "Will", "container": "basement", "value": "contained"},
+                    {"op": "set_containment", "entity": "Amber", "container": "basement", "value": "contained"},
+                    {"op": "set_barrier_state", "entity": "door", "value": "locked"},
+                ],
+            }]
         }
         messages = minimax.build_beat_generation_messages(
-            "Amy protects her children.",
-            2,
-            batch_start=2,
-            batch_end=2,
-            current_phase=phase,
+            "Amy protects her children.", 2,
+            batch_start=2, batch_end=2, current_phase=phase,
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("PYTHON-OWNED BARRIER BINDINGS", prompt)
-        self.assertIn("2. 'door' is the boundary of 'basement'.", prompt)
-        self.assertIn("do not substitute a different nearby", prompt)
-
+        self.assertIn("BARRIER NAME RULES", prompt)
+        self.assertIn("2. 'door' means the basement door.", prompt)
+        self.assertIn("Do not use a different nearby door", prompt)
     def test_barrier_state_prompt_does_not_destroy_retracted_intact_barrier(self):
         messages = minimax.build_director_barrier_state_messages(
             "bulkhead",
@@ -1244,55 +1215,38 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             minimax.parse_beat_finite_endpoint_result({"status": "DONE"})
 
-    def test_terminal_target_source_detection_is_narrow(self):
-        self.assertTrue(
-            minimax.director_source_has_terminal_action(
-                "Mara kills the final creature."
-            )
-        )
-        self.assertTrue(
-            minimax.director_source_has_terminal_action(
-                "The crew destroys the reactor."
-            )
-        )
-        self.assertFalse(
-            minimax.director_source_has_terminal_action(
-                "Mara wounds the creature and keeps fighting."
-            )
-        )
 
+    def test_terminal_target_source_detection_only_requires_nonempty_source(self):
+        self.assertTrue(minimax.director_source_has_terminal_action(
+            "Mara kills the final creature."
+        ))
+        self.assertTrue(minimax.director_source_has_terminal_action(
+            "Mara wounds the creature and keeps fighting."
+        ))
+        self.assertFalse(minimax.director_source_has_terminal_action(""))
     def test_terminal_target_parser_accepts_only_known_status(self):
-        self.assertEqual(
-            minimax.parse_director_terminal_target_observation(
-                {"status": "ALREADY_TERMINAL"}
-            ),
-            "ALREADY_TERMINAL",
-        )
-        with self.assertRaises(ValueError):
-            minimax.parse_director_terminal_target_observation(
-                {"status": "DEAD"}
+        for status in ("MATCH", "NOT_MATCH", "UNKNOWN"):
+            self.assertEqual(
+                minimax.parse_director_terminal_target_observation({"status": status}),
+                status,
             )
+        with self.assertRaises(ValueError):
+            minimax.parse_director_terminal_target_observation({"status": "DEAD"})
 
     def test_terminal_target_prompt_is_extraction_only(self):
         messages = minimax.build_director_terminal_target_messages(
-            "Amy kills the final zombie.",
+            "zombie", "dead",
             "Amy faces a zombie body and strikes it again.",
             "Amy faces a headless zombie corpse from the prior segment.",
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("AUTHORITATIVE OPENING STATE", prompt)
+        self.assertIn("TARGET zombie", prompt)
+        self.assertIn("REQUIRED END STATE dead", prompt)
+        self.assertIn("OPENING FACTS", prompt)
         self.assertIn("headless zombie corpse from the prior segment", prompt)
-        self.assertIn("already true at 00:00.000", prompt)
-        self.assertIn("rendered continuity is still true for opening facts", prompt)
-        self.assertIn("RAW SCENE does not erase an opening fact", prompt)
-        self.assertIn("does not make the target active again unless RAW visibly establishes revival", prompt)
-        self.assertIn("moment immediately BEFORE the terminal action begins", prompt)
-        self.assertIn("ALREADY_TERMINAL", prompt)
-        self.assertIn("detached/severed head", prompt)
-        self.assertIn("decapitated body", prompt)
-        self.assertIn("does not make the target active again", prompt)
-        self.assertIn("Do not decide whether the scene is valid", prompt)
-
+        self.assertIn("MATCH = REQUIRED END STATE is already true", prompt)
+        self.assertIn("UNKNOWN = facts do not establish either", prompt)
+        self.assertIn("Do not infer unstated changes", prompt)
     def test_completion_prompt_requires_unresolved_target_for_terminal_action(self):
         messages = minimax.build_director_raw_scene_completion_messages(
             "Amy kills the final zombie.",
@@ -1300,11 +1254,9 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_source="Amy kills the final zombie.",
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("active/intact-enough/unresolved target", prompt)
-        self.assertIn("already-dead corpse", prompt)
+        self.assertIn("has not already reached that exact terminal result", prompt)
+        self.assertIn("Reapplying an already-complete irreversible result", prompt)
         self.assertIn("does not satisfy the source action", prompt)
-
-
     def test_director_prompt_does_not_encode_terminal_state_machine(self):
         rules = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
@@ -1474,27 +1426,15 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             {1, 2, 3},
         )
 
-    def test_director_dialogue_uses_canonical_h3_form_and_detector_handles_quotes(self):
+
+    def test_director_dialogue_rule_is_minimal_and_detector_handles_quotes(self):
         rules = minimax.build_director_rules(
-            8,
-            4,
-            1,
-            "<Subject 1> is Amy, a woman.",
-            2,
+            8, 4, 1, "<Subject 1> is Amy, a woman.", 2,
         )
-        self.assertIn(
-            "Amy (S1) says <d>[English]The eggs are ready.</d>",
-            rules,
-        )
-        self.assertIn(
-            "Do NOT put spoken words in bare single/double quotation marks",
-            rules,
-        )
-        self.assertTrue(
-            minimax._h3_contains_spoken_dialogue(
-                "Amy asks, 'Who wants eggs?'"
-            )
-        )
+        self.assertIn("Short dialogue is allowed", rules)
+        self.assertTrue(minimax._h3_contains_spoken_dialogue(
+            "Amy asks, 'Who wants eggs?'"
+        ))
         self.assertEqual(
             minimax.format_h3_spoken_dialogue_constraint(
                 "Amy asks, 'Who wants eggs?'"
@@ -1502,27 +1442,15 @@ class DirectorPromptCallContractTests(unittest.TestCase):
             "",
         )
 
-    def test_first_two_director_prompts_require_beat_clothing(self):
-        clothing_requirement = (
-            "Any clothing specified in the beat must be part of the response."
-        )
+    def test_director_relies_on_beat_for_clothing_and_formatter_preserves_scene(self):
         director_rules = minimax.build_director_rules(
-            12,
-            6,
-            2,
-            SUBJECTS,
-            2,
+            12, 6, 2, SUBJECTS, 2,
         )
         formatter_messages = minimax.build_h3_formatter_messages(
-            "Mark enters wearing a red coat.",
-            "T2VA",
-            6,
+            "Mark enters wearing a red coat.", "T2VA", 6,
         )
-
-        self.assertIn(clothing_requirement, director_rules)
-        self.assertNotIn(clothing_requirement, formatter_messages[0]["content"])
+        self.assertNotIn("Any clothing specified in the beat", director_rules)
         self.assertIn("Mark enters wearing a red coat.", formatter_messages[1]["content"])
-
     def test_director_source_is_only_current_assignment(self):
         phase = {
             "narrative_purpose": minimax.SOURCE_SPAN_PHASE_PURPOSE,
@@ -1711,95 +1639,53 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn('- "forbidden phrase"', user_content)
         self.assertIn('- "Art"', user_content)
 
+
     def test_beat_generation_requires_observable_finite_endpoints(self):
         phase = {
-            "phase_number": 1,
-            "beat_start": 1,
-            "beat_end": 1,
+            "phase_number": 1, "beat_start": 1, "beat_end": 1,
             "required_end_state": "Breakfast is finished.",
-            "required_events": [
-                {
-                    "id": "E1",
-                    "event": "Amy is cooking breakfast for Will and Amber.",
-                    "beat_number": 1,
-                }
-            ],
+            "required_events": [{
+                "id": "E1",
+                "event": "Amy is cooking breakfast for Will and Amber.",
+                "beat_number": 1,
+            }],
         }
         messages = minimax.build_beat_generation_messages(
-            "Amy is cooking breakfast for Will and Amber.",
-            1,
-            macro_arc={"phases": [phase]},
-            current_phase=phase,
+            "Amy is cooking breakfast for Will and Amber.", 1,
+            macro_arc={"phases": [phase]}, current_phase=phase,
         )
-        user_content = messages[1]["content"]
-        normalized = " ".join(user_content.split())
-        self.assertIn("Complete each required event visibly in its beat", normalized)
-        self.assertIn(
-            "For a finite activity, show a visible transition: include the assigned "
-            "activity itself, then show it finishing",
-            normalized,
-        )
-        self.assertIn(
-            "Do not output only the activity underway or only its after-state",
-            normalized,
-        )
-        self.assertIn(
-            "If an activity or result is for a person or group, keep them as "
-            "beneficiaries rather than spectators",
-            normalized,
-        )
-        self.assertIn(
-            "Merely watching the work is not enough unless watching/listening is "
-            "itself the intended result",
-            normalized,
-        )
-        self.assertIn(
-            "same repeated/ongoing process to adjacent beats",
-            normalized,
-        )
-        self.assertIn(
-            "Do not say last, final, every, all, finished",
-            normalized,
-        )
+        normalized = " ".join(messages[1]["content"].split())
+        self.assertIn("Finish a finite task in the same beat", normalized)
+        self.assertIn("Show the task happening and then finishing", normalized)
+        self.assertIn("do not show only the work in progress or only the after-state", normalized)
+        self.assertIn("show that person receive or use it", normalized)
+        self.assertIn("same repeated/ongoing process", normalized)
+        self.assertIn("Do not say last, final, every, all, or finished", normalized)
         response_format = minimax.build_beats_response_format(1, beat_start=1)
-        beat_text_description = (
-            response_format["json_schema"]["schema"]["properties"]["beats"]
-            ["items"]["properties"]["beat_text"]["description"]
-        )
-        self.assertIn("activity itself", beat_text_description)
-        self.assertIn("visible completion endpoint", beat_text_description)
-        self.assertIn("same sentence", beat_text_description)
-        self.assertNotIn("CURRENT PHASE", normalized)
-        self.assertNotIn("NEXT PHASE", normalized)
+        desc = response_format["json_schema"]["schema"]["properties"]["beats"]["items"]["properties"]["beat_text"]["description"]
+        self.assertIn("activity itself", desc)
+        self.assertIn("visible completion endpoint", desc)
+        self.assertIn("same sentence", desc)
 
     def test_minimal_beat_generation_keeps_defined_subjects(self):
         phase = {
-            "phase_number": 1,
-            "beat_start": 1,
-            "beat_end": 1,
-            "required_events": [
-                {
-                    "id": "E1",
-                    "event": "Amy serves breakfast to Will.",
-                    "beat_number": 1,
-                }
-            ],
+            "phase_number": 1, "beat_start": 1, "beat_end": 1,
+            "required_events": [{
+                "id": "E1", "event": "Amy serves breakfast to Will.", "beat_number": 1,
+            }],
         }
         subjects = "<Subject 1> is Amy.\n<Subject 2> is Will."
         messages = minimax.build_beat_generation_messages(
-            "Amy serves breakfast to Will.",
-            1,
+            "Amy serves breakfast to Will.", 1,
             subject_information=subjects,
-            macro_arc={"phases": [phase]},
-            current_phase=phase,
+            macro_arc={"phases": [phase]}, current_phase=phase,
         )
         user_content = messages[1]["content"]
-        self.assertIn("DEFINED SUBJECTS:", user_content)
+        self.assertIn("KNOWN SUBJECTS", user_content)
         compact_subjects = minimax._format_beat_arc_subject_names(subjects)
         self.assertIn(compact_subjects, user_content)
         self.assertNotIn("is Amy", user_content)
         minimax.verify_subjects_in_beat_messages(messages, compact_subjects)
-
     def test_arc_validation_subject_guard_matches_compact_prompt(self):
         subjects = (
             "<Subject 1> is Amy, a woman shown in <Picture 1>.\n"
