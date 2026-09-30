@@ -1,0 +1,58 @@
+{
+  "job_id": "state-patient-2578",
+  "kind": "llama_chat",
+  "started_at": 1790733461.4586418,
+  "request": {
+    "model": "qwen3.8-27b-obliterated@q3_k_m",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nJon guides Priya through the hatch into the bunker, then shuts it behind her.\n\nDEFINED SUBJECTS:\nJon = adult; Priya = adult\n\nExtract only persistent post-unit facts explicitly established by SOURCE UNIT.\nFor movement/containment, assign state to the entity whose FINAL place actually changes, not to the actor/helper causing the movement. If A leads, rushes, gets, puts, sends, guides, carries, or moves B into X, emit B -> X only. Do NOT emit A -> X unless SOURCE UNIT separately says A also enters or remains in X. Example: \"A gets B inside the shelter, then locks the door\" means B is inside/contained; A is not inside merely because A performed the action.\nWhen the moved entity is explicitly put into/inside a named enclosed place, emit BOTH set_location to that place and set_containment=contained.\nReturn one JSON object with exactly one key: state_effects."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 300,
+    "seed": 43
+  },
+  "response": {
+    "id": "chatcmpl-5dt5w9lu43v4h8htr6vs4e",
+    "object": "chat.completion",
+    "created": 1790733461,
+    "model": "qwen3.8-27b-obliterated@q3_k_m",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "\n\n{\n  \"state_effects\": {\n    \"Priya\": [\"set_location=bunker\", \"set_containment=contained\"]\n  }\n}",
+          "reasoning_content": "",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 230,
+      "completion_tokens": 34,
+      "total_tokens": 264,
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    },
+    "stats": {
+      "total_draft_tokens_count": 30,
+      "accepted_draft_tokens_count": 23,
+      "rejected_draft_tokens_count": 7
+    },
+    "system_fingerprint": "qwen3.8-27b-obliterated@q3_k_m"
+  },
+  "finished_at": 1790733463.173676,
+  "status": "ok"
+}
