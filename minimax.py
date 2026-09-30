@@ -28293,10 +28293,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         assigned_source_for_completion = str(
             bundle.get("assigned_source") or ""
         ).strip()
-        # Legacy/unit callers without authoritative source retain the structural
-        # and self-reported completion checks. The independent semantic verifier
-        # is source-authority based and must not invent authority from derived beat
-        # prose alone.
+        # Legacy/unit callers without authoritative source retain the model's
+        # self-reported completion checks. In production, authoritative SOURCE
+        # exists, so the creative Request 1 model does not validate its own work;
+        # the independent narrow completion verifier owns that judgment.
         if (
             completion_checks_pass
             and (not current_beat_for_completion or not assigned_source_for_completion)
@@ -28306,8 +28306,7 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         ):
             break
         if (
-            completion_checks_pass
-            and current_beat_for_completion
+            current_beat_for_completion
             and assigned_source_for_completion
             and raw_scene.strip()
             and raw_scene != "N/A"
@@ -28574,28 +28573,30 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     flush=True,
                 )
 
-        completion_failures = [
-            label
-            for key, label in (
-                (
-                    "finite_activity_complete",
-                    "finite activity did not visibly reach its endpoint",
-                ),
-                (
-                    "named_beneficiaries_complete",
-                    "named beneficiary requirement was not fully satisfied",
-                ),
-                (
-                    "activity_tools_settled",
-                    "activity-only tool/appliance was not visibly settled",
-                ),
-                (
-                    "beat_complete",
-                    "CURRENT BEAT was not fully completed",
-                ),
+        completion_failures = []
+        if not (current_beat_for_completion and assigned_source_for_completion):
+            completion_failures.extend(
+                label
+                for key, label in (
+                    (
+                        "finite_activity_complete",
+                        "finite activity did not visibly reach its endpoint",
+                    ),
+                    (
+                        "named_beneficiaries_complete",
+                        "named beneficiary requirement was not fully satisfied",
+                    ),
+                    (
+                        "activity_tools_settled",
+                        "activity-only tool/appliance was not visibly settled",
+                    ),
+                    (
+                        "beat_complete",
+                        "CURRENT BEAT was not fully completed",
+                    ),
+                )
+                if not request1_result[key]
             )
-            if not request1_result[key]
-        ]
         if (
             independent_completion is not None
             and not independent_completion["valid"]
