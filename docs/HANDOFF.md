@@ -446,3 +446,19 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - Temperature remains 0. No validator rule was weakened and no new semantic stage was added.
 - The same `2521` logs also exposed a separate upstream state issue: later Beat CREATE prompts incorrectly say Amy is inside the locked basement. Do not conflate that with the finite-endpoint loop; inspect source-unit state extraction after Beat 1 repair advances.
 
+
+
+## 2026-09-29 — Qwen Director sampling separated from deterministic calls
+
+- Acceptance output showed Qwen Director Request 1 becoming overly static at the formatter default temperature of 0.15, repeatedly staging subjects as standing/remaning in place rather than using the beat creatively.
+- Commit `e5a45f110b6b670715a7237048a1ae332e4eeee5` adds a Qwen-only Director Request 1 sampling profile in `minimax.py`:
+  - temperature: 0.50
+  - top_p: 0.92
+  - top_k: 40
+  - min_p: 0.03
+  - presence_penalty: 0.10
+  - frequency_penalty: 0.08
+  - repeat_penalty: 1.08
+  - seed remains 42
+- This profile applies only to the creative RAW-scene Director call. ARC/Beat validators, narrow extractors, and Request 2 keep their existing deterministic/conservative settings.
+- Next checkpoint: pull `gpt-arc-refresh` and rerun the Qwen acceptance locally. Judge whether Request 1 regains useful motion/staging without increasing state/continuity violations. No bridge job is required before that rerun.
