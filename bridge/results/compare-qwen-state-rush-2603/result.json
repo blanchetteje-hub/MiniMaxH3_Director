@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-qwen-state-rush-2603",
+  "kind": "llama_chat",
+  "started_at": 1790749487.3593023,
+  "request": {
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nMara rushes Jonah to the shelter, gets him inside, and then locks the door.\n\nDEFINED SUBJECTS:\nMara = adult; Jonah = child\n\nFor movement/containment, assign state to the entity whose FINAL place actually changes, not to the actor/helper causing the movement. If A gets B inside X, emit B -> X only. Do NOT emit A -> X unless the source separately says A enters or remains in X.\nReturn one JSON object with exactly one key: state_effects."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-d8hedfp1xbl94kcz1h81c",
+    "object": "chat.completion",
+    "created": 1790749487,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"state_effects\":[\"Jonah -> Shelter\",\"Door locked\"]}",
+          "reasoning": "We need to extract explicit persistent post-unit state only. The unit: \"Mara rushes Jonah to the shelter, gets him inside, and then locks the door.\"\n\nSubjects: Mara adult; Jonah child.\n\nMovement/containment: assign state to entity whose final place changes. So Jonah moves into shelter. So we emit Jonah -> Shelter. Also lock door? That is a state effect on door: Door locked. But subject? The door is not defined as subject but it's an object. We can include state of door: locked. Should we include Mara's location? Not explicitly stated that she remains inside; but \"rushes Jonah to the shelter, gets him inside\" implies she also goes into shelter? She rushes him to shelter and gets him inside. Does she get inside too? The phrase \"gets him inside\" could mean she brings him inside, not necessarily that she herself is inside. But likely she is inside as well. However rule: assign state to entity whose final place changes. For Mara, we don't know if her place changed; but it's implied she moved from outside to shelter. But the source says \"rushes Jonah to the shelter\" - that implies Mara moves to shelter too? She rushes him there. So yes, Mara's location changes: Mara -> Shelter. But rule: assign state to entity whose final place actually changes, not to actor/helper causing movement. If A gets B inside X, emit B->X only. Do NOT emit A->X unless source separately says A enters or remains in X. The source doesn't say \"Mara enters shelter\" explicitly; it says she rushes Jonah to the shelter and gets him inside. So we should not emit Mara -> Shelter. Only Jonah -> Shelter.\n\nAlso door locked: state effect on door: Door locked. Should we include that? Yes, it's a state change. So output JSON with key \"state_effects\": array of objects? The instruction says return one JSON object with exactly one key: state_effects. It didn't specify format of value; likely an array of strings or objects. We need to decide.\n\nWe can list as array of strings: [\"Jonah -> Shelter\", \"Door locked\"]. Or maybe objects: {entity:\"Jonah\", location:\"Shelter\"} etc. But simplest is array of strings.\n\nThus output:\n\n{\n  \"state_effects\": [\n    \"Jonah -> Shelter\",\n    \"Door locked\"\n  ]\n}\n\nCheck if any other state: Mara adult, Jonah child are defined but not state changes. So that's it.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 198,
+      "completion_tokens": 540,
+      "total_tokens": 738,
+      "completion_tokens_details": {
+        "reasoning_tokens": 516
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749494.5666268,
+  "status": "ok"
+}
