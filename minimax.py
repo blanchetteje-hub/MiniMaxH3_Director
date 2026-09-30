@@ -891,7 +891,8 @@ READ IN THIS ORDER
 5. NEXT BEAT: later. Do not show it now.
 
 MAKE THE SCENE
-- Show every action and result required by the SOURCE.
+- Complete every action, object interaction, participant role, and visible result required by the SOURCE.
+- Show the required action happening on screen; do not replace an assigned action with a static aftermath that merely says it is already finished.
 - Keep the SOURCE's kind of action. Do not swap it for a different action.
 - If CURRENT BEAT says new, another, or incoming target, use a different target. Do not reuse one already dead, destroyed, or out of action.
 - Keep facts from OPENING STATE unless SOURCE, CURRENT BEAT, or END STATE RULES change them.
@@ -10837,11 +10838,14 @@ Use CURRENT JOB as the only source of required work for this beat. The RESERVED
 FOR LATER section is never required now; it exists only to detect early leakage.
 
 FIRST CHECK — FINITE ENDPOINT: When CURRENT JOB assigns a finite activity or
-task to this beat, CANDIDATE BEAT must show a natural observable completion endpoint
-for that activity in this beat. Merely showing the activity
-underway, continuing, approaching completion, or partly complete is INVALID,
-even when CURRENT JOB itself uses progressive wording such as "is cooking" or
-"is repairing". Do not force a terminal endpoint when CURRENT JOB explicitly
+task to this beat, CANDIDATE BEAT must show that activity occurring in THIS beat
+and reaching a natural observable completion endpoint in THIS beat. An aftermath-
+only rewrite such as "having finished X", "after finishing X", "X is finished",
+or equivalent completed-state wording is INVALID when CURRENT JOB assigns X as
+the action to perform. Merely showing the activity underway, continuing,
+approaching completion, or partly complete is also INVALID, even when CURRENT JOB
+itself uses progressive wording such as "is cooking" or "is repairing". Do not
+force a terminal endpoint when CURRENT JOB explicitly
 describes an ongoing/repeated process such as majority, most, repeatedly,
 throughout, continuing, or an equivalent non-terminal assignment; one valid
 non-terminal instance may satisfy that repeated job.
@@ -10876,8 +10880,9 @@ TEMPORAL ACTION OWNERSHIP: If CURRENT JOB assigns action X to THIS beat, require
 the candidate to narrate X as an event that happens now. Grammar that merely
 presupposes X is already complete is INVALID evidence for X. Examples of invalid
 evidence include "with X done", "with X slain", "after X was completed",
-"once X was finished", "X was already complete", or any equivalent completed-state
-construction. Those phrases describe the result/state after X; they do not depict
+"once X was finished", "X was already complete", "having finished X",
+"after finishing X", or any equivalent completed-state construction. Those
+phrases describe the result/state after X; they do not depict
 the assigned action occurring in this beat. Reject even when the completed state
 matches the desired result and even when later parts of CURRENT JOB are shown
 correctly. Accept only if the candidate also narrates the causative action itself
@@ -16781,11 +16786,13 @@ def generate_beats_from_story(
         repair_rule = ""
         if "finite assigned activity is still underway" in correction_detail.casefold():
             repair_rule = (
-                "\nREQUIRED FIX: Rewrite the same finite activity so it visibly "
-                "finishes inside this beat. State the ordinary completed result of "
-                "that activity. Do not leave the activity merely in progress or use "
-                "progressive wording such as 'is doing' or 'continues doing'. "
-                "Do not advance into the next story event."
+                "\nREQUIRED FIX: Rewrite the same finite activity so the beat "
+                "shows the activity happening and then visibly finishing inside this "
+                "beat. Preserve the causative action itself; do NOT replace it with "
+                "an aftermath-only phrase such as 'having finished', 'after finishing', "
+                "or 'is finished'. End with the ordinary completed result. Do not "
+                "leave the activity merely in progress, and do not advance into the "
+                "next story event."
             )
         correction_text = (
             f"REPAIR BEAT {beat_number}.\n"
