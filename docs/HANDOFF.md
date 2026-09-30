@@ -565,3 +565,16 @@ as blocking acceptance gates.
   restate important visible state more strongly; append segments should lean on
   video continuity and only concise relevant state.
 
+
+
+## 2026-09-30 — Refocus on BEAT generation; frozen Director beats 5-8 invalid
+
+- Active development focus moves back upstream to BEAT generation/validation before further Director tuning.
+- The frozen eight-beat Director test plan was inspected manually and contains a major continuity failure beginning at Beat 5:
+  - Beat 5 has Amy shoot/unlock the basement door after she deliberately locked Will and Amber behind it for safety.
+  - Beat 5/6 then drift spatially around the basement-door encounter instead of preserving Amy outside the children's safe area.
+  - Beat 8 has Amy push the children out in a way that follows from the corrupted containment/location logic rather than a clean safe-room release.
+- Treat frozen Beats 5-8 as INVALID test input. Do not use that plan to judge Director quality or add Director rules.
+- Beats 1-4 are not automatically promoted to gold; the next task is to rebuild and validate the complete eight-beat plan against the locked gold story behavior.
+- A concise reference list of the locked gold beats is now stored in \`docs/GOLD_BEATS.md\`.
+- Next checkpoint: focus on ARC/BEATS output until all eight generated beats preserve story order, containment, actor/location ownership, and end-state continuity. Only then freeze the plan again for Director-only testing.
