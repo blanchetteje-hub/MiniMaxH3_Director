@@ -45,29 +45,82 @@ The project goal is to expand paragraph-scale through multi-page stories into fu
 
 ### Sampling policy by responsibility
 
-Use sampling according to the semantic role of the LLM call.
+Sampling is now a hard responsibility split.
 
-**Creative creation calls use relatively high temperature:**
-- ARC CREATE: moderate-high creativity; start around temperature 0.5-0.7.
-- BEAT CREATE: high creativity; start around temperature 0.7-0.9.
-- Director / RAW scene CREATE: high creativity; start around temperature 0.8-1.0.
-- Creative REPAIR calls should generally inherit an appropriate creative temperature for the artifact being repaired.
+**Creative calls**
+- character canon establishment when configured facts are missing;
+- ARC CREATE and ARC REPAIR;
+- BEAT CREATE and BEAT REPAIR;
+- Director Request 1 / RAW scene creation.
 
-These calls are expected to invent plausible cinematic detail inside unspecified story space while preserving source/canon/continuity.
+All creative calls use the same request profile:
+- temperature: `0.8`
+- top_p: `0.95`
+- top_k: `0`
+- min_p: `0.05`
+- repeat_penalty: `1.15`
+- seed: `42`
+- reasoning enabled
+- reasoning_effort: `high`
+- reasoning budget: `1024` tokens
 
-**Observation, validation, extraction, and translation calls use temperature 0:**
-- semantic extractors;
-- validators/classifiers;
-- state observation calls;
-- deterministic semantic checks;
-- final H3 formatter / translation prompt;
-- schema/state/format repairs whose job is correction rather than creative restaging.
+For llama.cpp's OpenAI-compatible request path, Python sends `reasoning_effort="high"`,
+`thinking_budget_tokens=1024`, and `chat_template_kwargs.enable_thinking=true`.
+
+**Deterministic calls**
+Every LLM call not on the explicit creative allowlist is deterministic by default.
+This includes validators, semantic extractors, continuity/state observers, JSON
+repair, and the final H3 formatter/translator.
+
+Deterministic calls force:
+- temperature: `0`
+- seed: `42`
+
+Existing narrow call-specific sampler values may remain for compatibility, but
+temperature 0 is authoritative.
+
+**llama-server process requirements**
+
+`--deterministic` is a process-level llama.cpp flag, not a per-request JSON
+field. Any llama-server used by this pipeline should therefore be launched with
+`--deterministic`. This stabilizes supported numerical kernels but does not
+remove creative sampling when a request uses temperature 0.8.
+
+The current target server configuration is:
+- `--ctx-size 8192`
+- `--deterministic`
+- `--repeat-penalty 1.15` as a server fallback
+- `--flash-attn on`
+- `--jinja`
+- `--host 0.0.0.0`
+- `--port 1234`
+- `--cache-ram 32768`
+- `--seed 42`
+- `-np 1`
+- `--reasoning-budget-message ". Enough thinking, now answer."`
+
+Do not hard-pin `--reasoning-budget 1024` at server launch when per-request
+creative/deterministic routing is desired; llama.cpp's request-side
+`thinking_budget_tokens` override is used for creative calls. Likewise,
+`reasoning_effort` is sent per creative request so deterministic calls are not
+forced into the creative reasoning profile.
 
 Default principle:
 
-> **Creation calls should sample; observation/verification/translation calls should not.**
+> **Only explicit creative stages may sample. Everything else is deterministic by default.**
 
-Do not use one global temperature for the whole pipeline. Sampling is part of the responsibility split: creativity belongs in CREATE stages, while checking and formatting should be as deterministic as practical.
+### Current optimization focus: beats only
+
+Beat generation is the sole active optimization target.
+
+- Work in the order: **generate -> analyze -> repair -> validate -> regenerate**.
+- Do not tune Director prompts until beat output is trustworthy enough to serve
+  as a stable upstream contract.
+- Reintroduce barrier/state information into Beat CREATE only when a concrete
+  observed beat failure proves that a specific fact is needed.
+- Any reintroduced constraint must be surgical: add the minimum information
+  required to fix the demonstrated failure, then retest.
+- Avoid restoring broad barrier/state prompt blocks wholesale.
 
 ## Development doctrine
 
