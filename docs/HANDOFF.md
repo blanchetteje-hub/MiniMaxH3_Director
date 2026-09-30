@@ -418,3 +418,14 @@ Do not reopen already-verified historical failures unless a fresh run actually r
 - No validator, repair prompt, semantic stage, state operation, or deterministic guard was removed.
 - Next checkpoint: run the focused ARC/Beat prompt regression suite, then compare fresh Qwen planning/beat-generation behavior before simplifying validators or repair prompts.
 
+## 2026-09-29 — Qwen acceptance bridge support + stale regression fixtures
+
+- `tests-2516-qwen-planning` completed: 112 passed, 12 failed, 6 subtests passed. The failures were regression-fixture drift, not live-Qwen behavior:
+  - `tests/test_beat_at_a_time_validator.py` mocks expected only the primary beat-validator call and did not supply the newer finite-endpoint and coherence responses, causing response-list exhaustion / schema failures.
+  - two prompt regressions asserted superseded exact wording after the prompt simplification.
+- The validator fixtures now return `COMPLETE` / `NOT_APPLICABLE` for finite-endpoint checks as appropriate and VALID for coherence, while preserving the original primary-validator assertions. Prompt assertions now target the current semantic wording.
+- `acceptance-2517-qwen-full` did not run MiniMax at all. The bridge rejected the job before process launch with: `Acceptance jobs must use the 'gpt' baseline; got 'qwen'.`
+- Bridge acceptance now permits all formatter models already supported by runtime: `gpt`, `mistral`, and `qwen`. Unsupported model names still fail closed. Added regression coverage that Qwen reaches the acceptance command as `--model qwen`.
+- Relevant commits: `f25b3ec522fec2226eaded7a95374af9fdfc2da9`, `7589afc0cc015324216cc8c1b913f6b17bdd7109`, `35bb5276053276ab2c584e985f066eca60ff4c80`, `032a2c5a65e68f1dea156fce86ee266fa7d39ce3`.
+- Next checkpoint: rerun the corrected regression suite. Then restart the bridge from the updated branch before queueing/running the full Qwen acceptance; a bridge process started before `35bb5276` still has the old in-memory GPT-only gate.
+
