@@ -48,6 +48,10 @@ class BeatRetryHierarchyTests(unittest.TestCase):
                 if validation_count == 1:
                     return {"valid": False, "issue": "Regenerate the current beat."}
                 return {"valid": True, "issue": ""}
+            if purpose == "beat_finite_endpoint_extract":
+                return {"status": "COMPLETE"}
+            if purpose == "beat_coherence_validation":
+                return {"valid": True, "issue": ""}
             raise AssertionError(purpose)
 
         with tempfile.TemporaryDirectory() as directory:
