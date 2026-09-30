@@ -17634,6 +17634,61 @@ def _director_timed_state_restatement_errors(raw_scene):
     return errors
 
 
+def _director_assigned_item_state_errors(raw_scene, assigned_state_effects):
+    """Reject RAW ending carry mode that contradicts typed item state."""
+    text = str(raw_scene or "")
+    try:
+        effects = _validate_state_effects(list(assigned_state_effects or []))
+    except (TypeError, ValueError):
+        return []
+    errors = []
+    for effect in effects:
+        if effect.get("op") != "set_item_state":
+            continue
+        value = effect.get("value")
+        if value not in {"held", "equipped"}:
+            continue
+        item = str(effect.get("entity") or "").strip()
+        if not item:
+            continue
+        escaped = re.escape(item)
+        hold_patterns = (
+            rf"(?i)\b(?:hold(?:s|ing)?|grip(?:s|ping)?|clutch(?:es|ing)?|"
+            rf"carr(?:y|ies|ying))\b[^.\n]{{0,60}}\b{escaped}\b",
+            rf"(?i)\b{escaped}\b[^.\n]{{0,50}}\b(?:in|with)\s+(?:her|his|their|a|the)?\s*hand\b",
+        )
+        equip_patterns = (
+            rf"(?i)\b(?:holster(?:s|ed|ing)?|sheath(?:e|es|ed|ing)?|"
+            rf"strap(?:s|ped|ping)?|sling(?:s|ed|ing)?|clip(?:s|ped|ping)?|"
+            rf"tuck(?:s|ed|ing)?|equip(?:s|ped|ping)?)\b[^.\n]{{0,70}}\b{escaped}\b",
+            rf"(?i)\b{escaped}\b[^.\n]{{0,50}}\b(?:holstered|sheathed|strapped|"
+            rf"slung|clipped|equipped|on\s+(?:her|his|their)\s+(?:hip|waist|belt|back))\b",
+        )
+        hold_positions = [
+            match.start()
+            for pattern in hold_patterns
+            for match in re.finditer(pattern, text)
+        ]
+        equip_positions = [
+            match.start()
+            for pattern in equip_patterns
+            for match in re.finditer(pattern, text)
+        ]
+        last_hold = max(hold_positions, default=-1)
+        last_equip = max(equip_positions, default=-1)
+        if value == "equipped" and last_hold > last_equip:
+            errors.append(
+                f"RAW SCENE ends with {item!r} held in-hand, but typed end state "
+                "requires EQUIPPED on-person and not held."
+            )
+        elif value == "held" and last_equip > last_hold:
+            errors.append(
+                f"RAW SCENE ends with {item!r} equipped/stowed, but typed end state "
+                "requires HELD in-hand."
+            )
+    return errors
+
+
 def _director_unassigned_release_from_storage_errors(raw_scene, assigned_source):
     """Reject awkward release-from-storage wording on retrieval/equipment beats."""
     source = str(assigned_source or "")
@@ -28426,6 +28481,13 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 _director_unassigned_release_from_storage_errors(
                     raw_scene,
                     bundle.get("assigned_source", ""),
+                )
+            )
+        if not structure_errors:
+            structure_errors.extend(
+                _director_assigned_item_state_errors(
+                    raw_scene,
+                    bundle.get("assigned_state_effects", []),
                 )
             )
         if not structure_errors:
