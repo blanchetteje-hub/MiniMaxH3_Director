@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-qwen-state-guide-2604",
+  "kind": "llama_chat",
+  "started_at": 1790749461.6052754,
+  "request": {
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nMara guides Jonah into the shelter and closes the hatch.\n\nDEFINED SUBJECTS:\nMara = adult; Jonah = child\n\nFor movement/containment, assign state to the entity whose FINAL place actually changes, not to the actor/helper causing the movement. If A guides B into X, emit B -> X only unless the source separately says A also enters or remains in X.\nReturn one JSON object with exactly one key: state_effects."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 42,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-egp9ywualxq4tuwmv27or9",
+    "object": "chat.completion",
+    "created": 1790749461,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"state_effects\":[\"Jonah -> shelter\",\"hatch closed\"]}",
+          "reasoning": "We need to extract explicit persistent post-unit state only. The source unit: \"Mara guides Jonah into the shelter and closes the hatch.\" Defined subjects: Mara adult; Jonah child.\n\nMovement/containment rule: assign state to entity whose final place actually changes, not actor/helper causing movement. If A guides B into X, emit B -> X unless source separately says A also enters or remains in X.\n\nSo we have Jonah moves into shelter. So state effect: Jonah -> shelter. Also \"closes the hatch\" indicates that the hatch is closed. But that's a state of hatch? The subject is hatch? It's an object. We need to include state effects for entities whose final place changes, but also maybe other states like hatch closed. The rule says assign state to entity whose FINAL place actually changes. But \"closes the hatch\" is not movement; it's a change in state of hatch: open/closed. Should we include that? The instruction: Extract explicit persistent post-unit state only. So yes, we should capture that hatch is closed.\n\nBut do we need to include Mara's state? She guides Jonah into shelter but doesn't say she enters or remains in shelter. So no state for Mara.\n\nThus state_effects array maybe with two entries: \"Jonah -> shelter\" and \"hatch = closed\". But format? The output JSON object with exactly one key: state_effects. The value likely an array of strings? Or objects? Not specified. Probably array of strings like \"Jonah -> shelter\", \"hatch closed\". Let's check examples? None given.\n\nWe can use array of strings: [\"Jonah -> shelter\", \"hatch closed\"]. But maybe they want mapping? Could be {\"state_effects\": [{\"entity\":\"Jonah\",\"place\":\"shelter\"},{\"entity\":\"hatch\",\"status\":\"closed\"}]}. But instruction: Return one JSON object with exactly one key: state_effects. No further formatting specified.\n\nI'll choose array of strings for simplicity.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 185,
+      "completion_tokens": 428,
+      "total_tokens": 613,
+      "completion_tokens_details": {
+        "reasoning_tokens": 403
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749467.4016361,
+  "status": "ok"
+}
