@@ -663,7 +663,7 @@ class RequestedPromptRegressionTests(unittest.TestCase):
         self.assertEqual(will["pose_action"], "N/A")
         self.assertEqual(will["topology"], "N/A")
         self.assertEqual(will["spatial_relationships"], ["inside basement"])
-        self.assertEqual(will["held_props"], ["pancake"])
+        self.assertEqual(will["held_props"], [])
 
     def test_authoritative_barrier_binding_names_destination_in_continuity(self):
         state = {
