@@ -10725,6 +10725,89 @@ def build_beat_closed_boundary_contracts(current_state, assigned_state_effects):
     return contracts
 
 
+
+_BEAT_BARRIER_STATE_PATTERNS = {
+    "locked": re.compile(r"(?i)\b(?:lock|locks|locked|locking|bolt|bolts|bolted|bolting)\b"),
+    "unlocked": re.compile(r"(?i)\b(?:unlock|unlocks|unlocked|unlocking)\b"),
+    "open": re.compile(r"(?i)\b(?:open|opens|opened|opening)\b"),
+    "closed": re.compile(r"(?i)\b(?:close|closes|closed|closing|shut|shuts|shutting)\b"),
+    "broken": re.compile(r"(?i)\b(?:break|breaks|broke|broken|breaking|shatter|shatters|shattered|shattering|smash|smashes|smashed|smashing)\b"),
+    "destroyed": re.compile(r"(?i)\b(?:destroy|destroys|destroyed|destroying|demolish|demolishes|demolished|demolishing)\b"),
+}
+
+
+def _beat_unassigned_barrier_end_state_errors(
+    current_state,
+    assigned_state_effects,
+    candidate_beat,
+):
+    """Reject explicit final barrier mutations not authorized by typed effects."""
+    if not isinstance(current_state, dict) or not current_state:
+        return []
+    flat_effects = _flatten_beat_assigned_state_effects(
+        assigned_state_effects or []
+    )
+    opening_state = (
+        "SOURCE-AUTHORIZED CURRENT STATE (authoritative if conflict)\n"
+        + json.dumps(current_state, ensure_ascii=False, separators=(",", ":"))
+    )
+    contracts = build_director_preserved_barrier_state_contracts(
+        opening_state,
+        flat_effects,
+    )
+    if not contracts:
+        return []
+
+    text = " ".join(str(candidate_beat or "").split())
+    clauses = [
+        part.strip()
+        for part in re.split(r"(?<=[.!?;])\s+|,\s*(?=(?:then|and then)\b)", text)
+        if part.strip()
+    ]
+    errors = []
+    for contract in contracts:
+        barrier = " ".join(str(contract.get("barrier") or "").split())
+        if not barrier:
+            continue
+        source_state = str(contract.get("source_state") or "").strip().casefold()
+        barrier_re = re.compile(
+            rf"(?i)(?<![\w]){re.escape(barrier)}(?![\w])"
+        )
+        observed = []
+        for index, clause in enumerate(clauses):
+            if not barrier_re.search(clause):
+                # Permit an immediate anaphoric continuation such as
+                # "shoots the lock on the basement door, unlocking it".
+                if index == 0 or not re.search(r"(?i)\b(?:it|door|gate|hatch|window|barrier|lock)\b", clause):
+                    continue
+                previous = clauses[index - 1]
+                if not barrier_re.search(previous):
+                    continue
+            for state_name, pattern in _BEAT_BARRIER_STATE_PATTERNS.items():
+                if pattern.search(clause):
+                    observed.append((index, state_name))
+        if not observed:
+            continue
+        final_state = observed[-1][1]
+        # "unlocked" and "open" are distinct source labels but both contradict
+        # locked/closed unless the original state is explicitly restored later.
+        compatible = {
+            "locked": {"locked"},
+            "blocked": {"locked"},
+            "closed": {"closed"},
+            "open": {"open", "unlocked"},
+            "unlocked": {"open", "unlocked"},
+            "broken": {"broken"},
+            "destroyed": {"destroyed"},
+        }.get(source_state, {source_state})
+        if final_state not in compatible:
+            errors.append(
+                f"Beat changes preserved barrier {barrier!r} from {source_state} "
+                f"to {final_state} without an assigned set_barrier_state effect."
+            )
+    return errors
+
+
 def build_beat_validation_messages(
     previous_final_beat,
     current_state,
@@ -11840,6 +11923,21 @@ def _run_forward_beat_validation(
                 [candidate], phrase_exclusions, beat_start=beat_number
             )
             structural_issues.extend(validate_beat_planning_metadata(candidate))
+            structural_issues.extend(
+                _beat_unassigned_barrier_end_state_errors(
+                    state_before,
+                    [
+                        {
+                            "id": event["id"],
+                            "state_effects": copy.deepcopy(
+                                event.get("state_effects", [])
+                            ),
+                        }
+                        for event in assigned_current_events
+                    ],
+                    candidate,
+                )
+            )
             missing_named_subjects = _missing_named_job_subjects(
                 current_job,
                 candidate,
@@ -13909,6 +14007,26 @@ def parse_source_unit_state_effects(
         str(source_unit_text or ""),
         effects,
     )
+
+    # Inventory state must attach to concrete trackable items, not anaphoric
+    # category words. When SOURCE says "the weapons/tools/items", the extractor
+    # has PREVIOUS SOURCE CONTEXT specifically so it can resolve the concrete
+    # members before returning typed effects.
+    generic_item_groups = {
+        "weapon", "weapons", "tool", "tools", "item", "items",
+        "gear", "equipment", "arsenal",
+    }
+    for effect in effects:
+        if effect.get("op") != "set_item_state":
+            continue
+        entity_key = " ".join(
+            str(effect.get("entity") or "").replace("_", " ").split()
+        ).casefold()
+        if entity_key in generic_item_groups:
+            raise ValueError(
+                "set_item_state must name each concrete item, not generic group "
+                f"{effect.get('entity')!r}; resolve the group from PREVIOUS SOURCE CONTEXT."
+            )
 
     # Free-form destinations/containers/items must remain source-grounded.
     # Entity identity itself may come from subjects.txt/pronoun resolution, so
