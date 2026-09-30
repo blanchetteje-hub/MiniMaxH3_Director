@@ -1,7 +1,0 @@
-{
-  "kind": "run_acceptance",
-  "job_id": "acceptance-2682-director-baseline",
-  "model": "gpt",
-  "code_branch": "gpt-arc-refresh",
-  "timeout_seconds": 3600
-}
