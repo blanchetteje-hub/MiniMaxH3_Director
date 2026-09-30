@@ -88,7 +88,7 @@ class SimplifiedPromptRegressionTests(unittest.TestCase):
             beat_job="Amy is cooking breakfast for her kids.",
             next_beat_job="A zombie attacks.",
             candidate_beat="Amy is in the kitchen having finished cooking breakfast.",
-            state_effects=[],
+            assigned_state_effects=[],
         )
         prompt = messages[-1]["content"]
         self.assertIn('"having finished X"', prompt)
