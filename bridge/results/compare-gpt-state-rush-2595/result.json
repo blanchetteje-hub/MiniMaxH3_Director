@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-gpt-state-rush-2595",
+  "kind": "llama_chat",
+  "started_at": 1790749367.2718608,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Extract explicit persistent post-unit state only. Never infer a state from activity. Return JSON only."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE UNIT:\nMara rushes Jonah to the shelter, gets him inside, and then locks the door.\n\nDEFINED SUBJECTS:\nMara = adult; Jonah = child\n\nFor movement/containment, assign state to the entity whose FINAL place actually changes, not to the actor/helper causing the movement. If A gets B inside X, emit B -> X only. Do NOT emit A -> X unless the source separately says A enters or remains in X.\nReturn one JSON object with exactly one key: state_effects."
+      }
+    ],
+    "stream": false,
+    "temperature": 0,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 43,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-ro7y3vas5zk1hxg9z89h29",
+    "object": "chat.completion",
+    "created": 1790749367,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"state_effects\":[\"Jonah -> Shelter\",\"Door -> Locked\"]}",
+          "reasoning": "We need to extract explicit persistent post-unit state only. The unit: \"Mara rushes Jonah to the shelter, gets him inside, and then locks the door.\"\n\nSubjects: Mara adult; Jonah child.\n\nMovement/containment: assign state to entity whose final place changes. So Jonah moves into shelter. So we emit Jonah -> Shelter. Also lock door? That is a state effect on door: Door locked. But subject? The door is not defined as subject but it's an object. We can include state effect for door: Door -> Locked? Or maybe \"door\" state: locked. Should we include that? The instruction says extract explicit persistent post-unit state only. So yes, door locked.\n\nAlso Mara remains adult; no change. Jonah inside shelter. Door locked.\n\nReturn JSON with key state_effects. Value likely array of effects? They didn't specify format but earlier examples maybe use list of strings or objects. We need to guess. The instruction: \"Return one JSON object with exactly one key: state_effects.\" So value could be an array of strings like [\"Jonah -> Shelter\", \"Door -> Locked\"]. Or maybe objects: {\"entity\":\"Jonah\",\"place\":\"Shelter\"} etc.\n\nWe need to infer from previous tasks? Not given. Let's choose simple array of strings.\n\nThus output:\n\n{\n  \"state_effects\": [\n    \"Jonah -> Shelter\",\n    \"Door -> Locked\"\n  ]\n}\n\nCheck if door name is \"door\" or \"the door\". Use \"Door\". Good.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 198,
+      "completion_tokens": 334,
+      "total_tokens": 532,
+      "completion_tokens_details": {
+        "reasoning_tokens": 309
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749371.808859,
+  "status": "ok"
+}
