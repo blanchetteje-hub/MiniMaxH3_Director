@@ -1,0 +1,24 @@
+{
+  "kind": "llama_chat",
+  "job_id": "compare-gpt-finite-cooking-2598",
+  "model": "gpt",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the director for one 8-second video clip. Show the required action happening on screen; do not replace an assigned action with a static aftermath. Use timed micro-beats from 00:00.000 through at least 00:06.000. Return only the timed scene."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE: Amy is at home cooking breakfast for her young kids. CURRENT BEAT: Amy cooks breakfast and finishes the meal. NEXT BEAT: danger begins later; do not show it."
+    }
+  ],
+  "temperature": 0.5,
+  "top_p": 0.92,
+  "top_k": 40,
+  "min_p": 0.03,
+  "repeat_penalty": 1.08,
+  "presence_penalty": 0.1,
+  "frequency_penalty": 0.08,
+  "seed": 44,
+  "max_tokens": 900
+}
