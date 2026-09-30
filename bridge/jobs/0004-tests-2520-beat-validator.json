@@ -1,0 +1,9 @@
+{
+  "kind": "run_tests",
+  "job_id": "tests-2520-beat-validator",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests/test_beat_at_a_time_validator.py"
+  ],
+  "timeout_seconds": 600
+}
