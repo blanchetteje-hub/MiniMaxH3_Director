@@ -13820,10 +13820,16 @@ Apply these rules in order:
 5. set_object_state only when SOURCE UNIT explicitly states the object's
    resulting state as intact, damaged, destroyed, active, inactive, or used.
    Merely testing/using/replacing an object is not enough.
-6. When SOURCE UNIT explicitly puts an entity into/inside a named enclosed
+6. For movement/containment, assign state to the entity whose FINAL place
+   actually changes, not to the actor/helper causing the movement. If A leads,
+   rushes, gets, puts, sends, guides, carries, or moves B into X, emit B -> X
+   only. Do NOT emit A -> X unless SOURCE UNIT separately says A also enters or
+   remains in X. Example: "A gets B inside the shelter, then locks the door"
+   means B is inside/contained; A is not inside merely because A performed the
+   action. When the moved entity is explicitly put into/inside a named enclosed
    place, emit BOTH set_location to that place and set_containment=contained.
-   When it explicitly lets/removes an entity out of that named place, emit
-   set_containment=free and do not invent a new location.
+   When SOURCE UNIT explicitly lets/removes an entity out of that named place,
+   emit set_containment=free and do not invent a new location.
 7. set_condition only for an explicit persistent visible condition stated after
    the action; copy the condition wording from SOURCE UNIT.
 8. set_clothing only for explicitly worn clothing.
