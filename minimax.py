@@ -513,59 +513,12 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
                 "raw_scene": {
                     "type": "string",
                     "description": (
-                        "Complete timed RAW SCENE for CURRENT BEAT, including "
-                        "the natural visible endpoint of any finite activity. "
-                        "When the activity is for named people, show each named "
-                        "beneficiary receiving or participating in the completed "
-                        "result when physically possible. Preserve held/equipped "
-                        "readiness items unless CURRENT BEAT explicitly changes them."
-                    ),
-                },
-                "finite_activity_complete": {
-                    "type": "boolean",
-                    "description": (
-                        "True only when every finite activity in CURRENT BEAT is "
-                        "visibly finished or CURRENT BEAT explicitly says it "
-                        "remains unfinished/interrupted. True when no finite "
-                        "activity applies."
-                    ),
-                },
-                "named_beneficiaries_complete": {
-                    "type": "boolean",
-                    "description": (
-                        "True only when every named person the CURRENT BEAT says "
-                        "the activity is for visibly receives or participates in "
-                        "the completed result when physically possible. True "
-                        "when no named beneficiary requirement applies."
-                    ),
-                },
-                "activity_tools_settled": {
-                    "type": "boolean",
-                    "description": (
-                        "True only when activity-only tools/appliances reach a stable visible "
-                        "state when physically reasonable. Do not set down, unequip, "
-                        "or discard a held/equipped readiness item merely because one "
-                        "action finished; preserve it unless CURRENT BEAT authorizes "
-                        "that state change. True when no such tool/appliance applies."
-                    ),
-                },
-                "beat_complete": {
-                    "type": "boolean",
-                    "description": (
-                        "True only when finite_activity_complete, "
-                        "named_beneficiaries_complete, and activity_tools_settled "
-                        "are all true and RAW SCENE visibly executes every "
-                        "explicit CURRENT BEAT action, object, and outcome."
+                        "Concrete timed scene that stages CURRENT BEAT without "
+                        "beginning NEXT BEAT."
                     ),
                 },
             },
-            "required": [
-                "raw_scene",
-                "finite_activity_complete",
-                "named_beneficiaries_complete",
-                "activity_tools_settled",
-                "beat_complete",
-            ],
+            "required": ["raw_scene"],
             "additionalProperties": False,
         },
     },
@@ -883,40 +836,26 @@ _BEAT_ABBREVIATIONS = {
 
 DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE = """You are the creative director for one {segment_seconds}-second video segment.
 
-AUTHORITY — obey in this order
-1. ASSIGNED SOURCE says what must happen now.
-2. CURRENT BEAT is staging guidance for that source.
-3. OPENING CONTINUITY STATE says what is already true at 00:00.000.
-4. AUTHORITATIVE FINAL STATE CONTRACT, when supplied, must be true at the end.
-5. NEXT BEAT is forbidden; do not begin, reveal, cause, or foreshadow it.
+JOB
+- ASSIGNED SOURCE is the story authority for what happens now.
+- CURRENT BEAT is the scene to stage in this clip.
+- OPENING CONTINUITY STATE is helpful frame-0 context. Keep concrete relevant facts, but if a broad or generic continuity summary conflicts with CURRENT BEAT, CURRENT BEAT wins.
+- NEXT BEAT is boundary context only. Do not begin it.
 
-DIRECT THE SCENE
-- Complete every action, object interaction, participant role, and visible result assigned to this segment.
-- Preserve concrete assigned actions and interactions; do not replace them with a materially different physical action.
-- When CURRENT BEAT distinguishes a new, another, or incoming target, do not reuse an already terminal target from OPENING CONTINUITY STATE.
-- Preserve established opening state unless ASSIGNED SOURCE/CURRENT BEAT or the FINAL STATE CONTRACT changes it.
-- Do not invent persistent changes: no new injury/death/destruction, ownership/equipment, containment/release, barrier state, wardrobe change, or story-location change.
-- Do not invent structural geography or travel routes. Use only established rooms, doors, stairs, halls, gates, passages, or other structures.
-- Only explicitly authorized subjects may cross a barrier. Helping or moving someone through does not imply the helper follows.
-- Preserve held/equipped readiness items unless the assignment explicitly changes them.
-- Use only externally visible/audible action. Keep prose concrete and concise. Short dialogue is allowed only when it supports CURRENT BEAT and adds no new facts.
-- Prefer names over ambiguous pronouns.
-
-TIMED RAW SCENE
-- First timestamp is exactly "At 00:00.000,".
-- Put each timestamp on its own line using exactly "At 00:ss.mmm,".
-- Use one clear action/event per timestamp. Pace the scene across the full clip: the final timed micro-beat must land in the final quarter of the segment and before {segment_seconds} seconds.
-- Every timestamp must advance visible action. Do not spend a timed micro-beat merely restating unchanged continuity such as a door staying locked or a window remaining broken; unchanged facts belong only in End continuity state.
-- For item retrieval, use ordinary physical verbs such as take, remove, pull out, or pick up. Do not say an item is "released from" a cache, arsenal, container, holster, or sheath unless SOURCE explicitly assigns a release action.
-- Camera movement may clarify action; cuts should be rare.
-- End with one untimed sentence beginning "End continuity state:" that matches the last visible frame. Do not add new facts there.
+WRITE THE SCENE
+- Show CURRENT BEAT clearly with concrete visible/audible action.
+- Use natural physical staging. Harmless local route or prop details are allowed when needed to make the action readable.
+- Prefer names when a pronoun could be ambiguous.
+- Short dialogue is allowed when it naturally supports CURRENT BEAT.
+- Camera movement may clarify action.
+- Keep all timed action inside the {segment_seconds}-second clip.
+- Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
+- After the timed action, add one short "End continuity state:" sentence when useful to describe the last visible frame. Do not add a new event there.
 
 {story_segment_ending_rules}
 
 RETURN JSON ONLY
-{{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true}}
-
-Set the booleans true only when their named requirement is visibly satisfied. beat_complete is true only when the entire assigned segment is complete without entering NEXT BEAT.
+{{"raw_scene":"..."}}
 """
 # Request 2 is a formatter/translator. Request 1 owns creative direction.
 H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a strict formatter/translator for the final MiniMax H3 prompt.
@@ -28412,11 +28351,12 @@ def validate_director_continuity(bundle):
 
 # Run the two-stage Director micro-prompt pipeline for one segment.
 def request_segment_llm(bundle, beats, run_id, run_config):
-    """Run the two-stage Director micro-prompt pipeline for one segment.
+    """Run the two-stage Director pipeline with baseline-first acceptance.
 
-    Request 1 expands the assigned beat into raw_scene and reports whether it
-    completed the beat. Request 2 performs only MiniMax H3 audiovisual
-    formatting and does not own beat completion.
+    ARC/BEATS own story semantics. Request 1 creates a scene. Existing Director
+    state/continuity guards are diagnostics only while the baseline is rebuilt;
+    they must not prevent later segments from being generated. Request 2 is a
+    best-effort H3 formatter/translator.
     """
     del beats
     try:
@@ -28429,7 +28369,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         f"{continuity_source}",
         flush=True,
     )
-    active_beat_id = bundle.get("active_beat_id")
     duration = float(bundle.get("current_duration") or 0)
     if not math.isfinite(duration) or duration <= 0:
         duration = 1.0
@@ -28441,6 +28380,9 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     conditioning_mode = bundle.get("conditioning_mode")
     mode = "I2VA" if conditioning_mode == "clean_refresh" else "T2VA"
 
+    # Keep typed state available for diagnostics, but do not inject Python-owned
+    # final-state/item contracts into the creative Director prompt. Gold prompts
+    # use ordinary visual staging rather than a normalized state ontology.
     request1_base_messages = copy.deepcopy(bundle.get("messages", []))
     current_beat_for_topology = str(bundle.get("current_beat_text") or "").strip()
     request1_topology_contracts = build_director_barrier_topology_contract(
@@ -28453,95 +28395,10 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     request1_barrier_binding = build_director_barrier_binding_contract(
         bundle.get("assigned_state_effects", [])
     )
-    request1_barrier_state_contracts = build_director_barrier_state_contracts(
-        bundle.get("assigned_state_effects", [])
-    )
-    request1_preserved_barrier_state_contracts = (
-        build_director_preserved_barrier_state_contracts(
-            bundle.get("opening_state", ""),
-            bundle.get("assigned_state_effects", []),
-        )
-    )
-    request1_barrier_state_contracts.extend(
-        request1_preserved_barrier_state_contracts
-    )
-    request1_closed_boundary_contracts = build_director_closed_boundary_contracts(
-        bundle.get("opening_state", ""),
-        bundle.get("assigned_state_effects", []),
-    )
-    if request1_base_messages:
-        final_state_lines = []
-        for topology_contract in request1_topology_contracts:
-            destination = topology_contract["destination"]
-            for item in topology_contract["subjects"]:
-                relation = (
-                    f"IN {destination}"
-                    if item["expected"] == "AT_DESTINATION"
-                    else f"NOT IN {destination}"
-                )
-                final_state_lines.append(
-                    f"- {item['entity']}: {relation}."
-                )
 
-        for item in request1_barrier_state_contracts:
-            if item.get("preserved"):
-                final_state_lines.append(
-                    f"- {item['barrier']}: remains {str(item['source_state']).upper()} "
-                    "(already true; it need not be mentioned, but do not contradict it)."
-                )
-            else:
-                final_state_lines.append(
-                    f"- {item['barrier']}: must end {str(item['source_state']).upper()}."
-                )
-
-        if request1_barrier_binding:
-            final_state_lines.append(
-                f"- Barrier {request1_barrier_binding['entity']!r} is the boundary "
-                f"of {request1_barrier_binding['destination']!r}; do not reinterpret it."
-            )
-            if request1_topology_contracts:
-                final_state_lines.append(
-                    f"- Route: move authorized subjects directly through the "
-                    f"{request1_barrier_binding['destination']} boundary; do not invent "
-                    "stairs, hallways, corridors, or any intermediate route."
-                )
-
-        for item in request1_closed_boundary_contracts:
-            final_state_lines.append(
-                f"- {item['barrier']}: do not traverse this boundary in this beat."
-            )
-
-        if final_state_lines:
-            request1_base_messages[-1] = dict(request1_base_messages[-1])
-            request1_base_messages[-1]["content"] = (
-                f"{request1_base_messages[-1].get('content', '')}\n\n"
-                "AUTHORITATIVE FINAL STATE CONTRACT — Python-owned; obey exactly:\n"
-                + "\n".join(final_state_lines)
-            )
-
-    request1_item_state_lines = build_director_item_state_contract(
-        bundle.get("registry_state"),
-        bundle.get("assigned_state_effects", []),
-    )
-    if request1_item_state_lines and request1_base_messages:
-        request1_base_messages[-1] = dict(request1_base_messages[-1])
-        request1_base_messages[-1]["content"] = (
-            f"{request1_base_messages[-1].get('content', '')}\n\n"
-            "CANONICAL ITEM STATE — Python-owned; obey exact meanings:\n"
-            + "\n".join(request1_item_state_lines)
-            + "\nHELD means physically in a hand. EQUIPPED means worn/holstered/"
-              "sheathed/slung on the person and not in a hand. STORED means put away."
-        )
-
-    request1_messages = request1_base_messages
     request1_result = None
     raw_scene = ""
-    default_request1_feedback = (
-        "The previous RAW SCENE did not fully execute CURRENT BEAT. Regenerate "
-        "this same segment and include every explicit required action/object/"
-        "outcome. Do not advance into NEXT BEAT."
-    )
-    request1_feedback = default_request1_feedback
+    request1_messages = request1_base_messages
     for request1_attempt in range(1, DIRECTOR_RAW_SCENE_ATTEMPTS + 1):
         request1_metadata = {
             "run_id": run_id,
@@ -28559,477 +28416,128 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             **_active_director_llm_settings(),
         )
         request1_result = _parse_director_raw_scene_result(raw_scene_result)
-        raw_scene = request1_result["raw_scene"]
-        structure_errors = _director_raw_scene_structure_errors(
-            raw_scene,
-            segment_seconds=duration,
-        )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_explicit_limb_conflict_errors(raw_scene)
+        raw_scene = _canonicalize_director_timestamps(
+            request1_result.get("raw_scene", "")
+        ).strip()
+
+        if raw_scene and raw_scene != "N/A":
+            request1_result["raw_scene"] = raw_scene
+
+            # Baseline-reset rule: old deterministic Director guards report
+            # defects but do not reject or regenerate the scene. This lets a
+            # complete prompt set expose which rules are actually worth adding
+            # back as blockers.
+            diagnostics = []
+
+            def collect_diagnostic(check, *args):
+                try:
+                    result = check(*args)
+                    if isinstance(result, str):
+                        if result.strip():
+                            diagnostics.append(result.strip())
+                    elif result:
+                        diagnostics.extend(str(item) for item in result if str(item).strip())
+                except Exception as error:
+                    diagnostics.append(
+                        f"{getattr(check, '__name__', 'diagnostic')} failed: {error}"
+                    )
+
+            collect_diagnostic(
+                _director_raw_scene_structure_errors,
+                raw_scene,
+                duration,
             )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_explicit_object_state_conflict_errors(raw_scene)
+            collect_diagnostic(_director_explicit_limb_conflict_errors, raw_scene)
+            collect_diagnostic(_director_explicit_object_state_conflict_errors, raw_scene)
+            collect_diagnostic(
+                _director_opening_held_reacquire_errors,
+                raw_scene,
+                bundle.get("registry_state"),
             )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_opening_held_reacquire_errors(
+            collect_diagnostic(
+                _director_opening_held_unassigned_stow_errors,
+                raw_scene,
+                bundle.get("registry_state"),
+                bundle.get("assigned_source", ""),
+            )
+            collect_diagnostic(
+                _director_occupied_hands_errors,
+                raw_scene,
+                bundle.get("registry_state"),
+            )
+            collect_diagnostic(
+                _director_unassigned_release_from_storage_errors,
+                raw_scene,
+                bundle.get("assigned_source", ""),
+            )
+            collect_diagnostic(
+                _director_assigned_item_state_errors,
+                raw_scene,
+                bundle.get("assigned_state_effects", []),
+            )
+            collect_diagnostic(
+                _director_unauthorized_destination_crossing_errors,
+                raw_scene,
+                request1_topology_contracts,
+            )
+            collect_diagnostic(
+                _director_missing_containment_crossing_errors,
+                raw_scene,
+                bundle.get("assigned_state_effects", []),
+                bundle.get("opening_state", ""),
+            )
+            collect_diagnostic(
+                _director_wrong_bound_barrier_errors,
+                raw_scene,
+                request1_barrier_binding,
+            )
+            collect_diagnostic(
+                _director_unassigned_external_end_errors,
+                raw_scene,
+                bundle.get("opening_state", ""),
+                bundle.get("assigned_state_effects", []),
+                bundle.get("subject_definitions", ""),
+            )
+            collect_diagnostic(
+                _director_preserved_containment_errors,
+                raw_scene,
+                bundle.get("opening_state", ""),
+                bundle.get("assigned_state_effects", []),
+            )
+            try:
+                missing_director_subjects = _missing_named_director_subjects(
+                    bundle.get("current_beat_text", ""),
                     raw_scene,
-                    bundle.get("registry_state"),
-                )
-            )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_opening_held_unassigned_stow_errors(
-                    raw_scene,
-                    bundle.get("registry_state"),
-                    bundle.get("assigned_source", ""),
-                )
-            )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_occupied_hands_errors(
-                    raw_scene,
-                    bundle.get("registry_state"),
-                )
-            )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_unassigned_release_from_storage_errors(
-                    raw_scene,
-                    bundle.get("assigned_source", ""),
-                )
-            )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_assigned_item_state_errors(
-                    raw_scene,
-                    bundle.get("assigned_state_effects", []),
-                )
-            )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_unauthorized_destination_crossing_errors(
-                    raw_scene,
-                    request1_topology_contracts,
-                )
-            )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_missing_containment_crossing_errors(
-                    raw_scene,
-                    bundle.get("assigned_state_effects", []),
-                    bundle.get("opening_state", ""),
-                )
-            )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_wrong_bound_barrier_errors(
-                    raw_scene,
-                    request1_barrier_binding,
-                )
-            )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_unassigned_external_end_errors(
-                    raw_scene,
-                    bundle.get("opening_state", ""),
-                    bundle.get("assigned_state_effects", []),
                     bundle.get("subject_definitions", ""),
                 )
-            )
-        if not structure_errors:
-            structure_errors.extend(
-                _director_preserved_containment_errors(
-                    raw_scene,
-                    bundle.get("opening_state", ""),
-                    bundle.get("assigned_state_effects", []),
-                )
-            )
-        missing_director_subjects = _missing_named_director_subjects(
-            bundle.get("current_beat_text", ""),
-            raw_scene,
-            bundle.get("subject_definitions", ""),
-        )
-        if missing_director_subjects:
-            structure_errors.append(
-                "RAW SCENE dropped named Subject(s) explicitly required by "
-                "CURRENT BEAT: " + ", ".join(missing_director_subjects) + "."
-            )
-        completion_checks_pass = all(
-            request1_result[key]
-            for key in (
-                "finite_activity_complete",
-                "named_beneficiaries_complete",
-                "activity_tools_settled",
-                "beat_complete",
-            )
-        )
-        independent_completion = None
-        barrier_topology_issues = []
-        barrier_traversal_issues = []
-        barrier_state_issues = []
-        terminal_target_issue = ""
-        current_beat_for_completion = str(
-            bundle.get("current_beat_text") or ""
-        ).strip()
-        assigned_source_for_completion = str(
-            bundle.get("assigned_source") or ""
-        ).strip()
-        # Legacy/unit callers without authoritative source retain the model's
-        # self-reported completion checks. In production, authoritative SOURCE
-        # exists, so the creative Request 1 model does not validate its own work;
-        # the independent narrow completion verifier owns that judgment.
-        if (
-            completion_checks_pass
-            and (not current_beat_for_completion or not assigned_source_for_completion)
-            and raw_scene.strip()
-            and raw_scene != "N/A"
-            and not structure_errors
-        ):
-            break
-        if (
-            current_beat_for_completion
-            and assigned_source_for_completion
-            and raw_scene.strip()
-            and raw_scene != "N/A"
-            and not structure_errors
-        ):
-            completion_metadata = {
-                "run_id": run_id,
-                "source_sha256": (run_config or {}).get("source_sha256"),
-                "purpose": "director_raw_scene_completion",
-                "use_beat_validation_settings": True,
-                "segment": segment_number,
-                "attempt": request1_attempt,
-                "conditioning_mode": conditioning_mode,
-                "opening_state_sha256": bundle.get("opening_state_sha256"),
-            }
-            try:
-                independent_completion = parse_director_raw_scene_completion(
-                    ask_llm(
-                        build_director_raw_scene_completion_messages(
-                            current_beat_for_completion,
-                            raw_scene,
-                            bundle.get("assigned_source", ""),
-                            bundle.get("opening_state", ""),
-                            bundle.get("assigned_state_effects", []),
-                            request1_barrier_binding,
-                        ),
-                        response_format=DIRECTOR_RAW_SCENE_COMPLETION_RESPONSE_FORMAT,
-                        history_metadata=completion_metadata,
+                if missing_director_subjects:
+                    diagnostics.append(
+                        "RAW SCENE dropped named Subject(s) explicitly required by "
+                        "CURRENT BEAT: " + ", ".join(missing_director_subjects) + "."
                     )
+            except Exception as error:
+                diagnostics.append(
+                    f"_missing_named_director_subjects failed: {error}"
                 )
-            except (TypeError, ValueError, json.JSONDecodeError) as error:
-                independent_completion = {
-                    "valid": False,
-                    "issue": "completion verifier returned unusable output: " + str(error),
-                }
-            if independent_completion["valid"]:
-                terminal_contracts = build_director_terminal_state_contracts(
-                    bundle.get("assigned_state_effects") or []
-                )
-                for terminal_index, terminal_contract in enumerate(
-                    terminal_contracts,
-                    start=1,
-                ):
-                    terminal_metadata = {
-                        "run_id": run_id,
-                        "source_sha256": (run_config or {}).get("source_sha256"),
-                        "purpose": "director_terminal_target_extract",
-                        "use_beat_validation_settings": True,
-                        "segment": segment_number,
-                        "attempt": request1_attempt,
-                        "terminal_index": terminal_index,
-                        "conditioning_mode": conditioning_mode,
-                        "opening_state_sha256": bundle.get("opening_state_sha256"),
-                    }
-                    try:
-                        terminal_status = parse_director_terminal_target_observation(
-                            ask_llm(
-                                build_director_terminal_target_messages(
-                                    terminal_contract["target"],
-                                    terminal_contract["required_end_state"],
-                                    raw_scene,
-                                    (
-                                        str(bundle.get("opening_state", "") or "")
-                                        + "\n\nEXACT PREVIOUS FINAL FRAME\n"
-                                        + str(bundle.get("previous_final_frame", "") or "N/A")
-                                    ),
-                                ),
-                                response_format=DIRECTOR_TERMINAL_TARGET_RESPONSE_FORMAT,
-                                history_metadata=terminal_metadata,
-                            )
-                        )
-                    except (TypeError, ValueError, json.JSONDecodeError) as error:
-                        terminal_target_issue = (
-                            "terminal-target extractor returned unusable output: "
-                            + str(error)
-                        )
-                        break
-                    if terminal_status == "MATCH":
-                        terminal_target_issue = (
-                            f"{terminal_contract['target']} already has assigned "
-                            f"end state {terminal_contract['required_end_state']} "
-                            "before the action begins."
-                        )
-                        break
-                if terminal_target_issue:
-                    print(
-                        "Director Request 1 terminal-target check failed: "
-                        + terminal_target_issue,
-                        flush=True,
-                    )
 
-                topology_contracts = request1_topology_contracts
-                for topology_index, topology_contract in enumerate(
-                    topology_contracts,
-                    start=1,
-                ):
-                    topology_subjects = [
-                        item["entity"]
-                        for item in topology_contract["subjects"]
-                    ]
-                    topology_metadata = {
-                        "run_id": run_id,
-                        "source_sha256": (run_config or {}).get("source_sha256"),
-                        "purpose": "director_barrier_side_extract",
-                        "use_beat_validation_settings": True,
-                        "segment": segment_number,
-                        "attempt": request1_attempt,
-                        "topology_index": topology_index,
-                        "conditioning_mode": conditioning_mode,
-                        "opening_state_sha256": bundle.get("opening_state_sha256"),
-                    }
-                    try:
-                        topology_observation = (
-                            parse_director_barrier_side_observation(
-                                ask_llm(
-                                    build_director_barrier_side_messages(
-                                        topology_contract["destination"],
-                                        topology_subjects,
-                                        raw_scene,
-                                    ),
-                                    response_format=DIRECTOR_BARRIER_SIDE_RESPONSE_FORMAT,
-                                    history_metadata=topology_metadata,
-                                ),
-                                topology_subjects,
-                            )
-                        )
-                    except (TypeError, ValueError, json.JSONDecodeError) as error:
-                        barrier_topology_issues.append(
-                            "barrier-side extractor returned unusable output: "
-                            + str(error)
-                        )
-                        break
-                    barrier_topology_issues.extend(
-                        compare_director_barrier_topology(
-                            topology_contract,
-                            topology_observation,
-                        )
-                    )
-                    if barrier_topology_issues:
-                        break
-                if not terminal_target_issue and not barrier_topology_issues:
-                    for traversal_index, boundary_contract in enumerate(
-                        request1_closed_boundary_contracts,
-                        start=1,
-                    ):
-                        traversal_metadata = {
-                            "run_id": run_id,
-                            "source_sha256": (run_config or {}).get("source_sha256"),
-                            "purpose": "director_barrier_traversal_extract",
-                            "use_beat_validation_settings": True,
-                            "segment": segment_number,
-                            "attempt": request1_attempt,
-                            "traversal_index": traversal_index,
-                            "conditioning_mode": conditioning_mode,
-                            "opening_state_sha256": bundle.get("opening_state_sha256"),
-                        }
-                        try:
-                            traversal_status = parse_director_barrier_traversal_observation(
-                                ask_llm(
-                                    build_director_barrier_traversal_messages(
-                                        boundary_contract["barrier"],
-                                        raw_scene,
-                                        boundary_contract.get("destination"),
-                                    ),
-                                    response_format=DIRECTOR_BARRIER_TRAVERSAL_RESPONSE_FORMAT,
-                                    history_metadata=traversal_metadata,
-                                )
-                            )
-                        except (TypeError, ValueError, json.JSONDecodeError) as error:
-                            barrier_traversal_issues.append(
-                                "barrier-traversal extractor returned unusable output: "
-                                + str(error)
-                            )
-                            break
-                        if traversal_status == "TRAVERSED":
-                            barrier_traversal_issues.append(
-                                f"{boundary_contract['barrier']} begins "
-                                f"{boundary_contract['state']} and current typed "
-                                "effects authorize no traversal through it."
-                            )
-                            break
-                if (
-                    not terminal_target_issue
-                    and not barrier_topology_issues
-                    and not barrier_traversal_issues
-                ):
-                    for state_index, state_contract in enumerate(
-                        request1_barrier_state_contracts,
-                        start=1,
-                    ):
-                        state_metadata = {
-                            "run_id": run_id,
-                            "source_sha256": (run_config or {}).get("source_sha256"),
-                            "purpose": "director_barrier_state_extract",
-                            "use_beat_validation_settings": True,
-                            "segment": segment_number,
-                            "attempt": request1_attempt,
-                            "state_index": state_index,
-                            "conditioning_mode": conditioning_mode,
-                            "opening_state_sha256": bundle.get("opening_state_sha256"),
-                        }
-                        try:
-                            observed_state = parse_director_barrier_state_observation(
-                                ask_llm(
-                                    build_director_barrier_state_messages(
-                                        (
-                                            f"{state_contract['barrier']} that is the "
-                                            f"boundary of {request1_barrier_binding['destination']}"
-                                            if (
-                                                request1_barrier_binding
-                                                and str(request1_barrier_binding.get("entity", "")).casefold()
-                                                == str(state_contract["barrier"]).casefold()
-                                            )
-                                            else state_contract["barrier"]
-                                        ),
-                                        raw_scene,
-                                    ),
-                                    response_format=DIRECTOR_BARRIER_STATE_RESPONSE_FORMAT,
-                                    history_metadata=state_metadata,
-                                )
-                            )
-                        except (TypeError, ValueError, json.JSONDecodeError) as error:
-                            barrier_state_issues.append(
-                                "barrier-state extractor returned unusable output: "
-                                + str(error)
-                            )
-                            break
-                        state_issue = compare_director_barrier_state(
-                            state_contract,
-                            observed_state,
-                        )
-                        if state_issue:
-                            barrier_state_issues.append(state_issue)
-                            break
-                if (
-                    not terminal_target_issue
-                    and not barrier_topology_issues
-                    and not barrier_traversal_issues
-                    and not barrier_state_issues
-                ):
-                    break
-                if barrier_topology_issues:
-                    print(
-                        "Director Request 1 barrier topology check failed: "
-                        + "; ".join(barrier_topology_issues),
-                        flush=True,
-                    )
-                if barrier_traversal_issues:
-                    print(
-                        "Director Request 1 closed-boundary traversal check failed: "
-                        + "; ".join(barrier_traversal_issues),
-                        flush=True,
-                    )
-                if barrier_state_issues:
-                    print(
-                        "Director Request 1 barrier final-state check failed: "
-                        + "; ".join(barrier_state_issues),
-                        flush=True,
-                    )
-            else:
+            if diagnostics:
                 print(
-                    "Director Request 1 independent completion check failed: "
-                    + independent_completion["issue"],
+                    f"Director baseline diagnostics for Segment {segment_number} "
+                    "(non-blocking):",
                     flush=True,
                 )
-
-        completion_failures = []
-        if not (current_beat_for_completion and assigned_source_for_completion):
-            completion_failures.extend(
-                label
-                for key, label in (
-                    (
-                        "finite_activity_complete",
-                        "finite activity did not visibly reach its endpoint",
-                    ),
-                    (
-                        "named_beneficiaries_complete",
-                        "named beneficiary requirement was not fully satisfied",
-                    ),
-                    (
-                        "activity_tools_settled",
-                        "activity-only tool/appliance was not visibly settled",
-                    ),
-                    (
-                        "beat_complete",
-                        "CURRENT BEAT was not fully completed",
-                    ),
-                )
-                if not request1_result[key]
-            )
-        if (
-            independent_completion is not None
-            and not independent_completion["valid"]
-        ):
-            completion_failures.append(
-                "independent completion check: " + independent_completion["issue"]
-            )
-        if terminal_target_issue:
-            completion_failures.append(
-                "terminal target check: " + terminal_target_issue
-            )
-        if barrier_topology_issues:
-            completion_failures.append(
-                "barrier topology check: " + "; ".join(barrier_topology_issues)
-            )
-        if barrier_traversal_issues:
-            completion_failures.append(
-                "closed-boundary traversal check: "
-                + "; ".join(barrier_traversal_issues)
-            )
-        if barrier_state_issues:
-            completion_failures.append(
-                "barrier final-state check: " + "; ".join(barrier_state_issues)
-            )
-        request1_feedback = (
-            "RAW SCENE STRUCTURE ERROR: "
-            + " ".join(structure_errors)
-            + " Regenerate the same segment with timed micro-beats and one "
-            "non-empty trailing End continuity state."
-            if structure_errors
-            else (
-                "REQUEST 1 COMPLETION ERROR: "
-                + "; ".join(completion_failures)
-                + ". Regenerate the same segment and fix those exact "
-                "completion failures without advancing into NEXT BEAT."
-                if completion_failures
-                else default_request1_feedback
-            )
-        )
+                for issue in dict.fromkeys(diagnostics):
+                    print(f"  WARNING: {issue}", flush=True)
+            break
 
         if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
             raise BeatGenerationError(
-                f"Director Request 1 did not confirm completion of Beat "
-                f"{active_beat_id or segment_number} after "
-                f"{DIRECTOR_RAW_SCENE_ATTEMPTS} attempts."
+                f"Director Request 1 returned no usable RAW SCENE for Segment "
+                f"{segment_number} after {DIRECTOR_RAW_SCENE_ATTEMPTS} attempts."
             )
 
         print(
-            f"Director Request 1 did not confirm a complete CURRENT BEAT "
+            f"Director Request 1 returned no usable RAW SCENE "
             f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
             "retrying the same segment.",
             flush=True,
@@ -29039,11 +28547,11 @@ def request_segment_llm(bundle, beats, run_id, run_config):
             request1_messages[-1] = dict(request1_messages[-1])
             request1_messages[-1]["content"] = (
                 f"{request1_messages[-1].get('content', '')}\n\n"
-                "REQUEST 1 COMPLETION FEEDBACK:\n"
-                f"{request1_feedback}"
+                "RETRY: Return a non-empty timed RAW SCENE for CURRENT BEAT. "
+                "Do not begin NEXT BEAT."
             )
 
-    if request1_result is None:
+    if request1_result is None or not raw_scene:
         raise BeatGenerationError(
             "Director Request 1 returned no usable scene result."
         )
@@ -29055,10 +28563,8 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     print(raw_scene)
     print("=" * 64)
 
-    # Request 2 gets a scene-scoped projection of canonical continuity. The
-    # full registry remains available to Request 1 and the continuity store,
-    # but irrelevant subjects, stale props, completed actions, old camera
-    # framing, and weak audio are not offered as H3-facing opening prose.
+    # Request 2 gets a scene-scoped projection of continuity as helpful opening
+    # context. It is not a semantic validator for Request 1.
     h3_opening_summary = ""
     if segment_number > 1:
         registry_state = bundle.get("registry_state")
@@ -29071,10 +28577,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 conditioning_mode=conditioning_mode,
             )
         else:
-            # Preserve legacy prose when callers have not supplied the newer
-            # structured registry state. This remains semantic continuity input;
-            # the conditioning-aware Request 2 rule still selects the visual
-            # anchor separately.
             h3_opening_summary = str(
                 bundle.get("opening_state")
                 or bundle.get("h3_opening_summary")
@@ -29112,13 +28614,17 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         "h3_mode": mode,
         "opening_state_sha256": bundle.get("opening_state_sha256"),
     }
-    max_formatter_attempts = 10
+
+    # Formatter retries are for malformed/unusable responses only. Timestamp
+    # correspondence is diagnostic during the baseline reset and cannot block a
+    # complete multi-segment generation run.
+    max_formatter_attempts = 3
     llm_result = None
-    formatter_messages_for_attempt = formatter_messages
+    formatted_result = ""
     for formatter_attempt in range(1, max_formatter_attempts + 1):
         request2_metadata["attempt"] = formatter_attempt
         formatted_result = ask_llm(
-            formatter_messages_for_attempt,
+            formatter_messages,
             response_format=H3_FORMATTER_RESPONSE_FORMAT,
             history_metadata=request2_metadata,
             **_active_formatter_llm_settings(),
@@ -29128,11 +28634,12 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 formatted_result,
                 subject_definitions=bundle.get("subject_definitions", ""),
             )
+            break
         except RuntimeError as error:
             if formatter_attempt >= max_formatter_attempts:
                 print(
-                    f"Director Request 2 failed after {max_formatter_attempts} "
-                    f"attempts; using the last LLM output as the final result: "
+                    f"Director Request 2 exhausted {max_formatter_attempts} "
+                    f"formatting attempts; using best-effort RAW-scene fallback: "
                     f"{error}",
                     flush=True,
                 )
@@ -29141,70 +28648,17 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                     fallback_text=raw_scene,
                     subject_definitions=bundle.get("subject_definitions", ""),
                 )
-            else:
-                print(
-                    f"Director Request 2 failed (attempt "
-                    f"{formatter_attempt}/{max_formatter_attempts}); "
-                    f"re-prompting the LLM: {error}",
-                    flush=True,
-                )
-            continue
-
-        llm_result["detailed_description"] = _canonicalize_director_timestamps(
-            llm_result.get("detailed_description", "")
-        )
-        timestamp_issues = _validate_director_timestamp_correspondence(
-            raw_scene,
-            llm_result.get("detailed_description", ""),
-            segment_seconds=duration,
-        )
-        if not timestamp_issues:
-            break
-
-        timestamp_error = " ".join(timestamp_issues)
-        if formatter_attempt >= max_formatter_attempts:
-            repaired_description = _canonicalize_director_timestamps(
-                llm_result.get("detailed_description", "")
-            )
-            repaired_issues = _validate_director_timestamp_correspondence(
-                raw_scene,
-                repaired_description,
-                segment_seconds=duration,
-            )
-            if repaired_issues:
-                raise BeatGenerationError(
-                    "Director Request 2 could not preserve canonical timestamps: "
-                    + " ".join(repaired_issues)
-                )
-            llm_result["detailed_description"] = repaired_description
+                break
             print(
-                "Director Request 2 timestamp syntax repaired deterministically.",
+                f"Director Request 2 returned unusable formatting "
+                f"(attempt {formatter_attempt}/{max_formatter_attempts}); "
+                f"retrying: {error}",
                 flush=True,
             )
-            break
 
-        print(
-            f"Director Request 2 timestamp validation failed (attempt "
-            f"{formatter_attempt}/{max_formatter_attempts}); re-prompting "
-            f"the LLM: {timestamp_error}",
-            flush=True,
-        )
-        retry_messages = [dict(message) for message in formatter_messages]
-        retry_messages[-1] = dict(retry_messages[-1])
-        retry_messages[-1]["content"] = (
-            f"{retry_messages[-1].get('content', '')}\n\n"
-            "TIMESTAMP VALIDATION FAILURE:\n"
-            f"{timestamp_error}\n"
-            "Return the same four-field JSON object, preserving every RAW "
-            "SCENE timestamp in the same order in detailed_description."
-        )
-        formatter_messages_for_attempt = retry_messages
     if llm_result is None:
-        # This is defensive only (the loop's final branch already salvages the
-        # last response), but keep a malformed formatter response from becoming
-        # an unrelated fatal error.
         llm_result = _salvage_h3_formatter_result(
-            "",
+            formatted_result,
             fallback_text=raw_scene,
             subject_definitions=bundle.get("subject_definitions", ""),
         )
@@ -29212,15 +28666,19 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     llm_result["detailed_description"] = _canonicalize_director_timestamps(
         llm_result.get("detailed_description", "")
     )
-    final_timestamp_issues = _validate_director_timestamp_correspondence(
+    timestamp_issues = _validate_director_timestamp_correspondence(
         raw_scene,
         llm_result.get("detailed_description", ""),
+        segment_seconds=duration,
     )
-    if final_timestamp_issues:
-        raise BeatGenerationError(
-            "Director Request 2 final timestamp validation failed: "
-            + " ".join(final_timestamp_issues)
+    if timestamp_issues:
+        print(
+            f"Director Request 2 timestamp diagnostics for Segment "
+            f"{segment_number} (non-blocking):",
+            flush=True,
         )
+        for issue in timestamp_issues:
+            print(f"  WARNING: {issue}", flush=True)
 
     payload = dict(bundle)
     payload["raw_scene"] = raw_scene
@@ -31297,7 +30755,6 @@ def _checkpoint_recovery_resume_segment(path=GENERATION_STATE_FILE):
 # Run the command-line application under a persistent recovery supervisor.
 def main():
     recovery_resume_segment = None
-    director_only_requested = "--director-only" in normalize_command_line(sys.argv[1:])
     while True:
         checkpoint_signature_before = _checkpoint_file_signature()
         try:
@@ -31355,40 +30812,14 @@ def main():
                 recovery_resume_segment = _checkpoint_recovery_resume_segment()
             elif recovery_resume_segment is None:
                 recovery_resume_segment = 1
-            director_contract_exhausted = (
-                isinstance(error, BeatGenerationError)
-                and str(error).startswith(
-                    "Director Request 1 did not confirm completion of Beat "
-                )
-            )
-            if (
-                director_contract_exhausted
-                and recovery_resume_segment > 1
-                and not director_only_requested
-            ):
-                failed_segment = recovery_resume_segment
-                recovery_resume_segment = 1
-                print(
-                    f"WARNING: Director Request 1 exhausted its local retry budget "
-                    f"at segment {failed_segment}; invalidating the reused planning "
-                    "checkpoint and restarting from planning.",
-                    file=sys.stderr,
-                    flush=True,
-                )
             print(
                 f"WARNING: recoverable generation failure: {error}",
                 file=sys.stderr,
                 flush=True,
             )
             print(
-                (
-                    "Restarting from planning at segment 1."
-                    if director_contract_exhausted and recovery_resume_segment == 1
-                    else (
-                        "Restarting from the last committed checkpoint at segment "
-                        f"{recovery_resume_segment}."
-                    )
-                ),
+                "Restarting from the last committed checkpoint at segment "
+                f"{recovery_resume_segment}; the existing ARC/beat plan is retained.",
                 file=sys.stderr,
                 flush=True,
             )
