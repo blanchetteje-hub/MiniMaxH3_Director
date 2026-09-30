@@ -12416,6 +12416,10 @@ Every event has state_effects.
 - set_threat_state: entity = the specific threat or threat group.
 - set_object_state: entity = the object.
 - set_containment: entity = the person/thing; container = the enclosing place.
+- For movement/containment, assign the effect to the person/thing whose FINAL
+  location or containment actually changes. A helper/escort/actor does not move
+  just because they cause someone else to move. If A leads/gets/puts B into X,
+  assign B -> X; assign A -> X only when the source also says A enters/stays in X.
 - set_condition: entity = the thing; value = a persistent visible condition.
 - set_clothing: entity = the wearer; item = the garment.
 - Do not use set_condition for a temporary action or feeling.
@@ -12520,7 +12524,11 @@ Rules:
   the item and owner is its person; set_barrier_state.entity is the barrier;
   set_threat_state.entity is the specific threat/group whose lifecycle changes;
   set_object_state.entity is the object; set_containment.entity is the person or
-  thing being contained/freed and container is the enclosing place;
+  thing being contained/freed and container is the enclosing place. For movement
+  or containment, validate the FINAL-state patient/recipient, not merely the
+  actor causing the motion: if A leads/gets/puts B into X, B may gain the
+  location/containment effect, but A must not unless the source separately says
+  A enters or remains in X;
   set_condition.entity is the thing with the condition; set_clothing.entity is
   the wearer and item is the garment. Never put the garment itself in
   set_clothing.entity.
@@ -12654,7 +12662,11 @@ Rules:
   the item and owner is its person; set_barrier_state.entity is the barrier;
   set_threat_state.entity is the specific threat/group whose lifecycle changes;
   set_object_state.entity is the object; set_containment.entity is the person or
-  thing being contained/freed and container is the enclosing place;
+  thing being contained/freed and container is the enclosing place. For movement
+  or containment, validate the FINAL-state patient/recipient, not merely the
+  actor causing the motion: if A leads/gets/puts B into X, B may gain the
+  location/containment effect, but A must not unless the source separately says
+  A enters or remains in X;
   set_condition.entity is the thing with the condition; set_clothing.entity is
   the wearer and item is the garment. Never put the garment itself in
   set_clothing.entity.
