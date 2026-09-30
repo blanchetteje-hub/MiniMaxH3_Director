@@ -235,7 +235,7 @@ class ContinuityCallContractTests(unittest.TestCase):
 class LLMSamplingRoutingTests(unittest.TestCase):
     @patch("minimax.generate_random_llm_seed", return_value=42)
     @patch("minimax.requests.post")
-    def test_beat_generation_explicit_sampling_beats_formatter_defaults(
+    def test_beat_generation_uses_creative_sampling_and_reasoning_profile(
         self,
         post,
         _random_seed,
@@ -257,36 +257,31 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             [{"role": "user", "content": "test"}],
             response_format=None,
             history_metadata={"purpose": "beat_generation"},
-            **minimax.BEAT_LLM_SAMPLING_PARAMETERS,
+            temperature=0,
+            top_p=0.5,
+            top_k=40,
+            min_p=0,
+            repeat_penalty=1.0,
         )
 
         self.assertEqual(result, {"ok": True})
         request_json = post.call_args.kwargs["json"]
-        for name, value in minimax.BEAT_LLM_SAMPLING_PARAMETERS.items():
+        for name, value in minimax.CREATIVE_LLM_SAMPLING_PARAMETERS.items():
             self.assertEqual(request_json[name], value)
+        self.assertEqual(request_json["reasoning_effort"], "high")
+        self.assertEqual(request_json["thinking_budget_tokens"], 1024)
         self.assertEqual(
-            minimax.BEAT_LLM_SAMPLING_PARAMETERS["repeat_penalty"],
-            1.15,
+            request_json["chat_template_kwargs"],
+            {"enable_thinking": True},
         )
-        self.assertEqual(
-            minimax.BEAT_LLM_SAMPLING_PARAMETERS["min_p"],
-            0.05,
-        )
-        self.assertEqual(
-            minimax.BEAT_LLM_SAMPLING_PARAMETERS["top_k"],
-            20,
-        )
-        self.assertEqual(
-            minimax.BEAT_LLM_SAMPLING_PARAMETERS["seed"],
-            42,
-        )
-        self.assertEqual(request_json["top_k"], 20)
-        self.assertEqual(request_json["min_p"], 0.05)
+        self.assertNotIn("thinking", request_json)
+        self.assertNotIn("chat_template", request_json)
+        self.assertNotIn("jinja", request_json)
         _random_seed.assert_not_called()
 
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
-    def test_arc_explicit_sampling_uses_deterministic_profile(
+    def test_arc_create_uses_same_creative_profile(
         self,
         post,
         _random_seed,
@@ -308,14 +303,47 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             [{"role": "user", "content": "plan"}],
             response_format=None,
             history_metadata={"purpose": "macro_arc_create"},
-            **minimax.ARC_LLM_SAMPLING_PARAMETERS,
         )
 
         self.assertEqual(result, {"ok": True})
         request_json = post.call_args.kwargs["json"]
-        for name, value in minimax.ARC_LLM_SAMPLING_PARAMETERS.items():
+        for name, value in minimax.CREATIVE_LLM_SAMPLING_PARAMETERS.items():
             self.assertEqual(request_json[name], value)
+        self.assertEqual(request_json["reasoning_effort"], "high")
+        self.assertEqual(request_json["thinking_budget_tokens"], 1024)
         _random_seed.assert_not_called()
+
+    @patch("minimax.requests.post")
+    def test_extractor_forces_temperature_zero_even_if_caller_passes_creative_profile(
+        self,
+        post,
+    ):
+        response = Mock()
+        response.status_code = 200
+        response.raise_for_status = Mock()
+        response.json.return_value = {
+            "choices": [
+                {
+                    "message": {"content": "{\"state_effects\": []}"},
+                    "finish_reason": "stop",
+                }
+            ]
+        }
+        post.return_value = response
+
+        result = minimax.ask_llm(
+            [{"role": "user", "content": "extract"}],
+            response_format=None,
+            history_metadata={"purpose": "source_unit_state_effects"},
+            **minimax.ARC_LLM_SAMPLING_PARAMETERS,
+        )
+
+        self.assertEqual(result, {"state_effects": []})
+        request_json = post.call_args.kwargs["json"]
+        self.assertEqual(request_json["temperature"], 0)
+        self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
+        self.assertNotIn("reasoning_effort", request_json)
+        self.assertNotIn("thinking_budget_tokens", request_json)
 
 
     @patch("minimax.generate_random_llm_seed", return_value=42)
