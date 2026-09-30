@@ -1327,8 +1327,8 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             ],
         )
         prompt = messages[-1]["content"]
-        self.assertIn("Small route details such as stairs or a hall are allowed", prompt)
-        self.assertNotIn("An unspecified route must remain unspecified", prompt)
+        self.assertIn("harmless staging detail", prompt)
+        self.assertIn("may NOT replace a concrete SOURCE action", prompt)
 
 
     def test_completion_prompt_rejects_ambiguous_collective_crossing(self):
