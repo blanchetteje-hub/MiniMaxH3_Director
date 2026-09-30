@@ -462,3 +462,18 @@ Do not reopen already-verified historical failures unless a fresh run actually r
   - seed remains 42
 - This profile applies only to the creative RAW-scene Director call. ARC/Beat validators, narrow extractors, and Request 2 keep their existing deterministic/conservative settings.
 - Next checkpoint: pull `gpt-arc-refresh` and rerun the Qwen acceptance locally. Judge whether Request 1 regains useful motion/staging without increasing state/continuity violations. No bridge job is required before that rerun.
+
+
+## 2026-09-29 — acceptance 2526 exposed wrong ARC movement-state ownership
+
+- Full Qwen acceptance `2526` generated a valid 6+2 beat plan but repeatedly failed Director Request 1 at Segment 2 and restarted planning after each 5-attempt local Director budget.
+- Earliest wrong artifact is upstream in ARC state effects, not Director:
+  - Source/event: Amy rushes Will and Amber to the basement, gets them inside, then locks the door.
+  - Incorrect ARC effects assigned `set_containment Amy -> basement: contained` and `set_location Amy -> basement`.
+  - Amy is the actor/helper; the children are the entities whose containment/location changes. The bad canonical effects therefore forced Director Request 1 toward a contradictory end state.
+- Commit `e87312b3aba496a8e7daddeecff8f55bf816bbe8` tightens ARC CREATE, VALIDATE, and REPAIR generically:
+  - movement/containment effects belong to the entity whose FINAL state changes;
+  - a helper/escort/causative actor does not inherit the destination;
+  - if A leads/gets/puts B into X, B may receive the effect; A receives it only when source separately says A enters/remains in X.
+- This is an existing ARC semantic responsibility; no new LLM stage or Director workaround was added.
+- Next checkpoint: pull `gpt-arc-refresh` and rerun the full Qwen acceptance. Verify E2 no longer places Amy inside the basement, then see whether Segment 2 advances under the new Qwen Director sampling profile.
