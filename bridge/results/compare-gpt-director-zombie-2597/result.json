@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-gpt-director-zombie-2597",
+  "kind": "llama_chat",
+  "started_at": 1790749279.791219,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the creative director for one 8-second action-film clip. Complete every assigned action, object interaction, participant role, and visible result. Use concrete visible motion, not static summary poses. Return only timed micro-beats from 00:00.000 through at least 00:06.000."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A zombie breaks the kitchen door window. Amy sees the danger, rushes Will and Amber to the basement, gets them inside, and locks the door. OPENING: Amy, Will, and Amber are in the kitchen. END STATE: Will and Amber are inside the basement; Amy remains outside; basement door is locked."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 43,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-yuedok99lmyg6wrmfcrr",
+    "object": "chat.completion",
+    "created": 1790749279,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "00:00.000 – Amy, Will, and Amber stand in the kitchen near the front door with a glass window panel; they all look at the counter.  \n00:01.000 – A zombie lunges from outside, slamming its massive fist against the door‑window frame; the glass shatters into sparkling shards that scatter across the floor.  \n00:02.000 – Amy’s eyes widen in shock as she spots the zombie and the broken window; her mouth opens slightly.  \n00:03.000 – Amy steps forward, reaches out with her left hand, grabs Will by the sleeve of his jacket, and pulls him toward the basement stairs.  \n00:04.000 – Amber follows swiftly, clutching a kitchen knife in one hand and stepping behind Will as she moves down the hallway.  \n00:05.000 – They reach the basement door; Amy pushes Will into the doorway, then pushes Amber in beside him, both sliding quickly inside.  \n00:06.000 – Amy grabs the basement door handle with her right hand, inserts a key from her pocket, turns it clockwise to lock the door, and the knob clicks shut.",
+          "reasoning": "We need to produce a micro-beat timeline from 00:00.000 through at least 00:06.000. Each beat should show action, object interaction, participant role, visible result. It's an 8-second clip. The source says zombie breaks kitchen door window. Amy sees danger, rushes Will and Amber to basement, gets them inside, locks door. Opening: Amy, Will, Amber in kitchen. End state: Will and Amber inside basement; Amy outside; basement door locked.\n\nWe need to produce beats from 00:00.000 to at least 00:06.000. The clip is 8 seconds, so maybe we go to 00:08.000. But the requirement says \"at least 00:06.000\". So we can go to 00:07 or 00:08.\n\nWe need concrete visible motion, not static summary poses. Each beat should show action, object interaction, participant role, and visible result.\n\nLet's think of beats:\n\n0:00.000 - Kitchen interior, Amy, Will, Amber standing near the door. The window is intact? Or maybe just a door with window. Let's say they are looking at the kitchen counter.\n\n0:01.000 - A zombie appears outside, breaking the kitchen door window. The window shatters; glass fragments fly.\n\n0:02.000 - Amy's eyes widen as she sees the zombie and the broken window.\n\n0:03.000 - Amy steps forward, grabs Will by the sleeve, pulls him towards the basement stairs.\n\n0:04.000 - Amber follows, clutching a kitchen knife, stepping quickly behind them.\n\n0:05.000 - They reach the basement door; Amy pushes Will into it, then pushes Amber in.\n\n0:06.000 - Amy locks the basement door with a key, turning the knob to secure it.\n\n0:07.000 - The zombie lurches at the kitchen door, banging against it as the lock clicks.\n\nWe need visible results: window shattered, Amy's eyes wide, Will and Amber moving, basement door locked.\n\nLet's produce micro-beats with times: 00:00.000, 00:01.000, etc. Use format maybe \"00:00.000 - Action ...\". The instruction says \"Return only timed micro-beats from 00:00.000 through at least 00:06.000.\" So we list beats.\n\nAlso mention object interaction: e.g., Amy grabs Will by sleeve; basement door knob locked.\n\nLet's do it.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 203,
+      "completion_tokens": 766,
+      "total_tokens": 969,
+      "completion_tokens_details": {
+        "reasoning_tokens": 519
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749290.063255,
+  "status": "ok"
+}
