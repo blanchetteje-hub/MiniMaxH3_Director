@@ -52,6 +52,10 @@ def test_generate_beats_prefers_source_span_planner_and_scopes_chapter_source():
             }
         if purpose == "beat_validation":
             return {"valid": True, "issue": ""}
+        if purpose == "beat_finite_endpoint_extract":
+            return {"status": "COMPLETE"}
+        if purpose == "beat_coherence_validation":
+            return {"valid": True, "issue": ""}
 
         raise AssertionError(f"unexpected LLM purpose: {purpose}")
 
