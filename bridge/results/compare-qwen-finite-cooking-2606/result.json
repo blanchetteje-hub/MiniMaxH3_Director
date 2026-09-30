@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-qwen-finite-cooking-2606",
+  "kind": "llama_chat",
+  "started_at": 1790749435.8971944,
+  "request": {
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the director for one 8-second video clip. Show the required action happening on screen; do not replace an assigned action with a static aftermath. Use timed micro-beats from 00:00.000 through at least 00:06.000. Return only the timed scene."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Amy is at home cooking breakfast for her young kids. CURRENT BEAT: Amy cooks breakfast and finishes the meal. NEXT BEAT: danger begins later; do not show it."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 43,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-za963wvdkvf9u59pzjrlj",
+    "object": "chat.completion",
+    "created": 1790749435,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "00:00.000 – Amy stands at the kitchen counter holding a bowl of eggs.  \n00:01.200 – She cracks an egg into the bowl; droplets splash onto the counter.  \n00:02.400 – Amy whisking vigorously, batter thickening with foam.  \n00:03.600 – She adds butter to a hot pan; sizzling sound rises.  \n00:04.800 – Amy pours batter onto the pan; pancake bubbles and forms a golden edge.  \n00:06.000 – She flips the pancake, revealing a perfectly browned surface.  \n00:07.200 – The kids rush in, sit at the table with plates ready.  \n00:08.000 – Amy places finished pancakes on their plates; the kids start eating.",
+          "reasoning": "We need to produce a timed micro-beats script from 00:00.000 to at least 00:06.000 showing Amy cooking breakfast for her young kids, finishing meal. Not show danger. The beat sequence must show action happening on screen. Use micro beats like \"00:00.000 – Amy cracks an egg into bowl.\" etc. At least 8 seconds? Actually the clip is 8-second video clip, but we need to use timed micro-beats from 00:00.000 through at least 00:06.000. So maybe 7-8 beats. Let's craft.\n\nWe want to show Amy cooking breakfast and finishing meal. So start with Amy in kitchen, she cracks eggs, whisking, adding butter, etc. Then she flips pancakes? Or making scrambled eggs? She plates them. Kids arrive or are waiting. She serves. Finishes meal when kids eat. We need at least 00:06.000.\n\nLet's produce something like:\n\n00:00.000 – Amy stands at kitchen counter with a bowl and eggs.\n00:01.200 – Amy cracks an egg into the bowl, watching it splash.\n00:02.400 – She whiskes vigorously, foam rising.\n00:03.600 – Amy adds butter to pan, sizzling sound.\n00:04.800 – She pours batter onto pan, pancakes forming.\n00:06.000 – Amy flips pancake, kids giggle as they watch.\n\nBut we need finishing meal maybe at 07 or 08 seconds? At least 00:06.000 is requirement; can go to 00:07.200 etc. But clip is 8-second video; so maybe up to 00:08.000. Let's include up to 00:07.800.\n\nLet's craft micro beats:\n\n00:00.000 – Amy stands at counter with a bowl, eggs on counter.\n00:01.500 – She cracks an egg into the bowl, droplets fall.\n00:03.000 – Amy whisking, batter thickens.\n00:04.500 – She heats pan, butter melts, sizzling.\n00:05.500 – Amy pours batter onto pan; pancake rises.\n00:06.800 – She flips pancake, golden brown.\n00:07.600 – Kids rush in, sit at table with plates.\n\nBut we need \"finishes the meal\" maybe when she plates and kids eat? So 07.600 kids sitting, 08.000 Amy serves them. But we can finish at 08.000.\n\nLet's produce micro beats:\n\n00:00.000 – Amy stands at kitchen counter holding a bowl of eggs.\n00:01.200 – She cracks an egg into the bowl; droplets splash onto counter.\n00:02.400 – Amy whisking vigorously, batter thickening with foam.\n00:03.600 – She adds butter to a hot pan; sizzling sound.\n00:04.800 – Amy pours batter onto the pan; pancake starts to bubble.\n00:06.000 – She flips the pancake, golden brown surface shows.\n00:07.200 – Kids rush in and sit at table with plates ready.\n00:08.000 – Amy places finished pancakes on their plates, kids start eating.\n\nThat's 8 beats, ending at 00:08.000. Good.\n\nReturn only timed scene.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 171,
+      "completion_tokens": 858,
+      "total_tokens": 1029,
+      "completion_tokens_details": {
+        "reasoning_tokens": 684
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749447.2683291,
+  "status": "ok"
+}
