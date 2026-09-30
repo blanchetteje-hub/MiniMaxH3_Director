@@ -627,6 +627,7 @@ as blocking acceptance gates.
 - Core creative rules now explicitly include spatial awareness, one-to-two concise sentences, and names instead of pronouns.
 - Relevant commits:
   - `621f5eff08787427a5eb7ca4b69c2843410786be` — implementation
+  - `9af7023ea1857e877935f030e947d0a839974dd1` — fix canonical_data.txt newline parsing
   - `c7ce7c9782a3c926b123e84289fdf982eed64326` — `canonical_data.txt`
   - `5028f94268de69c0926cb962fd4ce353f0d53328` — canonical/prompt regressions
   - `6139f0875aa99b54b6c46d6a05dedf145149d92e` — updated Beat CREATE regression
