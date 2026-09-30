@@ -1,0 +1,7 @@
+{
+  "job_id": "seg3-itemmode-r256-2676",
+  "status": "error",
+  "error_type": "HTTPError",
+  "error": "HTTP Error 400: Bad Request",
+  "finished_at": 1790752807.492056
+}
