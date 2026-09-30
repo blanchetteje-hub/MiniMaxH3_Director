@@ -1,0 +1,12 @@
+{
+  "kind": "run_tests",
+  "job_id": "tests-2680-director-baseline",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests\\test_llm_prompt_pipeline.py",
+    "tests\\test_director_retry.py",
+    "tests\\test_simplified_prompt_regressions.py",
+    "tests\\test_requested_prompt_regressions.py"
+  ],
+  "timeout_seconds": 1800
+}
