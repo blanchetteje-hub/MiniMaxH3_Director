@@ -94,23 +94,16 @@ class SimplifiedPromptRegressionTests(unittest.TestCase):
         self.assertIn('"having finished X"', prompt)
         self.assertIn("must show that activity occurring in THIS beat", prompt)
 
-    def test_director_rules_require_visible_action_not_static_aftermath(self):
+    def test_director_rules_are_minimal_and_action_focused(self):
         rules = minimax.build_director_rules(
             8, 8, 1, SUBJECTS, 1,
             conditioning_mode="initial",
         )
-        self.assertIn(
-            "Complete every action, object interaction, participant role, and visible result",
-            rules,
-        )
-        self.assertIn(
-            "Preserve concrete assigned actions and interactions",
-            rules,
-        )
-        self.assertIn(
-            "You are the creative director",
-            rules,
-        )
+        self.assertIn("Show CURRENT BEAT clearly", rules)
+        self.assertIn("concrete visible/audible action", rules)
+        self.assertIn("CURRENT BEAT wins", rules)
+        self.assertIn("You are the creative director", rules)
+        self.assertNotIn("AUTHORITATIVE FINAL STATE CONTRACT", rules)
 
 
 if __name__ == "__main__":
