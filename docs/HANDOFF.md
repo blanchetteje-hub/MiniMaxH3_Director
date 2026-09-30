@@ -603,3 +603,32 @@ as blocking acceptance gates.
 - Commits:
   - \`fc1f964e4320f5f52cf1ee0d4753daf343a96334\` implementation
   - \`b9cafa809408573479d0635b4e2bb2b0b9cc75db\` focused regressions
+
+## 2026-09-30 — configurable canonical data + compact Beat CREATE prompt
+
+- Canonical character facts are now user-configurable through `canonical_data.txt`.
+- Initial configured fields: `age, clothing, gender`.
+- The implementation is generic rather than hardcoding those three fields:
+  - comma/newline-separated labels are normalized to machine keys;
+  - the LLM response schema is built dynamically from the configured fields;
+  - `character_canon.json` now stores `version: 2`, the configured field list, and per-character values;
+  - the canon hash includes story text, `subjects.txt`, and the configured field list, so changing `canonical_data.txt` forces regeneration.
+- Explicit story/subject facts remain authoritative; only missing configured values are creatively established once.
+- Canonical results continue to be reused deterministically by Python and are exposed to planning as character facts.
+- Segment 1 Director Request 1 now receives `CANONICAL STARTING CHARACTER FACTS` so applicable identity/appearance facts are established in the opening portrayal. It is explicitly forbidden from introducing an absent/future character solely to display canon.
+- Beat CREATE was replaced with the new compact creative prompt:
+  - `SOURCE FILM`
+  - `KNOWN SUBJECTS`
+  - `CHARACTER FACTS`
+  - `ASSIGNED EVENTS`
+  - optional `PREVIOUS BEAT` only when real
+  - optional repair/user-specific sections only when applicable.
+- Removed from the normal Beat CREATE prompt: barrier-name rules, closed-boundary sections, preserved-barrier sections, and the beneficiary-specific food/hand-off prose.
+- Core creative rules now explicitly include spatial awareness, one-to-two concise sentences, and names instead of pronouns.
+- Relevant commits:
+  - `621f5eff08787427a5eb7ca4b69c2843410786be` — implementation
+  - `c7ce7c9782a3c926b123e84289fdf982eed64326` — `canonical_data.txt`
+  - `5028f94268de69c0926cb962fd4ce353f0d53328` — canonical/prompt regressions
+  - `6139f0875aa99b54b6c46d6a05dedf145149d92e` — updated Beat CREATE regression
+- Next checkpoint: run the focused test suite, then generate a fresh Amy beat plan and inspect the exact Beat CREATE prompt/output before doing more Director tuning.
+
