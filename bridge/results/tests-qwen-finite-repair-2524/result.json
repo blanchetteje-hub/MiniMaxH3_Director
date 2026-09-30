@@ -1,0 +1,28 @@
+{
+  "job_id": "tests-qwen-finite-repair-2524",
+  "kind": "run_tests",
+  "started_at": 1790728865.053388,
+  "test_run": {
+    "code_branch": "gpt-arc-refresh",
+    "tests": [
+      "tests\\test_forward_beat_validation.py",
+      "tests\\test_beat_retry_hierarchy.py",
+      "tests\\test_beat_plan_repair_orchestration.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_gpt-arc-refresh\nconfigfile: pytest.ini\ncollecting ... collected 21 items\n\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_beat_generation_preserves_group_beneficiary_roles PASSED [  4%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_coherence_validator_is_narrow_and_generic PASSED [  9%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_compact_validator_state_removes_noise_but_preserves_facts PASSED [ 14%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_invalid_candidate_regenerates_same_beat_without_state_mutation PASSED [ 19%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_invalid_required_event_shape_is_rejected_deterministically PASSED [ 23%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_planning_metadata_rejects_raw_json_delimiters PASSED [ 28%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_valid_beat_commits_assigned_effects_after_validation PASSED [ 33%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_checks_final_state_for_typed_effects PASSED [ 38%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_contract_is_immutable_and_minimal PASSED [ 42%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_preserves_group_beneficiary_roles PASSED [ 47%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_prompt_includes_assigned_state_effects PASSED [ 52%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_prompt_rejects_materially_incoherent_staging PASSED [ 57%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_validator_rejects_completed_state_grammar_for_assigned_action PASSED [ 61%]\ntests/test_beat_retry_hierarchy.py::BeatRetryHierarchyTests::test_failed_beat_is_repaired_before_commit PASSED [ 66%]\ntests/test_beat_plan_repair_orchestration.py::BeatPlanRepairOrchestrationTests::test_convergence_gate_requires_strict_count_improvement PASSED [ 71%]\ntests/test_beat_plan_repair_orchestration.py::BeatPlanRepairOrchestrationTests::test_cross_phase_blockers_regenerate_independently PASSED [ 76%]\ntests/test_beat_plan_repair_orchestration.py::BeatPlanRepairOrchestrationTests::test_regeneration_scope_uses_phase_even_for_one_small_blocker PASSED [ 80%]\ntests/test_beat_plan_repair_orchestration.py::BeatPlanRepairOrchestrationTests::test_scope_policy_accepts_clean_plan PASSED [ 85%]\ntests/test_beat_plan_repair_orchestration.py::BeatPlanRepairOrchestrationTests::test_scope_policy_targets_only_small_local_blocker_sets PASSED [ 90%]\ntests/test_beat_plan_repair_orchestration.py::BeatPlanRepairOrchestrationTests::test_three_blockers_in_one_phase_regenerate_that_phase PASSED [ 95%]\ntests/test_beat_plan_repair_orchestration.py::BeatPlanRepairOrchestrationTests::test_wide_single_phase_blocker_regenerates_that_phase PASSED [100%]\n\n============================= 21 passed in 2.54s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "timeout_seconds": null,
+    "started_at": 1790728866.186467,
+    "finished_at": 1790728869.492413
+  },
+  "finished_at": 1790728869.492413,
+  "status": "ok"
+}
