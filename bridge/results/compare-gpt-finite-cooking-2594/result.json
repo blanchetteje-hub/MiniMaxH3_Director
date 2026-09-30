@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-gpt-finite-cooking-2594",
+  "kind": "llama_chat",
+  "started_at": 1790749316.6675553,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the director for one 8-second video clip. Show the required action happening on screen; do not replace an assigned action with a static aftermath. Use timed micro-beats from 00:00.000 through at least 00:06.000. Return only the timed scene."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Amy is at home cooking breakfast for her young kids. CURRENT BEAT: Amy cooks breakfast and finishes the meal. NEXT BEAT: danger begins later; do not show it."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 43,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-nut9689g1yx2q9hb0oi1b",
+    "object": "chat.completion",
+    "created": 1790749316,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "**00:00.000 – 00:01.200**  \nAmy stands at the stove, skillet in hand, a bowl of eggs on the counter. She cracks an egg into the bowl, letting the yolk swirl into the whites.\n\n**00:01.200 – 00:02.400**  \nShe adds a splash of milk and a pinch of salt, then whisks the mixture vigorously until it’s smooth and slightly frothy.\n\n**00:02.400 – 00:03.600**  \nThe skillet heats up; Amy lifts the whisked eggs into the pan, watching as they begin to set at the edges.\n\n**00:03.600 – 00:04.800**  \nShe gently pushes the cooked portions toward the center with a spatula, allowing the uncooked egg to flow around it—scrambling into fluffy curds.\n\n**00:04.800 – 00:05.900**  \nThe eggs are golden and ready; Amy flips them once more, then plates the scramble onto a bright ceramic dish.\n\n**00:05.900 – 00:06.000**  \nAmy places the finished plate on the kitchen table, turns to her two kids who giggle in anticipation—her breakfast is complete.",
+          "reasoning": "We need to produce a timed micro-beats script from 00:00.000 to at least 00:06.000 showing Amy cooking breakfast for her young kids, finishing meal. No danger yet.\n\nShow required action happening on screen, no static aftermath. Use micro-beats.\n\nWe should include beats like \"Amy pours eggs\", etc. Show cooking process and finish. Maybe show kids watching or waiting. Provide at least 8 seconds of timing.\n\nLet's create a timeline:\n\n00:00.000 Amy stands at stove with skillet\n00:01.200 She cracks eggs into bowl\n00:02.400 She adds milk, whisking\n00:03.600 Skillet heats, she pours egg mixture\n00:04.800 Eggs scramble, she flips\n00:05.900 She plates pancakes or toast\n00:06.000 Amy smiles, kids clap\n\nWe need micro-beats maybe every 0.5 sec? Not necessary but at least 6 seconds.\n\nLet's produce a script with beats and actions.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 171,
+      "completion_tokens": 478,
+      "total_tokens": 649,
+      "completion_tokens_details": {
+        "reasoning_tokens": 210
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749323.0324833,
+  "status": "ok"
+}
