@@ -80,18 +80,55 @@ class ChatGPTLlamaBridgeDeveloperLogTests(unittest.TestCase):
             self.assertIn("bridge_log_capture_error", payload)
 
 
-    def test_acceptance_rejects_nonbaseline_model(self):
+    def test_acceptance_rejects_unsupported_model(self):
         with tempfile.TemporaryDirectory() as temp:
-            with self.assertRaisesRegex(ValueError, "must use the 'gpt' baseline"):
+            with self.assertRaisesRegex(ValueError, "supported formatter model"):
                 bridge.execute_acceptance(
                     {
                         "job_id": "bad-model",
                         "code_branch": "gpt-arc-refresh",
-                        "model": "mistral",
+                        "model": "unsupported",
                     },
                     Path(temp),
                     Path(temp) / "result",
                 )
+
+    @mock.patch.object(bridge, "start_lmstudio_developer_log", return_value={})
+    @mock.patch.object(bridge, "stop_lmstudio_developer_log", return_value={})
+    @mock.patch.object(bridge, "copy_acceptance_artifacts", return_value={})
+    @mock.patch.object(bridge, "run_local_process")
+    @mock.patch.object(bridge, "ensure_exec_worktree")
+    @mock.patch.object(bridge, "safe_source_path")
+    def test_acceptance_allows_qwen_model(
+        self, safe_source_path, ensure_worktree, run_process, _copy, _stop, _start
+    ):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            image = root / "amy.jpg"
+            image.write_bytes(b"image")
+            safe_source_path.return_value = image
+            ensure_worktree.return_value = root
+            run_process.return_value = {
+                "returncode": 0,
+                "stdout": "",
+                "stderr": "",
+                "timed_out": False,
+                "timeout_seconds": None,
+                "started_at": 0,
+                "finished_at": 1,
+            }
+            bridge.execute_acceptance(
+                {
+                    "job_id": "qwen-model",
+                    "code_branch": "gpt-arc-refresh",
+                    "model": "qwen",
+                },
+                root,
+                root / "result",
+            )
+            command = run_process.call_args.args[0]
+            self.assertIn("--model", command)
+            self.assertEqual(command[command.index("--model") + 1], "qwen")
 
     def test_acceptance_rejects_nonbaseline_branch(self):
         with tempfile.TemporaryDirectory() as temp:
