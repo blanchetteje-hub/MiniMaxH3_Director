@@ -1,0 +1,24 @@
+{
+  "kind": "llama_chat",
+  "job_id": "compare-gpt-director-zombie-2597",
+  "model": "gpt",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the creative director for one 8-second action-film clip. Complete every assigned action, object interaction, participant role, and visible result. Use concrete visible motion, not static summary poses. Return only timed micro-beats from 00:00.000 through at least 00:06.000."
+    },
+    {
+      "role": "user",
+      "content": "SOURCE: A zombie breaks the kitchen door window. Amy sees the danger, rushes Will and Amber to the basement, gets them inside, and locks the door. OPENING: Amy, Will, and Amber are in the kitchen. END STATE: Will and Amber are inside the basement; Amy remains outside; basement door is locked."
+    }
+  ],
+  "temperature": 0.5,
+  "top_p": 0.92,
+  "top_k": 40,
+  "min_p": 0.03,
+  "repeat_penalty": 1.08,
+  "presence_penalty": 0.1,
+  "frequency_penalty": 0.08,
+  "seed": 43,
+  "max_tokens": 900
+}
