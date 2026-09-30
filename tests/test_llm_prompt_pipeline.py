@@ -2278,6 +2278,27 @@ if __name__ == "__main__":
 
 
 class RuntimeRecoverySupervisorTests(unittest.TestCase):
+    def test_main_fails_fast_for_prompt_generation(self):
+        with (
+            patch.object(
+                minimax.sys,
+                "argv",
+                ["minimax.py", "8", "64", "0.5", "--test-prompt-generation"],
+            ),
+            patch(
+                "minimax._run_main",
+                side_effect=RuntimeError("post-director structural failure"),
+            ) as run_main,
+            patch("minimax.traceback.print_exc"),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "post-director structural failure",
+            ):
+                minimax.main()
+
+        self.assertEqual(run_main.call_count, 1)
+
     def test_main_retries_recoverable_failure_from_checkpoint(self):
         with (
             patch(
