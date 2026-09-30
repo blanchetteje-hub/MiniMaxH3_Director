@@ -42,6 +42,33 @@ Do not reject a beat, Director scene, or H3 prompt merely because it contains a 
 
 The project goal is to expand paragraph-scale through multi-page stories into fully staged films. The LLM therefore must supply missing cinematic detail rather than mechanically paraphrasing the source.
 
+
+### Sampling policy by responsibility
+
+Use sampling according to the semantic role of the LLM call.
+
+**Creative creation calls use relatively high temperature:**
+- ARC CREATE: moderate-high creativity; start around temperature 0.5-0.7.
+- BEAT CREATE: high creativity; start around temperature 0.7-0.9.
+- Director / RAW scene CREATE: high creativity; start around temperature 0.8-1.0.
+- Creative REPAIR calls should generally inherit an appropriate creative temperature for the artifact being repaired.
+
+These calls are expected to invent plausible cinematic detail inside unspecified story space while preserving source/canon/continuity.
+
+**Observation, validation, extraction, and translation calls use temperature 0:**
+- semantic extractors;
+- validators/classifiers;
+- state observation calls;
+- deterministic semantic checks;
+- final H3 formatter / translation prompt;
+- schema/state/format repairs whose job is correction rather than creative restaging.
+
+Default principle:
+
+> **Creation calls should sample; observation/verification/translation calls should not.**
+
+Do not use one global temperature for the whole pipeline. Sampling is part of the responsibility split: creativity belongs in CREATE stages, while checking and formatting should be as deterministic as practical.
+
 ## Development doctrine
 
 1. Optimize for the gold prompts, not for preserving the current pipeline.
