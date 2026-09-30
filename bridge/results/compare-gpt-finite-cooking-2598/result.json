@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-gpt-finite-cooking-2598",
+  "kind": "llama_chat",
+  "started_at": 1790749325.674724,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the director for one 8-second video clip. Show the required action happening on screen; do not replace an assigned action with a static aftermath. Use timed micro-beats from 00:00.000 through at least 00:06.000. Return only the timed scene."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: Amy is at home cooking breakfast for her young kids. CURRENT BEAT: Amy cooks breakfast and finishes the meal. NEXT BEAT: danger begins later; do not show it."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 44,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-p77rowowacn2wsfmtxsgw3",
+    "object": "chat.completion",
+    "created": 1790749325,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "00:00.000 – Amy flips a pancake on the skillet, batter sizzles.  \n00:01.500 – She adds butter, letting it melt and bubble around the edges.  \n00:03.000 – The pancake turns golden; she tilts the pan to spread fresh batter.  \n00:04.500 – Amy pours a splash of milk into a small bowl beside the plate, then sets it down.  \n00:06.000 – She places the finished pancakes on a plate and arranges a sunny‑side‑up egg on top.  \n00:07.500 – The kids clap and cheer as Amy smiles, showing her breakfast is ready.",
+          "reasoning": "We need to produce a 8-second video clip with timed micro-beats from 00:00.000 through at least 00:06.000 showing Amy cooking breakfast and finishing the meal, but not showing danger. The current beat is \"Amy cooks breakfast and finishes the meal.\" Next beat is danger begins later; do not show it.\n\nWe need to show required action happening on screen; do not replace an assigned action with a static aftermath. So we must show the action of cooking and finishing the meal. We should use timed micro-beats: 00:00.000, maybe 00:02.000 etc. The clip is 8 seconds long.\n\nWe need to return only the timed scene. So format like:\n\n00:00.000 - Amy stands at stove, flips pancakes.\n...\n00:06.000 - Amy sets plate on table, kids clap.\n\nWe should show cooking and finishing meal. No danger. We have to ensure we don't replace action with static aftermath; so must show cooking process.\n\nLet's create a sequence: 0-2 sec flipping pancake, 2-4 sec pouring milk, 4-6 sec setting plate, 6-8 sec kids clapping or Amy smiles.\n\nWe need at least 00:06.000. So we can go to 00:08.000.\n\nThus:\n\n00:00.000 - Amy flips a pancake on the skillet.\n00:01.500 - She adds butter and pops it into the pan.\n00:03.000 - The pancake sizzles, she tilts the pan to spread batter.\n00:04.500 - She pours milk into a small bowl, then sets it next to the plate.\n00:06.000 - Amy places the finished pancakes on a plate and arranges a sunny-side-up egg.\n00:07.500 - The kids cheer as Amy smiles.\n\nWe need 8-second clip; last beat at 07.5 sec, maybe 08.0 sec. So we can add final micro-beat at 08.000.\n\nLet's produce the timed scene.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 171,
+      "completion_tokens": 573,
+      "total_tokens": 744,
+      "completion_tokens_details": {
+        "reasoning_tokens": 426
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749333.2241821,
+  "status": "ok"
+}
