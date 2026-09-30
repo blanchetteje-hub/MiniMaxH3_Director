@@ -154,6 +154,8 @@ APPEND_SYSTEM_PROMPT_FILE = os.path.join(SCRIPT_DIR, "append_system_prompt.txt")
 
 SUBJECT_DEFINITIONS_FILE = os.path.join(SCRIPT_DIR, "subjects.txt")
 
+CHARACTER_CANON_FILE = os.path.join(SCRIPT_DIR, "character_canon.json")
+
 GENERATION_STATE_FILE = os.path.join(SCRIPT_DIR, "generation_state.json")
 
 PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
@@ -5544,6 +5546,215 @@ def reset_generation_state_subjects_for_new_phase(
 
 
 # Render parsed subject names and descriptive prose for beat planning.
+
+def build_character_canon_messages(story, subject_definitions=""):
+    """Build the one-time canonical character profile request."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are establishing factual information that will be considered "
+                "canonical in a film. Return succinct results in JSON."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""Establish canonical clothing and age for all main characters.
+
+FILM SYNOPSIS
+{str(story or '').strip()}
+
+EXISTING SUBJECT FACTS
+{str(subject_definitions or '').strip() or 'N/A'}
+
+RULES
+- Explicit facts in the synopsis or EXISTING SUBJECT FACTS are authoritative.
+  Copy them; do not replace them with an inference.
+- When age or clothing is not explicitly defined, choose one reasonable value
+  from the story context. That value becomes canonical and must not vary later.
+- Clothing means the character's baseline outfit, not temporary dirt, blood,
+  damage, wetness, or other later condition.
+- Include every named main character.
+- Keep clothing concise and concrete.
+- Return only JSON in this shape:
+  {{"characters":[{{"name":"Name","age":"value","clothing":"value"}}]}}
+""".strip(),
+        },
+    ]
+
+
+def build_character_canon_response_format():
+    """Return the strict schema for canonical character profiles."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "character_canon",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "characters": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string", "minLength": 1},
+                                "age": {"type": "string", "minLength": 1},
+                                "clothing": {"type": "string", "minLength": 1},
+                            },
+                            "required": ["name", "age", "clothing"],
+                            "additionalProperties": False,
+                        },
+                    }
+                },
+                "required": ["characters"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_character_canon_result(raw_result):
+    """Validate and normalize one canonical character-profile response."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = parse_llm_json_content(candidate, repair_on_failure=False)
+    if not isinstance(candidate, dict) or set(candidate) != {"characters"}:
+        raise ValueError("Character canon must contain only characters.")
+    raw_characters = candidate.get("characters")
+    if not isinstance(raw_characters, list) or not raw_characters:
+        raise ValueError("Character canon requires at least one character.")
+    characters = []
+    seen = set()
+    for item in raw_characters:
+        if not isinstance(item, dict) or set(item) != {"name", "age", "clothing"}:
+            raise ValueError(
+                "Each canonical character requires only name, age, and clothing."
+            )
+        record = {
+            key: " ".join(str(item.get(key) or "").split()).strip()
+            for key in ("name", "age", "clothing")
+        }
+        if not all(record.values()):
+            raise ValueError("Canonical character fields must be non-empty.")
+        key = record["name"].casefold()
+        if key in seen:
+            raise ValueError(f"Duplicate canonical character: {record['name']}")
+        seen.add(key)
+        characters.append(record)
+    return {"characters": characters}
+
+
+def _character_canon_source_hash(story, subject_definitions=""):
+    payload = (
+        str(story or "").strip()
+        + "\n\nSUBJECTS\n"
+        + str(subject_definitions or "").strip()
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def save_character_canon(canon, source_hash, path=CHARACTER_CANON_FILE):
+    """Atomically persist one source-bound canonical character profile."""
+    payload = {
+        "version": 1,
+        "source_sha256": str(source_hash),
+        "characters": copy.deepcopy(canon["characters"]),
+    }
+    directory = os.path.dirname(os.path.abspath(path))
+    os.makedirs(directory, exist_ok=True)
+    fd, temporary_path = tempfile.mkstemp(
+        prefix=".character_canon_", suffix=".tmp", dir=directory, text=True
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+    return payload
+
+
+def load_or_generate_character_canon(
+    story,
+    subject_definitions="",
+    *,
+    path=CHARACTER_CANON_FILE,
+    llm_request=None,
+    history_metadata=None,
+):
+    """Reuse source-matched canon or establish it once before planning."""
+    expected_hash = _character_canon_source_hash(story, subject_definitions)
+    raw = load_text_file(path, required=False)
+    if raw:
+        try:
+            payload = json.loads(raw)
+            if (
+                isinstance(payload, dict)
+                and payload.get("version") == 1
+                and payload.get("source_sha256") == expected_hash
+            ):
+                parsed = parse_character_canon_result(
+                    {"characters": payload.get("characters")}
+                )
+                return {
+                    "version": 1,
+                    "source_sha256": expected_hash,
+                    "characters": parsed["characters"],
+                }
+        except (ValueError, json.JSONDecodeError):
+            pass
+        print(
+            f"Ignoring stale or invalid {path}; regenerating character canon.",
+            flush=True,
+        )
+
+    if llm_request is None:
+        llm_request = ask_llm
+    raw_result = llm_request(
+        build_character_canon_messages(story, subject_definitions),
+        response_format=build_character_canon_response_format(),
+        history_metadata={
+            **(history_metadata or {}),
+            "purpose": "character_canon",
+        },
+        **ARC_LLM_SAMPLING_PARAMETERS,
+    )
+    canon = parse_character_canon_result(raw_result)
+    return save_character_canon(canon, expected_hash, path=path)
+
+
+def format_character_canon_for_beats(canon):
+    """Render canonical character facts for ARC/BEAT prompts."""
+    if not isinstance(canon, dict):
+        return ""
+    lines = []
+    for record in canon.get("characters", []):
+        if not isinstance(record, dict):
+            continue
+        name = " ".join(str(record.get("name") or "").split()).strip()
+        age = " ".join(str(record.get("age") or "").split()).strip()
+        clothing = " ".join(str(record.get("clothing") or "").split()).strip()
+        if name and age and clothing:
+            lines.append(
+                f"- {name} canonical age: {age}; canonical clothing: {clothing}."
+            )
+    return "\n".join(lines)
+
+
+def _canonical_character_facts_from_subject_information(subject_information):
+    return "\n".join(
+        line.strip()
+        for line in str(subject_information or "").splitlines()
+        if " canonical age:" in line and "canonical clothing:" in line
+    ).strip()
+
+
 def format_beat_generation_subjects(subject_definitions):
     """Render parsed subject names and descriptive prose for beat planning."""
     meaningful_lines = [
@@ -12372,6 +12583,10 @@ def build_beat_arc_plan_messages(
 ):
     """Build the compact ARC creation prompt for a small local model."""
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
+    canonical_character_facts = (
+        _canonical_character_facts_from_subject_information(subject_information)
+        or "N/A"
+    )
     phrase_exclusions_text = format_phrase_exclusions_section(
         phrase_exclusions
     ).strip()
@@ -12418,6 +12633,9 @@ SOURCE STORY
 
 KNOWN SUBJECTS
 {subject_text}
+
+CANONICAL CHARACTER FACTS
+{canonical_character_facts}
 
 EXTRA BEAT RULES
 {str(beat_instructions or '').strip() or 'N/A'}
@@ -12480,6 +12698,10 @@ def build_macro_arc_validation_messages(
 ):
     """Build the small 24B ARC semantic validation prompt."""
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
+    canonical_character_facts = (
+        _canonical_character_facts_from_subject_information(subject_information)
+        or "N/A"
+    )
     validation_events = []
     for phase in (macro_arc or {}).get("phases", []):
         if not isinstance(phase, dict):
@@ -12513,6 +12735,9 @@ SOURCE STORY
 
 DEFINED SUBJECTS
 {subject_text}
+
+CANONICAL CHARACTER FACTS
+{canonical_character_facts}
 
 EXPLICIT BEAT INSTRUCTIONS
 {str(beat_instructions or '').strip() or 'N/A'}
@@ -15309,6 +15534,10 @@ def build_beat_generation_messages(
     previous_beats = list(previous_beats or [])
     current_phase = current_phase or {}
     subject_text = _format_beat_arc_subject_names(subject_information) or "N/A"
+    canonical_character_facts = (
+        _canonical_character_facts_from_subject_information(subject_information)
+        or "N/A"
+    )
 
     required_events = current_phase.get("required_events", [])
     event_lines = []
@@ -15463,6 +15692,9 @@ SOURCE FOR THIS CHAPTER
 
 KNOWN SUBJECTS
 {subject_text}
+
+CANONICAL CHARACTER FACTS
+{canonical_character_facts}
 
 ASSIGNED EVENTS {batch_start}-{batch_end}
 {required_events_text}
@@ -28937,7 +29169,17 @@ def _run_main(
         required=False,
     )
     subject_definitions = base_subject_definitions
+    character_canon = load_or_generate_character_canon(
+        story,
+        subject_definitions,
+        history_metadata={"run_id": run_id},
+    )
     subject_information = format_beat_generation_subjects(subject_definitions)
+    canonical_character_facts = format_character_canon_for_beats(character_canon)
+    if canonical_character_facts:
+        subject_information = (
+            subject_information + "\n" + canonical_character_facts
+        ).strip()
     phrase_exclusions_found = os.path.isfile(PHRASE_EXCLUSIONS_FILE)
     phrase_exclusions = (
         load_phrase_exclusions(PHRASE_EXCLUSIONS_FILE)
