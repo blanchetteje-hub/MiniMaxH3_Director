@@ -1,0 +1,59 @@
+{
+  "job_id": "compare-gpt-director-zombie-2601",
+  "kind": "llama_chat",
+  "started_at": 1790749292.7207115,
+  "request": {
+    "model": "gpt",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are the creative director for one 8-second action-film clip. Complete every assigned action, object interaction, participant role, and visible result. Use concrete visible motion, not static summary poses. Return only timed micro-beats from 00:00.000 through at least 00:06.000."
+      },
+      {
+        "role": "user",
+        "content": "SOURCE: A zombie breaks the kitchen door window. Amy sees the danger, rushes Will and Amber to the basement, gets them inside, and locks the door. OPENING: Amy, Will, and Amber are in the kitchen. END STATE: Will and Amber are inside the basement; Amy remains outside; basement door is locked."
+      }
+    ],
+    "stream": false,
+    "temperature": 0.5,
+    "top_p": 0.92,
+    "top_k": 40,
+    "min_p": 0.03,
+    "max_tokens": 900,
+    "seed": 44,
+    "repeat_penalty": 1.08,
+    "presence_penalty": 0.1,
+    "frequency_penalty": 0.08
+  },
+  "response": {
+    "id": "chatcmpl-q1vqvgy9bi8xe4vmge58x",
+    "object": "chat.completion",
+    "created": 1790749292,
+    "model": "gpt-oss-20b-uncensored-hauhaucs-balanced",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "00:00.000‑00:00.500 Zombie slams its head against the kitchen window; glass shatters, shards scatter across the floor and bounce off the tiles.  \n00:00.500‑00:01.000 Amy’s eyes widen as she spots the zombie; she spins her head toward it, a quick look of alarm flashing across her face.  \n00:01.000‑00:01.500 Amy grabs Will’s elbow with both hands, pulling him forward in a swift tug.  \n00:01.500‑00:02.000 She then snags Amber’s wrist, yanking her toward the kitchen doorway as the two run side‑by‑side.  \n00:02.000‑00:02.500 The trio dashes toward the basement door; their strides are quick, feet pounding on the wooden floorboards.  \n00:02.500‑00:03.000 Amy hammers the basement door open with a forceful flick of her wrist, the lock clattering as it disengages.  \n00:03.000‑00:03.500 Will and Amber step inside;",
+          "reasoning": "We need to produce timed micro-beats from 00:00.000 through at least 00:06.000 for an 8-second action-film clip. The scene: a zombie breaks kitchen door window, Amy sees danger, rushes Will and Amber to basement, gets them inside, locks door. Opening: Amy, Will, Amber in kitchen. End state: Will & Amber inside basement; Amy outside; basement door locked.\n\nWe need micro-beats with concrete visible motion. Each beat likely a few hundred milliseconds? We need at least 7 seconds of beats. Provide timestamps from 00:00.000 to at least 00:06.000. Let's break into beats:\n\n0.000-0.500: zombie appears, breaks window.\n0.500-1.000: Amy's eyes widen, she looks at zombie.\n1.000-1.500: Amy grabs Will's arm, pulls him forward.\n1.500-2.000: Amy pulls Amber's hand as well.\n2.000-2.500: They run toward basement door.\n2.500-3.000: They reach basement door, open it quickly.\n3.000-3.500: Will and Amber step inside.\n3.500-4.000: Amy pushes them in, closes door behind.\n4.000-4.500: Amy locks the basement door from outside.\n4.500-5.000: Zombie shouts/approaches kitchen.\n5.000-5.500: Amy looks back at the door.\n5.500-6.000: Amy steps out of kitchen, leaving it.\n\nWe need to show visible motion: \"zombie breaks window\" - maybe zombie slams head through glass, shards flying. Amy sees danger: her eyes widen, she turns. She rushes Will & Amber: grabs arms, pulls them. They run: legs moving, pushing. Basement door: open quickly with a flick. Then they step inside: footfalls. Amy pushes them in and locks the door: hands on lock.\n\nWe need micro-beats with visible motion. Let's produce beats with timestamps like \"00:00.000-00:00.500\" etc. Each beat description.\n\nAlso we might include small details: e.g., zombie's head slams, shards, etc. Amy's reaction: quick glance, then grabbing arms. Will and Amber's legs moving.\n\nLet's produce at least 12 beats to cover 8 seconds with maybe 0.5 sec each.\n\nWe have to \"Return only timed micro-beats from 00:00.000 through at least 00:06.000.\" So no extra text.\n\nThus output lines like:\n\n00:00.000-00:00.500 Zombie slams head against kitchen window, glass shatters, shards scatter across floor.\n...\n\nLet's do that. Ensure we cover end state. We'll mention Amy outside after locking door. Good.\n\nWe'll use micro-beats of 0.5 sec intervals from 0 to 6 seconds inclusive. That's 12 beats.\n\nWe might refine durations: 00:00.000-00:00.500, 00:00.500-00:01.000 etc.\n\nLet's produce.",
+          "tool_calls": []
+        },
+        "logprobs": null,
+        "finish_reason": "length"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 203,
+      "completion_tokens": 900,
+      "total_tokens": 1103,
+      "completion_tokens_details": {
+        "reasoning_tokens": 660
+      }
+    },
+    "stats": {},
+    "system_fingerprint": "gpt-oss-20b-uncensored-hauhaucs-balanced"
+  },
+  "finished_at": 1790749304.5689697,
+  "status": "ok"
+}
