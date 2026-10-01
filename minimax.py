@@ -16772,6 +16772,548 @@ def save_generated_beats(
             os.remove(temporary_path)
 
 
+
+# ------------------------------------------------------------
+# EXPERIMENTAL SUMMARY -> STORY -> BEATS PIPELINE
+# story.txt remains authoritative. The expanded story is a derived continuity
+# representation used to let the local model solve connective prose naturally.
+# ------------------------------------------------------------
+
+_STORY_BEAT_TIMESTAMP_RE = re.compile(
+    r"(?i)\b(?:(?:at|by|around|about)\s+)?"
+    r"\d{1,2}:\d{2}(?::\d{2})?(?:[.:]\d{1,3})?\b\s*,?\s*"
+)
+
+
+def strip_story_beat_timestamps(text):
+    """Remove clock/timeline timestamps from one story-derived Beat."""
+    original = " ".join(str(text or "").split()).strip()
+    if not original:
+        return ""
+    cleaned = _STORY_BEAT_TIMESTAMP_RE.sub("", original)
+    cleaned = re.sub(r"\s+([,.;:!?])", r"\1", cleaned)
+    cleaned = " ".join(cleaned.split()).strip(" ,")
+    if cleaned and cleaned[0].isalpha():
+        cleaned = cleaned[0].upper() + cleaned[1:]
+    return cleaned
+
+
+def build_story_expansion_messages(summary, duration_seconds):
+    """Build the novelist pass that expands story.txt into continuous prose."""
+    duration_seconds = float(duration_seconds)
+    duration_text = (
+        str(int(duration_seconds))
+        if duration_seconds.is_integer()
+        else f"{duration_seconds:g}"
+    )
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a novelist. Write a short story based on the following "
+                "summary. Take the genre of the summary into account when "
+                "deciding what to focus on for the majority of the story."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""SUMMARY
+{str(summary or "").strip()}
+
+The entire story must be able to take place within a {duration_text}-second timeframe.
+
+Preserve every explicit event and outcome in the summary in the same order.
+You may add connective staging and concrete detail, but do not add a new major
+plot event, outcome, or named character. Write one continuous story, not an
+outline, beat list, screenplay, or analysis.""".strip(),
+        },
+    ]
+
+
+def _parse_expanded_story(raw_result):
+    """Return plain continuous prose from the novelist pass."""
+    candidate = raw_result
+    if isinstance(candidate, dict):
+        if set(candidate) == {"story"} and isinstance(candidate["story"], str):
+            candidate = candidate["story"]
+        else:
+            raise ValueError("Story expansion must return plain story text.")
+    if not isinstance(candidate, str):
+        raise ValueError("Story expansion must return text.")
+    candidate = candidate.strip()
+    candidate = re.sub(
+        r"\A\x60\x60\x60(?:text|markdown|md)?\s*",
+        "",
+        candidate,
+        flags=re.IGNORECASE,
+    )
+    candidate = re.sub(r"\s*\x60\x60\x60\Z", "", candidate).strip()
+    if not candidate:
+        raise ValueError("Story expansion returned no story text.")
+    return candidate
+
+
+def save_expanded_story(story, path=EXPANDED_STORY_FILE):
+    """Atomically save the derived continuous story for inspection."""
+    directory = os.path.dirname(os.path.abspath(path))
+    os.makedirs(directory, exist_ok=True)
+    descriptor, temporary_path = tempfile.mkstemp(
+        prefix=".expanded_story_",
+        suffix=".tmp",
+        dir=directory,
+        text=True,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as story_file:
+            story_file.write(str(story).strip() + "\n")
+            story_file.flush()
+            os.fsync(story_file.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+
+
+def build_story_to_beats_messages(
+    expanded_story,
+    total_segments,
+    *,
+    beat_instructions="",
+    phrase_exclusions=(),
+):
+    """Build the screenplay-adaptation pass over the complete working story."""
+    extras = []
+    if str(beat_instructions or "").strip():
+        extras.append("EXTRA BEAT RULES\n" + str(beat_instructions).strip())
+    exclusions = format_phrase_exclusions_section(phrase_exclusions)
+    if exclusions:
+        extras.append(exclusions.strip())
+    extra_text = "\n\n" + "\n\n".join(extras) if extras else ""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a screenplay writer that converts books into films. "
+                f"Read the provided story and convert it into {int(total_segments)} "
+                "distinct, concise film beats. Keep each beat one sentence and "
+                "maintain continuity and spatial awareness throughout the beats. "
+                "One beat MUST lead logically into another. No teleporting: if a "
+                "character moves, that movement has to be in the beat text. "
+                "Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""STORY
+{str(expanded_story or "").strip()}
+
+Convert the complete story above into exactly {int(total_segments)} sequential beats.
+Preserve the story's event order and outcomes. Do not summarize away an action
+that must visibly happen on screen. Each beat must be executable as one film clip.
+{extra_text}
+
+RETURN
+{{"beats":[{{"beat_number":1,"beat_text":"one sentence"}}]}}""".strip(),
+        },
+    ]
+
+
+def build_story_to_beats_response_format(total_segments):
+    """Return the strict JSON shape for whole-story Beat extraction."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_to_beats",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "beats": {
+                        "type": "array",
+                        "minItems": int(total_segments),
+                        "maxItems": int(total_segments),
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "beat_number": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": int(total_segments),
+                                },
+                                "beat_text": {"type": "string", "minLength": 1},
+                            },
+                            "required": ["beat_number", "beat_text"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["beats"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def _normalize_story_derived_beats(
+    raw_result,
+    total_segments,
+    *,
+    phrase_exclusions=(),
+    llm_request=None,
+):
+    """Parse Beat extraction and deterministically remove model timestamps."""
+    beats = parse_generated_beats(
+        raw_result,
+        int(total_segments),
+        phrase_exclusions=phrase_exclusions,
+        llm_request=llm_request,
+    )
+    normalized = [strip_story_beat_timestamps(beat) for beat in beats]
+    if any(not beat for beat in normalized):
+        raise ValueError("Timestamp cleanup produced an empty Beat.")
+    exclusion_issues = validate_generated_beat_exclusions(
+        normalized,
+        phrase_exclusions,
+    )
+    if exclusion_issues:
+        raise ValueError(" ".join(exclusion_issues))
+    return normalized
+
+
+def _story_derived_macro_arc(beats):
+    """Build the minimal Python-owned event skeleton for downstream validation."""
+    required_events = []
+    for beat_number, beat in enumerate(beats, start=1):
+        event = {
+            "id": f"E{beat_number}",
+            "event": str(beat).strip(),
+            "beat_number": beat_number,
+            "state_effects": [],
+        }
+        if beat_number > 1:
+            event["depends_on"] = [f"E{beat_number - 1}"]
+        required_events.append(event)
+    return {
+        "phases": [{
+            "phase_number": 1,
+            "beat_start": 1,
+            "beat_end": len(beats),
+            "narrative_purpose": (
+                "Adapt the continuous working story into sequential film beats."
+            ),
+            "broad_progression": (
+                "Follow the expanded story from beginning to end without "
+                "changing event order or outcomes."
+            ),
+            "characters_introduced": [],
+            "location": "As established by the expanded story.",
+            "required_events": required_events,
+            "required_end_state": "End at the expanded story's stated conclusion.",
+        }],
+    }
+
+
+def build_story_beat_repair_messages(
+    expanded_story,
+    beat_number,
+    total_segments,
+    rejected_candidate,
+    correction,
+    previous_finalized_beats,
+    next_beat,
+):
+    """Build a narrow story-grounded repair for one rejected extracted Beat."""
+    previous_text = (
+        previous_finalized_beats[-1]
+        if previous_finalized_beats
+        else "N/A"
+    )
+    next_text = str(next_beat or "N/A").strip()
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a screenplay writer repairing one film beat. "
+                "Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"""FULL STORY
+{str(expanded_story or "").strip()}
+
+BEAT {int(beat_number)} OF {int(total_segments)}
+CURRENT
+{str(rejected_candidate or "").strip()}
+
+PREVIOUS ACCEPTED BEAT
+{previous_text}
+
+NEXT PLANNED BEAT
+{next_text}
+
+VALIDATION ISSUE
+{str(correction or "").strip()}
+
+Rewrite only Beat {int(beat_number)}. Keep it one concise sentence. Preserve the
+same story event and outcome. Fix the stated problem while maintaining spatial
+continuity with the previous and next beats. If movement is required, show it.
+Do not pull a later story event into this beat.
+
+RETURN
+{{"beat_number":{int(beat_number)},"beat_text":"one sentence"}}""".strip(),
+        },
+    ]
+
+
+def build_story_beat_repair_response_format(beat_number):
+    """Return strict JSON for one story-derived Beat repair."""
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "story_beat_repair",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "beat_number": {
+                        "type": "integer",
+                        "enum": [int(beat_number)],
+                    },
+                    "beat_text": {"type": "string", "minLength": 1},
+                },
+                "required": ["beat_number", "beat_text"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def parse_story_beat_repair_result(raw_result, beat_number, llm_request=None):
+    """Parse and timestamp-clean one repaired story-derived Beat."""
+    candidate = raw_result
+    if isinstance(candidate, str):
+        candidate = ACTIVE_FORMATTER.sanitize_generated_text(candidate)
+        candidate = parse_llm_json_content(candidate, llm_request=llm_request)
+    if not isinstance(candidate, dict) or set(candidate) != {
+        "beat_number", "beat_text",
+    }:
+        raise ValueError(
+            "Story Beat repair must contain only beat_number and beat_text."
+        )
+    if candidate["beat_number"] != int(beat_number):
+        raise ValueError(
+            f"Story Beat repair returned Beat {candidate['beat_number']!r}; "
+            f"expected {int(beat_number)}."
+        )
+    beat_text = candidate["beat_text"]
+    if not isinstance(beat_text, str):
+        raise ValueError("Story Beat repair beat_text must be a string.")
+    beat_text = strip_story_beat_timestamps(beat_text)
+    if not beat_text:
+        raise ValueError("Story Beat repair returned an empty Beat.")
+    return beat_text
+
+
+def generate_beats_via_story_expansion(
+    story,
+    total_segments,
+    path=BEATS_FILE,
+    llm_request=None,
+    history_metadata=None,
+    beat_instructions="",
+    subject_information="",
+    lora_directive="",
+    story_arc_path=None,
+    story_arc_source=None,
+    phrase_exclusions=(),
+    reset_validation_state=False,
+    capture_accepted_state=False,
+    duration_seconds=None,
+    expanded_story_path=EXPANDED_STORY_FILE,
+):
+    """Generate Beats via continuous prose, then reuse downstream validation/state."""
+    if llm_request is None:
+        llm_request = ask_llm
+    if not str(story or "").strip():
+        raise ValueError("Story expansion requires non-empty story.txt content.")
+    total_segments = int(total_segments)
+    if total_segments <= 0:
+        raise ValueError("Story expansion requires at least one Beat.")
+    if duration_seconds is None:
+        duration_seconds = (
+            float(total_segments) * DEFAULT_GENERATED_PROMPT_SEGMENT_LENGTH
+        )
+    duration_seconds = float(duration_seconds)
+    if not math.isfinite(duration_seconds) or duration_seconds <= 0:
+        raise ValueError("Story expansion duration must be positive.")
+
+    story_arc_path = get_story_arc_path(path, story_arc_path)
+    if story_arc_source is None:
+        story_arc_source = story
+
+    last_error = None
+    expanded_story = None
+    for attempt in range(1, SUMMARY_CONTENT_ATTEMPTS + 1):
+        try:
+            raw_story = llm_request(
+                build_story_expansion_messages(story, duration_seconds),
+                response_format=None,
+                parse_json_response=False,
+                max_tokens=12000,
+                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+                history_metadata={
+                    **(history_metadata or {}),
+                    "purpose": "story_expansion",
+                    "attempt": attempt,
+                    "total_segments": total_segments,
+                    "duration_seconds": duration_seconds,
+                },
+                **CREATIVE_LLM_SAMPLING_PARAMETERS,
+            )
+            expanded_story = _parse_expanded_story(raw_story)
+            break
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+    if expanded_story is None:
+        raise ValueError(
+            "Could not produce a usable continuous story: "
+            + str(last_error or "unknown story-expansion error")
+        )
+
+    save_expanded_story(expanded_story, expanded_story_path)
+    print(f"Expanded story saved to {expanded_story_path}.", flush=True)
+    print("Expanded story:\n" + expanded_story, flush=True)
+
+    extracted_beats = None
+    last_error = None
+    for attempt in range(1, BEAT_RETRY_ATTEMPTS + 1):
+        try:
+            raw_beats = llm_request(
+                build_story_to_beats_messages(
+                    expanded_story,
+                    total_segments,
+                    beat_instructions=beat_instructions,
+                    phrase_exclusions=phrase_exclusions,
+                ),
+                response_format=build_story_to_beats_response_format(
+                    total_segments
+                ),
+                parse_json_response=False,
+                max_tokens=4096,
+                context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+                history_metadata={
+                    **(history_metadata or {}),
+                    "purpose": "story_to_beats",
+                    "attempt": attempt,
+                    "total_segments": total_segments,
+                },
+                **CREATIVE_LLM_SAMPLING_PARAMETERS,
+            )
+            extracted_beats = _normalize_story_derived_beats(
+                raw_beats,
+                total_segments,
+                phrase_exclusions=phrase_exclusions,
+                llm_request=llm_request,
+            )
+            break
+        except LLMConnectionError:
+            raise
+        except (TypeError, ValueError) as error:
+            last_error = error
+            print(
+                "Story-to-Beats response was invalid; requesting the complete "
+                f"Beat set again: {error}",
+                flush=True,
+            )
+    if extracted_beats is None:
+        raise ValueError(
+            "Could not convert the expanded story into Beats: "
+            + str(last_error or "unknown Beat-extraction error")
+        )
+
+    macro_arc = _story_derived_macro_arc(extracted_beats)
+    save_story_arc(macro_arc, story_arc_source, story_arc_path)
+    _preflight_required_event_state_effects(
+        macro_arc,
+        subject_information=subject_information,
+    )
+    print(
+        f"Story-derived Beat framework created with {len(extracted_beats)} beats.",
+        flush=True,
+    )
+    for beat_number, beat_text in enumerate(extracted_beats, start=1):
+        print(f"Beat {beat_number} created: {beat_text}", flush=True)
+
+    def repair_candidate(
+        *,
+        beat_number,
+        previous_finalized_beats,
+        correction,
+        current_phase,
+        next_beat_job,
+        rejected_candidate,
+    ):
+        del current_phase
+        next_beat = (
+            extracted_beats[beat_number]
+            if beat_number < len(extracted_beats)
+            else next_beat_job
+        )
+        raw_repair = llm_request(
+            build_story_beat_repair_messages(
+                expanded_story,
+                beat_number,
+                total_segments,
+                rejected_candidate,
+                correction,
+                previous_finalized_beats,
+                next_beat,
+            ),
+            response_format=build_story_beat_repair_response_format(
+                beat_number
+            ),
+            parse_json_response=False,
+            max_tokens=1024,
+            context_token_budget=STORY_PIPELINE_CONTEXT_TOKEN_BUDGET,
+            history_metadata={
+                **(history_metadata or {}),
+                "purpose": "story_to_beats",
+                "beat_number": beat_number,
+                "total_segments": total_segments,
+                "repair": True,
+            },
+            **CREATIVE_LLM_SAMPLING_PARAMETERS,
+        )
+        repaired = parse_story_beat_repair_result(
+            raw_repair,
+            beat_number,
+            llm_request=llm_request,
+        )
+        extracted_beats[beat_number - 1] = repaired
+        return repaired
+
+    return _run_forward_beat_validation(
+        lambda: list(extracted_beats),
+        expanded_story,
+        total_segments,
+        macro_arc,
+        path,
+        llm_request,
+        history_metadata=history_metadata,
+        beat_instructions=beat_instructions,
+        subject_information=subject_information,
+        phrase_exclusions=phrase_exclusions,
+        lora_directive=lora_directive,
+        state_path=get_beat_validation_state_path(path),
+        reset_state=reset_validation_state,
+        candidate_factory=repair_candidate,
+        capture_accepted_state=capture_accepted_state,
+    )
+
+
 # Generate beats from story.
 def generate_beats_from_story(
     story,
