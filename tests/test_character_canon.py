@@ -232,5 +232,69 @@ class CharacterCanonTests(unittest.TestCase):
         )
 
 
+
+    def test_prepare_source_film_uses_full_story_and_merges_canonical_clothing(self):
+        story = (
+            "Amy cooks breakfast. A zombie attacks. She lets her kids out of the basement.\n\n"
+            "Character information:\n"
+            "Amy is wearing a tight, black tank-top and denim jeans, she is female and 30-years-old.\n"
+            "Will is male and 8-years-old.\n"
+            "Amber is female and 5-years-old."
+        )
+        subject_information = (
+            "- Amy canonical age: 30; canonical clothing: tight black tank-top and denim jeans; canonical gender: female.\n"
+            "- Will canonical age: 8; canonical clothing: t-shirt and shorts; canonical gender: male.\n"
+            "- Amber canonical age: 5; canonical clothing: dress; canonical gender: female."
+        )
+        prepared = minimax.prepare_source_film_for_beats(
+            story,
+            subject_information,
+        )
+        self.assertIn("Amy cooks breakfast. A zombie attacks.", prepared)
+        self.assertIn("She lets her kids out of the basement.", prepared)
+        self.assertIn("CHARACTER INFORMATION:", prepared)
+        self.assertNotIn("Character information:", prepared)
+        self.assertIn(
+            "Will is wearing t-shirt and shorts, and is male and 8-years-old.",
+            prepared,
+        )
+        self.assertIn(
+            "Amber is wearing dress, and is female and 5-years-old.",
+            prepared,
+        )
+        self.assertEqual(prepared.count("Amy is wearing"), 1)
+
+    def test_compact_beat_prompt_uses_prepared_full_source_film(self):
+        story = (
+            "Amy cooks breakfast. A zombie attacks. She lets her kids out of the basement.\n\n"
+            "Character information:\n"
+            "Will is male and 8-years-old."
+        )
+        subject_information = (
+            "- Will canonical age: 8; canonical clothing: t-shirt and shorts; "
+            "canonical gender: male."
+        )
+        phase = {
+            "required_events": [{
+                "id": "E7",
+                "event": "She lets her kids out of the basement.",
+                "beat_number": 7,
+                "state_effects": [],
+            }]
+        }
+        messages = minimax.build_beat_generation_messages(
+            story,
+            7,
+            current_phase=phase,
+            subject_information=subject_information,
+            batch_start=7,
+            batch_end=7,
+        )
+        prompt = messages[-1]["content"]
+        self.assertIn("Amy cooks breakfast. A zombie attacks.", prompt)
+        self.assertIn("CHARACTER INFORMATION:", prompt)
+        self.assertIn("Will is wearing t-shirt and shorts", prompt)
+
+
 if __name__ == "__main__":
     unittest.main()
