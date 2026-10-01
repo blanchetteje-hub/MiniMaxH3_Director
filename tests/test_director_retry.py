@@ -135,6 +135,24 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 1,
             )
 
+    def test_h3_formatter_repairs_named_dialogue_speaker_id(self):
+        parsed = minimax.parse_h3_formatter_result(
+            {
+                "subject_genders": {},
+                "detailed_description": (
+                    '[Shot 1] Will calls out (S1) <d>[English] Amy!</d>'
+                ),
+                "overall_soundscape": "Will calls out.",
+                "non_diegetic_music": "N/A",
+            },
+            subject_definitions=(
+                "<Subject 1> is Amy, a woman.\n"
+                "<Subject 2> is Will, a boy."
+            ),
+        )
+        self.assertIn("Will calls out (S2) <d>[English] Amy!</d>", parsed["detailed_description"])
+        self.assertNotIn("Will calls out (S1)", parsed["detailed_description"])
+
     def test_h3_formatter_parses_subject_genders(self):
         parsed = minimax.parse_h3_formatter_result(
             "subject_genders: {\"Werewolf\": \"unknown\", "
