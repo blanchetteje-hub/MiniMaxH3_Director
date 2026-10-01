@@ -353,11 +353,38 @@ Relevant commits:
 - `887fbe8c5ac6f2a47459629eac27f8e38a272d1e`
 - `56f4ade89048730627e95eeef2a600b7adcc6852`
 
+### 2770 — prompts remain good; environment container shape failure
+
+`tests-2769-story-namespace-schema`: **42 passed, 4 subtests passed**.
+
+`generate-beats-2770-summary-guided-story-to-beats` again preserves both kids:
+- Will and Amber are placed together in the back bedroom closet;
+- Beat 8 retrieves both of them and brings them out together.
+
+Keep both current story prompts.
+
+The run fails after Beat 3 in accepted-state application with:
+
+`Canonical environment objects must be an object.`
+
+Cause:
+- accepted-state response schema still allowed arbitrary shapes under `environment`;
+- canonical state requires `doors`, `windows`, `barriers`, `objects`, and `paths` to be object maps, and `persistent_effects` / `hazards` to be arrays.
+
+Fix:
+- encode those known environment container types directly in the accepted-state response schema;
+- continue allowing additional environment facts;
+- no Python normalization or story-prompt changes.
+
+Relevant commits:
+- `8ea3885c4105aa16c1c0883b20a3d784e97013f6`
+- `008b884380503e0633bfa2a2734b373c2e41e9d5`
+
 ## Immediate next work
 
 Queued:
-- `tests-2769-story-namespace-schema`
-- `generate-beats-2770-summary-guided-story-to-beats`
+- `tests-2771-environment-container-schema`
+- `generate-beats-2772-summary-guided-story-to-beats`
 
 When processed:
 1. confirm the character-canon and planning regressions are green;
