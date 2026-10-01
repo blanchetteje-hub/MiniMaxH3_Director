@@ -249,10 +249,32 @@ Remaining observation is semantic, not structural:
 
 Do not add more novelist prompt rules from this single sample. Earlier runs with the same current prompt preserved the ending better, so treat this as possible temperature/sampling variance first.
 
+### 2761 — repeat novelist sample + reserved character key
+
+`generate-beats-2761-summary-to-story-repeat`
+
+The repeat sample preserves the source ending better than 2760: after the last zombie dies, Amy retrieves Will and Amber from the closet and brings them out into the living room. This supports treating 2760's reversed ending as sampling variance at novelist temperature 0.4 rather than adding another short-story prompt rule.
+
+The run then fails after Beat 5 with:
+
+`State effects cannot nest canonical state root 'characters.environment'; roots must remain top-level.`
+
+This is the same structural class previously seen as `threats.story`: GPT-OSS reused a reserved canonical root name as a direct entity ID.
+
+Fix:
+- reserve canonical root names in direct `characters` keys, matching the existing `threats` restriction;
+- no new extractor prose rule;
+- novelist prompt/temperature remain unchanged.
+
+Relevant commits:
+- `05cc4ec427a1f3afdf931e9cda694eae04df592b`
+- `79b5fadc2bf06212a550aa35c0ffb48b2ea85340`
+
 ## Immediate next work
 
 Queued:
-- `generate-beats-2761-summary-to-story-repeat`
+- `tests-2762-reserved-character-keys`
+- `generate-beats-2763-summary-to-story`
 
 When processed:
 1. confirm the character-canon and planning regressions are green;
