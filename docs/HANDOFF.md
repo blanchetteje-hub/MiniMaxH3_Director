@@ -483,6 +483,12 @@ Fix:
 
 The post-RAW path remains deterministic where possible; this check exists before RAW is accepted because deciding physical/causal coherence is fuzzy semantic work.
 
+### 2809 — RAW coherence wiring bug
+
+The new RAW coherence gate did not actually run because its helper forwarded the entire beat-validator settings dictionary directly into `ask_llm`; that dictionary contains server/runtime-only keys such as `context`, which are not valid per-request arguments.
+
+Fix: the narrow RAW coherence call now uses only supported deterministic request parameters (temperature 0, top_p 1, seed 42, repeat_penalty 1.15, bounded output), matching the style of other narrow semantic checks.
+
 ## Immediate next work
 
 Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.

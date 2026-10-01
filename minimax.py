@@ -29910,7 +29910,11 @@ def validate_director_raw_scene_coherence(
             **dict(history_metadata or {}),
             "purpose": "director_raw_scene_coherence",
         },
-        **_active_beat_validation_settings(),
+        temperature=0,
+        top_p=1,
+        max_tokens=512,
+        seed=42,
+        repeat_penalty=1.15,
     )
     return parse_beat_validation_result(result)
 
