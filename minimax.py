@@ -20452,6 +20452,49 @@ def _strip_formatter_metadata(value):
     return re.sub(r"\n{3,}", "\n\n", cleaned).strip()
 
 
+def _repair_named_dialogue_speaker_ids(description, subject_definitions):
+    """Force explicitly named dialogue onto the registered stable speaker ID."""
+    text = str(description or "")
+    registry = parse_subject_registry(subject_definitions or "")
+    speakers = []
+    for subject_id, name, record in _subject_registry_records(registry):
+        speaker = _subject_speaker_display_id(record.get("speaker_id"), subject_id)
+        if name and speaker:
+            speakers.append((name, speaker))
+
+    speech_re = re.compile(
+        r"(?i)\b(?:says?|asks?|answers?|replies|shouts?|whispers?|yells?|"
+        r"calls?(?:\s+out)?|cries|screams?|murmurs?|mutters?|growls?)\b"
+    )
+    blocks = list(re.finditer(r"<d>.*?</d>", text, re.I | re.S))
+    for block in reversed(blocks):
+        prefix_start = max(0, block.start() - 220)
+        prefix = text[prefix_start:block.start()]
+        best = None
+        for name, speaker in speakers:
+            for match in re.finditer(re.escape(name), prefix, re.I):
+                tail = prefix[match.end():]
+                if speech_re.search(tail):
+                    candidate = (match.start(), name, speaker)
+                    if best is None or candidate[0] > best[0]:
+                        best = candidate
+        if best is None:
+            continue
+        _, _name, speaker = best
+        before = text[prefix_start:block.start()]
+        replaced = re.sub(
+            r"\(S\d+\)\s*$",
+            speaker + " ",
+            before,
+            count=1,
+            flags=re.I,
+        )
+        if replaced == before:
+            replaced = before + speaker + " "
+        text = text[:prefix_start] + replaced + text[block.start():]
+    return text
+
+
 # Parse Request 2's four-property JSON response and legacy fallbacks.
 def parse_h3_formatter_result(
     raw_result,
@@ -20479,6 +20522,10 @@ def parse_h3_formatter_result(
     description = remove_non_speaking_speaker_ids(
         description,
         {"subject_definitions": subject_definitions},
+    )
+    description = _repair_named_dialogue_speaker_ids(
+        description,
+        subject_definitions,
     )
     return {
         "detailed_description": description,
@@ -20526,6 +20573,10 @@ def _salvage_h3_formatter_result(
     description = remove_non_speaking_speaker_ids(
         description,
         {"subject_definitions": subject_definitions},
+    )
+    description = _repair_named_dialogue_speaker_ids(
+        description,
+        subject_definitions,
     )
     return {
         "detailed_description": description,
