@@ -311,6 +311,7 @@ def build_report(
     for filename in (
         "story_arc.json",
         "beats.txt",
+        "character_canon.json",
         "generation_state.json",
         "prompt_history.txt",
         "subjects.txt",
@@ -486,6 +487,9 @@ def main(argv=None) -> int:
                         f"Director plan is missing required file: {source}"
                     )
                 shutil.copy2(source, workspace / filename)
+            canon_source = plan_dir / "character_canon.json"
+            if canon_source.is_file():
+                shutil.copy2(canon_source, workspace / "character_canon.json")
         command, refresh_interval = build_command(
             args.python,
             benchmark,
