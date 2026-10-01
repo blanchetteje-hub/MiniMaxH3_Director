@@ -14,6 +14,7 @@ story_arc.json
 story_arc.json.sha256
 subjects.txt
 fix.py
+canonical_data.txt
 amy.jpg
 
 # Runtime state / LLM traces

@@ -592,6 +592,22 @@ Python also verifies common explicit constraints such as exact phrase
 placement/count, prohibited words, required phrases, and an exact final
 sentence; failed checks trigger another correction.
 
+### `canonical_data.txt` — required character information
+
+Write the character facts directly in this file, for example:
+
+```text
+Amy is wearing a tight, black tank-top and denim jeans, she is female and 30-years-old.
+Will is male and 8-years-old.
+Amber is female and 5-years-old.
+```
+
+The program converts these statements to `character_canon.json`. Each character
+gets age, clothing, and gender; the model supplies a reasonable value when one
+of those three is missing. Other facts are included only when stated in the file.
+The saved JSON is reused until `canonical_data.txt` changes. The original file
+text is also included in the first Director prompt for segment 1.
+
 ### `phrase_exclusions.txt` — optional phrase exclusions
 
 Put one word or phrase per line. When this file exists, its nonblank entries are
@@ -1156,6 +1172,8 @@ MINIMAX_DEBUG=1 python minimax.py 5 10 0.2
 | `Minimax_auto_append_API.json` | Video-continuation API workflow. |
 | `Minimax_auto_refresh_API.json` | Auto-refresh reference-to-video workflow used by `--refresh`. |
 | `story.txt` | Source story or creative brief. |
+| `canonical_data.txt` | Character facts used to build the canonical JSON and the first Director prompt. |
+| `character_canon.json` | Cached structured character facts derived from `canonical_data.txt`. |
 | `story_arc.json` | Persisted macro story arc reused by automatic beat generation when valid. |
 | `story_arc.json.sha256` | SHA-256 of the `story.txt` source associated with the persisted arc. |
 | `beat_validation_state.json` | Resumable forward-only beat-validation checkpoint. |

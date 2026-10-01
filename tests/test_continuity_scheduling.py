@@ -141,6 +141,8 @@ class ContinuitySchedulingTests(unittest.TestCase):
                 return "Amy walks toward a doorway."
             if path == minimax.SUBJECT_DEFINITIONS_FILE:
                 return "<Subject 1> is Amy, referenced in <Picture 1>."
+            if path == minimax.CANONICAL_DATA_FILE:
+                return "Amy is female and 30-years-old."
             return ""
 
         def request_segment(bundle, _beats, _run_id, _run_config):
@@ -176,6 +178,10 @@ class ContinuitySchedulingTests(unittest.TestCase):
             mock.patch("minimax.configure_formatter"),
             mock.patch("minimax.configure_reference_image_overrides"),
             mock.patch("minimax.load_text_file", side_effect=load_text),
+            mock.patch("minimax.load_or_generate_character_canon", return_value={
+                "fields": ["age", "clothing", "gender"],
+                "characters": [{"name": "Amy", "age": "30", "clothing": "jeans", "gender": "female"}],
+            }),
             mock.patch(
                 "minimax.parse_story_beat_instructions",
                 return_value=("Amy walks toward a doorway.", []),
@@ -252,6 +258,8 @@ class ContinuitySchedulingTests(unittest.TestCase):
                 return "Amy walks toward a doorway."
             if path == minimax.SUBJECT_DEFINITIONS_FILE:
                 return "<Subject 1> is Amy, referenced in <Picture 1>."
+            if path == minimax.CANONICAL_DATA_FILE:
+                return "Amy is female and 30-years-old."
             return ""
 
         def request_segment(bundle, _beats, _run_id, _run_config):
@@ -282,6 +290,10 @@ class ContinuitySchedulingTests(unittest.TestCase):
             mock.patch("minimax.configure_formatter"),
             mock.patch("minimax.configure_reference_image_overrides"),
             mock.patch("minimax.load_text_file", side_effect=load_text),
+            mock.patch("minimax.load_or_generate_character_canon", return_value={
+                "fields": ["age", "clothing", "gender"],
+                "characters": [{"name": "Amy", "age": "30", "clothing": "jeans", "gender": "female"}],
+            }),
             mock.patch(
                 "minimax.parse_story_beat_instructions",
                 return_value=("Amy walks toward a doorway.", []),

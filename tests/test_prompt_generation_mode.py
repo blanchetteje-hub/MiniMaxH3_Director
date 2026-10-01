@@ -57,6 +57,8 @@ def test_prompt_generation_mode_skips_comfyui_and_stitching():
         del required
         if path == minimax.STORY_FILE:
             return "A story."
+        if path == minimax.CANONICAL_DATA_FILE:
+            return "Amy is female and 30-years-old."
         return ""
 
     def request_segment(bundle, _beats, _run_id, _run_config):
@@ -78,6 +80,10 @@ def test_prompt_generation_mode_skips_comfyui_and_stitching():
         mock.patch("minimax.configure_formatter"),
         mock.patch("minimax.configure_reference_image_overrides"),
         mock.patch("minimax.load_text_file", side_effect=load_text),
+        mock.patch("minimax.load_or_generate_character_canon", return_value={
+            "fields": ["age", "clothing", "gender"],
+            "characters": [{"name": "Amy", "age": "30", "clothing": "jeans", "gender": "female"}],
+        }),
         mock.patch(
             "minimax.parse_story_beat_instructions",
             return_value=("A story.", []),

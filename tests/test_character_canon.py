@@ -7,120 +7,90 @@ from unittest.mock import Mock
 import minimax
 
 
-FIELDS = ("age", "clothing", "gender")
+CANONICAL_DATA = (
+    "Amy is wearing a tight, black tank-top and denim jeans, she is female and 30-years-old.\n"
+    "Will is male and 8-years-old.\n"
+    "Amber is female and 5-years-old."
+)
+
+
+def character_result(age="30", clothing="black tank top and jeans", gender="female", other_facts=None):
+    return {"characters": [{
+        "name": "Amy", "age": age, "clothing": clothing,
+        "gender": gender, "other_facts": other_facts or [],
+    }]}
 
 
 class CharacterCanonTests(unittest.TestCase):
-    def test_canonical_data_fields_are_user_configurable(self):
-        self.assertEqual(
-            minimax.parse_canonical_data_fields(
-                "age, clothing, gender\nhair color"
-            ),
-            ("age", "clothing", "gender", "hair_color"),
-        )
+    def test_canonical_data_is_loaded_as_character_information(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "canonical_data.txt"
+            path.write_text(CANONICAL_DATA, encoding="utf-8")
+            self.assertEqual(minimax.load_canonical_data(str(path)), CANONICAL_DATA)
 
-    def test_parse_character_canon_result_uses_configured_fields(self):
+    def test_parse_character_canon_result_uses_required_and_extra_fields(self):
         result = minimax.parse_character_canon_result(
-            {
-                "characters": [
-                    {
-                        "name": "Amy",
-                        "age": "34",
-                        "clothing": "tight black tank top, denim jeans",
-                        "gender": "female",
-                    }
-                ]
-            },
-            canonical_fields=FIELDS,
+            character_result(other_facts=[{"field": "eye color", "value": "brown"}]),
         )
-        self.assertEqual(result["fields"], list(FIELDS))
+        self.assertEqual(result["fields"], ["age", "clothing", "gender", "eye_color"])
         self.assertEqual(result["characters"][0]["name"], "Amy")
         self.assertEqual(result["characters"][0]["gender"], "female")
-        self.assertIn("black tank top", result["characters"][0]["clothing"])
+        self.assertEqual(result["characters"][0]["eye_color"], "brown")
 
-    def test_character_canon_prompt_is_driven_by_configured_fields(self):
-        messages = minimax.build_character_canon_messages(
-            "Amy wears a black tank top. Will is Amy's son.",
-            "<Subject 1> is Amy, a 34-year-old woman.\n"
-            "<Subject 2> is Will, a 10-year-old boy.",
-            canonical_fields=FIELDS,
-        )
+    def test_character_canon_prompt_uses_only_canonical_data(self):
+        messages = minimax.build_character_canon_messages(CANONICAL_DATA)
         prompt = messages[-1]["content"]
-        self.assertIn("- age", prompt)
-        self.assertIn("- clothing", prompt)
-        self.assertIn("- gender", prompt)
-        self.assertIn("Explicit facts", prompt)
-        self.assertIn("do not replace them with an inference", prompt)
-        self.assertIn("Amy wears a black tank top", prompt)
-        self.assertIn("Will, a 10-year-old boy", prompt)
-        self.assertIn('"gender": "value"', prompt)
+        self.assertIn(CANONICAL_DATA, prompt)
+        self.assertIn("if one is missing, invent", prompt)
+        self.assertIn("Never invent additional fields", prompt)
+        self.assertNotIn("FILM SYNOPSIS", prompt)
 
-    def test_response_schema_changes_with_canonical_fields(self):
-        schema = minimax.build_character_canon_response_format(
-            ("age", "eye_color")
-        )
+    def test_response_schema_requires_three_fields_and_allows_extra_facts(self):
+        schema = minimax.build_character_canon_response_format()
         item = schema["json_schema"]["schema"]["properties"]["characters"]["items"]
         self.assertEqual(
             set(item["properties"]),
-            {"name", "age", "eye_color"},
+            {"name", "age", "clothing", "gender", "other_facts"},
         )
-        self.assertEqual(
-            set(item["required"]),
-            {"name", "age", "eye_color"},
-        )
+        self.assertEqual(set(item["required"]), set(item["properties"]))
 
     def test_source_matched_character_canon_is_reused_without_llm(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "character_canon.json"
-            source_hash = minimax._character_canon_source_hash(
-                "Amy protects Will.",
-                "<Subject 1> is Amy, a woman.",
-                canonical_fields=FIELDS,
-            )
+            source_hash = minimax._character_canon_source_hash(CANONICAL_DATA)
             minimax.save_character_canon(
                 {
-                    "fields": list(FIELDS),
+                    "fields": ["age", "clothing", "gender"],
                     "characters": [{
                         "name": "Amy",
-                        "age": "34",
+                        "age": "30",
                         "clothing": "black tank top and denim jeans",
                         "gender": "female",
                     }],
                 },
                 source_hash,
                 path=str(path),
-                canonical_fields=FIELDS,
             )
             request = Mock(side_effect=AssertionError("LLM should not be called"))
             result = minimax.load_or_generate_character_canon(
-                "Amy protects Will.",
-                "<Subject 1> is Amy, a woman.",
+                CANONICAL_DATA,
                 path=str(path),
-                canonical_fields=FIELDS,
                 llm_request=request,
             )
-            self.assertEqual(result["characters"][0]["age"], "34")
+            self.assertEqual(result["characters"][0]["age"], "30")
             self.assertEqual(result["characters"][0]["gender"], "female")
             request.assert_not_called()
 
-    def test_changing_configured_fields_changes_canon_source_hash(self):
-        base = minimax._character_canon_source_hash(
-            "Amy protects Will.",
-            "<Subject 1> is Amy, a woman.",
-            canonical_fields=("age", "clothing"),
-        )
-        changed = minimax._character_canon_source_hash(
-            "Amy protects Will.",
-            "<Subject 1> is Amy, a woman.",
-            canonical_fields=("age", "clothing", "gender"),
-        )
+    def test_changing_canonical_data_changes_canon_source_hash(self):
+        base = minimax._character_canon_source_hash(CANONICAL_DATA)
+        changed = minimax._character_canon_source_hash(CANONICAL_DATA + "\nAmy has brown eyes.")
         self.assertNotEqual(base, changed)
 
     def test_stale_character_canon_is_regenerated(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "character_canon.json"
             path.write_text(json.dumps({
-                "version": 1,
+                "version": 3,
                 "source_sha256": "0" * 64,
                 "characters": [{
                     "name": "Amy",
@@ -128,24 +98,38 @@ class CharacterCanonTests(unittest.TestCase):
                     "clothing": "old outfit",
                 }],
             }), encoding="utf-8")
-            request = Mock(return_value={
-                "characters": [{
-                    "name": "Amy",
-                    "age": "34",
-                    "clothing": "black tank top and denim jeans",
-                    "gender": "female",
-                }]
-            })
+            request = Mock(return_value=character_result())
             result = minimax.load_or_generate_character_canon(
-                "Amy protects Will.",
-                "<Subject 1> is Amy, a woman.",
+                CANONICAL_DATA,
                 path=str(path),
-                canonical_fields=FIELDS,
                 llm_request=request,
             )
-            self.assertEqual(result["characters"][0]["age"], "34")
+            self.assertEqual(result["characters"][0]["age"], "30")
             self.assertEqual(result["characters"][0]["gender"], "female")
             self.assertEqual(request.call_count, 1)
+
+    def test_file_facts_become_json_and_only_missing_core_facts_are_invented(self):
+        response = {"characters": [
+            {"name": "Amy", "age": "30", "clothing": "tight black tank top and denim jeans",
+             "gender": "female", "other_facts": [{"field": "eye color", "value": "brown"}]},
+            {"name": "Will", "age": "8", "clothing": "blue T-shirt and shorts",
+             "gender": "male", "other_facts": []},
+            {"name": "Amber", "age": "5", "clothing": "yellow dress",
+             "gender": "female", "other_facts": []},
+        ]}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "character_canon.json"
+            request = Mock(return_value=response)
+            result = minimax.load_or_generate_character_canon(
+                CANONICAL_DATA + "\nAmy has brown eyes.",
+                path=str(path), llm_request=request,
+            )
+            self.assertEqual(len(result["characters"]), 3)
+            self.assertEqual(result["characters"][0]["eye_color"], "brown")
+            self.assertEqual(result["characters"][1]["clothing"], "blue T-shirt and shorts")
+            self.assertEqual(result["fields"], ["age", "clothing", "gender", "eye_color"])
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8")), result)
+            self.assertIn(CANONICAL_DATA, request.call_args.args[0][-1]["content"])
 
     def test_character_facts_are_in_arc_and_compact_beat_prompt(self):
         subject_information = (
@@ -204,10 +188,11 @@ class CharacterCanonTests(unittest.TestCase):
                 "- Amy canonical age: 34; canonical clothing: black tank top; "
                 "canonical gender: female."
             ),
+            canonical_data=CANONICAL_DATA,
         )
         prompt = messages[-1]["content"]
         self.assertIn("CANONICAL STARTING CHARACTER FACTS", prompt)
-        self.assertIn("canonical clothing: black tank top", prompt)
+        self.assertIn(CANONICAL_DATA, prompt)
 
         later, _, _ = minimax.build_generation_messages(
             rules,
@@ -225,11 +210,13 @@ class CharacterCanonTests(unittest.TestCase):
                 "- Amy canonical age: 34; canonical clothing: black tank top; "
                 "canonical gender: female."
             ),
+            canonical_data=CANONICAL_DATA,
         )
         self.assertNotIn(
             "CANONICAL STARTING CHARACTER FACTS",
             later[-1]["content"],
         )
+        self.assertNotIn(CANONICAL_DATA, later[-1]["content"])
 
 
 

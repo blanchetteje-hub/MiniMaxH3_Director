@@ -41,11 +41,16 @@ class GenerateBeatsCliTests(unittest.TestCase):
             del required
             if path == minimax.STORY_FILE:
                 return "A complete source story."
+            if path == minimax.CANONICAL_DATA_FILE:
+                return "Amy is female and 30-years-old."
             return ""
 
         with mock.patch("minimax.parse_args", return_value=args), mock.patch(
             "minimax.load_text_file", side_effect=fake_load
-        ), mock.patch("minimax.load_or_generate_beats", generated), mock.patch(
+        ), mock.patch("minimax.load_or_generate_character_canon", return_value={
+            "fields": ["age", "clothing", "gender"],
+            "characters": [{"name": "Amy", "age": "30", "clothing": "jeans", "gender": "female"}],
+        }), mock.patch("minimax.load_or_generate_beats", generated), mock.patch(
             "minimax.reset_prompt_history"
         ), mock.patch(
             "minimax.validate_runtime_environment"

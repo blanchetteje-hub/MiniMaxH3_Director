@@ -5571,115 +5571,43 @@ def reset_generation_state_subjects_for_new_phase(
 
 # Render parsed subject names and descriptive prose for beat planning.
 
-def parse_canonical_data_fields(raw_fields):
-    """Return normalized canonical character fields from user-editable text."""
-    fields = []
-    seen = set()
-    for raw_field in re.split(r"[,\r\n]+", str(raw_fields or "")):
-        raw_field = raw_field.strip()
-        if not raw_field or raw_field.startswith("#"):
-            continue
-        field = re.sub(r"[^a-z0-9]+", "_", raw_field.casefold()).strip("_")
-        if not field:
-            continue
-        if field == "name":
-            raise ValueError(
-                "canonical_data.txt must not include reserved field 'name'."
-            )
-        if not re.fullmatch(r"[a-z][a-z0-9_]*", field):
-            raise ValueError(
-                f"Invalid canonical data field {raw_field!r}; use words, "
-                "numbers, spaces, hyphens, or underscores."
-            )
-        if field not in seen:
-            seen.add(field)
-            fields.append(field)
-    if not fields:
-        raise ValueError(
-            "canonical_data.txt must define at least one canonical character field."
-        )
-    return tuple(fields)
+def load_canonical_data(path=CANONICAL_DATA_FILE):
+    """Load the authored character facts, which are the canon source of truth."""
+    data = load_text_file(path, required=True).strip()
+    if not data:
+        raise ValueError("canonical_data.txt must contain character information.")
+    return data
 
 
-def load_canonical_data_fields(path=CANONICAL_DATA_FILE):
-    """Load the user-selected canonical character fields."""
-    return parse_canonical_data_fields(load_text_file(path, required=True))
-
-
-def _resolve_canonical_fields(canonical_fields=None):
-    if canonical_fields is None:
-        return load_canonical_data_fields()
-    if isinstance(canonical_fields, str):
-        return parse_canonical_data_fields(canonical_fields)
-    return parse_canonical_data_fields(",".join(str(field) for field in canonical_fields))
-
-
-def build_character_canon_messages(
-    story,
-    subject_definitions="",
-    canonical_fields=None,
-):
-    """Build the one-time, file-driven canonical character profile request."""
-    fields = _resolve_canonical_fields(canonical_fields)
-    field_lines = "\n".join(
-        f"- {field.replace('_', ' ')}" for field in fields
-    )
-    example_record = {"name": "Name"}
-    example_record.update({field: "value" for field in fields})
-    special_rules = []
-    if "clothing" in fields:
-        special_rules.append(
-            "- Clothing means the character's baseline outfit, not temporary "
-            "dirt, blood, damage, wetness, or another later condition."
-        )
-    special_rules_text = (
-        "\n" + "\n".join(special_rules)
-        if special_rules else ""
-    )
+def build_character_canon_messages(canonical_data):
+    """Structure file facts, filling only missing age, clothing, or gender."""
     return [
         {
             "role": "system",
             "content": (
-                "You are establishing factual information that will be considered "
-                "canonical in a film. Only return what is asked for by the user. "
-                "Return succinct results in JSON."
+                "Convert the supplied canonical character information to JSON. "
+                "Preserve every explicit fact and return JSON only."
             ),
         },
         {
             "role": "user",
-            "content": f"""Establish these canonical facts for all main characters:
-{field_lines}
-
-FILM SYNOPSIS
-{str(story or '').strip()}
-
-EXISTING SUBJECT FACTS
-{str(subject_definitions or '').strip() or 'N/A'}
-
-RULES
-- Explicit facts in the synopsis or EXISTING SUBJECT FACTS are authoritative.
-  Copy them; do not replace them with an inference.
-- When a requested fact is not explicitly defined, choose one reasonable value
-  from the story context. That value becomes canonical and must not vary later.
-- Include every named main character.
-- Keep values concise and concrete.{special_rules_text}
-- Return only JSON in this shape:
-  {json.dumps({"characters": [example_record]}, ensure_ascii=False)}
-""".strip(),
+            "content": (
+                "Convert CANONICAL DATA to JSON. Include each named character "
+                "and each fact stated about that character. Return name, age, "
+                "clothing, and gender for every character. Copy these values "
+                "when stated; if one is missing, invent one reasonable value "
+                "from the character information. Put any additional explicitly "
+                "stated facts in other_facts using short field names. Never invent "
+                "additional fields or replace an explicit fact. Clothing means "
+                "baseline clothing. Do not use story or subject information.\n\n"
+                "CANONICAL DATA\n" + str(canonical_data).strip()
+            ),
         },
     ]
 
 
-def build_character_canon_response_format(canonical_fields=None):
-    """Return the strict schema for the configured canonical character fields."""
-    fields = _resolve_canonical_fields(canonical_fields)
-    properties = {
-        "name": {"type": "string", "minLength": 1},
-    }
-    properties.update({
-        field: {"type": "string", "minLength": 1}
-        for field in fields
-    })
+def build_character_canon_response_format():
+    """Require core facts and allow explicitly authored extra facts."""
     return {
         "type": "json_schema",
         "json_schema": {
@@ -5693,8 +5621,27 @@ def build_character_canon_response_format(canonical_fields=None):
                         "minItems": 1,
                         "items": {
                             "type": "object",
-                            "properties": properties,
-                            "required": ["name", *fields],
+                            "properties": {
+                                "name": {"type": "string", "minLength": 1},
+                                "age": {"type": "string", "minLength": 1},
+                                "clothing": {"type": "string", "minLength": 1},
+                                "gender": {"type": "string", "minLength": 1},
+                                "other_facts": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "field": {"type": "string", "minLength": 1},
+                                            "value": {"type": "string", "minLength": 1},
+                                        },
+                                        "required": ["field", "value"],
+                                        "additionalProperties": False,
+                                    },
+                                },
+                            },
+                            "required": [
+                                "name", "age", "clothing", "gender", "other_facts"
+                            ],
                             "additionalProperties": False,
                         },
                     }
@@ -5706,9 +5653,8 @@ def build_character_canon_response_format(canonical_fields=None):
     }
 
 
-def parse_character_canon_result(raw_result, canonical_fields=None):
-    """Validate and normalize a configured canonical character-profile response."""
-    fields = _resolve_canonical_fields(canonical_fields)
+def parse_character_canon_result(raw_result):
+    """Validate and normalize the file-derived character profile."""
     candidate = raw_result
     if isinstance(candidate, str):
         candidate = parse_llm_json_content(candidate, repair_on_failure=False)
@@ -5717,21 +5663,43 @@ def parse_character_canon_result(raw_result, canonical_fields=None):
     raw_characters = candidate.get("characters")
     if not isinstance(raw_characters, list) or not raw_characters:
         raise ValueError("Character canon requires at least one character.")
-    expected_keys = {"name", *fields}
     characters = []
+    fields = ["age", "clothing", "gender"]
     seen = set()
     for item in raw_characters:
-        if not isinstance(item, dict) or set(item) != expected_keys:
+        if not isinstance(item, dict) or set(item) != {
+            "name", "age", "clothing", "gender", "other_facts"
+        }:
             raise ValueError(
-                "Each canonical character must contain exactly name plus the "
-                "fields configured in canonical_data.txt."
+                "Each character needs name, age, clothing, gender, and other_facts."
             )
-        record = {
-            key: " ".join(str(item.get(key) or "").split()).strip()
-            for key in ("name", *fields)
-        }
-        if not all(record.values()):
-            raise ValueError("Canonical character fields must be non-empty.")
+        name = item["name"]
+        facts = item["other_facts"]
+        if not isinstance(name, str) or not name.strip() or not isinstance(facts, list):
+            raise ValueError("Canonical character name and facts are invalid.")
+        record = {"name": " ".join(name.split())}
+        for field in ("age", "clothing", "gender"):
+            value = item[field]
+            if not isinstance(value, str):
+                raise ValueError("Canonical character fields must be text.")
+            record[field] = " ".join(value.split())
+            if not record[field]:
+                raise ValueError(
+                    "Age, clothing, and gender must be established for each character."
+                )
+        for fact in facts:
+            if not isinstance(fact, dict) or set(fact) != {"field", "value"}:
+                raise ValueError("Each canonical fact requires field and value.")
+            raw_field, raw_value = fact["field"], fact["value"]
+            if not isinstance(raw_field, str) or not isinstance(raw_value, str):
+                raise ValueError("Canonical fact fields and values must be text.")
+            field = re.sub(r"[^a-z0-9]+", "_", raw_field.casefold()).strip("_")
+            value = " ".join(raw_value.split())
+            if not field or not field[0].isalpha() or not value or field in record:
+                raise ValueError("Canonical fact has an invalid or duplicate field.")
+            record[field] = value
+            if field not in fields:
+                fields.append(field)
         key = record["name"].casefold()
         if key in seen:
             raise ValueError(f"Duplicate canonical character: {record['name']}")
@@ -5740,43 +5708,22 @@ def parse_character_canon_result(raw_result, canonical_fields=None):
     return {"fields": list(fields), "characters": characters}
 
 
-def _character_canon_source_hash(
-    story,
-    subject_definitions="",
-    canonical_fields=None,
-):
-    fields = _resolve_canonical_fields(canonical_fields)
-    payload = (
-        str(story or "").strip()
-        + "\n\nSUBJECTS\n"
-        + str(subject_definitions or "").strip()
-        + "\n\nCANONICAL FIELDS\n"
-        + ",".join(fields)
-    )
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+def _character_canon_source_hash(canonical_data):
+    return hashlib.sha256(str(canonical_data).strip().encode("utf-8")).hexdigest()
 
 
 def save_character_canon(
     canon,
     source_hash,
     path=CHARACTER_CANON_FILE,
-    canonical_fields=None,
 ):
     """Atomically persist one source-bound canonical character profile."""
-    fields = _resolve_canonical_fields(
-        canonical_fields
-        if canonical_fields is not None
-        else canon.get("fields")
-    )
-    parsed = parse_character_canon_result(
-        {"characters": canon["characters"]},
-        canonical_fields=fields,
-    )
+    fields = list(canon["fields"])
     payload = {
-        "version": 2,
+        "version": 3,
         "source_sha256": str(source_hash),
         "fields": list(fields),
-        "characters": copy.deepcopy(parsed["characters"]),
+        "characters": copy.deepcopy(canon["characters"]),
     }
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
@@ -5797,42 +5744,40 @@ def save_character_canon(
 
 
 def load_or_generate_character_canon(
-    story,
-    subject_definitions="",
+    canonical_data=None,
     *,
     path=CHARACTER_CANON_FILE,
-    canonical_fields=None,
     llm_request=None,
     history_metadata=None,
 ):
-    """Reuse source-matched canon or establish configured facts once."""
-    fields = _resolve_canonical_fields(canonical_fields)
-    expected_hash = _character_canon_source_hash(
-        story,
-        subject_definitions,
-        canonical_fields=fields,
-    )
+    """Reuse or convert the current canonical_data.txt character facts."""
+    canonical_data = load_canonical_data() if canonical_data is None else str(canonical_data).strip()
+    if not canonical_data:
+        raise ValueError("canonical_data.txt must contain character information.")
+    expected_hash = _character_canon_source_hash(canonical_data)
     raw = load_text_file(path, required=False)
     if raw:
         try:
             payload = json.loads(raw)
             if (
                 isinstance(payload, dict)
-                and payload.get("version") == 2
+                and payload.get("version") == 3
                 and payload.get("source_sha256") == expected_hash
-                and payload.get("fields") == list(fields)
             ):
-                parsed = parse_character_canon_result(
-                    {"characters": payload.get("characters")},
-                    canonical_fields=fields,
-                )
-                return {
-                    "version": 2,
-                    "source_sha256": expected_hash,
-                    "fields": list(fields),
-                    "characters": parsed["characters"],
-                }
-        except (ValueError, json.JSONDecodeError):
+                characters = payload.get("characters")
+                facts = [{
+                    "name": record["name"],
+                    **{field: record[field] for field in ("age", "clothing", "gender")},
+                    "other_facts": [
+                        {"field": field, "value": value}
+                        for field, value in record.items()
+                        if field not in {"name", "age", "clothing", "gender"}
+                    ],
+                } for record in characters]
+                parsed = parse_character_canon_result({"characters": facts})
+                if parsed == {"fields": payload.get("fields"), "characters": characters}:
+                    return payload
+        except (ValueError, TypeError, KeyError, json.JSONDecodeError):
             pass
         print(
             f"Ignoring stale or invalid {path}; regenerating character canon.",
@@ -5842,27 +5787,19 @@ def load_or_generate_character_canon(
     if llm_request is None:
         llm_request = ask_llm
     raw_result = llm_request(
-        build_character_canon_messages(
-            story,
-            subject_definitions,
-            canonical_fields=fields,
-        ),
-        response_format=build_character_canon_response_format(fields),
+        build_character_canon_messages(canonical_data),
+        response_format=build_character_canon_response_format(),
         history_metadata={
             **(history_metadata or {}),
             "purpose": "character_canon",
         },
         **ARC_LLM_SAMPLING_PARAMETERS,
     )
-    canon = parse_character_canon_result(
-        raw_result,
-        canonical_fields=fields,
-    )
+    canon = parse_character_canon_result(raw_result)
     return save_character_canon(
         canon,
         expected_hash,
         path=path,
-        canonical_fields=fields,
     )
 
 
@@ -12729,6 +12666,7 @@ REPEATED PROCESS RULE
 MAKE THE ARC
 - Make exactly {int(total_segments)} events, one for each beat 1-{int(total_segments)}.
 - Use the SOURCE STORY in order. Do not skip a visible story action.
+- CANONICAL CHARACTER FACTS are authoritative for character identity and appearance.
 - Do not add a new major plot event, character, location, or outcome.
 - Each event is one clip-sized job. Split a long source chain at a natural
   handoff when possible. Combine only neighboring source actions when needed.
@@ -15814,6 +15752,7 @@ Write one beat for each ASSIGNED EVENT.
 SOURCE FILM gives context. The ASSIGNED EVENT says what happens in this beat.
 
 CHARACTER FACTS gives context, don't state them unless something changes in the beats. Example: "Lily's dress tore."
+Use CHARACTER FACTS for character identity and appearance if SOURCE FILM differs.
 Do not pull a later story action into this beat.
 Keep the same physical action and participant roles. Do not replace the
 required action with a different action.
@@ -22862,6 +22801,7 @@ def build_generation_messages(
     current_phase=None,
     phrase_exclusions=(),
     canonical_character_facts="",
+    canonical_data="",
 ):
     """Build Request 1 of the two-stage Director micro-prompt pipeline."""
     del completed_beat_ids, recent_results, total_segments, total_length
@@ -22881,11 +22821,12 @@ def build_generation_messages(
 
     subject_text = str(subject_definitions or "").strip() or "N/A"
     canonical_starting_block = ""
-    if int(current_segment) == 1 and str(canonical_character_facts or "").strip():
+    starting_facts = str(canonical_data or canonical_character_facts or "").strip()
+    if int(current_segment) == 1 and starting_facts:
         canonical_starting_block = (
             "\n\nCANONICAL STARTING CHARACTER FACTS — ESTABLISH THESE "
             "FOR CHARACTERS PRESENT IN THIS SEGMENT:\n"
-            + str(canonical_character_facts).strip()
+            + starting_facts
         )
     dialogue_exclusion_text = format_dialogue_exclusion_instruction(
         dialogue_exclusions
@@ -29266,9 +29207,9 @@ def _run_main(
         required=False,
     )
     subject_definitions = base_subject_definitions
+    canonical_data = load_canonical_data()
     character_canon = load_or_generate_character_canon(
-        story,
-        subject_definitions,
+        canonical_data,
         history_metadata={"run_id": run_id},
     )
     subject_information = format_beat_generation_subjects(subject_definitions)
@@ -29811,6 +29752,7 @@ def _run_main(
             current_phase=current_phase,
             phrase_exclusions=phrase_exclusions,
             canonical_character_facts=canonical_character_facts,
+            canonical_data=canonical_data,
         )
         return {
             "segment": segment_number,
