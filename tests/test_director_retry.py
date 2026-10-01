@@ -466,6 +466,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_director_prompt_is_compact_creative_contract(self):
         prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
+            segment_min_beats=4,
+            final_quarter_start=6,
+            beat_number=1,
             story_segment_ending_rules="",
         )
         self.assertIn("You are the creative director", prompt)
@@ -1301,6 +1304,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_director_prompt_allows_small_route_details(self):
         prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
+            segment_min_beats=4,
+            final_quarter_start=6,
+            beat_number=1,
             story_segment_ending_rules="",
         )
         self.assertIn("Harmless local route or prop details are allowed", prompt)
@@ -1359,6 +1365,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_director_prompt_keeps_source_and_current_beat_as_authority(self):
         prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
+            segment_min_beats=4,
+            final_quarter_start=6,
+            beat_number=1,
             story_segment_ending_rules="",
         )
         self.assertIn("ASSIGNED SOURCE is the story authority", prompt)
@@ -1389,6 +1398,9 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
     def test_director_prompt_does_not_encode_terminal_target_rules(self):
         prompt = minimax.DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE.format(
             segment_seconds=8,
+            segment_min_beats=4,
+            final_quarter_start=6,
+            beat_number=1,
             story_segment_ending_rules="",
         )
         self.assertNotIn("already terminal target", prompt)
