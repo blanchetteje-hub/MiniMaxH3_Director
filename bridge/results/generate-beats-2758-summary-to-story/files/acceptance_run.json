@@ -1,0 +1,125 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_zombie_house",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_zombie_house.json",
+  "benchmark_sha256": "db249ed8880bf22a7709458e03db3a74eecdec825573ff8ea0d114ad84e40098",
+  "repository_revision": "13f1c8be24cc1a853c4ea39c609302db925daf5f",
+  "created_at_utc": "2026-10-01T19:44:01Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "--generate-beats",
+    "8",
+    "8",
+    "--model",
+    "gpt"
+  ],
+  "exit_code": 1,
+  "capture_status": {
+    "complete": false,
+    "mode": "planning_only",
+    "expected_segments": 0,
+    "captured_segments": [],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 8,
+        "narrative_purpose": "Adapt the continuous working story into sequential film beats.",
+        "broad_progression": "Follow the expanded story from beginning to end without changing event order or outcomes.",
+        "characters_introduced": [],
+        "location": "As established by the expanded story.",
+        "required_events": [
+          {
+            "id": "E1",
+            "event": "Amy stirred eggs on the stove while humming a quick tune for Will and Amber, who sat at the kitchen table with breakfast bowls in front of them.",
+            "beat_number": 1,
+            "state_effects": []
+          },
+          {
+            "id": "E2",
+            "event": "A sudden groan rattled through the hallway as a zombie’s head pushed up from the cracked front door toward the living room.",
+            "beat_number": 2,
+            "state_effects": [],
+            "depends_on": [
+              "E1"
+            ]
+          },
+          {
+            "id": "E3",
+            "event": "Amy grabbed Will by his sleeve and pulled him down the stairs to the pantry closet, slamming the heavy door behind them while Amber followed arm‑by‑arm into the dim space clutching a small plastic cup.",
+            "beat_number": 3,
+            "state_effects": [],
+            "depends_on": [
+              "E2"
+            ]
+          },
+          {
+            "id": "E4",
+            "event": "She stepped onto the kitchen floor breathing hard, turned toward the counter, slid out a pistol from the hidden compartment beneath the sink, and then pulled her katana free with a quick flick from its sheath on the wall behind the fridge.",
+            "beat_number": 4,
+            "state_effects": [],
+            "depends_on": [
+              "E3"
+            ]
+          },
+          {
+            "id": "E5",
+            "event": "The zombie’s head thumped against the door as another shuffled into the kitchen; Amy fired the pistol at the first intruder, killing it, then swung the katana in a swift arc that sliced through the second zombie’s neck.",
+            "beat_number": 5,
+            "state_effects": [],
+            "depends_on": [
+              "E4"
+            ]
+          },
+          {
+            "id": "E6",
+            "event": "A third lunged forward and she sidestepped, kicking its leg until it staggered to the floor, while a fourth surged from the back door—she shot at its chest with her pistol before slashing its shoulder with the katana.",
+            "beat_number": 6,
+            "state_effects": [],
+            "depends_on": [
+              "E5"
+            ]
+          },
+          {
+            "id": "E7",
+            "event": "The kitchen echoed with groans as each new zombie came in waves; Amy fired again and again, landing decisive hits that sent them crumpling to the floor until the last one staggered into view, where she raised her pistol, aimed at its head, and let the round fly—its impact sending the creature’s body crashing onto the counter with a wet splash.",
+            "beat_number": 7,
+            "state_effects": [],
+            "depends_on": [
+              "E6"
+            ]
+          },
+          {
+            "id": "E8",
+            "event": "With the kitchen now clear of zombies, Amy turned back toward the pantry closet where Will and Amber waited, opened the door, pushed them out together, and they stepped into the hallway side‑by‑side breathing in relief as she walked beside them.",
+            "beat_number": 8,
+            "state_effects": [],
+            "depends_on": [
+              "E7"
+            ]
+          }
+        ],
+        "required_end_state": "End at the expanded story's stated conclusion."
+      }
+    ]
+  },
+  "generated_beats_text": null,
+  "segments": [],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
