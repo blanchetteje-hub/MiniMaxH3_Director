@@ -17077,8 +17077,9 @@ location is unambiguous.
 {beat_support_rule}
 You may add connective staging and concrete detail, but do not add a new major
 plot event, outcome, or named character.
-The ending must preserve the source's stated final situation. Do not invent a new
-escape, destination, surviving threat, or aftermath after the source's final event.
+The source's final explicit event must also be the expanded story's final event.
+Do not continue past it with a new destination, containment, escape, surviving
+threat, resolution, or aftermath.
 Write one continuous story, not an outline, beat list, screenplay, or analysis.""".strip(),
         },
     ]
