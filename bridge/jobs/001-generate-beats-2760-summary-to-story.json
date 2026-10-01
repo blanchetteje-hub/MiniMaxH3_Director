@@ -1,0 +1,9 @@
+{
+  "job_id": "generate-beats-2760-summary-to-story",
+  "kind": "run_acceptance",
+  "code_branch": "summary-to-story-test",
+  "model": "gpt",
+  "image1": "amy.jpg",
+  "planning_only": true,
+  "timeout_seconds": 3600
+}
