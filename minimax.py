@@ -10520,6 +10520,7 @@ Important rules:
 - Do not output story_progress. Python owns required-event bookkeeping.
 - Output only changed or newly established facts. Do not copy unchanged defaults.
 - Top-level state_patch keys may only be: characters, environment, threats, story.
+- These four roots are siblings. Never nest characters, environment, threats, or story inside one another.
 - If no persistent fact is established, return an empty state_patch object.
 
 Return exactly:
