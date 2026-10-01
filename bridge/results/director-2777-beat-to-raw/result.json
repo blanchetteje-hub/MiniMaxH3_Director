@@ -1,0 +1,37 @@
+{
+  "job_id": "director-2777-beat-to-raw",
+  "kind": "run_acceptance",
+  "started_at": 1790887642.3938844,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--director-plan-dir",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_bridge_worktree\\bridge\\results\\generate-beats-2776-threat-id-ordering\\files"
+    ],
+    "returncode": 1,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 64 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999 --director-only\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-7qqktsra\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20261001-164723\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nDirector-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.\nPrompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.\n\n================================================================\nH3 AUTOMATED DIRECTOR\n================================================================\nSegment length:       8 seconds\nTotal story length:   64 seconds\nTotal segments:       8\nStarting segment:     1\nInitial megapixels:   0.5\nSteps:                6\nVisual Continuity:    disabled (prompt-generation test)\nStitch trim:          2 frames after segment 1\nRetention analysis:   disabled\nPrompt generation test: enabled\nFormatter:            gpt\nGlobal LoRAs:         0\nAuto refresh:         every 999999 segment(s)\nVision continuity:    disabled (prompt-generation test)\nDirector prompting:    2-stage raw scene -> H3 formatter\nStory beats:          8\nPersistent state:     generation_state.json\n================================================================\nImage C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg decoded and verified.\nWARNING: Image 0.png for reference slot 2 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 3 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 4 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 5 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 6 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nPrompt-only setup validation passed.\n\n================================================================\nSEGMENT 1/8 (8 seconds)\n================================================================\nEstimated LLM input context: 819/4500 tokens (recent exact segments: 0)\nSegment 1 Director continuity source: initial\nDirector baseline diagnostics for Segment 1 (non-blocking):\n  WARNING: RAW SCENE ends its timed action at 2.8s, too early for a 8-second segment; the final timed micro-beat must land in the final quarter (at or after 6s).\n\n================================================================\nDIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1\n================================================================\nAt 00:00.000, camera is positioned at the hallway entrance; Will (10?year?old male, wearing a t?shirt and shorts) laughs loudly as his sneakers squeak on tile.\n\nAt 00:01.500, the lens pans right across a sunlit kitchen window with blinds filtering light onto the counter. Amy (female adult in an apron over jeans) flips the last egg into a sizzling skillet on the stove, the egg making a soft pop.\n\nAt 00:02.800, Amber (14?year?old female, wearing a hoodie and leggings) stacks cereal bowls neatly atop the counter beneath the blinds, placing each bowl with deliberate care.\n\nEnd continuity state: The last frame shows Amy’s skillet sizzling while she flips an egg, Will laughing in the hallway, and Amber stacking cereal bowls on the sunlit counter.\n================================================================\n\n================================================================\nDIRECTOR REQUEST 2 START - SEGMENT 1\n================================================================\nFATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Segment 1 has no confirmed complete Request 1 result.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-7qqktsra\\repo\\minimax.py\", line 32131, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-7qqktsra\\repo\\minimax.py\", line 31011, in _run_main\n    raise BeatGenerationError(\nBeatGenerationError: Segment 1 has no confirmed complete Request 1 result.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-7qqktsra\\repo\\minimax.py\", line 32203, in <module>\n    main()\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-7qqktsra\\repo\\minimax.py\", line 32131, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-7qqktsra\\repo\\minimax.py\", line 31011, in _run_main\n    raise BeatGenerationError(\nBeatGenerationError: Segment 1 has no confirmed complete Request 1 result.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20261001-164723\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6, 7, 8]. Include run.log for diagnosis.\nMiniMax exited with code 1; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790887643.733542,
+    "finished_at": 1790887682.4717457,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "story_arc.json": "files\\story_arc.json",
+      "beats.txt": "files\\beats.txt",
+      "source_result_dir": "tests\\acceptance\\results\\amy_zombie_house-20261001-164723"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1790887682.814609,
+  "status": "ok"
+}
