@@ -1,0 +1,11 @@
+{
+  "kind": "run_tests",
+  "job_id": "tests-2698-force-beat-validation-random-seed",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests\\test_generate_beats_mode.py",
+    "tests\\test_beat_retry_hierarchy.py",
+    "tests\\test_llm_prompt_pipeline.py"
+  ],
+  "timeout_seconds": 1800
+}
