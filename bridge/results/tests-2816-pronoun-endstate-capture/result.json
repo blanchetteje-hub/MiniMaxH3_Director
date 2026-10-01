@@ -1,0 +1,30 @@
+{
+  "job_id": "tests-2816-pronoun-endstate-capture",
+  "kind": "run_tests",
+  "started_at": 1790898416.2194142,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_name_only_rewrite",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_logs_replacements",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_preserves_end_state_exactly",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_rejects_timestamp_drift"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 4 items\n\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_name_only_rewrite PASSED [ 25%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_logs_replacements PASSED [ 50%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_preserves_end_state_exactly PASSED [ 75%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_rejects_timestamp_drift PASSED [100%]\n\n============================== 4 passed in 2.90s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790898417.5588317,
+    "finished_at": 1790898421.339618
+  },
+  "finished_at": 1790898421.339618,
+  "status": "ok"
+}
