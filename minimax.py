@@ -10562,6 +10562,9 @@ def build_accepted_beat_state_response_format():
                         "properties": {
                             "characters": {
                                 "type": "object",
+                                "propertyNames": {
+                                    "pattern": "^(?!characters$|environment$|threats$|story$|story_progress$).+"
+                                },
                                 "additionalProperties": True,
                             },
                             "environment": {
