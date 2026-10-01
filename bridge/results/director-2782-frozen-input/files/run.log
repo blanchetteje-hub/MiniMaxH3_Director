@@ -1,0 +1,70 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Director-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   64 seconds
+Total segments:       8
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          8
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+WARNING: Image 0.png for reference slot 2 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 3 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 4 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 5 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 6 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/8 (8 seconds)
+================================================================
+Estimated LLM input context: 852/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+
+================================================================
+DIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1
+================================================================
+At 00:01.000, Amy lifts a wooden spoon and stirs the pot of oatmeal on the bright stove.
+At 00:02.500, she whirls the spoon in a circular motion; bubbles rise to the surface as the oatmeal thickens.
+At 00:04.200, Will leans forward with his cereal bowl in hand, grinning widely and giggling at an inside joke.
+At 00:06.700, Amber reaches for her own spoon while laughing, spooning a swirl of oatmeal into her bowl.
+End continuity state: Amy continues stirring the pot; Will's bowl remains tilted slightly, amber holds the spoon with her hands spread wide in a playful giggle.
+================================================================
+
+================================================================
+DIRECTOR REQUEST 2 START - SEGMENT 1
+================================================================
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Segment 1 has no confirmed complete Request 1 result.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p1c8f6qj\repo\minimax.py", line 32132, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p1c8f6qj\repo\minimax.py", line 31012, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Segment 1 has no confirmed complete Request 1 result.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p1c8f6qj\repo\minimax.py", line 32204, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p1c8f6qj\repo\minimax.py", line 32132, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-p1c8f6qj\repo\minimax.py", line 31012, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Segment 1 has no confirmed complete Request 1 result.

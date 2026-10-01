@@ -1,0 +1,37 @@
+{
+  "job_id": "director-2782-frozen-input",
+  "kind": "run_acceptance",
+  "started_at": 1790888203.917498,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--director-plan-dir",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_bridge_worktree\\bridge\\results\\generate-beats-2781-frozen-director-input\\files"
+    ],
+    "returncode": 1,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 64 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999 --director-only\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-p1c8f6qj\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20261001-165645\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nDirector-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.\nPrompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.\n\n================================================================\nH3 AUTOMATED DIRECTOR\n================================================================\nSegment length:       8 seconds\nTotal story length:   64 seconds\nTotal segments:       8\nStarting segment:     1\nInitial megapixels:   0.5\nSteps:                6\nVisual Continuity:    disabled (prompt-generation test)\nStitch trim:          2 frames after segment 1\nRetention analysis:   disabled\nPrompt generation test: enabled\nFormatter:            gpt\nGlobal LoRAs:         0\nAuto refresh:         every 999999 segment(s)\nVision continuity:    disabled (prompt-generation test)\nDirector prompting:    2-stage raw scene -> H3 formatter\nStory beats:          8\nPersistent state:     generation_state.json\n================================================================\nImage C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg decoded and verified.\nWARNING: Image 0.png for reference slot 2 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 3 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 4 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 5 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 6 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nPrompt-only setup validation passed.\n\n================================================================\nSEGMENT 1/8 (8 seconds)\n================================================================\nEstimated LLM input context: 852/4500 tokens (recent exact segments: 0)\nSegment 1 Director continuity source: initial\n\n================================================================\nDIRECTOR REQUEST 1: RAW SCENE - SEGMENT 1\n================================================================\nAt 00:01.000, Amy lifts a wooden spoon and stirs the pot of oatmeal on the bright stove.\nAt 00:02.500, she whirls the spoon in a circular motion; bubbles rise to the surface as the oatmeal thickens.\nAt 00:04.200, Will leans forward with his cereal bowl in hand, grinning widely and giggling at an inside joke.\nAt 00:06.700, Amber reaches for her own spoon while laughing, spooning a swirl of oatmeal into her bowl.\nEnd continuity state: Amy continues stirring the pot; Will's bowl remains tilted slightly, amber holds the spoon with her hands spread wide in a playful giggle.\n================================================================\n\n================================================================\nDIRECTOR REQUEST 2 START - SEGMENT 1\n================================================================\nFATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Segment 1 has no confirmed complete Request 1 result.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-p1c8f6qj\\repo\\minimax.py\", line 32132, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-p1c8f6qj\\repo\\minimax.py\", line 31012, in _run_main\n    raise BeatGenerationError(\nBeatGenerationError: Segment 1 has no confirmed complete Request 1 result.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-p1c8f6qj\\repo\\minimax.py\", line 32204, in <module>\n    main()\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-p1c8f6qj\\repo\\minimax.py\", line 32132, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-p1c8f6qj\\repo\\minimax.py\", line 31012, in _run_main\n    raise BeatGenerationError(\nBeatGenerationError: Segment 1 has no confirmed complete Request 1 result.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20261001-165645\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6, 7, 8]. Include run.log for diagnosis.\nMiniMax exited with code 1; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790888204.9842484,
+    "finished_at": 1790888244.6462514,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "story_arc.json": "files\\story_arc.json",
+      "beats.txt": "files\\beats.txt",
+      "source_result_dir": "tests\\acceptance\\results\\amy_zombie_house-20261001-165645"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1790888244.70519,
+  "status": "ok"
+}
