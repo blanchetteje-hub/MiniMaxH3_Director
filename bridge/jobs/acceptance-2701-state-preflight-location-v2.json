@@ -1,0 +1,12 @@
+{
+  "job_id": "acceptance-2701-state-preflight-location-v2",
+  "kind": "run_tests",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests\\test_forward_beat_validation.py",
+    "tests\\test_source_span_runtime_adapter.py",
+    "tests\\test_generate_beats_mode.py",
+    "tests\\test_beat_retry_hierarchy.py"
+  ],
+  "timeout_seconds": 1800
+}
