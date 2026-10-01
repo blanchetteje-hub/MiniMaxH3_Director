@@ -2016,12 +2016,31 @@ def parse_args(arguments=None):
         ),
     )
     parser.add_argument(
+        "--generate-all",
+        action="store_true",
+        default=False,
+        help=(
+            "run the normal story -> beats -> Director -> final H3 prompt pipeline "
+            "using the supplied video positionals, save generated_prompts.txt, and "
+            "exit without contacting ComfyUI"
+        ),
+    )
+    parser.add_argument(
+        "--use-prompts",
+        default=None,
+        metavar="PATH",
+        help=(
+            "load the saved final H3 prompt package at PATH, skip all LLM/planning "
+            "work, render through ComfyUI, and stitch the completed video"
+        ),
+    )
+    parser.add_argument(
         "--generate-from-prompts",
         action="store_true",
         default=False,
         help=(
-            "load generated_prompts.txt and run only the saved final H3 prompts "
-            "through ComfyUI using their saved workflow/continuity metadata"
+            "legacy alias: load generated_prompts.txt and run only the saved final "
+            "H3 prompts through ComfyUI using saved workflow/continuity metadata"
         ),
     )
     parser.add_argument(
@@ -2097,9 +2116,10 @@ def parse_args(arguments=None):
     if args.generate_prompts is not None:
         if args.generate_prompts <= 0:
             parser.error("--generate-prompts must be greater than zero.")
-        if args.generate_from_prompts:
+        if args.generate_from_prompts or args.use_prompts is not None or args.generate_all:
             parser.error(
-                "--generate-prompts cannot be combined with --generate-from-prompts."
+                "--generate-prompts cannot be combined with --generate-all, "
+                "--use-prompts, or --generate-from-prompts."
             )
         if args.generate_beats is not None:
             parser.error(
@@ -2124,6 +2144,54 @@ def parse_args(arguments=None):
                 "--generate-prompts COUNT must match ceil(total_length / "
                 "segment_length) when video positionals are supplied."
             )
+        return args
+
+    if args.generate_all:
+        if args.generate_beats is not None:
+            parser.error("--generate-all cannot be combined with --generate-beats.")
+        if args.use_prompts is not None or args.generate_from_prompts:
+            parser.error(
+                "--generate-all cannot be combined with --use-prompts or "
+                "--generate-from-prompts."
+            )
+        if args.repair is not None:
+            parser.error("--generate-all cannot be combined with --repair.")
+        if args.test_prompt_generation:
+            parser.error(
+                "--generate-all already performs the complete prompt-only pipeline; "
+                "do not combine it with --test-prompt-generation."
+            )
+        if any(
+            value is None
+            for value in (args.segment_length, args.total_length, args.megapixels)
+        ):
+            parser.error(
+                "--generate-all requires normal video positionals: "
+                "segment_length, total_length, and megapixels."
+            )
+        return args
+
+    if args.use_prompts is not None:
+        if args.generate_beats is not None:
+            parser.error("--use-prompts cannot be combined with --generate-beats.")
+        if args.generate_from_prompts:
+            parser.error(
+                "--use-prompts cannot be combined with --generate-from-prompts."
+            )
+        if args.repair is not None or args.test_prompt_generation:
+            parser.error(
+                "--use-prompts cannot be combined with --repair or "
+                "--test-prompt-generation."
+            )
+        if any(
+            value is not None
+            for value in (args.segment_length, args.total_length, args.megapixels)
+        ):
+            parser.error(
+                "--use-prompts reads timing/render settings from the saved prompt "
+                "package; do not supply video positionals."
+            )
+        args.use_prompts = os.path.abspath(os.path.expanduser(args.use_prompts))
         return args
 
     if args.generate_from_prompts:
@@ -2197,8 +2265,8 @@ def parse_args(arguments=None):
     ):
         parser.error(
             "segment_length, total_length, and megapixels are required unless "
-            "--generate-beats COUNT, --generate-prompts COUNT, or "
-            "--generate-from-prompts is used."
+            "--generate-beats COUNT, --generate-prompts COUNT, --generate-all, "
+            "--use-prompts PATH, or --generate-from-prompts is used."
         )
     if args.segment_length <= 0:
         parser.error("segment_length must be greater than 0.")
@@ -30303,6 +30371,9 @@ def _run_main(
 ):
     args = parse_args()
     configure_reference_image_overrides(args)
+    use_prompts_path = getattr(args, "use_prompts", None)
+    if use_prompts_path:
+        return render_generated_prompts(args, path=use_prompts_path)
     if getattr(args, "generate_from_prompts", False):
         return render_generated_prompts(args)
 
@@ -30314,7 +30385,8 @@ def _run_main(
         else None
     )
     generate_prompts_count = getattr(args, "generate_prompts", None)
-    generate_prompts_only = generate_prompts_count is not None
+    generate_all = bool(getattr(args, "generate_all", False))
+    generate_prompts_only = generate_prompts_count is not None or generate_all
     director_only = bool(getattr(args, "director_only", False))
     if generate_beats_only:
         print(
@@ -30362,7 +30434,7 @@ def _run_main(
         if generate_beats_only
         else (
             int(generate_prompts_count)
-            if generate_prompts_only
+            if generate_prompts_count is not None
             else math.ceil(total_length / segment_length)
         )
     )
@@ -32254,6 +32326,7 @@ def main():
         normalized_args.intersection({
             "--test-prompt-generation",
             "--generate-prompts",
+            "--generate-all",
             "--director-only",
             "--generate-beats",
         })
