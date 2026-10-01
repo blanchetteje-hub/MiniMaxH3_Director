@@ -15667,6 +15667,9 @@ def build_beat_generation_messages(
             "content": f"""SOURCE FILM
 {source_film}
 
+KNOWN SUBJECTS
+{subject_text}
+
 CHARACTER FACTS
 {character_facts}
 
