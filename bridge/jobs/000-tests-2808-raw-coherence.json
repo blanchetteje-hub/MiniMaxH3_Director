@@ -1,0 +1,10 @@
+{
+  "job_id": "tests-2808-raw-coherence",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_scene_coherence_prompt_allows_staging_but_checks_order",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_request_one_retries_physically_incoherent_raw_scene"
+  ],
+  "timeout_seconds": 1800
+}
