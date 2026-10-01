@@ -899,9 +899,9 @@ class LlmHostIntegrationTests(unittest.TestCase):
         self.assertNotIn("model", request_json)
         self.assertEqual(request_json["response_format"], minimax.RESPONSE_FORMAT)
 
-    @mock.patch("minimax.generate_random_llm_seed", return_value=8675309)
+    @mock.patch("minimax.generate_random_llm_seed")
     @mock.patch("minimax.requests.post")
-    def test_every_llm_transport_payload_includes_random_seed(
+    def test_unclassified_llm_transport_uses_deterministic_profile(
         self,
         post,
         random_seed,
@@ -917,8 +917,11 @@ class LlmHostIntegrationTests(unittest.TestCase):
             payload,
         )
 
-        self.assertEqual(post.call_args.kwargs["json"]["seed"], 8675309)
-        random_seed.assert_called_once_with()
+        self.assertEqual(
+            post.call_args.kwargs["json"]["seed"],
+            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["seed"],
+        )
+        random_seed.assert_not_called()
 
     @mock.patch("minimax.generate_random_llm_seed", return_value=42)
     @mock.patch("minimax.requests.post")
@@ -957,12 +960,9 @@ class LlmHostIntegrationTests(unittest.TestCase):
             minimax.BEAT_WRITING_LLM_SETTINGS["thinking_budget_tokens"],
         )
 
-    @mock.patch(
-        "minimax.generate_random_llm_seed",
-        side_effect=[101, 202],
-    )
+    @mock.patch("minimax.generate_random_llm_seed", return_value=101)
     @mock.patch("minimax.requests.post")
-    def test_llm_transport_retry_gets_a_new_random_seed(
+    def test_creative_request_keeps_one_random_seed_across_transport_retries(
         self,
         post,
         random_seed,
@@ -982,15 +982,16 @@ class LlmHostIntegrationTests(unittest.TestCase):
                 max_retries=2,
                 retry_delay=0,
                 response_format=None,
+                history_metadata={"purpose": "director_raw_scene"},
             ),
             payload,
         )
 
         self.assertEqual(
             [call.kwargs["json"]["seed"] for call in post.call_args_list],
-            [101, 202],
+            [101, 101],
         )
-        self.assertEqual(random_seed.call_count, 2)
+        random_seed.assert_called_once_with()
 
     @mock.patch("minimax.time.sleep")
     @mock.patch("minimax.requests.post")
