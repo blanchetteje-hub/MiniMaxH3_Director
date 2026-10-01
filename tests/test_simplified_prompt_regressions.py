@@ -108,6 +108,20 @@ class SimplifiedPromptRegressionTests(unittest.TestCase):
             previous["_director_end_state"],
         )
 
+    def test_director_opening_handoff_ignores_unlabeled_previous_scene(self):
+        previous = {
+            "detailed_description": (
+                "[Shot 1] At 00:01.000, Amy repeats the entire previous action."
+            )
+        }
+        self.assertEqual(
+            minimax.director_opening_handoff(
+                previous,
+                "Amy stands beside the closed pantry door.",
+            ),
+            "Amy stands beside the closed pantry door.",
+        )
+
     def test_director_opening_handoff_falls_back_to_structured_state(self):
         self.assertEqual(
             minimax.director_opening_handoff(
