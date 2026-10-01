@@ -10422,8 +10422,12 @@ Important rules:
 - Record barriers/doors/windows and threat state when the beat explicitly
   establishes their persistent final state.
 - Use existing character/entity names from CURRENT CANONICAL STATE when the beat
-  clearly refers to them. Do not merge distinct entities merely because their
-  types are similar.
+  clearly refers to them.
+- If ACCEPTED BEAT explicitly introduces a distinct threat with wording such as
+  "another", "new", "second", or "third", emit a separate threat entry instead
+  of updating an existing threat of the same type. Python will assign its stable
+  canonical threat ID.
+- Do not merge distinct entities merely because their types are similar.
 - Do not output transient pose, camera, lighting, momentary action, dialogue,
   sound, emotion, or speculation.
 - Do not output story_progress. Python owns required-event bookkeeping.
