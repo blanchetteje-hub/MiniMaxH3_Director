@@ -20,18 +20,6 @@ from formatter_base import (
 )
 
 
-DEFAULT_LLM_SETTINGS = {
-    "temperature": 0.7,
-    "top_p": 0.80,
-    "top_k": 20,
-    "min_p": 0.0,
-    "presence_penalty": 1.5,
-    "repeat_penalty": 1.0,
-    "thinking": "off",
-    "chat_template": "built-in",
-    "jinja": True,
-}
-
 
 DESCRIPTION = "detailed_description"
 SOUNDSCAPE = "overall_soundscape"
@@ -2943,8 +2931,6 @@ def validate_gpt_prompt(
 
 class GPTFormatter(BaseFormatter):
     """Adapter exposing the Mistral repair pipeline through the shared API."""
-
-    DEFAULT_LLM_SETTINGS = DEFAULT_LLM_SETTINGS
 
     def sanitize_generated_text(self, value: str) -> str:
         """Remove every asterisk emitted as Mistral Markdown decoration."""
