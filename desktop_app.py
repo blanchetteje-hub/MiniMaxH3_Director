@@ -31,7 +31,7 @@ SETTINGS_FILE = PROJECT_DIR / "gui_settings.json"
 
 DEFAULT_SETTINGS = {
     "comfyui_url": "http://127.0.0.1:8188",
-    "lm_studio_url": "http://127.0.0.1:1234",
+    "llm_host_url": "http://127.0.0.1:1234",
     "defined_images": [],
     "segment_length": "",
     "total_length": "",
@@ -446,7 +446,7 @@ class MiniMaxBridge:
             if isinstance(effective_settings, dict):
                 for environment_name, setting_name in (
                     ("MINIMAX_COMFY_URL", "comfyui_url"),
-                    ("MINIMAX_LM_STUDIO_URL", "lm_studio_url"),
+                    ("MINIMAX_LLM_HOST_URL", "llm_host_url"),
                 ):
                     value = str(effective_settings.get(setting_name, "")).strip()
                     if value:
