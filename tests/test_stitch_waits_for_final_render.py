@@ -34,6 +34,7 @@ def _make_args(**overrides):
         # 0 disables vision continuity, so every segment (including the final
         # one) takes the background-render path that previously raced ffmpeg.
         "vision_continuity": 0,
+        "capture_h3_validation_fixture": False,
     }
     base.update(overrides)
     return SimpleNamespace(**base)
