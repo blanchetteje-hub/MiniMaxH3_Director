@@ -679,3 +679,15 @@ Do not tune Director prompts during this phase. Director quality is downstream o
 
 Barrier/state information will be reintroduced only when a concrete beat failure demonstrates that one specific fact is needed. Add the minimum necessary fact/rule; do not restore the previous broad barrier blocks.
 
+## 2026-09-30 — deterministic calls now use low reasoning
+
+- Deterministic LLM calls remain temperature `0`, seed `42`.
+- They now also use:
+  - reasoning enabled;
+  - `reasoning_effort="low"`;
+  - `thinking_budget_tokens=128`;
+  - `reasoning_budget_message=". Enough thinking, now answer."`.
+- The same budget-exhaustion message is now sent per request for creative calls as well; creative calls keep high effort and a 1024-token reasoning budget.
+- Current llama.cpp supports `reasoning_budget_message` in the request payload, so this no longer depends only on the server launch default.
+- Commits: `67793614298b28ce8cb8f414127d21e7e6a57a31`, `4af3910b996bf067df997eabacd4297f05db7fe3`, `468523f3077b25316f849ad87afc09cb98992a82`.
+
