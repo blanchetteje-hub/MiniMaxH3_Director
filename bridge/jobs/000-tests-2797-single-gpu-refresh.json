@@ -1,0 +1,12 @@
+{
+  "job_id": "tests-2797-single-gpu-refresh",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_prompt_generation_mode.py",
+    "tests/test_stitch_waits_for_final_render.py",
+    "tests/test_resume.py",
+    "tests/test_summary_to_story_pipeline.py"
+  ],
+  "timeout_seconds": 1800
+}
