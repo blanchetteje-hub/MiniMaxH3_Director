@@ -1,0 +1,12 @@
+{
+  "job_id": "tests-2780-director-freeze-contract",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_simplified_prompt_regressions.py",
+    "tests/test_director_retry.py",
+    "tests/test_summary_to_story_pipeline.py",
+    "tests/test_character_canon.py"
+  ],
+  "timeout_seconds": 1800
+}
