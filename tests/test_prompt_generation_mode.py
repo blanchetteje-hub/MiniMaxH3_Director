@@ -8,6 +8,11 @@ import minimax
 def _args(**overrides):
     values = {
         "generate_beats": None,
+        "generate_prompts": None,
+        "generate_all": False,
+        "use_prompts": None,
+        "generate_from_prompts": False,
+        "director_only": False,
         "segment_length": 5.0,
         "total_length": 5.0,
         "megapixels": 0.5,
@@ -35,6 +40,28 @@ def test_parse_args_defaults_prompt_generation_test_mode_off():
     assert minimax.parse_args(
         ["5", "10", ".2", "--test-prompt-generation"]
     ).test_prompt_generation
+
+
+def test_generate_all_uses_normal_video_positionals_without_comfyui():
+    args = minimax.parse_args(["8", "64", ".5", "--generate-all"])
+    assert args.generate_all
+    assert args.segment_length == 8
+    assert args.total_length == 64
+    assert args.megapixels == 0.5
+
+
+def test_use_prompts_accepts_explicit_package_path_without_video_positionals(tmp_path):
+    package = tmp_path / "my_prompts.json"
+    args = minimax.parse_args(["--use-prompts", str(package)])
+    assert args.use_prompts == str(package.resolve())
+    assert args.segment_length is None
+    assert args.total_length is None
+    assert args.megapixels is None
+
+
+def test_use_prompts_rejects_video_positionals():
+    with __import__("pytest").raises(SystemExit):
+        minimax.parse_args(["8", "64", ".5", "--use-prompts", "prompts.json"])
 
 
 def test_director_only_implies_prompt_generation_and_never_combines_with_generation():
