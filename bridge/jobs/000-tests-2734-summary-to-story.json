@@ -1,0 +1,11 @@
+{
+  "job_id": "tests-2734-summary-to-story",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_summary_to_story_pipeline.py",
+    "tests/test_forward_beat_validation.py",
+    "tests/test_requested_prompt_regressions.py"
+  ],
+  "timeout_seconds": 1800
+}
