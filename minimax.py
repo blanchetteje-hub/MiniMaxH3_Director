@@ -18395,6 +18395,7 @@ def load_or_generate_beats(
     phrase_exclusions=(),
     force_generate=False,
     capture_accepted_state=False,
+    story_duration_seconds=None,
 ):
     try:
         raw = load_text_file(path, required=not force_generate)
@@ -18443,7 +18444,7 @@ def load_or_generate_beats(
             f"{path} is empty; asking LM Studio to create {total_segments} "
             "creative story beats before generation starts."
         )
-    return generate_beats_from_story(
+    return generate_beats_via_story_expansion(
         story,
         total_segments,
         path=path,
@@ -18455,17 +18456,9 @@ def load_or_generate_beats(
         story_arc_path=story_arc_path,
         story_arc_source=story_arc_source,
         phrase_exclusions=phrase_exclusions,
-        # A forced story regeneration invalidates the arc only when beats were
-        # already created and persisted. Preserve an arc whose beat file is
-        # still empty so a failed/incomplete beat-generation run can resume
-        # from its existing plan.
-        reuse_story_arc=not force_generate or not beats,
-        # An explicit force-generation request means CREATE + VALIDATE must
-        # run again even when beats.txt was cleared before launch. Otherwise a
-        # completed beat_validation_state.json can silently short-circuit the
-        # entire beat loop and return the prior finalized beats.
         reset_validation_state=force_generate,
         capture_accepted_state=capture_accepted_state,
+        duration_seconds=story_duration_seconds,
     )
 
 
@@ -30130,6 +30123,14 @@ def _run_main(
                     or (generate_prompts_only and resume_segment == 1)
                 ),
                 capture_accepted_state=True,
+                story_duration_seconds=(
+                    float(total_length)
+                    if total_length is not None
+                    else (
+                        float(total_segments)
+                        * DEFAULT_GENERATED_PROMPT_SEGMENT_LENGTH
+                    )
+                ),
             )
         except LLMConnectionError:
             raise
