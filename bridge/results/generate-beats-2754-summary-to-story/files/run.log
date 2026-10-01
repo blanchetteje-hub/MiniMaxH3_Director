@@ -1,0 +1,32 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+FATAL: prompt-generation run stopped at first real failure: ValueError: Duplicate canonical character: Unnamed
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qqf4x39b\repo\minimax.py", line 32071, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qqf4x39b\repo\minimax.py", line 30194, in _run_main
+    character_canon = load_or_generate_character_canon(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qqf4x39b\repo\minimax.py", line 5861, in load_or_generate_character_canon
+    canon = parse_character_canon_result(raw_result)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qqf4x39b\repo\minimax.py", line 5768, in parse_character_canon_result
+    raise ValueError(f"Duplicate canonical character: {record['name']}")
+ValueError: Duplicate canonical character: Unnamed
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qqf4x39b\repo\minimax.py", line 32143, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qqf4x39b\repo\minimax.py", line 32071, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qqf4x39b\repo\minimax.py", line 30194, in _run_main
+    character_canon = load_or_generate_character_canon(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qqf4x39b\repo\minimax.py", line 5861, in load_or_generate_character_canon
+    canon = parse_character_canon_result(raw_result)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-qqf4x39b\repo\minimax.py", line 5768, in parse_character_canon_result
+    raise ValueError(f"Duplicate canonical character: {record['name']}")
+ValueError: Duplicate canonical character: Unnamed
