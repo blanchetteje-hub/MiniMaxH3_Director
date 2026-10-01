@@ -326,10 +326,10 @@ class ResumeTests(unittest.TestCase):
 
                 self.assertEqual(args.trim_frames, trim_frames)
 
-    def test_parse_args_defaults_to_mistral_model(self):
+    def test_parse_args_defaults_to_gpt_model(self):
         args = minimax.parse_args(["5", "20", ".5"])
 
-        self.assertEqual(args.model, "mistral")
+        self.assertEqual(args.model, "gpt")
 
     def test_parse_args_accepts_qwen_model(self):
         args = minimax.parse_args(["5", "20", ".5", "--model", "qwen"])
