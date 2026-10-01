@@ -113,6 +113,33 @@ Default principle:
 
 > **Only explicit creative stages may sample. Everything else is deterministic by default.**
 
+### Beat SOURCE FILM authority
+
+Beat CREATE and single-beat repair now receive the full narrative from `story.txt`
+under `SOURCE FILM`. The local `ASSIGNED EVENT` remains the authority for what
+that beat must execute.
+
+Do not substitute the chapter/source-span fragment into `SOURCE FILM`. The full
+story provides context; the assigned event prevents later-story work from being
+pulled into the current beat.
+
+### Boundary logic during beat perfection
+
+Boundary/barrier enforcement is intentionally dormant during the current beat
+optimization phase.
+
+- Beat CREATE gets no barrier/boundary contract blocks.
+- The beat semantic validator does not receive doors/windows/barriers/paths,
+  containment/accessibility fields, or `set_barrier_state` /
+  `set_containment` effects.
+- The deterministic preserved-barrier structural rejection is disabled.
+- The post-validator closed-boundary destination-presence gate is disabled.
+- Underlying boundary helper code remains available but is not on the active
+  beat-generation/validation path.
+
+Reintroduce only the smallest specific boundary contract justified by an observed
+beat failure.
+
 ### Current optimization focus: beats only
 
 Beat generation is the sole active optimization target.
