@@ -595,6 +595,10 @@ class ForwardBeatValidationTests(unittest.TestCase):
             schema["properties"]["threats"]["additionalProperties"]["type"],
             "object",
         )
+        self.assertIn(
+            "story$",
+            schema["properties"]["threats"]["propertyNames"]["pattern"],
+        )
 
     def test_validator_preserves_group_beneficiary_roles(self):
         messages = minimax.build_beat_validation_messages(
