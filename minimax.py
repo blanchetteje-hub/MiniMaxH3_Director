@@ -4930,6 +4930,18 @@ def _explicit_director_end_state(raw_scene):
     return text[matches[0].end():].strip()
 
 
+def _raw_scene_timed_description(raw_scene):
+    """Return only Request 1's timed action, ready for deterministic H3 fallback."""
+    text = _canonicalize_director_timestamps(str(raw_scene or "").strip())
+    match = re.search(
+        r"(?im)^[ \t]*End continuity state[ \t]*:[ \t]*",
+        text,
+    )
+    if match is not None:
+        text = text[:match.start()].rstrip()
+    return text
+
+
 _PHASE2_OMITTED = object()
 
 
@@ -31372,10 +31384,49 @@ def _run_main(
         )
         if not h3_action_validation["valid"]:
             issue_text = "; ".join(h3_action_validation["issues"])
-            raise BeatGenerationError(
-                f"Segment {segment} final H3 action preservation failed: "
-                f"{issue_text}"
+            print(
+                f"WARNING: Segment {segment} Request 2 lost RAW action "
+                f"({issue_text}); using deterministic RAW detailed-description "
+                "fallback.",
+                flush=True,
             )
+            llm_result = copy.deepcopy(llm_result)
+            llm_result["detailed_description"] = _raw_scene_timed_description(
+                payload.get("raw_scene", "")
+            )
+            h3_prompt = build_h3_prompt(
+                llm_result,
+                subject_definitions,
+                hard_cut_subject_continuity,
+                payload["h3_opening_summary"],
+                segment,
+                ff=args.ff,
+                conditioning_mode=segment_bundle["conditioning_mode"],
+                excluded_picture_ids=segment_bundle.get("excluded_picture_ids"),
+                continuity_state=continuity_state,
+                previous_visible_subject_ids=previous_visible_subject_ids,
+                retention=retention,
+                retention_json=(
+                    prompt_reduced_continuity_state if retention else None
+                ),
+            )
+            h3_action_validation = validate_final_h3_action_preservation(
+                payload.get("raw_scene", ""),
+                h3_prompt,
+                current_beat=segment_bundle.get("current_beat_text", ""),
+                history_metadata={
+                    "run_id": run_id,
+                    "source_sha256": run_config["source_sha256"],
+                    "segment": segment,
+                    "fallback": "raw_detailed_description",
+                },
+            )
+            if not h3_action_validation["valid"]:
+                fallback_issue_text = "; ".join(h3_action_validation["issues"])
+                raise BeatGenerationError(
+                    f"Segment {segment} final H3 action preservation failed "
+                    f"after deterministic RAW fallback: {fallback_issue_text}"
+                )
 
         if generate_prompts_only:
             generated_prompts_payload["prompts"].append({

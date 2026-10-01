@@ -29,6 +29,17 @@ ARC = {"phases": [{
 
 
 class ForwardBeatValidationTests(unittest.TestCase):
+    def test_raw_scene_timed_description_strips_end_state_and_keeps_actions(self):
+        raw = (
+            "At 00:01.000, the gate opens.\n"
+            "At 00:06.500, the operator walks through.\n"
+            "End continuity state: The operator stands beyond the gate."
+        )
+        result = minimax._raw_scene_timed_description(raw)
+        self.assertIn("At 00:01.000, the gate opens.", result)
+        self.assertIn("At 00:06.500, the operator walks through.", result)
+        self.assertNotIn("End continuity state", result)
+
     def test_coherence_prompt_uses_previous_accepted_beat_when_available(self):
         beats = [
             "Tala opens the gate.",
@@ -485,7 +496,19 @@ class ForwardBeatValidationTests(unittest.TestCase):
                 lambda: ["The operator closes the gate."],
                 "The operator closes the gate.",
                 1,
-                {"phases": []},
+                {
+                    "phases": [{
+                        "phase_number": 1,
+                        "beat_start": 1,
+                        "beat_end": 1,
+                        "required_events": [{
+                            "id": "E1",
+                            "event": "The operator closes the gate.",
+                            "beat_number": 1,
+                            "state_effects": [],
+                        }],
+                    }]
+                },
                 str(Path(directory) / "beats.txt"),
                 llm_request,
                 state_path=str(Path(directory) / "state.json"),

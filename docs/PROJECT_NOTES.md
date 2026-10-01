@@ -168,7 +168,7 @@ Acceptance 2776 completed all 8 Beats successfully with a coherent, source-faith
 Current focus moves one stage downstream:
 
 - inspect **Beat -> Director Request 1 / RAW scene** behavior;
-- fix the earliest real RAW-scene failure before touching Request 2/H3 translation;
+- fix the earliest real downstream failure in order; Request 2/H3 is now active because 2802 reached a valid RAW scene and then lost a material action during formatting;
 - keep existing Python canonical-state machinery in place, but do **not** expand or perfect accepted-Beat bookkeeping speculatively;
 - accepted-Beat state is supporting continuity data, not a gate that must be artistically perfect before Director testing;
 - malformed accepted-state observations are fail-soft: log and ignore the bad auxiliary patch after Beat acceptance instead of aborting generation;
@@ -176,6 +176,8 @@ Current focus moves one stage downstream:
 - continue to keep broad barrier/state contracts out of Beat CREATE unless fresh Beat evidence requires them.
 
 Observed accepted-state oddities such as hand-holding being classified as inventory/equipment or defeated threats receiving noisy status labels are not, by themselves, reasons to delay Director work when the finalized Beat text is correct.
+
+Request 2 is a lossless formatter, not a narrative authority. If its final H3 output fails the semantic RAW-action preservation check, Python may deterministically substitute the already-valid timed RAW action text as detailed_description and rebuild the H3 prompt. This is preferred over adding more formatter prose or regenerating Request 1.
 
 ## Development doctrine
 

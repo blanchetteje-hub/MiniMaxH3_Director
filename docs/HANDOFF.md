@@ -438,6 +438,21 @@ Fix:
 
 This deliberately stops state bookkeeping from becoming the optimization target again.
 
+### 2801–2802 — planning succeeds; first Request 2 loss found
+
+`generate-beats-2801-fail-soft-state` completed all 8 Beats successfully. This confirms malformed accepted-state bookkeeping no longer blocks the planning run.
+
+`director-2802-fail-soft-state` then reached Segment 2 with a usable RAW scene. The post-format preservation check caught Request 2 dropping the first material RAW micro-action.
+
+Fix:
+- Request 1 remains authoritative and is not regenerated;
+- Request 2 still formats normally;
+- if the final semantic preservation check fails, Python replaces only `detailed_description` with canonical timed RAW action text, excluding the trailing `End continuity state`;
+- soundscape/music and normal H3 assembly remain intact;
+- the rebuilt prompt is revalidated and still fails hard if preservation is somehow not restored.
+
+This keeps Request 2 a lossless formatter without adding prompt rules or another semantic repair loop.
+
 ## Immediate next work
 
 Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.
