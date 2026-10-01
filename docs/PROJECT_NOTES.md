@@ -1446,13 +1446,21 @@ A canonical `set_containment` effect changes the subject's spatial frame.
 
 ### Split prompt generation / ComfyUI rendering
 
-Support a two-phase unattended workflow for long runs:
+Support a two-phase unattended workflow for long runs and single-GPU systems where the LLM and ComfyUI cannot occupy VRAM at the same time.
 
-- `--generate-prompts N` performs all LLM-dependent work and saves finalized H3 prompts to `generated_prompts.txt` without contacting ComfyUI.
-- `--generate-from-prompts` performs only saved-prompt ComfyUI rendering + stitching and must not contact the LLM.
-- `generated_prompts.txt` is the render handoff contract. It must contain enough per-segment/run metadata to preserve the same initial/append/refresh workflow selection and reference/continuity behavior as a normal run.
-- Save prompt records incrementally so a long LLM phase can recover without losing already-finalized work.
-- On recovery, do not regenerate the beat plan if the existing prompt prefix and generation checkpoint are reusable.
+Preferred interface:
+
+- `minimax.py <segment_length> <total_length> <megapixels> --generate-all` runs the complete normal LLM pipeline (story expansion/planning, Beats, Director Request 1, Request 2, final H3 validation), saves finalized render-ready prompts to `generated_prompts.txt`, and never contacts ComfyUI.
+- `minimax.py --use-prompts PATH` loads that exact saved prompt package, performs no LLM/planning work, renders all saved prompts through ComfyUI, and stitches the result.
+- This permits a one-video-card workflow: run `--generate-all` with the local LLM loaded, unload the LLM/start ComfyUI, then run `--use-prompts`.
+- The prompt package is the complete render handoff contract. It stores timing, workflow mode, continuity metadata, per-segment LoRAs, and reference-image overrides required to reproduce the generated run. Explicit render-time `--imageN` flags may override saved image paths.
+
+Legacy compatibility:
+
+- `--generate-prompts N` remains supported for count-driven prompt generation.
+- `--generate-from-prompts` remains supported as the legacy default-path render command using `generated_prompts.txt`.
+
+Save prompt records incrementally so a long LLM phase can recover without losing already-finalized work. On recovery, do not regenerate the beat plan if the existing prompt prefix and generation checkpoint are reusable.
 
 ## 2026-09-30 — Director baseline reset: generate first, promote rules from evidence
 
