@@ -10570,6 +10570,9 @@ def build_accepted_beat_state_response_format():
                             },
                             "threats": {
                                 "type": "object",
+                                "propertyNames": {
+                                    "pattern": "^(?!characters$|environment$|threats$|story$|story_progress$).+"
+                                },
                                 "additionalProperties": {
                                     "type": "object",
                                     "additionalProperties": True,
