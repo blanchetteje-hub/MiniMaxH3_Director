@@ -40,6 +40,7 @@ ACCEPTANCE_CODE_BRANCH = "gpt-arc-refresh"
 DEFAULT_EXEC_WORKTREE_NAME = ".chatgpt_exec_worktree"
 
 _ACTIVE_LOCAL_PROCESS = None
+_GRACEFUL_STOP_REQUESTED = threading.Event()
 
 
 def _bridge_emergency_stop(_signum=None, _frame=None):
@@ -72,8 +73,53 @@ def _bridge_emergency_stop(_signum=None, _frame=None):
         os._exit(130)
 
 
+def _terminate_active_local_process():
+    """Stop the active allowlisted child while preserving bridge cleanup."""
+
+    process = _ACTIVE_LOCAL_PROCESS
+    if process is None or process.poll() is not None:
+        return
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                [
+                    "taskkill",
+                    "/PID",
+                    str(process.pid),
+                    "/T",
+                    "/F",
+                ],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+            )
+        else:
+            process.terminate()
+    except Exception:
+        try:
+            process.kill()
+        except Exception:
+            pass
+
+
+def request_bridge_graceful_stop():
+    """Request Ctrl+Q shutdown after publishing the current partial result."""
+
+    if _GRACEFUL_STOP_REQUESTED.is_set():
+        return
+    _GRACEFUL_STOP_REQUESTED.set()
+    print(
+        "\nBridge graceful stop requested; finishing and publishing the current "
+        "job before exit.",
+        file=sys.stderr,
+        flush=True,
+    )
+    _terminate_active_local_process()
+
+
 def install_bridge_interrupt_handlers():
-    """Make Ctrl+C and Windows Ctrl+Q stop the bridge immediately."""
+    """Keep Ctrl+C/Ctrl+Break as immediate emergency-stop controls."""
 
     signal.signal(signal.SIGINT, _bridge_emergency_stop)
     if os.name == "nt" and hasattr(signal, "SIGBREAK"):
@@ -95,7 +141,8 @@ def start_bridge_emergency_stop_listener():
             except (EOFError, OSError):
                 return
             if key == "\x11":  # Ctrl+Q
-                _bridge_emergency_stop()
+                request_bridge_graceful_stop()
+                return
 
     listener = threading.Thread(
         target=watch_keyboard,
@@ -324,6 +371,7 @@ def run_local_process(command, cwd: Path, timeout: int) -> dict:
         "stdout": "".join(output_lines),
         "stderr": "",
         "timed_out": timed_out,
+        "interrupted": _GRACEFUL_STOP_REQUESTED.is_set(),
         "timeout_seconds": int(timeout) if timed_out else None,
         "started_at": started,
         "finished_at": time.time(),
@@ -849,8 +897,13 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
         if materialized_plan_dir is not None and materialized_plan_dir.exists():
             shutil.rmtree(materialized_plan_dir, ignore_errors=True)
 
-    artifacts = copy_acceptance_artifacts(exec_root, result_dir)
-    artifacts.update(developer_artifacts)
+    artifacts = dict(developer_artifacts)
+    try:
+        artifacts.update(copy_acceptance_artifacts(exec_root, result_dir))
+    except Exception as error:
+        if not _GRACEFUL_STOP_REQUESTED.is_set():
+            raise
+        artifacts["partial_artifact_error"] = str(error)
     process["artifacts"] = artifacts
     return process
 
@@ -919,8 +972,17 @@ def execute_job(job: dict, endpoint: str, source_root: Path, result_dir: Path,
         )
 
     process = result.get("process")
+    test_run = result.get("test_run")
+    interrupted = bool(
+        _GRACEFUL_STOP_REQUESTED.is_set()
+        or (isinstance(process, dict) and process.get("interrupted"))
+        or (isinstance(test_run, dict) and test_run.get("interrupted"))
+    )
     if isinstance(process, dict) and process.get("returncode") not in (None, 0):
         result["local_process_failed"] = True
+    if interrupted:
+        result["interrupted"] = True
+        result["bridge_stop_requested"] = True
 
     result["finished_at"] = time.time()
     return result
@@ -1053,7 +1115,11 @@ def process_once(source_root: Path, worktree: Path, branch: str, endpoint: str,
                 result_dir,
                 max_file_bytes,
             )
-            payload["status"] = "ok"
+            payload["status"] = (
+                "interrupted"
+                if payload.get("interrupted")
+                else "ok"
+            )
         except Exception as error:
             payload = {
                 "job_id": job_id,
@@ -1073,6 +1139,8 @@ def process_once(source_root: Path, worktree: Path, branch: str, endpoint: str,
             )
         completed.add(job_id)
         handled += 1
+        if _GRACEFUL_STOP_REQUESTED.is_set():
+            break
     return handled
 
 
@@ -1114,7 +1182,10 @@ def main(argv=None):
     print(f"Detected model: {model}")
     print(f"Mailbox branch: {args.branch}")
     print(f"Mailbox worktree: {worktree}")
-    print("Waiting for ChatGPT jobs. Ctrl+C stops the bridge.")
+    print(
+        "Waiting for ChatGPT jobs. Ctrl+Q publishes the current partial result "
+        "and exits; Ctrl+C is an immediate emergency stop."
+    )
 
     max_file_bytes = int(args.max_file_mb * 1024 * 1024)
     while True:
@@ -1140,7 +1211,7 @@ def main(argv=None):
             )
         except RuntimeError as error:
             print(f"bridge error: {error}", file=sys.stderr, flush=True)
-        if args.once:
+        if args.once or _GRACEFUL_STOP_REQUESTED.is_set():
             return 0
         time.sleep(max(0.5, args.poll_seconds))
 
@@ -1148,5 +1219,8 @@ def main(argv=None):
 if __name__ == "__main__":
     install_bridge_interrupt_handlers()
     start_bridge_emergency_stop_listener()
-    print("Bridge emergency stop: press Ctrl+C (or Ctrl+Q on Windows).")
+    print(
+        "Bridge controls: Ctrl+Q = publish partial current job and exit; "
+        "Ctrl+C/Ctrl+Break = emergency stop."
+    )
     raise SystemExit(main())
