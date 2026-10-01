@@ -190,11 +190,36 @@ Relevant commits:
 - `8c18a09ece41805be8d0f4f31f4cf907908622ab` — fix character-canon source contract
 - `53f532c6ddccfa35ec00d13f65bf8d4a18b37a4a` — align character-canon regressions
 
+### 2756 — accepted-state threat classification/shape failure
+
+`generate-beats-2756-summary-to-story`
+
+Preceded by `tests-2755-character-canon-fields`: **42 passed, 4 subtests passed**.
+
+2756 confirms the corrected character-canon source contract works and reaches normal story expansion/Beat processing.
+
+Earliest failure after Beat 2:
+
+`Beat state patch entity threats.children_in_kitchen must be an object.`
+
+Interpretation:
+- the accepted-state extractor placed a non-threat concept under `threats`;
+- it also emitted a scalar threat child even though canonical threat entries are object records.
+
+Fix:
+- extractor prompt now says `threats` is only for hostile/dangerous entities; ordinary people/victims/protected characters belong under `characters`;
+- response schema now requires every direct child of `threats` to be an object;
+- no arbitrary Python scalar normalization was added.
+
+Relevant commits:
+- `cd4ab71da690d8922a4dd464fbf6ccd50e406574`
+- `13f1c8be24cc1a853c4ea39c609302db925daf5f`
+
 ## Immediate next work
 
 Queued:
-- `tests-2755-character-canon-fields`
-- `generate-beats-2756-summary-to-story`
+- `tests-2757-threat-entry-shape`
+- `generate-beats-2758-summary-to-story`
 
 When processed:
 1. confirm the character-canon and planning regressions are green;
