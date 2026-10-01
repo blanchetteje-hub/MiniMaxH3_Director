@@ -1,0 +1,37 @@
+{
+  "job_id": "director-2779-duration-staging",
+  "kind": "run_acceptance",
+  "started_at": 1790887906.7762537,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--director-plan-dir",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_bridge_worktree\\bridge\\results\\generate-beats-2776-threat-id-ordering\\files"
+    ],
+    "returncode": 1,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 64 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999 --director-only\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-_ap032_n\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20261001-165147\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nDirector-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.\nFATAL: prompt-generation run stopped at first real failure: ValueError: Canonical fact has an invalid or duplicate field.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-_ap032_n\\repo\\minimax.py\", line 32132, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-_ap032_n\\repo\\minimax.py\", line 30253, in _run_main\n    character_canon = load_or_generate_character_canon(\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-_ap032_n\\repo\\minimax.py\", line 5881, in load_or_generate_character_canon\n    canon = parse_character_canon_result(raw_result)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-_ap032_n\\repo\\minimax.py\", line 5769, in parse_character_canon_result\n    raise ValueError(\"Canonical fact has an invalid or duplicate field.\")\nValueError: Canonical fact has an invalid or duplicate field.\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-_ap032_n\\repo\\minimax.py\", line 32204, in <module>\n    main()\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-_ap032_n\\repo\\minimax.py\", line 32132, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-_ap032_n\\repo\\minimax.py\", line 30253, in _run_main\n    character_canon = load_or_generate_character_canon(\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-_ap032_n\\repo\\minimax.py\", line 5881, in load_or_generate_character_canon\n    canon = parse_character_canon_result(raw_result)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-_ap032_n\\repo\\minimax.py\", line 5769, in parse_character_canon_result\n    raise ValueError(\"Canonical fact has an invalid or duplicate field.\")\nValueError: Canonical fact has an invalid or duplicate field.\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20261001-165147\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6, 7, 8]. Include run.log for diagnosis.\nMiniMax exited with code 1; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790887907.9083881,
+    "finished_at": 1790887924.752646,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "story_arc.json": "files\\story_arc.json",
+      "beats.txt": "files\\beats.txt",
+      "source_result_dir": "tests\\acceptance\\results\\amy_zombie_house-20261001-165147"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1790887924.8095846,
+  "status": "ok"
+}
