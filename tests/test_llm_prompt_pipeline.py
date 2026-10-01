@@ -347,10 +347,12 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         self.assertEqual(result, {"ok": True})
         request_json = post.call_args.kwargs["json"]
         for name, value in minimax.CREATIVE_LLM_SAMPLING_PARAMETERS.items():
-            self.assertEqual(request_json[name], value)
+            if name != "seed":
+                self.assertEqual(request_json[name], value)
+        self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["reasoning_effort"], "high")
         self.assertEqual(request_json["thinking_budget_tokens"], 1024)
-        _random_seed.assert_not_called()
+        _random_seed.assert_called_once_with()
 
     @patch("minimax.requests.post")
     def test_extractor_forces_temperature_zero_even_if_caller_passes_creative_profile(
