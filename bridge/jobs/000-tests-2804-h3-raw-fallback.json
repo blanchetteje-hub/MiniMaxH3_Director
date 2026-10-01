@@ -1,0 +1,10 @@
+{
+  "job_id": "tests-2804-h3-raw-fallback",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_malformed_accepted_state_observation_does_not_block_valid_beat",
+    "tests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_raw_scene_timed_description_strips_end_state_and_keeps_actions"
+  ],
+  "timeout_seconds": 1800
+}
