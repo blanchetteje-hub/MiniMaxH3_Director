@@ -427,6 +427,7 @@ DETERMINISTIC_LLM_PURPOSES = frozenset({
     "continuity_combined_reduced_state",
     "continuity_phase_2_h3_opening",
     "director_h3_formatter",
+    "director_raw_scene_coherence",
     "final_h3_action_preservation",
     "json_repair",
     "macro_arc_majority_validate",
@@ -29858,6 +29859,62 @@ def validate_director_continuity(bundle):
     return source
 
 
+def build_director_raw_scene_coherence_messages(current_beat, raw_scene):
+    """Build a narrow semantic check for Request 1 physical/order coherence."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Validate only whether one timed RAW SCENE is physically and causally "
+                "coherent in timestamp order while staging CURRENT BEAT. Harmless "
+                "invented staging is allowed. Reject only concrete impossibilities or "
+                "material action-order contradictions, such as closing a barrier before "
+                "someone passes through it, using an occupied hand without releasing "
+                "what it holds, or showing a required result before its prerequisite "
+                "action. Do not judge style, prose quality, camera taste, or incidental "
+                "details. Return exactly one JSON object with boolean valid and string "
+                "issue."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "CURRENT BEAT\n"
+                f"{str(current_beat or '').strip()}\n\n"
+                "RAW SCENE\n"
+                f"{str(raw_scene or '').strip()}\n\n"
+                "Read the timed actions literally in order.\n"
+                "If coherent: {\"valid\": true, \"issue\": \"\"}\n"
+                "If incoherent: {\"valid\": false, \"issue\": "
+                "\"short concrete explanation\"}"
+            ),
+        },
+    ]
+
+
+def validate_director_raw_scene_coherence(
+    current_beat,
+    raw_scene,
+    *,
+    llm_request=ask_llm,
+    history_metadata=None,
+):
+    """Return a narrow semantic physical/order verdict for one RAW scene."""
+    if not str(current_beat or "").strip():
+        return {"valid": True, "issue": ""}
+    result = llm_request(
+        build_director_raw_scene_coherence_messages(current_beat, raw_scene),
+        response_format=BEAT_VALIDATION_RESPONSE_FORMAT,
+        parse_json_response=False,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "director_raw_scene_coherence",
+        },
+        **_active_beat_validation_settings(),
+    )
+    return parse_beat_validation_result(result)
+
+
 # Run the two-stage Director micro-prompt pipeline for one segment.
 def request_segment_llm(bundle, beats, run_id, run_config):
     """Run the two-stage Director pipeline with baseline-first acceptance.
@@ -29959,6 +30016,59 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         "begin NEXT BEAT."
                     )
                 continue
+
+            current_beat_text = str(bundle.get("current_beat_text") or "").strip()
+            if current_beat_text:
+                try:
+                    coherence = validate_director_raw_scene_coherence(
+                        current_beat_text,
+                        raw_scene,
+                        history_metadata={
+                            "run_id": run_id,
+                            "source_sha256": (run_config or {}).get("source_sha256"),
+                            "segment": segment_number,
+                            "attempt": request1_attempt,
+                            "conditioning_mode": conditioning_mode,
+                        },
+                    )
+                except (
+                    LLMConnectionError,
+                    requests.RequestException,
+                    OSError,
+                    ValueError,
+                    TypeError,
+                ) as error:
+                    coherence = {
+                        "valid": False,
+                        "issue": f"RAW coherence validator failed: {error}",
+                    }
+
+                if not coherence["valid"]:
+                    issue = (
+                        coherence["issue"]
+                        or "RAW SCENE has an impossible physical/action order."
+                    )
+                    if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                        raise BeatGenerationError(
+                            f"Director Request 1 remained physically incoherent for "
+                            f"Segment {segment_number}: {issue}"
+                        )
+                    print(
+                        f"Director Request 1 physical/order coherence failed "
+                        f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                        f"retrying: {issue}",
+                        flush=True,
+                    )
+                    request1_messages = copy.deepcopy(request1_base_messages)
+                    if request1_messages:
+                        request1_messages[-1] = dict(request1_messages[-1])
+                        request1_messages[-1]["content"] = (
+                            f"{request1_messages[-1].get('content', '')}\n\n"
+                            f"RETRY: Fix this physical/action-order problem: {issue} "
+                            "Keep CURRENT BEAT and its outcome unchanged. Do not begin "
+                            "NEXT BEAT."
+                        )
+                    continue
 
             # Baseline-reset rule: old deterministic Director guards report
             # defects but do not reject or regenerate the scene. This lets a

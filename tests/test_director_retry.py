@@ -52,6 +52,52 @@ def director_response(raw_scene, beat_complete=True):
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
+    def test_raw_scene_coherence_prompt_allows_staging_but_checks_order(self):
+        messages = minimax.build_director_raw_scene_coherence_messages(
+            "Amy pushes Will into the closet and closes the door.",
+            (
+                "At 00:02.000, Amy closes the closet door.\n"
+                "At 00:04.000, Will enters the closet."
+            ),
+        )
+        text = messages[0]["content"] + "\n" + messages[1]["content"]
+        self.assertIn("Harmless invented staging is allowed", text)
+        self.assertIn("closing a barrier before someone passes through it", text)
+        self.assertIn("Read the timed actions literally in order", text)
+
+    def test_request_one_retries_physically_incoherent_raw_scene(self):
+        bundle = segment_bundle()
+        bundle["current_beat_text"] = (
+            "Amy pushes Will into the closet and closes the door behind him."
+        )
+        bad = director_response(
+            "At 00:01.000, Amy closes the closet door.\n"
+            "At 00:04.500, Will steps into the closet."
+        )
+        good = director_response(
+            "At 00:01.000, Will steps into the closet.\n"
+            "At 00:04.500, Amy closes the closet door behind him."
+        )
+        request = mock.Mock(side_effect=[
+            bad,
+            {"valid": False, "issue": "The door closes before Will enters."},
+            good,
+            {"valid": True, "issue": ""},
+            formatter_response(
+                "[Shot 1] At 00:01.000, Will steps into the closet. "
+                "At 00:04.500, Amy closes the closet door behind him."
+            ),
+        ])
+        with mock.patch("minimax.ask_llm", request), mock.patch("builtins.print"):
+            payload = minimax.request_segment_llm(
+                bundle, [], "run-id", {"source_sha256": "source-hash"}
+            )
+        self.assertEqual(request.call_count, 5)
+        self.assertIn("Will steps into the closet", payload["raw_scene"])
+        retry_prompt = request.call_args_list[2].args[0][-1]["content"]
+        self.assertIn("Fix this physical/action-order problem", retry_prompt)
+        self.assertIn("door closes before Will enters", retry_prompt)
+
     def test_request_one_completion_self_report_is_non_blocking(self):
         formatted = formatter_response("[Shot 1] At 00:00.000, Mark starts the action.")
         request = mock.Mock(side_effect=[

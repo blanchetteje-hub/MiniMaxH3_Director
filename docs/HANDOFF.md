@@ -464,6 +464,25 @@ Change:
 - on failure, substitute canonical timed RAW text deterministically;
 - do not perform a second semantic LLM preservation check on the deterministic fallback.
 
+### 2807 — full Director run completes; earliest real RAW failure identified
+
+`director-2807-trust-raw-fallback` completed all 8 prompt-generation segments and marked all 8 Beats complete. The deterministic RAW fallback now works end-to-end.
+
+However, Segment 2 RAW exposed the earliest real quality failure:
+- 00:04.500: Amy slams the closet door shut;
+- 00:06.000: Will and Amber then tumble into that already-closed closet.
+
+That is a concrete physical/action-order contradiction, so it is not harmless creative staging.
+
+Fix:
+- add one narrow Request-1 semantic coherence check before accepting RAW;
+- validate only physical/causal executability and required action order in timestamp order;
+- allow harmless invented staging;
+- on failure, retry Request 1 with the concrete issue;
+- do not add more deterministic special-case regex rules for semantic choreography.
+
+The post-RAW path remains deterministic where possible; this check exists before RAW is accepted because deciding physical/causal coherence is fuzzy semantic work.
+
 ## Immediate next work
 
 Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.
