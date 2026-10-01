@@ -1,6 +1,6 @@
 # MiniMax H3 — Development Handoff
 
-Read `docs/PROJECT_NOTES.md` first. It is the architectural source of truth.
+Read `docs/PROJECT_NOTES.md` first. It is the architectural source of truth. This file is intentionally short and should contain only the current implementation state, active constraints, latest findings, and immediate next work. Historical chronology belongs in `docs/HANDOFF_OLD.md`.
 
 ## Repository / active branch
 
@@ -8,991 +8,230 @@ Repository: `blanchetteje-hub/MiniMaxH3_Director`
 
 Active development branch: `gpt-arc-refresh`
 
-Historical experiment logs, superseded failures, probe batches, and old acceptance chronology are archived in `docs/HANDOFF_OLD.md`.
+Runtime/bridge mailbox branch: `gpt-runtime`
 
-## Current architecture
+Final runtime target: local GPT-OSS 20B-class model. GPT-5.6 Sol is used for development/evaluation only, not as a production dependency.
 
-The current path is source-span / chapter-first.
+## Primary goal
 
-- `story.txt` is authoritative.
-- Python owns exact source spans, chapter boundaries, beat arithmetic, typed canonical state, refresh scheduling, and deterministic acceptance rules.
-- The local GPT-OSS 20B performs narrow semantic generation/extraction only.
-- Prefer deterministic Python whenever the required fact is already represented structurally.
-- When fuzzy language must be interpreted, use the smallest possible extractor with a tiny enum/result and let Python make the validity decision.
-- Do not add parallel semantic pipelines. Keep repair inside the existing planning / beat / Director loops.
-- Repairable source-span/state-extractor failures stay on the source-span path. Do not fall back to the legacy ARC architecture.
-- Fix the earliest demonstrated failure from logs/acceptance runs before speculative later problems.
+`story.txt -> gold-standard MiniMax H3 prompts`
 
-## Model / prompt constraints
+`story.txt` is the one narrative source of truth. Intermediate artifacts may organize or concretize the story but may not become competing narrative authority.
 
-The final system must run on local ~20B-class models, not GPT-5.6 Sol.
+Fix the earliest demonstrated production/acceptance failure. Do not compensate downstream for an upstream semantic error.
 
-Treat the local model as comparatively instruction-fragile:
+## Current planning architecture
 
-- prompts should be short, concrete, and explicit;
-- avoid asking one call to infer several semantic facts at once;
-- narrow extraction + Python comparison has been substantially more reliable than broad prose validators;
-- do not solve a deterministic state contradiction by stacking more prose into a large validator.
+The active planner is source-span / chapter-first.
 
-GPT-20B runtime context is now **8192 tokens** in production code.
+1. Python exposes exact source units from `story.txt`.
+2. Narrow LLM classifiers identify only the semantics Python cannot derive directly:
+   - source-unit split gate;
+   - TERMINAL;
+   - HARD_RESET;
+   - visible responsibility;
+   - local MERGE vs NEW_TASK relation;
+   - typed persistent state effects.
+3. Python derives chapter boundaries, source ownership, beat counts, event ordering, and required-event assignments.
+4. Beat CREATE expands assigned events into concise executable beats.
+5. Beats run through CREATE -> VALIDATE -> REPAIR -> VALIDATE until accepted.
+6. Accepted required-event state effects are applied by Python only after validation.
 
-Commit `819d613b51d0baee773f2246e2c0cf946f068056` changed:
-- `LLM_CONTEXT_TOKEN_BUDGET`: 6044 -> 8192
-- default `call_llm(... max_tokens=...)`: 8000 -> 8192
+Do not fall back to the old broad ARC semantic architecture when a source-span extractor fails. Repair the source-span path.
 
-The existing safety reserve and input-token subtraction remain, so the actual completion allowance can still be below 8192 when the prompt itself consumes context.
+## Beat CREATE / REPAIR policy
 
-## Repository-content rule
+Beat generation is the current optimization focus.
 
-The public repository must remain SFW.
+Beat CREATE receives:
+- full `story.txt` under `SOURCE FILM`;
+- `KNOWN SUBJECTS`;
+- canonical `CHARACTER FACTS`;
+- only the chapter/local `ASSIGNED EVENTS`;
+- `PREVIOUS BEAT` when one exists.
 
-- Runtime user stories may contain arbitrary content.
-- Committed source, prompts, tests, fixtures, comments, and documentation must use SFW/generic examples.
-- Keep state/extractor rules domain-generic.
+The full story is context only. `ASSIGNED EVENTS` determine what may happen now.
 
-## Current continuity/state invariants
+Beat CREATE and Beat REPAIR use:
+- temperature `0`;
+- seed `42`;
+- repeat penalty `1.15`;
+- high reasoning;
+- 1024-token reasoning budget.
 
-These are active architectural behavior, not historical experiments:
+This is intentional: testing showed GPT-OSS 20B became substantially less reliable on Beat writing at any nonzero temperature.
 
-- Python-owned typed effects override conflicting prompt-derived continuity.
-- Canonical containment/location changes clear stale transient pose/topology/spatial relationships that depended on the old location.
-- Clothing must not be duplicated as generic equipped item state.
-- Explicit broken/shattered barrier-like entities use `set_barrier_state=broken`, scoped to the specific barrier entity rather than every barrier in the source unit.
-- Generic barrier identity may be bound deterministically to an unambiguous containment destination.
-- Closed/locked boundaries cannot be crossed unless the active typed effects authorize that transition.
-- If a release temporarily opens/unlocks a barrier but no typed barrier effect changes its persistent state, the barrier must end in its canonical opening state.
-- Reapplying an irreversible typed end state to a target that already has that state must be rejected.
-- Final H3 timestamp validation rejects malformed, out-of-range, and nested/bracketed timestamp wrappers.
+Beat repair should make the smallest textual change necessary and must re-enter normal validation before acceptance.
 
-## Current generation workflow
+## LLM responsibility split
 
-Two unattended modes now exist.
+Treat the local 20B as capable but instruction-fragile.
 
-### `--generate-prompts N`
+Prefer:
+- short prompts;
+- one semantic responsibility per call;
+- Python-owned truth + narrow extractor + deterministic comparison;
+- deterministic arithmetic/bookkeeping/state application.
 
-Generates the semantic work and final H3 prompts without sending anything to ComfyUI.
+Avoid:
+- broad holistic validators when Python already owns the invariant;
+- stacking more prose onto a prompt that is already being ignored;
+- combining semantic inference and bookkeeping into the same local-model call.
 
-It:
-- generates arc/source-span planning, beats, Director RAW, continuity, and final H3 prompts;
-- writes `generated_prompts.txt` incrementally;
-- stores the render metadata required for later rendering;
-- reuses already-written prompt prefixes and existing beat plans during ordinary recovery when valid.
+Sampling:
+- ARC create/repair, character canon, and Director RAW remain creative sampling calls.
+- Beat CREATE/REPAIR are temperature 0 despite being writing calls.
+- Validators/extractors are deterministic: temperature 0, seed 42, low reasoning, 128-token reasoning budget.
+- llama-server should run with `--deterministic`; this is a process flag, not a request field.
+- target context size is 8192.
 
-### `--generate-from-prompts`
+## Canonical character data
 
-Loads `generated_prompts.txt`, skips all LLM planning/generation, renders the saved prompts through the normal ComfyUI workflow scheduling, and stitches the clips.
+`canonical_data.txt` is user-authored character information.
 
-Workflow selection must continue to preserve initial vs append vs chapter/numeric refresh behavior.
+For each character, the system establishes:
+- age;
+- clothing;
+- gender.
 
-Relevant implementation commits:
-- `0e9399dd32d3858c63fa8190bbe23adb871dd0fc`
-- `f452ebd0e9eb14364a0ca0366fb89d22aa6fc0d6`
-- `355c2f71568586ba44c9f7c17faa910530cc8f88`
-- `c928a912e2a28ecb4fd5d928a88ab3bd5ce0caec`
-- `5c66c8efb27223ddd679a323df8ae36faa738315`
+Explicit file values are copied. Missing required values may be chosen once by the local model. Extra facts are extracted only when explicitly authored.
 
-## Latest verified acceptance state
+`character_canon.json` is cached from the canonical-data text and reused deterministically.
 
-Acceptance `2440` verified that:
-- authoritative containment no longer carries stale cross-location physical relationships forward;
-- the final release can temporarily open/unlock the basement boundary and correctly restores its locked final state.
+`subjects.txt` remains separate and is used for visual subject identity/mapping.
 
-It then exposed malformed/nested Request-2 timestamp wrappers. Those were fixed by:
-- `5d4f5c37e1f54b925c568db6e919e69113ca0233` — reject bracketed/nested timestamp wrappers;
-- `70846f73e9b904544861bb66ed121de7e325c834` — regression coverage.
+## Current canonical state direction
 
-`tests-2441` showed the new split-generation regressions passing; its only failure was a stale test fixture, corrected by:
-- `72796c243afaf6a300e82d766fbc87ef6204c93a`.
+Python owns canonical state.
 
-## Current active failure / latest fix
+Recent direction from the current iteration:
+- state capture should remember persistent facts broadly;
+- this may include rooms, objects, threat condition/injuries, concrete locations, inventory, barriers/windows, etc.;
+- broad capture does **not** mean every stored fact must later be injected into every prompt;
+- relevance filtering can be added later, analogous to subject definitions being injected only when relevant;
+- an observed `UNSPECIFIED` value must never erase a previously established concrete fact.
 
-A user run became trapped on Segment 4.
+The important distinction is:
+- **catalog state broadly**;
+- **inject state selectively later**.
 
-Observed behavior:
-- Director Request 1 repeatedly failed the closed-boundary traversal check.
-- After exhausting the local 3-attempt Director retry budget, application recovery resumed from the same Segment-4 planning checkpoint.
-- Because the Beat/typed-state contract itself could be incompatible with Director validation, replaying the same checkpoint could loop indefinitely.
-- One retry also showed RAW creating a durable terminal target-state change while the assigned typed end state was empty, confirming this can be a planning-contract problem rather than merely a bad Director sample.
+Do not weaken state capture merely because prompt filtering is not implemented yet.
 
-Latest production fix:
+## Accepted-Beat persistent state capture
 
-`fe4254683e3ce1507ebf2117505bd425e490800e`
+After a Beat has passed semantic + coherence validation and required-event effects are staged, a deterministic accepted-Beat extractor observes concrete persistent end-state facts established by the finalized text.
 
-When Director Request 1 exhausts its local retry budget:
-- recovery escalates back to planning instead of replaying the same later-segment checkpoint forever;
-- in `--generate-prompts` mode, Segment-1 recovery forces a fresh beat plan so a poisoned Beat/typed-state contract can be regenerated;
-- the application's recover-forever policy remains, but it can now change the plan rather than repeat an impossible segment indefinitely.
+The extractor may concretize source abstractions, for example:
+- authored `safe location` -> Beat-established `closet`;
+- generic inventory state -> explicit held/stored object placement.
 
-## Next checkpoint
+Captured facts are merged into canonical Python state and the persistent-state ledger.
 
-Run the focused regression suite and then a fresh end-to-end `--generate-prompts` / acceptance run on the current branch.
+This path intentionally captures incidental but persistent world facts (for example a room or object) so later stages can use them if relevant.
 
-Verify, in this order:
+### Latest acceptance finding: 2710
 
-1. The GPT-20B call path is using the 8192-token software context budget rather than the obsolete 6044 cap.
-2. Director retry exhaustion no longer loops forever on the same Segment-N checkpoint.
-3. Exhaustion escalates to planning and produces a fresh beat/typed-state plan.
-4. Previously verified continuity/barrier/timestamp fixes still hold.
-5. Identify the **earliest new real failure** from that run and fix only that failure.
+`generate-beats-2710-gpt-accepted-state` showed that accepted-Beat capture is successfully retaining useful continuity:
+- concrete kid locations;
+- kitchen objects;
+- pistol/katana state;
+- accumulated threat injuries;
+- window/environment changes.
 
-Do not reopen already-verified historical failures unless a fresh run actually reproduces them.
+Its first attempt exposed a deterministic schema defect:
 
-
-## 2026-09-28 — acceptance 2445 + GPT formatter timestamp wrappers
-
-- `tests-2444` passed 51/51 (1 skipped) across prompt-generation mode, requested prompt regressions, and minimax integration coverage.
-- `acceptance-2445` completed all 8 segments with canonical timestamp syntax throughout, so the parenthesized timestamp failure from `acceptance-2443` did not reproduce on the next stochastic run.
-- Nevertheless, `acceptance-2443` demonstrated a real GPT-OSS formatter quirk: Request 2 could emit wrappers such as `(At 00:01.500, )` around otherwise valid timestamps, and the shared timestamp checker could see the valid inner token.
-- Architectural rule: model-specific representation cleanup belongs in the model formatter. Shared orchestration should enforce the final H3 contract, not accumulate GPT-specific punctuation repair.
-- Commit `b9b5297509bc25f5cc2f30846e65eddcaef58e4a` adds GPT-only deterministic unwrapping for parenthesized or bracketed local timestamps before canonical normalization.
-- Commit `b6b0ee96a254460277bb6fb11d470369bf3f9c1c` adds formatter regression coverage for both wrapper forms.
-- `acceptance-2445` also showed one `Added States:` string visually interleaved inside the printed Segment-6 H3 block. This has not yet been proven to be part of the actual prompt object rather than concurrent console-output/capture interleaving, so do not patch it until a direct prompt-object or repeated acceptance result proves the defect.
-- Next checkpoint: run formatter/regression tests, then fresh full acceptance. Confirm wrapped timestamps are normalized by `gpt_formatter.py`; if `Added States:` appears again, trace its origin before changing production behavior.
-
-
-## 2026-09-28 — acceptance 2451 formatter follow-up
-
-- `tests-2450` imported successfully after the prior regex syntax fix and ran 54 tests, but the new timestamp-wrapper regression failed because the Python raw regex accidentally contained literal double backslashes, so it did not match real `(At ... )` / `[At ... ]` text.
-- `acceptance-2451` completed all 8 segments. Its final prompts used canonical timestamps, but Segment 4's captured `generated_h3_prompt` ended with a literal `Added States:` line. This proves the earlier 2445 observation was not merely console interleaving.
-- Both defects are GPT-OSS representation quirks and belong in `gpt_formatter.py`, not shared orchestration.
-- Commit `052e11f8e7af37437e95c81ea82f81445af56dbb` fixes the wrapper regex and strips a trailing `Added States:` control label from GPT-rendered fields.
-- Commit `7472eec0faf95350560c5acae6f365c65b5e7758` adds regression coverage for the control-label cleanup.
-- 2451 also exhausted Director Request-1 retries once at Segment 4 and correctly escalated to replanning, after which the full run completed. Treat that as recovered model variance unless fresh acceptances show a consistent pattern.
-
-
-## 2026-09-28 — Director-only test path and retry recovery
-
-- Repeated late-segment Request-1 failures were wasting full ARC/BEATS regeneration time because exhausted Director retries triggered the recovery supervisor's plan invalidation path.
-- `DIRECTOR_RAW_SCENE_ATTEMPTS` is now 5 (was 3).
-- New `--director-only` mode:
-  - requires existing valid `story_arc.json` and `beats.txt`;
-  - never calls ARC/BEATS generation or repair;
-  - implies prompt-generation test mode, so ComfyUI is never called;
-  - runs the normal per-segment Director Request 1 -> Request 2 -> formatter/final-H3 validation path;
-  - on exhausted Director retries, recovery resumes from the last committed segment and does not invalidate/rebuild the frozen plan.
-- Acceptance runner now accepts `--director-plan-dir PATH`, copying a frozen `story_arc.json` + `beats.txt` into its isolated workspace before invoking `minimax.py --director-only`.
-- Bridge `run_acceptance` jobs may set `director_plan_job` to a prior acceptance job ID. The bridge reuses saved plan files when available; for older jobs such as `acceptance-2451`, it can materialize the embedded `generated_story_arc` and `generated_beats_text` from `acceptance_run.json` into a local temporary directory. The actual runtime story/plan is not added to the public code branch.
-- Full acceptance artifacts now preserve `story_arc.json` and `beats.txt` for later Director-only runs.
-- Mailbox queue was purged before this change; no unprocessed bridge jobs remain.
-- Relevant commits: `bed344efb92d54ef35b8ffacc77be2519f098a6d`, `f77774decddde57c313ce33b9fb55e0314e65174`, `c8eccde5fbc8a5a1d836cfcbf2b2965e90d895dd`, `c62550df1dfb3cb297e7355f007592bbe5bba074`, `b15bca3e89de32db38c1535ff14150a53bdeeea2`, `d264644d405a8d913b0eab7bdc0978df964a52d7`.
-- Next action: pull `gpt-arc-refresh`, restart the bridge, then run targeted tests and a Director-only acceptance using `director_plan_job: "acceptance-2451"` before doing another full ARC/BEATS acceptance.
-
-
-## 2026-09-28 — Director-only acceptance 2457 findings
-
-- `tests-2456` passed: 54/54 targeted regression tests.
-- `acceptance-2457` completed, but exposed a flaw in the frozen-plan harness: `story_arc.json` was copied without a matching `.sha256` sidecar, so normal `load_story_arc()` rejected it as a stale cache. The run therefore did not exercise frozen typed state effects even though `beats.txt` was reused.
-- Director-only mode now parses the explicitly supplied frozen `story_arc.json` directly and validates its declared beat count/schema without using the normal story-source cache hash gate. It still fails closed if the supplied frozen arc is invalid.
-- Prompt-only checkpoints now persist the exact assembled `h3_prompt` per completed segment. The acceptance runner prefers that exact field over parsing console text, avoiding false prompt contamination from concurrent/asynchronous stdout such as `Added States:`.
-- The GPT formatter's trailing `Added States:` cleanup regex also had accidental literal backslashes and is now corrected.
-- Stale `tests/test_director_retry.py` helpers were updated to the current five-field Request-1 completion response and current containment prompt wording.
-- Relevant commits: `8c494f0e4760f686ffbe468e32408346f1e0d13d`, `3a6d83ba5245ea2a227609bd8582963859244116`, `9f16c086213e0f179d2e718c34b9f4b154739ba2`, `a4d035f09e007c4bdc63d3e5e78f0b46e0d0088c`.
-
-
-## 2026-09-28 — Director-only acceptance 2459
-
-- `acceptance-2459` is the first clean frozen-plan Director-only acceptance using the saved arc's typed state effects.
-- Segment 2 containment now behaves correctly: Will/Amber end inside the basement while Amy remains outside in the kitchen.
-- Exact checkpointed H3 prompts contain no `Added States:` contamination; prior appearances inside acceptance reports were caused by stdout scraping/interleaving.
-- Earliest remaining real prompt defect: Segment 5 authorizes only a non-terminal arm sever + limb disposal, but Request 1 added `zombie remains motionless on floor`, inventing a terminal/incapacitated outcome not assigned by source.
-- Rather than add another semantic pipeline/call, the existing independent Request-1 completion validator now explicitly rejects stronger terminal outcomes when SOURCE authorizes only non-terminal injury/damage/change.
-- `tests/test_director_retry.py` fixtures were also updated to emit structurally valid timed RAW SCENEs with a trailing `End continuity state:`, matching the current production Request-1 contract instead of failing for obsolete fixture shape.
-- Relevant commits: `fcf95ee5116ae698735f0c214b9d8cdf14565a21`, `f7f0ad4a8dd5bbd1e17cc955d7d0e6cbe534a653`.
-
-## 2026-09-28 — acceptance 2461 + regression cleanup
-
-- `tests-2460` exposed 13 failures (79 passed). Most Director failures were not independent production defects: legacy unit-test bundles supplied derived beat text but no authoritative `assigned_source`, while the newer independent completion verifier still made an extra semantic LLM call. That exhausted mocked response queues and obscured the formatter failures.
-- Commit `2e08b3acb708cf0af85a94ab4a32f1978b7e3bf4` fixes the GPT-only wrapped-local-timestamp regex. The previous raw regex still contained literal double escapes and failed to unwrap `(At ... )` / `[At ... ]` reliably.
-- Commit `2545ab269bd4df67aa928b95e1dd029a44660542` makes the independent Request-1 semantic completion verifier explicitly source-authority based: it runs only when both CURRENT BEAT and authoritative `assigned_source` are present. Legacy/unit callers without source retain structural + self-reported completion checks; production Director bundles continue through the independent verifier.
-- `acceptance-2461` completed all 8 frozen-plan Director segments. The Segment-5 unassigned terminal outcome from 2459 did not recur, confirming the terminal-scope prompt fix moved the failure downstream.
-- Do not treat later prompt-quality observations from 2461 as the next production target until the targeted regression suite is green again.
-- Next checkpoint: run the same targeted Director/formatter/prompt-generation tests. If green, run another Director-only acceptance against the frozen `acceptance-2451` plan and identify the earliest remaining real prompt defect.
-
-## 2026-09-28 — targeted baseline green; Segment 2 crossing ambiguity
-
-- `tests-2469` is green: 90/90 targeted tests passed (8 subtests passed).
-- Re-review of `acceptance-2465` found the earliest remaining production prompt defect in Segment 2. RAW used `They descend the kitchen stairs` after Amy grabbed Will and Amber, which can visually include Amy crossing into the basement even though the authoritative typed end state moves only Will and Amber there and leaves Amy outside to lock the door.
-- The independent completion verifier received the correct typed end state and participant-scope rule, but GPT-OSS 20B rationalized `They` as only Will and Amber and returned valid.
-- Commit `0f33cd7c7d02ffc2dd305adb618056b2dd1f3ef7` tightens only the existing participant-scope rule: collective crossing language such as `they`, `we`, `all`, or `the group` is invalid when it could include an unauthorized mover/helper; RAW must explicitly name authorized crossers.
-- Commit `1c8344e36f727a668a4660a891926ed5eb4debad` adds a regression assertion for that prompt rule.
-- Next checkpoint: rerun the targeted tests, then rerun Director-only acceptance against the frozen `acceptance-2451` plan. The expected Segment-2 repair is explicit wording such as `Will and Amber descend/enter the basement` while Amy remains outside.
-
-## 2026-09-28 — Director structural-geography tightening
-
-- The Segment-2 `They descend the kitchen stairs` wording in `acceptance-2465` was not present in the frozen beat plan; Request 1 invented `kitchen stairs` as local staging.
-- Commit `e92e4d8d51910a3a25cdb828ec933853165957a1` tightens the existing RAW Director prompt: do not invent structural geography/travel routes (stairs, hallways, corridors, extra doors, ladders, elevators, rooms, floors, tunnels, gates, passages). If a route is unspecified, move named subjects directly toward/through the established destination boundary without defining how the building connects.
-- The same commit tightens the existing Request-1 completion verifier to reject invented route-defining structures. This stays within the existing Director generate/verify retry loop; no new semantic stage was added.
-- Commit `c1c07ca7ee8338737de13e8e024c476551ad99a0` adds regression coverage for both prompt constraints.
-
-## 2026-09-28 — deterministic Director route/crossing guards
-
-- `acceptance-2473` proved the 20B model can ignore explicit semantic rules: it generated `Amy, Will, and Amber rush down the kitchen stairs into the basement`, then the independent verifier incorrectly rationalized that only Will and Amber crossed.
-- Root cause included a contradictory Python-added final-side note allowing temporary unauthorized crossing if the subject returned before the end. That loophole was removed.
-- Commit `67b07da70d7ac6e89ac076ab8892212703b15b6d` adds deterministic Request-1 guards inside the existing acceptance gate:
-  - reject route-defining structures that appear in RAW but are absent from source/beat/opening continuity;
-  - reject an explicitly named subject with NOT_AT_DESTINATION topology when RAW states that subject moves into/through/to the typed destination.
-- These are deterministic lexical/state checks, not a new semantic pipeline. The existing local-LLM completion verifier remains for broader source completion.
-- Commit `ab8418996d8b887bc4f56b9a814a272f4d613d3a` adds focused regression tests and fixes the geography test to use `DIRECTOR_RAW_SCENE_SYSTEM_TEMPLATE`.
-
-## 2026-09-28 — Segment 2 cleared; Segment 4 opening-held prop contradiction
-
-- `tests-2476` is green: 94/94 targeted tests passed.
-- `acceptance-2477` finally clears Segment 2: no invented route geometry; Amy steps back, Will/Amber enter the basement, Amy remains on the kitchen side, and the basement door ends locked.
-- Segment 3 is acceptable.
-- Earliest remaining production defect is Segment 4: RAW begins with Amy already holding pistol + katana, then later says she `pulls pistol from holster`, inventing a holster and reacquiring an item already held in canonical opening continuity.
-- Commit `57e4e078d88171f22e4f90fdbf2468f26bf478a5` extends the existing deterministic object-state gate to compare RAW against structured `registry_state.held_props`; an opening-held item cannot be reacquired unless RAW explicitly releases/stows it first.
-- Commit `7a7a4414158efcf1727279cfec4352b4d8a5bdfe` adds regression coverage for reject/allow cases.
-
-## 2026-09-29 — Segment 4 infinite restart root cause fixed
-
-- User supplied a live run showing Segment 4 repeatedly restarting with `global flags not at the start of the expression at position 38`; this was a Python regex exception, not an LLM stall.
-- `tests-2478` reproduced the same exception in `test_opening_held_prop_cannot_be_reacquired_without_release`.
-- Pending `acceptance-2479` was removed from the runtime queue; no new acceptance is queued until the regression suite is green.
-- Root cause: `_director_opening_held_reacquire_errors` embedded `_DIRECTOR_HELD_REACQUIRE_RE.pattern`, which contained an inline `(?i)` flag, inside a larger regex that already had preceding tokens. Python rejects nested global flags away from pattern start.
-- Commits `9aa323f46297def8bacfb8c98bda41b460da7b1a` and `603b0e9d78c3c08316f2e3c1b679cde59b381661` split the reusable reacquire fragment into a flag-free string pattern and compile the standalone regex with `re.IGNORECASE`.
-- Commit `559cc68e686272eb6b3931cb6c3ebb43321490c3` makes `re.error` non-recoverable in the outer generation loop. Regex/programming defects now fail fast instead of restarting the same checkpoint forever.
-
-
-## 2026-09-29 — Request-1 KISS + preserved-state semantics
-
-- Preserved canonical state now follows the core state rule: if a barrier state is already established in the opening state and no typed effect changes it, a RAW-scene extractor result of `UNSPECIFIED` means "not restated" and does **not** override the canonical state. Explicitly assigned barrier transitions still require an observed matching result; `UNSPECIFIED` remains invalid for those.
-- Director Request 1 was reduced to a compact creative-director contract: ASSIGNED SOURCE -> CURRENT BEAT -> OPENING STATE -> Python-owned FINAL STATE CONTRACT -> NEXT BEAT boundary.
-- Python now appends one concise `AUTHORITATIVE FINAL STATE CONTRACT` covering final-side topology, barrier end states, barrier binding, and closed-boundary traversal constraints rather than several verbose prose blocks.
-- No Director 1B/state-repair stage was added. First evaluate the simpler creative call plus corrected deterministic state semantics.
-
-
-## 2026-09-29 — Held-prop use vs reacquisition
-
-- acceptance-2484 completed all 8 Director-only segments; preserved BROKEN/LOCKED barriers no longer fail when RAW omits them.
-- acceptance-2485 exposed the next earliest deterministic false positive: _director_opening_held_reacquire_errors treated phrases such as "pulls the trigger on her pistol" as reacquiring an already-held pistol because the regex allowed the prop to appear far after the reacquire verb.
-- The guard now requires the canonical held prop to be the direct object of pull/draw/retrieve/take/grab/pick-up. Ordinary use such as pulling a trigger, shooting with, or raising an already-held pistol is allowed.
-- Keep the KISS Request-1 prompt unchanged while measuring this deterministic fix.
-
-
-## 2026-09-29 — Crossing-route contract tightened
-
-- acceptance-2487 confirmed Segment 4 no longer exhausts retries after the held-prop fix; it cleared on attempt 2.
-- The earliest recurring failure moved to Segment 2: GPT-OSS 20B repeatedly invented basement stairs/hallways even though the compact Director prompt forbids unestablished route geometry.
-- Keep Request 1 compact. When Python has both a destination topology contract and a bound destination barrier, append one explicit route line: move authorized subjects directly through that destination boundary and do not invent stairs, hallways, corridors, or intermediate route geometry.
-
-
-## 2026-09-29 — Held-prop sourced-lift reacquisition
-
-- acceptance-2490 confirmed the explicit crossing-route contract: Segment 2 passed on its first Request-1 attempt with no invented stairs/hallways.
-- The next continuity hole appeared in Segment 4: RAW reacquired an already-held pistol via "lifts the pistol from a nearby table". The direct-object guard correctly ignored ordinary weapon use but did not yet treat lift/raise-from-source phrasing as acquisition.
-- Opening-held reacquisition now also rejects lift/raise of the held prop when followed by from/off/out of a source. Ordinary lift/raise-to-aim/use remains valid.
-
-- `tests-2491` passed 102/102 targeted tests (plus 6 subtests), including the new sourced-lift regression.
-- `acceptance-2492` is queued as the next frozen-plan Director-only acceptance using `director_plan_job: "acceptance-2451"`.
-- Relevant production fix: `27922a035998c14f6d4826707ad61091f59ab5c6`.
-
-
-## 2026-09-29 — acceptance 2492 concrete-action fidelity
-
-- `acceptance-2492` completed all 8 frozen-plan Director segments and confirmed the opening-held sourced-lift fix: Segment 4 no longer reacquired the pistol from an invented surface.
-- The earliest remaining real production defect moved earlier to Segment 2. Assigned source/beat requires Amy to grab Will and Amber and rush them to the basement, but RAW substituted `Amy lifts Will and Amber` / carries them. This is a material physical-action substitution, not harmless staging.
-- The existing Request-1 completion verifier required source actions to occur but did not explicitly forbid replacing one concrete source action/participant interaction with a materially different physical action.
-- Commit `fd436b0791c59b01eed69fec95d710d63869a1b8` adds one compact source-fidelity sentence to Request 1 and its existing independent completion verifier. No new LLM call or semantic stage was added.
-- `tests-2493` is queued. If green, rerun the frozen-plan Director-only acceptance against `acceptance-2451`. Do not address the later Segment-7 kitchen/living-room teleport until this earlier Segment-2 defect is cleared.
-
-
-## 2026-09-29 — acceptance 2494 barrier identity
-
-- `acceptance-2494` confirmed the Segment 2 concrete-action substitution fix: Amy now grabs Will and Amber rather than lifting/carrying them.
-- The next earliest defect is still Segment 2: RAW conflated the broken kitchen entry door with the basement boundary. It explicitly pushed the children toward/through the broken door, then `slams the kitchen door shut` and locks it even though Python's generic `door` effect is bound to the basement destination.
-- The semantic completion verifier had the correct AUTHORITATIVE BARRIER BINDING but accepted the wrong explicitly qualified barrier. This responsibility is deterministic: when Python binds a generic barrier to one destination, an explicit state-changing action on a differently qualified same-type barrier is invalid.
-- Commit `abd8db92c351f8b77bbe3bdab15c0a36f6df1076` adds a narrow Python guard for this case. Generic `the door` and the destination-qualified barrier remain valid; actions on a nested window such as `kitchen door window` are not misclassified as door-state changes.
-- `tests-2495` is queued. If green, rerun the frozen-plan Director-only acceptance against `acceptance-2451`.
-
-
-## 2026-09-29 — acceptance 2497 prompt-continuity location drift
-
-- `tests-2496` passed 106/106 targeted tests plus 6 subtests.
-- `acceptance-2497` cleared the earlier Segment 2 concrete-action and wrong-bound-barrier defects. Segment 2 RAW now grabs Will and Amber, moves them through the basement door, then closes/locks the basement door.
-- The next earliest defect is prompt-derived continuity immediately after Segment 2: the continuity extractor invented `Amy.position = "outside kitchen doorway"` even though RAW never moves Amy outside and no source-owned location/containment effect authorizes that persistent spatial change. That invented position then contaminates Segments 3-6.
-- Commit `360990a7248fc7122306d08353a80a7bbf47cfa6` adds a narrow deterministic merge guard: a newly external/`outside` subject position cannot replace a known committed placement unless that subject has a source-owned `set_location` or `set_containment` effect. Ordinary internal room refinement remains allowed.
-- `tests-2498` and frozen-plan Director-only `acceptance-2499` are queued together to reduce bridge round-trips.
-
-
-## 2026-09-29 — acceptance 2499 wrong-bound crossing route
-
-- `tests-2498` passed 109/109 targeted tests plus 6 subtests.
-- `acceptance-2499` confirmed the prompt-continuity outside-location corruption is cleared; Amy no longer gets pushed outside the house after Segment 2.
-- Earliest remaining defect is still Segment 2: RAW says `They sprint through the broken kitchen doorway directly into the basement`. This incorrectly uses the kitchen entry boundary as the basement crossing route even though the scene separately has a basement door.
-- Existing deterministic bound-barrier guard covered wrong qualified barrier state changes, but not wrong qualified barriers used as the crossing route into the bound destination.
-- Commit `0a735335cdefb2a65d2b7bb844413912b9d952ea` extends the same narrow Python guard to reject `through/via/across <wrong qualified door/doorway> ... into <destination>` when Python binds the generic barrier to that destination.
-- `tests-2500` and frozen-plan Director-only `acceptance-2501` are queued together.
-
-
-## 2026-09-29 — acceptance 2501 pull-out reacquisition
-
-- `tests-2500` passed 110/110 targeted tests plus 6 subtests.
-- `acceptance-2501` cleared the Segment 2 wrong-bound crossing-route defect.
-- Earliest remaining defect moved to Segment 4: Segment 3 leaves Amy holding pistol + katana, but Segment 4 says `Amy pulls out her pistol` before firing. The held-prop deterministic guard already rejected direct reacquisition forms but missed the phrasal verb `pulls out <prop>`.
-- Commit `940ed4ccd792ba97d67543ce3e9d15554796460e` extends the existing held-prop guard to cover `pull/pulls/pulled/pulling out <held prop>` without changing Director semantics or adding a new LLM stage.
-- `tests-2502` and frozen-plan Director-only `acceptance-2503` are queued together.
-
-
-## 2026-09-29 — acceptance 2503 unassigned external relocation
-
-- `tests-2502` passed 111/111 targeted tests plus 6 subtests.
-- `acceptance-2503` cleared the Segment 4 `pulls out her pistol` reacquisition defect.
-- Segments 1-7 are now materially clean enough to advance. Earliest remaining defect is Segment 8: RAW moves Amy outside with Will and Amber and ends with all three on a sunny patio, but only Will and Amber have source-owned movement/containment effects for the escape.
-- Existing topology validation only reasoned about the basement boundary, so Amy could remain correctly outside the basement while still being incorrectly relocated outside the house.
-- Commit `af12046bca490d1707f5bd2383b11cdc2a647a0c` adds a narrow deterministic end-state guard: if a known subject explicitly ends outside/on a porch/patio/exterior and no source-owned set_location/set_containment effect authorizes that persistent relocation, reject Request 1. Already-external subjects and explicitly authorized moves remain valid.
-- `tests-2504` and frozen-plan Director-only `acceptance-2505` are queued together.
-
-
-## 2026-09-29 — acceptance 2505 preserved containment
-
-- `tests-2504` passed 113/113 targeted tests plus 6 subtests.
-- `acceptance-2505` cleared Amy's unauthorized outside relocation in Segment 8.
-- Earliest remaining defect is Segment 7: Will and Amber are still canonically contained in the basement, but RAW stages them `through the broken kitchen door window` looking at the fight before their release beat. Prompt-derived continuity then incorrectly moves them out of the basement.
-- Existing topology guards only activate around typed destination transitions; they did not protect unchanged containment on a beat with no containment effect.
-- Commit `fa2769520c569be680fc880152fb39f00f37a41a` adds a deterministic preserved-containment guard: a subject canonically contained in a location cannot be visually staged elsewhere unless the current beat carries a source-owned set_location/set_containment effect for that subject. Explicitly keeping the subject in the container remains valid.
-- `tests-2506` and frozen-plan Director-only `acceptance-2507` are queued together.
-
-
-## 2026-09-29 — acceptance 2507 pronoun held-prop reacquisition
-
-- `tests-2506` passed 116/116 targeted tests plus 6 subtests.
-- `acceptance-2507` cleared the Segment 7 preserved-containment leak; Will and Amber now remain in the basement until their release beat.
-- Earliest remaining defect is Segment 4: RAW begins with Amy already holding pistol + katana, then says `She pulls the pistol from her belt` before firing. This is another held-prop reacquisition.
-- The held-prop guard was subject-name anchored, so the production pronoun form `She pulls...` bypassed it even though equivalent `Amy pulls...` regressions passed.
-- Commit `1aa135386671a4c42764f570b07357ef034ae70d` broadened sourced pull phrasing; commit `9101c02d0fa451b89e327123ab1abd0564dce41f` fixes the actual production hole by allowing an unambiguous pronoun actor only when exactly one opening-state subject holds that prop.
-- `tests-2508` and frozen-plan Director-only `acceptance-2509` are queued together.
-
-
-## 2026-09-29 — tests 2508 pronoun regression correction
-
-- `tests-2508` was red: 116 passed, 1 failed, 6 subtests passed. The failing production-shaped regression was `She pulls the pistol from her belt`.
-- Root cause: pronoun matching required gender metadata, but the held-prop guard can receive minimal opening state containing only `held_props`. The production parser therefore still missed the exact pronoun form seen in acceptance 2507.
-- Commit `1e5d545a5d797d190e10188323ab68c5667fe39a` makes pronoun resolution depend only on uniqueness of the opening-state prop holder: if exactly one Subject holds that prop, `she/he/they` is accepted as an unambiguous actor; if multiple Subjects hold the same prop, pronouns are not used for deterministic rejection.
-- `acceptance-2509` is diagnostic only because the regression suite was red. It suggests the next issue may be Segment 8 failing to actually clear Will and Amber out of the house, but do not fix that until the held-prop regression is green.
-- `tests-2510` and frozen-plan Director-only `acceptance-2511` are queued.
-## 2026-09-29 — Director RAW timing must use the clip window
-
-- A fresh Director RAW scene for an 8-second Segment 2 completed all timed action by 00:01.300. The existing contract only required the final timestamp to be before the segment endpoint, so this was structurally accepted.
-- Fix: Request 1 now explicitly paces timed action across the full clip, and Python deterministically rejects RAW scenes whose final timed micro-beat occurs before the final quarter of the segment. For an 8-second clip, the last timed action must be at or after 6.0 seconds and still before 8.0 seconds.
-- This remains inside the existing Director Request-1 structure gate; no new LLM stage or semantic pipeline was added.
-- Added focused regressions for rejecting a 1.3-second ending in an 8-second clip and accepting a 6.2-second ending.
-- Next checkpoint: run the focused Director regression suite, then a fresh Director-only acceptance using the frozen plan and verify Segment 2 uses the full 8-second timing window.
-
-## 2026-09-29 — direct endpoint continuation and frozen-plan checks
-
-- `gpt-arc-refresh` was pulled at `5a44e3e9`. The local GPT-OSS endpoint at `http://192.168.0.203:1234` is directly reachable, so no bridge program is needed for this session. The endpoint briefly timed out, then recovered.
-- The new final-quarter timing gate exposed stale mocked Director fixtures. Their RAW and formatter examples now extend to 00:04.500 in the tests' six-second segment. The focused Director/formatter/prompt-generation suite is green: **136 passed, 8 subtests passed**. Production timing behavior is unchanged from `5a44e3e9`.
-- The frozen `acceptance-2451` arc and beats were materialized from its saved `acceptance_run.json` on `gpt-runtime`. The direct runner uses `tests/acceptance/run_acceptance.py --director-plan-dir /tmp/amy-frozen-2451 --image1 Amy.jpg`. All acceptance outputs are in `/tmp`; none are committed. An initial diagnostic used the repository image because `Amy.jpg` was not present, but `Amy.jpg` later appeared in the workspace and is used for subsequent checks.
-- A completed direct frozen-plan run is at `/tmp/amy-director-20260929-r4/acceptance_run.json` (8/8 segments, refresh at Segment 7). Every segment's last RAW timestamp was in the final quarter, so the timing rule passed live. This run exposed the earliest persistent-state defect at Segment 4: Amy began holding pistol + katana but ended with the katana on her belt. Prompt-derived continuity then carried that unauthorized belt state into Segment 5.
-- Earlier diagnostic runs also exposed deterministic Segment-2 false positives and missed crossings. The external-location guard treated `Amy outside the basement` as outdoors; it now distinguishes an interior containment boundary from outside the house. The crossing guard now recognizes `while Amy follows behind`, exit-from-destination evidence, and `dash`; bound-door routing rejects a window route into the basement. These are all Python checks inside the existing Request-1 gate, with no new LLM calls or longer model prompts.
-- A later direct run with `Amy.jpg` showed a Segment-2 RAW scene that moved the children only to the basement door, closed it, and claimed they were inside in the final-state sentence. The new deterministic containment-crossing check requires each newly contained subject to visibly cross in a timed action; final-state assertion or approach alone is insufficient. A fresh run then passed Segment 2 with `Amy pushes Will and Amber through the kitchen side of the basement door into the basement` before she shut and locked it.
-- The held-prop gate now also rejects an opening-held prop ending on a belt/holster/sheath unless authoritative source explicitly assigns that stow. The focused regression uses the production Segment-4 katana case and an authorized-stow control.
-- Direct frozen-plan run `/tmp/amy-director-20260929-r6`, using `Amy.jpg`, cleared Segment 2 with an explicit door crossing and Segment 4 with both weapons still held. It was stopped at the earliest new clear defect in Segment 5: RAW began with pistol and katana occupying both hands, then said Amy lifted a severed arm `with both hands` without releasing either weapon. The end state still claimed both were held. The existing Request-1 structure gate now rejects this exact occupied-hands contradiction unless one opening-held prop is visibly released first. No LLM prompt or call was added. Evidence is preserved under `/tmp/amy-director-seg5-evidence-r6/`.
-- Next checkpoint: rerun the frozen-plan Director acceptance with `Amy.jpg` and review the earliest new real defect. Keep GPT-OSS 20B jobs narrow and use Python for typed-state and crossing invariants. Commit and push this handoff with the code changes to `gpt-arc-refresh`; do not add the untracked runtime `Amy.jpg`.
-
-## 2026-09-29 — Director Request 1 wording simplified for local gpt-oss 20B
-
-- Target runtime model remains `GPT-OSS-20B.gguf`.
-- The exact model card adds no special prompt syntax beyond being a gpt-oss 20B derivative. Keep using the runtime's gpt-oss/Harmony chat template.
-- Director Request 1 now uses short, literal, ordered rules: SOURCE -> CURRENT BEAT -> OPENING STATE -> END STATE RULES -> NEXT BEAT.
-- Removed abstract wording such as "authoritative final state contract", "persistent changes", and the blanket ban on invented structural geography from the creative call.
-- Harmless route details (for example, a short hall or stairs) are now allowed. The real invariants remain enforced: required destination, correct bound door/gate, which people cross, and required end state.
-- Removed the deterministic unestablished-route rejection and the matching completion-verifier rule so harmless route detail is not accepted by the prompt and then rejected later.
-- Timing is now stated with a concrete number for each clip: the last timed action must be at or after 75% of the clip length and before the exact endpoint.
-
-## 2026-09-29 — ARC CREATE + BEAT CREATE simplified for Qwen/local 20–27B
-
-- Read the complete current \`docs/PROJECT_NOTES.md\` before changing prompts. Architecture remains unchanged: \`story.txt\` is narrative authority; Python owns arithmetic/bookkeeping/state application; local LLM calls should be short, concrete, and low-ambiguity.
-- Runtime evaluation is moving to an uncensored Qwen3.8-27B variant. Qwen's official guidance emphasizes correct chat-template role separation, and its function-calling guidance notes that simpler templates that rely less on the model staying on track are more reliable.
-- ARC CREATE was rewritten without changing its output schema or ARC validation/repair loop:
-  - system message now states only the stable job;
-  - user message has short SOURCE / SUBJECTS / BEAT COUNT / repeated-process sections;
-  - majority arithmetic is precomputed by Python and stated as concrete beat numbers rather than a prose allocation algorithm;
-  - state-effect argument ownership is now a short operation lookup list;
-  - JSON schema continues to enforce output shape/count.
-- BEAT CREATE was rewritten with the same style:
-  - ASSIGNED EVENT is stated as the beat authority and chapter source as context;
-  - barrier binding, closed-boundary, and final-state text is concrete rather than "canonical/authoritative physical constraints" prose;
-  - beneficiary rules explicitly distinguish food/consumable/hand-off receipt from repair/build/custom work that need not be delivered unless source says so;
-  - repeated-process and previous-beat rules remain, but use short direct wording.
-- No validator, repair prompt, semantic stage, state operation, or deterministic guard was removed.
-- Next checkpoint: run the focused ARC/Beat prompt regression suite, then compare fresh Qwen planning/beat-generation behavior before simplifying validators or repair prompts.
-
-## 2026-09-29 — Qwen acceptance bridge support + stale regression fixtures
-
-- `tests-2516-qwen-planning` completed: 112 passed, 12 failed, 6 subtests passed. The failures were regression-fixture drift, not live-Qwen behavior:
-  - `tests/test_beat_at_a_time_validator.py` mocks expected only the primary beat-validator call and did not supply the newer finite-endpoint and coherence responses, causing response-list exhaustion / schema failures.
-  - two prompt regressions asserted superseded exact wording after the prompt simplification.
-- The validator fixtures now return `COMPLETE` / `NOT_APPLICABLE` for finite-endpoint checks as appropriate and VALID for coherence, while preserving the original primary-validator assertions. Prompt assertions now target the current semantic wording.
-- `acceptance-2517-qwen-full` did not run MiniMax at all. The bridge rejected the job before process launch with: `Acceptance jobs must use the 'gpt' baseline; got 'qwen'.`
-- Bridge acceptance now permits all formatter models already supported by runtime: `gpt`, `mistral`, and `qwen`. Unsupported model names still fail closed. Added regression coverage that Qwen reaches the acceptance command as `--model qwen`.
-- Relevant commits: `f25b3ec522fec2226eaded7a95374af9fdfc2da9`, `7589afc0cc015324216cc8c1b913f6b17bdd7109`, `35bb5276053276ab2c584e985f066eca60ff4c80`, `032a2c5a65e68f1dea156fce86ee266fa7d39ce3`.
-- Next checkpoint: rerun the corrected regression suite. Then restart the bridge from the updated branch before queueing/running the full Qwen acceptance; a bridge process started before `35bb5276` still has the old in-memory GPT-only gate.
-
-## 2026-09-29 — Beat retry now performs an actual repair
-
-- Qwen at temperature 0 exposed a retry-contract bug: after a finite-endpoint rejection, the retry path regenerated Beat 1 from essentially the same one-beat creation prompt. Deterministic decoding therefore returned the same incomplete beat repeatedly.
-- Keep temperature 0. The problem is prompt state, not sampling.
-- The existing retry call now receives the rejected candidate text in addition to the exact validator/extractor issue. The repair instruction explicitly says to keep the assigned event/story meaning, change only what is needed to fix that issue, and not return the rejected wording unchanged.
-- This restores the intended BEATS CREATE -> VALIDATE -> REPAIR -> VALIDATE behavior without adding another LLM stage or weakening finite-endpoint validation.
-- Added a focused regression proving the rejected candidate and concrete failure are passed into the repair callback.
-- Next checkpoint: run the focused Beat validation regressions, then rerun the Qwen planning/beat path. Beat 1 should be repaired from an ongoing cooking action into a visibly completed endpoint instead of repeating the same candidate.
-
-## 2026-09-29 — Qwen finite-endpoint repair wording made procedural
-
-- Acceptance `2521` developer logs proved the Beat repair plumbing works: Qwen receives the rejected Beat 1 text and the exact finite-endpoint failure on every retry.
-- Qwen nevertheless returned the rejected sentence verbatim at temperature 0. This is a prompt-comprehension failure, not a parser or sampling failure.
-- The phrase "observable completion endpoint" was too abstract for this model. Finite-endpoint repair now adds one concrete procedural rule: rewrite the same finite activity so it visibly finishes inside the beat, state the ordinary completed result, do not leave progressive/in-progress wording, and do not advance into the next story event.
-- Temperature remains 0. No validator rule was weakened and no new semantic stage was added.
-- The same `2521` logs also exposed a separate upstream state issue: later Beat CREATE prompts incorrectly say Amy is inside the locked basement. Do not conflate that with the finite-endpoint loop; inspect source-unit state extraction after Beat 1 repair advances.
-
-
-
-## 2026-09-29 — Qwen Director sampling separated from deterministic calls
-
-- Acceptance output showed Qwen Director Request 1 becoming overly static at the formatter default temperature of 0.15, repeatedly staging subjects as standing/remaning in place rather than using the beat creatively.
-- Commit `e5a45f110b6b670715a7237048a1ae332e4eeee5` adds a Qwen-only Director Request 1 sampling profile in `minimax.py`:
-  - temperature: 0.50
-  - top_p: 0.92
-  - top_k: 40
-  - min_p: 0.03
-  - presence_penalty: 0.10
-  - frequency_penalty: 0.08
-  - repeat_penalty: 1.08
-  - seed remains 42
-- This profile applies only to the creative RAW-scene Director call. ARC/Beat validators, narrow extractors, and Request 2 keep their existing deterministic/conservative settings.
-- Next checkpoint: pull `gpt-arc-refresh` and rerun the Qwen acceptance locally. Judge whether Request 1 regains useful motion/staging without increasing state/continuity violations. No bridge job is required before that rerun.
-
-
-## 2026-09-29 — acceptance 2526 exposed wrong ARC movement-state ownership
-
-- Full Qwen acceptance `2526` generated a valid 6+2 beat plan but repeatedly failed Director Request 1 at Segment 2 and restarted planning after each 5-attempt local Director budget.
-- Earliest wrong artifact is upstream in ARC state effects, not Director:
-  - Source/event: Amy rushes Will and Amber to the basement, gets them inside, then locks the door.
-  - Incorrect ARC effects assigned `set_containment Amy -> basement: contained` and `set_location Amy -> basement`.
-  - Amy is the actor/helper; the children are the entities whose containment/location changes. The bad canonical effects therefore forced Director Request 1 toward a contradictory end state.
-- Commit `e87312b3aba496a8e7daddeecff8f55bf816bbe8` tightens ARC CREATE, VALIDATE, and REPAIR generically:
-  - movement/containment effects belong to the entity whose FINAL state changes;
-  - a helper/escort/causative actor does not inherit the destination;
-  - if A leads/gets/puts B into X, B may receive the effect; A receives it only when source separately says A enters/remains in X.
-- This is an existing ARC semantic responsibility; no new LLM stage or Director workaround was added.
-- Next checkpoint: pull `gpt-arc-refresh` and rerun the full Qwen acceptance. Verify E2 no longer places Amy inside the basement, then see whether Segment 2 advances under the new Qwen Director sampling profile.
-
-
-## 2026-09-29 — Request 1 self-validation removed from production gating
-
-- Qwen acceptance `2527` stalled at Segment 1: Director Request 1 failed its 5-attempt local budget before the independent source-based completion validator could meaningfully own the decision.
-- Root cause: the creative Request 1 response still carried four model-owned completion booleans (`finite_activity_complete`, `named_beneficiaries_complete`, `activity_tools_settled`, `beat_complete`) and production logic required all four to be true before invoking the independent completion validator.
-- Commit `ad656a0fe04fb36253d1648046c5042313051df3` changes production behavior when authoritative source is available:
-  - Request 1 still returns the legacy/self-report fields for compatibility;
-  - those self-reported booleans no longer gate or fail production acceptance;
-  - the existing narrow source-based completion validator owns completion;
-  - legacy/unit callers without authoritative source retain the old self-report behavior.
-- This keeps KISS responsibility separation: Request 1 creates; narrow validators validate.
-- Replacement full Qwen acceptance queued as `2528`.
-
-
-## 2026-09-30 — Director prompt rollback + typed inventory ownership
-
-- Qwen evaluation regressed Director reliability; GPT-OSS-20B was restored for the current acceptance path. Model size alone is not treated as an upgrade.
-- Restoring the pre-simplification Director Request-1 prompt contract materially improved runtime behavior: the next run advanced past Segment 2. Prompt rollback commit: `4a17d724c13eda496fbbfa521addaf7994e425e9`.
-- New Segment-3 defects exposed a typed-inventory ownership bug:
-  - canonical beat state already distinguishes `held_objects`, `equipped_objects`, and `stored_objects`;
-  - continuity projection incorrectly collapsed both `held` and `equipped` into `held_props`, which could make a sheathed/holstered item appear hand-held;
-  - prompt-derived continuity could also promote incidental serving props (for example a pancake tray) into durable held state without a typed `set_item_state`.
-- Commit `9bfec85000b78301ea3695c03af09b11f6b80477` makes persistent inventory Python-owned:
-  - newly visible held props persist only when typed state authorizes `held`;
-  - `equipped` is not represented as hand-held;
-  - Director Request 1 receives a deterministic canonical item-state contract with exact meanings for HELD / EQUIPPED / STORED;
-  - timed micro-beats that merely restate unchanged state (for example “window remains broken; door stays locked”) are rejected;
-  - retrieval/equipment beats reject unassigned awkward `release ... from ...` wording.
-- Source-unit state extraction now receives recent prior source text as REFERENCE ONLY so tiny extractors can resolve anaphora such as “She equips the weapons” back to named items in the preceding source. State is still extracted only from the current source unit.
-- Commit `94f69ff14f40723f31aa085882eec6dcd100427c` adds a deterministic carry-mode guard: an item assigned `equipped` cannot end held in-hand, and an item assigned `held` cannot end holstered/sheathed/stowed.
-- Regressions: `86bf439e2cfb949263e87ee1b24573130e598759`, `da57820a2fb2e91579142152c0b04bbba4d09624`.
-- Pending verification:
-  - `tests-2620-typed-inventory`
-  - GPT item-anaphora probes `2621-2640`
-- Next checkpoint: verify those tests/probes. If green, rerun GPT acceptance on current head and inspect Segment 3 first for (1) pistol/katana typed effects, (2) no pancake-tray carryover, (3) no held/equipped contradiction, and (4) no timed continuity-only filler.
-
-
-## 2026-09-30 — typed-inventory verification checkpoint
-
-- `tests-2620-typed-inventory` ran 85 targeted tests plus 6 subtests. Result: 84 passed, 1 failed; the only failure was a stale regression expecting an incidental `pancake` prop to survive an authoritative move. Under the new typed-inventory ownership rule, untyped prompt-derived held props must be cleared rather than persist.
-- Updated that stale assertion in commit `18dfc6f843a3b4dcf846d7cbaea693bb27f73807` to expect no persisted held prop.
-- GPT-OSS item-anaphora probes `2621-2640` were 20/20 correct. Each resolved the pronoun owner and the prior-source grouped item reference, then emitted one `set_item_state(..., value=equipped)` effect per resolved item.
-- This validates the current source-unit extraction design: prior source is REFERENCE ONLY for pronoun/anaphora resolution; persistent state still comes only from the current source unit.
-- Next checkpoint: rerun the focused typed-inventory tests on current head. If green, run a fresh GPT acceptance and inspect the earliest real runtime defect, starting at Segment 3 for pistol/katana item states, pancake-tray carryover, held/equipped contradictions, and timed continuity-only filler.
-
-## 2026-09-30 — Director baseline reset: generate first, promote rules from evidence
-
-This section supersedes older Director-specific guidance that treated typed state,
-barrier topology, terminal-target state, item carry mode, or completion extractors
-as blocking acceptance gates.
-
-- ARC and BEATS are unchanged. Their CREATE -> VALIDATE -> REPAIR -> VALIDATE loops
-  remain the semantic planning authority.
-- Director Request 1 is now a minimal creative stage:
-  - ASSIGNED SOURCE is story authority;
-  - CURRENT BEAT is the scene to stage now;
-  - OPENING CONTINUITY is advisory frame-0 context;
-  - a broad/generic continuity summary may not override a concrete CURRENT BEAT;
-  - NEXT BEAT is only the boundary.
-- Request 1 no longer receives Python-generated final-state contracts, barrier
-  contracts, or HELD/EQUIPPED/STORED item instructions.
-- Request 1 structured output is now creation-only: \`{"raw_scene":"..."}\`.
-  Model-owned completion booleans were removed from the production schema.
-- Existing deterministic Director checks are retained as diagnostics only.
-  Hand conflicts, item-state contradictions, missing subjects, topology/crossing,
-  barrier binding, containment, early timing, and End-continuity structure may emit
-  warnings but do not trigger regeneration.
-- Independent completion, terminal-target, barrier-side, barrier-traversal, and
-  barrier-state LLM checks are no longer called from the Director generation path.
-  Keep the helper code for experiments/regressions until evidence shows whether any
-  narrow check deserves promotion back to a blocker.
-- Request 2 remains a formatter/translator. Malformed formatter responses may retry
-  up to three times; timestamp correspondence/syntax problems are diagnostic only
-  after deterministic normalization and do not block the run.
-- Director content failures must not invalidate a valid ARC/beat plan. Recovery
-  resumes from the last committed segment/checkpoint and retains planning.
-- Development method from this checkpoint:
-  1. generate the complete prompt set whenever transport/parser output is usable;
-  2. compare all prompts to gold;
-  3. collect concrete recurring failures;
-  4. add the smallest generic rule only when full-run evidence shows it is needed;
-  5. never add a rule merely to make internal state more formally complete.
-- Gold-prompt principle: optimize for story-visible continuity needed by the next
-  clip, not a perfectly normalized world-state ontology. Refresh segments may
-  restate important visible state more strongly; append segments should lean on
-  video continuity and only concise relevant state.
-
-
-
-## 2026-09-30 — Refocus on BEAT generation; frozen Director beats 5-8 invalid
-
-- Active development focus moves back upstream to BEAT generation/validation before further Director tuning.
-- The frozen eight-beat Director test plan was inspected manually and contains a major continuity failure beginning at Beat 5:
-  - Beat 5 has Amy shoot/unlock the basement door after she deliberately locked Will and Amber behind it for safety.
-  - Beat 5/6 then drift spatially around the basement-door encounter instead of preserving Amy outside the children's safe area.
-  - Beat 8 has Amy push the children out in a way that follows from the corrupted containment/location logic rather than a clean safe-room release.
-- Treat frozen Beats 5-8 as INVALID test input. Do not use that plan to judge Director quality or add Director rules.
-- Beats 1-4 are not automatically promoted to gold; the next task is to rebuild and validate the complete eight-beat plan against the locked gold story behavior.
-- A concise reference list of the locked gold beats is now stored in \`docs/GOLD_BEATS.md\`.
-- Next checkpoint: focus on ARC/BEATS output until all eight generated beats preserve story order, containment, actor/location ownership, and end-state continuity. Only then freeze the plan again for Director-only testing.
-
-
-## 2026-09-30 — Canonical character profiles before ARC/BEATS
-
-- Active focus remains upstream on BEAT-plan correctness.
-- New rule: stable main-character facts are established once before ARC/BEAT generation rather than being re-invented in later beats or Director prompts.
-- Initial canonical fields are intentionally small: \`age\` and baseline \`clothing\`.
-- New persisted file: \`character_canon.json\`.
-  - keyed to a SHA-256 of the current story text plus \`subjects.txt\`;
-  - reused unchanged while those inputs match;
-  - automatically regenerated when either source changes.
-- Canonicalization precedence:
-  1. explicit facts in the story;
-  2. explicit facts already present in \`subjects.txt\`;
-  3. only genuinely missing values are inferred once by the local LLM.
-- The canonicalizer receives both the synopsis and existing subject definitions. This prevents it from inventing a new age/clothing value when the user has already supplied one elsewhere.
-- Canonical clothing means the baseline outfit only. Temporary later state such as dirt, blood, bile, damage, wetness, etc. remains continuity state and does not replace the baseline outfit.
-- ARC CREATE, ARC VALIDATE, and BEAT CREATE now receive a separate \`CANONICAL CHARACTER FACTS\` section. These facts are context/canon, not story events to schedule.
-- Current character-canon prompt is deliberately simple and based on the proven local test:
-  - system: establish factual canonical film information; return succinct JSON;
-  - output: \`{"characters":[{"name":"...","age":"...","clothing":"..."}]}\`.
-- This is the first canonical-data layer. Do not generalize to locations/props/etc. until observed failures justify it.
-- Commits:
-  - \`fc1f964e4320f5f52cf1ee0d4753daf343a96334\` implementation
-  - \`b9cafa809408573479d0635b4e2bb2b0b9cc75db\` focused regressions
-
-## 2026-09-30 — configurable canonical data + compact Beat CREATE prompt
-
-- Canonical character facts are now user-configurable through `canonical_data.txt`.
-- Initial configured fields: `age, clothing, gender`.
-- The implementation is generic rather than hardcoding those three fields:
-  - comma/newline-separated labels are normalized to machine keys;
-  - the LLM response schema is built dynamically from the configured fields;
-  - `character_canon.json` now stores `version: 2`, the configured field list, and per-character values;
-  - the canon hash includes story text, `subjects.txt`, and the configured field list, so changing `canonical_data.txt` forces regeneration.
-- Explicit story/subject facts remain authoritative; only missing configured values are creatively established once.
-- Canonical results continue to be reused deterministically by Python and are exposed to planning as character facts.
-- Segment 1 Director Request 1 now receives `CANONICAL STARTING CHARACTER FACTS` so applicable identity/appearance facts are established in the opening portrayal. It is explicitly forbidden from introducing an absent/future character solely to display canon.
-- Beat CREATE was replaced with the new compact creative prompt:
-  - `SOURCE FILM`
-  - `KNOWN SUBJECTS`
-  - `CHARACTER FACTS`
-  - `ASSIGNED EVENTS`
-  - optional `PREVIOUS BEAT` only when real
-  - optional repair/user-specific sections only when applicable.
-- Removed from the normal Beat CREATE prompt: barrier-name rules, closed-boundary sections, preserved-barrier sections, and the beneficiary-specific food/hand-off prose.
-- Core creative rules now explicitly include spatial awareness, one-to-two concise sentences, and names instead of pronouns.
-- Relevant commits:
-  - `621f5eff08787427a5eb7ca4b69c2843410786be` — implementation
-  - `9af7023ea1857e877935f030e947d0a839974dd1` — fix canonical_data.txt newline parsing
-  - `c7ce7c9782a3c926b123e84289fdf982eed64326` — `canonical_data.txt`
-  - `5028f94268de69c0926cb962fd4ce353f0d53328` — canonical/prompt regressions
-  - `6139f0875aa99b54b6c46d6a05dedf145149d92e` — updated Beat CREATE regression
-- Next checkpoint: run the focused test suite, then generate a fresh Amy beat plan and inspect the exact Beat CREATE prompt/output before doing more Director tuning.
-
-## 2026-09-30 — hard sampling split + beat-only optimization phase
-
-- LLM routing is now responsibility-based and defaults to deterministic behavior.
-- Explicit creative allowlist:
-  - `character_canon`
-  - `macro_arc_create`
-  - `macro_arc_repair`
-  - `macro_arc_majority_tail_repair`
-  - `beat_generation` (including single-beat repair/regeneration)
-  - `director_raw_scene`
-- Creative request profile:
-  - temperature `0.8`
-  - top_p `0.95`
-  - top_k `0`
-  - min_p `0.05`
-  - repeat_penalty `1.15`
-  - seed `42`
-  - `reasoning_effort="high"`
-  - `thinking_budget_tokens=1024`
-  - `chat_template_kwargs.enable_thinking=true`
-- Every non-creative `ask_llm` call now forces temperature `0` and seed `42`, including unlabeled/new calls. This prevents validators/extractors from accidentally sampling because a caller forgot metadata.
-- The direct visual end-state LLM path was also changed from temperature `0.10` to `0`, seed `42`, repeat penalty `1.15`.
-- `--deterministic` is not sent in request JSON because llama.cpp implements it as a process-level flag. The llama-server hosting deterministic calls must be launched with it.
-- Server-only/native settings remain outside request JSON. Current expected runtime includes 8192 context, flash attention, Jinja, port 1234, cache RAM 32768, seed 42, `-np 1`, and the reasoning-budget exhaustion message.
-- Do not pin `--reasoning-budget 1024` globally if using per-request routing; creative calls now send `thinking_budget_tokens=1024`.
-- Commits:
-  - `a31dab19a5f6cad888a6506445f8204e3448305f` — responsibility-based sampling/reasoning routing
-  - `13bba833bd43673b928839b133f0c3c3d5f5664d` — keep creative reasoning controls request-native
-  - `814969404dff9a78f600b24d7d2382179def4d35` — deterministic default + visual extractor temp 0
-  - `73fbba2747aac5dc706548027736ca67352c9e41` — routing regressions
-  - `fce8913ace62349baa92ff945b50cdee1ed0ad41` — project policy documentation
-
-### Active development scope
-
-The sole optimization target is now **beat generation**.
-
-Process:
-1. generate beats;
-2. analyze the earliest incorrect beat/artifact;
-3. repair the smallest responsible prompt/validator/state handoff;
-4. regenerate and compare again.
-
-Do not tune Director prompts during this phase. Director quality is downstream of beat quality.
-
-Barrier/state information will be reintroduced only when a concrete beat failure demonstrates that one specific fact is needed. Add the minimum necessary fact/rule; do not restore the previous broad barrier blocks.
-
-## 2026-09-30 — deterministic calls now use low reasoning
-
-- Deterministic LLM calls remain temperature `0`, seed `42`.
-- They now also use:
-  - reasoning enabled;
-  - `reasoning_effort="low"`;
-  - `thinking_budget_tokens=128`;
-  - `reasoning_budget_message=". Enough thinking, now answer."`.
-- The same budget-exhaustion message is now sent per request for creative calls as well; creative calls keep high effort and a 1024-token reasoning budget.
-- Current llama.cpp supports `reasoning_budget_message` in the request payload, so this no longer depends only on the server launch default.
-- Commits: `67793614298b28ce8cb8f414127d21e7e6a57a31`, `4af3910b996bf067df997eabacd4297f05db7fe3`, `468523f3077b25316f849ad87afc09cb98992a82`.
-
-## 2026-09-30 — full story context for beats + boundary enforcement dormant
-
-Observed repair failure:
-- Beat 7 correctly expanded "She lets her kids out of the basement" to opening
-  the basement door and releasing Will/Amber.
-- Python rejected it because the canonical barrier was locked and the assigned
-  state effects did not include `set_barrier_state`.
-- The repair prompt then incorrectly asked the creative model to preserve the
-  source event while avoiding the source-required boundary transition.
-
-Changes:
-- `SOURCE FILM` in both phase Beat CREATE and single-beat repair now receives
-  the full parsed `story.txt` narrative rather than the current chapter span.
-- The assigned event remains the local execution authority.
-- Beat boundary/barrier enforcement is now fully dormant:
-  - removed deterministic unassigned barrier end-state rejection;
-  - removed barrier binding / closed-boundary / preserved-barrier sections from
-    the beat semantic validator;
-  - filtered boundary/containment facts and effects from the validator view;
-  - removed the post-validator destination-presence boundary gate.
-- Boundary helper code remains in place for later surgical reintroduction.
-- Relevant commits:
-  - `56f40c58ef7a7cfa19eb1cdfa5561b33b70f9bb9` — full story in Beat CREATE/repair
-  - `1e0019b1fd9a629388e5d719f609dfbe5da35b60` — disable structural barrier rejection
-  - `222bc8929399f573e58d76539fbbcd46dc97b1dc` — boundary-blind semantic validator
-  - `0089a064c2c857ff4518f6e12aeadd27bf237e23` — disable destination-presence gate
-  - `e650fda8fedf7a9634b5cd7304fd79c9f0ec9328` — update regressions
-
-
-
-## 2026-09-30 — forced beat generation checkpoint + creative seed fix
-
-Observed user-facing failure:
-- `--generate-beats` printed the source-span planner output and then jumped directly to
-  `Story arc and beats generated successfully.`
-- The newly generated `beats.txt` was repeatedly identical.
-- No per-beat CREATE/VALIDATE logging appeared, making it look as though Beat VALIDATE
-  was not running.
-
-Root causes:
-- Explicit creative ARC/BEAT requests were routed through the creative profile but still
-  pinned to `BENCHMARK_SEED` (42), so identical prompts were intentionally reproducible.
-- When explicit force-generation started with an already-empty `beats.txt`,
-  `load_or_generate_beats()` passed `reset_validation_state=False`. A completed
-  `beat_validation_state.json` with a matching fingerprint could therefore short-circuit
-  `_run_forward_beat_validation()`, returning the previous finalized beats without calling
-  Beat CREATE or Beat VALIDATE.
-
-Fixes:
-- Creative requests now call `generate_random_llm_seed()`; deterministic validators and
-  extractors remain temperature 0 / seed 42.
-- Any explicit `force_generate=True` now resets beat validation state, even when
-  `beats.txt` is empty before launch. Normal non-forced recovery behavior is unchanged.
-- Production commit: `8dfcc060efdb4286f6481358283f204ed344b7c7`.
-- Regression commits: `310b587074b4c3cd0b4dddf4c96fab3790393624`,
-  `587165ef65fec9a70049a1da4a6be4e3577353e0`.
-- Queued bridge regression: `tests-2698-force-beat-validation-random-seed`.
-
-Expected next manual run:
-- source-span planning may still be structurally similar;
-- Beat CREATE lines must appear;
-- each beat must visibly enter the single-beat validator;
-- repeated explicit Generate Beats runs should no longer be locked to identical creative output.
-
-## 2026-09-30 — Beat CREATE subject guard regression + hidden source classification delay
-
-Observed full-run failure:
-- Source-span planning completed and saved story_arc.json.
-- Beat generation then failed before contacting the LLM with:
-  `Parsed subjects.txt information was not included in the beat generation prompt; refusing to contact LM Studio.`
-
-Root cause:
-- `build_beat_generation_messages()` computed the compact `subject_text` aliases but the
-  compact Beat CREATE refactor omitted the `KNOWN SUBJECTS` section from the actual prompt.
-- `verify_subjects_in_beat_messages()` correctly detected that omission and aborted.
-- Fix: restore `KNOWN SUBJECTS\n{subject_text}` in Beat CREATE.
-- Production commit: `f00b65a1af16101ebefdbad8e90a189294a8879e`.
-- Existing regression `test_minimal_beat_generation_keeps_defined_subjects` already encodes
-  this exact contract and was ahead of production code.
-
-Planner latency clarification:
-- After the final `Source span ...` line, `plan_story_chapters()` calls
-  `classify_source_units()` before visible-event classification.
-- With 8 source units this performs 15 sequential deterministic LLM calls:
-  - 8 terminal classifiers (one per unit);
-  - 7 hard-reset classifiers (units 2-8).
-- These calls currently have no progress logging, so the program appears idle until
-  `classify_visible_source_unit_ids()` begins printing `Event N requires...`.
-- They exist only to derive chapter boundaries; Beat CREATE has not begun during this pause.
-
-## 2026-09-30 — current working-tree changes: canonical data, planning diagnostics, and compact validation
-
-This section records the uncommitted changes made after the previous checkpoint. It supersedes the earlier canonical-data descriptions above where they conflict.
-
-### Canonical character data
-
-- `canonical_data.txt` is now authored character information, not a comma/newline-separated list of fields. The included example defines Amy, Will, and Amber directly.
-- The canonicalization request sends only the contents of `canonical_data.txt` to the LLM. It no longer uses `story.txt` or `subjects.txt` to establish character facts.
-- Every character must receive `age`, `clothing`, and `gender`. The LLM copies values stated in the file and invents a reasonable value only when one of those three is missing.
-- Additional fields are extracted only when explicitly stated in `canonical_data.txt`; the LLM is instructed not to invent additional fields.
-- `character_canon.json` now uses version 3 and is keyed by a SHA-256 hash of the canonical-data text alone. It is reused when the file is unchanged and regenerated when it changes.
-- Segment 1 Director Request 1 receives the original `canonical_data.txt` text under `CANONICAL STARTING CHARACTER FACTS`.
-- README documentation and canonical-character regression tests were updated for this file-driven format.
-
-### Source-span planning diagnostics
-
-- Source-span refinement accepts an `on_source_span` callback. The runtime uses it to print every finalized span as it is extracted:
-  `Source span N [start:end]: text`.
-- Each `source_unit_visible_responsibility` decision now prints:
-  `Event N requires a concrete on-screen event: YES|NO`.
-- Each `source_unit_local_relation` decision now prints both source spans and the parsed `MERGE` or `NEW_TASK` result.
-- Each `source_unit_state_effects` result now prints the source unit, source text, and JSON state effects, including an empty list when no persistent effect is found.
-- These diagnostics are flushed immediately so a live planning run shows progress while each narrow LLM request completes.
-
-### Beat creation and acceptance diagnostics
-
-- Batch Beat CREATE prints every generated beat as:
-  `Beat N created: <beat text>`.
-- Single-beat repair/regeneration prints the same creation line.
-- After a candidate passes validation and its checkpoint is saved, acceptance prints:
-  `Beat N accepted: <beat text>`.
-- The existing detailed acceptance line remains and reports committed required events and the completed-event cursor.
-
-### Beat validation prompt and coherence context
-
-- The main `beat_validation` prompt was reduced from roughly 1,280 fixed words to roughly 374 fixed words.
-- The compact prompt retains the essential checks: current-job completion, finite versus ongoing work, participant/beneficiary preservation, previous-state continuity, reserved-later ownership, assigned final-state effects, and material fidelity.
-- Boundary/barrier/containment effects remain filtered from this semantic validator according to the active boundary-dormant architecture.
-- The post-validation physical/causal coherence prompt receives the previously accepted beat under `PREVIOUS BEAT` when one exists. Beat 1 omits that section.
-- Focused validator and planner regressions were updated to assert the shorter wording and the previous-beat handoff.
-
-### Verification
-
-- Focused canonical, planner, source-span, beat-generation, and validator tests pass after these changes.
-- The compact `beat_validation` prompt was checked at approximately 374 fixed words before dynamic story/state content is inserted.
-- No commit has been created for this working-tree update.
-
-
-## 2026-09-30 — source-classifier progress logging
-
-- Added live progress logging for the 15 deterministic source classification calls that
-  previously created a long silent pause after source-span extraction.
-- For each source unit:
-  - terminal classifier prints `Terminal check span N: YES|NO`;
-  - hard-reset classifier prints `Hard-reset check span N: YES|NO` for spans 2+.
-- With 8 source spans this produces exactly 15 concise progress lines before visible-event
-  classification begins.
-- Production commit: `f8abf9fbebfacb38ce41da780f92bc249409878b`.
-- Regression commit: `0be78bbb5989e2ec993b6405a25ad992cfa5e00f`.
-- No new bridge job was queued.
-
-Subject/canonical clarification:
-- `canonical_data.txt` now owns canonical character facts and no longer depends on
-  `subjects.txt`.
-- `subjects.txt` remains useful for known visual-subject identity/mapping into planning
-  prompts, so the restored `KNOWN SUBJECTS` block remains in Beat CREATE for now.
-
-
-## 2026-10-01 — Beat CREATE/REPAIR moved to temperature 0
-
-Local repeated testing showed that GPT-OSS 20B Beat writing becomes unstable at any
-temperature above zero. A captured repair trace also showed correct internal reasoning
-followed by a sampled final answer that reintroduced the exact ambiguity it had identified.
-
-Changes:
-- Beat CREATE (`beat_generation`) now uses temperature `0`, seed `42`, and
-  repeat penalty `1.15`.
-- Beat CREATE keeps the high reasoning profile (`reasoning_effort="high"`,
-  `thinking_budget_tokens=1024`) because reasoning quality was useful; only answer
-  sampling was causing drift.
-- Beat repair now has its own `beat_repair` purpose and uses the same temperature-0,
-  high-reasoning Beat writing profile.
-- Beat repair prompt now explicitly requires the smallest textual change, preservation of
-  unaffected wording, and explicit replacement/non-reintroduction when the reported issue
-  identifies a bad/ambiguous word.
-- Existing REPAIR -> VALIDATE flow remains intact; a repaired beat cannot be accepted
-  without another validator/coherence pass.
-- Other creative calls (ARC create/repair, character canon, Director raw scene) remain on
-  their existing creative sampling profile; this change is Beat-specific.
-
-Commits:
-- `8c7f04140c38e413c9b2185bf63405643ce8a911` — production routing + repair contract
-- `bc7901f474420c8c0454309fdbb8df4654a565e0` — Beat CREATE/REPAIR routing regressions
-- `7d35e7dd596f5d73777f547ac98b84d87e62676f` — repair purpose/revalidation-order regression
-- `6a1384286c62ffbf95972f4653194aca91bc0c31` — PROJECT_NOTES sampling policy update
-
-
-## 2026-10-01 — typed location seeding + deterministic state preflight
-
-Observed failure:
-- Beat 2 passed both semantic and coherence validation, then state commit raised:
-  `set_location references an untracked entity: 'zombie'`.
-- The generic outer exception handler treated that deterministic state-application error as
-  a generation failure, deleted the arc/checkpoint, and restarted from arc creation.
-
-Fixes:
-- Required-event state application now derives entity namespaces from the arc's own typed
-  state effects.
-- An unknown `set_location` entity may be seeded only when typed effects establish exactly
-  one role for that entity (character, threat, object, or barrier).
-- Conservative singular/plural aliases are supported so typed roles such as `zombies`
-  can establish the namespace for a location effect on `zombie`.
-- No story-specific threat vocabulary was added.
-- All required-event state effects are replayed in a deterministic preflight immediately
-  after the arc is saved and before Beat CREATE/VALIDATE begins.
-- State-application failures now raise `RequiredEventStateApplicationError`, preserve the
-  current saved arc, and bypass the old generic arc-wipe/restart path.
-- The top-level runtime also treats this exception as deterministic/fail-fast instead of
-  endlessly replaying the same invalid arc.
-
-Commits:
-- `28bf277bfb2ee4a766670144115eac88b5f7142a` — production state-role seeding,
-  preflight, and retry-scope fix.
-- `87f79a1ca030cc9de1d66d8d478904b1ca8caebb` — typed-location/preflight regressions.
-- `b8f3d7242eae44308e188054d6883ea51716d417` — regression proving deterministic
-  preflight failure preserves the saved arc and never starts Beat generation.
-
-
-### 2026-10-01 follow-up — preflight exception catch placement corrected
-
-Acceptance `acceptance-2700-state-preflight-location` was interrupted while running
-`test_state_preflight_failure_preserves_saved_arc_and_does_not_start_beats`.
-
-Root cause:
-- The dedicated `RequiredEventStateApplicationError` catch had been inserted into the
-  JSON-repair retry loop instead of the outer Beat-generation recovery loop.
-- The real outer loop still caught the deterministic state error as generic `Exception`,
-  deleted the arc/checkpoint, and restarted indefinitely.
-
-Fix:
-- Removed the stray JSON-repair catch.
-- Added the dedicated state-application catch immediately before the actual generic
-  Beat-generation recovery catch.
-- Deterministic preflight failures now preserve the saved arc and propagate instead of
-  entering the arc-wipe loop.
-
-Commit: `61d0325f6a52d751de0c2d70f18451302c782611`.
-
-
-## 2026-10-01 — updated Amy acceptance: state/split fixes green; Beat final-location miss found
-
-Bridge results:
-- `tests-2704-source-state-split-fixes`: 57/57 passed.
-- `generate-beats-2705-gpt-updated-story-v2`: completed successfully against the
-  updated locked Amy story.
-
-2705 confirmed:
-- source majority sentence remained one intact span;
-- newly introduced zombie emitted `set_threat_state=active` before
-  `set_location(zombie, house)`;
-- final kid retrieval no longer emitted nonsensical `Will -> Amy` /
-  `Amber -> Amy` locations;
-- full 8-beat generation completed without state-preflight failure.
-
-Earliest real semantic miss:
-- Beat 2 CURRENT JOB says Amy moves the children to safety **and returns to the
-  kitchen**.
-- Candidate ended after placing the children in a closet and never showed Amy's
-  return, even though assigned state includes `set_location(Amy, kitchen)`.
-- Beat validator incorrectly returned VALID.
-
-Fix:
-- Beat validator now states that every assigned `set_location(entity, place)`
-  must be visibly true at the candidate's final state.
-- If CURRENT JOB explicitly says an actor returns to a location, the candidate
-  must show that return before ending.
-
-Commits:
-- `b0dc4bfbc75a693f2697cbb3249d88d6d9c60ea0` — final-location validator rule.
-- `9be30ba0ab1cbc21833bf29d524585f075ab4a43` — regression coverage.
-
-
-## 2026-10-01 — accepted Beat state capture: threat shorthand crash
-
-Acceptance `generate-beats-2710-gpt-accepted-state` demonstrated that broad post-acceptance
-state capture is retaining useful concrete continuity (closets, objects, carried/stored items,
-threat injuries, and environmental changes), but its first attempt failed after Beat 4 with:
 `Beat state patch entity threats.zombies must be an object.`
 
-Root cause:
-- the accepted-Beat extractor may use an unambiguous scalar shorthand such as
-  `{"threats":{"zombies":"active"}}`;
-- canonical threat entries require object records such as
-  `{"threats":{"zombies":{"status":"active"}}}`;
-- parsing validated the generic canonical patch shape before the accepted-state path had a
-  chance to normalize this harmless shorthand.
+The extractor produced an unambiguous shorthand equivalent to:
+
+`{"threats":{"zombies":"active"}}`
+
+while canonical threat entries require object records.
 
 Fix:
-- accepted-Beat state capture now converts only scalar values in the existing canonical
-  threat-state enum (`active`, `incapacitated`, `dead`, `removed`, `cleared`) into
-  `{"status": value}` before generic state-patch validation;
-- ambiguous scalar threat values remain errors rather than being guessed;
-- the normalization is accepted-state-specific and does not loosen the generic canonical
-  patch contract.
+- known scalar threat-state enum values are normalized to `{"status": value}` only on the accepted-Beat state path;
+- ambiguous scalar values are still rejected rather than guessed;
+- the generic canonical patch contract remains strict.
 
-Regression cleanup:
-- the broad-capture prompt assertion now matches its actual capitalization;
-- the source-span generation regression now reflects the current documented contract that
-  Beat CREATE receives the full story under SOURCE FILM while ASSIGNED EVENTS remain the
-  chapter-local execution authority.
+Relevant commits:
+- `f9aa9b60d7646d50db0ade54e9a2ef2e05737383` — normalize accepted Beat threat-status shorthand;
+- `2e193e1e4c0078e75d72699abcc327af3933c6f4` — regression coverage;
+- `509fd416e52e5a4375125ed906d39cb0896d424a` — align stale source-span regression with full-story Beat context.
 
-Commits:
-- `f9aa9b60d7646d50db0ade54e9a2ef2e05737383` — normalize accepted Beat threat status shorthand;
-- `2e193e1e4c0078e75d72699abcc327af3933c6f4` — accepted-state shorthand regression;
-- `509fd416e52e5a4375125ed906d39cb0896d424a` — align source-span regression with full-story Beat context.
+## Other recent verified planning fixes
+
+Recent Amy acceptance work established:
+- typed state may seed a newly introduced threat namespace before location effects;
+- singular/plural aliases may support that typing conservatively;
+- required-event state is deterministically preflighted before Beat generation;
+- deterministic state-preflight failures preserve the saved arc and fail fast rather than wiping/restarting forever;
+- Beat validation now requires assigned final `set_location` values to be visibly true by candidate end;
+- the locked test story wording was adjusted where story phrasing itself was unnecessarily hostile to the local 20B, while real state-management failures continue to be fixed in architecture instead of hidden in story edits.
+
+Relevant commits include:
+- `28bf277bfb2ee4a766670144115eac88b5f7142a`;
+- `61d0325f6a52d751de0c2d70f18451302c782611`;
+- `b0dc4bfbc75a693f2697cbb3249d88d6d9c60ea0`;
+- `9be30ba0ab1cbc21833bf29d524585f075ab4a43`.
+
+## Boundary policy during Beat optimization
+
+Broad boundary/barrier enforcement remains dormant in the Beat path.
+
+Do not restore the old barrier/state prompt blocks wholesale.
+
+Reintroduce only the smallest specific boundary fact/rule when a concrete Beat failure proves it is necessary.
+
+Underlying boundary helpers may remain in code for later use.
+
+## Director status
+
+Do **not** tune Director prompts while Beat output/state is still the active optimization target.
+
+Director Request 1 is presently a minimal creative staging stage. Older Director-era rules, topology experiments, retry chronology, and barrier-specific acceptance history are archived in `HANDOFF_OLD.md`.
+
+When Beat output is trustworthy enough to become a stable upstream contract, resume Director optimization from fresh acceptance evidence rather than reopening old failures speculatively.
+
+## Runtime / recovery principles
+
+- Infrastructure connection failures are fatal.
+- Deterministic programming/state-schema failures should fail fast instead of endlessly replaying the same invalid plan.
+- Recoverable generation/model failures may retry from durable checkpoints.
+- Explicit force Beat generation must reset Beat validation state so a prior completed checkpoint cannot silently bypass fresh CREATE/VALIDATE calls.
+- Creative stages that still sample use randomized request seeds; deterministic stages use seed 42.
+- Beat CREATE/REPAIR are the explicit exception: they are writing calls but intentionally deterministic.
+
+## Public repository rule
+
+Committed repository content must remain SFW/generic.
+
+Runtime user-provided stories may contain arbitrary content, but committed tests, examples, prompts, comments, fixtures, and docs should not embed graphic or sexual material.
+
+## Current queued bridge work
+
+Queued after the 2710 finding:
+
+- `tests-2711-accepted-state-shorthand`
+- `generate-beats-2712-gpt-accepted-state-shorthand`
+
+When processed:
+
+1. Confirm the focused regression suite is green.
+2. Confirm accepted-Beat state capture no longer crashes on scalar threat status.
+3. Inspect the new Amy plan from Beat 1 forward.
+4. Identify the earliest real semantic/state failure.
+5. Explain the failure and proposed fix **before** making repository changes.
+6. Fix only that earliest failure, then retest.
+
+Potential later observation from 2710:
+- the successful attempt's final Beat retrieved the children but may not have explicitly shown the required `kills the last zombie` portion.
+- Do **not** patch this preemptively. Evaluate it only if 2712 reaches that point without an earlier failure.
+
+## Handoff maintenance rule
+
+Keep this file concise.
+
+When a dated issue is resolved or no longer directly relevant to the next developer action:
+- move its chronology into `docs/HANDOFF_OLD.md`;
+- retain only the resulting architectural rule/current behavior here;
+- do not let acceptance-by-acceptance history accumulate again.
