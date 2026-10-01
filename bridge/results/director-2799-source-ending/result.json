@@ -1,0 +1,7 @@
+{
+  "job_id": "director-2799-source-ending",
+  "status": "error",
+  "error_type": "ValueError",
+  "error": "Director plan job 'generate-beats-2798-source-ending' did not capture a usable story arc and beats.",
+  "finished_at": 1790894572.4009433
+}
