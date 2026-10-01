@@ -54,15 +54,28 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             normalized,
         )
 
-    def test_story_to_beats_prompt_keeps_full_story_and_continuity_rule(self):
+    def test_story_to_beats_prompt_keeps_summary_story_and_continuity_rule(self):
         messages = minimax.build_story_to_beats_messages(
+            "Mara must leave the tower and cross the bridge.",
             "Mara leaves the tower. Mara crosses the bridge.",
             8,
         )
         prompt = messages[0]["content"] + "\n" + messages[1]["content"]
+        self.assertTrue(
+            messages[0]["content"].startswith(
+                "You are a screenplay writer that converts stories into films using a summary as a final guide."
+            )
+        )
         self.assertIn("convert it into 8 distinct, concise film beats", prompt)
         self.assertIn("No teleporting", prompt)
-        self.assertIn("Mara leaves the tower. Mara crosses the bridge.", prompt)
+        self.assertIn(
+            "SUMMARY\nMara must leave the tower and cross the bridge.",
+            messages[1]["content"],
+        )
+        self.assertIn(
+            "STORY\nMara leaves the tower. Mara crosses the bridge.",
+            messages[1]["content"],
+        )
         self.assertIn("exactly 8 sequential beats", prompt)
 
     def test_timestamp_cleanup_removes_story_clock_times_only(self):
