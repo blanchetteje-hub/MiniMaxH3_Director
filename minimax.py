@@ -16855,9 +16855,14 @@ def strip_story_beat_timestamps(text):
     return cleaned
 
 
-def build_story_expansion_messages(summary, duration_seconds):
+def build_story_expansion_messages(summary, duration_seconds, total_segments=None):
     """Build the novelist pass that expands story.txt into continuous prose."""
     duration_seconds = float(duration_seconds)
+    beat_support_rule = (
+        f"Write enough concrete sequential action to support {int(total_segments)} distinct film beats."
+        if total_segments is not None
+        else "Write enough concrete sequential action to support the later film-beat conversion."
+    )
     duration_text = (
         str(int(duration_seconds))
         if duration_seconds.is_integer()
@@ -16880,6 +16885,11 @@ def build_story_expansion_messages(summary, duration_seconds):
 The entire story must be able to take place within a {duration_text}-second timeframe.
 
 Preserve every explicit event and outcome in the summary in the same order.
+Every explicit event in the summary must happen visibly in the story. Do not
+compress, imply, or skip an explicit transition. If a character moves from one
+location to another, write the movement clearly enough that the character's
+location is unambiguous.
+{beat_support_rule}
 You may add connective staging and concrete detail, but do not add a new major
 plot event, outcome, or named character. Write one continuous story, not an
 outline, beat list, screenplay, or analysis.""".strip(),
@@ -17214,7 +17224,11 @@ def generate_beats_via_story_expansion(
     for attempt in range(1, SUMMARY_CONTENT_ATTEMPTS + 1):
         try:
             raw_story = llm_request(
-                build_story_expansion_messages(story, duration_seconds),
+                build_story_expansion_messages(
+                    story,
+                    duration_seconds,
+                    total_segments=total_segments,
+                ),
                 response_format=None,
                 parse_json_response=False,
                 max_tokens=12000,
