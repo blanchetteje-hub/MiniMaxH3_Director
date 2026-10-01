@@ -12659,9 +12659,6 @@ def build_beat_arc_plan_messages(
 SOURCE STORY
 {story}
 
-KNOWN SUBJECTS
-{subject_text}
-
 CANONICAL CHARACTER FACTS
 {canonical_character_facts}
 
@@ -15754,9 +15751,6 @@ def build_beat_generation_messages(
             "role": "user",
             "content": f"""SOURCE FILM
 {source_film}
-
-KNOWN SUBJECTS
-{subject_text}
 
 CHARACTER FACTS
 {character_facts}
