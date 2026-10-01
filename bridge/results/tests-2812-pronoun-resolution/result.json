@@ -1,0 +1,30 @@
+{
+  "job_id": "tests-2812-pronoun-resolution",
+  "kind": "run_tests",
+  "started_at": 1790897331.692872,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_name_only_rewrite",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_rejects_timestamp_drift",
+      "tests\\test_director_retry.py::DirectorMicroPromptPipelineTests::test_request_one_retries_physically_incoherent_raw_scene"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 4 items\n\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow PASSED [ 25%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_name_only_rewrite PASSED [ 50%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_rejects_timestamp_drift PASSED [ 75%]\ntests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_request_one_retries_physically_incoherent_raw_scene FAILED [100%]\n\n================================== FAILURES ===================================\n_ DirectorMicroPromptPipelineTests.test_request_one_retries_physically_incoherent_raw_scene _\n\nself = <tests.test_director_retry.DirectorMicroPromptPipelineTests testMethod=test_request_one_retries_physically_incoherent_raw_scene>\n\n    def test_request_one_retries_physically_incoherent_raw_scene(self):\n        bundle = segment_bundle()\n        bundle[\"current_beat_text\"] = (\n            \"Amy pushes Will into the closet and closes the door behind him.\"\n        )\n        bad = director_response(\n            \"At 00:01.000, Amy closes the closet door.\\n\"\n            \"At 00:04.500, Will steps into the closet.\"\n        )\n        good = director_response(\n            \"At 00:01.000, Will steps into the closet.\\n\"\n            \"At 00:04.500, Amy closes the closet door behind him.\"\n        )\n        request = mock.Mock(side_effect=[\n            bad,\n            {\"valid\": False, \"issue\": \"The door closes before Will enters.\"},\n            good,\n            {\"valid\": True, \"issue\": \"\"},\n            formatter_response(\n                \"[Shot 1] At 00:01.000, Will steps into the closet. \"\n                \"At 00:04.500, Amy closes the closet door behind him.\"\n            ),\n        ])\n        with mock.patch(\"minimax.ask_llm\", request), mock.patch(\"builtins.print\"):\n            payload = minimax.request_segment_llm(\n                bundle, [], \"run-id\", {\"source_sha256\": \"source-hash\"}\n            )\n        self.assertEqual(request.call_count, 5)\n        self.assertIn(\"Will steps into the closet\", payload[\"raw_scene\"])\n        request_prompts = [\n            call.args[0][-1][\"content\"]\n            for call in request.call_args_list\n            if call.args and isinstance(call.args[0], list) and call.args[0]\n            and isinstance(call.args[0][-1], dict)\n        ]\n>       self.assertTrue(any(\n            \"Fix this physical/action-order problem\" in prompt\n            and \"door closes before Will enters\" in prompt\n            for prompt in request_prompts\n        ))\nE       AssertionError: False is not true\n\ntests\\test_director_retry.py:166: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_request_one_retries_physically_incoherent_raw_scene - AssertionError: False is not true\n========================= 1 failed, 3 passed in 5.09s =========================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790897333.0115802,
+    "finished_at": 1790897338.8894794
+  },
+  "finished_at": 1790897338.8894794,
+  "status": "ok"
+}
