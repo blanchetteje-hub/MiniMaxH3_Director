@@ -233,7 +233,7 @@ class ContinuityCallContractTests(unittest.TestCase):
 
 
 class LLMSamplingRoutingTests(unittest.TestCase):
-    @patch("minimax.generate_random_llm_seed", return_value=42)
+    @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
     def test_beat_generation_uses_creative_sampling_and_reasoning_profile(
         self,
@@ -267,7 +267,9 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         self.assertEqual(result, {"ok": True})
         request_json = post.call_args.kwargs["json"]
         for name, value in minimax.CREATIVE_LLM_SAMPLING_PARAMETERS.items():
-            self.assertEqual(request_json[name], value)
+            if name != "seed":
+                self.assertEqual(request_json[name], value)
+        self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["reasoning_effort"], "high")
         self.assertEqual(request_json["thinking_budget_tokens"], 1024)
         self.assertEqual(
@@ -281,7 +283,7 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         self.assertNotIn("thinking", request_json)
         self.assertNotIn("chat_template", request_json)
         self.assertNotIn("jinja", request_json)
-        _random_seed.assert_not_called()
+        _random_seed.assert_called_once_with()
 
     @patch("minimax.generate_random_llm_seed", return_value=777)
     @patch("minimax.requests.post")
