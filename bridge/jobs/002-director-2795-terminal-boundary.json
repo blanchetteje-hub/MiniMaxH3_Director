@@ -1,0 +1,9 @@
+{
+  "job_id": "director-2795-terminal-boundary",
+  "kind": "run_acceptance",
+  "code_branch": "summary-to-story-test",
+  "model": "gpt",
+  "image1": "amy.jpg",
+  "director_plan_job": "generate-beats-2794-terminal-boundary",
+  "timeout_seconds": 3600
+}
