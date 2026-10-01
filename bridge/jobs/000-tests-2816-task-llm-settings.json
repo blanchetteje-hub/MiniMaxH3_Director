@@ -1,0 +1,13 @@
+{
+  "job_id": "tests-2816-task-llm-settings",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_llm_prompt_pipeline.py",
+    "tests/test_minimax_integration.py",
+    "tests/test_formatter_base.py",
+    "tests/test_gpt_formatter.py",
+    "tests/test_qwen_formatter.py"
+  ],
+  "timeout_seconds": 1800
+}
