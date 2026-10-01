@@ -1,0 +1,9 @@
+{
+  "job_id": "tests-2740-story-transition-prompt",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_summary_to_story_pipeline.py"
+  ],
+  "timeout_seconds": 1800
+}
