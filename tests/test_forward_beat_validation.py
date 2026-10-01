@@ -543,6 +543,10 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("Capture persistent world facts broadly", prompt)
         self.assertIn("blue vase", prompt)
         self.assertIn("Do not output story_progress", prompt)
+        self.assertIn(
+            "These four roots are siblings. Never nest characters, environment, threats, or story inside one another.",
+            prompt,
+        )
 
     def test_accepted_beat_state_prompt_requires_distinct_threat_identity(self):
         state = minimax.new_beat_canonical_state()
