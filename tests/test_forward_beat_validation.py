@@ -584,9 +584,10 @@ class ForwardBeatValidationTests(unittest.TestCase):
             )
 
     def test_accepted_beat_state_schema_requires_object_roots(self):
+        response = minimax.build_accepted_beat_state_response_format()
+        self.assertTrue(response["json_schema"]["strict"])
         schema = (
-            minimax.build_accepted_beat_state_response_format()
-            ["json_schema"]["schema"]["properties"]["state_patch"]
+            response["json_schema"]["schema"]["properties"]["state_patch"]
         )
         self.assertFalse(schema["additionalProperties"])
         for root in ("characters", "environment", "threats", "story"):
