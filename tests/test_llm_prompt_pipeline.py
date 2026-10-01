@@ -346,9 +346,19 @@ class LLMSamplingRoutingTests(unittest.TestCase):
 
         self.assertEqual(result, {"ok": True})
         request_json = post.call_args.kwargs["json"]
-        for name, value in minimax.CREATIVE_LLM_SAMPLING_PARAMETERS.items():
-            if name != "seed":
-                self.assertEqual(request_json[name], value)
+        for name in (
+            "temperature",
+            "top_p",
+            "top_k",
+            "min_p",
+            "presence_penalty",
+            "frequency_penalty",
+            "repeat_penalty",
+        ):
+            self.assertEqual(
+                request_json[name],
+                minimax.CREATIVE_GENERATION_LLM_SETTINGS[name],
+            )
         self.assertEqual(request_json["seed"], 777)
         self.assertEqual(request_json["reasoning_effort"], "high")
         self.assertEqual(request_json["thinking_budget_tokens"], 1024)
@@ -376,7 +386,6 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             [{"role": "user", "content": "extract"}],
             response_format=None,
             history_metadata={"purpose": "source_unit_state_effects"},
-            **minimax.ARC_LLM_SAMPLING_PARAMETERS,
         )
 
         self.assertEqual(result, {"state_effects": []})
@@ -515,11 +524,11 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         request_json = post.call_args.kwargs["json"]
         self.assertEqual(
             request_json["temperature"],
-            minimax.MISTRAL_24B_SETTINGS["temperature"],
+            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["temperature"],
         )
         self.assertEqual(
             request_json["repeat_penalty"],
-            minimax.MISTRAL_24B_SETTINGS["repeat_penalty"],
+            minimax.DETERMINISTIC_ANALYSIS_LLM_SETTINGS["repeat_penalty"],
         )
         self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
         self.assertNotIn("thinking", request_json)
@@ -580,26 +589,11 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             )
 
 
-    def test_beat_validation_profile_follows_active_model(self):
+    def test_beat_validation_prompt_does_not_follow_active_model(self):
         original = minimax.ACTIVE_FORMATTER
         try:
             minimax.configure_formatter("mistral")
-            mistral_settings = minimax._active_beat_validation_settings()
-            self.assertFalse(mistral_settings["user_prompt_only"])
-            self.assertEqual(
-                mistral_settings["repeat_penalty"],
-                minimax.MISTRAL_24B_SETTINGS["repeat_penalty"],
-            )
-
-            minimax.configure_formatter("qwen")
-            qwen_settings = minimax._active_beat_validation_settings()
-            self.assertTrue(qwen_settings["user_prompt_only"])
-            self.assertEqual(
-                qwen_settings["repeat_penalty"],
-                minimax.QWEN38_27B_SETTINGS["repeat_penalty"],
-            )
-
-            messages = minimax.build_beat_validation_messages(
+            mistral_messages = minimax.build_beat_validation_messages(
                 previous_final_beat="Amy equips her weapons.",
                 current_state=minimax.new_beat_canonical_state(),
                 beat_job="Amy kills attacking zombies.",
@@ -607,17 +601,31 @@ class LLMSamplingRoutingTests(unittest.TestCase):
                 candidate_beat=(
                     "Amy kills attacking zombies until the last zombie falls dead."
                 ),
-                settings=qwen_settings,
             )
-            self.assertEqual(messages[0]["content"], "")
+
+            minimax.configure_formatter("qwen")
+            qwen_messages = minimax.build_beat_validation_messages(
+                previous_final_beat="Amy equips her weapons.",
+                current_state=minimax.new_beat_canonical_state(),
+                beat_job="Amy kills attacking zombies.",
+                next_beat_job="Amy kills more attacking zombies.",
+                candidate_beat=(
+                    "Amy kills attacking zombies until the last zombie falls dead."
+                ),
+            )
+
+            self.assertEqual(mistral_messages, qwen_messages)
             self.assertIn(
                 "You validate one candidate story beat.",
-                messages[1]["content"],
+                qwen_messages[0]["content"],
             )
         finally:
-            minimax.configure_formatter(
-                "qwen" if isinstance(original, minimax.QwenFormatter) else "mistral"
-            )
+            if isinstance(original, minimax.QwenFormatter):
+                minimax.configure_formatter("qwen")
+            elif isinstance(original, minimax.GPTFormatter):
+                minimax.configure_formatter("gpt")
+            else:
+                minimax.configure_formatter("mistral")
 
 class DirectorRawSceneCompletionTests(unittest.TestCase):
     def test_source_completion_preserves_participant_scope(self):
