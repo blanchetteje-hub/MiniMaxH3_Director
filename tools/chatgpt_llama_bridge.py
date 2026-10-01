@@ -880,6 +880,12 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
                 beats_text.rstrip() + "\n",
                 encoding="utf-8",
             )
+            generated_canon = report.get("generated_character_canon")
+            if isinstance(generated_canon, dict):
+                (materialized_plan_dir / "character_canon.json").write_text(
+                    json.dumps(generated_canon, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
             plan_dir = materialized_plan_dir
         command.extend(["--director-plan-dir", str(plan_dir.resolve())])
 
