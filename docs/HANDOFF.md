@@ -827,3 +827,23 @@ This section records the uncommitted changes made after the previous checkpoint.
 - Focused canonical, planner, source-span, beat-generation, and validator tests pass after these changes.
 - The compact `beat_validation` prompt was checked at approximately 374 fixed words before dynamic story/state content is inserted.
 - No commit has been created for this working-tree update.
+
+
+## 2026-09-30 — source-classifier progress logging
+
+- Added live progress logging for the 15 deterministic source classification calls that
+  previously created a long silent pause after source-span extraction.
+- For each source unit:
+  - terminal classifier prints `Terminal check span N: YES|NO`;
+  - hard-reset classifier prints `Hard-reset check span N: YES|NO` for spans 2+.
+- With 8 source spans this produces exactly 15 concise progress lines before visible-event
+  classification begins.
+- Production commit: `f8abf9fbebfacb38ce41da780f92bc249409878b`.
+- Regression commit: `0be78bbb5989e2ec993b6405a25ad992cfa5e00f`.
+- No new bridge job was queued.
+
+Subject/canonical clarification:
+- `canonical_data.txt` now owns canonical character facts and no longer depends on
+  `subjects.txt`.
+- `subjects.txt` remains useful for known visual-subject identity/mapping into planning
+  prompts, so the restored `KNOWN SUBJECTS` block remains in Beat CREATE for now.
