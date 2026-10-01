@@ -30277,6 +30277,23 @@ def render_generated_prompts(args, path=GENERATED_PROMPTS_FILE):
     payload = load_generated_prompts_file(path)
     config = payload["config"]
     prompts = payload["prompts"]
+
+    # A prompt package is a complete one-GPU handoff. Restore reference-image
+    # overrides captured during prompt generation; explicit render-time --imageN
+    # values win when supplied.
+    global REFERENCE_IMAGE_OVERRIDES
+    saved_reference_overrides = config.get("reference_image_overrides", {})
+    restored_reference_overrides = {}
+    if isinstance(saved_reference_overrides, dict):
+        for raw_number, raw_path in saved_reference_overrides.items():
+            try:
+                image_number = int(raw_number)
+            except (TypeError, ValueError):
+                continue
+            if 1 <= image_number <= 6 and str(raw_path or "").strip():
+                restored_reference_overrides[image_number] = str(raw_path).strip()
+    restored_reference_overrides.update(REFERENCE_IMAGE_OVERRIDES)
+    REFERENCE_IMAGE_OVERRIDES = restored_reference_overrides
     segment_length = float(config["segment_length"])
     total_length = float(config["total_length"])
     megapixels = float(config["megapixels"])
@@ -30591,6 +30608,10 @@ def _run_main(
                 "trim_frames": trim_frames,
                 "refresh_interval": refresh_interval,
                 "total_segments": total_segments,
+                "reference_image_overrides": {
+                    str(number): path
+                    for number, path in REFERENCE_IMAGE_OVERRIDES.items()
+                },
             },
             "macro_arc": copy.deepcopy(macro_arc),
             "prompts": saved_prompt_prefix,
