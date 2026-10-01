@@ -10587,7 +10587,20 @@ def build_accepted_beat_state_response_format():
                             },
                             "story": {
                                 "type": "object",
-                                "additionalProperties": True,
+                                "properties": {
+                                    "terminal_states": {
+                                        "type": "object",
+                                        "additionalProperties": True,
+                                    },
+                                    "persistent_facts": {
+                                        "type": "object",
+                                        "propertyNames": {
+                                            "pattern": "^(?!characters$|environment$|threats$|story$|story_progress$).+"
+                                        },
+                                        "additionalProperties": True,
+                                    },
+                                },
+                                "additionalProperties": False,
                             },
                         },
                         "additionalProperties": False,
