@@ -10460,6 +10460,21 @@ def build_accepted_beat_state_response_format():
     }
 
 
+def _normalize_accepted_beat_state_shorthand(patch):
+    """Normalize only unambiguous shorthand from the accepted-Beat extractor."""
+    normalized = copy.deepcopy(patch)
+    threats = normalized.get("threats")
+    if not isinstance(threats, dict):
+        return normalized
+    for threat_id, record in list(threats.items()):
+        if not isinstance(record, str):
+            continue
+        status = " ".join(record.split()).strip().casefold()
+        if status in _THREAT_STATES:
+            threats[threat_id] = {"status": status}
+    return normalized
+
+
 def parse_accepted_beat_state_patch(raw_result, state_before=None):
     """Parse and structurally normalize one accepted-Beat observation patch."""
     candidate = raw_result
@@ -10484,6 +10499,7 @@ def parse_accepted_beat_state_patch(raw_result, state_before=None):
             "Accepted-Beat state_patch has unsupported root(s): "
             + ", ".join(sorted(unknown_roots))
         )
+    patch = _normalize_accepted_beat_state_shorthand(patch)
     return persistent_beat_state_patch(
         patch,
         state_before=state_before,
@@ -10526,6 +10542,7 @@ def apply_accepted_beat_state_patch(current_state, patch):
     previous = normalize_beat_canonical_state(
         current_state or new_beat_canonical_state()
     )
+    patch = _normalize_accepted_beat_state_shorthand(patch)
     sparse = persistent_beat_state_patch(patch, state_before=previous)
     sparse = _canonicalize_character_patch(previous, sparse)
     sparse = _normalize_threat_patch_ids(previous, sparse)
