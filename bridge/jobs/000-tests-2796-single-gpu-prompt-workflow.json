@@ -1,0 +1,11 @@
+{
+  "job_id": "tests-2796-single-gpu-prompt-workflow",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_prompt_generation_mode.py",
+    "tests/test_stitch_waits_for_final_render.py",
+    "tests/test_resume.py"
+  ],
+  "timeout_seconds": 1800
+}
