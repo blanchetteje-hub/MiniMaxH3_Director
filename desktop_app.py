@@ -188,6 +188,12 @@ class MiniMaxBridge:
                 content = SETTINGS_FILE.read_text(encoding="utf-8")
                 saved = json.loads(content)
                 if isinstance(saved, dict):
+                    saved = dict(saved)
+                    if (
+                        "llm_host_url" not in saved
+                        and "lm_studio_url" in saved
+                    ):
+                        saved["llm_host_url"] = saved.pop("lm_studio_url")
                     return {**DEFAULT_SETTINGS, **saved}
             except (OSError, ValueError):
                 pass
