@@ -936,12 +936,26 @@ class LlmHostIntegrationTests(unittest.TestCase):
         minimax.ask_llm(
             [],
             response_format=None,
-            **minimax.BEAT_LLM_SAMPLING_PARAMETERS,
+            history_metadata={"purpose": "beat_generation"},
         )
 
         request_json = post.call_args.kwargs["json"]
-        for name, value in minimax.BEAT_LLM_SAMPLING_PARAMETERS.items():
-            self.assertEqual(request_json[name], value)
+        for name in (
+            "temperature",
+            "repeat_penalty",
+        ):
+            self.assertEqual(
+                request_json[name],
+                minimax.BEAT_WRITING_LLM_SETTINGS[name],
+            )
+        self.assertEqual(
+            request_json["reasoning_effort"],
+            minimax.BEAT_WRITING_LLM_SETTINGS["reasoning_effort"],
+        )
+        self.assertEqual(
+            request_json["thinking_budget_tokens"],
+            minimax.BEAT_WRITING_LLM_SETTINGS["thinking_budget_tokens"],
+        )
 
     @mock.patch(
         "minimax.generate_random_llm_seed",
