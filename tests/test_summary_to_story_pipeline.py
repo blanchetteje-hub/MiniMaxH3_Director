@@ -31,11 +31,16 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
         messages = minimax.build_story_expansion_messages(
             "A ranger crosses a flooded valley.",
             64,
+            total_segments=8,
         )
         self.assertIn("You are a novelist", messages[0]["content"])
         self.assertIn("A ranger crosses a flooded valley.", messages[1]["content"])
         self.assertIn("64-second timeframe", messages[1]["content"])
         self.assertIn("Preserve every explicit event and outcome", messages[1]["content"])
+        self.assertIn("must happen visibly", messages[1]["content"])
+        self.assertIn("Do not compress, imply, or skip an explicit transition", messages[1]["content"])
+        self.assertIn("location is unambiguous", messages[1]["content"])
+        self.assertIn("support 8 distinct film beats", messages[1]["content"])
 
     def test_story_to_beats_prompt_keeps_full_story_and_continuity_rule(self):
         messages = minimax.build_story_to_beats_messages(
