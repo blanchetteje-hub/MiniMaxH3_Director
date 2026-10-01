@@ -11175,70 +11175,42 @@ def build_beat_validation_messages(
     """Build the compact single-candidate beat-validation prompt."""
     settings = settings or _active_beat_validation_settings()
     state = compact_beat_validation_state(current_state)
-    state_effects = assigned_state_effects if assigned_state_effects is not None else []
-    flat_state_effects = _flatten_beat_assigned_state_effects(state_effects)
-    barrier_binding = build_director_barrier_binding_contract(flat_state_effects)
-    barrier_binding_text = (
-        (
-            "\nPYTHON-OWNED BARRIER BINDING\n"
-            f"The generic barrier {barrier_binding['entity']!r} is the boundary "
-            f"of {barrier_binding['destination']!r}. Do not reinterpret it as "
-            "an unrelated barrier elsewhere."
-        )
-        if barrier_binding
-        else ""
+    # Boundary/barrier enforcement is intentionally dormant during beat
+    # perfection. Keep canonical state untouched, but hide boundary-specific
+    # fields and effects from this semantic validator.
+    environment = state.get("environment")
+    if isinstance(environment, dict):
+        for field in ("doors", "windows", "barriers", "paths"):
+            environment.pop(field, None)
+    for root_name in ("characters", "threats"):
+        root = state.get(root_name)
+        if not isinstance(root, dict):
+            continue
+        for record in root.values():
+            if not isinstance(record, dict):
+                continue
+            for field in ("containment", "contained_in", "accessible"):
+                record.pop(field, None)
+
+    raw_state_effects = (
+        assigned_state_effects if assigned_state_effects is not None else []
     )
-    closed_boundaries = build_beat_closed_boundary_contracts(
-        state,
-        state_effects,
-    )
-    preserved_barriers = build_director_preserved_barrier_state_contracts(
-        json.dumps(state, ensure_ascii=False, separators=(",", ":")),
-        flat_state_effects,
-    )
-    preserved_barrier_text = ""
-    if preserved_barriers:
-        preserved_barrier_text = (
-            "\nPYTHON-OWNED FINAL BARRIER STATES\n"
-            + "\n".join(
-                f"- {item['barrier']} begins {item['source_state']} and must end "
-                f"{item['source_state']} because no typed barrier effect changes it. "
-                "Temporary opening/unlocking for an authorized crossing is allowed "
-                "only if the opening state is restored before beat end."
-                for item in preserved_barriers
-            )
-        )
-    closed_boundary_text = ""
-    if closed_boundaries:
-        lines = []
-        for contract in closed_boundaries:
-            destination = contract.get("destination")
-            label = contract["barrier"]
-            if destination:
-                occupants = ", ".join(contract.get("occupants") or []) or "none listed"
-                lines.append(
-                    f"- {label} protects {destination!r} and begins "
-                    f"{contract['state']}. Known contained occupants: {occupants}. "
-                    "No person, creature, object, body part, or other physical "
-                    "thing may cross into or out of that destination in this beat "
-                    "unless the assigned typed effects authorize opening/release. "
-                    "While this boundary remains closed, an outside entity also "
-                    "cannot reach, grab, bite, strike, hand something to, receive "
-                    "something from, retrieve/use an object located inside, or "
-                    "otherwise physically interact across the boundary with an "
-                    "occupant, prop, target, or other interior content. Do not stage "
-                    "a required action/object inside the protected destination when "
-                    "the acting subject remains outside and no opening/release is "
-                    "authorized."
-                )
-            else:
-                lines.append(
-                    f"- {label} begins {contract['state']}; do not cross it in "
-                    "this beat unless the assigned typed effects authorize it."
-                )
-        closed_boundary_text = (
-            "\nPYTHON-OWNED CLOSED BOUNDARIES\n" + "\n".join(lines)
-        )
+    state_effects = []
+    for item in raw_state_effects:
+        if isinstance(item, dict) and "state_effects" in item and "op" not in item:
+            wrapper = copy.deepcopy(item)
+            wrapper["state_effects"] = [
+                copy.deepcopy(effect)
+                for effect in (item.get("state_effects") or [])
+                if isinstance(effect, dict)
+                and effect.get("op") not in {"set_barrier_state", "set_containment"}
+            ]
+            state_effects.append(wrapper)
+        elif (
+            not isinstance(item, dict)
+            or item.get("op") not in {"set_barrier_state", "set_containment"}
+        ):
+            state_effects.append(copy.deepcopy(item))
     system = (
         "You validate one candidate story beat. Judge meaning, not exact wording. "
         "Accept reasonable paraphrases and clear semantic implications. Reject "
@@ -11259,9 +11231,6 @@ RESERVED FOR LATER — NEVER REQUIRED IN THIS BEAT
 
 STATE EFFECTS IF VALID
 {json.dumps(state_effects, ensure_ascii=False, separators=(",", ":"))}
-{barrier_binding_text}
-{closed_boundary_text}
-{preserved_barrier_text}
 
 CANDIDATE BEAT
 {candidate_beat}
@@ -11285,11 +11254,12 @@ non-terminal instance may satisfy that repeated job.
 
 SECOND CHECK — ASSIGNED PERSISTENT END STATE: Enforce this check ONLY for
 entities already named in CURRENT STATE or STATE EFFECTS IF VALID. For those
-already-known subjects, barriers, and items, STATE EFFECTS IF VALID is
-authoritative about persistent final-state changes assigned to this beat. If
-CANDIDATE BEAT ends with one of those known entities newly relocated,
-contained/freed, locked/unlocked, equipped/unequipped, held/dropped, damaged, or
-otherwise persistently changed, require a matching assigned typed effect.
+already-known subjects and items, STATE EFFECTS IF VALID is authoritative about
+persistent final-state changes assigned to this beat. If CANDIDATE BEAT ends
+with one of those known entities newly relocated, equipped/unequipped,
+held/dropped, damaged, or otherwise persistently changed, require a matching
+assigned typed effect. Boundary, barrier, door/window, and containment changes
+are intentionally outside this validation phase.
 Temporary motion that returns to the prior state does not need an effect. A new
 incidental target or threat that appears only in CURRENT JOB/CANDIDATE BEAT is
 outside this check. NEVER reject because such a newly introduced incidental
