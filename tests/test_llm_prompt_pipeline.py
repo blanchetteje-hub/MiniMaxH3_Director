@@ -271,6 +271,10 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         self.assertEqual(request_json["reasoning_effort"], "high")
         self.assertEqual(request_json["thinking_budget_tokens"], 1024)
         self.assertEqual(
+            request_json["reasoning_budget_message"],
+            ". Enough thinking, now answer.",
+        )
+        self.assertEqual(
             request_json["chat_template_kwargs"],
             {"enable_thinking": True},
         )
@@ -344,6 +348,10 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         self.assertEqual(request_json["seed"], minimax.BENCHMARK_SEED)
         self.assertEqual(request_json["reasoning_effort"], "low")
         self.assertEqual(request_json["thinking_budget_tokens"], 128)
+        self.assertEqual(
+            request_json["reasoning_budget_message"],
+            ". Enough thinking, now answer.",
+        )
         self.assertEqual(
             request_json["chat_template_kwargs"],
             {"enable_thinking": True},
@@ -513,6 +521,10 @@ class LLMSamplingRoutingTests(unittest.TestCase):
             )
             self.assertEqual(request_json["reasoning_effort"], "low")
             self.assertEqual(request_json["thinking_budget_tokens"], 128)
+            self.assertEqual(
+                request_json["reasoning_budget_message"],
+                ". Enough thinking, now answer.",
+            )
             self.assertNotIn("thinking", request_json)
             self.assertNotIn("chat_template", request_json)
             self.assertNotIn("jinja", request_json)
