@@ -1,0 +1,11 @@
+{
+  "job_id": "tests-2704-source-state-split-fixes",
+  "kind": "run_tests",
+  "code_branch": "gpt-arc-refresh",
+  "tests": [
+    "tests\\test_source_span_runtime_adapter.py",
+    "tests\\test_story_planner.py",
+    "tests\\test_forward_beat_validation.py"
+  ],
+  "timeout_seconds": 1800
+}
