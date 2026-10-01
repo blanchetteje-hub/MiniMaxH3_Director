@@ -1,0 +1,150 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LM Studio to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-2suq91n6\repo\beats.txt with 8 creative story beats.
+
+=== Source-span planning attempt 1/10 ===
+Source span 1 [0:93]: A realistic action film about a woman, Amy, protecting her two kids from a zombie apocalypse.
+Source span 2 [94:180]: Amy is at home on a normal day, cooking breakfast for her young kids (Will and Amber).
+Source span 3 [181:212]: A zombie breaks into the house.
+Source span 4 [213:283]: Amy rushes her two kids to a safe location and returns to the kitchen.
+Source span 5 [284:353]: She retrieves her hidden arsenal consisting of a pistol and a katana.
+Source span 6 [354:474]: The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try and attack her.
+Source span 7 [475:564]: After Amy kills the last of the zombies, she retrieves her kids from their safe location.
+Terminal check span 1: NO
+Terminal check span 2: NO
+Hard-reset check span 2: NO
+Terminal check span 3: NO
+Hard-reset check span 3: NO
+Terminal check span 4: NO
+Hard-reset check span 4: NO
+Terminal check span 5: NO
+Hard-reset check span 5: NO
+Terminal check span 6: NO
+Hard-reset check span 6: NO
+Terminal check span 7: YES
+Hard-reset check span 7: NO
+Event 1 requires a concrete on-screen event: NO
+Event 2 requires a concrete on-screen event: YES
+Event 3 requires a concrete on-screen event: YES
+Event 4 requires a concrete on-screen event: YES
+Event 5 requires a concrete on-screen event: YES
+Event 6 requires a concrete on-screen event: YES
+Event 7 requires a concrete on-screen event: YES
+Source-unit local relation:
+LEFT source span 2 [94:180]: Amy is at home on a normal day, cooking breakfast for her young kids (Will and Amber).
+RIGHT source span 3 [181:212]: A zombie breaks into the house.
+Result: NEW_TASK
+Source-unit local relation:
+LEFT source span 3 [181:212]: A zombie breaks into the house.
+RIGHT source span 4 [213:283]: Amy rushes her two kids to a safe location and returns to the kitchen.
+Result: MERGE
+Source-unit local relation:
+LEFT source span 4 [213:283]: Amy rushes her two kids to a safe location and returns to the kitchen.
+RIGHT source span 5 [284:353]: She retrieves her hidden arsenal consisting of a pistol and a katana.
+Result: NEW_TASK
+Source unit 1 state effects:
+Source span: A realistic action film about a woman, Amy, protecting her two kids from a zombie apocalypse.
+Result: []
+Source unit 2 state effects:
+Source span: Amy is at home on a normal day, cooking breakfast for her young kids (Will and Amber).
+Result: [{"op": "set_location", "entity": "Amy", "value": "home"}]
+Source unit 3 state effects:
+Source span: A zombie breaks into the house.
+Result: [{"op": "set_threat_state", "entity": "zombie", "value": "active"}, {"op": "set_location", "entity": "zombie", "value": "house"}]
+Source unit 4 state effects:
+Source span: Amy rushes her two kids to a safe location and returns to the kitchen.
+Result: [{"op": "set_location", "entity": "Amy", "value": "kitchen"}]
+Source unit 5 state effects:
+Source span: She retrieves her hidden arsenal consisting of a pistol and a katana.
+Result: [{"op": "set_item_state", "entity": "pistol", "owner": "Amy", "value": "held"}, {"op": "set_item_state", "entity": "katana", "owner": "Amy", "value": "held"}]
+Source unit 6 state effects:
+Source span: The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try and attack her.
+Result: [{"op": "set_threat_state", "entity": "zombie", "value": "active"}, {"op": "set_threat_state", "entity": "zombie", "value": "dead"}]
+Source unit 7 state effects:
+Source span: After Amy kills the last of the zombies, she retrieves her kids from their safe location.
+Result: [{"op": "set_location", "entity": "Will", "value": "Amy"}, {"op": "set_location", "entity": "Amber", "value": "Amy"}]
+Source-span planner produced 1 chapter(s): chapter 1=8 beats
+Saved story arc to C:\Users\J\AppData\Local\Temp\minimax-acceptance-2suq91n6\repo\story_arc.json.
+Generating macro phase 1 (8 beats, global beats 1-8 of 8).
+Requesting beats for phase 1 (attempt 1/10).
+Beat 1 created: Amy flips pancakes in the kitchen while Will and Amber sit at the table.
+Beat 2 created: A zombie bursts through the front door; Amy carries Will and Amber to a locked basement before heading back to the kitchen.
+Beat 3 created: In the pantry behind the fridge, Amy pulls out her concealed pistol and gleaming katana.
+Beat 4 created: A zombie strides into the living room, and Amy fires a pistol shot to its skull.
+Beat 5 created: Another zombie bursts through the kitchen door, and Amy slices its neck cleanly with the katana.
+Beat 6 created: An aggressive zombie lunges from the hall; Amy shoots its torso before slicing its head with the katana.
+Beat 7 created: A fourth zombie shambles into the bedroom, and Amy cleaves its skull off with one swift katana strike.
+Beat 8 created: After killing the last zombie, Amy unlocks the basement hatch and pulls Will and Amber into her arms.
+Accepted macro phase 1; collected 8/8 beats.
+Beat 1 jobs: current=E1 - Amy is at home on a normal day, cooking breakfast for her young kids (Will and Amber).; next=E2 - A zombie breaks into the house. Amy rushes her two kids to a safe location and returns to the kitchen.; completed before=none; pending before=E1, E2, E3, E4, E5, E6, E7, E8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Beat 1 finite-endpoint attempt 1/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.
+Beat 1 created: Amy flips pancakes in the kitchen while Will and Amber sit at the table, turns them golden brown, and places each on a plate.
+Validating Beat 1 (attempt 2/10) with the single beat validator.
+Beat 1 validation attempt 2/10: VALID; issue: none
+Checking Beat 1 within-beat physical coherence (attempt 2/10).
+Beat 1 coherence attempt 2/10: VALID.
+Required event E1 applied persistent state: set_location = {"op": "set_location", "entity": "Amy", "value": "home"}
+Beat 1 accepted: Amy flips pancakes in the kitchen while Will and Amber sit at the table, turns them golden brown, and places each on a plate.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - A zombie breaks into the house. Amy rushes her two kids to a safe location and returns to the kitchen.; next=E3 - She retrieves her hidden arsenal consisting of a pistol and a katana.; completed before=E1; pending before=E2, E3, E4, E5, E6, E7, E8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+Beat 2 coherence attempt 1/10: VALID.
+Required event E2 applied persistent state: set_threat_state = {"op": "set_threat_state", "entity": "zombie", "value": "active"}
+Required event E2 applied persistent state: set_location = {"op": "set_location", "entity": "zombie", "value": "house"}
+Required event E2 applied persistent state: set_location = {"op": "set_location", "entity": "Amy", "value": "kitchen"}
+Beat 2 accepted: A zombie bursts through the front door; Amy carries Will and Amber to a locked basement before heading back to the kitchen.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - She retrieves her hidden arsenal consisting of a pistol and a katana.; next=E4 - The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try and attack her.; completed before=E1, E2; pending before=E3, E4, E5, E6, E7, E8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: VALID; issue: none
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+Beat 3 coherence attempt 1/10: VALID.
+Required event E3 applied persistent state: set_item_state = {"op": "set_item_state", "entity": "pistol", "owner": "Amy", "value": "held"}
+Required event E3 applied persistent state: set_item_state = {"op": "set_item_state", "entity": "katana", "owner": "Amy", "value": "held"}
+Beat 3 accepted: In the pantry behind the fridge, Amy pulls out her concealed pistol and gleaming katana.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try and attack her.; next=E5 - The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try and attack her.; completed before=E1, E2, E3; pending before=E4, E5, E6, E7, E8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: VALID; issue: none
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+Beat 4 coherence attempt 1/10: VALID.
+Beat 4 accepted: A zombie strides into the living room, and Amy fires a pistol shot to its skull.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try and attack her.; next=E6 - The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try and attack her.; completed before=E1, E2, E3, E4; pending before=E5, E6, E7, E8
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+Beat 5 validation attempt 1/10: VALID; issue: none
+Checking Beat 5 within-beat physical coherence (attempt 1/10).
+Beat 5 coherence attempt 1/10: VALID.
+Beat 5 accepted: Another zombie bursts through the kitchen door, and Amy slices its neck cleanly with the katana.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try and attack her.; next=E7 - The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try and attack her.; completed before=E1, E2, E3, E4, E5; pending before=E6, E7, E8
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+Beat 6 validation attempt 1/10: VALID; issue: none
+Checking Beat 6 within-beat physical coherence (attempt 1/10).
+Beat 6 coherence attempt 1/10: VALID.
+Beat 6 accepted: An aggressive zombie lunges from the hall; Amy shoots its torso before slicing its head with the katana.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+Beat 7 jobs: current=E7 - The majority of the film is Amy killing (dismembering, decapitating, shooting, etc.) zombies as they try and attack her.; next=E8 - After Amy kills the last of the zombies, she retrieves her kids from their safe location.; completed before=E1, E2, E3, E4, E5, E6; pending before=E7, E8
+Validating Beat 7 (attempt 1/10) with the single beat validator.
+Beat 7 validation attempt 1/10: VALID; issue: none
+Checking Beat 7 within-beat physical coherence (attempt 1/10).
+Beat 7 coherence attempt 1/10: VALID.
+Required event E7 applied persistent state: set_threat_state = {"op": "set_threat_state", "entity": "zombie", "value": "active"}
+Required event E7 applied persistent state: set_threat_state = {"op": "set_threat_state", "entity": "zombie", "value": "dead"}
+Beat 7 accepted: A fourth zombie shambles into the bedroom, and Amy cleaves its skull off with one swift katana strike.
+Beat 7 accepted and finalized; committed required events: E7; completed after=E1, E2, E3, E4, E5, E6, E7
+Beat 8 jobs: current=E8 - After Amy kills the last of the zombies, she retrieves her kids from their safe location.; next=none; completed before=E1, E2, E3, E4, E5, E6, E7; pending before=E8
+Validating Beat 8 (attempt 1/10) with the single beat validator.
+Beat 8 validation attempt 1/10: VALID; issue: none
+Checking Beat 8 within-beat physical coherence (attempt 1/10).
+Beat 8 coherence attempt 1/10: VALID.
+Required event E8 applied persistent state: set_location = {"op": "set_location", "entity": "Will", "value": "Amy"}
+Required event E8 applied persistent state: set_location = {"op": "set_location", "entity": "Amber", "value": "Amy"}
+Beat 8 accepted: After killing the last zombie, Amy unlocks the basement hatch and pulls Will and Amber into her arms.
+Beat 8 accepted and finalized; committed required events: E8; completed after=E1, E2, E3, E4, E5, E6, E7, E8
+Story arc and beats generated successfully.
