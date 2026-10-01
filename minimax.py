@@ -5696,7 +5696,11 @@ def build_character_canon_response_format():
                                     "items": {
                                         "type": "object",
                                         "properties": {
-                                            "field": {"type": "string", "minLength": 1},
+                                            "field": {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "pattern": "^(?!(?:age|clothing|gender)$).+",
+                                            },
                                             "value": {"type": "string", "minLength": 1},
                                         },
                                         "required": ["field", "value"],
