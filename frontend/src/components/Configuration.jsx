@@ -43,10 +43,10 @@ export default function Configuration({ onSettingsLoaded }) {
     saveSettings({ comfyui_url: url })
   }
 
-  const updateLMStudioUrl = (url) => {
-    const updated = { ...settings, lm_studio_url: url }
+  const updateLLMHostUrl = (url) => {
+    const updated = { ...settings, llm_host_url: url }
     setSettings(updated)
-    saveSettings({ lm_studio_url: url })
+    saveSettings({ llm_host_url: url })
   }
 
   const updateLoraDir = (dir) => {
@@ -108,14 +108,14 @@ export default function Configuration({ onSettingsLoaded }) {
         </label>
 
         <label className="field">
-          <span>LM Studio URL</span>
+          <span>LLM host URL</span>
           <input
             type="url"
-            value={settings.lm_studio_url}
-            onChange={(e) => updateLMStudioUrl(e.target.value)}
+            value={settings.llm_host_url}
+            onChange={(e) => updateLLMHostUrl(e.target.value)}
             placeholder="http://127.0.0.1:1234"
           />
-          <small>Address of your LM Studio server.</small>
+          <small>Address of your LLM host server.</small>
         </label>
         <label className="field">
           <span>LoRA Path</span>
