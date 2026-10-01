@@ -424,6 +424,20 @@ Relevant commits:
 - `30a35e53a940d63c171ea0d29d9421d293ecc52a`
 - `d3c0dda6599e2baa7a3287529bad763b6ff4b17b`
 
+### 2798 — malformed accepted-state observation no longer blocks Beat generation
+
+`generate-beats-2798-source-ending` reached Beat 6, then the accepted-state observer emitted an invalid nested canonical root (`environment.story`) and aborted the entire planning run.
+
+This is auxiliary bookkeeping, not Beat authority. The accepted Beat had already passed semantic validation and physical-coherence checks.
+
+Fix:
+- accepted-state extraction/application is now fail-soft for structural `ValueError` failures;
+- the malformed observation is logged and skipped;
+- the already-valid Beat continues normally;
+- no new schema rule, normalization guess, or novelist/Beat prompt prose was added.
+
+This deliberately stops state bookkeeping from becoming the optimization target again.
+
 ## Immediate next work
 
 Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.

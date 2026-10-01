@@ -171,6 +171,7 @@ Current focus moves one stage downstream:
 - fix the earliest real RAW-scene failure before touching Request 2/H3 translation;
 - keep existing Python canonical-state machinery in place, but do **not** expand or perfect accepted-Beat bookkeeping speculatively;
 - accepted-Beat state is supporting continuity data, not a gate that must be artistically perfect before Director testing;
+- malformed accepted-state observations are fail-soft: log and ignore the bad auxiliary patch after Beat acceptance instead of aborting generation;
 - revisit state extraction only when a demonstrated Director failure traces back to a missing or incorrect state fact;
 - continue to keep broad barrier/state contracts out of Beat CREATE unless fresh Beat evidence requires them.
 

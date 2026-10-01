@@ -462,6 +462,38 @@ class ForwardBeatValidationTests(unittest.TestCase):
             prompt,
         )
 
+    def test_malformed_accepted_state_observation_does_not_block_valid_beat(self):
+        calls = []
+
+        def llm_request(messages, **kwargs):
+            purpose = kwargs.get("history_metadata", {}).get("purpose")
+            calls.append(purpose)
+            if purpose == "accepted_beat_state_extract":
+                return {
+                    "state_patch": {
+                        "environment": {
+                            "story": {"note": "invalid nested canonical root"}
+                        }
+                    }
+                }
+            if purpose == "beat_finite_endpoint_extract":
+                return {"status": "COMPLETE"}
+            return {"valid": True, "issue": ""}
+
+        with tempfile.TemporaryDirectory() as directory:
+            result = minimax._run_forward_beat_validation(
+                lambda: ["The operator closes the gate."],
+                "The operator closes the gate.",
+                1,
+                {"phases": []},
+                str(Path(directory) / "beats.txt"),
+                llm_request,
+                state_path=str(Path(directory) / "state.json"),
+            )
+
+        self.assertEqual(result, ["The operator closes the gate."])
+        self.assertIn("accepted_beat_state_extract", calls)
+
     def test_accepted_beat_state_concretizes_abstract_location_and_ledger(self):
         state = minimax.new_beat_canonical_state()
         state["characters"]["Will"] = {"location": "safe location"}

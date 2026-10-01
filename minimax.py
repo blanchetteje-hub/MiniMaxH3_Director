@@ -12949,21 +12949,30 @@ def _run_forward_beat_validation(
             entity_roles=_required_event_entity_roles(all_events),
         )
         if capture_accepted_state:
-            observed_patch = extract_accepted_beat_state_patch(
-                staged_state,
-                candidate,
-                llm_request,
-                history_metadata=history_metadata,
-                beat_number=beat_number,
-            )
-            if observed_patch:
-                staged_state = apply_accepted_beat_state_patch(
+            try:
+                observed_patch = extract_accepted_beat_state_patch(
                     staged_state,
-                    observed_patch,
+                    candidate,
+                    llm_request,
+                    history_metadata=history_metadata,
+                    beat_number=beat_number,
                 )
+                if observed_patch:
+                    staged_state = apply_accepted_beat_state_patch(
+                        staged_state,
+                        observed_patch,
+                    )
+                    print(
+                        f"Beat {beat_number} observed persistent state: "
+                        + json.dumps(observed_patch, ensure_ascii=False),
+                        flush=True,
+                    )
+            except ValueError as exc:
+                # Accepted-state capture is auxiliary continuity metadata. A
+                # malformed observation must never invalidate an already-valid
+                # Beat or block prompt generation.
                 print(
-                    f"Beat {beat_number} observed persistent state: "
-                    + json.dumps(observed_patch, ensure_ascii=False),
+                    f"Beat {beat_number} accepted-state observation ignored: {exc}",
                     flush=True,
                 )
 
