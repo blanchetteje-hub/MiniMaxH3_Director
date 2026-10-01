@@ -1,0 +1,13 @@
+{
+  "job_id": "tests-2814-python-h3-from-raw",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_audio_prompt_has_no_rewrite_or_subject_job",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_h3_audio_parser_accepts_only_two_fields",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_name_only_rewrite",
+    "tests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_raw_scene_timed_description_strips_end_state_and_keeps_actions"
+  ],
+  "timeout_seconds": 1800
+}
