@@ -11338,12 +11338,15 @@ early. Allow preparation belonging to CURRENT JOB and another instance of an
 intentionally repeated job, without prematurely ending the process.
 
 5. Every listed effect must match the candidate's FINAL state after all actions.
-Possession is not equipping; injury is not death; picked up then set down is not
-held at the end. For entities already in CURRENT STATE or STATE EFFECTS IF VALID,
-new persistent changes require a matching assigned effect. Do not require effects
-for new incidental entities or temporary motion that restores the prior state.
-Boundary, barrier, door/window, and containment changes are intentionally outside
-this validation phase.
+For set_location(entity, place), that entity must visibly end at/in that place;
+moving someone else there, standing near it, or merely beginning toward it does
+not satisfy the effect. If CURRENT JOB says the actor returns to a location, the
+candidate must actually show that return before ending. Possession is not equipping;
+injury is not death; picked up then set down is not held at the end. For entities
+already in CURRENT STATE or STATE EFFECTS IF VALID, new persistent changes require
+a matching assigned effect. Do not require effects for new incidental entities or
+temporary motion that restores the prior state. Boundary, barrier, door/window,
+and containment changes are intentionally outside this validation phase.
 
 6. Allow harmless staging. Reject details that materially change the assigned
 action, location, outcome, participant treatment, or story meaning. Tools must
