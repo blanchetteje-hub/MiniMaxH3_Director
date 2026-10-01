@@ -110,8 +110,12 @@ def test_generate_beats_prefers_source_span_planner_and_scopes_chapter_source():
 
     assert len(beat_generation_prompts) == 2
     first_prompt, second_prompt = beat_generation_prompts
-    assert "Worker inspects the kitchen." in first_prompt
-    assert "Worker locks the kitchen door." in first_prompt
-    assert "One year later" not in first_prompt
-    assert "One year later the worker inspects the laboratory." in second_prompt
-    assert "Worker inspects the kitchen." not in second_prompt
+    # SOURCE FILM intentionally carries the full story for context in every
+    # Beat CREATE call. ASSIGNED EVENTS remain chapter-local execution authority.
+    assert story in first_prompt
+    assert story in second_prompt
+    assert "ASSIGNED EVENTS 1-2" in first_prompt
+    assert "1. Worker inspects the kitchen." in first_prompt
+    assert "2. Worker locks the kitchen door." in first_prompt
+    assert "ASSIGNED EVENTS 3-3" in second_prompt
+    assert "3. One year later the worker inspects the laboratory." in second_prompt
