@@ -29922,6 +29922,7 @@ def resolve_director_raw_scene_pronouns(
     original = _canonicalize_director_timestamps(raw_scene).strip()
     if not original or not str(subject_definitions or "").strip():
         return original
+    print("Checking pronouns segment:", flush=True)
     result = llm_request(
         build_director_pronoun_resolution_messages(
             original,
@@ -29960,6 +29961,25 @@ def resolve_director_raw_scene_pronouns(
             "RAW pronoun resolver changed shot-script structure: "
             + "; ".join(structure_errors)
         )
+    if resolved == original:
+        print("Checking pronouns segment: no replacements.", flush=True)
+    else:
+        original_lines = original.splitlines()
+        resolved_lines = resolved.splitlines()
+        replacements = []
+        for before, after in zip(original_lines, resolved_lines):
+            if before != after:
+                replacements.append(f"{before.strip()} -> {after.strip()}")
+        if len(original_lines) != len(resolved_lines):
+            replacements = ["RAW text changed while preserving validated structure."]
+        if replacements:
+            for replacement in replacements:
+                print(
+                    f"Checking pronouns segment: replaced {replacement}",
+                    flush=True,
+                )
+        else:
+            print("Checking pronouns segment: replacements applied.", flush=True)
     return resolved
 
 

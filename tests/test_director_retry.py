@@ -94,6 +94,32 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "director_raw_scene_pronoun_resolution",
         )
 
+    def test_raw_pronoun_resolution_logs_replacements(self):
+        original = (
+            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:04.500, she pushes them into the closet.\n"
+            "End continuity state: they are inside the closet."
+        )
+        resolved = (
+            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:04.500, Amy pushes Will and Amber into the closet.\n"
+            "End continuity state: Will and Amber are inside the closet."
+        )
+        request = mock.Mock(return_value={"raw_scene": resolved})
+        with mock.patch("builtins.print") as printer:
+            minimax.resolve_director_raw_scene_pronouns(
+                original,
+                "<Subject 1> is Amy. <Subject 2> is Will. <Subject 3> is Amber.",
+                llm_request=request,
+                segment_seconds=6.0,
+            )
+        output = "\n".join(
+            str(call.args[0]) for call in printer.call_args_list if call.args
+        )
+        self.assertIn("Checking pronouns segment:", output)
+        self.assertIn("replaced", output)
+        self.assertIn("Amy pushes Will and Amber", output)
+
     def test_raw_pronoun_resolution_rejects_timestamp_drift(self):
         original = (
             "At 00:01.000, Amy grabs Will.\n"
