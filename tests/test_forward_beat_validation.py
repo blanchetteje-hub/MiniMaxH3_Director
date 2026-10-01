@@ -436,6 +436,32 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("Possession is not equipping", prompt)
 
 
+    def test_validator_requires_assigned_final_location_to_be_visible(self):
+        messages = minimax.build_beat_validation_messages(
+            "",
+            minimax.new_beat_canonical_state(),
+            "Amy moves the children to safety and returns to the kitchen.",
+            None,
+            "Amy moves the children into a closet and closes the door.",
+            assigned_state_effects=[
+                {
+                    "id": "E2",
+                    "state_effects": [
+                        {"op": "set_location", "entity": "Amy", "value": "kitchen"},
+                    ],
+                }
+            ],
+        )
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn(
+            "For set_location(entity, place), that entity must visibly end at/in that place",
+            prompt,
+        )
+        self.assertIn(
+            "candidate must actually show that return before ending",
+            prompt,
+        )
+
     def test_validator_preserves_group_beneficiary_roles(self):
         messages = minimax.build_beat_validation_messages(
             "",
