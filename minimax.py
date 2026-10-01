@@ -10541,7 +10541,25 @@ def build_accepted_beat_state_response_format():
                 "properties": {
                     "state_patch": {
                         "type": "object",
-                        "additionalProperties": True,
+                        "properties": {
+                            "characters": {
+                                "type": "object",
+                                "additionalProperties": True,
+                            },
+                            "environment": {
+                                "type": "object",
+                                "additionalProperties": True,
+                            },
+                            "threats": {
+                                "type": "object",
+                                "additionalProperties": True,
+                            },
+                            "story": {
+                                "type": "object",
+                                "additionalProperties": True,
+                            },
+                        },
+                        "additionalProperties": False,
                     },
                 },
                 "required": ["state_patch"],
