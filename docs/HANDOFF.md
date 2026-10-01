@@ -234,11 +234,25 @@ Relevant commits:
 - `24715c6e83f6bee8c3b1b127f300865ae0ef6321`
 - `663a23c6b31e8e155e255cb94b4b0f1c466bd9b5`
 
+### 2760 — first full successful planning run after schema fixes
+
+`tests-2759-reserved-threat-keys`: **42 passed, 4 subtests passed**.
+
+`generate-beats-2760-summary-to-story`: **completed all 8 beats successfully**.
+
+The reserved canonical-root-name restriction held; accepted-state capture no longer crashed on `threats.story`.
+
+Remaining observation is semantic, not structural:
+- the source ending says Amy returns to the safe location and brings Will and Amber back out with her;
+- 2760 instead ends with the family stepping back into the hidden room;
+- it also invents an unnamed `toddler` and temporarily places Amber in the hallway rather than the shared safe location.
+
+Do not add more novelist prompt rules from this single sample. Earlier runs with the same current prompt preserved the ending better, so treat this as possible temperature/sampling variance first.
+
 ## Immediate next work
 
 Queued:
-- `tests-2759-reserved-threat-keys`
-- `generate-beats-2760-summary-to-story`
+- `generate-beats-2761-summary-to-story-repeat`
 
 When processed:
 1. confirm the character-canon and planning regressions are green;
