@@ -508,6 +508,17 @@ This moves H3-specific reference precision out of the creative RAW prompt instea
 
 All production LLM stages should emit their result or concise verdict through `print()` so bridge `run.log` is sufficient for diagnosis. The pronoun resolver now logs whether it made no replacements or prints each changed line as `Checking pronouns segment: replaced <before> -> <after>`.
 
+### RAW -> final H3 simplification
+
+The former Request 2 formatter no longer owns narrative conversion.
+
+Current post-RAW path:
+- pronoun-resolution LLM: explicit-name cleanup only;
+- audio/music LLM: returns only `overall_soundscape` and `non_diegetic_music`;
+- Python: strips RAW end-state metadata, copies canonical timed RAW into `detailed_description`, uses subject metadata already sourced from text/registry state, and builds the final H3 prompt.
+
+The old final-H3 action-preservation LLM is skipped because copied RAW is preserved by construction.
+
 ## Immediate next work
 
 Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.

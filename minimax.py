@@ -426,6 +426,7 @@ DETERMINISTIC_LLM_PURPOSES = frozenset({
     "continuity_attachment_extract",
     "continuity_combined_reduced_state",
     "continuity_phase_2_h3_opening",
+    "director_h3_audio",
     "director_h3_formatter",
     "director_raw_scene_coherence",
     "director_raw_scene_pronoun_resolution",
@@ -578,6 +579,27 @@ H3_FORMATTER_RESPONSE_FORMAT = {
         },
     },
 }
+
+H3_AUDIO_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "h3_audio",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "overall_soundscape": {"type": "string"},
+                "non_diegetic_music": {"type": "string"},
+            },
+            "required": [
+                "overall_soundscape",
+                "non_diegetic_music",
+            ],
+            "additionalProperties": False,
+        },
+    },
+}
+
 
 DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
     "type": "json_schema",
@@ -20180,6 +20202,70 @@ def _verify_authoritative_opening_state_handoff(
         )
 
 
+def build_h3_audio_messages(
+    raw_scene,
+    conditioning_mode=None,
+):
+    """Ask the LLM only for the two audio fields Python cannot derive."""
+    conditioning_mode = str(conditioning_mode or "").strip().lower()
+    if conditioning_mode == "continuation":
+        music_rule = (
+            "non_diegetic_music must begin exactly with "
+            "'continues from <Video 1>.' and then briefly describe the continued "
+            "underscore or a scene-appropriate transition."
+        )
+    else:
+        music_rule = (
+            "Choose a minimal scene-appropriate non-diegetic underscore unless "
+            "the RAW SCENE explicitly requires silence/no score."
+        )
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Extract/generate only audio for one already-finalized video scene. "
+                "RAW SCENE is authoritative. overall_soundscape may include only "
+                "sounds supported by visible/audible RAW actions. "
+                "non_diegetic_music is the only creative field. Do not rewrite, "
+                "summarize, interpret, or add story action. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                f"{music_rule}\n\n"
+                "RAW SCENE\n"
+                f"{str(raw_scene or '').strip()}\n\n"
+                "Return exactly overall_soundscape and non_diegetic_music."
+            ),
+        },
+    ]
+
+
+def parse_h3_audio_result(raw_result):
+    """Parse the narrow post-RAW audio/music response."""
+    result = raw_result
+    if isinstance(result, str):
+        result = parse_llm_json_content(result, repair_on_failure=False)
+    if not isinstance(result, dict) or set(result) != {
+        "overall_soundscape", "non_diegetic_music"
+    }:
+        raise ValueError(
+            "H3 audio response must contain only overall_soundscape and "
+            "non_diegetic_music."
+        )
+    soundscape = str(result.get("overall_soundscape") or "").strip()
+    music = str(result.get("non_diegetic_music") or "").strip()
+    if not soundscape:
+        soundscape = "N/A"
+    if not music:
+        music = "N/A"
+    return {
+        "overall_soundscape": _strip_formatter_metadata(soundscape),
+        "non_diegetic_music": _strip_formatter_metadata(music),
+    }
+
+
 # Build Request 2 with deterministic story-ending handoff rules.
 def build_h3_formatter_messages(
     raw_scene,
@@ -30386,115 +30472,66 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                 or ""
             ).strip()
 
-    formatter_messages = build_h3_formatter_messages(
-        raw_scene,
-        mode,
-        duration,
-        continuity_summary=(
-            h3_opening_summary
-            or bundle.get("h3_opening_summary")
-            or ""
-        ),
-        is_final_story_segment=bool(bundle.get("is_final_story_segment", False)),
-        dialogue_exclusions=bundle.get("dialogue_exclusions", ()),
-        phrase_exclusions=bundle.get("phrase_exclusions", ()),
-        conditioning_mode=conditioning_mode,
-    )
-    try:
-        _verify_authoritative_opening_state_handoff(
-            formatter_messages,
-            h3_opening_summary
-            or bundle.get("h3_opening_summary")
-            or "",
-            segment_number,
-        )
-    except Exception as error:
-        print(
-            f"Director Request 2 opening-state handoff diagnostic for Segment "
-            f"{segment_number} (non-blocking): {error}",
-            flush=True,
-        )
-
     print()
     print("=" * 64)
-    print(f"DIRECTOR REQUEST 2 START - SEGMENT {segment_number}")
+    print(f"H3 AUDIO REQUEST - SEGMENT {segment_number}")
     print("=" * 64)
 
-    request2_metadata = {
-        "run_id": run_id,
-        "source_sha256": (run_config or {}).get("source_sha256"),
-        "purpose": "director_h3_formatter",
-        "segment": segment_number,
-        "attempt": 1,
-        "conditioning_mode": conditioning_mode,
-        "h3_mode": mode,
-        "opening_state_sha256": bundle.get("opening_state_sha256"),
+    audio_result = {
+        "overall_soundscape": "N/A",
+        "non_diegetic_music": "N/A",
     }
-
-    # Formatter retries are for malformed/unusable responses only. Timestamp
-    # correspondence is diagnostic during the baseline reset and cannot block a
-    # complete multi-segment generation run.
-    max_formatter_attempts = 3
-    llm_result = None
-    formatted_result = ""
-    for formatter_attempt in range(1, max_formatter_attempts + 1):
-        request2_metadata["attempt"] = formatter_attempt
-        formatted_result = ask_llm(
-            formatter_messages,
-            response_format=H3_FORMATTER_RESPONSE_FORMAT,
-            history_metadata=request2_metadata,
-            **_active_formatter_llm_settings(),
+    try:
+        raw_audio = ask_llm(
+            build_h3_audio_messages(
+                raw_scene,
+                conditioning_mode=conditioning_mode,
+            ),
+            response_format=H3_AUDIO_RESPONSE_FORMAT,
+            history_metadata={
+                "run_id": run_id,
+                "source_sha256": (run_config or {}).get("source_sha256"),
+                "purpose": "director_h3_audio",
+                "segment": segment_number,
+                "attempt": 1,
+                "conditioning_mode": conditioning_mode,
+            },
+            temperature=0,
+            top_p=1,
+            max_tokens=512,
+            seed=42,
+            repeat_penalty=1.15,
         )
-        try:
-            llm_result = parse_h3_formatter_result(
-                formatted_result,
-                subject_definitions=bundle.get("subject_definitions", ""),
-            )
-            break
-        except RuntimeError as error:
-            if formatter_attempt >= max_formatter_attempts:
-                print(
-                    f"Director Request 2 exhausted {max_formatter_attempts} "
-                    f"formatting attempts; using best-effort RAW-scene fallback: "
-                    f"{error}",
-                    flush=True,
-                )
-                llm_result = _salvage_h3_formatter_result(
-                    formatted_result,
-                    fallback_text=raw_scene,
-                    subject_definitions=bundle.get("subject_definitions", ""),
-                )
-                break
-            print(
-                f"Director Request 2 returned unusable formatting "
-                f"(attempt {formatter_attempt}/{max_formatter_attempts}); "
-                f"retrying: {error}",
-                flush=True,
-            )
-
-    if llm_result is None:
-        llm_result = _salvage_h3_formatter_result(
-            formatted_result,
-            fallback_text=raw_scene,
-            subject_definitions=bundle.get("subject_definitions", ""),
-        )
-
-    llm_result["detailed_description"] = _canonicalize_director_timestamps(
-        llm_result.get("detailed_description", "")
-    )
-    timestamp_issues = _validate_director_timestamp_correspondence(
-        raw_scene,
-        llm_result.get("detailed_description", ""),
-        segment_seconds=duration,
-    )
-    if timestamp_issues:
+        audio_result = parse_h3_audio_result(raw_audio)
         print(
-            f"Director Request 2 timestamp diagnostics for Segment "
-            f"{segment_number} (non-blocking):",
+            f"H3 audio segment {segment_number}: "
+            f"soundscape={audio_result['overall_soundscape']!r}; "
+            f"music={audio_result['non_diegetic_music']!r}",
             flush=True,
         )
-        for issue in timestamp_issues:
-            print(f"  WARNING: {issue}", flush=True)
+    except (
+        LLMConnectionError,
+        requests.RequestException,
+        OSError,
+        ValueError,
+        TypeError,
+    ) as error:
+        print(
+            f"WARNING: H3 audio segment {segment_number} failed; using N/A: "
+            f"{error}",
+            flush=True,
+        )
+
+    # RAW is the narrative authority. Python copies its canonical timed actions
+    # directly into the final H3 description; subject metadata already comes
+    # from the subject registry / subjects.txt rather than this audio call.
+    llm_result = {
+        "detailed_description": _raw_scene_timed_description(raw_scene),
+        "overall_soundscape": audio_result["overall_soundscape"],
+        "non_diegetic_music": audio_result["non_diegetic_music"],
+        "reference_alignment": "",
+        "subject_genders": {},
+    }
 
     payload = dict(bundle)
     payload["raw_scene"] = raw_scene
@@ -31643,53 +31680,13 @@ def _run_main(
                 prompt_reduced_continuity_state if retention else None
             ),
         )
-        h3_action_validation = validate_final_h3_action_preservation(
-            payload.get("raw_scene", ""),
-            h3_prompt,
-            current_beat=segment_bundle.get("current_beat_text", ""),
-            history_metadata={
-                "run_id": run_id,
-                "source_sha256": run_config["source_sha256"],
-                "segment": segment,
-            },
-        )
-        if not h3_action_validation["valid"]:
-            issue_text = "; ".join(h3_action_validation["issues"])
-            print(
-                f"WARNING: Segment {segment} Request 2 lost RAW action "
-                f"({issue_text}); using deterministic RAW detailed-description "
-                "fallback.",
-                flush=True,
-            )
-            llm_result = copy.deepcopy(llm_result)
-            llm_result["detailed_description"] = _raw_scene_timed_description(
-                payload.get("raw_scene", "")
-            )
-            h3_prompt = build_h3_prompt(
-                llm_result,
-                subject_definitions,
-                hard_cut_subject_continuity,
-                payload["h3_opening_summary"],
-                segment,
-                ff=args.ff,
-                conditioning_mode=segment_bundle["conditioning_mode"],
-                excluded_picture_ids=segment_bundle.get("excluded_picture_ids"),
-                continuity_state=continuity_state,
-                previous_visible_subject_ids=previous_visible_subject_ids,
-                retention=retention,
-                retention_json=(
-                    prompt_reduced_continuity_state if retention else None
-                ),
-            )
-            # The fallback detailed_description is constructed directly from
-            # Request 1's canonical timed RAW actions. Re-asking the local LLM
-            # whether those copied actions survived only reintroduces semantic
-            # uncertainty after Python has made preservation deterministic.
-            h3_action_validation = {
-                "valid": True,
-                "issues": [],
-                "observations": [],
-            }
+        # detailed_description is copied directly from canonical cleaned RAW,
+        # so action preservation is deterministic by construction.
+        h3_action_validation = {
+            "valid": True,
+            "issues": [],
+            "observations": [],
+        }
 
         if generate_prompts_only:
             generated_prompts_payload["prompts"].append({
@@ -31806,7 +31803,7 @@ def _run_main(
 
         print()
         print(
-            f"# {'=' * 64} DIRECTOR REQUEST 2: H3 prompt - SEGMENT {segment}"
+            f"# {'=' * 64} FINAL H3 PROMPT - SEGMENT {segment}"
         )
         print(h3_prompt)
         print(f"# {'=' * 64} END H3 PROMPT - SEGMENT {segment}")

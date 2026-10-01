@@ -52,6 +52,31 @@ def director_response(raw_scene, beat_complete=True):
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
+    def test_h3_audio_prompt_has_no_rewrite_or_subject_job(self):
+        messages = minimax.build_h3_audio_messages(
+            "At 00:01.000, Amy closes the door.",
+            conditioning_mode="continuation",
+        )
+        text = messages[0]["content"] + "\n" + messages[1]["content"]
+        self.assertIn("only audio", text)
+        self.assertIn("Do not rewrite", text)
+        self.assertNotIn("subject_genders", text)
+        self.assertIn("continues from <Video 1>", text)
+
+    def test_h3_audio_parser_accepts_only_two_fields(self):
+        parsed = minimax.parse_h3_audio_result({
+            "overall_soundscape": "Door slam.",
+            "non_diegetic_music": "Low strings.",
+        })
+        self.assertEqual(parsed["overall_soundscape"], "Door slam.")
+        self.assertEqual(parsed["non_diegetic_music"], "Low strings.")
+        with self.assertRaises(ValueError):
+            minimax.parse_h3_audio_result({
+                "overall_soundscape": "Door slam.",
+                "non_diegetic_music": "Low strings.",
+                "detailed_description": "Amy closes the door.",
+            })
+
     def test_raw_pronoun_resolution_prompt_is_narrow(self):
         messages = minimax.build_director_pronoun_resolution_messages(
             (

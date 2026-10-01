@@ -323,6 +323,15 @@ Keep extractors independent, tiny, and purpose-specific rather than combining th
 
 Every production LLM stage, validator, extractor, and cleanup call should print a concise human-readable result to stdout so acceptance/bridge run logs show what the model decided. Prefer compact stage-specific messages such as `Checking pronouns segment: replaced ...`, `...: no replacements`, or validator `VALID/INVALID: issue` messages. Do not make important LLM decisions visible only in hidden request history or metadata.
 
+### Post-RAW H3 boundary
+
+After Request 1 RAW is accepted:
+1. a tiny deterministic LLM cleanup may replace only unambiguous person pronouns with explicit names;
+2. a tiny LLM audio call returns only `overall_soundscape` and `non_diegetic_music`;
+3. Python copies canonical cleaned RAW directly into `detailed_description`, uses subject metadata from the subject registry / text files, and assembles the final H3 prompt.
+
+There is no narrative H3 formatter rewrite after RAW, no LLM-generated subject metadata, and no semantic LLM preservation check after Python copies RAW. RAW action preservation is deterministic by construction.
+
 ## Chapter-first planning architecture
 
 The system is conceptually writing a book from `story.txt`.
