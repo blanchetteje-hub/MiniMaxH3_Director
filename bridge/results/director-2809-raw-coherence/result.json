@@ -1,0 +1,37 @@
+{
+  "job_id": "director-2809-raw-coherence",
+  "kind": "run_acceptance",
+  "started_at": 1790896106.825827,
+  "process": {
+    "command": [
+      "C:\\Program Files (x86)\\Python311\\python.exe",
+      "tests/acceptance/run_acceptance.py",
+      "--image1",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg",
+      "--model",
+      "gpt",
+      "--director-plan-dir",
+      "C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_bridge_worktree\\bridge\\results\\generate-beats-2801-fail-soft-state\\files"
+    ],
+    "returncode": 1,
+    "stdout": "Acceptance command:\nC:\\Program Files (x86)\\Python311\\python.exe minimax.py 8 64 0.5 --test-prompt-generation --vision-continuity 0 --model gpt --image1 C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg --refresh 999999 --director-only\nIsolated workspace: C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-jg8t3nkg\\repo\nResults: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20261001-190828\nAdded States: \nEmergency stop: press Ctrl+C (or Ctrl+Q on Windows).\nDirector-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.\nPrompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.\n\n================================================================\nH3 AUTOMATED DIRECTOR\n================================================================\nSegment length:       8 seconds\nTotal story length:   64 seconds\nTotal segments:       8\nStarting segment:     1\nInitial megapixels:   0.5\nSteps:                6\nVisual Continuity:    disabled (prompt-generation test)\nStitch trim:          2 frames after segment 1\nRetention analysis:   disabled\nPrompt generation test: enabled\nFormatter:            gpt\nGlobal LoRAs:         0\nAuto refresh:         every 999999 segment(s)\nVision continuity:    disabled (prompt-generation test)\nDirector prompting:    2-stage raw scene -> H3 formatter\nStory beats:          8\nPersistent state:     generation_state.json\n================================================================\nImage C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\amy.jpg decoded and verified.\nWARNING: Image 0.png for reference slot 2 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 3 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 4 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 5 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nWARNING: Image 0.png for reference slot 6 is invalid (file was not found) and will be disconnected before queueing: H:\\images\\input\\0.png\nPrompt-only setup validation passed.\n\n================================================================\nSEGMENT 1/8 (8 seconds)\n================================================================\nEstimated LLM input context: 1095/4500 tokens (recent exact segments: 0)\nSegment 1 Director continuity source: initial\nDirector Request 1 shot-script structure failed (attempt 1/5); retrying: RAW SCENE must contain exactly one trailing 'End continuity state:' marker.\nDirector Request 1 physical/order coherence failed (attempt 2/5); retrying: RAW coherence validator failed: ask_llm() got an unexpected keyword argument 'context'\nDirector Request 1 physical/order coherence failed (attempt 3/5); retrying: RAW coherence validator failed: ask_llm() got an unexpected keyword argument 'context'\nDirector Request 1 shot-script structure failed (attempt 4/5); retrying: RAW SCENE must contain exactly one trailing 'End continuity state:' marker.\nFATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Director Request 1 remained physically incoherent for Segment 1: RAW coherence validator failed: ask_llm() got an unexpected keyword argument 'context'\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-jg8t3nkg\\repo\\minimax.py\", line 32535, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-jg8t3nkg\\repo\\minimax.py\", line 31358, in _run_main\n    payload = request_segment_llm(\n              ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-jg8t3nkg\\repo\\minimax.py\", line 30052, in request_segment_llm\n    raise BeatGenerationError(\nBeatGenerationError: Director Request 1 remained physically incoherent for Segment 1: RAW coherence validator failed: ask_llm() got an unexpected keyword argument 'context'\nTraceback (most recent call last):\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-jg8t3nkg\\repo\\minimax.py\", line 32607, in <module>\n    main()\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-jg8t3nkg\\repo\\minimax.py\", line 32535, in main\n    return _run_main(\n           ^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-jg8t3nkg\\repo\\minimax.py\", line 31358, in _run_main\n    payload = request_segment_llm(\n              ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\J\\AppData\\Local\\Temp\\minimax-acceptance-jg8t3nkg\\repo\\minimax.py\", line 30052, in request_segment_llm\n    raise BeatGenerationError(\nBeatGenerationError: Director Request 1 remained physically incoherent for Segment 1: RAW coherence validator failed: ask_llm() got an unexpected keyword argument 'context'\n\nAcceptance capture complete: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director\\.chatgpt_exec_worktree\\tests\\acceptance\\results\\amy_zombie_house-20261001-190828\\acceptance_run.json\nUpload acceptance_run.json for GPT-5.6 Sol review.\nAcceptance capture is structurally incomplete; missing H3 prompt segment(s): [1, 2, 3, 4, 5, 6, 7, 8]. Include run.log for diagnosis.\nMiniMax exited with code 1; include run.log for diagnosis.\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790896108.0380278,
+    "finished_at": 1790896221.5311234,
+    "artifacts": {
+      "developer_log.jsonl": "files\\developer_log.jsonl",
+      "developer_log.stderr.log": "files\\developer_log.stderr.log",
+      "acceptance_run.json": "files\\acceptance_run.json",
+      "run.log": "files\\run.log",
+      "story_arc.json": "files\\story_arc.json",
+      "beats.txt": "files\\beats.txt",
+      "source_result_dir": "tests\\acceptance\\results\\amy_zombie_house-20261001-190828"
+    }
+  },
+  "local_process_failed": true,
+  "finished_at": 1790896221.6022449,
+  "status": "ok"
+}

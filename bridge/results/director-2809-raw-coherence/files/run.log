@@ -1,0 +1,66 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Director-only test: using existing story_arc.json and beats.txt; arc/beat generation is disabled.
+Prompt-generation test mode enabled: ComfyUI rendering and stitching are disabled.
+
+================================================================
+H3 AUTOMATED DIRECTOR
+================================================================
+Segment length:       8 seconds
+Total story length:   64 seconds
+Total segments:       8
+Starting segment:     1
+Initial megapixels:   0.5
+Steps:                6
+Visual Continuity:    disabled (prompt-generation test)
+Stitch trim:          2 frames after segment 1
+Retention analysis:   disabled
+Prompt generation test: enabled
+Formatter:            gpt
+Global LoRAs:         0
+Auto refresh:         every 999999 segment(s)
+Vision continuity:    disabled (prompt-generation test)
+Director prompting:    2-stage raw scene -> H3 formatter
+Story beats:          8
+Persistent state:     generation_state.json
+================================================================
+Image C:\Users\J\Source\Repos\MiniMaxH3_Director\amy.jpg decoded and verified.
+WARNING: Image 0.png for reference slot 2 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 3 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 4 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 5 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+WARNING: Image 0.png for reference slot 6 is invalid (file was not found) and will be disconnected before queueing: H:\images\input\0.png
+Prompt-only setup validation passed.
+
+================================================================
+SEGMENT 1/8 (8 seconds)
+================================================================
+Estimated LLM input context: 1095/4500 tokens (recent exact segments: 0)
+Segment 1 Director continuity source: initial
+Director Request 1 shot-script structure failed (attempt 1/5); retrying: RAW SCENE must contain exactly one trailing 'End continuity state:' marker.
+Director Request 1 physical/order coherence failed (attempt 2/5); retrying: RAW coherence validator failed: ask_llm() got an unexpected keyword argument 'context'
+Director Request 1 physical/order coherence failed (attempt 3/5); retrying: RAW coherence validator failed: ask_llm() got an unexpected keyword argument 'context'
+Director Request 1 shot-script structure failed (attempt 4/5); retrying: RAW SCENE must contain exactly one trailing 'End continuity state:' marker.
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Director Request 1 remained physically incoherent for Segment 1: RAW coherence validator failed: ask_llm() got an unexpected keyword argument 'context'
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-jg8t3nkg\repo\minimax.py", line 32535, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-jg8t3nkg\repo\minimax.py", line 31358, in _run_main
+    payload = request_segment_llm(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-jg8t3nkg\repo\minimax.py", line 30052, in request_segment_llm
+    raise BeatGenerationError(
+BeatGenerationError: Director Request 1 remained physically incoherent for Segment 1: RAW coherence validator failed: ask_llm() got an unexpected keyword argument 'context'
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-jg8t3nkg\repo\minimax.py", line 32607, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-jg8t3nkg\repo\minimax.py", line 32535, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-jg8t3nkg\repo\minimax.py", line 31358, in _run_main
+    payload = request_segment_llm(
+              ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-jg8t3nkg\repo\minimax.py", line 30052, in request_segment_llm
+    raise BeatGenerationError(
+BeatGenerationError: Director Request 1 remained physically incoherent for Segment 1: RAW coherence validator failed: ask_llm() got an unexpected keyword argument 'context'
