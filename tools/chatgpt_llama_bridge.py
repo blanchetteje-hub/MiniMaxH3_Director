@@ -407,7 +407,7 @@ def copy_acceptance_artifacts(exec_root: Path, result_dir: Path) -> dict:
             shutil.copy2(source, target)
             copied[filename] = str(target.relative_to(result_dir))
     generated_dir = latest / "generated"
-    for filename in ("story_arc.json", "beats.txt"):
+    for filename in ("story_arc.json", "beats.txt", "character_canon.json"):
         source = generated_dir / filename
         if source.is_file():
             target = artifacts_dir / filename
