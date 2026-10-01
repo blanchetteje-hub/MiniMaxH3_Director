@@ -177,6 +177,8 @@ Current focus moves one stage downstream:
 
 Observed accepted-state oddities such as hand-holding being classified as inventory/equipment or defeated threats receiving noisy status labels are not, by themselves, reasons to delay Director work when the finalized Beat text is correct.
 
+After Request 1 RAW passes structure/coherence, run one tiny deterministic pronoun-resolution pass before H3 formatting. Its only job is to replace unambiguous person pronouns (especially they/them/their and she/her/he/him/his) with explicit names. RAW action/timestamps/order remain authoritative; if the cleanup changes timestamps/structure or is unusable, ignore it and keep the original RAW.
+
 Request 1 RAW acceptance includes one narrow semantic physical/action-order coherence check when a current Beat is available. It reads timed actions literally in order, allows harmless creative staging, and retries only concrete impossibilities or material prerequisite/order contradictions. This is deliberately semantic rather than an expanding pile of Python regex rules.
 
 Request 2 is a lossless formatter, not a narrative authority. If its final H3 output fails the semantic RAW-action preservation check, Python may deterministically substitute the already-valid timed RAW action text as detailed_description and rebuild the H3 prompt. This is preferred over adding more formatter prose or regenerating Request 1.

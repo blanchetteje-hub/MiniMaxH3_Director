@@ -428,6 +428,7 @@ DETERMINISTIC_LLM_PURPOSES = frozenset({
     "continuity_phase_2_h3_opening",
     "director_h3_formatter",
     "director_raw_scene_coherence",
+    "director_raw_scene_pronoun_resolution",
     "final_h3_action_preservation",
     "json_repair",
     "macro_arc_majority_validate",
@@ -609,6 +610,23 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
         },
     },
 }
+
+DIRECTOR_PRONOUN_RESOLUTION_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "director_pronoun_resolution",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "raw_scene": {"type": "string"},
+            },
+            "required": ["raw_scene"],
+            "additionalProperties": False,
+        },
+    },
+}
+
 
 H3_FORMATTER_REQUIRED_FIELDS = frozenset({
     "subject_genders",
@@ -29859,6 +29877,92 @@ def validate_director_continuity(bundle):
     return source
 
 
+def build_director_pronoun_resolution_messages(
+    raw_scene,
+    subject_definitions="",
+):
+    """Build a tiny post-RAW pass that makes person references explicit."""
+    return [
+        {
+            "role": "system",
+            "content": (
+                "Make person references explicit for a video prompt. Change only "
+                "personal pronouns whose referent is clear (especially they, them, "
+                "their, she, her, he, him, his) into the explicit person name or "
+                "names. Preserve every timestamp, action, action order, object, "
+                "location, sound, camera instruction, dialogue, punctuation meaning, "
+                "and End continuity state. Do not add, remove, combine, split, or "
+                "reinterpret actions. If a pronoun's referent is uncertain, leave it "
+                "unchanged. Return JSON only."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "KNOWN SUBJECTS\n"
+                f"{str(subject_definitions or '').strip() or 'N/A'}\n\n"
+                "RAW SCENE\n"
+                f"{str(raw_scene or '').strip()}\n\n"
+                "Return {\"raw_scene\":\"same RAW SCENE with only unambiguous "
+                "person pronouns replaced by explicit names\"}."
+            ),
+        },
+    ]
+
+
+def resolve_director_raw_scene_pronouns(
+    raw_scene,
+    subject_definitions="",
+    *,
+    llm_request=ask_llm,
+    history_metadata=None,
+    segment_seconds=None,
+):
+    """Resolve clear person pronouns after RAW acceptance; fail soft on drift."""
+    original = _canonicalize_director_timestamps(raw_scene).strip()
+    if not original or not str(subject_definitions or "").strip():
+        return original
+    result = llm_request(
+        build_director_pronoun_resolution_messages(
+            original,
+            subject_definitions=subject_definitions,
+        ),
+        response_format=DIRECTOR_PRONOUN_RESOLUTION_RESPONSE_FORMAT,
+        history_metadata={
+            **dict(history_metadata or {}),
+            "purpose": "director_raw_scene_pronoun_resolution",
+        },
+        temperature=0,
+        top_p=1,
+        max_tokens=2048,
+        seed=42,
+        repeat_penalty=1.15,
+    )
+    if isinstance(result, str):
+        result = parse_llm_json_content(result, repair_on_failure=False)
+    if not isinstance(result, dict) or set(result) != {"raw_scene"}:
+        raise ValueError(
+            "RAW pronoun resolver must return only raw_scene."
+        )
+    resolved = _canonicalize_director_timestamps(
+        result.get("raw_scene", "")
+    ).strip()
+    if not resolved:
+        raise ValueError("RAW pronoun resolver returned empty raw_scene.")
+    if _director_timestamps(resolved) != _director_timestamps(original):
+        raise ValueError("RAW pronoun resolver changed timestamps.")
+    structure_errors = _director_raw_scene_structure_errors(
+        resolved,
+        segment_seconds,
+    )
+    if structure_errors:
+        raise ValueError(
+            "RAW pronoun resolver changed shot-script structure: "
+            + "; ".join(structure_errors)
+        )
+    return resolved
+
+
 def build_director_raw_scene_coherence_messages(current_beat, raw_scene):
     """Build a narrow semantic check for Request 1 physical/order coherence."""
     return [
@@ -30200,6 +30304,39 @@ def request_segment_llm(bundle, beats, run_id, run_config):
     if request1_result is None or not raw_scene:
         raise BeatGenerationError(
             "Director Request 1 returned no usable scene result."
+        )
+
+    try:
+        resolved_raw_scene = resolve_director_raw_scene_pronouns(
+            raw_scene,
+            bundle.get("subject_definitions", ""),
+            history_metadata={
+                "run_id": run_id,
+                "source_sha256": (run_config or {}).get("source_sha256"),
+                "segment": segment_number,
+                "conditioning_mode": conditioning_mode,
+            },
+            segment_seconds=duration,
+        )
+        if resolved_raw_scene != raw_scene:
+            raw_scene = resolved_raw_scene
+            request1_result["raw_scene"] = raw_scene
+            print(
+                f"Segment {segment_number} RAW person pronouns resolved to "
+                "explicit names before H3 formatting.",
+                flush=True,
+            )
+    except (
+        LLMConnectionError,
+        requests.RequestException,
+        OSError,
+        ValueError,
+        TypeError,
+    ) as error:
+        print(
+            f"WARNING: Segment {segment_number} RAW pronoun resolution ignored: "
+            f"{error}",
+            flush=True,
         )
 
     print()

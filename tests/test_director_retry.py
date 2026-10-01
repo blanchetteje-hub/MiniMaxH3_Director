@@ -52,6 +52,69 @@ def director_response(raw_scene, beat_complete=True):
 
 class DirectorMicroPromptPipelineTests(unittest.TestCase):
 
+    def test_raw_pronoun_resolution_prompt_is_narrow(self):
+        messages = minimax.build_director_pronoun_resolution_messages(
+            (
+                "At 00:01.000, Amy pushes Will and Amber toward the closet.\n"
+                "At 00:04.000, she pushes them inside.\n"
+                "End continuity state: they are inside the closet."
+            ),
+            (
+                "<Subject 1> is Amy.\n"
+                "<Subject 2> is Will.\n"
+                "<Subject 3> is Amber."
+            ),
+        )
+        text = messages[0]["content"] + "\n" + messages[1]["content"]
+        self.assertIn("Change only personal pronouns", text)
+        self.assertIn("especially they, them, their", text)
+        self.assertIn("Do not add, remove, combine, split, or reinterpret actions", text)
+
+    def test_raw_pronoun_resolution_accepts_name_only_rewrite(self):
+        original = (
+            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:04.500, she pushes them into the closet.\n"
+            "End continuity state: they are inside the closet."
+        )
+        resolved = (
+            "At 00:01.000, Amy grabs Will and Amber.\n"
+            "At 00:04.500, Amy pushes Will and Amber into the closet.\n"
+            "End continuity state: Will and Amber are inside the closet."
+        )
+        request = mock.Mock(return_value={"raw_scene": resolved})
+        result = minimax.resolve_director_raw_scene_pronouns(
+            original,
+            "<Subject 1> is Amy. <Subject 2> is Will. <Subject 3> is Amber.",
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertEqual(result, resolved)
+        self.assertEqual(
+            request.call_args.kwargs["history_metadata"]["purpose"],
+            "director_raw_scene_pronoun_resolution",
+        )
+
+    def test_raw_pronoun_resolution_rejects_timestamp_drift(self):
+        original = (
+            "At 00:01.000, Amy grabs Will.\n"
+            "At 00:04.500, she pushes him into the closet.\n"
+            "End continuity state: Will is inside."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": (
+                "At 00:01.000, Amy grabs Will.\n"
+                "At 00:05.000, Amy pushes Will into the closet.\n"
+                "End continuity state: Will is inside."
+            )
+        })
+        with self.assertRaisesRegex(ValueError, "changed timestamps"):
+            minimax.resolve_director_raw_scene_pronouns(
+                original,
+                "<Subject 1> is Amy. <Subject 2> is Will.",
+                llm_request=request,
+                segment_seconds=6.0,
+            )
+
     def test_raw_scene_coherence_prompt_allows_staging_but_checks_order(self):
         messages = minimax.build_director_raw_scene_coherence_messages(
             "Amy pushes Will into the closet and closes the door.",
@@ -94,9 +157,17 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             )
         self.assertEqual(request.call_count, 5)
         self.assertIn("Will steps into the closet", payload["raw_scene"])
-        retry_prompt = request.call_args_list[2].args[0][-1]["content"]
-        self.assertIn("Fix this physical/action-order problem", retry_prompt)
-        self.assertIn("door closes before Will enters", retry_prompt)
+        request_prompts = [
+            call.args[0][-1]["content"]
+            for call in request.call_args_list
+            if call.args and isinstance(call.args[0], list) and call.args[0]
+            and isinstance(call.args[0][-1], dict)
+        ]
+        self.assertTrue(any(
+            "Fix this physical/action-order problem" in prompt
+            and "door closes before Will enters" in prompt
+            for prompt in request_prompts
+        ))
 
     def test_request_one_completion_self_report_is_non_blocking(self):
         formatted = formatter_response("[Shot 1] At 00:00.000, Mark starts the action.")

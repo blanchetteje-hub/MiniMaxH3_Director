@@ -489,6 +489,21 @@ The new RAW coherence gate did not actually run because its helper forwarded the
 
 Fix: the narrow RAW coherence call now uses only supported deterministic request parameters (temperature 0, top_p 1, seed 42, repeat_penalty 1.15, bounded output), matching the style of other narrow semantic checks.
 
+### 2811 — coherence works; add post-RAW pronoun specificity
+
+2811 completed the full prompt-generation run. The new RAW physical/order check triggered retries and produced an ordered Segment 2.
+
+The run also showed that RAW and Request 2 continue to carry person pronouns such as `she`, `her`, `them`, and `their`. MiniMax H3 benefits from explicit named references.
+
+Change:
+- keep Request 1 focused on staging the scene;
+- after RAW is accepted, run a tiny deterministic pronoun-resolution pass;
+- replace only unambiguous person pronouns with explicit names/named groups;
+- preserve all timestamps/actions/order/objects/audio/camera/dialogue/end-state meaning;
+- fail soft to original RAW if the cleanup changes timestamp/structure or is unusable.
+
+This moves H3-specific reference precision out of the creative RAW prompt instead of adding another Request-1 rule.
+
 ## Immediate next work
 
 Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.
