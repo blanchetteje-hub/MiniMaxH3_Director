@@ -154,18 +154,20 @@ optimization phase.
 Reintroduce only the smallest specific boundary contract justified by an observed
 beat failure.
 
-### Current optimization focus: beats only
+### Current optimization focus: Director RAW scenes
 
-Beat generation is the sole active optimization target.
+Acceptance 2776 completed all 8 Beats successfully with a coherent, source-faithful sequence. Beat planning/generation is therefore provisionally stable enough to serve as the upstream Director contract.
 
-- Work in the order: **generate -> analyze -> repair -> validate -> regenerate**.
-- Do not tune Director prompts until beat output is trustworthy enough to serve
-  as a stable upstream contract.
-- Reintroduce barrier/state information into Beat CREATE only when a concrete
-  observed beat failure proves that a specific fact is needed.
-- Any reintroduced constraint must be surgical: add the minimum information
-  required to fix the demonstrated failure, then retest.
-- Avoid restoring broad barrier/state prompt blocks wholesale.
+Current focus moves one stage downstream:
+
+- inspect **Beat -> Director Request 1 / RAW scene** behavior;
+- fix the earliest real RAW-scene failure before touching Request 2/H3 translation;
+- keep existing Python canonical-state machinery in place, but do **not** expand or perfect accepted-Beat bookkeeping speculatively;
+- accepted-Beat state is supporting continuity data, not a gate that must be artistically perfect before Director testing;
+- revisit state extraction only when a demonstrated Director failure traces back to a missing or incorrect state fact;
+- continue to keep broad barrier/state contracts out of Beat CREATE unless fresh Beat evidence requires them.
+
+Observed accepted-state oddities such as hand-holding being classified as inventory/equipment or defeated threats receiving noisy status labels are not, by themselves, reasons to delay Director work when the finalized Beat text is correct.
 
 ## Development doctrine
 
