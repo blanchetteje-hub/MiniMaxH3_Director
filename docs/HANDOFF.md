@@ -270,11 +270,28 @@ Relevant commits:
 - `05cc4ec427a1f3afdf931e9cda694eae04df592b`
 - `79b5fadc2bf06212a550aa35c0ffb48b2ea85340`
 
+### 2763 — successful planning run; summary-guided story-to-beats change
+
+`tests-2762-reserved-character-keys`: **42 passed, 4 subtests passed**.
+
+`generate-beats-2763-summary-to-story`: **completed all 8 beats successfully**.
+
+The run's staging split Will and Amber across different safe locations. That is acceptable as creative staging if both are still retrieved at the end. The larger issue is that the derived Beat framework can lose an explicit source-summary obligation even when the expanded story is otherwise plausible.
+
+Current experiment:
+- story-to-beats system prompt now begins: `You are a screenplay writer that converts stories into films using a summary as a final guide.`
+- user prompt now passes both the original `SUMMARY` and expanded `STORY`;
+- no additional adaptation rules were added.
+
+Relevant commits:
+- `6357e1d303c105e056f3c78b53abc3022c7e4a2e`
+- `7e8319d51c0d6bda12143ecf3e87154ac29183fd`
+
 ## Immediate next work
 
 Queued:
-- `tests-2762-reserved-character-keys`
-- `generate-beats-2763-summary-to-story`
+- `tests-2764-summary-guided-story-to-beats`
+- `generate-beats-2765-summary-guided-story-to-beats`
 
 When processed:
 1. confirm the character-canon and planning regressions are green;
