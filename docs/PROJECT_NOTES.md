@@ -1538,3 +1538,38 @@ Core Beat CREATE rules:
 
 This prompt supersedes the older Beat CREATE contract that injected barrier-name, closed-boundary, preserved-barrier, and beneficiary-specific prose into every generation request.
 
+
+
+## 2026-10-01 — accepted Beat state capture: threat shorthand crash
+
+Acceptance `generate-beats-2710-gpt-accepted-state` demonstrated that broad post-acceptance
+state capture is retaining useful concrete continuity (closets, objects, carried/stored items,
+threat injuries, and environmental changes), but its first attempt failed after Beat 4 with:
+`Beat state patch entity threats.zombies must be an object.`
+
+Root cause:
+- the accepted-Beat extractor may use an unambiguous scalar shorthand such as
+  `{"threats":{"zombies":"active"}}`;
+- canonical threat entries require object records such as
+  `{"threats":{"zombies":{"status":"active"}}}`;
+- parsing validated the generic canonical patch shape before the accepted-state path had a
+  chance to normalize this harmless shorthand.
+
+Fix:
+- accepted-Beat state capture now converts only scalar values in the existing canonical
+  threat-state enum (`active`, `incapacitated`, `dead`, `removed`, `cleared`) into
+  `{"status": value}` before generic state-patch validation;
+- ambiguous scalar threat values remain errors rather than being guessed;
+- the normalization is accepted-state-specific and does not loosen the generic canonical
+  patch contract.
+
+Regression cleanup:
+- the broad-capture prompt assertion now matches its actual capitalization;
+- the source-span generation regression now reflects the current documented contract that
+  Beat CREATE receives the full story under SOURCE FILM while ASSIGNED EVENTS remain the
+  chapter-local execution authority.
+
+Commits:
+- `f9aa9b60d7646d50db0ade54e9a2ef2e05737383` — normalize accepted Beat threat status shorthand;
+- `2e193e1e4c0078e75d72699abcc327af3933c6f4` — accepted-state shorthand regression;
+- `509fd416e52e5a4375125ed906d39cb0896d424a` — align source-span regression with full-story Beat context.
