@@ -1,0 +1,7 @@
+{
+  "job_id": "generate-beats-2735-summary-to-story",
+  "status": "error",
+  "error_type": "ValueError",
+  "error": "Acceptance jobs must run on 'gpt-arc-refresh'; got 'summary-to-story-test'.",
+  "finished_at": 1790873540.7473946
+}
