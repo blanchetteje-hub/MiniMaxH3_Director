@@ -7898,6 +7898,13 @@ def repair_json_with_llm(
             return _parse_llm_json_content_without_repair(repaired)
         except LLMConnectionError:
             raise
+        except RequiredEventStateApplicationError as error:
+            print(
+                "Required-event state application failed deterministically; "
+                f"preserving the current story arc instead of restarting it: {error}",
+                flush=True,
+            )
+            raise
         except Exception as error:
             last_error = error
 
@@ -10028,7 +10035,84 @@ def _required_event_phase_map(macro_arc):
     return mapping
 
 
-def _apply_required_event_state_effects(state, events, *, log=True):
+class RequiredEventStateApplicationError(ValueError):
+    """A deterministic required-event state effect cannot be applied safely."""
+
+
+def _state_effect_entity_aliases(name):
+    """Return conservative casefolded aliases for singular/plural entity labels."""
+    normalized = " ".join(str(name or "").split()).casefold()
+    if not normalized:
+        return set()
+    aliases = {normalized}
+    if normalized.endswith("s") and not normalized.endswith("ss") and len(normalized) > 3:
+        aliases.add(normalized[:-1])
+    else:
+        aliases.add(normalized + "s")
+    return aliases
+
+
+def _required_event_entity_roles(events):
+    """Infer entity namespaces only from explicit typed state operations."""
+    roles = {}
+
+    def add(name, role):
+        for alias in _state_effect_entity_aliases(name):
+            roles.setdefault(alias, set()).add(role)
+
+    for event in events or ():
+        raw_effects = event.get("state_effects", []) if isinstance(event, dict) else []
+        for effect in _validate_state_effects(raw_effects):
+            op = effect["op"]
+            if op == "set_threat_state":
+                add(effect["entity"], "threat")
+            elif op in {"set_object_state", "set_item_state"}:
+                add(effect["entity"], "object")
+            elif op == "set_barrier_state":
+                add(effect["entity"], "barrier")
+            elif op == "set_item_state":
+                add(effect["owner"], "character")
+            elif op in {"set_clothing", "set_containment"}:
+                add(effect["entity"], "character")
+    # set_item_state has both an object entity and character owner.
+    for event in events or ():
+        raw_effects = event.get("state_effects", []) if isinstance(event, dict) else []
+        for effect in _validate_state_effects(raw_effects):
+            if effect["op"] == "set_item_state":
+                add(effect["owner"], "character")
+    return roles
+
+
+def _seed_location_entity_from_roles(state, entity, entity_roles):
+    """Seed one unknown location entity when typed arc effects establish its role."""
+    if _find_tracked_record(state, entity)[2] is not None:
+        return True
+    matched_roles = set()
+    for alias in _state_effect_entity_aliases(entity):
+        matched_roles.update((entity_roles or {}).get(alias, ()))
+    if len(matched_roles) != 1:
+        return False
+    role = next(iter(matched_roles))
+    if role == "character":
+        _ensure_character_record(state, entity)
+    elif role == "threat":
+        _ensure_threat_record(state, entity)
+    elif role == "object":
+        _ensure_environment_record(state, "objects", entity)
+    elif role == "barrier":
+        _ensure_environment_record(state, "barriers", entity)
+    else:
+        return False
+    return True
+
+
+def _apply_required_event_state_effects(
+    state,
+    events,
+    *,
+    log=True,
+    entity_roles=None,
+):
     """Apply source-authorized required-event effects and register them as hard state."""
     state = normalize_beat_canonical_state(state)
     progress = state["story_progress"]
@@ -10046,7 +10130,13 @@ def _apply_required_event_state_effects(state, events, *, log=True):
         # a location operation may precede the state operation that introduces
         # the same threat/object in this event.
         for effect in effects:
-            if effect["op"] == "set_threat_state":
+            if effect["op"] == "set_location":
+                _seed_location_entity_from_roles(
+                    state,
+                    effect["entity"],
+                    entity_roles or _required_event_entity_roles(events),
+                )
+            elif effect["op"] == "set_threat_state":
                 _ensure_threat_record(state, effect["entity"])
             elif effect["op"] == "set_object_state":
                 _ensure_environment_record(state, "objects", effect["entity"])
@@ -10055,7 +10145,13 @@ def _apply_required_event_state_effects(state, events, *, log=True):
             elif effect["op"] in {"set_clothing", "set_containment"}:
                 _ensure_character_record(state, effect["entity"])
         for effect in effects:
-            updates = _apply_state_operation(state, effect)
+            try:
+                updates = _apply_state_operation(state, effect)
+            except ValueError as error:
+                raise RequiredEventStateApplicationError(
+                    f"Required event {event.get('id', '?')} state effect "
+                    f"{effect.get('op')} could not be applied: {error}"
+                ) from error
             for path, value in updates.items():
                 persistent[path] = copy.deepcopy(value)
             if log:
@@ -10069,6 +10165,25 @@ def _apply_required_event_state_effects(state, events, *, log=True):
     return normalize_beat_canonical_state(state)
 
 
+
+
+def _preflight_required_event_state_effects(macro_arc, subject_information=""):
+    """Replay all arc effects before Beat CREATE so deterministic failures surface early."""
+    events = _required_event_records(macro_arc)
+    roles = _required_event_entity_roles(events)
+    state = _seed_known_beat_characters(
+        new_beat_canonical_state(),
+        macro_arc=macro_arc,
+        subject_information=subject_information,
+    )
+    for event in events:
+        state = _apply_required_event_state_effects(
+            state,
+            [event],
+            log=False,
+            entity_roles=roles,
+        )
+    return state
 
 
 def source_authorized_state_before_beat(
@@ -10098,6 +10213,9 @@ def source_authorized_state_before_beat(
             state,
             events,
             log=False,
+            entity_roles=_required_event_entity_roles(
+                _required_event_records(macro_arc)
+            ),
         )
     return compact_beat_validation_state(state)
 
@@ -12383,6 +12501,7 @@ def _run_forward_beat_validation(
         staged_state = _apply_required_event_state_effects(
             copy.deepcopy(state_cursor),
             [events_by_id[event_id] for event_id in newly_completed],
+            entity_roles=_required_event_entity_roles(all_events),
         )
         staged_state["story_progress"]["completed_required_event_ids"] = (
             _ordered_required_event_ids(all_event_ids, staged_completed)
@@ -17309,6 +17428,10 @@ def generate_beats_from_story(
                 phase_retry_counts = {}
 
             macro_arc = active_macro_arc
+            _preflight_required_event_state_effects(
+                macro_arc,
+                subject_information=subject_information,
+            )
             try:
                 return _run_forward_beat_validation(
                     lambda: generate_batches(macro_arc),
@@ -31062,10 +31185,9 @@ def main():
             raise
         except KeyboardInterrupt:
             raise
-        except re.error:
-            # A malformed Python regex is a deterministic programming defect,
-            # not a recoverable generation/content failure. Retrying the same
-            # checkpoint can never repair it and otherwise loops forever.
+        except (re.error, RequiredEventStateApplicationError):
+            # Deterministic programming/state-application defects cannot repair
+            # themselves by replaying the same saved arc/checkpoint.
             raise
         except SystemExit as error:
             # Explicit successful exits such as --help remain user-controlled.
