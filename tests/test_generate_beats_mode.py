@@ -108,7 +108,7 @@ class GenerateBeatsCliTests(unittest.TestCase):
     def test_force_generate_replaces_existing_beats_and_cached_arc(self):
         generated = mock.Mock(return_value=["New beat"])
         with mock.patch("minimax.load_text_file", return_value="1. Old beat"), mock.patch(
-            "minimax.generate_beats_from_story", generated
+            "minimax.generate_beats_via_story_expansion", generated
         ):
             result = minimax.load_or_generate_beats(
                 "beats.txt",
@@ -123,7 +123,7 @@ class GenerateBeatsCliTests(unittest.TestCase):
     def test_force_generate_allows_a_missing_beats_file(self):
         generated = mock.Mock(return_value=["New beat"])
         with mock.patch("minimax.load_text_file", return_value="") as load, mock.patch(
-            "minimax.generate_beats_from_story", generated
+            "minimax.generate_beats_via_story_expansion", generated
         ):
             result = minimax.load_or_generate_beats(
                 "beats.txt",
