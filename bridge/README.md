@@ -22,7 +22,7 @@ For another port:
 
 The first launch creates .chatgpt_bridge_worktree, checks out the gpt-runtime mailbox branch there, verifies /v1/models, and starts polling.
 
-Leave the process running while ChatGPT is doing prompt experiments. Ctrl+C stops it.
+Leave the process running while ChatGPT is doing prompt experiments. On Windows, Ctrl+Q stops the active job, publishes its partial result to gpt-runtime, and then exits the bridge. Ctrl+C (or Ctrl+Break) remains an immediate emergency stop and does not guarantee result publication.
 
 ## Local test execution
 
