@@ -63,15 +63,16 @@ ACTIVE_FORMATTER = GPTFormatter()
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-LM_STUDIO_URL = os.environ.get(
-    "MINIMAX_LM_STUDIO_URL",
-    "http://192.168.0.203:1234"
-    #"http://127.0.0.1:1234"
+LLM_HOST_URL = (
+    os.environ.get("MINIMAX_LLM_HOST_URL")
+    or os.environ.get("MINIMAX_LM_STUDIO_URL")
+    or "http://192.168.0.203:1234"
 ).rstrip("/")
 
-VISION_LM_STUDIO_URL = os.environ.get(
-    "MINIMAX_VISION_LM_STUDIO_URL",
-    LM_STUDIO_URL,
+VISION_LLM_HOST_URL = (
+    os.environ.get("MINIMAX_VISION_LLM_HOST_URL")
+    or os.environ.get("MINIMAX_VISION_LM_STUDIO_URL")
+    or LLM_HOST_URL
 ).rstrip("/")
 
 VISION_MODEL = os.environ.get("MINIMAX_VISION_MODEL", "").strip()
@@ -1854,7 +1855,7 @@ def parse_args(arguments=None):
     parser = argparse.ArgumentParser(
         description=(
             "MiniMaxH3 Continuous Video Automator: generate a complete "
-            "video story using LM Studio and ComfyUI."
+            "video story using LLM host and ComfyUI."
         )
     )
     parser.add_argument("segment_length", type=float, nargs="?")
@@ -7779,7 +7780,7 @@ class UnrepairedJSON(str):
 # Parse llm json content without repair.
 def _parse_llm_json_content_without_repair(content):
     if not isinstance(content, str):
-        raise TypeError("LM Studio returned non-text message content.")
+        raise TypeError("LLM host returned non-text message content.")
 
     candidate = content.strip()
     if candidate.startswith("```") and candidate.endswith("```"):
@@ -7980,9 +7981,9 @@ def parse_llm_json_content(
         raise
 
 
-# Raise an HTTP error that preserves LM Studio's useful response body.
-def raise_for_lm_studio_status(response):
-    """Raise an HTTP error that preserves LM Studio's useful response body."""
+# Raise an HTTP error that preserves LLM host's useful response body.
+def raise_for_llm_host_status(response):
+    """Raise an HTTP error that preserves LLM host's useful response body."""
     try:
         response.raise_for_status()
     except requests.HTTPError as error:
@@ -7991,7 +7992,7 @@ def raise_for_lm_studio_status(response):
             body = body[:2000] + "... [truncated]"
         detail = f"{error}"
         if body:
-            detail += f"; LM Studio response: {body}"
+            detail += f"; LLM host response: {body}"
         raise requests.HTTPError(
             detail,
             request=getattr(error, "request", None),
@@ -7999,7 +8000,7 @@ def raise_for_lm_studio_status(response):
         ) from error
 
 
-def _lm_studio_rejected_response_format(response):
+def _llm_host_rejected_response_format(response):
     """Return whether one HTTP 400 specifically rejects structured output."""
     if getattr(response, "status_code", None) != 400:
         return False
@@ -8008,7 +8009,7 @@ def _lm_studio_rejected_response_format(response):
 
 
 # Merge adjacent same-role turns before Mistral's strict Jinja template.
-def normalize_lm_studio_messages(messages):
+def normalize_llm_host_messages(messages):
     """Merge adjacent same-role turns and append the optional global system text."""
     normalized = []
     appended_system_prompt = load_text_file(
@@ -8017,14 +8018,14 @@ def normalize_lm_studio_messages(messages):
     )
     for message in messages or []:
         if not isinstance(message, dict):
-            raise TypeError("Each LM Studio message must be a dictionary.")
+            raise TypeError("Each LLM host message must be a dictionary.")
         role = str(message.get("role", "")).strip()
         content = str(message.get("content", ""))
         if role not in {"system", "user", "assistant"}:
-            raise ValueError(f"Unsupported LM Studio message role: {role!r}")
+            raise ValueError(f"Unsupported LLM host message role: {role!r}")
         if role == "system":
             if normalized:
-                raise ValueError("The LM Studio system message must be first.")
+                raise ValueError("The LLM host system message must be first.")
             if appended_system_prompt:
                 content = (
                     f"{content.rstrip()}\n\n{appended_system_prompt}"
@@ -8046,12 +8047,12 @@ def normalize_lm_studio_messages(messages):
         for index, role in enumerate(conversation)
     ):
         raise ValueError(
-            "LM Studio conversation roles must alternate user and assistant."
+            "LLM host conversation roles must alternate user and assistant."
         )
     return normalized
 
 
-# Append one outgoing LM Studio prompt to the debugging history file.
+# Append one outgoing LLM host prompt to the debugging history file.
 def _prompt_history_messages(messages):
     """Return messages in a line-preserving representation.
 
@@ -8227,7 +8228,7 @@ def _load_prompt_history(path):
 
 
 def append_prompt_history(messages, path=PROMPT_HISTORY_FILE, metadata=None):
-    """Append one outgoing LM Studio prompt with raw readable content."""
+    """Append one outgoing LLM host prompt with raw readable content."""
     directory = os.path.dirname(os.path.abspath(path))
     os.makedirs(directory, exist_ok=True)
     with PROMPT_HISTORY_LOCK:
@@ -8299,7 +8300,7 @@ def ask_llm(
     last_connection_error = None
     last_content = None
     received_response = False
-    messages = normalize_lm_studio_messages(messages)
+    messages = normalize_llm_host_messages(messages)
     estimated_input_tokens = estimate_message_tokens(messages)
     effective_context_budget = (
         LLM_CONTEXT_TOKEN_BUDGET
@@ -8577,23 +8578,23 @@ def ask_llm(
                 },
             )
             response = requests.post(
-                f"{LM_STUDIO_URL}/v1/chat/completions",
+                f"{LLM_HOST_URL}/v1/chat/completions",
                 json=request_payload,
                 timeout=600
             )
             try:
-                raise_for_lm_studio_status(response)
+                raise_for_llm_host_status(response)
             except requests.HTTPError:
-                # Some LM Studio/model combinations intermittently reject
+                # Some LLM host/model combinations intermittently reject
                 # OpenAI-compatible JSON Schema output. The deterministic
                 # formatter can recover JSON or labeled plain text, so retry
                 # this request once without only that optional constraint.
                 if (
                     "response_format" in request_payload
-                    and _lm_studio_rejected_response_format(response)
+                    and _llm_host_rejected_response_format(response)
                 ):
                     print(
-                        "LM Studio rejected structured response_format; "
+                        "LLM host rejected structured response_format; "
                         "retrying once with Python-enforced formatting."
                     )
                     fallback_payload = dict(request_payload)
@@ -8615,11 +8616,11 @@ def ask_llm(
                         },
                     )
                     response = requests.post(
-                        f"{LM_STUDIO_URL}/v1/chat/completions",
+                        f"{LLM_HOST_URL}/v1/chat/completions",
                         json=fallback_payload,
                         timeout=600
                     )
-                    raise_for_lm_studio_status(response)
+                    raise_for_llm_host_status(response)
                 else:
                     raise
             data = response.json()
@@ -8645,7 +8646,7 @@ def ask_llm(
                 )
             if finish_reason in {"length", "max_tokens"}:
                 raise ValueError(
-                    "LM Studio truncated the response at the configured "
+                    "LLM host truncated the response at the configured "
                     f"max_tokens={effective_max_tokens} before completion."
                 )
             try:
@@ -8714,7 +8715,7 @@ def ask_llm(
                 # top level. Unwrap it without changing any authored content.
                 result = result["segment"]
             if not isinstance(result, (dict, str)):
-                raise ValueError("LM Studio returned unsupported message content.")
+                raise ValueError("LLM host returned unsupported message content.")
             return result
         except requests.RequestException as e:
             last_error = e
@@ -8742,7 +8743,7 @@ def ask_llm(
 
     if last_connection_error is not None and not received_response:
         raise LLMConnectionError(
-            f"LM Studio could not be reached after {max_attempts} attempts. "
+            f"LLM host could not be reached after {max_attempts} attempts. "
             f"Last error: {last_connection_error}"
         ) from last_connection_error
 
@@ -8750,7 +8751,7 @@ def ask_llm(
     # content failure, not a fatal transport failure. Preserve its last reply
     # for the caller's parser/salvage path after the retry budget is exhausted.
     print(
-        f"WARNING: LM Studio returned no usable result after {max_attempts} "
+        f"WARNING: LLM host returned no usable result after {max_attempts} "
         f"attempts; continuing with best effort: {last_error}"
     )
     return last_content if last_content is not None else ""
@@ -16163,7 +16164,7 @@ def verify_subjects_in_beat_messages(messages, subject_information):
     if subject_information not in user_prompt:
         raise RuntimeError(
             "Parsed subjects.txt information was not included in the beat "
-            "generation prompt; refusing to contact LM Studio."
+            "generation prompt; refusing to contact LLM host."
         )
 
 
@@ -17555,7 +17556,7 @@ def generate_beats_from_story(
             except ValueError as error:
                 last_error = error
                 print(
-                    "LM Studio returned an invalid macro arc; requesting a "
+                    "LLM host returned an invalid macro arc; requesting a "
                     f"corrected arc: {last_error}"
                 )
         
@@ -18522,12 +18523,12 @@ def load_or_generate_beats(
             return beats
     if force_generate:
         print(
-            f"Asking LM Studio to replace {path} with {total_segments} creative "
+            f"Asking LLM host to replace {path} with {total_segments} creative "
             "story beats."
         )
     else:
         print(
-            f"{path} is empty; asking LM Studio to create {total_segments} "
+            f"{path} is empty; asking LLM host to create {total_segments} "
             "creative story beats before generation starts."
         )
     return generate_beats_via_story_expansion(
@@ -20606,7 +20607,7 @@ def request_five_bullet_summary(
             return normalized
 
     print(
-        "WARNING: LM Studio did not return an exact eight-field previous state "
+        "WARNING: LLM host did not return an exact eight-field previous state "
         f"after {content_attempts} attempts; using N/A best effort."
     )
     return "\n".join(f"- {field}: N/A" for field in PREVIOUS_STATE_FIELDS)
@@ -23375,7 +23376,7 @@ def request_combined_continuity(
             raw = llm_request(
                 messages,
                 # This call intentionally has an open-ended continuity shape.
-                # Some LM Studio/model combinations reject json_object for
+                # Some LLM host/model combinations reject json_object for
                 # this request, so JSON syntax is enforced by the prompt,
                 # parser, and bounded retry loop below.
                 response_format=None,
@@ -26557,9 +26558,9 @@ SUBJECT DEFINITIONS:
 """.strip()
 
 
-# Extract assistant text from common LM Studio multimodal response shapes.
+# Extract assistant text from common LLM host multimodal response shapes.
 def _vision_message_text(content):
-    """Extract assistant text from common LM Studio multimodal response shapes."""
+    """Extract assistant text from common LLM host multimodal response shapes."""
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -26576,14 +26577,14 @@ def _vision_message_text(content):
     raise TypeError("Vision model returned non-text assistant content.")
 
 
-# Ask the currently loaded image-capable LM Studio model for visible state.
+# Ask the currently loaded image-capable LLM host model for visible state.
 def ask_vision_model(
     image_paths,
     subject_definitions,
     segment_number,
     max_retries=VISION_REQUEST_RETRIES,
 ):
-    """Ask the currently loaded image-capable LM Studio model for visible state."""
+    """Ask the currently loaded image-capable LLM host model for visible state."""
     image_paths = [os.path.abspath(path) for path in image_paths]
     user_text = build_visual_end_state_prompt(subject_definitions)
     user_content = [{"type": "text", "text": user_text}]
@@ -26627,17 +26628,17 @@ def ask_vision_model(
                 "purpose": "visual_end_state",
                 "segment": int(segment_number),
                 "content_attempt": attempt,
-                "vision_model": VISION_MODEL or "LM Studio active model",
+                "vision_model": VISION_MODEL or "LLM host active model",
                 "entry_type": "request",
             },
         )
         try:
             response = requests.post(
-                f"{VISION_LM_STUDIO_URL}/v1/chat/completions",
+                f"{VISION_LLM_HOST_URL}/v1/chat/completions",
                 json=payload,
                 timeout=600,
             )
-            raise_for_lm_studio_status(response)
+            raise_for_llm_host_status(response)
             data = response.json()
             choice = data["choices"][0]
             text = _vision_message_text(choice["message"]["content"])
@@ -26648,7 +26649,7 @@ def ask_vision_model(
                     "purpose": "visual_end_state",
                     "segment": int(segment_number),
                     "content_attempt": attempt,
-                    "vision_model": VISION_MODEL or "LM Studio active model",
+                    "vision_model": VISION_MODEL or "LLM host active model",
                     "finish_reason": finish_reason or None,
                     "entry_type": "response",
                 },
