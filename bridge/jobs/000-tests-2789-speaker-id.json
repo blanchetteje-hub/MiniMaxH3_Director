@@ -1,0 +1,10 @@
+{
+  "job_id": "tests-2789-speaker-id",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py",
+    "tests/test_simplified_prompt_regressions.py"
+  ],
+  "timeout_seconds": 1800
+}
