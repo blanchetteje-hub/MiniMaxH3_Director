@@ -519,6 +519,24 @@ Current post-RAW path:
 
 The old final-H3 action-preservation LLM is skipped because copied RAW is preserved by construction.
 
+### 2815 — Python-owned H3 path works; capture/pronoun follow-up
+
+2814 regressions passed 5/5.
+
+2815 generated all 8 final H3 prompts and marked all 8 Beats complete. The bridge return code 2 came only from the acceptance parser still looking for the retired `DIRECTOR REQUEST 2: H3 prompt` start marker after runtime output was renamed to `FINAL H3 PROMPT`.
+
+The new RAW->H3 architecture itself ran end-to-end.
+
+Observed pronoun-cleanup issue:
+- several segments were rejected because the tiny resolver rewrote or dropped the trailing `End continuity state:` marker;
+- final H3 then retained pronouns from original RAW.
+
+Fix:
+- send only the timed RAW body to pronoun resolution;
+- preserve/re-attach the exact original End continuity state in Python;
+- tell the resolver to scan the entire timed scene and replace every unambiguous personal pronoun;
+- acceptance parser recognizes both old and new H3 start markers for compatibility.
+
 ## Immediate next work
 
 Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.

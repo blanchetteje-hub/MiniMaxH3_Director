@@ -29972,14 +29972,14 @@ def build_director_pronoun_resolution_messages(
         {
             "role": "system",
             "content": (
-                "Make person references explicit for a video prompt. Change only "
-                "personal pronouns whose referent is clear (especially they, them, "
-                "their, she, her, he, him, his) into the explicit person name or "
-                "names. Preserve every timestamp, action, action order, object, "
-                "location, sound, camera instruction, dialogue, punctuation meaning, "
-                "and End continuity state. Do not add, remove, combine, split, or "
-                "reinterpret actions. If a pronoun's referent is uncertain, leave it "
-                "unchanged. Return JSON only."
+                "Make person references explicit for a video prompt. Scan the entire "
+                "supplied timed scene and replace every personal pronoun whose referent "
+                "is clear (especially they, them, their, she, her, he, him, his) with "
+                "the explicit person name or names. Change only those pronouns. Preserve "
+                "every timestamp, action, action order, object, location, sound, camera "
+                "instruction, dialogue, and punctuation meaning. Do not add, remove, "
+                "combine, split, or reinterpret actions. If a pronoun's referent is "
+                "uncertain, leave it unchanged. Return JSON only."
             ),
         },
         {
@@ -30004,14 +30004,21 @@ def resolve_director_raw_scene_pronouns(
     history_metadata=None,
     segment_seconds=None,
 ):
-    """Resolve clear person pronouns after RAW acceptance; fail soft on drift."""
+    """Resolve clear person pronouns in timed RAW; preserve end state exactly."""
     original = _canonicalize_director_timestamps(raw_scene).strip()
     if not original or not str(subject_definitions or "").strip():
         return original
+
+    end_match = _DIRECTOR_END_CONTINUITY_RE.search(original)
+    if not end_match:
+        raise ValueError("RAW pronoun resolver requires End continuity state.")
+    timed_original = original[:end_match.start()].rstrip()
+    end_state_original = original[end_match.start():].strip()
+
     print("Checking pronouns segment:", flush=True)
     result = llm_request(
         build_director_pronoun_resolution_messages(
-            original,
+            timed_original,
             subject_definitions=subject_definitions,
         ),
         response_format=DIRECTOR_PRONOUN_RESOLUTION_RESPONSE_FORMAT,
@@ -30028,16 +30035,22 @@ def resolve_director_raw_scene_pronouns(
     if isinstance(result, str):
         result = parse_llm_json_content(result, repair_on_failure=False)
     if not isinstance(result, dict) or set(result) != {"raw_scene"}:
-        raise ValueError(
-            "RAW pronoun resolver must return only raw_scene."
-        )
-    resolved = _canonicalize_director_timestamps(
+        raise ValueError("RAW pronoun resolver must return only raw_scene.")
+
+    resolved_timed = _canonicalize_director_timestamps(
         result.get("raw_scene", "")
     ).strip()
-    if not resolved:
+    print(
+        "Checking pronouns segment: LLM result="
+        + (resolved_timed or "<empty>"),
+        flush=True,
+    )
+    if not resolved_timed:
         raise ValueError("RAW pronoun resolver returned empty raw_scene.")
-    if _director_timestamps(resolved) != _director_timestamps(original):
+    if _director_timestamps(resolved_timed) != _director_timestamps(timed_original):
         raise ValueError("RAW pronoun resolver changed timestamps.")
+
+    resolved = (resolved_timed + "\n" + end_state_original).strip()
     structure_errors = _director_raw_scene_structure_errors(
         resolved,
         segment_seconds,
@@ -30047,17 +30060,18 @@ def resolve_director_raw_scene_pronouns(
             "RAW pronoun resolver changed shot-script structure: "
             + "; ".join(structure_errors)
         )
-    if resolved == original:
+
+    if resolved_timed == timed_original:
         print("Checking pronouns segment: no replacements.", flush=True)
     else:
-        original_lines = original.splitlines()
-        resolved_lines = resolved.splitlines()
+        original_lines = timed_original.splitlines()
+        resolved_lines = resolved_timed.splitlines()
         replacements = []
         for before, after in zip(original_lines, resolved_lines):
             if before != after:
                 replacements.append(f"{before.strip()} -> {after.strip()}")
         if len(original_lines) != len(resolved_lines):
-            replacements = ["RAW text changed while preserving validated structure."]
+            replacements = ["timed RAW text changed while preserving timestamps."]
         if replacements:
             for replacement in replacements:
                 print(

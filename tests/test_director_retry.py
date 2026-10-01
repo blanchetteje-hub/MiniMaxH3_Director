@@ -101,19 +101,21 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:04.500, she pushes them into the closet.\n"
             "End continuity state: they are inside the closet."
         )
-        resolved = (
+        resolved_timed = (
             "At 00:01.000, Amy grabs Will and Amber.\n"
-            "At 00:04.500, Amy pushes Will and Amber into the closet.\n"
-            "End continuity state: Will and Amber are inside the closet."
+            "At 00:04.500, Amy pushes Will and Amber into the closet."
         )
-        request = mock.Mock(return_value={"raw_scene": resolved})
+        request = mock.Mock(return_value={"raw_scene": resolved_timed})
         result = minimax.resolve_director_raw_scene_pronouns(
             original,
             "<Subject 1> is Amy. <Subject 2> is Will. <Subject 3> is Amber.",
             llm_request=request,
             segment_seconds=6.0,
         )
-        self.assertEqual(result, resolved)
+        self.assertEqual(
+            result,
+            resolved_timed + "\nEnd continuity state: they are inside the closet.",
+        )
         self.assertEqual(
             request.call_args.kwargs["history_metadata"]["purpose"],
             "director_raw_scene_pronoun_resolution",
@@ -125,12 +127,11 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
             "At 00:04.500, she pushes them into the closet.\n"
             "End continuity state: they are inside the closet."
         )
-        resolved = (
+        resolved_timed = (
             "At 00:01.000, Amy grabs Will and Amber.\n"
-            "At 00:04.500, Amy pushes Will and Amber into the closet.\n"
-            "End continuity state: Will and Amber are inside the closet."
+            "At 00:04.500, Amy pushes Will and Amber into the closet."
         )
-        request = mock.Mock(return_value={"raw_scene": resolved})
+        request = mock.Mock(return_value={"raw_scene": resolved_timed})
         with mock.patch("builtins.print") as printer:
             minimax.resolve_director_raw_scene_pronouns(
                 original,
@@ -145,6 +146,30 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         self.assertIn("replaced", output)
         self.assertIn("Amy pushes Will and Amber", output)
 
+    def test_raw_pronoun_resolution_preserves_end_state_exactly(self):
+        original = (
+            "At 00:01.000, Amy looks at Will.\n"
+            "At 00:04.500, she waves to him.\n"
+            "End continuity state: she stands beside him."
+        )
+        request = mock.Mock(return_value={
+            "raw_scene": (
+                "At 00:01.000, Amy looks at Will.\n"
+                "At 00:04.500, Amy waves to Will."
+            )
+        })
+        result = minimax.resolve_director_raw_scene_pronouns(
+            original,
+            "<Subject 1> is Amy. <Subject 2> is Will.",
+            llm_request=request,
+            segment_seconds=6.0,
+        )
+        self.assertTrue(
+            result.endswith("End continuity state: she stands beside him.")
+        )
+        sent = request.call_args.args[0][-1]["content"]
+        self.assertNotIn("End continuity state:", sent)
+
     def test_raw_pronoun_resolution_rejects_timestamp_drift(self):
         original = (
             "At 00:01.000, Amy grabs Will.\n"
@@ -154,8 +179,7 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
         request = mock.Mock(return_value={
             "raw_scene": (
                 "At 00:01.000, Amy grabs Will.\n"
-                "At 00:05.000, Amy pushes Will into the closet.\n"
-                "End continuity state: Will is inside."
+                "At 00:05.000, Amy pushes Will into the closet."
             )
         })
         with self.assertRaisesRegex(ValueError, "changed timestamps"):
