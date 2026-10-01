@@ -2,6 +2,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import minimax
 
@@ -314,6 +316,54 @@ class ForwardBeatValidationTests(unittest.TestCase):
             "untracked entity: 'parcel'",
         ):
             minimax._preflight_required_event_state_effects(arc)
+
+    def test_state_preflight_failure_preserves_saved_arc_and_does_not_start_beats(self):
+        arc = {
+            "planner": {"type": "source_span"},
+            "phases": [{
+                "phase_number": 1,
+                "beat_start": 1,
+                "beat_end": 1,
+                "required_events": [{
+                    "id": "E1",
+                    "event": "The parcel moves to the hall.",
+                    "beat_number": 1,
+                    "state_effects": [
+                        {"op": "set_location", "entity": "parcel", "value": "hall"},
+                    ],
+                }],
+            }],
+        }
+        plan = SimpleNamespace(
+            chapters=[SimpleNamespace(chapter=1, beat_count=1)]
+        )
+
+        def unexpected_llm(*args, **kwargs):
+            self.fail("Beat generation/validation must not start after state preflight fails.")
+
+        with tempfile.TemporaryDirectory() as directory:
+            arc_path = Path(directory) / "arc.json"
+            beats_path = Path(directory) / "beats.txt"
+            state_path = Path(directory) / "state.json"
+            with patch.object(
+                minimax,
+                "build_source_span_macro_arc_from_story",
+                return_value=(plan, arc),
+            ):
+                with self.assertRaises(minimax.RequiredEventStateApplicationError):
+                    minimax.generate_beats_from_story(
+                        "The parcel moves to the hall.",
+                        1,
+                        path=str(beats_path),
+                        story_arc_path=str(arc_path),
+                        validation_state_path=str(state_path),
+                        llm_request=unexpected_llm,
+                        reuse_story_arc=False,
+                    )
+
+            self.assertTrue(arc_path.exists())
+            self.assertTrue(Path(str(arc_path) + ".sha256").exists())
+            self.assertFalse(state_path.exists())
 
     def test_valid_beat_commits_assigned_effects_after_validation(self):
         def validator(messages, **kwargs):
