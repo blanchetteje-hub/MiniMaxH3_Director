@@ -1,0 +1,28 @@
+{
+  "job_id": "tests-2806-trust-raw-fallback",
+  "kind": "run_tests",
+  "started_at": 1790895555.7491777,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_forward_beat_validation.py::ForwardBeatValidationTests::test_malformed_accepted_state_observation_does_not_block_valid_beat",
+      "tests\\test_forward_beat_validation.py::ForwardBeatValidationTests::test_raw_scene_timed_description_strips_end_state_and_keeps_actions"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 0,
+    "passed": true,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 2 items\n\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_malformed_accepted_state_observation_does_not_block_valid_beat PASSED [ 50%]\ntests/test_forward_beat_validation.py::ForwardBeatValidationTests::test_raw_scene_timed_description_strips_end_state_and_keeps_actions PASSED [100%]\n\n============================== 2 passed in 2.79s ==============================\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790895557.0885284,
+    "finished_at": 1790895560.6445494
+  },
+  "finished_at": 1790895560.6445494,
+  "status": "ok"
+}
