@@ -1,0 +1,7 @@
+{
+  "kind": "run_acceptance",
+  "job_id": "acceptance-2697-beat-source-boundary-dormant",
+  "model": "gpt",
+  "code_branch": "gpt-arc-refresh",
+  "timeout_seconds": 3600
+}
