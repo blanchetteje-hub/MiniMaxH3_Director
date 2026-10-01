@@ -1,0 +1,12 @@
+{
+  "job_id": "tests-2793-terminal-beat-boundary",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_summary_to_story_pipeline.py",
+    "tests/test_story_planner.py",
+    "tests/test_beat_at_a_time_validator.py",
+    "tests/test_forward_beat_validation.py"
+  ],
+  "timeout_seconds": 1800
+}
