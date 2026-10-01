@@ -488,7 +488,16 @@ class LLMSamplingRoutingTests(unittest.TestCase):
         self.assertNotIn("thinking", request_json)
         self.assertNotIn("chat_template", request_json)
         self.assertNotIn("jinja", request_json)
-        self.assertNotIn("chat_template_kwargs", request_json)
+        self.assertEqual(
+            request_json["chat_template_kwargs"],
+            {"enable_thinking": True},
+        )
+        self.assertEqual(request_json["reasoning_effort"], "low")
+        self.assertEqual(request_json["thinking_budget_tokens"], 128)
+        self.assertEqual(
+            request_json["reasoning_budget_message"],
+            ". Enough thinking, now answer.",
+        )
 
 
     @patch("minimax.requests.post")
@@ -960,7 +969,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("may cross into or out of that destination", prompt)
 
 
-    def test_beat_generation_includes_closed_boundary_contract(self):
+    def test_beat_generation_does_not_inject_closed_boundary_contract(self):
         phase = {
             "required_events": [
                 {
@@ -984,7 +993,8 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             2, batch_start=1, batch_end=2, current_phase=phase, macro_arc=arc,
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("CLOSED BARRIERS AT START", prompt)
+        self.assertNotIn("CLOSED BARRIERS AT START", prompt)
+        self.assertIn("Will enters the basement and the door is locked.", prompt)
         self.assertIn("2. basement door starts locked and blocks basement", prompt)
         self.assertIn("people on opposite sides cannot touch, pass objects", prompt)
     def test_beat_validator_includes_python_owned_barrier_binding(self):
@@ -1007,7 +1017,7 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         self.assertIn("Do not reinterpret it as an unrelated barrier", prompt)
 
 
-    def test_beat_generation_includes_python_owned_barrier_binding(self):
+    def test_beat_generation_does_not_inject_barrier_binding_rules(self):
         phase = {
             "required_events": [{
                 "beat_number": 2,
@@ -1024,7 +1034,11 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             batch_start=2, batch_end=2, current_phase=phase,
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("BARRIER NAME RULES", prompt)
+        self.assertNotIn("BARRIER NAME RULES", prompt)
+        self.assertIn(
+            "Amy gets Will and Amber into the basement and locks the door.",
+            prompt,
+        )
         self.assertIn("2. 'door' means the basement door.", prompt)
         self.assertIn("Do not use a different nearby door", prompt)
     def test_barrier_state_prompt_does_not_destroy_retracted_intact_barrier(self):
@@ -1704,7 +1718,7 @@ class DirectorPromptCallContractTests(unittest.TestCase):
         self.assertIn("Finish a finite task in the same beat", normalized)
         self.assertIn("Show the task happening and then finishing", normalized)
         self.assertIn("do not show only the work in progress or only the after-state", normalized)
-        self.assertIn("show that person receive or use it", normalized)
+        self.assertNotIn("show that person receive or use it", normalized)
         self.assertIn("same repeated/ongoing process", normalized)
         self.assertIn("Do not say last, final, every, all, or finished", normalized)
         response_format = minimax.build_beats_response_format(1, beat_start=1)
