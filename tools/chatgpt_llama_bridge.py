@@ -36,6 +36,7 @@ DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 DEFAULT_CODE_BRANCH = "gpt-arc-refresh"
 ACCEPTANCE_MODEL = "gpt"
 ACCEPTANCE_CODE_BRANCH = "gpt-arc-refresh"
+ACCEPTANCE_EXPERIMENT_BRANCHES = frozenset({"summary-to-story-test"})
 DEFAULT_EXEC_WORKTREE_NAME = ".chatgpt_exec_worktree"
 
 _ACTIVE_LOCAL_PROCESS = None
@@ -700,10 +701,14 @@ def execute_acceptance(job: dict, source_root: Path, result_dir: Path) -> dict:
     """Run the fixed prompt-generation acceptance suite on one code branch."""
 
     code_branch = str(job.get("code_branch") or ACCEPTANCE_CODE_BRANCH).strip()
-    if code_branch != ACCEPTANCE_CODE_BRANCH:
+    allowed_branches = {
+        ACCEPTANCE_CODE_BRANCH,
+        *ACCEPTANCE_EXPERIMENT_BRANCHES,
+    }
+    if code_branch not in allowed_branches:
         raise ValueError(
-            f"Acceptance jobs must run on {ACCEPTANCE_CODE_BRANCH!r}; "
-            f"got {code_branch!r}."
+            "Acceptance jobs must run on an approved code branch "
+            f"{sorted(allowed_branches)!r}; got {code_branch!r}."
         )
     model = str(job.get("model") or ACCEPTANCE_MODEL).strip()
     if model != ACCEPTANCE_MODEL:
