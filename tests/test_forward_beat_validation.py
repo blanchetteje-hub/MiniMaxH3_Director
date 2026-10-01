@@ -544,6 +544,24 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("blue vase", prompt)
         self.assertIn("Do not output story_progress", prompt)
 
+    def test_accepted_beat_state_prompt_requires_distinct_threat_identity(self):
+        state = minimax.new_beat_canonical_state()
+        state["threats"]["threat_1"] = {
+            "type": "raider",
+            "status": "dead",
+        }
+        prompt = minimax.build_accepted_beat_state_messages(
+            state,
+            "Another raider enters the room.",
+        )[-1]["content"]
+        normalized = " ".join(prompt.split())
+        self.assertIn("another", normalized)
+        self.assertIn("new", normalized)
+        self.assertIn("second", normalized)
+        self.assertIn("third", normalized)
+        self.assertIn("emit a separate threat entry", normalized)
+        self.assertIn("Python will assign its stable canonical threat ID", normalized)
+
     def test_accepted_beat_state_normalizes_unambiguous_threat_status_shorthand(self):
         parsed = minimax.parse_accepted_beat_state_patch(
             {"state_patch": {"threats": {"zombies": "active"}}},
