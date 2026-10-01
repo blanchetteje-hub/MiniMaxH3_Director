@@ -7,6 +7,26 @@ import minimax
 
 
 class SummaryToStoryPipelineTests(unittest.TestCase):
+    def test_story_pipeline_profiles_match_tuned_settings(self):
+        self.assertEqual(
+            minimax.STORY_EXPANSION_LLM_PARAMETERS["temperature"],
+            0.6,
+        )
+        self.assertEqual(minimax.STORY_EXPANSION_REASONING_EFFORT, "high")
+        self.assertEqual(
+            minimax.STORY_EXPANSION_REASONING_BUDGET_TOKENS,
+            1024,
+        )
+        self.assertEqual(
+            minimax.STORY_TO_BEATS_LLM_PARAMETERS["temperature"],
+            0,
+        )
+        self.assertEqual(minimax.STORY_TO_BEATS_REASONING_EFFORT, "medium")
+        self.assertEqual(
+            minimax.STORY_TO_BEATS_REASONING_BUDGET_TOKENS,
+            1024,
+        )
+
     def test_story_expansion_prompt_uses_target_runtime_and_source_summary(self):
         messages = minimax.build_story_expansion_messages(
             "A ranger crosses a flooded valley.",
