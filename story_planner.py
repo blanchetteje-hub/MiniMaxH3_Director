@@ -470,6 +470,10 @@ def classify_source_units(
             **sampling,
         )
         terminal = parse_binary_decision(terminal_raw)
+        print(
+            f"Terminal check span {unit.id}: {'YES' if terminal else 'NO'}",
+            flush=True,
+        )
 
         hard_reset = False
         if index > 0:
@@ -484,6 +488,10 @@ def classify_source_units(
                 **sampling,
             )
             hard_reset = parse_binary_decision(reset_raw)
+            print(
+                f"Hard-reset check span {unit.id}: {'YES' if hard_reset else 'NO'}",
+                flush=True,
+            )
 
         classified.append(
             unit.with_flags(
