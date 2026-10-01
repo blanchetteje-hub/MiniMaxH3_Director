@@ -376,7 +376,7 @@ BEAT_LLM_SAMPLING_PARAMETERS = {
 }
 
 STORY_EXPANSION_LLM_PARAMETERS = {
-    "temperature": 0.6,
+    "temperature": 0.4,
     "top_p": 0.95,
     "top_k": 0,
     "min_p": 0.05,
@@ -16903,8 +16903,8 @@ Every explicit event in the summary must happen visibly in the story. Do not
 compress, imply, or skip an explicit transition. If a character moves from one
 location to another, write the movement clearly enough that the character's
 location is unambiguous.
-Do not invent a route, barrier, door, window, container, or location transition
-unless it is needed to connect explicit summary events.
+When the summary does not specify a new location, route, barrier, or container,
+keep the action in the nearest already-established location rather than inventing one.
 {beat_support_rule}
 You may add connective staging and concrete detail, but do not add a new major
 plot event, outcome, or named character. Write one continuous story, not an
