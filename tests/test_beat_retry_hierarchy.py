@@ -44,6 +44,12 @@ class BeatRetryHierarchyTests(unittest.TestCase):
                 return {"state_effects": []}
             if purpose == "beat_generation":
                 return {"beats": ["Operator completes action X."]}
+            if purpose == "beat_repair":
+                repair_prompt = messages[-1]["content"]
+                self.assertIn("Make the smallest textual change", repair_prompt)
+                self.assertIn("Preserve wording that is not part of the problem", repair_prompt)
+                self.assertIn("do not reintroduce it", repair_prompt)
+                return {"beats": ["Operator completes action X."]}
             if purpose == "beat_validation":
                 validation_count += 1
                 if validation_count == 1:
@@ -75,6 +81,13 @@ class BeatRetryHierarchyTests(unittest.TestCase):
         )
         self.assertNotIn("macro_arc_create", purposes)
         self.assertNotIn("macro_arc_validate", purposes)
+        self.assertEqual(purposes.count("beat_generation"), 1)
+        self.assertEqual(purposes.count("beat_repair"), 1)
+        first_validation = purposes.index("beat_validation")
+        repair = purposes.index("beat_repair")
+        second_validation = purposes.index("beat_validation", first_validation + 1)
+        self.assertLess(first_validation, repair)
+        self.assertLess(repair, second_validation)
         self.assertEqual(purposes.count("beat_validation"), 2)
         self.assertNotIn("macro_state_preparation", purposes)
         self.assertNotIn("macro_state_semantic_validation", purposes)
