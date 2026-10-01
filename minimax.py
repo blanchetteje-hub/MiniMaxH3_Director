@@ -937,7 +937,7 @@ WRITE THE SCENE
 - Keep all timed action inside the {segment_seconds}-second clip.
 - Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
 - Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
-- After the timed action, add one short "End continuity state:" sentence when useful to describe the last visible frame. Do not add a new event there.
+- After the timed action, add exactly one short "End continuity state:" sentence describing the actual last visible frame after the final timed action. Include changed location/held-prop facts needed to start the next shot; do not repeat an earlier state or add a new event.
 
 {story_segment_ending_rules}
 
@@ -4846,6 +4846,20 @@ def _extract_end_continuity_state(raw_scene):
     if not matches:
         return text.strip()
     return text[matches[-1].end():].strip()
+
+
+def _explicit_director_end_state(raw_scene):
+    """Return only an explicitly labeled Director end state."""
+    text = str(raw_scene or "")
+    matches = list(
+        re.finditer(
+            r"(?i)\bend\s+continuity\s+state\s*:\s*",
+            text,
+        )
+    )
+    if len(matches) != 1:
+        return ""
+    return text[matches[0].end():].strip()
 
 
 _PHASE2_OMITTED = object()
@@ -23845,13 +23859,9 @@ def build_segment_request(
 
 # Prefer the previous Director shot ending for adjacent-shot continuity.
 def director_opening_handoff(previous_result, structured_summary=""):
-    """Return the previous canonical shot ending, falling back to structured state."""
+    """Return the previous explicit shot ending, falling back to structured state."""
     previous = previous_result if isinstance(previous_result, dict) else {}
     shot_end = str(previous.get("_director_end_state") or "").strip()
-    if not shot_end and previous:
-        shot_end = _extract_end_continuity_state(
-            get_detailed_description(previous, "")
-        )
     return shot_end or str(structured_summary or "").strip()
 
 
@@ -29765,6 +29775,34 @@ def request_segment_llm(bundle, beats, run_id, run_config):
         if raw_scene and raw_scene != "N/A":
             request1_result["raw_scene"] = raw_scene
 
+            structure_errors = _director_raw_scene_structure_errors(
+                raw_scene,
+                duration,
+            )
+            if structure_errors:
+                if request1_attempt >= DIRECTOR_RAW_SCENE_ATTEMPTS:
+                    raise BeatGenerationError(
+                        f"Director Request 1 returned malformed shot script for "
+                        f"Segment {segment_number}: " + "; ".join(structure_errors)
+                    )
+                print(
+                    f"Director Request 1 shot-script structure failed "
+                    f"(attempt {request1_attempt}/{DIRECTOR_RAW_SCENE_ATTEMPTS}); "
+                    f"retrying: " + "; ".join(structure_errors),
+                    flush=True,
+                )
+                request1_messages = copy.deepcopy(request1_base_messages)
+                if request1_messages:
+                    request1_messages[-1] = dict(request1_messages[-1])
+                    request1_messages[-1]["content"] = (
+                        f"{request1_messages[-1].get('content', '')}\n\n"
+                        "RETRY: Return the complete timed shot script with exactly "
+                        "one trailing End continuity state matching the final timed "
+                        "frame. Keep every timestamp inside the clip and do not "
+                        "begin NEXT BEAT."
+                    )
+                continue
+
             # Baseline-reset rule: old deterministic Director guards report
             # defects but do not reject or regenerate the scene. This lets a
             # complete prompt set expose which rules are actually worth adding
@@ -29784,11 +29822,6 @@ def request_segment_llm(bundle, beats, run_id, run_config):
                         f"{getattr(check, '__name__', 'diagnostic')} failed: {error}"
                     )
 
-            collect_diagnostic(
-                _director_raw_scene_structure_errors,
-                raw_scene,
-                duration,
-            )
             collect_diagnostic(_director_explicit_limb_conflict_errors, raw_scene)
             collect_diagnostic(_director_explicit_object_state_conflict_errors, raw_scene)
             collect_diagnostic(
@@ -31224,7 +31257,7 @@ def _run_main(
                 f"{args.capture_h3_validation_fixture}.",
                 flush=True,
             )
-        request1_ending_scene = _extract_end_continuity_state(
+        request1_ending_scene = _explicit_director_end_state(
             payload.get("raw_scene", "")
         )
         if request1_ending_scene:
