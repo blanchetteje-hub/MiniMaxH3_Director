@@ -10523,6 +10523,8 @@ Important rules:
   vase; capture is broader than prompt injection.
 - Record barriers/doors/windows and threat state when the beat explicitly
   establishes their persistent final state.
+- Use threats only for hostile or dangerous entities. Ordinary people, victims,
+  or protected characters belong under characters, not threats.
 - Use existing character/entity names from CURRENT CANONICAL STATE when the beat
   clearly refers to them.
 - If ACCEPTED BEAT explicitly introduces a distinct threat with wording such as
@@ -10568,7 +10570,10 @@ def build_accepted_beat_state_response_format():
                             },
                             "threats": {
                                 "type": "object",
-                                "additionalProperties": True,
+                                "additionalProperties": {
+                                    "type": "object",
+                                    "additionalProperties": True,
+                                },
                             },
                             "story": {
                                 "type": "object",
