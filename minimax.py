@@ -16902,6 +16902,8 @@ Every explicit event in the summary must happen visibly in the story. Do not
 compress, imply, or skip an explicit transition. If a character moves from one
 location to another, write the movement clearly enough that the character's
 location is unambiguous.
+Do not invent a route, barrier, door, window, container, or location transition
+unless it is needed to connect explicit summary events.
 {beat_support_rule}
 You may add connective staging and concrete detail, but do not add a new major
 plot event, outcome, or named character. Write one continuous story, not an
