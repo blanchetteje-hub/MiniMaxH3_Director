@@ -39,34 +39,25 @@ class BeatAtATimeValidatorTests(unittest.TestCase):
             candidate_beat="Amy cooks breakfast.",
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("Relational roles are material", prompt)
+        self.assertIn("Preserve every required participant and beneficiary role", prompt)
         self.assertIn(
-            "Reject a rewrite that changes or drops a required beneficiary/ participant",
+            "When immediate receipt is part of the job, food/hand-offs must reach the intended recipient",
             prompt,
         )
         self.assertIn(
-            "A prerequisite, approach, or partial progress is NOT completion",
+            "Preparation or partial progress is insufficient",
             prompt,
         )
         self.assertIn(
-            "PREVIOUS FINAL BEAT is history only",
+            "PREVIOUS FINAL BEAT and CURRENT STATE are authoritative history",
             prompt,
         )
         self.assertIn(
-            "cannot satisfy, replace, or excuse any action or result explicitly "
-            "assigned to CURRENT JOB",
+            "Show every assigned action and result in THIS beat",
             prompt,
         )
         self.assertIn(
-            "Do not infer the required action only from an aftermath",
-            prompt,
-        )
-        self.assertIn(
-            "cannot by itself satisfy a separately required action",
-            prompt,
-        )
-        self.assertIn(
-            "Entering a room does not imply locking its door",
+            'aftermath ("having finished X") cannot substitute for performing an assigned action now',
             prompt,
         )
 

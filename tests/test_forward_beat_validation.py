@@ -54,7 +54,7 @@ class ForwardBeatValidationTests(unittest.TestCase):
             )
 
         self.assertEqual(len(coherence_prompts), 2)
-        self.assertNotIn("PREVIOUS BEAT", coherence_prompts[0])
+        self.assertNotIn("\nPREVIOUS BEAT\n", coherence_prompts[0])
         self.assertIn(
             "PREVIOUS BEAT\nTala opens the gate.\n\nCANDIDATE BEAT\n"
             "Tala walks through the open gate.",
@@ -91,17 +91,16 @@ class ForwardBeatValidationTests(unittest.TestCase):
         self.assertIn("CURRENT JOB", messages[1]["content"])
         self.assertIn("RESERVED FOR LATER", messages[1]["content"])
         self.assertIn("STATE EFFECTS IF VALID", messages[1]["content"])
-        self.assertIn("C. RESERVED FOR LATER", messages[1]["content"])
-        self.assertIn("FIRST CHECK — FINITE ENDPOINT", messages[1]["content"])
-        self.assertIn("natural observable completion endpoint", messages[1]["content"])
-        self.assertIn("progressive wording", messages[1]["content"])
-        self.assertIn("ongoing/repeated process", messages[1]["content"])
-        self.assertIn("SECOND CHECK — ASSIGNED PERSISTENT END STATE", messages[1]["content"])
-        self.assertIn("entities already named in CURRENT STATE or STATE EFFECTS IF VALID", messages[1]["content"])
-        self.assertIn("matching assigned typed effect", messages[1]["content"])
-        self.assertIn("incidental target or threat that appears only", messages[1]["content"])
-        self.assertIn("merely labeling it for them", messages[1]["content"])
-        self.assertIn("work merely made FOR someone", messages[1]["content"])
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("CURRENT JOB is the only required work", prompt)
+        self.assertIn("Finite tasks must visibly finish", prompt)
+        self.assertIn('wording like "is cooking"', prompt)
+        self.assertIn("ongoing/repeated jobs need only a non-terminal instance", prompt)
+        self.assertIn("RESERVED FOR LATER is never required now", prompt)
+        self.assertIn("new persistent changes require a matching assigned effect", prompt)
+        self.assertIn("Do not require effects for new incidental entities", prompt)
+        self.assertIn("Work made FOR someone needs no delivery unless required", prompt)
+        self.assertLess(len(" ".join(m["content"] for m in messages).split()), 500)
 
     def test_validator_rejects_completed_state_grammar_for_assigned_action(self):
         messages = minimax.build_beat_validation_messages(
@@ -111,13 +110,13 @@ class ForwardBeatValidationTests(unittest.TestCase):
             None,
             "With the last zombie slain, Amy opens the basement.",
         )
-        prompt = messages[1]["content"]
-        self.assertIn("TEMPORAL ACTION OWNERSHIP", prompt)
-        self.assertIn("TEMPORAL ACTION OWNERSHIP", prompt)
-        self.assertIn("narrate X as an event that happens now", prompt)
-        self.assertIn("presupposes X is already complete", prompt)
-        self.assertIn("Reject even when the completed state", prompt)
-        self.assertIn("narrates the causative action itself", prompt)
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("Show every assigned action and result in THIS beat", prompt)
+        self.assertIn(
+            'PREVIOUS FINAL BEAT or aftermath ("having finished X") cannot '
+            'substitute for performing an assigned action now', prompt,
+        )
+        self.assertIn("repeating an irreversible action without restoration", prompt)
 
 
     def test_validator_prompt_rejects_materially_incoherent_staging(self):
@@ -128,10 +127,10 @@ class ForwardBeatValidationTests(unittest.TestCase):
             "Amy lets the kids out of the basement.",
             "Amy slashes the final zombie's neck with her pistol.",
         )
-        prompt = messages[1]["content"]
-        self.assertIn("E. MATERIAL FIDELITY", prompt)
+        prompt = " ".join(messages[1]["content"].split())
+        self.assertIn("Allow harmless staging", prompt)
         self.assertIn(
-            "one tool must not perform a distinct action that belongs to a different tool class",
+            "Tools must suit their actions unless an unusual capability is established",
             prompt,
         )
         self.assertIn("protected/non-hostile participant", prompt)
@@ -191,7 +190,8 @@ class ForwardBeatValidationTests(unittest.TestCase):
                 {
                     "id": "E1",
                     "state_effects": [
-                        {"op": "set_barrier_state", "entity": "primary", "value": "open"}
+                        {"op": "set_barrier_state", "entity": "primary", "value": "open"},
+                        {"op": "set_location", "entity": "Operator", "value": "hall"},
                     ],
                 }
             ],
@@ -200,13 +200,14 @@ class ForwardBeatValidationTests(unittest.TestCase):
         compact_prompt = " ".join(prompt.split())
         self.assertIn("STATE EFFECTS IF VALID", prompt)
         self.assertIn('"id":"E1"', prompt)
-        self.assertIn('"value":"open"', prompt)
+        self.assertIn('"value":"hall"', prompt)
+        self.assertNotIn('"set_barrier_state"', prompt)
         self.assertIn(
-            "Every listed typed effect must be supported by the candidate's FINAL state",
+            "Every listed effect must match the candidate's FINAL state after all actions",
             compact_prompt,
         )
         self.assertIn(
-            "Do not invent missing-effect obligations for new incidental entities",
+            "Do not require effects for new incidental entities",
             compact_prompt,
         )
 
@@ -324,11 +325,11 @@ class ForwardBeatValidationTests(unittest.TestCase):
                 }
             ],
         )
-        prompt = messages[1]["content"]
+        prompt = " ".join(messages[1]["content"].split())
         self.assertIn("candidate's FINAL state", prompt)
         self.assertIn("picked up then set down is", prompt)
         self.assertIn("not held at the end", prompt)
-        self.assertIn("placed aside is not equipped", prompt)
+        self.assertIn("Possession is not equipping", prompt)
 
 
     def test_validator_preserves_group_beneficiary_roles(self):
@@ -340,11 +341,11 @@ class ForwardBeatValidationTests(unittest.TestCase):
             "The parent finishes breakfast while the children only watch.",
         )
         prompt = messages[1]["content"]
-        self.assertIn("person or group", prompt)
+        self.assertIn("every required participant", prompt)
         self.assertIn("beneficiary", prompt)
         normalized = " ".join(prompt.split())
-        self.assertIn("merely labeling it for them or leaving it elsewhere is insufficient", normalized)
-        self.assertIn("performance, lesson, or demonstration", normalized)
+        self.assertIn("labeling or leaving them elsewhere is insufficient", normalized)
+        self.assertIn("watching or listening can satisfy a performance/lesson role", normalized)
 
 
     def test_beat_generation_uses_compact_creative_prompt(self):

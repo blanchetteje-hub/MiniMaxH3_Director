@@ -11175,127 +11175,42 @@ CANDIDATE BEAT
 {candidate_beat}
 
 CHECKS
-Use CURRENT JOB as the only source of required work for this beat. The RESERVED
-FOR LATER section is never required now; it exists only to detect early leakage.
+1. CURRENT JOB is the only required work. Show every assigned action and result
+in THIS beat. PREVIOUS FINAL BEAT or aftermath ("having finished X") cannot
+substitute for performing an assigned action now. Preparation or partial progress
+is insufficient. Finite tasks must visibly finish, even with wording like "is
+cooking"; explicitly ongoing/repeated jobs need only a non-terminal instance.
 
-FIRST CHECK — FINITE ENDPOINT: When CURRENT JOB assigns a finite activity or
-task to this beat, CANDIDATE BEAT must show that activity occurring in THIS beat
-and reaching a natural observable completion endpoint in THIS beat. An aftermath-
-only rewrite such as "having finished X", "after finishing X", "X is finished",
-or equivalent completed-state wording is INVALID when CURRENT JOB assigns X as
-the action to perform. Merely showing the activity underway, continuing,
-approaching completion, or partly complete is also INVALID, even when CURRENT JOB
-itself uses progressive wording such as "is cooking" or "is repairing". Do not
-force a terminal endpoint when CURRENT JOB explicitly
-describes an ongoing/repeated process such as majority, most, repeatedly,
-throughout, continuing, or an equivalent non-terminal assignment; one valid
-non-terminal instance may satisfy that repeated job.
+2. Preserve every required participant and beneficiary role. When immediate
+receipt is part of the job, food/hand-offs must reach the intended recipient;
+labeling or leaving them elsewhere is insufficient. Work made FOR someone needs
+no delivery unless required. Honor explicit later pickup/storage; watching or
+listening can satisfy a performance/lesson role.
 
-SECOND CHECK — ASSIGNED PERSISTENT END STATE: Enforce this check ONLY for
-entities already named in CURRENT STATE or STATE EFFECTS IF VALID. For those
-already-known subjects and items, STATE EFFECTS IF VALID is authoritative about
-persistent final-state changes assigned to this beat. If CANDIDATE BEAT ends
-with one of those known entities newly relocated, equipped/unequipped,
-held/dropped, damaged, or otherwise persistently changed, require a matching
-assigned typed effect. Boundary, barrier, door/window, and containment changes
-are intentionally outside this validation phase.
-Temporary motion that returns to the prior state does not need an effect. A new
-incidental target or threat that appears only in CURRENT JOB/CANDIDATE BEAT is
-outside this check. NEVER reject because such a newly introduced incidental
-entity is injured, killed, destroyed, removed, or otherwise changed without a
-typed effect. Typed effects are required here only for entities already present
-in CURRENT STATE or explicitly named by STATE EFFECTS IF VALID.
+3. PREVIOUS FINAL BEAT and CURRENT STATE are authoritative history. Apply candidate
+actions in order. Reject clear impossibilities: unavailable objects, conflicting
+locations, unresolved closed barriers/containment, or repeating an irreversible
+action without restoration. Unknown facts are not contradictions.
 
-A. CURRENT JOB: The candidate must accomplish the meaning of CURRENT JOB. Accept
-paraphrases and clear implications, but require every materially required action
-or result when the job has multiple parts. PREVIOUS FINAL BEAT is history only:
-it may constrain what is possible, but it cannot satisfy, replace, or excuse any
-action or result explicitly assigned to CURRENT JOB. Every such requirement must
-be visibly accomplished by CANDIDATE BEAT. When CURRENT JOB explicitly assigns
-an action to this beat, CANDIDATE BEAT must show that action being performed or
-completed in this beat. Do not infer the required action only from an aftermath,
-condition, or state that could already have been produced by PREVIOUS FINAL BEAT.
-An aftermath can satisfy an explicitly required result, but it cannot by itself
-satisfy a separately required action.
+4. RESERVED FOR LATER is never required now. Do not complete a distinct later job
+early. Allow preparation belonging to CURRENT JOB and another instance of an
+intentionally repeated job, without prematurely ending the process.
 
-TEMPORAL ACTION OWNERSHIP: If CURRENT JOB assigns action X to THIS beat, require
-the candidate to narrate X as an event that happens now. Grammar that merely
-presupposes X is already complete is INVALID evidence for X. Examples of invalid
-evidence include "with X done", "with X slain", "after X was completed",
-"once X was finished", "X was already complete", "having finished X",
-"after finishing X", or any equivalent completed-state construction. Those
-phrases describe the result/state after X; they do not depict
-the assigned action occurring in this beat. Reject even when the completed state
-matches the desired result and even when later parts of CURRENT JOB are shown
-correctly. Accept only if the candidate also narrates the causative action itself
-in this beat. If CURRENT JOB assigns an irreversible terminal result, the
-candidate must begin with a target/process that has not already reached that
-result and visibly cause the transition now. Reapplying an already-satisfied
-terminal result is INVALID evidence for that newly assigned action.
+5. Every listed effect must match the candidate's FINAL state after all actions.
+Possession is not equipping; injury is not death; picked up then set down is not
+held at the end. For entities already in CURRENT STATE or STATE EFFECTS IF VALID,
+new persistent changes require a matching assigned effect. Do not require effects
+for new incidental entities or temporary motion that restores the prior state.
+Boundary, barrier, door/window, and containment changes are intentionally outside
+this validation phase.
 
-A prerequisite, approach, or partial progress is NOT completion of a later required result: if
-CURRENT JOB requires
-A then B, doing only A is invalid. Entering a room does not imply locking its
-door; reaching a door does not imply opening it; retrieving a weapon does not
-imply equipping it; drawing a weapon does not imply firing it. Relational roles are material: if CURRENT JOB says an action/result is for,
-with, or to a person or group, CANDIDATE BEAT must preserve that beneficiary,
-recipient, or participant role rather than merely keeping them present. For a finite consumable or explicit hand-off to a person, the intended
-recipient must visibly receive or be served the result when immediate receipt is
-part of the source meaning; merely labeling it for them or leaving it elsewhere
-is insufficient. For work merely made FOR someone, completing the work is enough
-unless the source explicitly requires delivery. Explicit later pickup/storage may
-make correct storage sufficient. Watching/listening may satisfy the role when
-that is itself the intended result, such as a performance, lesson, or
-demonstration. Reject a rewrite that changes or drops a required beneficiary/
-participant. Do not reject harmless visible detail.
+6. Allow harmless staging. Reject details that materially change the assigned
+action, location, outcome, participant treatment, or story meaning. Tools must
+suit their actions unless an unusual capability is established. Do not invent
+harmful treatment of protected/non-hostile participants.
 
-B. CONTINUITY / POSSIBILITY: Treat PREVIOUS FINAL BEAT and CURRENT STATE as
-authoritative history. Reject only clear contradictions or physical impossibilities,
-such as repeating an irreversible action, using an unavailable object, crossing a
-known closed or locked barrier without resolving it, escaping containment without
-release, contradicting a known location, or reviving a dead, destroyed, removed,
-or otherwise terminal entity. Unknown is not automatically contradictory. Apply
-explicit candidate actions in order when they change what becomes possible.
-
-C. RESERVED FOR LATER: Never require this work in the current beat. Do not
-materially complete a distinct reserved-later job early. Preparation and incidental
-overlap that naturally belongs to CURRENT JOB are allowed. If the reserved job is
-identical to CURRENT JOB because the source intentionally repeats an ongoing
-process, allow another non-terminal instance; reject only terminal/exhaustive
-wording that consumes later work.
-
-D. TYPED STATE EFFECTS: This section validates ONLY the typed effects that
-are actually listed above. Do not invent missing-effect obligations for new
-incidental entities introduced by CURRENT JOB/CANDIDATE BEAT. Every listed typed
-effect must be supported by the candidate's FINAL state after all candidate
-actions happen in order. Judge meaning,
-not exact verbs. A later action can undo an earlier one: picked up then set down is
-not held at the end; gripped/readied then leaned or placed aside is not equipped at
-the end. Possession is not automatically equipped; breaking a barrier is not
-automatically entering through it; a wound is not automatically death. Reject
-explicit contradiction or partial action when the assigned effect requires a
-complete result. Do not require state effects for temporary detail that is not
-assigned. Any new persistent change created by the candidate must be represented
-by an assigned typed effect.
-
-E. MATERIAL FIDELITY: Harmless local staging is allowed, but reject invented
-details that materially change the assigned action, participant treatment, object
-use, location/result, or story meaning. Named tools and weapons must be used in a
-physically coherent way unless CURRENT JOB explicitly establishes an unusual use;
-for example one tool must not perform a distinct action that belongs to a different tool class.
-Do not invent consequential aggression, injury, forced movement, humiliation, or
-other harmful treatment of a protected/non-hostile participant merely to dramatize
-an otherwise simple assigned action. Do not reject ordinary neutral staging.
-
-OUTPUT CONTRACT
-If valid:
-{{"valid": true, "issue": ""}}
-
-If invalid:
-{{"valid": false, "issue": "short concrete explanation"}}
-
-Return exactly one JSON object and no markdown. The issue value must always be a
-string. Do not output category names, issue codes, lists, or arrays.
+Return only {{"valid": true, "issue": ""}} when all checks pass, otherwise
+{{"valid": false, "issue": "short concrete explanation"}}. No extra keys or markdown.
 """.strip()
     if settings.get("user_prompt_only"):
         user = f"{system}\n\n{user}"

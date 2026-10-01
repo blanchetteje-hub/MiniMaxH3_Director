@@ -726,11 +726,11 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
         )
         prompt = " ".join(messages[1]["content"].split())
         self.assertIn(
-            "NEVER reject because such a newly introduced incidental entity is injured, killed",
+            "For entities already in CURRENT STATE or STATE EFFECTS IF VALID, new persistent changes require a matching assigned effect",
             prompt,
         )
         self.assertIn(
-            "Do not invent missing-effect obligations for new incidental entities",
+            "Do not require effects for new incidental entities",
             prompt,
         )
 

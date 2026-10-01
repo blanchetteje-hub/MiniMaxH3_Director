@@ -90,9 +90,9 @@ class SimplifiedPromptRegressionTests(unittest.TestCase):
             candidate_beat="Amy is in the kitchen having finished cooking breakfast.",
             assigned_state_effects=[],
         )
-        prompt = messages[-1]["content"]
+        prompt = " ".join(messages[-1]["content"].split())
         self.assertIn('"having finished X"', prompt)
-        self.assertIn("must show that activity occurring in THIS beat", prompt)
+        self.assertIn("Show every assigned action and result in THIS beat", prompt)
 
     def test_director_rules_are_minimal_and_action_focused(self):
         rules = minimax.build_director_rules(
