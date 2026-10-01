@@ -47,25 +47,39 @@ The project goal is to expand paragraph-scale through multi-page stories into fu
 
 Sampling is now a hard responsibility split.
 
-**Creative calls**
+**Creative sampling calls**
 - character canon establishment when configured facts are missing;
 - ARC CREATE and ARC REPAIR;
-- BEAT CREATE and BEAT REPAIR;
 - Director Request 1 / RAW scene creation.
 
-All creative calls use the same request profile:
+These calls use:
 - temperature: `0.8`
 - top_p: `0.95`
 - top_k: `0`
 - min_p: `0.05`
 - repeat_penalty: `1.15`
-- seed: `42`
+- randomized request seed
 - reasoning enabled
 - reasoning_effort: `high`
 - reasoning budget: `1024` tokens
 
+**Beat writing calls**
+BEAT CREATE and BEAT REPAIR are semantic writing calls, but local 20B testing showed
+that any temperature above zero causes substantial instruction drift. They therefore use:
+- temperature: `0`
+- seed: `42`
+- repeat_penalty: `1.15`
+- reasoning enabled
+- reasoning_effort: `high`
+- reasoning budget: `1024` tokens
+
+BEAT REPAIR has its own `beat_repair` purpose and must make the smallest textual
+change that fixes the reported validator/coherence issue. The repaired beat is always
+sent back through the normal validator/coherence loop before acceptance.
+
 For llama.cpp's OpenAI-compatible request path, Python sends `reasoning_effort="high"`,
-`thinking_budget_tokens=1024`, and `chat_template_kwargs.enable_thinking=true`.
+`thinking_budget_tokens=1024`, and `chat_template_kwargs.enable_thinking=true` for
+both creative-sampling calls and Beat writing calls.
 
 **Deterministic calls**
 Every LLM call not on the explicit creative allowlist is deterministic by default.
@@ -1499,7 +1513,7 @@ Canonicalization rules:
 
 ### Beat CREATE prompt contract
 
-Beat CREATE is a creative expansion call. Its normal prompt contains:
+Beat CREATE is a semantic expansion call with temperature-0 generation. Its normal prompt contains:
 - `SOURCE FILM`: authoritative source span for the current chapter;
 - `KNOWN SUBJECTS`: known character names;
 - `CHARACTER FACTS`: persisted configured canon;
@@ -1507,7 +1521,7 @@ Beat CREATE is a creative expansion call. Its normal prompt contains:
 - `PREVIOUS BEAT` only when an actual previous beat exists;
 - repair/user-specific sections only when actually applicable.
 
-Do not emit empty/N/A barrier sections merely because deterministic state machinery exists elsewhere. The normal creative prompt deliberately stays small.
+Do not emit empty/N/A barrier sections merely because deterministic state machinery exists elsewhere. The normal Beat CREATE prompt deliberately stays small.
 
 Core Beat CREATE rules:
 - one beat per assigned event;
