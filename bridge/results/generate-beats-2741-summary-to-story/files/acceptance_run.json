@@ -1,0 +1,124 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_zombie_house",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_zombie_house.json",
+  "benchmark_sha256": "db249ed8880bf22a7709458e03db3a74eecdec825573ff8ea0d114ad84e40098",
+  "repository_revision": "1f3d1e9a3e2240eebf03d73fa4d37e0d31670c28",
+  "created_at_utc": "2026-10-01T17:26:32Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "--generate-beats",
+    "8",
+    "--model",
+    "gpt"
+  ],
+  "exit_code": 1,
+  "capture_status": {
+    "complete": false,
+    "mode": "planning_only",
+    "expected_segments": 0,
+    "captured_segments": [],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 8,
+        "narrative_purpose": "Adapt the continuous working story into sequential film beats.",
+        "broad_progression": "Follow the expanded story from beginning to end without changing event order or outcomes.",
+        "characters_introduced": [],
+        "location": "As established by the expanded story.",
+        "required_events": [
+          {
+            "id": "E1",
+            "event": "Amy hovered over the sizzling skillet in the bright kitchen, folding beaten eggs into fluffy batter for Will’s pancakes while Amber‑gold waffles sizzled beside him as their giggles filled the morning light.",
+            "beat_number": 1,
+            "state_effects": []
+          },
+          {
+            "id": "E2",
+            "event": "A zombie crashed through the front door, and Amy yanked Will and Amber onto her hip, rushing down the narrow stairs to the basement before slamming the heavy hatch shut behind them.",
+            "beat_number": 2,
+            "state_effects": [],
+            "depends_on": [
+              "E1"
+            ]
+          },
+          {
+            "id": "E3",
+            "event": "She dropped the children onto a rickety chair at the back of the dim room, then stepped back onto the kitchen floor to retrieve weapons from the fridge.",
+            "beat_number": 3,
+            "state_effects": [],
+            "depends_on": [
+              "E2"
+            ]
+          },
+          {
+            "id": "E4",
+            "event": "Amy pushed aside the refrigerator door, revealing a pistol in its back panel and a steel katana beside it, gripping both with trembling fingers.",
+            "beat_number": 4,
+            "state_effects": [],
+            "depends_on": [
+              "E3"
+            ]
+          },
+          {
+            "id": "E5",
+            "event": "The first zombie staggered from the living‑room doorway as Amy fired the pistol at its head, sending the creature sprawling through bone and flesh.",
+            "beat_number": 5,
+            "state_effects": [],
+            "depends_on": [
+              "E4"
+            ]
+          },
+          {
+            "id": "E6",
+            "event": "A second lunged toward her, but she swung the katana in a wide arc, slicing it cleanly across the midsection before it hit the floor with a thud.",
+            "beat_number": 6,
+            "state_effects": [],
+            "depends_on": [
+              "E5"
+            ]
+          },
+          {
+            "id": "E7",
+            "event": "More zombies surged from every cracked window; Amy moved between them, firing headshots and slashing precise strokes until the last one collapsed beside her.",
+            "beat_number": 7,
+            "state_effects": [],
+            "depends_on": [
+              "E6"
+            ]
+          },
+          {
+            "id": "E8",
+            "event": "She breathed out a shaky sigh, turned toward the kitchen doorway, scooped up Will and Amber with arms wrapped around them, pushed through the hatch into bright sunlight again, holding the pistol and katana at the ready for whatever came next.",
+            "beat_number": 8,
+            "state_effects": [],
+            "depends_on": [
+              "E7"
+            ]
+          }
+        ],
+        "required_end_state": "End at the expanded story's stated conclusion."
+      }
+    ]
+  },
+  "generated_beats_text": null,
+  "segments": [],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
