@@ -691,3 +691,31 @@ Barrier/state information will be reintroduced only when a concrete beat failure
 - Current llama.cpp supports `reasoning_budget_message` in the request payload, so this no longer depends only on the server launch default.
 - Commits: `67793614298b28ce8cb8f414127d21e7e6a57a31`, `4af3910b996bf067df997eabacd4297f05db7fe3`, `468523f3077b25316f849ad87afc09cb98992a82`.
 
+## 2026-09-30 — full story context for beats + boundary enforcement dormant
+
+Observed repair failure:
+- Beat 7 correctly expanded "She lets her kids out of the basement" to opening
+  the basement door and releasing Will/Amber.
+- Python rejected it because the canonical barrier was locked and the assigned
+  state effects did not include `set_barrier_state`.
+- The repair prompt then incorrectly asked the creative model to preserve the
+  source event while avoiding the source-required boundary transition.
+
+Changes:
+- `SOURCE FILM` in both phase Beat CREATE and single-beat repair now receives
+  the full parsed `story.txt` narrative rather than the current chapter span.
+- The assigned event remains the local execution authority.
+- Beat boundary/barrier enforcement is now fully dormant:
+  - removed deterministic unassigned barrier end-state rejection;
+  - removed barrier binding / closed-boundary / preserved-barrier sections from
+    the beat semantic validator;
+  - filtered boundary/containment facts and effects from the validator view;
+  - removed the post-validator destination-presence boundary gate.
+- Boundary helper code remains in place for later surgical reintroduction.
+- Relevant commits:
+  - `56f40c58ef7a7cfa19eb1cdfa5561b33b70f9bb9` — full story in Beat CREATE/repair
+  - `1e0019b1fd9a629388e5d719f609dfbe5da35b60` — disable structural barrier rejection
+  - `222bc8929399f573e58d76539fbbcd46dc97b1dc` — boundary-blind semantic validator
+  - `0089a064c2c857ff4518f6e12aeadd27bf237e23` — disable destination-presence gate
+  - `e650fda8fedf7a9634b5cd7304fd79c9f0ec9328` — update regressions
+
