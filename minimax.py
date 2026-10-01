@@ -925,6 +925,7 @@ WRITE THE SCENE
 - Short dialogue is allowed when it naturally supports CURRENT BEAT.
 - Camera movement may clarify action.
 - Keep all timed action inside the {segment_seconds}-second clip.
+- Spread CURRENT BEAT across the clip with at least {segment_min_beats} timed micro-beats; place the final meaningful timed action at or after {final_quarter_start} seconds.
 - Use timestamp lines in the form "At 00:ss.mmm,". Python will normalize minor timestamp formatting differences.
 - After the timed action, add one short "End continuity state:" sentence when useful to describe the last visible frame. Do not add a new event there.
 
