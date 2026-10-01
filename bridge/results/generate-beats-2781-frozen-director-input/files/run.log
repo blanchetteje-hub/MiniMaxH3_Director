@@ -1,0 +1,97 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-nojgnv0l\repo\beats.txt with 8 creative story beats.
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-nojgnv0l\repo\expanded_story.txt.
+Expanded story:
+Amy stirred a pot of oatmeal on the stove while Will and Amber giggled over their cereal bowls. The kitchen smelled of cinnamon and fresh coffee as she whisked eggs for scrambled breakfast.
+
+A sudden thud at the front door shattered the quiet; a zombie lunged through the gap, its pale hand reaching for her apron. Amy’s eyes widened—Will squealed, and Amber clutched her small hand.
+
+She shoved Will into the pantry closet behind the fridge and yanked Amber to the same spot, slamming the heavy door shut with a thud that echoed down the hallway. Both kids were now safe inside the cramped space.
+
+Amy stepped back onto the kitchen floor, breathing hard. She slid beneath the counter, pulled out her hidden arsenal—a pistol tucked in a drawer and a katana she’d kept behind the stove. The metal glinted as she held them close to her chest.
+
+The first zombie lunged at her from the doorway; Amy fired the pistol, the bullet finding its mark and sending the creature sprawling. A second one emerged from the pantry door—she swung the katana in a swift arc that sliced through bone. Another appeared at the back window; she shot again, the sound of impact echoing.
+
+More zombies kept coming: third, fourth, fifth—all met with gunfire or blade. Each time Amy struck, the undead fell to the floor, their groans fading into silence as she moved from one attack to the next.
+
+When the last zombie collapsed in a splat of blood and brain, Amy stepped out of the kitchen onto the hallway floor. The pantry door was still ajar; Will’s small voice called for her. She opened it again, pulled both kids out together, hugging them close as they ran toward the front door with her behind them.
+Story-derived Beat framework created with 8 beats.
+Beat 1 created: Amy stirs a pot of oatmeal on the stove while Will and Amber giggle over their cereal bowls in the bright kitchen.
+Beat 2 created: A sudden thud at the front door shatters the quiet as a zombie lunges through the gap, its pale hand reaching for Amy's apron, causing Will to squeal and Amber to clutch her small hand.
+Beat 3 created: Amy shoves Will into the pantry closet behind the fridge and pulls Amber to the same cramped space, slamming the heavy door shut with a thud that echoes down the hallway.
+Beat 4 created: Breathing hard, Amy steps back onto the kitchen floor, slides beneath the counter, and retrieves her hidden arsenal—a pistol tucked in a drawer and a katana kept behind the stove.
+Beat 5 created: The first zombie lunges at her from the doorway; she fires the pistol, sending it sprawling, then a second emerges from the pantry door as she swings the katana in a swift arc that slices through bone.
+Beat 6 created: A third appears at the back window and she shoots again, while more zombies keep coming—fourth, fifth—all met with gunfire or blade as Amy moves from attack to attack.
+Beat 7 created: When the last zombie collapses in a splat of blood and brain, Amy steps out onto the hallway floor, leaving the kitchen behind.
+Beat 8 created: The pantry door is still ajar; Will's small voice calls for her, she opens it again, pulls both kids out together, hugs them close as they run toward the front door with her trailing behind.
+Beat 1 jobs: current=E1 - Amy stirs a pot of oatmeal on the stove while Will and Amber giggle over their cereal bowls in the bright kitchen.; next=E2 - A sudden thud at the front door shatters the quiet as a zombie lunges through the gap, its pale hand reaching for Amy's apron, causing Will to squeal and Amber to clutch her small hand.; completed before=none; pending before=E1, E2, E3, E4, E5, E6, E7, E8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Checking Beat 1 within-beat physical coherence (attempt 1/10).
+Beat 1 coherence attempt 1/10: VALID.
+Beat 1 observed persistent state: {"characters": {"Amy": {"location": "bright kitchen"}, "Will": {"location": "bright kitchen"}, "Amber": {"location": "bright kitchen"}}}
+Beat 1 accepted: Amy stirs a pot of oatmeal on the stove while Will and Amber giggle over their cereal bowls in the bright kitchen.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - A sudden thud at the front door shatters the quiet as a zombie lunges through the gap, its pale hand reaching for Amy's apron, causing Will to squeal and Amber to clutch her small hand.; next=E3 - Amy shoves Will into the pantry closet behind the fridge and pulls Amber to the same cramped space, slamming the heavy door shut with a thud that echoes down the hallway.; completed before=E1; pending before=E2, E3, E4, E5, E6, E7, E8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+Beat 2 coherence attempt 1/10: VALID.
+Beat 2 observed persistent state: {"threats": {"threat_1": {"location": "front door", "status": "active"}}}
+Beat 2 accepted: A sudden thud at the front door shatters the quiet as a zombie lunges through the gap, its pale hand reaching for Amy's apron, causing Will to squeal and Amber to clutch her small hand.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - Amy shoves Will into the pantry closet behind the fridge and pulls Amber to the same cramped space, slamming the heavy door shut with a thud that echoes down the hallway.; next=E4 - Breathing hard, Amy steps back onto the kitchen floor, slides beneath the counter, and retrieves her hidden arsenal—a pistol tucked in a drawer and a katana kept behind the stove.; completed before=E1, E2; pending before=E3, E4, E5, E6, E7, E8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: VALID; issue: none
+Checking Beat 3 within-beat physical coherence (attempt 1/10).
+Beat 3 coherence attempt 1/10: VALID.
+Beat 3 observed persistent state: {"characters": {"Amy": {"location": "pantry closet", "contained_in": "pantry closet"}, "Will": {"location": "pantry closet", "contained_in": "pantery closet"}, "Amber": {"location": "pantry closet", "contained_in": "pantry closet"}}}
+Beat 3 accepted: Amy shoves Will into the pantry closet behind the fridge and pulls Amber to the same cramped space, slamming the heavy door shut with a thud that echoes down the hallway.
+Beat 3 accepted and finalized; committed required events: E3; completed after=E1, E2, E3
+Beat 4 jobs: current=E4 - Breathing hard, Amy steps back onto the kitchen floor, slides beneath the counter, and retrieves her hidden arsenal—a pistol tucked in a drawer and a katana kept behind the stove.; next=E5 - The first zombie lunges at her from the doorway; she fires the pistol, sending it sprawling, then a second emerges from the pantry door as she swings the katana in a swift arc that slices through bone.; completed before=E1, E2, E3; pending before=E4, E5, E6, E7, E8
+Validating Beat 4 (attempt 1/10) with the single beat validator.
+Beat 4 validation attempt 1/10: VALID; issue: none
+Checking Beat 4 within-beat physical coherence (attempt 1/10).
+Beat 4 coherence attempt 1/10: VALID.
+Beat 4 observed persistent state: {"characters": {"Amy": {"location": "kitchen floor", "contained_in": null, "held_objects": ["pistol", "katana"]}}}
+Beat 4 accepted: Breathing hard, Amy steps back onto the kitchen floor, slides beneath the counter, and retrieves her hidden arsenal—a pistol tucked in a drawer and a katana kept behind the stove.
+Beat 4 accepted and finalized; committed required events: E4; completed after=E1, E2, E3, E4
+Beat 5 jobs: current=E5 - The first zombie lunges at her from the doorway; she fires the pistol, sending it sprawling, then a second emerges from the pantry door as she swings the katana in a swift arc that slices through bone.; next=E6 - A third appears at the back window and she shoots again, while more zombies keep coming—fourth, fifth—all met with gunfire or blade as Amy moves from attack to attack.; completed before=E1, E2, E3, E4; pending before=E5, E6, E7, E8
+Validating Beat 5 (attempt 1/10) with the single beat validator.
+Beat 5 validation attempt 1/10: VALID; issue: none
+Checking Beat 5 within-beat physical coherence (attempt 1/10).
+Beat 5 coherence attempt 1/10: VALID.
+Beat 5 observed persistent state: {"threats": {"threat_2": {"location": "pantry door", "status": "active"}}}
+Beat 5 accepted: The first zombie lunges at her from the doorway; she fires the pistol, sending it sprawling, then a second emerges from the pantry door as she swings the katana in a swift arc that slices through bone.
+Beat 5 accepted and finalized; committed required events: E5; completed after=E1, E2, E3, E4, E5
+Beat 6 jobs: current=E6 - A third appears at the back window and she shoots again, while more zombies keep coming—fourth, fifth—all met with gunfire or blade as Amy moves from attack to attack.; next=E7 - When the last zombie collapses in a splat of blood and brain, Amy steps out onto the hallway floor, leaving the kitchen behind.; completed before=E1, E2, E3, E4, E5; pending before=E6, E7, E8
+Validating Beat 6 (attempt 1/10) with the single beat validator.
+Beat 6 validation attempt 1/10: VALID; issue: none
+Beat 6 finite-endpoint attempt 1/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.
+Beat 6 validation attempt 2/10: INVALID; issue: Beat failed structural validation: Beat dropped named Subject(s) explicitly required by CURRENT JOB: Amy
+Validating Beat 6 (attempt 3/10) with the single beat validator.
+Beat 6 validation attempt 3/10: VALID; issue: none
+Checking Beat 6 within-beat physical coherence (attempt 3/10).
+Beat 6 coherence attempt 3/10: VALID.
+Beat 6 observed persistent state: {"threats": {"threat_3": {"location": "back window", "status": "active"}, "threat_4": {"location": "pantry door", "status": "active"}, "threat_5": {"location": "front door", "status": "active"}}}
+Beat 6 accepted: Amy shoots a third zombie through the back window, slashes a fourth that bursts out of the pantry door, and fires again to bring down a fifth emerging at the front.
+Beat 6 accepted and finalized; committed required events: E6; completed after=E1, E2, E3, E4, E5, E6
+Beat 7 jobs: current=E7 - When the last zombie collapses in a splat of blood and brain, Amy steps out onto the hallway floor, leaving the kitchen behind.; next=E8 - The pantry door is still ajar; Will's small voice calls for her, she opens it again, pulls both kids out together, hugs them close as they run toward the front door with her trailing behind.; completed before=E1, E2, E3, E4, E5, E6; pending before=E7, E8
+Validating Beat 7 (attempt 1/10) with the single beat validator.
+Beat 7 validation attempt 1/10: VALID; issue: none
+Checking Beat 7 within-beat physical coherence (attempt 1/10).
+Beat 7 coherence attempt 1/10: VALID.
+Beat 7 observed persistent state: {"characters": {"Amy": {"location": "hallway"}}}
+Beat 7 accepted: When the last zombie collapses in a splat of blood and brain, Amy steps out onto the hallway floor, leaving the kitchen behind.
+Beat 7 accepted and finalized; committed required events: E7; completed after=E1, E2, E3, E4, E5, E6, E7
+Beat 8 jobs: current=E8 - The pantry door is still ajar; Will's small voice calls for her, she opens it again, pulls both kids out together, hugs them close as they run toward the front door with her trailing behind.; next=none; completed before=E1, E2, E3, E4, E5, E6, E7; pending before=E8
+Validating Beat 8 (attempt 1/10) with the single beat validator.
+Beat 8 validation attempt 1/10: VALID; issue: none
+Checking Beat 8 within-beat physical coherence (attempt 1/10).
+Beat 8 coherence attempt 1/10: VALID.
+Beat 8 observed persistent state: {"characters": {"Amy": {"location": "front hallway"}, "Will": {"location": "pantry door vicinity", "contained_in": "pantry closet"}, "Amber": {"location": "front hallway", "contained_in": null}}, "environment": {"doors": {"pantry_door": {"status": "ajar"}}}}
+Beat 8 accepted: The pantry door is still ajar; Will's small voice calls for her, she opens it again, pulls both kids out together, hugs them close as they run toward the front door with her trailing behind.
+Beat 8 accepted and finalized; committed required events: E8; completed after=E1, E2, E3, E4, E5, E6, E7, E8
+Story arc and beats generated successfully.
