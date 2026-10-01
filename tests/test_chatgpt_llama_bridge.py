@@ -190,5 +190,95 @@ class ChatGPTLlamaBridgePytestTests(unittest.TestCase):
         self.assertFalse(result["timed_out"])
 
 
+
+class ChatGPTLlamaBridgeGracefulStopTests(unittest.TestCase):
+    def setUp(self):
+        bridge._GRACEFUL_STOP_REQUESTED.clear()
+        bridge._ACTIVE_LOCAL_PROCESS = None
+
+    def tearDown(self):
+        bridge._GRACEFUL_STOP_REQUESTED.clear()
+        bridge._ACTIVE_LOCAL_PROCESS = None
+
+    @mock.patch.object(bridge, "_terminate_active_local_process")
+    def test_ctrl_q_request_sets_graceful_stop_without_hard_exit(self, terminate):
+        bridge.request_bridge_graceful_stop()
+        self.assertTrue(bridge._GRACEFUL_STOP_REQUESTED.is_set())
+        terminate.assert_called_once_with()
+
+    def test_run_local_process_marks_graceful_interrupt(self):
+        bridge._GRACEFUL_STOP_REQUESTED.set()
+
+        fake = _FakeProcess()
+        fake.stdout = []
+        fake.returncode = 130
+
+        with mock.patch.object(bridge.subprocess, "Popen", return_value=fake):
+            result = bridge.run_local_process(
+                ["python", "-c", "pass"],
+                Path.cwd(),
+                timeout=1,
+            )
+
+        self.assertTrue(result["interrupted"])
+
+    @mock.patch.object(bridge, "commit_result")
+    @mock.patch.object(bridge, "execute_job")
+    @mock.patch.object(bridge, "sync_branch")
+    def test_process_once_publishes_interrupted_job_and_stops_before_next(
+        self,
+        sync_branch,
+        execute_job,
+        commit_result,
+    ):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            worktree = root / "mailbox"
+            jobs = worktree / "bridge" / "jobs"
+            jobs.mkdir(parents=True)
+            (jobs / "job-1.json").write_text(
+                json.dumps({"job_id": "job-1", "kind": "run_tests"}),
+                encoding="utf-8",
+            )
+            (jobs / "job-2.json").write_text(
+                json.dumps({"job_id": "job-2", "kind": "run_tests"}),
+                encoding="utf-8",
+            )
+
+            def interrupted_job(*args, **kwargs):
+                bridge._GRACEFUL_STOP_REQUESTED.set()
+                return {
+                    "job_id": "job-1",
+                    "kind": "run_tests",
+                    "interrupted": True,
+                    "bridge_stop_requested": True,
+                }
+
+            execute_job.side_effect = interrupted_job
+
+            handled = bridge.process_once(
+                root,
+                worktree,
+                "gpt-runtime",
+                "http://127.0.0.1:1234",
+                1024,
+            )
+
+            self.assertEqual(handled, 1)
+            self.assertEqual(execute_job.call_count, 1)
+            payload = json.loads(
+                (
+                    worktree
+                    / "bridge"
+                    / "results"
+                    / "job-1"
+                    / "result.json"
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(payload["status"], "interrupted")
+            self.assertTrue(payload["interrupted"])
+            commit_result.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
