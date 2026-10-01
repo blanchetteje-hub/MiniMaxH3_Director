@@ -575,6 +575,15 @@ class ForwardBeatValidationTests(unittest.TestCase):
                 state_before=minimax.new_beat_canonical_state(),
             )
 
+    def test_accepted_beat_state_schema_requires_object_roots(self):
+        schema = (
+            minimax.build_accepted_beat_state_response_format()
+            ["json_schema"]["schema"]["properties"]["state_patch"]
+        )
+        self.assertFalse(schema["additionalProperties"])
+        for root in ("characters", "environment", "threats", "story"):
+            self.assertEqual(schema["properties"][root]["type"], "object")
+
     def test_validator_preserves_group_beneficiary_roles(self):
         messages = minimax.build_beat_validation_messages(
             "",
