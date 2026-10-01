@@ -1,0 +1,10 @@
+{
+  "job_id": "tests-2778-director-duration-staging",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_simplified_prompt_regressions.py",
+    "tests/test_director_retry.py"
+  ],
+  "timeout_seconds": 1800
+}
