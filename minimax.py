@@ -592,8 +592,18 @@ DIRECTOR_RAW_SCENE_RESPONSE_FORMAT = {
                         "beginning NEXT BEAT."
                     ),
                 },
+                "finite_activity_complete": {"type": "boolean"},
+                "named_beneficiaries_complete": {"type": "boolean"},
+                "activity_tools_settled": {"type": "boolean"},
+                "beat_complete": {"type": "boolean"},
             },
-            "required": ["raw_scene"],
+            "required": [
+                "raw_scene",
+                "finite_activity_complete",
+                "named_beneficiaries_complete",
+                "activity_tools_settled",
+                "beat_complete",
+            ],
             "additionalProperties": False,
         },
     },
@@ -931,8 +941,14 @@ WRITE THE SCENE
 
 {story_segment_ending_rules}
 
+COMPLETION CHECK
+- finite_activity_complete: true only if finite action assigned by CURRENT BEAT reaches an observable endpoint in this clip.
+- named_beneficiaries_complete: true only if every named person or target explicitly required by CURRENT BEAT receives the assigned action/result.
+- activity_tools_settled: true only if tools/props used by CURRENT BEAT reach the required end condition.
+- beat_complete: true only when all three checks above are true.
+
 RETURN JSON ONLY
-{{"raw_scene":"..."}}
+{{"raw_scene":"...","finite_activity_complete":true,"named_beneficiaries_complete":true,"activity_tools_settled":true,"beat_complete":true}}
 """
 # Request 2 is a formatter/translator. Request 1 owns creative direction.
 H3_AUDIOVISUAL_FORMATTER_SYSTEM = """You are a strict formatter/translator for the final MiniMax H3 prompt.
