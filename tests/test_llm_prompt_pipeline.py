@@ -863,8 +863,8 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_state_effects=wrapped_effects,
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("PYTHON-OWNED CLOSED BOUNDARIES", prompt)
-        self.assertIn("basement door protects 'basement'", prompt)
+        self.assertNotIn("PYTHON-OWNED CLOSED BOUNDARIES", prompt)
+        self.assertNotIn("basement door protects 'basement'", prompt)
 
     def test_beat_destination_presence_contract_skips_subject_already_inside(self):
         state = minimax.new_beat_canonical_state()
@@ -911,9 +911,9 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_state_effects=[],
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("retrieve/use an object located inside", prompt)
-        self.assertIn("Do not stage a required action/object inside the protected destination", prompt)
-        self.assertIn("prop, target, or other interior content", prompt)
+        self.assertNotIn("retrieve/use an object located inside", prompt)
+        self.assertNotIn("protected destination", prompt)
+        self.assertIn("Boundary, barrier, door/window, and containment changes are intentionally outside this validation phase.", prompt)
 
     def test_beat_validator_forbids_cross_boundary_contact_with_contained_occupant(self):
         state = minimax.new_beat_canonical_state()
@@ -937,9 +937,9 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_state_effects=[],
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("Known contained occupants: Will", prompt)
-        self.assertIn("cannot reach, grab, bite, strike", prompt)
-        self.assertIn("physically interact across the boundary", prompt)
+        self.assertNotIn("Known contained occupants: Will", prompt)
+        self.assertNotIn("physically interact across the boundary", prompt)
+        self.assertNotIn("containment", prompt.split("CURRENT STATE", 1)[1].split("CURRENT JOB", 1)[0])
 
     def test_beat_validator_includes_closed_boundary_contract(self):
         state = minimax.new_beat_canonical_state()
@@ -963,10 +963,9 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_state_effects=[],
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("PYTHON-OWNED CLOSED BOUNDARIES", prompt)
-        self.assertIn("basement door protects 'basement'", prompt)
-        self.assertIn("object, body part", prompt)
-        self.assertIn("may cross into or out of that destination", prompt)
+        self.assertNotIn("PYTHON-OWNED CLOSED BOUNDARIES", prompt)
+        self.assertNotIn("basement door protects 'basement'", prompt)
+        self.assertNotIn("may cross into or out of that destination", prompt)
 
 
     def test_beat_generation_does_not_inject_closed_boundary_contract(self):
@@ -1010,9 +1009,9 @@ class DirectorRawSceneCompletionTests(unittest.TestCase):
             assigned_state_effects=effects,
         )
         prompt = " ".join(messages[1]["content"].split())
-        self.assertIn("PYTHON-OWNED BARRIER BINDING", prompt)
-        self.assertIn("'door' is the boundary of 'basement'", prompt)
-        self.assertIn("Do not reinterpret it as an unrelated barrier", prompt)
+        self.assertNotIn("PYTHON-OWNED BARRIER BINDING", prompt)
+        self.assertNotIn("'door' is the boundary of 'basement'", prompt)
+        self.assertNotIn("Do not reinterpret it as an unrelated barrier", prompt)
 
 
     def test_beat_generation_does_not_inject_barrier_binding_rules(self):
