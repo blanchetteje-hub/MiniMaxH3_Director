@@ -1,0 +1,172 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_zombie_house",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_zombie_house.json",
+  "benchmark_sha256": "db249ed8880bf22a7709458e03db3a74eecdec825573ff8ea0d114ad84e40098",
+  "repository_revision": "e895df3982d174935f5f30e7d62c912bff4ef056",
+  "created_at_utc": "2026-10-01T15:03:22Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "--generate-beats",
+    "8",
+    "--model",
+    "gpt"
+  ],
+  "exit_code": 0,
+  "capture_status": {
+    "complete": true,
+    "mode": "planning_only",
+    "expected_segments": 0,
+    "captured_segments": [],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 8,
+        "narrative_purpose": "Execute this exact authoritative story.txt chapter span.",
+        "broad_progression": "A realistic action film about a woman, Amy, protecting her two kids from a zombie apocalypse. Amy is at home on a normal day, cooking breakfast for her young kids (Will and Amber). A zombie breaks into the house. Amy rushes her two kids to a safe location and returns to the kitchen. She retrieves her hidden arsenal consisting of a pistol and a katana. The majority of the film is Amy fighting and killing attacking zombies one by one, but more zombies continue to attack her. After Amy kills the last of the zombies, she returns to the safe location and brings Will and Amber back out with her.",
+        "characters_introduced": [],
+        "location": "As established by story.txt.",
+        "required_end_state": "After Amy kills the last of the zombies, she returns to the safe location and brings Will and Amber back out with her.",
+        "required_events": [
+          {
+            "id": "E1",
+            "event": "Amy is at home on a normal day, cooking breakfast for her young kids (Will and Amber).",
+            "beat_number": 1,
+            "state_effects": [
+              {
+                "op": "set_location",
+                "entity": "Amy",
+                "value": "home"
+              }
+            ]
+          },
+          {
+            "id": "E2",
+            "event": "A zombie breaks into the house. Amy rushes her two kids to a safe location and returns to the kitchen.",
+            "beat_number": 2,
+            "depends_on": [
+              "E1"
+            ],
+            "state_effects": [
+              {
+                "op": "set_threat_state",
+                "entity": "zombie",
+                "value": "active"
+              },
+              {
+                "op": "set_location",
+                "entity": "zombie",
+                "value": "house"
+              },
+              {
+                "op": "set_location",
+                "entity": "Will",
+                "value": "safe location"
+              },
+              {
+                "op": "set_location",
+                "entity": "Amber",
+                "value": "safe location"
+              }
+            ]
+          },
+          {
+            "id": "E3",
+            "event": "She retrieves her hidden arsenal consisting of a pistol and a katana.",
+            "beat_number": 3,
+            "depends_on": [
+              "E2"
+            ],
+            "state_effects": [
+              {
+                "op": "set_item_state",
+                "entity": "pistol",
+                "owner": "Amy",
+                "value": "held"
+              },
+              {
+                "op": "set_item_state",
+                "entity": "katana",
+                "owner": "Amy",
+                "value": "held"
+              }
+            ]
+          },
+          {
+            "id": "E4",
+            "event": "The majority of the film is Amy fighting and killing attacking zombies one by one, but more zombies continue to attack her.",
+            "beat_number": 4,
+            "depends_on": [
+              "E3"
+            ],
+            "state_effects": []
+          },
+          {
+            "id": "E5",
+            "event": "The majority of the film is Amy fighting and killing attacking zombies one by one, but more zombies continue to attack her.",
+            "beat_number": 5,
+            "depends_on": [
+              "E4"
+            ],
+            "state_effects": []
+          },
+          {
+            "id": "E6",
+            "event": "The majority of the film is Amy fighting and killing attacking zombies one by one, but more zombies continue to attack her.",
+            "beat_number": 6,
+            "depends_on": [
+              "E5"
+            ],
+            "state_effects": []
+          },
+          {
+            "id": "E7",
+            "event": "The majority of the film is Amy fighting and killing attacking zombies one by one, but more zombies continue to attack her.",
+            "beat_number": 7,
+            "depends_on": [
+              "E6"
+            ],
+            "state_effects": [
+              {
+                "op": "set_threat_state",
+                "entity": "zombies",
+                "value": "active"
+              }
+            ]
+          },
+          {
+            "id": "E8",
+            "event": "After Amy kills the last of the zombies, she returns to the safe location and brings Will and Amber back out with her.",
+            "beat_number": 8,
+            "depends_on": [
+              "E7"
+            ],
+            "state_effects": []
+          }
+        ],
+        "source_text": "A realistic action film about a woman, Amy, protecting her two kids from a zombie apocalypse.\nAmy is at home on a normal day, cooking breakfast for her young kids (Will and Amber).\nA zombie breaks into the house. Amy rushes her two kids to a safe location and returns to the kitchen.\nShe retrieves her hidden arsenal consisting of a pistol and a katana.\nThe majority of the film is Amy fighting and killing attacking zombies one by one, but more zombies continue to attack her.\nAfter Amy kills the last of the zombies, she returns to the safe location and brings Will and Amber back out with her."
+      }
+    ]
+  },
+  "generated_beats_text": "# Phase 1\n1. Amy flips pancakes on the stove while Will watches her and Amber helps stir the batter.\n2. A zombie bursts through the front door; Amy pulls Will and Amber into the back closet before heading back to the kitchen.\n3. Amy slides a pistol from behind the fridge and draws a katana from its sheath on the counter.\n4. Amy slashes the nearest zombie with her katana, then shoots another that lunges at her.\n5. Amy uses a rolling pin to crush a second zombie's head while a third charges from the hallway.\n6. Amy fires her pistol at a fourth zombie as it swipes at her shoulder, then swings the katana to finish it.\n7. Amy leaps over a fifth zombie with a quick kick and cuts its neck with the katana before another lunges from behind.\n8. After dispatching the final zombie, Amy opens the back door, pulls Will and Amber out, and steps into the street together.\n",
+  "segments": [],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "beats.txt": "generated\\beats.txt",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
