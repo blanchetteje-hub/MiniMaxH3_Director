@@ -102,6 +102,8 @@ class SimplifiedPromptRegressionTests(unittest.TestCase):
         self.assertIn("Show CURRENT BEAT clearly", rules)
         self.assertIn("concrete visible/audible action", rules)
         self.assertIn("CURRENT BEAT wins", rules)
+        self.assertIn("at least 4 timed micro-beats", rules)
+        self.assertIn("at or after 6 seconds", rules)
         self.assertIn("You are the creative director", rules)
         self.assertNotIn("AUTHORITATIVE FINAL STATE CONTRACT", rules)
 
