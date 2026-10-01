@@ -5635,15 +5635,15 @@ def reset_generation_state_subjects_for_new_phase(
 # Render parsed subject names and descriptive prose for beat planning.
 
 def load_canonical_data(path=CANONICAL_DATA_FILE):
-    """Load the authored character facts, which are the canon source of truth."""
+    """Load the configured character fields that should be canonicalized."""
     data = load_text_file(path, required=True).strip()
     if not data:
-        raise ValueError("canonical_data.txt must contain character information.")
+        raise ValueError("canonical_data.txt must list canonical character fields.")
     return data
 
 
-def build_character_canon_messages(canonical_data):
-    """Structure file facts, filling only missing age, clothing, or gender."""
+def build_character_canon_messages(canonical_data, story, subject_definitions=""):
+    """Establish configured character facts from story and subject sources."""
     return [
         {
             "role": "system",
@@ -5655,15 +5655,17 @@ def build_character_canon_messages(canonical_data):
         {
             "role": "user",
             "content": (
-                "Convert CANONICAL DATA to JSON. Include each named character "
-                "and each fact stated about that character. Return name, age, "
-                "clothing, and gender for every character. Copy these values "
-                "when stated; if one is missing, invent one reasonable value "
-                "from the character information. Put any additional explicitly "
-                "stated facts in other_facts using short field names. Never invent "
-                "additional fields or replace an explicit fact. Clothing means "
-                "baseline clothing. Do not use story or subject information.\n\n"
+                "CANONICAL DATA lists the character fields to establish. "
+                "Use STORY and SUBJECTS to identify the named characters and copy "
+                "any explicit values for those fields. If a configured value is "
+                "missing, invent one reasonable value once. Return name, age, "
+                "clothing, and gender for every named character. Clothing means "
+                "baseline clothing. Do not invent characters. Put only additional "
+                "explicitly stated character facts in other_facts; never replace "
+                "an explicit fact.\n\n"
                 "CANONICAL DATA\n" + str(canonical_data).strip()
+                + "\n\nSTORY\n" + str(story or "").strip()
+                + "\n\nSUBJECTS\n" + str(subject_definitions or "").strip()
             ),
         },
     ]
@@ -5771,8 +5773,11 @@ def parse_character_canon_result(raw_result):
     return {"fields": list(fields), "characters": characters}
 
 
-def _character_canon_source_hash(canonical_data):
-    return hashlib.sha256(str(canonical_data).strip().encode("utf-8")).hexdigest()
+def _character_canon_source_hash(canonical_data, story="", subject_definitions=""):
+    payload = "\n---CANONICAL DATA---\n".join(["", str(canonical_data).strip()])
+    payload += "\n---STORY---\n" + str(story or "").strip()
+    payload += "\n---SUBJECTS---\n" + str(subject_definitions or "").strip()
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def save_character_canon(
@@ -5809,15 +5814,21 @@ def save_character_canon(
 def load_or_generate_character_canon(
     canonical_data=None,
     *,
+    story="",
+    subject_definitions="",
     path=CHARACTER_CANON_FILE,
     llm_request=None,
     history_metadata=None,
 ):
-    """Reuse or convert the current canonical_data.txt character facts."""
+    """Reuse or establish configured character facts from story/subjects."""
     canonical_data = load_canonical_data() if canonical_data is None else str(canonical_data).strip()
     if not canonical_data:
-        raise ValueError("canonical_data.txt must contain character information.")
-    expected_hash = _character_canon_source_hash(canonical_data)
+        raise ValueError("canonical_data.txt must list canonical character fields.")
+    expected_hash = _character_canon_source_hash(
+        canonical_data,
+        story,
+        subject_definitions,
+    )
     raw = load_text_file(path, required=False)
     if raw:
         try:
@@ -5850,7 +5861,11 @@ def load_or_generate_character_canon(
     if llm_request is None:
         llm_request = ask_llm
     raw_result = llm_request(
-        build_character_canon_messages(canonical_data),
+        build_character_canon_messages(
+            canonical_data,
+            story,
+            subject_definitions,
+        ),
         response_format=build_character_canon_response_format(),
         history_metadata={
             **(history_metadata or {}),
@@ -30193,6 +30208,8 @@ def _run_main(
     canonical_data = load_canonical_data()
     character_canon = load_or_generate_character_canon(
         canonical_data,
+        story=story,
+        subject_definitions=subject_definitions,
         history_metadata={"run_id": run_id},
     )
     subject_information = format_beat_generation_subjects(subject_definitions)
