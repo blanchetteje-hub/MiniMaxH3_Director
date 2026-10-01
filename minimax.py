@@ -164,6 +164,9 @@ PROMPT_HISTORY_FILE = os.path.join(SCRIPT_DIR, "prompt_history.txt")
 
 GENERATED_PROMPTS_FILE = os.path.join(SCRIPT_DIR, "generated_prompts.txt")
 
+# Derived narrative used by the experimental summary -> story -> beats path.
+EXPANDED_STORY_FILE = os.path.join(SCRIPT_DIR, "expanded_story.txt")
+
 DEFAULT_GENERATED_PROMPT_SEGMENT_LENGTH = 8.0
 DEFAULT_GENERATED_PROMPT_MEGAPIXELS = 0.5
 
@@ -279,6 +282,9 @@ SUBJECT_LIST_FIELDS = (
 # GPT-20B local runtime is configured with an 8192-token context window.
 # Keep input below this so there is real room for the model's completion.
 LLM_CONTEXT_TOKEN_BUDGET = 8192
+# The experimental summary -> story -> beats path is intended for models with
+# long context. Other production calls retain the proven 8192-token budget.
+STORY_PIPELINE_CONTEXT_TOKEN_BUDGET = 60000
 LLM_CONTEXT_SAFETY_TOKENS = 128
 LLM_MIN_COMPLETION_TOKENS = 256
 LLM_INPUT_TOKEN_BUDGET = 4500
@@ -376,6 +382,8 @@ BEAT_WRITING_LLM_PURPOSES = frozenset({
 # These purpose names own creative expansion/restaging outside Beat CREATE/REPAIR.
 CREATIVE_LLM_PURPOSES = frozenset({
     "character_canon",
+    "story_expansion",
+    "story_to_beats",
     "macro_arc_create",
     "macro_arc_repair",
     "macro_arc_majority_tail_repair",
@@ -8247,6 +8255,7 @@ def ask_llm(
     enable_thinking=None,
     max_tokens=8192,
     parse_json_response=None,
+    context_token_budget=None,
 ):
     last_error = None
     last_connection_error = None
@@ -8254,8 +8263,15 @@ def ask_llm(
     received_response = False
     messages = normalize_lm_studio_messages(messages)
     estimated_input_tokens = estimate_message_tokens(messages)
-    available_completion_tokens = (
+    effective_context_budget = (
         LLM_CONTEXT_TOKEN_BUDGET
+        if context_token_budget is None
+        else int(context_token_budget)
+    )
+    if effective_context_budget <= LLM_CONTEXT_SAFETY_TOKENS:
+        raise ValueError("context_token_budget must leave room for completion.")
+    available_completion_tokens = (
+        effective_context_budget
         - LLM_CONTEXT_SAFETY_TOKENS
         - estimated_input_tokens
     )
@@ -8264,7 +8280,7 @@ def ask_llm(
             "LLM request exceeds the configured local context budget: "
             f"{estimated_input_tokens} estimated input tokens leave only "
             f"{max(0, available_completion_tokens)} completion tokens inside "
-            f"{LLM_CONTEXT_TOKEN_BUDGET}. Simplify the stage prompt."
+            f"{effective_context_budget}. Simplify the stage prompt."
         )
     effective_max_tokens = min(
         int(max_tokens),
