@@ -1,0 +1,149 @@
+Added States: 
+Emergency stop: press Ctrl+C (or Ctrl+Q on Windows).
+Generating the story arc and beats based on story.txt
+Asking LLM host to replace C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\beats.txt with 8 creative story beats.
+Expanded story saved to C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\expanded_story.txt.
+Expanded story:
+Amy flips a pancake on the stove, the sizzle filling the kitchen as she whisks eggs for Will’s cereal bowl. The bell above the front door rings once; it swings open with a groan and a lone, lurching zombie steps inside, its eyes glazed, mouth yawning.
+
+Will squeals, grabbing Amy’s hand. She pulls him toward the back of the house. Amber clutches her stuffed rabbit, eyes wide. Amy pushes both kids to the back door, slams it shut with a spare key and locks it tight. The children hide behind the curtain near the garage entrance while she steps out into the hallway.
+
+Amy returns to the kitchen, breath quickening. She pulls down the lower cabinet; in the hidden compartment she finds her pistol, then slides a katana from under the sink. Her fingers close on them with purpose.
+
+The first zombie lunges at Amy—pistol fired, bullet striking its torso, it collapses. A second one steps forward; she swings the katana, blade slicing through flesh and bone, sending the creature to the floor. Another lurches in; she fires again, killing this third threat. One by one, more zombies appear, each met with a shot or slash until the last of them falls.
+
+She wipes sweat from her brow, breathing hard. The kitchen is quiet save for the hum of the stove. Amy strides to the back door, opens it, and pulls Will and Amber out into the bright hallway. They step together toward the safety of their home’s rear porch, leaving the zombies behind in a silent heap on the floor.
+Story-derived Beat framework created with 8 beats.
+Beat 1 created: Amy flips pancakes in the kitchen while whisking eggs for Will's cereal bowl.
+Beat 2 created: A lone zombie lurches through the front door as its groan echoes, and Will squeals grabbing Amy’s hand.
+Beat 3 created: She pulls both kids toward the back of the house, slams the back door with a spare key, locks it tight, and they hide behind the curtain near the garage entrance while she steps into the hallway.
+Beat 4 created: Returning to the kitchen, Amy pulls down the lower cabinet, finds her hidden pistol, then slides a katana from under the sink, gripping them with purpose.
+Beat 5 created: The first zombie lunges at her; she fires the pistol and the bullet strikes its torso, collapsing it.
+Beat 6 created: A second zombie steps forward; she swings the katana, slicing through flesh and bone to send it to the floor.
+Beat 7 created: One by one more zombies appear, each met with a shot or slash until the last of them falls beside her.
+Beat 8 created: She wipes sweat from her brow, strides to the back door, opens it, pulls Will and Amber out into the bright hallway, and they step together toward the safety of their rear porch while the fallen zombies lie silent on the floor.
+Beat 1 jobs: current=E1 - Amy flips pancakes in the kitchen while whisking eggs for Will's cereal bowl.; next=E2 - A lone zombie lurches through the front door as its groan echoes, and Will squeals grabbing Amy’s hand.; completed before=none; pending before=E1, E2, E3, E4, E5, E6, E7, E8
+Validating Beat 1 (attempt 1/10) with the single beat validator.
+Beat 1 validation attempt 1/10: VALID; issue: none
+Beat 1 finite-endpoint attempt 1/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.
+Validating Beat 1 (attempt 2/10) with the single beat validator.
+Beat 1 validation attempt 2/10: VALID; issue: none
+Beat 1 finite-endpoint attempt 2/10: INVALID; issue: Finite assigned activity is still underway and has no observable completion endpoint.
+Beat 1 validation attempt 3/10: INVALID; issue: Beat failed structural validation: Beat dropped named Subject(s) explicitly required by CURRENT JOB: Amy
+Validating Beat 1 (attempt 4/10) with the single beat validator.
+Beat 1 validation attempt 4/10: VALID; issue: none
+Checking Beat 1 within-beat physical coherence (attempt 4/10).
+Beat 1 coherence attempt 4/10: VALID.
+Beat 1 observed persistent state: {"environment": {"objects": {"skillet": "on kitchen_counter", "cereal_bowl_with_eggs": "held by Will"}}}
+Beat 1 accepted: Amy flips the final pancake, sets the skillet down, then whiskies the rest of the eggs into Will's cereal bowl.
+Beat 1 accepted and finalized; committed required events: E1; completed after=E1
+Beat 2 jobs: current=E2 - A lone zombie lurches through the front door as its groan echoes, and Will squeals grabbing Amy’s hand.; next=E3 - She pulls both kids toward the back of the house, slams the back door with a spare key, locks it tight, and they hide behind the curtain near the garage entrance while she steps into the hallway.; completed before=E1; pending before=E2, E3, E4, E5, E6, E7, E8
+Validating Beat 2 (attempt 1/10) with the single beat validator.
+Beat 2 validation attempt 1/10: VALID; issue: none
+Checking Beat 2 within-beat physical coherence (attempt 1/10).
+Beat 2 coherence attempt 1/10: VALID.
+Beat 2 observed persistent state: {"characters": {"Amy": {"held_objects": ["Will"], "relationships": [{"type": "holding", "target": "Will"}]}, "Will": {"held_objects": ["Amy"], "relationships": [{"type": "holding", "target": "Amy"}]}}, "threats": {"Zombie1": {"location": "front_door"}}}
+Beat 2 accepted: A lone zombie lurches through the front door as its groan echoes, and Will squeals grabbing Amy’s hand.
+Beat 2 accepted and finalized; committed required events: E2; completed after=E1, E2
+Beat 3 jobs: current=E3 - She pulls both kids toward the back of the house, slams the back door with a spare key, locks it tight, and they hide behind the curtain near the garage entrance while she steps into the hallway.; next=E4 - Returning to the kitchen, Amy pulls down the lower cabinet, finds her hidden pistol, then slides a katana from under the sink, gripping them with purpose.; completed before=E1, E2; pending before=E3, E4, E5, E6, E7, E8
+Validating Beat 3 (attempt 1/10) with the single beat validator.
+Beat 3 validation attempt 1/10: INVALID; issue: Back door, spare key, and curtain near the garage entrance are not present in the current state; thus Amy cannot slam and lock a non‑existent back door or hide behind a missing curtain.
+Validating Beat 3 (attempt 2/10) with the single beat validator.
+Beat 3 validation attempt 2/10: INVALID; issue: Will and Amber are pulled to the rear hallway but then hidden at the garage entrance—different locations.
+Validating Beat 3 (attempt 3/10) with the single beat validator.
+Beat 3 validation attempt 3/10: VALID; issue: none
+Checking Beat 3 within-beat physical coherence (attempt 3/10).
+Beat 3 coherence attempt 3/10: VALID.
+FATAL: prompt-generation run stopped at first real failure: BeatGenerationError: Beat generation failed before the video workflow could start: State effects cannot nest canonical state root 'story.persistent_facts.characters.Amy.location'; roots must remain top-level.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 30259, in _run_main
+    beats = load_or_generate_beats(
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 18588, in load_or_generate_beats
+    return generate_beats_via_story_expansion(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 17439, in generate_beats_via_story_expansion
+    return _run_forward_beat_validation(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 12830, in _run_forward_beat_validation
+    observed_patch = extract_accepted_beat_state_patch(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 10668, in extract_accepted_beat_state_patch
+    return parse_accepted_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 10643, in parse_accepted_beat_state_patch
+    return persistent_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 10482, in persistent_beat_state_patch
+    normalized = _python_owned_state_patch(normalize_beat_state_patch(patch))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9265, in normalize_beat_state_patch
+    _validate_canonical_state_namespace(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9300, in _validate_canonical_state_namespace
+    visit(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9298, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9298, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9298, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9289, in visit
+    raise ValueError(
+ValueError: State effects cannot nest canonical state root 'story.persistent_facts.characters.Amy.location'; roots must remain top-level.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 32108, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 30286, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Beat generation failed before the video workflow could start: State effects cannot nest canonical state root 'story.persistent_facts.characters.Amy.location'; roots must remain top-level.
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 30259, in _run_main
+    beats = load_or_generate_beats(
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 18588, in load_or_generate_beats
+    return generate_beats_via_story_expansion(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 17439, in generate_beats_via_story_expansion
+    return _run_forward_beat_validation(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 12830, in _run_forward_beat_validation
+    observed_patch = extract_accepted_beat_state_patch(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 10668, in extract_accepted_beat_state_patch
+    return parse_accepted_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 10643, in parse_accepted_beat_state_patch
+    return persistent_beat_state_patch(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 10482, in persistent_beat_state_patch
+    normalized = _python_owned_state_patch(normalize_beat_state_patch(patch))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9265, in normalize_beat_state_patch
+    _validate_canonical_state_namespace(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9300, in _validate_canonical_state_namespace
+    visit(patch)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9298, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9298, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9298, in visit
+    visit(child, path + key_parts)
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 9289, in visit
+    raise ValueError(
+ValueError: State effects cannot nest canonical state root 'story.persistent_facts.characters.Amy.location'; roots must remain top-level.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 32180, in <module>
+    main()
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 32108, in main
+    return _run_main(
+           ^^^^^^^^^^
+  File "C:\Users\J\AppData\Local\Temp\minimax-acceptance-mec57apm\repo\minimax.py", line 30286, in _run_main
+    raise BeatGenerationError(
+BeatGenerationError: Beat generation failed before the video workflow could start: State effects cannot nest canonical state root 'story.persistent_facts.characters.Amy.location'; roots must remain top-level.

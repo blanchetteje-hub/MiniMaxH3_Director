@@ -1,0 +1,125 @@
+{
+  "acceptance_report_version": 1,
+  "story_id": "amy_zombie_house",
+  "benchmark_version": 1,
+  "benchmark_path": "tests\\acceptance\\gold\\amy_zombie_house.json",
+  "benchmark_sha256": "db249ed8880bf22a7709458e03db3a74eecdec825573ff8ea0d114ad84e40098",
+  "repository_revision": "c367ecd6ff828bcf4741f3dc74f29afcfcd69ade",
+  "created_at_utc": "2026-10-01T20:23:53Z",
+  "command": [
+    "C:\\Program Files (x86)\\Python311\\python.exe",
+    "minimax.py",
+    "--generate-beats",
+    "8",
+    "8",
+    "--model",
+    "gpt"
+  ],
+  "exit_code": 1,
+  "capture_status": {
+    "complete": false,
+    "mode": "planning_only",
+    "expected_segments": 0,
+    "captured_segments": [],
+    "missing_segments": []
+  },
+  "refresh_interval": null,
+  "grading": {
+    "local_pass_fail": null,
+    "grader": "GPT-5.6 Sol",
+    "note": "No semantic score is produced locally. Review each generated segment fuzzily against gold_target."
+  },
+  "generated_story_arc": {
+    "phases": [
+      {
+        "phase_number": 1,
+        "beat_start": 1,
+        "beat_end": 8,
+        "narrative_purpose": "Adapt the continuous working story into sequential film beats.",
+        "broad_progression": "Follow the expanded story from beginning to end without changing event order or outcomes.",
+        "characters_introduced": [],
+        "location": "As established by the expanded story.",
+        "required_events": [
+          {
+            "id": "E1",
+            "event": "Amy flips pancakes in the kitchen while whisking eggs for Will's cereal bowl.",
+            "beat_number": 1,
+            "state_effects": []
+          },
+          {
+            "id": "E2",
+            "event": "A lone zombie lurches through the front door as its groan echoes, and Will squeals grabbing Amy’s hand.",
+            "beat_number": 2,
+            "state_effects": [],
+            "depends_on": [
+              "E1"
+            ]
+          },
+          {
+            "id": "E3",
+            "event": "She pulls both kids toward the back of the house, slams the back door with a spare key, locks it tight, and they hide behind the curtain near the garage entrance while she steps into the hallway.",
+            "beat_number": 3,
+            "state_effects": [],
+            "depends_on": [
+              "E2"
+            ]
+          },
+          {
+            "id": "E4",
+            "event": "Returning to the kitchen, Amy pulls down the lower cabinet, finds her hidden pistol, then slides a katana from under the sink, gripping them with purpose.",
+            "beat_number": 4,
+            "state_effects": [],
+            "depends_on": [
+              "E3"
+            ]
+          },
+          {
+            "id": "E5",
+            "event": "The first zombie lunges at her; she fires the pistol and the bullet strikes its torso, collapsing it.",
+            "beat_number": 5,
+            "state_effects": [],
+            "depends_on": [
+              "E4"
+            ]
+          },
+          {
+            "id": "E6",
+            "event": "A second zombie steps forward; she swings the katana, slicing through flesh and bone to send it to the floor.",
+            "beat_number": 6,
+            "state_effects": [],
+            "depends_on": [
+              "E5"
+            ]
+          },
+          {
+            "id": "E7",
+            "event": "One by one more zombies appear, each met with a shot or slash until the last of them falls beside her.",
+            "beat_number": 7,
+            "state_effects": [],
+            "depends_on": [
+              "E6"
+            ]
+          },
+          {
+            "id": "E8",
+            "event": "She wipes sweat from her brow, strides to the back door, opens it, pulls Will and Amber out into the bright hallway, and they step together toward the safety of their rear porch while the fallen zombies lie silent on the floor.",
+            "beat_number": 8,
+            "state_effects": [],
+            "depends_on": [
+              "E7"
+            ]
+          }
+        ],
+        "required_end_state": "End at the expanded story's stated conclusion."
+      }
+    ]
+  },
+  "generated_beats_text": null,
+  "segments": [],
+  "artifacts": {
+    "story_arc.json": "generated\\story_arc.json",
+    "prompt_history.txt": "generated\\prompt_history.txt",
+    "subjects.txt": "generated\\subjects.txt",
+    "story.txt": "generated\\story.txt"
+  }
+}
