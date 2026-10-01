@@ -537,6 +537,27 @@ Fix:
 - tell the resolver to scan the entire timed scene and replace every unambiguous personal pronoun;
 - acceptance parser recognizes both old and new H3 start markers for compatibility.
 
+### 2816 — LLM settings are task-based, not model-based
+
+Audited the production request path and found remaining model-specific settings:
+`MISTRAL_24B_SETTINGS`, `QWEN38_27B_SETTINGS`,
+`QWEN_DIRECTOR_SAMPLING_PARAMETERS`, formatter `DEFAULT_LLM_SETTINGS`, and
+the `use_beat_validation_settings` transport switch.
+
+Refactor:
+- removed all of those model-specific request profiles/switches;
+- formatter choice now affects parsing/cleanup only;
+- `ask_llm()` selects one profile solely from the request purpose:
+  `STORY_EXPANSION_LLM_SETTINGS`,
+  `CREATIVE_GENERATION_LLM_SETTINGS`,
+  `BEAT_WRITING_LLM_SETTINGS`,
+  `STORY_TO_BEATS_LLM_SETTINGS`, or
+  `DETERMINISTIC_ANALYSIS_LLM_SETTINGS`;
+- Beat validation uses the same system/user prompt shape and deterministic
+  request profile regardless of GPT/Qwen/Mistral formatter selection;
+- stale per-call ARC/Beat sampler splats were removed so purpose routing is the
+  single authority.
+
 ## Immediate next work
 
 Acceptance 2776 completed all 8 Beats successfully. The generated Beat sequence is coherent and source-faithful enough to move the acceptance boundary downstream.
