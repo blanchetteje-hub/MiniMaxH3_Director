@@ -193,6 +193,19 @@ def test_repeated_source_unit_state_commits_only_on_last_owned_beat():
     }]
 
 
+def test_source_unit_state_prompt_types_new_threat_location_and_rejects_actor_destination():
+    prompt = "\n".join(
+        message["content"]
+        for message in minimax.build_source_unit_state_effect_messages(
+            "A zombie breaks into the house. Amy retrieves Will from the shelter."
+        )
+    )
+    normalized = " ".join(prompt.split())
+    assert "also emit set_threat_state=active" in normalized
+    assert "never emit B -> A" in normalized
+    assert '"value":"active|incapacitated|dead|removed|cleared"' in prompt
+
+
 def test_source_unit_state_parser_rejects_invented_location_destination():
     with pytest.raises(ValueError, match="not explicitly grounded"):
         minimax.parse_source_unit_state_effects(
