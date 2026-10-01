@@ -75,9 +75,13 @@ repair, and the final H3 formatter/translator.
 Deterministic calls force:
 - temperature: `0`
 - seed: `42`
+- reasoning enabled
+- reasoning_effort: `low`
+- reasoning budget: `128` tokens
+- reasoning budget message: `. Enough thinking, now answer.`
 
 Existing narrow call-specific sampler values may remain for compatibility, but
-temperature 0 is authoritative.
+temperature 0 and the low/128 reasoning profile are authoritative.
 
 **llama-server process requirements**
 
