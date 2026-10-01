@@ -17003,7 +17003,8 @@ def save_expanded_story(story, path=EXPANDED_STORY_FILE):
 
 
 def build_story_to_beats_messages(
-    expanded_story,
+    summary_text,
+    story_text,
     total_segments,
     *,
     beat_instructions="",
@@ -17021,7 +17022,7 @@ def build_story_to_beats_messages(
         {
             "role": "system",
             "content": (
-                "You are a screenplay writer that converts books into films. "
+                "You are a screenplay writer that converts stories into films using a summary as a final guide. "
                 f"Read the provided story and convert it into {int(total_segments)} "
                 "distinct, concise film beats. Keep each beat one sentence and "
                 "maintain continuity and spatial awareness throughout the beats. "
@@ -17032,8 +17033,11 @@ def build_story_to_beats_messages(
         },
         {
             "role": "user",
-            "content": f"""STORY
-{str(expanded_story or "").strip()}
+            "content": f"""SUMMARY
+{str(summary_text or "").strip()}
+
+STORY
+{str(story_text or "").strip()}
 
 Convert the complete story above into exactly {int(total_segments)} sequential beats.
 Preserve the story's event order and outcomes. Do not summarize away an action
@@ -17325,6 +17329,7 @@ def generate_beats_via_story_expansion(
         try:
             raw_beats = llm_request(
                 build_story_to_beats_messages(
+                    story,
                     expanded_story,
                     total_segments,
                     beat_instructions=beat_instructions,
