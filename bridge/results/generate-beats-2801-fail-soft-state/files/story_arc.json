@@ -1,0 +1,85 @@
+{
+  "phases": [
+    {
+      "phase_number": 1,
+      "beat_start": 1,
+      "beat_end": 8,
+      "narrative_purpose": "Adapt the continuous working story into sequential film beats.",
+      "broad_progression": "Follow the expanded story from beginning to end without changing event order or outcomes.",
+      "characters_introduced": [],
+      "location": "As established by the expanded story.",
+      "required_events": [
+        {
+          "id": "E1",
+          "event": "Amy cooks oatmeal while Will and Amber giggle over cereal in the sunny kitchen as a sudden groan rattles the windows.",
+          "beat_number": 1,
+          "state_effects": []
+        },
+        {
+          "id": "E2",
+          "event": "A zombie bursts through the front door, shuffling toward her; she grabs the kids by their shoulders, pushes them into the back bedroom closet, slamming the heavy door behind them.",
+          "beat_number": 2,
+          "state_effects": [],
+          "depends_on": [
+            "E1"
+          ]
+        },
+        {
+          "id": "E3",
+          "event": "Amy sprints back to the kitchen, hearing the zombie’s clumsy footsteps echoing down the hallway.",
+          "beat_number": 3,
+          "state_effects": [],
+          "depends_on": [
+            "E2"
+          ]
+        },
+        {
+          "id": "E4",
+          "event": "She pulls a pistol from a hollowed‑out space in the fridge wall and retrieves a gleaming katana tucked beneath her cutting board.",
+          "beat_number": 4,
+          "state_effects": [],
+          "depends_on": [
+            "E3"
+          ]
+        },
+        {
+          "id": "E5",
+          "event": "She fires at the approaching creature, its head snapping off with a wet thud; then she swings the sword, slicing another zombie’s torso cleanly as it staggers back toward the doorway.",
+          "beat_number": 5,
+          "state_effects": [],
+          "depends_on": [
+            "E4"
+          ]
+        },
+        {
+          "id": "E6",
+          "event": "More zombies surge through cracks around the doorframe, but Amy keeps her pistol and katana poised, firing one after another until each groaning victim falls with a splash of blood onto the kitchen tiles.",
+          "beat_number": 6,
+          "state_effects": [],
+          "depends_on": [
+            "E5"
+          ]
+        },
+        {
+          "id": "E7",
+          "event": "Even as the last zombie collapses, fresh pairs emerge from the hallway’s shadow; she meets them head‑on, blasting their heads off before they can reach the closet door.",
+          "beat_number": 7,
+          "state_effects": [],
+          "depends_on": [
+            "E6"
+          ]
+        },
+        {
+          "id": "E8",
+          "event": "The final zombie lies still on the floorboards; Amy wipes her palm on her jeans and turns toward the back bedroom where Will and Amber wait in silent relief, opens the closet door wide, pulls the two kids out into the kitchen’s bright light.",
+          "beat_number": 8,
+          "state_effects": [],
+          "depends_on": [
+            "E7"
+          ]
+        }
+      ],
+      "required_end_state": "End at the expanded story's stated conclusion."
+    }
+  ]
+}
