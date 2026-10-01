@@ -135,6 +135,20 @@ class DirectorMicroPromptPipelineTests(unittest.TestCase):
                 1,
             )
 
+    def test_h3_action_preservation_prompt_ignores_harmless_incidental_detail(self):
+        messages = minimax.build_h3_action_preservation_messages(
+            (
+                "A deep thud sounds from the front door as it opens slightly; "
+                "a small crack appears at the gap."
+            ),
+            "A deep thud sounds from the front door as it opens slightly.",
+            current_beat="A thud at the front door interrupts the kitchen.",
+        )
+        prompt = messages[0]["content"] + "\n" + messages[1]["content"]
+        self.assertIn("CURRENT BEAT", prompt)
+        self.assertIn("Do not fail harmless decorative clauses", prompt)
+        self.assertIn("small crack appears", prompt)
+
     def test_h3_formatter_repairs_named_dialogue_speaker_id(self):
         parsed = minimax.parse_h3_formatter_result(
             {
