@@ -1,0 +1,28 @@
+{
+  "job_id": "tests-2747-story-grounding-temp",
+  "kind": "run_tests",
+  "started_at": 1790876690.4906993,
+  "test_run": {
+    "code_branch": "summary-to-story-test",
+    "tests": [
+      "tests\\test_generate_beats_mode.py",
+      "tests\\test_summary_to_story_pipeline.py"
+    ],
+    "runner": [
+      "C:\\Program Files (x86)\\Python311\\python.EXE",
+      "-m",
+      "pytest"
+    ],
+    "returncode": 1,
+    "passed": false,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\\Program Files (x86)\\Python311\\python.EXE\ncachedir: .pytest_cache\nrootdir: C:\\Users\\J\\Source\\Repos\\MiniMaxH3_Director.chatgpt_test_summary-to-story-test\nconfigfile: pytest.ini\ncollecting ... collected 15 items\n\ntests/test_generate_beats_mode.py::GenerateBeatsCliTests::test_force_generate_allows_a_missing_beats_file PASSED [  6%]\ntests/test_generate_beats_mode.py::GenerateBeatsCliTests::test_force_generate_replaces_existing_beats_and_cached_arc PASSED [ 13%]\ntests/test_generate_beats_mode.py::GenerateBeatsCliTests::test_parse_args_accepts_count_and_beat_length_without_video_positionals PASSED [ 20%]\ntests/test_generate_beats_mode.py::GenerateBeatsCliTests::test_parse_args_requires_positive_count_and_beat_length \ntests/test_generate_beats_mode.py::GenerateBeatsCliTests::test_parse_args_requires_positive_count_and_beat_length PASSED [ 26%]\ntests/test_generate_beats_mode.py::GenerateBeatsCliTests::test_story_arc_count_mismatch_is_treated_as_a_cache_miss PASSED [ 33%]\ntests/test_generate_beats_mode.py::GenerateBeatsCliTests::test_story_only_mode_forces_planning_and_stops_before_comfyui PASSED [ 40%]\ntests/test_generate_beats_mode.py::GenerateBeatsCliTests::test_story_only_mode_rejects_an_empty_story_with_exact_error PASSED [ 46%]\ntests/test_generate_beats_mode.py::GenerateBeatsDesktopTests::test_empty_story_is_rejected_before_starting_process PASSED [ 53%]\ntests/test_generate_beats_mode.py::GenerateBeatsDesktopTests::test_story_command_contains_count_length_and_formatter_options PASSED [ 60%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_derived_macro_arc_is_one_event_per_beat PASSED [ 66%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_expansion_prompt_uses_target_runtime_and_source_summary PASSED [ 73%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_pipeline_profiles_match_tuned_settings FAILED [ 80%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_to_beats_prompt_keeps_full_story_and_continuity_rule PASSED [ 86%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_timestamp_cleanup_removes_story_clock_times_only \ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_timestamp_cleanup_removes_story_clock_times_only PASSED [ 93%]\ntests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_two_pass_generation_feeds_timestamp_cleaned_beats_to_validator PASSED [100%]\n\n================================== FAILURES ===================================\n_ SummaryToStoryPipelineTests.test_story_pipeline_profiles_match_tuned_settings _\n\nself = <tests.test_summary_to_story_pipeline.SummaryToStoryPipelineTests testMethod=test_story_pipeline_profiles_match_tuned_settings>\n\n    def test_story_pipeline_profiles_match_tuned_settings(self):\n>       self.assertEqual(\n            minimax.STORY_EXPANSION_LLM_PARAMETERS[\"temperature\"],\n            0.6,\n        )\nE       AssertionError: 0.4 != 0.6\n\ntests\\test_summary_to_story_pipeline.py:11: AssertionError\n=========================== short test summary info ===========================\nFAILED tests/test_summary_to_story_pipeline.py::SummaryToStoryPipelineTests::test_story_pipeline_profiles_match_tuned_settings - AssertionError: 0.4 != 0.6\n=============== 1 failed, 14 passed, 9 subtests passed in 2.96s ===============\n",
+    "stderr": "",
+    "timed_out": false,
+    "interrupted": false,
+    "timeout_seconds": null,
+    "started_at": 1790876692.0403638,
+    "finished_at": 1790876695.6964169
+  },
+  "finished_at": 1790876695.6964169,
+  "status": "ok"
+}
