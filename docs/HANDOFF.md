@@ -907,3 +907,24 @@ Commits:
 - `87f79a1ca030cc9de1d66d8d478904b1ca8caebb` — typed-location/preflight regressions.
 - `b8f3d7242eae44308e188054d6883ea51716d417` — regression proving deterministic
   preflight failure preserves the saved arc and never starts Beat generation.
+
+
+### 2026-10-01 follow-up — preflight exception catch placement corrected
+
+Acceptance `acceptance-2700-state-preflight-location` was interrupted while running
+`test_state_preflight_failure_preserves_saved_arc_and_does_not_start_beats`.
+
+Root cause:
+- The dedicated `RequiredEventStateApplicationError` catch had been inserted into the
+  JSON-repair retry loop instead of the outer Beat-generation recovery loop.
+- The real outer loop still caught the deterministic state error as generic `Exception`,
+  deleted the arc/checkpoint, and restarted indefinitely.
+
+Fix:
+- Removed the stray JSON-repair catch.
+- Added the dedicated state-application catch immediately before the actual generic
+  Beat-generation recovery catch.
+- Deterministic preflight failures now preserve the saved arc and propagate instead of
+  entering the arc-wipe loop.
+
+Commit: `61d0325f6a52d751de0c2d70f18451302c782611`.
