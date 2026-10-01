@@ -354,15 +354,31 @@ CREATIVE_LLM_SAMPLING_PARAMETERS = {
     "seed": BENCHMARK_SEED,
 }
 
-# These purpose names own creative expansion/restaging. Repair calls that rewrite
-# ARC/BEAT artifacts stay creative because they must solve the same story problem,
-# not merely classify it.
+# Beat creation and repair are semantic writing tasks, but local GPT-OSS 20B
+# testing is substantially more reliable at greedy temperature 0. Keep the
+# larger reasoning budget used by creative work while removing sampling drift.
+BEAT_LLM_SAMPLING_PARAMETERS = {
+    "temperature": 0,
+    "top_p": None,
+    "top_k": None,
+    "min_p": None,
+    "presence_penalty": None,
+    "frequency_penalty": None,
+    "repeat_penalty": 1.15,
+    "seed": BENCHMARK_SEED,
+}
+
+BEAT_WRITING_LLM_PURPOSES = frozenset({
+    "beat_generation",
+    "beat_repair",
+})
+
+# These purpose names own creative expansion/restaging outside Beat CREATE/REPAIR.
 CREATIVE_LLM_PURPOSES = frozenset({
     "character_canon",
     "macro_arc_create",
     "macro_arc_repair",
     "macro_arc_majority_tail_repair",
-    "beat_generation",
     "director_raw_scene",
 })
 
@@ -391,7 +407,6 @@ DETERMINISTIC_LLM_PURPOSES = frozenset({
 })
 
 ARC_LLM_SAMPLING_PARAMETERS = dict(CREATIVE_LLM_SAMPLING_PARAMETERS)
-BEAT_LLM_SAMPLING_PARAMETERS = dict(CREATIVE_LLM_SAMPLING_PARAMETERS)
 QWEN_DIRECTOR_SAMPLING_PARAMETERS = dict(CREATIVE_LLM_SAMPLING_PARAMETERS)
 
 CREATIVE_REASONING_EFFORT = "high"
@@ -8309,7 +8324,25 @@ def ask_llm(
     # Creative calls share one tuned sampling/reasoning profile. Deterministic
     # calls force greedy temperature-0 behavior. Numerical --deterministic mode
     # is configured on llama-server itself, not in this request body.
-    if history_purpose in CREATIVE_LLM_PURPOSES:
+    if history_purpose in BEAT_WRITING_LLM_PURPOSES:
+        temperature = BEAT_LLM_SAMPLING_PARAMETERS["temperature"]
+        top_p = BEAT_LLM_SAMPLING_PARAMETERS["top_p"]
+        top_k = BEAT_LLM_SAMPLING_PARAMETERS["top_k"]
+        min_p = BEAT_LLM_SAMPLING_PARAMETERS["min_p"]
+        presence_penalty = BEAT_LLM_SAMPLING_PARAMETERS["presence_penalty"]
+        frequency_penalty = BEAT_LLM_SAMPLING_PARAMETERS["frequency_penalty"]
+        repeat_penalty = BEAT_LLM_SAMPLING_PARAMETERS["repeat_penalty"]
+        seed = BEAT_LLM_SAMPLING_PARAMETERS["seed"]
+        # Preserve the larger reasoning budget: the model's analysis is useful,
+        # but sampling above temperature 0 causes answer drift.
+        reasoning_effort = CREATIVE_REASONING_EFFORT
+        thinking_budget_tokens = CREATIVE_REASONING_BUDGET_TOKENS
+        reasoning_budget_message = REASONING_BUDGET_MESSAGE
+        enable_thinking = True
+        thinking = None
+        chat_template = None
+        jinja = None
+    elif history_purpose in CREATIVE_LLM_PURPOSES:
         temperature = CREATIVE_LLM_SAMPLING_PARAMETERS["temperature"]
         top_p = CREATIVE_LLM_SAMPLING_PARAMETERS["top_p"]
         top_k = CREATIVE_LLM_SAMPLING_PARAMETERS["top_k"]
@@ -8317,15 +8350,11 @@ def ask_llm(
         presence_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["presence_penalty"]
         frequency_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["frequency_penalty"]
         repeat_penalty = CREATIVE_LLM_SAMPLING_PARAMETERS["repeat_penalty"]
-        # Creative work should vary across requests/runs. Validators and
-        # extractors remain pinned to BENCHMARK_SEED below.
         seed = generate_random_llm_seed()
         reasoning_effort = CREATIVE_REASONING_EFFORT
         thinking_budget_tokens = CREATIVE_REASONING_BUDGET_TOKENS
         reasoning_budget_message = REASONING_BUDGET_MESSAGE
         enable_thinking = True
-        # These are server-launch/legacy provider settings, not part of the
-        # llama.cpp OpenAI request contract used for the creative profile.
         thinking = None
         chat_template = None
         jinja = None
@@ -8350,6 +8379,7 @@ def ask_llm(
         "macro_arc_repair",
         "macro_arc_majority_tail_repair",
         "beat_generation",
+        "beat_repair",
         "beat_instruction_review",
         "beat_validation",
     }
@@ -17072,8 +17102,11 @@ def generate_beats_from_story(
             f"REJECTED BEAT: {rejected_text or 'N/A'}\n"
             f"PROBLEM TO FIX: {correction_detail}"
             f"{repair_rule}\n"
-            "Keep the assigned event and story meaning. Change only what is needed "
-            "to fix the problem. Do not return the rejected beat unchanged. "
+            "Keep the assigned event and story meaning. Make the smallest textual "
+            "change that fixes the reported problem. Preserve wording that is not "
+            "part of the problem. If the problem names an ambiguous or incorrect "
+            "word, replace that word explicitly and do not reintroduce it in the "
+            "answer. Do not return the rejected beat unchanged. "
             f"Return Beat {beat_number} only."
         )
         messages = build_beat_generation_messages(
@@ -17107,7 +17140,7 @@ def generate_beats_from_story(
             ),
             history_metadata={
                 **(history_metadata or {}),
-                "purpose": "beat_generation",
+                "purpose": "beat_repair",
                 "attempt": "beat_validation_retry",
                 "total_segments": total_segments,
                 "beat_number": beat_number,
