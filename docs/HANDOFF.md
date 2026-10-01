@@ -876,3 +876,34 @@ Commits:
 - `bc7901f474420c8c0454309fdbb8df4654a565e0` — Beat CREATE/REPAIR routing regressions
 - `7d35e7dd596f5d73777f547ac98b84d87e62676f` — repair purpose/revalidation-order regression
 - `6a1384286c62ffbf95972f4653194aca91bc0c31` — PROJECT_NOTES sampling policy update
+
+
+## 2026-10-01 — typed location seeding + deterministic state preflight
+
+Observed failure:
+- Beat 2 passed both semantic and coherence validation, then state commit raised:
+  `set_location references an untracked entity: 'zombie'`.
+- The generic outer exception handler treated that deterministic state-application error as
+  a generation failure, deleted the arc/checkpoint, and restarted from arc creation.
+
+Fixes:
+- Required-event state application now derives entity namespaces from the arc's own typed
+  state effects.
+- An unknown `set_location` entity may be seeded only when typed effects establish exactly
+  one role for that entity (character, threat, object, or barrier).
+- Conservative singular/plural aliases are supported so typed roles such as `zombies`
+  can establish the namespace for a location effect on `zombie`.
+- No story-specific threat vocabulary was added.
+- All required-event state effects are replayed in a deterministic preflight immediately
+  after the arc is saved and before Beat CREATE/VALIDATE begins.
+- State-application failures now raise `RequiredEventStateApplicationError`, preserve the
+  current saved arc, and bypass the old generic arc-wipe/restart path.
+- The top-level runtime also treats this exception as deterministic/fail-fast instead of
+  endlessly replaying the same invalid arc.
+
+Commits:
+- `28bf277bfb2ee4a766670144115eac88b5f7142a` — production state-role seeding,
+  preflight, and retry-scope fix.
+- `87f79a1ca030cc9de1d66d8d478904b1ca8caebb` — typed-location/preflight regressions.
+- `b8f3d7242eae44308e188054d6883ea51716d417` — regression proving deterministic
+  preflight failure preserves the saved arc and never starts Beat generation.
