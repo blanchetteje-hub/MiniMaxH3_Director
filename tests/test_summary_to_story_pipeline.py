@@ -77,6 +77,8 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             messages[1]["content"],
         )
         self.assertIn("exactly 8 sequential beats", prompt)
+        self.assertIn("A terminal result belongs to one beat only", prompt)
+        self.assertIn("current beat must stop before it", prompt)
 
     def test_timestamp_cleanup_removes_story_clock_times_only(self):
         cases = {
