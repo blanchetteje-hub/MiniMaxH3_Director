@@ -1,0 +1,12 @@
+{
+  "job_id": "tests-2812-pronoun-resolution",
+  "kind": "run_tests",
+  "code_branch": "summary-to-story-test",
+  "tests": [
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_prompt_is_narrow",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_accepts_name_only_rewrite",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_raw_pronoun_resolution_rejects_timestamp_drift",
+    "tests/test_director_retry.py::DirectorMicroPromptPipelineTests::test_request_one_retries_physically_incoherent_raw_scene"
+  ],
+  "timeout_seconds": 1800
+}
