@@ -19857,24 +19857,28 @@ def _director_timed_action_map(value):
     return result
 
 
-def build_h3_action_preservation_messages(raw_action, h3_action):
-    """Ask only whether one RAW micro-action survived final H3 assembly."""
+def build_h3_action_preservation_messages(raw_action, h3_action, current_beat=""):
+    """Ask only whether one beat-relevant RAW micro-action survived final H3 assembly."""
     return [
         {
             "role": "system",
             "content": (
                 "Compare one RAW video micro-action with the final H3 micro-action "
-                "at the same timestamp. Return JSON only. "
-                "PRESERVED = the same visible/audible action and material result "
-                "remain, even if wording, clothing adjectives, camera wording, or "
-                "harmless detail differs. OMITTED = the RAW action/result is absent. "
-                "CHANGED = final H3 performs a materially different or contradictory "
-                "action/result. Judge only these two snippets."
+                "at the same timestamp, using CURRENT BEAT only to identify what is "
+                "material. Return JSON only. PRESERVED = the beat-relevant visible/"
+                "audible action, participant roles, and material result remain. "
+                "Incidental staging/detail may be shortened or omitted when removing it "
+                "does not change the beat, physical coherence, continuity, or story. "
+                "OMITTED = a beat-relevant action/result is absent. CHANGED = final H3 "
+                "performs a materially different or contradictory beat-relevant action/"
+                "result. Do not fail harmless decorative clauses."
             ),
         },
         {
             "role": "user",
             "content": (
+                "CURRENT BEAT:\n"
+                f"{str(current_beat or '').strip() or 'N/A'}\n\n"
                 "RAW MICRO-ACTION:\n"
                 f"{str(raw_action or '').strip()}\n\n"
                 "FINAL H3 MICRO-ACTION:\n"
@@ -19902,6 +19906,7 @@ def validate_final_h3_action_preservation(
     raw_scene,
     final_h3_prompt,
     *,
+    current_beat="",
     llm_request=ask_llm,
     history_metadata=None,
 ):
@@ -19924,7 +19929,11 @@ def validate_final_h3_action_preservation(
             issues.append(f"{timestamp}: final H3 omitted the RAW micro-action.")
             continue
         result = llm_request(
-            build_h3_action_preservation_messages(raw_action, h3_action),
+            build_h3_action_preservation_messages(
+                raw_action,
+                h3_action,
+                current_beat=current_beat,
+            ),
             response_format=H3_ACTION_PRESERVATION_RESPONSE_FORMAT,
             history_metadata={
                 **dict(history_metadata or {}),
@@ -20007,6 +20016,9 @@ def run_h3_prompt_validation_fixture(path, *, llm_request=ask_llm):
         "action_preservation": validate_final_h3_action_preservation(
             fixture["raw_scene"],
             fixture["final_h3_prompt"],
+            current_beat=(
+                (fixture.get("authority") or {}).get("current_beat", "")
+            ),
             llm_request=llm_request,
             history_metadata={
                 "fixture": os.fspath(path),
@@ -31244,6 +31256,7 @@ def _run_main(
         h3_action_validation = validate_final_h3_action_preservation(
             payload.get("raw_scene", ""),
             h3_prompt,
+            current_beat=segment_bundle.get("current_beat_text", ""),
             history_metadata={
                 "run_id": run_id,
                 "source_sha256": run_config["source_sha256"],
