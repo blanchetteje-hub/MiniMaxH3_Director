@@ -44,11 +44,15 @@ class SummaryToStoryPipelineTests(unittest.TestCase):
             normalized,
         )
         self.assertIn("location is unambiguous", normalized)
+        self.assertIn("support 8 distinct film beats", normalized)
         self.assertIn(
-            "When the summary does not specify a new location, route, barrier, or container, keep the action in the nearest already-established location rather than inventing one.",
+            "The ending must preserve the source's stated final situation.",
             normalized,
         )
-        self.assertIn("support 8 distinct film beats", normalized)
+        self.assertIn(
+            "Do not invent a new escape, destination, surviving threat, or aftermath after the source's final event.",
+            normalized,
+        )
 
     def test_story_to_beats_prompt_keeps_full_story_and_continuity_rule(self):
         messages = minimax.build_story_to_beats_messages(
